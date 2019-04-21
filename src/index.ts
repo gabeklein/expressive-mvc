@@ -13,6 +13,9 @@ function encapsulate(
         defineProperty(live, key, {
             get: () => store[key],
             set: (value) => { 
+                if(store[key] === value) 
+                    return;
+
                 store[key] = value;
                 didUpdate(random())
             }
