@@ -8,8 +8,7 @@
         "moduleResolution": "node",
         "noUnusedLocals": true,
         "strict": true,
-        "esModuleInterop": true,
-        "types": []
+        "esModuleInterop": true
     },
     "exclude": [
         "index.d.ts"
