@@ -1,0 +1,26 @@
+{
+  "name": "use-stateful",
+  "version": "1.0.0-beta.1",
+  "description": "React useState-like hooks but implemented with object setters",
+  "main": "lib/index.js",
+  "files": [
+    "lib/",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "react", 
+    "hooks"
+  ],
+  "author": {
+    "name": "Gabe Klein",
+    "email": "gabe@termtm.com",
+    "url": "https://github.com/gabeklein"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^16.8.0"
+  }
+}

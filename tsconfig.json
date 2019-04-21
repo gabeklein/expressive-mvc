@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "baseUrl": "src",
+        "rootDir": "src",
+        "outDir": "lib",
+        "target": "ES2015",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "noUnusedLocals": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "types": []
+    },
+    "exclude": [
+        "index.d.ts"
+    ]
+}
