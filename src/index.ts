@@ -1,59 +1,123 @@
-import { useEffect, useState } from "react";
-const { defineProperty, create } = Object;
+import { useState, useEffect } from 'react';
+
+const { create, defineProperty, getOwnPropertyDescriptor } = Object;
 const { random } = Math;
 
-class LiveState {
-    constructor(
-        public refresh: VoidFunction
-    ){}
+type BunchOf<T> = { [key: string]: any }
 
-    export<Clone = { [P in keyof this]: this[P] }>(): Clone {
-        return create(this)
+type State = LiveState & BunchOf<any>
+
+type StateInitializer = (
+    this: typeof LiveState, 
+    callback: VoidFunction, 
+    self: typeof LiveState
+) => State;
+
+class LiveState {
+
+    static __store__: any;
+    static __update__: (beat: number) => void;  
+
+    static refresh(){
+        this.__update__(random() + 1e-5)
+    }
+
+    static export<T, Clone = { [P in keyof T]: T[P] }>(this: T): Clone {
+        return create(this as any)
+    }
+
+    static add(key: string, initial?: any, bootup?: true){
+        if(getOwnPropertyDescriptor(this, key))
+            return false;
+
+        this.__store__[key] = initial;
+        defineProperty(this, key, {
+            get: () => this.__store__[key],
+            set: (value) => { 
+                if(this.__store__[key] === value) 
+                    return;
+
+                this.__store__[key] = value;
+                this.refresh()
+            },
+            enumerable: true,
+            configurable: true
+        })
+        if(!bootup)
+            this.refresh();
+
+        return true
     }
 }
 
 function bootstrap(
-    init: any, 
-    live: any, 
-    onUpdate: (beat: number) => void){
+    init: StateInitializer | State, 
+    live: typeof LiveState,
+    cleanup: Function){
 
     if(typeof init == "function")
-        init = init.call(live, live);
+        init = init.call(
+            live, 
+            (callback: VoidFunction) => { cleanup(callback) },
+            live
+        ) as State;
 
-    const store = {} as typeof init;
-    for(const key in init)
-        if(typeof init[key] == "function")
-            defineProperty(live, key, {
-                value: init[key]
-            })
-        else {
-            store[key] = init[key];
-            defineProperty(live, key, {
-                get: () => store[key],
-                set: (value) => { 
-                    if(store[key] === value) 
-                        return;
+    const source = create(init);
 
-                    store[key] = value;
-                    onUpdate(random())
-                },
-                enumerable: true,
-                configurable: true
+    Object.setPrototypeOf(live, source);
+
+    for(const method in LiveState)
+        defineProperty(source, method, {
+            value: (<any>LiveState)[method]
+        })
+    
+    for(const key in init){
+        if(key in LiveState)
+            throw new Error(
+                `Can't bootstrap ${key} onto live state, it is reserved!`
+            )
+
+        const value = init[key]
+
+        if(typeof value == "function")
+            defineProperty(live, key, {
+                value: (<Function>value).bind(live)
             })
+        else
+            live.add(key, value, true);
+    }
+}
+
+export const useStateful = (() => {
+
+    let unmount: VoidFunction | undefined;
+
+    return function useStateful(init: any){
+        let [ beat, update ] = useState(0);
+        const [ live ] = useState({ 
+            __update__: update
+        });
+    
+        if(beat == 0){
+            if(init) throw new Error(
+                "It's `useStateful` not `useStateless`!\nYou need an initializer with atleast one value ideally."
+            )
+            bootstrap(
+                init, 
+                live,
+                (x: VoidFunction) => { unmount = x }
+            )
+            beat = 1;
         }
-}
 
-export function useStateful(init: any){
-    const [ alreadyMounted, didMount ] = useState(false);
-    const [ , refresh] = useState(0);
-    const [ live ] = useState(new LiveState(refresh));
-
-    if(!alreadyMounted)
-        bootstrap(init, live, refresh)
-
-    useEffect(() => {
-        didMount(true);
-    }, []);
-
-    return live;
-}
+        useEffect(() => {
+            const cleanupHandler = unmount;
+            unmount = undefined;
+            if(typeof cleanupHandler === "function")
+                return cleanupHandler()
+        })
+    
+        return live;
+    }
+})()
+ 
