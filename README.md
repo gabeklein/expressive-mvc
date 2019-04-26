@@ -32,13 +32,13 @@ import { useStateful } from "use-stateful";
 
 ## What does it do?
 
-Use stateful is a great alternative to having a bunch of `useState` calls within your components. A single `useStateful` hook can manage pretty much all the simple state in your component with one call.
+Use stateful is a great alternative to having a bunch of `useState` calls within your components. A single `useStateful` hook can manage pretty much all the simple state in your component.
 
-In a nutshell, this hook grafts ✨*live-state* ✨ onto some given state and returns it to your component through the hook. 
+In a nutshell, this hook grafts ✨*live-state* ✨ onto some given state and returns it to you through the hook. 
 
 ### ✌️live state ✌️?
 
-Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`, with all of its "live values" (enumerable, non-methods) covered over by `setter` & `getter` pairs. It uses the given state object to set initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
+Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`. In it, all of the "live values" (enumerable, non-methods) are covered over by `setter` & `getter` pairs. It uses the given state object for initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
 
 <br/>
 
@@ -123,7 +123,7 @@ The hook's argument over there, its "*constructor*", will ***only run at mount**
 
 The component now updates when any of your declared values change. You can add as many values as you like, and they'll stay clean and relatively organized in your code.
 
-> And now John Doe seems pretty mollified by this development.
+> And John Doe seems pretty mollified by this development now too.
 
 <br/>
 
@@ -131,9 +131,9 @@ The component now updates when any of your declared values change. You can add a
 
 Similar to `@computed` and `@action` found in [MobX.js](https://github.com/mobxjs/mobx), you can include `get`, `set`, and methods amongst your watched values. 
 
-They'll reference your live state and work [generally as you'd expect](https://www.destroyallsoftware.com/talks/wat), with regards to `this` keyword.
+They'll reference your live state and work [generally as you'd expect](https://www.destroyallsoftware.com/talks/wat), with regards to the `this` keyword.
 
-All methods are **bound automatically**, so you can pass them as callbacks or to sub-components, and it'll work just fine.
+All methods are **bound automatically**, so you can pass them as callbacks or to sub-components, and they'll work just fine.
 
 <br/>
 
@@ -142,35 +142,36 @@ const HiBob = () => {
     const $ = useStateful(_ => ({
 
         ownName: "Bob",
-        friendsName: undefined,
+        friend: undefined,
 
-        get standardHello(){
-            return `Hey there, name's ${this.name}.`;
+        get hello(){
+            return `Hello, my name's ${this.name}.`;
         },
 
         set friend(name){
             void name;
             //immediately forget;
-            this.friendsName = "bro"
+            this.friend = "dude"
         },
 
         sayHi(){
-            const whatsHisFace = this.friendsName;
+            const whatsHisFace = this.friend;
             if(whatsHisFace){
-                alert(`Oh hey ${whatsHisFace}, how's it uh hanging?`)
+                alert(`Oh hey ${whatsHisFace}, how's it uh, hangin? 🤙`)
                 return;
             }
 
-            alert(this.standardHello);
+            alert(this.hello);
 
             const whoIsThisGuy = prompt("Hey uuuhh...");
 
             if(whoIsThisGuy){
                 alert(`Oh hey ${whoIsThisGuy}! Long time no see!!`);
-                this.friendsName = whoIsThisGuy;
+                this.friend = whoIsThisGuy;
             }
             else 
                 alert(`Heeeey, ...There..?`);
+                //you friggin blew it Bob
         }
         
     }));
@@ -178,16 +179,19 @@ const HiBob = () => {
     return <div onClick={$.sayHi}>Hi {$.ownName}</div>
 }
 ```
+
+> As you'll see later, this is not an ideal way to code Bob here. However, for base concepts, this works fine for now.
+
 <br/>
 
 ### Reserved methods
 
 #### `refresh(): void`
-- requests a re-render without requiring a value changed. 
-- Helpful when working with getters.
+- requests a re-render without requiring that a value change. 
+- Helpful when working with getters and async.
 
 #### `export(): { [P in keyof T]: T[P] }`
-- generates a clone of the live state you can pass along without unintended mutations.
+- generates a snapshot live state you can pass along without unintended side effects.
 - this will only output the values which were enumerable in the source object.
 
 #### `add(key: string, intital?: any): boolean`
@@ -197,10 +201,10 @@ const HiBob = () => {
 
 <br/>
 
-## `useStateful` also accepts an object.
+## `useStateful` also accepts an object
 
-If you prefer to prepare your initial values on the outside of a component, you can do that too.<br/>
-This is especially useful for situations with closures, or [HOC's](https://reactjs.org/docs/higher-order-components.html).
+If you prefer to prepare your initial values, on the outside of a component, you can do that too.<br/>
+This can be especially useful for situations with closures or [HOC's](https://reactjs.org/docs/higher-order-components.html).
 
 > *Just don't give `useStateful` an object literal.*<br/>
 > *It will get regenerated every render!* 
@@ -221,7 +225,8 @@ const Component = () => {
 Keep in mind updated values **are** stored on the given object. This can be helpful or a pain depending on the curcumstances. 
 
 <br/>
-<h2>It accepts a function too.</h2>
+
+## It accepts a function too
 
 Well, you knew that, from the first example. However, what you may not have noticed is that `componentWillMount` comes ***FREE*** with `useStateful`.
 
@@ -247,11 +252,11 @@ const TimeFlys = () => {
 }
 ```
 
-To boot, can use this space to declare all of your async opperations, listeners and computed defaults **and interact with them**. 
+You can use this space to declare all of your async opperations, listeners and computed defaults **and interact with them**. 
 
 Thanks to the closure you can access `$` (or whatever you name it), ***but, only. through. functions***.
 
-> Keep in mind that `$` doesn't actually exist until `useStateful` returns, but your event bodies should have no trouble scooping it out of the double-closure. Weird I know. 👀👌
+> Keep in mind that `$` doesn't actually exist until `useStateful` returns, though your callbacks should have no trouble scooping it out of the double-closure. Weird I know.
 
 <br/> 
 
@@ -265,7 +270,7 @@ Let's fix that right up.
 const PaintDries = () => {
 
     //wish you had access to ComponentWillUnmount?
-    //handle cleanup with ↓     ↓ it adds an event listener!
+    //handle cleanup with ↓     ↓; it adds an event listener for that!
 
     const $ = useStateful(unmount => {
 
@@ -288,11 +293,12 @@ const PaintDries = () => {
 ```
 
 
-#### AddEventListener (for `componentWillUnmount`) to the rescue!
+#### Argument `addEventListener(componentWillUnmount)` to the rescue!
 
 This callback captures a function, to be called when react notices your component is unmounting. 
 
-***Note***: *This can only be set within the initializer function.*
+***Note***: *The opposite of `$`, unmount can only be set **within** the initializer function.*
+
 > Effectively it's passed around to the return value of a `useEffect` hook that will run right after your initializer returns. One in the same, of the technique for simulating `componentWillUnmount` with hooks.
 >
 > I made it `_` in the earlier examples because I find that cleaner than empty parenthesis, visually speaking.
@@ -300,20 +306,20 @@ This callback captures a function, to be called when react notices your componen
 <br/>
 <br/>
 
-<h2>And, if can you believe it, it accepts functions as well!</h2>
+<h2>And, if can you believe it, it accepts functions as well</h2>
 
 #### (External ones this time)
 
-It can be pretty useful to declare your state function itself, outside its respective component. That, or better yet, sharing logic between multiple components is possible with this approach. 
+It can be pretty useful to declare, your state function itself, outside of a respective component. That, and better yet, sharing logic between multiple components is possible with this approach. 
 
 This gives you the space to construct fancy state machines with lots of events and async, without bloating your components.
 
 > Instead of the closure var, you can use `this` again, to access live state.<br/>
 > You couldn't before because of the keyword fowarding done by arrow-functions.
-
-**Again however,** you cannot do anything to `this` within the function body, its only a weak reference until bootstrap finishes. 
-
-> The setup process takes place only after this constructor has returned. `This` is here purely to use within closures of the function body.
+>
+> **Again however,** you cannot do anything to `this` within the function body, its only a weak reference until bootstrap finishes. 
+>
+> The setup process takes place only after this constructor has returned. `this` is here, purely to use within closures in the function body.
 
 <br/>
 
@@ -325,13 +331,15 @@ function StickySituation(ohTheyRanAway){
             cutTheDrama();
     }, 1000);
 
-    const cutTheDrama = () => clearInterval(deathTimer);
+    function cutTheDrama(){
+        clearInterval(deathTimer)
+    }
 
     ohTheyRanAway(cutTheDrama)
     
     return {
-        countdown: 5,
-        surname: "Bond",
+        countdown: 60,
+        surname: "bond",
         async newAgent(_clickEvent){
             const recruit = await 
                 fetch("https://randomuser.me/api/")
@@ -356,18 +364,25 @@ const ActionSequence = () => {
     return (
         <div>
             <div>Agent <b>{$.surname}</b> we need you to diffuse the bomb!</div>
-            <div>If you can't diffuse it in {$.countdown} seconds, the cat may or may not die!</div>
             <div>
-                Be sure to <u onClick={$.newAgent}>tap another agent</u> if you think they can do it.
+                If you can't diffuse it in {$.countdown} seconds, the cat may or may not die!
+            </div>
+            <div>
+                But there is time! 
+                <u onClick={$.newAgent}>Tap another agent</u> 
+                if you think they can do it.
             </div>
         </div>
     )
 }
 ```
 
-### OK, but what if you like, *want* to use an arrow function.
+<br/>
 
-You do you, fam.
+### OK, but what if you like, *want* to use an arrow function?
+
+Yea you don't have access to `this` here, but we got you. <br/>
+State is passed as a second argument after unmount.
 
 ```jsx
 const OkSomeStateIGuess = (_, self) => {
@@ -383,11 +398,52 @@ const OkSomeStateIGuess = (_, self) => {
 }
 ```
 
-> Actually, being honest, that earlier `HiBob` example would work pretty well formatted like this.
+#### Infact, this is exactly the better way to implement `HiBob` from his earlier example.
 
+```jsx
+const HiRobert = () => {
+    const Bob = useStateful(ForRobert);
+    // and btw, there's nothings stopping you from loading even more live states!
+
+    return <div onClick={Bob.sayHi}>Hi {Bob.ownName}</div>
+}
+
+const ForRobert = () => ({
+    ownName: "Robert",
+    friendsName: undefined,
+
+    get hello(){
+        return `Hey, name's ${this.name}.`;
+    },
+
+    set friend(name){
+        this.friendsName = name
+    },
+
+    sayHi(){
+        const friend = this.friendsName;
+        if(friend){
+            alert(`Hey ${friend}, how was vacation?`)
+            return;
+        }
+
+        alert(this.hello);
+
+        const guysName = prompt("You look familar! What's your name again?");
+
+        if(guysName){
+            alert(`Ohhh ${guysName}! Long time no see.`);
+            this.friendsName = guysName;
+        }
+        else 
+            alert(`How've you been, you're just coming back from vacation right?`);
+            //Nice save robert
+    } 
+});
+```
 <br/>
 
-### 🚧 More ideas are under construction, stay tuned! 🏗
+### 🚧 More ideas are currently under construction, so stay tuned! 🏗
 
 <br/>
 
