@@ -84,7 +84,7 @@ const HappyTown = () => {
     const $ = useStateful(_ => ({
         name: "John Doe",
         emotion: "whatever",
-        reason: "I dunno man. :/"
+        reason: "I dunno man."
     }));
 
     return (
@@ -115,17 +115,19 @@ const HappyTown = () => {
 
 ### ... and that does work?
 
-Yep. The component updates when any of the declared values change. 👍
+Yep! The component updates when any of the declared values change.
+
+> And John Doe seems pretty mollified by this new development.
 
 <br/>
 
 ## So what's going on here?
 
-In a nutshell, `useStateful` grafts ✨*live-state* ✨ onto your initial state and returns that to your component through the hook engine. 
+In a nutshell, `useStateful` grafts ✨*live-state* ✨ onto your initial state and returns it to your component through the hook. 
 
-### But what do we mean by ✌️live state ✌️?
+### What do we mean by ✌️live state ✌️?
 
-Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`, with all of its "live values" (enumerable, non-methods) covered over with `setter` & `getter` pairs. It uses the given state object to set initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
+Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`, with all of its "live values" (enumerable, non-methods) covered over by `setter` & `getter` pairs. It uses the given state object to set initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
 
 > The hook's function argument, its "*constructor*", will ***only run at mount***, and the returned object will then be bootstrapped into the live state object.
 
@@ -138,7 +140,7 @@ Similar to `@computed` and `@action` concepts found in [MobX.js](https://github.
 
 They'll reference your live state and work [generally as you'd expect](https://www.destroyallsoftware.com/talks/wat), with regards to `this` keyword.
 
-**All methods are bound too,** so you can pass them as callbacks or to sub-components, and it'll work just fine.
+All methods are **bound automatically**, so you can pass them as callbacks or to sub-components, and it'll work just fine.
 
 <br/>
 
@@ -152,9 +154,9 @@ const HiBob = () => {
         sayHi(){
             const whatsHisFace = this.friendsName;
             if(whatsHisFace){
-                alert(`Oh hey ${whatsHisFace}, how's it uh hanging? 🤙`)
+                alert(`Oh hey ${whatsHisFace}, how's it uh hanging?`)
                 //Bob, do people even say that anymore?
-                //This is getting awkward, Abort ABORT
+                //This is getting awkward, abort ABORT
                 alert(`👀 Oh, I think I heard my toast finish. Gotta go get that.`)
                 return;
             }
@@ -163,11 +165,11 @@ const HiBob = () => {
             const whoIsThisGuy = prompt("Hey uuuhh...");
             if(whoIsThisGuy){
                 //play it cool Bob, play it cool.
-                alert(`Oh hey ${whoIsThisGuy}! Long time no see!! 🤝`);
+                alert(`Oh hey ${whoIsThisGuy}! Long time no see!!`);
                 this.friendsName = whoIsThisGuy;
             }
             else {
-                alert(`Heeeey, ...There..? 😓`);
+                alert(`Heeeey, ...There..?`);
                 //you friggin blew it Bob
             }
         },
@@ -241,7 +243,7 @@ Well, you knew that, from the first example. However, what you may not have noti
 
 
 ```jsx
-const Component = () => {
+const TimeFlys = () => {
     const $ = useStateful(_ => {
 
         setInterval(() => {
@@ -270,7 +272,7 @@ That `setInterval` over there should really be cleaned up when the component unm
 Let's fix that right up.
 
 ```jsx
-const Component = () => {
+const PaintDries = () => {
     const $ = useStateful(unmount => {
 
         const stopwatch = 
@@ -293,9 +295,9 @@ const Component = () => {
 
 <br/>
 
-### So that's what that underscore was.
+### So that's what the underscore was.
 
-Yup, this callback captures a function, to be called when react notices your component is unmounting. 
+Yep, this callback captures a function, to be called when react notices your component is unmounting. 
 
 ***Note***: *This can only be set within the initializer function.*
 > Effectively it's passed around to the return value of a `useEffect` hook that will run right after your initializer returns. One in the same, of the technique for simulating `componentWillUnmount` with hooks.
@@ -323,19 +325,26 @@ This gives you the breathing room to construct fancy state machines with lots of
 <br/>
 
 ```jsx
-function StickySituation(getOutOfThere){
-    const deathTimer = setInterval(() => this.countdown--, 1000);
+function StickySituation(onTheyRanAway){
+    const deathTimer = setInterval(() => {
+        if(--this.countdown == 0)
+            cutTheDrama();
+    }, 1000);
 
-    getOutOfThere(() => {
-        clearInterval(deathTimer);
-    })
+    const cutTheDrama = () => { clearInterval(deathTimer) };
+
+    onTheyRanAway(cutTheDrama)
     
     return {
-        countdown: 100,
+        countdown: 5,
         surname: "Bond",
         async newAgent(_clickEvent){
-            const [ someRando ] = await fetch("https://randomuser.me/api/");
-            this.surname = someRando.name.last;
+            const recruit = await 
+                fetch("https://randomuser.me/api/")
+                .then(res => res.json())
+                .then(data => data.results[0])
+
+            this.surname = recruit.name.last;
         }
     }
 }
@@ -344,12 +353,15 @@ function StickySituation(getOutOfThere){
 Keeps the **M** and the **VC** nice and seperate.
 
 ```jsx
-const Component = () => {
+const ActionSequence = () => {
     const $ = useStateful(StickySituation);
+
+    if($.countdown == 0)
+        return <h1>🙀💥</h1>
 
     return (
         <div>
-            <div>Agent {$.surname} we need you to diffuse the bomb!</div>
+            <div>Agent <b>{$.surname}</b> we need you to diffuse the bomb!</div>
             <div>If you can't diffuse it in {$.countdown} seconds, the cat may or may not die!</div>
             <div>
                 Be sure to <u onClick={$.newAgent}>tap another agent</u> if you think they can do it.
@@ -366,9 +378,9 @@ You do you, fam.
 ```jsx
 const OkSomeStateIGuess = (_, self) => {
     //are you happy now?
-    illThinkAboutIt
+    ThinkAboutIt()
         .then(() => {
-            self.opinion = "🤔 mmm'yes. quite."
+            self.opinion = "quite happy"
         })
 
     return {
