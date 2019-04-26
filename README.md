@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  Easy to use live-state with the magic of react hooks!
+  Easy to use live-state with react hooks
 </p>
  
 <p align="center">
@@ -27,10 +27,6 @@ npm install --save use-stateful
 ```js
 import { useStateful } from "use-stateful";
 ```
-
-<br/>
-
-> Remember to ⭐️ if this helps in your endeavors!
 
 <br/>
 
