@@ -20,7 +20,7 @@ interface LiveState {
      * Drink Responibly.
      * 
      */
-    refresh: VoidFunction;
+    refresh(): void;
 
     /**
      * Clone live state into new object.
@@ -28,7 +28,17 @@ interface LiveState {
      * @returns Clone - Side-effect safe object containing all enumerable values of current state.
      * 
      */
-    export<Clone = { [P in keyof this]: this[P] }>(): Clone;
+    export(): { [P in keyof this]: this[P] };
+
+    /**
+     * Add new tracked value to expressive.
+     * 
+     * Will trigger renders on updates to this new value.
+     * 
+     * @returns boolean - Did add opperation succeed. `false` means value already exists or is reserved.
+     * 
+     */
+    add(key: string, initial?: any, bootup?: true): boolean;
 }
 
 /**
@@ -51,16 +61,17 @@ declare function useStateful
     (init: I): LiveState & I;
 
 /**
- * @param {LiveState} this - Live State, allows the updating of state from inside initializer.
- * @param {LiveState} live - Same as above.
+ * @param {LiveState} this - LiveState, allows the updating of state from inside initializer.
+ * @param {LiveState} onUnmount - adds EventListener, call with function as argument to set unmount callback.
+ * @param {LiveState} state - [this] LiveState, allows the updating of state from inside initializer.
  * 
- * NOTE: `live` is only fully initialized only if accessed by closure!
+ * NOTE: `this` and `self` are only really initialized when accessed by closure!
  * 
  * @returns Initial values, and more importantly schema, for live state.
  * 
  */
 type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
-    (this: S, state: S) => I
+    (this: S, onUnmount: (cb: VoidFunction) => void, state: S) => I
 
 /**
  * LiveState React Hook 
@@ -71,7 +82,7 @@ type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
  * 
  * Initializer function which returns state at mount. Runs only once.
  * 
- * @param {InitStateOnMount} init State initializer. (Functionally `ComponentDidMount`)
+ * @param {InitStateOnMount} init Initital State or initializer. (Functionally `ComponentDidMount`) 
  * 
  * @returns {LiveState} Live state: current state of component.
  * 
