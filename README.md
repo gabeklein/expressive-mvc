@@ -119,17 +119,17 @@ const HappyTown = () => {
 
 > Much better.
 
-The hook's argument over there, its "*constructor*", will ***only run at mount***, and the returned object will then be bootstrapped into the live state object.
+The hook's argument over there, its "*constructor*", will ***only run at mount***, and the returned object will then be bootstrapped into live state.
 
-The component now updates when any of the declared values change. You can add as many values to your initial state as you like, they'll stay clean and relatively organized in your code.
+The component now updates when any of your declared values change. You can add as many values as you like, and they'll stay clean and relatively organized in your code.
 
-> And now John Doe seems pretty mollified to boot.
+> And now John Doe seems pretty mollified by this development.
 
 <br/>
 
 ## Adding Methods
 
-Similar to `@computed` and `@action` concepts found in [MobX.js](https://github.com/mobxjs/mobx), you can include `get`, `set`, and regular methods amongst your watched values. 
+Similar to `@computed` and `@action` found in [MobX.js](https://github.com/mobxjs/mobx), you can include `get`, `set`, and methods amongst your watched values. 
 
 They'll reference your live state and work [generally as you'd expect](https://www.destroyallsoftware.com/talks/wat), with regards to `this` keyword.
 
@@ -183,27 +183,24 @@ const HiBob = () => {
 ### Reserved methods
 
 #### `refresh(): void`
-- requests a re-render without requiring a value changed. Helper in computing getters.
+- requests a re-render without requiring a value changed. 
+- Helpful when working with getters.
 
 #### `export(): { [P in keyof T]: T[P] }`
 - generates a clone of the live state you can pass along without unintended mutations.
 - this will only output the values which were enumerable in the source object.
-> It's not possible yet to make this work for getters however, sadly. :( 
 
 #### `add(key: string, intital?: any): boolean`
 - adds a new tracked value to the live-state. 
 - this will return `true` if adding the key succeeded, `false` if did not. (because it exists)
 > Not really recommended *after* initializing, but hey.
 
-
-
-
 <br/>
 
 ## `useStateful` also accepts an object.
 
 If you prefer to prepare your initial values on the outside of a component, you can do that too.<br/>
-This is useful for situations with closures, or [HOC's](https://reactjs.org/docs/higher-order-components.html).
+This is especially useful for situations with closures, or [HOC's](https://reactjs.org/docs/higher-order-components.html).
 
 > *Just don't give `useStateful` an object literal.*<br/>
 > *It will get regenerated every render!* 
@@ -226,7 +223,7 @@ Keep in mind updated values **are** stored on the given object. This can be help
 <br/>
 <h2>It accepts a function too.</h2>
 
-Well, you knew that, from the first example. However, what you may not have notices is that `componentWillMount` comes ***FREE*** with `useStateful`.
+Well, you knew that, from the first example. However, what you may not have noticed is that `componentWillMount` comes ***FREE*** with `useStateful`.
 
 **You heard right folks**, for the low-low price of this single hook, you dont need `useEffect` (with that ugly `[]` argument) after all!
 
@@ -250,20 +247,26 @@ const TimeFlys = () => {
 }
 ```
 
-You can use this space to declare all of your async opperations, listeners and computed defaults. Thanks to the closure you can access `$` (or whatever you name it), ***but, only. through. functions***.
+To boot, can use this space to declare all of your async opperations, listeners and computed defaults **and interact with them**. 
+
+Thanks to the closure you can access `$` (or whatever you name it), ***but, only. through. functions***.
 
 > Keep in mind that `$` doesn't actually exist until `useStateful` returns, but your event bodies should have no trouble scooping it out of the double-closure. Weird I know. 👀👌
 
 <br/> 
 
-### However, we're definitely missing something here.
+### However, we're actually missing something here.
 
-That `setInterval` over there should really be cleaned up when the component unmounts. *Totally* meant to do that... Yea.
+That `setInterval` over there should really be cleaned up when the component unmounts.
 
 Let's fix that right up.
 
 ```jsx
 const PaintDries = () => {
+
+    //wish you had access to ComponentWillUnmount?
+    //handle cleanup with ↓     ↓ it adds an event listener!
+
     const $ = useStateful(unmount => {
 
         const stopwatch = 
@@ -284,11 +287,10 @@ const PaintDries = () => {
 }
 ```
 
-<br/>
 
-### So that's what the underscore was.
+#### AddEventListener (for `componentWillUnmount`) to the rescue!
 
-Yep, this callback captures a function, to be called when react notices your component is unmounting. 
+This callback captures a function, to be called when react notices your component is unmounting. 
 
 ***Note***: *This can only be set within the initializer function.*
 > Effectively it's passed around to the return value of a `useEffect` hook that will run right after your initializer returns. One in the same, of the technique for simulating `componentWillUnmount` with hooks.
@@ -302,29 +304,30 @@ Yep, this callback captures a function, to be called when react notices your com
 
 #### (External ones this time)
 
-It can be pretty useful, to declare your state function itself, outside its respective component. That or better yet, sharing a state factory between multiple components. 
+It can be pretty useful to declare your state function itself, outside its respective component. That, or better yet, sharing logic between multiple components is possible with this approach. 
 
-This gives you the breathing room to construct fancy state machines with lots of events and async. Almost as bad as a class even!
+This gives you the space to construct fancy state machines with lots of events and async, without bloating your components.
 
 > Instead of the closure var, you can use `this` again, to access live state.<br/>
-> You couldn't before because of the `this` fowarding of arrow-functions.
+> You couldn't before because of the keyword fowarding done by arrow-functions.
 
 **Again however,** you cannot do anything to `this` within the function body, its only a weak reference until bootstrap finishes. 
 
-> The bootstrap process takes place after this function has returned. `This` is here purely to use within closures of the function body.
+> The setup process takes place only after this constructor has returned. `This` is here purely to use within closures of the function body.
 
 <br/>
 
 ```jsx
-function StickySituation(onTheyRanAway){
+function StickySituation(ohTheyRanAway){
     const deathTimer = setInterval(() => {
-        if(--this.countdown == 0)
+        const remains = --this.countdown
+        if(remains == 0)
             cutTheDrama();
     }, 1000);
 
-    const cutTheDrama = () => { clearInterval(deathTimer) };
+    const cutTheDrama = () => clearInterval(deathTimer);
 
-    onTheyRanAway(cutTheDrama)
+    ohTheyRanAway(cutTheDrama)
     
     return {
         countdown: 5,
