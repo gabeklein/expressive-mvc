@@ -34,6 +34,14 @@ import { useStateful } from "use-stateful";
 
 Use stateful is a great alternative to having a bunch of `useState` calls within your components. A single `useStateful` hook can manage pretty much all the simple state in your component with one call.
 
+In a nutshell, this hook grafts ✨*live-state* ✨ onto some given state and returns it to your component through the hook. 
+
+### ✌️live state ✌️?
+
+Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`, with all of its "live values" (enumerable, non-methods) covered over by `setter` & `getter` pairs. It uses the given state object to set initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
+
+<br/>
+
 ### Consider the following:
 
 > Here is an example where we have multiple values to track. <br/>
@@ -70,6 +78,8 @@ const EmotionalState = () => {
 }
 ```
 > This makes John Doe correspondingly sad, as you can see here.
+
+<br/>
 
 ### How can we do better?
 
@@ -109,28 +119,15 @@ const HappyTown = () => {
 
 > Much better.
 
-### ... and that does work?
+The hook's argument over there, its "*constructor*", will ***only run at mount***, and the returned object will then be bootstrapped into the live state object.
 
-Yep! The component updates when any of the declared values change.
+The component now updates when any of the declared values change. You can add as many values to your initial state as you like, they'll stay clean and relatively organized in your code.
 
-> And John Doe seems pretty mollified by this new development.
-
-<br/>
-
-## So what's going on here?
-
-In a nutshell, `useStateful` grafts ✨*live-state* ✨ onto your initial state and returns it to your component through the hook. 
-
-### What do we mean by ✌️live state ✌️?
-
-Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`, with all of its "live values" (enumerable, non-methods) covered over by `setter` & `getter` pairs. It uses the given state object to set initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
-
-> The hook's function argument, its "*constructor*", will ***only run at mount***, and the returned object will then be bootstrapped into the live state object.
+> And now John Doe seems pretty mollified to boot.
 
 <br/>
 
-
-## You can add methods too
+## Adding Methods
 
 Similar to `@computed` and `@action` concepts found in [MobX.js](https://github.com/mobxjs/mobx), you can include `get`, `set`, and regular methods amongst your watched values. 
 
@@ -147,36 +144,33 @@ const HiBob = () => {
         ownName: "Bob",
         friendsName: undefined,
 
-        sayHi(){
-            const whatsHisFace = this.friendsName;
-            if(whatsHisFace){
-                alert(`Oh hey ${whatsHisFace}, how's it uh hanging?`)
-                //Bob, do people even say that anymore?
-                //This is getting awkward, abort ABORT
-                alert(`👀 Oh, I think I heard my toast finish. Gotta go get that.`)
-                return;
-            }
-
-            alert(this.standardHello);
-            const whoIsThisGuy = prompt("Hey uuuhh...");
-            if(whoIsThisGuy){
-                //play it cool Bob, play it cool.
-                alert(`Oh hey ${whoIsThisGuy}! Long time no see!!`);
-                this.friendsName = whoIsThisGuy;
-            }
-            else {
-                alert(`Heeeey, ...There..?`);
-                //you friggin blew it Bob
-            }
-        },
-
         get standardHello(){
             return `Hey there, name's ${this.name}.`;
         },
 
         set friend(name){
-            //immediately forget
+            void name;
+            //immediately forget;
             this.friendsName = "bro"
+        },
+
+        sayHi(){
+            const whatsHisFace = this.friendsName;
+            if(whatsHisFace){
+                alert(`Oh hey ${whatsHisFace}, how's it uh hanging?`)
+                return;
+            }
+
+            alert(this.standardHello);
+
+            const whoIsThisGuy = prompt("Hey uuuhh...");
+
+            if(whoIsThisGuy){
+                alert(`Oh hey ${whoIsThisGuy}! Long time no see!!`);
+                this.friendsName = whoIsThisGuy;
+            }
+            else 
+                alert(`Heeeey, ...There..?`);
         }
         
     }));
@@ -184,8 +178,9 @@ const HiBob = () => {
     return <div onClick={$.sayHi}>Hi {$.ownName}</div>
 }
 ```
+<br/>
 
-### Some Reserved methods
+### Reserved methods
 
 #### `refresh(): void`
 - requests a re-render without requiring a value changed. Helper in computing getters.
@@ -208,7 +203,7 @@ const HiBob = () => {
 ## `useStateful` also accepts an object.
 
 If you prefer to prepare your initial values on the outside of a component, you can do that too.<br/>
-This is useful for situations with closures, or something-something HOC's.
+This is useful for situations with closures, or [HOC's](https://reactjs.org/docs/higher-order-components.html).
 
 > *Just don't give `useStateful` an object literal.*<br/>
 > *It will get regenerated every render!* 
@@ -396,6 +391,3 @@ const OkSomeStateIGuess = (_, self) => {
 # License
 
 MIT license. <br/>
-
-Have fun!<br/>
-\- Gabe
