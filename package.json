@@ -23,7 +23,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "prebuild": "rm -rf lib/"
   },
   "peerDependencies": {
     "react": "^16.8.0"
