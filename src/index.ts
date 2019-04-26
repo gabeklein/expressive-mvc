@@ -9,24 +9,28 @@ type State = LiveState & BunchOf<any>
 
 type StateInitializer = (
     this: typeof LiveState, 
-    callback: VoidFunction, 
+    callback: (cb: VoidFunction) => void, 
     self: typeof LiveState
 ) => State;
 
-class LiveState {
+interface LiveState extends BunchOf<any> {
+    __store__: any;
+    __update__: (beat: number) => void;  
+    refresh(): void;
+    export(): { [P in keyof this]: this[P] };
+    add(key: string, initial?: any, bootup?: true): boolean;
+}
 
-    static __store__: any;
-    static __update__: (beat: number) => void;  
-
-    static refresh(){
+const LiveState = {
+    refresh(this: LiveState){
         this.__update__(random() + 1e-5)
-    }
+    },
 
-    static export<T, Clone = { [P in keyof T]: T[P] }>(this: T): Clone {
+    export(this: LiveState & BunchOf<any>): typeof this {
         return create(this as any)
-    }
+    },
 
-    static add(key: string, initial?: any, bootup?: true){
+    add(this: LiveState, key: string, initial?: any, bootup?: true){
         if(getOwnPropertyDescriptor(this, key))
             return false;
 
@@ -52,19 +56,22 @@ class LiveState {
 
 function bootstrap(
     init: StateInitializer | State, 
-    live: typeof LiveState,
-    cleanup: Function){
+    live: LiveState,
+    registerUnmount: (cb: VoidFunction) => void){
 
-    if(typeof init == "function")
-        init = init.call(
+    if(typeof init !== "function")
+        init = init;
+    else
+        init = (init as StateInitializer).call(
             live, 
-            (callback: VoidFunction) => { cleanup(callback) },
+            registerUnmount,
             live
-        ) as State;
+        );
 
     const source = create(init);
 
     Object.setPrototypeOf(live, source);
+    source.__store__ = init;
 
     for(const method in LiveState)
         defineProperty(source, method, {
@@ -77,7 +84,11 @@ function bootstrap(
                 `Can't bootstrap ${key} onto live state, it is reserved!`
             )
 
-        const value = init[key]
+        const desc = Object.getOwnPropertyDescriptor(init, key)!;
+        if(desc.get || desc.set)
+            continue
+
+        const value = desc.value;
 
         if(typeof value == "function")
             defineProperty(live, key, {
@@ -90,7 +101,7 @@ function bootstrap(
 
 export const useStateful = (() => {
 
-    let unmount: VoidFunction | undefined;
+    let callbackUnmount: VoidFunction | undefined;
 
     return function useStateful(init: any){
         let [ beat, update ] = useState(0);
@@ -99,23 +110,23 @@ export const useStateful = (() => {
         });
     
         if(beat == 0){
-            if(init) throw new Error(
-                "It's `useStateful` not `useStateless`!\nYou need an initializer with atleast one value ideally."
+            if(!init) throw new Error(
+                "useStateful needs some form of intializer."
             )
             bootstrap(
                 init, 
                 live,
-                (x: VoidFunction) => { unmount = x }
+                (x: VoidFunction) => { callbackUnmount = x }
             )
             beat = 1;
         }
 
         useEffect(() => {
-            const cleanupHandler = unmount;
-            unmount = undefined;
-            if(typeof cleanupHandler === "function")
-                return cleanupHandler()
-        })
+            const onUnmount = callbackUnmount;
+            callbackUnmount = undefined;
+            if(typeof onUnmount === "function")
+                return onUnmount
+        }, [])
     
         return live;
     }
