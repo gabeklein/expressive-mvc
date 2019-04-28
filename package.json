@@ -1,6 +1,6 @@
 {
   "name": "use-stateful",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "React useState-like hooks but implemented with object setters",
   "license": "MIT",
   "keywords": [
