@@ -16,6 +16,7 @@ type StateInitializer = (
 interface LiveState extends BunchOf<any> {
     __store__: any;
     __update__: (beat: number) => void;  
+    __active__: boolean;
     refresh(): void;
     export(): { [P in keyof this]: this[P] };
     add(key: string, initial?: any, bootup?: true): boolean;
@@ -23,6 +24,7 @@ interface LiveState extends BunchOf<any> {
 
 const LiveState = {
     refresh(this: LiveState){
+        this.__active__ = true;
         this.__update__(random() + 1e-5)
     },
 
@@ -30,7 +32,7 @@ const LiveState = {
         return create(this as any)
     },
 
-    add(this: LiveState, key: string, initial?: any, bootup?: true){
+    add(this: LiveState, key: string, initial?: any){
         if(getOwnPropertyDescriptor(this, key))
             return false;
 
@@ -42,13 +44,16 @@ const LiveState = {
                     return;
 
                 this.__store__[key] = value;
+                if(this.__active__ == false)
                 this.refresh()
             },
             enumerable: true,
             configurable: true
         })
-        if(!bootup)
+        if(this.__active__ === false){
             this.refresh();
+            this.__active__ = true;
+        }
 
         return true
     }
@@ -92,10 +97,11 @@ function bootstrap(
 
         if(typeof value == "function")
             defineProperty(live, key, {
-                value: (<Function>value).bind(live)
+                value: (<Function>value).bind(live),
+                configurable: true
             })
         else
-            live.add(key, value, true);
+            live.add(key, value);
     }
 }
 
@@ -104,12 +110,13 @@ export const useStateful = (() => {
     let callbackUnmount: VoidFunction | undefined;
 
     return function useStateful(init: any){
-        let [ beat, update ] = useState(0);
+        let update = useState(0)[1];
         const [ live ] = useState({ 
-            __update__: update
+            __update__: update,
+            __active__: null
         });
     
-        if(beat == 0){
+        if(live.__active__ === null){
             if(!init) throw new Error(
                 "useStateful needs some form of intializer."
             )
@@ -118,14 +125,24 @@ export const useStateful = (() => {
                 live,
                 (x: VoidFunction) => { callbackUnmount = x }
             )
-            beat = 1;
         }
+
+        live.__active__ = false;
+
+        useEffect(() => {
+            live.__active__ = false;
+        })
 
         useEffect(() => {
             const onUnmount = callbackUnmount;
             callbackUnmount = undefined;
-            if(typeof onUnmount === "function")
-                return onUnmount
+            return () => {
+                if(onUnmount)
+                    onUnmount();
+                for(const key in live)
+                    try { delete live[key] }
+                    catch(err) {}
+            }
         }, [])
     
         return live;
