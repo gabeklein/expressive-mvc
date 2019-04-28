@@ -39,13 +39,13 @@ const LiveState = {
         this.__store__[key] = initial;
         defineProperty(this, key, {
             get: () => this.__store__[key],
-            set: (value) => { 
+            set: (value) => {
                 if(this.__store__[key] === value) 
                     return;
 
                 this.__store__[key] = value;
                 if(this.__active__ == false)
-                this.refresh()
+                    this.refresh()
             },
             enumerable: true,
             configurable: true
@@ -100,7 +100,7 @@ function bootstrap(
                 value: (<Function>value).bind(live),
                 configurable: true
             })
-        else
+        else 
             live.add(key, value);
     }
 }
@@ -148,4 +148,6 @@ export const useStateful = (() => {
         return live;
     }
 })()
+
+export { useStateful as useStates }
  

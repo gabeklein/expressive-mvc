@@ -91,3 +91,5 @@ declare function useStateful
     <I extends BunchOf<any>, S = LiveState & I> (
     init: InitStateOnMount<I, S>
 ): S;
+
+export { useStateful as useStates }

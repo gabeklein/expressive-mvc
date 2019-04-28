@@ -25,20 +25,20 @@ npm install --save use-stateful
 > Import and use in your components
 
 ```js
-import { useStateful } from "use-stateful";
+import { useStates } from "use-stateful";
 ```
 
 <br/>
 
 ## What does it do?
 
-Use stateful is a great alternative to having a bunch of `useState` calls within your components. A single `useStateful` hook can manage pretty much all the simple state in your component.
+Use stateful is a great alternative to having a bunch of `useState` calls within your components. A single `useStates` hook can manage pretty much all the simple state in your component.
 
 In a nutshell, this hook grafts ✨*live-state* ✨ onto some given state and returns it to you through the hook. 
 
 ### ✌️live state ✌️?
 
-Basically it is a new object, inheriting (via prototype) from the one you passed into `useStateful`. In it, all of the "live values" (enumerable, non-methods) are covered over by `setter` & `getter` pairs. It uses the given state object for initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
+Basically it is a new object, inheriting (via prototype) from the one you passed into `useStates`. In it, all of the "live values" (enumerable, non-methods) are covered over by `setter` & `getter` pairs. It uses the given state object for initial values and to know what setters are needed for tracking. The hook will then watch for updates to those values, compare them, and if they're different... trigger a render! 🐰🎩
 
 <br/>
 
@@ -83,11 +83,11 @@ const EmotionalState = () => {
 
 ### How can we do better?
 
-> Use the `useStateful` hook.
+> Use the `useStates` hook.
 
 ```jsx
 const HappyTown = () => {
-    const $ = useStateful(_ => ({
+    const $ = useStates(_ => ({
         name: "John Doe",
         emotion: "whatever",
         reason: "I dunno man."
@@ -139,7 +139,7 @@ All methods are **bound automatically**, so you can pass them as callbacks or to
 
 ```jsx
 const HiBob = () => {
-    const $ = useStateful(_ => ({
+    const $ = useStates(_ => ({
 
         ownName: "Bob",
         friend: undefined,
@@ -201,12 +201,12 @@ const HiBob = () => {
 
 <br/>
 
-## `useStateful` also accepts an object
+## `useStates` also accepts an object
 
 If you prefer to prepare your initial values, on the outside of a component, you can do that too.<br/>
 This can be especially useful for situations with closures or [HOC's](https://reactjs.org/docs/higher-order-components.html).
 
-> *Just don't give `useStateful` an object literal.*<br/>
+> *Just don't give `useStates` an object literal.*<br/>
 > *It will get regenerated every render!* 
 
 
@@ -216,7 +216,7 @@ const defaults = {
 }   
 
 const Component = () => {
-    const $ = useStateful(defaults);
+    const $ = useStates(defaults);
 
     return <div>Hello {$.name}</div>
 }
@@ -228,7 +228,7 @@ Keep in mind updated values **are** stored on the given object. This can be help
 
 ## It accepts a function too
 
-Well, you knew that, from the first example. However, what you may not have noticed is that `componentWillMount` comes ***FREE*** with `useStateful`.
+Well, you knew that, from the first example. However, what you may not have noticed is that `componentWillMount` comes ***FREE*** with `useStates`.
 
 **You heard right folks**, for the low-low price of this single hook, you dont need `useEffect` (with that ugly `[]` argument) after all!
 
@@ -237,7 +237,7 @@ Well, you knew that, from the first example. However, what you may not have noti
 
 ```jsx
 const TimeFlys = () => {
-    const $ = useStateful(_ => {
+    const $ = useStates(_ => {
 
         setInterval(() => {
             $.duration++;
@@ -256,7 +256,7 @@ You can use this space to declare all of your async opperations, listeners and c
 
 Thanks to the closure you can access `$` (or whatever you name it), ***but, only. through. functions***.
 
-> Keep in mind that `$` doesn't actually exist until `useStateful` returns, though your callbacks should have no trouble scooping it out of the double-closure. Weird I know.
+> Keep in mind that `$` doesn't actually exist until `useStates` returns, though your callbacks should have no trouble scooping it out of the double-closure. Weird I know.
 
 <br/> 
 
@@ -272,7 +272,7 @@ const PaintDries = () => {
     //wish you had access to ComponentWillUnmount?
     //handle cleanup with ↓     ↓; it adds an event listener for that!
 
-    const $ = useStateful(unmount => {
+    const $ = useStates(unmount => {
 
         const stopwatch = 
             setInterval(() => {
@@ -356,7 +356,7 @@ Keeps the **M** and the **VC** nice and seperate.
 
 ```jsx
 const ActionSequence = () => {
-    const $ = useStateful(StickySituation);
+    const $ = useStates(StickySituation);
 
     if($.countdown == 0)
         return <h1>🙀💥</h1>
@@ -402,7 +402,7 @@ const OkSomeStateIGuess = (_, self) => {
 
 ```jsx
 const HiRobert = () => {
-    const Bob = useStateful(ForRobert);
+    const Bob = useStates(ForRobert);
     // and btw, there's nothings stopping you from loading even more live states!
 
     return <div onClick={Bob.sayHi}>Hi {Bob.ownName}</div>
