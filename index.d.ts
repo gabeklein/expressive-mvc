@@ -42,25 +42,6 @@ interface LiveState {
 }
 
 /**
- * LiveState React Hook.
- * 
- * Any value initialized will be included as getter-setter pair on returned object.
- * Updates to values on state object will trigger a re-render.
- * 
- * Accepts object (initializer) or function which returns initializer.
- * Init function is called only on mount, so may be used as such.
- * 
- * @param init State initializer.
- * Sets initial, and determines what values are live.
- * 
- * @returns {LiveState} Live state: current state of component.
- * 
- */
-declare function useStateful
-    <I extends BunchOf<any>>
-    (init: I): LiveState & I;
-
-/**
  * @param {LiveState} this - LiveState, allows the updating of state from inside initializer.
  * @param {LiveState} onUnmount - adds EventListener, call with function as argument to set unmount callback.
  * @param {LiveState} state - [this] LiveState, allows the updating of state from inside initializer.
@@ -88,8 +69,27 @@ type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
  * 
  */
 declare function useStateful
-    <I extends BunchOf<any>, S = LiveState & I> (
-    init: InitStateOnMount<I, S>
+    <I, S = LiveState & I> (
+    init: (this: S, onUnmount: (cb: VoidFunction) => void, state: S) => I
 ): I;
+
+/**
+ * LiveState React Hook.
+ * 
+ * Any value initialized will be included as getter-setter pair on returned object.
+ * Updates to values on state object will trigger a re-render.
+ * 
+ * Accepts object (initializer) or function which returns initializer.
+ * Init function is called only on mount, so may be used as such.
+ * 
+ * @param init State initializer.
+ * Sets initial, and determines what values are live.
+ * 
+ * @returns {LiveState} Live state: current state of component.
+ * 
+ */
+declare function useStateful
+    <I extends BunchOf<any>>
+    (init: I): LiveState & I;
 
 export { useStateful as useStates }
