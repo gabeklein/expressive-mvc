@@ -90,6 +90,6 @@ type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
 declare function useStateful
     <I extends BunchOf<any>, S = LiveState & I> (
     init: InitStateOnMount<I, S>
-): S;
+): I;
 
 export { useStateful as useStates }
