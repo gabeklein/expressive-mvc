@@ -17,6 +17,7 @@ interface LiveState extends BunchOf<any> {
     __store__: any;
     __update__: (beat: number) => void;  
     __active__: boolean;
+    __bounce__: boolean;
     refresh(): void;
     export(): { [P in keyof this]: this[P] };
     add(key: string, initial?: any, bootup?: true): boolean;
@@ -24,8 +25,13 @@ interface LiveState extends BunchOf<any> {
 
 const LiveState = {
     refresh(this: LiveState){
-        this.__active__ = true;
-        this.__update__(random() + 1e-5)
+        if(this.__bounce__ !== true){
+            this.__bounce__ = true;
+            setTimeout(() => {
+                this.__update__(random() + 1e-5);
+                this.__bounce__ = false;
+            }, 0)
+        }
     },
 
     export(this: LiveState & BunchOf<any>): typeof this {
