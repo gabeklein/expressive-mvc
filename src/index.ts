@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const { create, defineProperty, getOwnPropertyDescriptor } = Object;
 const { random } = Math;
@@ -64,14 +64,11 @@ function bootstrap(
     live: LiveState,
     registerUnmount: (cb: VoidFunction) => void){
 
-    if(typeof init !== "function")
-        init = init;
-    else
-        init = (init as StateInitializer).call(
-            live, 
+    if(typeof init == "function")
+        init = init.apply(live, [
             registerUnmount,
             live
-        );
+        ]);
 
     const source = create(init);
 
@@ -111,7 +108,7 @@ export const useStateful = (() => {
 
     return function useStateful(init: any){
         let update = useState(0)[1];
-        const [ live ] = useState({ 
+        const { current: live } = useRef({ 
             __update__: update,
             __active__: null
         });
@@ -131,9 +128,6 @@ export const useStateful = (() => {
 
         useEffect(() => {
             live.__active__ = false;
-        })
-
-        useEffect(() => {
             const onUnmount = callbackUnmount;
             callbackUnmount = undefined;
             return () => {
