@@ -1,144 +1,177 @@
 import { useState, useEffect, useRef } from 'react';
 
-const { create, defineProperty, getOwnPropertyDescriptor } = Object;
 const { random } = Math;
+const { 
+    defineProperty: define, 
+    getOwnPropertyDescriptor: getDesc, 
+    getPrototypeOf: getProto, 
+    create,
+    assign
+} = Object;
 
 type BunchOf<T> = { [key: string]: any }
 
 type State = LiveState & BunchOf<any>
 
-type StateInitializer = (
-    this: typeof LiveState, 
-    callback: (cb: VoidFunction) => void, 
-    self: typeof LiveState
-) => State;
-
-interface LiveState extends BunchOf<any> {
-    __store__: any;
-    __update__: (beat: number) => void;  
-    __active__: boolean;
-    __bounce__: boolean;
+interface LiveState<State = any> {
     refresh(): void;
-    export(): { [P in keyof this]: this[P] };
-    add(key: string, initial?: any, bootup?: true): boolean;
+    add(key: string, initial?: any): void;
+    export(): State;
 }
 
-const LiveState = {
-    refresh(this: LiveState){
-        if(this.__bounce__ !== true){
-            this.__bounce__ = true;
-            setTimeout(() => {
-                this.__update__(random() + 1e-5);
-                this.__bounce__ = false;
-            }, 0)
+function LiveStateConstruct(
+    this: LiveState,
+    updateHook: (beat: number) => void
+){
+    const values = {} as BunchOf<any>;
+    let pending = false;
+
+    this.refresh = () => {
+        if(pending)
+            return
+        pending = true;
+        setTimeout(() => {
+            updateHook(random());
+            pending = false;
+        }, 0)
+    }
+
+    this.export = () => {
+        const acc = {} as BunchOf<any>;
+        for(const key in this){
+            const des = getDesc(this, key)!;
+            if(des.value)
+                acc[key] = des.value;
         }
-    },
 
-    export(this: LiveState & BunchOf<any>): typeof this {
-        return create(this as any)
-    },
+        return assign(acc, values);
+    }
 
-    add(this: LiveState, key: string, initial?: any){
-        if(getOwnPropertyDescriptor(this, key))
-            return false;
-
-        this.__store__[key] = initial;
-        defineProperty(this, key, {
-            get: () => this.__store__[key],
+    this.add = (key: string, initial?: any) => {
+        values[key] = initial;
+        define(this, key, {
+            get: () => {
+                //TODO register context listeners
+                return values[key]
+            },
             set: (value) => {
-                if(this.__store__[key] === value) 
+                if(values[key] === value) 
                     return;
 
-                this.__store__[key] = value;
-                if(this.__active__ == false)
-                    this.refresh()
+                //TODO: Dispatch to context listeners
+                values[key] = value;
+                this.refresh()
             },
             enumerable: true,
             configurable: true
         })
-        if(this.__active__ === false){
-            this.refresh();
-            this.__active__ = true;
-        }
-
-        return true
     }
 }
 
+interface Lifecycle {
+    willUnmount?: VoidFunction,
+    didMount?: VoidFunction
+}
+
 function bootstrap(
-    init: StateInitializer | State, 
-    live: LiveState,
-    registerUnmount: (cb: VoidFunction) => void){
+    update: VoidFunction, 
+    source: State, 
+    prototype?: BunchOf<Function>){
 
-    if(typeof init == "function")
-        init = init.apply(live, [
-            registerUnmount,
-            live
-        ]);
+    let baseLayer = new (LiveStateConstruct as any)(update);
+    let methodLayer = create(baseLayer);
 
-    const source = create(init);
-
-    Object.setPrototypeOf(live, source);
-    source.__store__ = init;
-
-    for(const method in LiveState)
-        defineProperty(source, method, {
-            value: (<any>LiveState)[method]
-        })
-    
-    for(const key in init){
-        if(key in LiveState)
+    for(const key in source){
+        if(key in baseLayer)
             throw new Error(
                 `Can't bootstrap ${key} onto live state, it is reserved!`
             )
 
-        const desc = Object.getOwnPropertyDescriptor(init, key)!;
-        if(desc.get || desc.set)
-            continue
+        const desc = getDesc(source, key)!;
+        if(desc.get || desc.set){
+            define(methodLayer, key, desc);
+            return;
+        }
 
-        const value = desc.value;
+        const { value } = desc;
 
-        if(typeof value == "function")
-            defineProperty(live, key, {
-                value: (<Function>value).bind(live),
+        if(typeof value === "function"){
+            define(methodLayer, key, {
+                value: value.bind(methodLayer),
                 configurable: true
             })
-        else 
-            live.add(key, value);
+        }
+        else {
+            if(key[0] === "_")
+                methodLayer[key] = value;
+            else
+                methodLayer.add(key, value);
+        }
     }
+
+    if(prototype){
+        const chain = [ prototype ];
+        for(let x; x = getProto(prototype); prototype = x){
+            if(x === Object.prototype)
+                break;
+            chain.unshift(x);
+        }
+
+        for(const proto of chain.reverse())
+        for(const key in proto)
+            define(methodLayer, key, getDesc(proto, key)!)
+    }
+
+    return methodLayer as State & LiveState;
 }
 
-export const useStateful = (() => {
+export const use = (() => {
 
-    let callbackUnmount: VoidFunction | undefined;
+    let cycle: Lifecycle;
 
-    return function useStateful(init: any){
+    function applyUnmount(u: VoidFunction){
+        cycle = { willUnmount: u }
+    }
+
+    return function useController(init: any, ...args: any[]){
         let update = useState(0)[1];
-        const { current: live } = useRef({ 
-            __update__: update,
-            __active__: null
-        });
-    
-        if(live.__active__ === null){
+        const ref = useRef(null);
+
+        let live = ref.current;
+
+        if(live === null){
             if(!init) throw new Error(
                 "useStateful needs some form of intializer."
             )
-            bootstrap(
-                init, 
-                live,
-                (x: VoidFunction) => { callbackUnmount = x }
-            )
+
+            let source: any;
+            let methods: any;
+
+            if(init.prototype){
+                const { constructor: _, willUnmount, didMount, ...prototype } = 
+                    init.prototype as Lifecycle;
+
+                methods = prototype;
+                cycle = { willUnmount, didMount };
+                source = new init(...args);
+            }
+            else {
+                if(typeof init == "function")
+                    init = init(applyUnmount);
+    
+                const { willUnmount, didMount, ...values } = init;
+                source = values;
+            }
+
+            live = ref.current = bootstrap(update, source, methods);
         }
 
-        live.__active__ = false;
-
         useEffect(() => {
-            live.__active__ = false;
-            const onUnmount = callbackUnmount;
-            callbackUnmount = undefined;
+            if(cycle.didMount)
+                cycle.didMount.call(live);
             return () => {
-                if(onUnmount)
-                    onUnmount();
+                if(cycle.willUnmount)
+                    cycle.willUnmount.call(live);
                 for(const key in live)
                     try { delete live[key] }
                     catch(err) {}
@@ -149,5 +182,6 @@ export const useStateful = (() => {
     }
 })()
 
-export { useStateful as useStates }
+export { use as useStates }
+export { use as useStateful }
  
