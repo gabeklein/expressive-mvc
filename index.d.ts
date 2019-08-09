@@ -68,7 +68,7 @@ type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
  * @returns {LiveState} Live state: current state of component.
  * 
  */
-declare function useStateful
+declare function use
     <I, S = LiveState & I> (
     init: (this: S, onUnmount: (cb: VoidFunction) => void, state: S) => I
 ): I;
@@ -88,8 +88,13 @@ declare function useStateful
  * @returns {LiveState} Live state: current state of component.
  * 
  */
-declare function useStateful
+declare function use
     <I extends BunchOf<any>>
     (init: I): LiveState & I;
 
-export { useStateful as useStates }
+export { 
+    use, 
+    use as useStates, 
+    use as useStateful,
+    use as useController
+}

@@ -148,7 +148,7 @@ function bootstrap(
     return baseLayer as State & LiveState;
 }
 
-export const use = (() => {
+const use = (() => {
 
     let cycle = {} as Lifecycle;
 
@@ -184,6 +184,10 @@ export const use = (() => {
     }
 })()
 
-export { use as useStates }
-export { use as useStateful }
+export { 
+    use,
+    use as useStates,
+    use as useStateful,
+    use as useController
+}
  
