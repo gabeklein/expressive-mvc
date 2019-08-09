@@ -74,12 +74,32 @@ interface Lifecycle {
 }
 
 function bootstrap(
-    update: VoidFunction, 
-    source: State, 
-    prototype?: BunchOf<Function>){
-
+    init: any,
+    args: any[],
+    applyUnmount: (lc: Lifecycle) => void,
+    update: (x: any) => void
+){
     let baseLayer = new (LiveStateConstruct as any)(update);
     let methodLayer = create(baseLayer);
+
+    let source: any;
+    let methods: any;
+
+    if(init.prototype){
+        const { constructor: _, willUnmount, didMount, ...prototype } = 
+            init.prototype as Lifecycle;
+
+        methods = prototype;
+        applyUnmount({ willUnmount, didMount });
+        source = new init(...args);
+    }
+    else {
+        if(typeof init == "function")
+            init = init((u: VoidFunction) => applyUnmount({ willUnmount: u }));
+
+        const { willUnmount, didMount, ...values } = init;
+        source = values;
+    }
 
     for(const key in source){
         if(key in baseLayer)
@@ -109,9 +129,9 @@ function bootstrap(
         }
     }
 
-    if(prototype){
-        const chain = [ prototype ];
-        for(let x; x = getProto(prototype); prototype = x){
+    if(methods){
+        const chain = [ methods ];
+        for(let x; x = getProto(methods); methods = x){
             if(x === Object.prototype)
                 break;
             chain.unshift(x);
@@ -129,12 +149,10 @@ export const use = (() => {
 
     let cycle: Lifecycle;
 
-    function applyUnmount(u: VoidFunction){
-        cycle = { willUnmount: u }
-    }
+    function onLifecycle(lc: Lifecycle){ cycle = lc }
 
     return function useController(init: any, ...args: any[]){
-        let update = useState(0)[1];
+        const update = useState(0);
         const ref = useRef(null);
 
         let live = ref.current;
@@ -143,27 +161,8 @@ export const use = (() => {
             if(!init) throw new Error(
                 "useStateful needs some form of intializer."
             )
-
-            let source: any;
-            let methods: any;
-
-            if(init.prototype){
-                const { constructor: _, willUnmount, didMount, ...prototype } = 
-                    init.prototype as Lifecycle;
-
-                methods = prototype;
-                cycle = { willUnmount, didMount };
-                source = new init(...args);
-            }
-            else {
-                if(typeof init == "function")
-                    init = init(applyUnmount);
-    
-                const { willUnmount, didMount, ...values } = init;
-                source = values;
-            }
-
-            live = ref.current = bootstrap(update, source, methods);
+            live = ref.current = 
+                bootstrap(init, args, onLifecycle, update[1])
         }
 
         useEffect(() => {
