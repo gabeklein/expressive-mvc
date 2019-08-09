@@ -4,8 +4,7 @@ const { random } = Math;
 const { 
     defineProperty: define, 
     getOwnPropertyDescriptor: getDesc, 
-    getPrototypeOf: getProto, 
-    create,
+    getPrototypeOf: getProto,
     assign
 } = Object;
 
@@ -19,24 +18,33 @@ interface LiveState<State = any> {
     export(): State;
 }
 
-function LiveStateConstruct(
-    this: LiveState,
+function ConnectLiveState(
+    to: LiveState,
     updateHook: (beat: number) => void
 ){
+    function apply(method: string, value: Function){
+        if((to as any)[method])
+            throw `Can't bootstrap ${method} onto live state, it is reserved!`
+        else 
+            define(to, method, { value })
+    }
+    
     const values = {} as BunchOf<any>;
     let pending = false;
 
-    this.refresh = () => {
+    apply("refresh", function(){
         if(pending)
             return
         pending = true;
         setTimeout(() => {
             updateHook(random());
             pending = false;
-        }, 0)
-    }
+        }, 0)      
+    })
 
-    this.export = () => {
+    apply("export", function(
+        this: any){
+
         const acc = {} as BunchOf<any>;
         for(const key in this){
             const des = getDesc(this, key)!;
@@ -45,9 +53,13 @@ function LiveStateConstruct(
         }
 
         return assign(acc, values);
-    }
+    })
 
-    this.add = (key: string, initial?: any) => {
+    apply("add", function(
+        this: any, 
+        key: string, 
+        initial?: any){
+
         values[key] = initial;
         define(this, key, {
             get: () => {
@@ -60,12 +72,12 @@ function LiveStateConstruct(
 
                 //TODO: Dispatch to context listeners
                 values[key] = value;
-                this.refresh()
+                to.refresh()
             },
             enumerable: true,
             configurable: true
         })
-    }
+    })
 }
 
 interface Lifecycle {
@@ -79,10 +91,8 @@ function bootstrap(
     applyUnmount: (lc: Lifecycle) => void,
     update: (x: any) => void
 ){
-    let baseLayer = new (LiveStateConstruct as any)(update);
-    let methodLayer = create(baseLayer);
 
-    let source: any;
+    let baseLayer: any;
     let methods: any;
 
     if(init.prototype){
@@ -91,42 +101,35 @@ function bootstrap(
 
         methods = prototype;
         applyUnmount({ willUnmount, didMount });
-        source = new init(...args);
+        baseLayer = new init(...args);
     }
     else {
         if(typeof init == "function")
             init = init((u: VoidFunction) => applyUnmount({ willUnmount: u }));
 
         const { willUnmount, didMount, ...values } = init;
-        source = values;
+        baseLayer = values;
     }
 
-    for(const key in source){
-        if(key in baseLayer)
-            throw new Error(
-                `Can't bootstrap ${key} onto live state, it is reserved!`
-            )
+    ConnectLiveState(baseLayer, update);
 
-        const desc = getDesc(source, key)!;
+    for(const key in baseLayer){
+        const desc = getDesc(baseLayer, key)!;
         if(desc.get || desc.set){
-            define(methodLayer, key, desc);
+            define(baseLayer, key, desc);
             return;
         }
 
         const { value } = desc;
 
         if(typeof value === "function"){
-            define(methodLayer, key, {
-                value: value.bind(methodLayer),
+            define(baseLayer, key, {
+                value: value.bind(baseLayer),
                 configurable: true
             })
         }
-        else {
-            if(key[0] === "_")
-                methodLayer[key] = value;
-            else
-                methodLayer.add(key, value);
-        }
+        else if(key[0] !== "_")
+            baseLayer.add(key, value);
     }
 
     if(methods){
@@ -139,15 +142,15 @@ function bootstrap(
 
         for(const proto of chain.reverse())
         for(const key in proto)
-            define(methodLayer, key, getDesc(proto, key)!)
+            define(baseLayer, key, getDesc(proto, key)!)
     }
 
-    return methodLayer as State & LiveState;
+    return baseLayer as State & LiveState;
 }
 
 export const use = (() => {
 
-    let cycle: Lifecycle;
+    let cycle = {} as Lifecycle;
 
     function onLifecycle(lc: Lifecycle){ cycle = lc }
 
