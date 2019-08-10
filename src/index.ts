@@ -81,7 +81,7 @@ function ConnectLiveState(
 }
 
 interface Lifecycle {
-    willUnmount?: VoidFunction,
+    willUnmount?: VoidFunction
     didMount?: VoidFunction
 }
 
@@ -195,7 +195,6 @@ const use = (() => {
 export { 
     use,
     use as useStates,
-    use as useStateful,
     use as useController
 }
  

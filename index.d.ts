@@ -95,6 +95,5 @@ declare function use
 export { 
     use, 
     use as useStates, 
-    use as useStateful,
     use as useController
 }
