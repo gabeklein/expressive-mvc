@@ -105,9 +105,10 @@ function bootstrap(
     }
     else {
         if(typeof init == "function")
-            init = init((u: VoidFunction) => applyUnmount({ willUnmount: u }));
+            init = init(...args);
 
         const { willUnmount, didMount, ...values } = init;
+        applyUnmount({ willUnmount, didMount });
         baseLayer = values;
     }
 
