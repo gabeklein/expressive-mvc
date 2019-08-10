@@ -96,12 +96,19 @@ function bootstrap(
     let methods: any;
 
     if(init.prototype){
-        const { constructor: _, willUnmount, didMount, ...prototype } = 
+        let { constructor: _, willUnmount, didMount, ...prototype } = 
             init.prototype as Lifecycle;
 
         methods = prototype;
+        init = new init(...args);
+        
+        const { willUnmount: will, didMount: did } = init;
+
+        if(will){ willUnmount = will; delete init.willUnmount }
+        if(did){ didMount = did; delete init.didMount }
+
         applyUnmount({ willUnmount, didMount });
-        baseLayer = new init(...args);
+        baseLayer = init;
     }
     else {
         if(typeof init == "function")
