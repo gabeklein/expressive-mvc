@@ -4,7 +4,6 @@ const { random } = Math;
 const { 
     defineProperty: define, 
     getOwnPropertyDescriptor: getDesc, 
-    getPrototypeOf: getProto, 
     assign
 } = Object;
 
@@ -12,36 +11,14 @@ export function bootstrapForIn(
   target: LiveState, 
   prototype?: any, 
   Root?: any){
-
   for(const key in target){
-      const desc = getDesc(target, key)!;
-      if(desc.get || desc.set){
-          define(target, key, desc);
-          return;
-      }
+      const d = getDesc(target, key)!;
 
-      const { value } = desc;
+      if(d.get || d.set || typeof d.value === "function")
+        continue
 
-      if(typeof value === "function")
-          define(target, key, {
-              value: value.bind(target),
-              configurable: true
-          })
-      else if(key[0] !== "_")
-          target.add(key, value);
-  }
-
-  if(prototype){
-      const chain = [ prototype ];
-      for(let x; x = getProto(prototype); prototype = x){
-          if(x === Root)
-              break;
-          chain.unshift(x);
-      }
-
-      for(const proto of chain.reverse())
-      for(const key in proto)
-          define(target, key, getDesc(proto, key)!)
+      if(key[0] !== "_")
+        target.add(key, d.value);
   }
 }
 
