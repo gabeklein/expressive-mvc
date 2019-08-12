@@ -1,3 +1,8 @@
+import {
+    FunctionComponentElement,
+    ProviderProps,
+} from 'react';
+
 interface BunchOf<T> {
 	[key: string]: T;
 }
@@ -12,6 +17,11 @@ interface BunchOf<T> {
  * Methods (ala `@actions`) have access to live values and may update them for same effect.
  * 
  */
+
+interface ClassWithParams<A extends any[]> {
+    new(...args: A): any
+  }
+
 interface LiveState {
 
     /**
@@ -85,8 +95,16 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
 declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
 declare function use<I>(init: I): LiveState & I;
 
+declare class Controller {
+    static use<T extends ClassWithParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
+    Provider(): FunctionComponentElement<ProviderProps<this>>
+    didMount?(): void;
+    willUnmount?(): void;
+}
+
 export { 
     use, 
     use as useStates,
-    use as useController
+    use as useController,
+    Controller as default
 }
