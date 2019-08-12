@@ -31,12 +31,15 @@ export class Controller {
     if(ref.current === null){
       const instance = new this(...args);
       applyLiveState(instance, update[1]);
-      bootstrapForIn(instance, this.prototype, Controller.prototype)
+      bootstrapForIn(instance, this.prototype, Controller.prototype);
       ref.current = instance as I;
     }
 
     useEffect(() => {
       let { willUnmount, didMount } = this.prototype as Lifecycle;
+      const { willUnmount: will, didMount: did } = ref.current;
+      if(will) willUnmount = will;
+      if(did) didMount = did;
       return invokeLifecycle(ref.current, didMount, willUnmount);
     }, [])
 

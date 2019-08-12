@@ -22,8 +22,8 @@ function bootstrapFromSource(
         
         const { willUnmount: will, didMount: did } = init;
 
-        if(will){ willUnmount = will; delete init.willUnmount }
-        if(did){ didMount = did; delete init.didMount }
+        if(will){ willUnmount = will }
+        if(did){ didMount = did }
 
         applyUnmount({ willUnmount, didMount });
         baseLayer = init;
