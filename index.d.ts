@@ -1,12 +1,16 @@
 import {
     FunctionComponentElement,
     ProviderProps,
+    Context,
 } from 'react';
 
 interface BunchOf<T> {
 	[key: string]: T;
 }
 
+type Class = new (...args: any) => any;
+type ExpectsParams<A extends any[]> = new(...args: A) => any
+  
 /**
  * LiveState
  * 
@@ -17,10 +21,6 @@ interface BunchOf<T> {
  * Methods (ala `@actions`) have access to live values and may update them for same effect.
  * 
  */
-
-interface ClassWithParams<A extends any[]> {
-    new(...args: A): any
-  }
 
 interface LiveState {
 
@@ -96,7 +96,10 @@ declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): L
 declare function use<I>(init: I): LiveState & I;
 
 declare class Controller {
-    static use<T extends ClassWithParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
+    static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
+    static specificContect<T extends Class>(this: T): Context<T>;
+    static hook<T extends Class>(this: T): () => InstanceType<T>;
+    private specificContext(): Context<this>;
     Provider(): FunctionComponentElement<ProviderProps<this>>
     didMount?(): void;
     willUnmount?(): void;
