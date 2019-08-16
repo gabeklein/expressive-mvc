@@ -12,7 +12,7 @@ import {
 } from 'react';
 
 import { invokeLifecycle } from './helper';
-import { Dispatch, SpyController, useContextSubscriber, NEW_SUB } from './subscriber';
+import { Dispatch, NEW_SUB, SpyController, useSubscriber } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
@@ -42,11 +42,12 @@ export class Controller {
     }
 
     useEffect(() => {
-      let { willUnmount, didMount } = this.prototype as Lifecycle;
-      const { willUnmount: will, didMount: did } = state;
-      if(will) willUnmount = will;
-      if(did) didMount = did;
-      return invokeLifecycle(state, didMount, willUnmount);
+      const proto = this.prototype as Lifecycle;
+      return invokeLifecycle(
+        state, 
+        state.didMount || proto.didMount, 
+        state.willUnmount || proto.willUnmount
+      );
     }, [])
 
     return state;
