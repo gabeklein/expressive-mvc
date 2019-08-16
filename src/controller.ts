@@ -15,7 +15,7 @@ import { invokeLifecycle } from './helper';
 import { Dispatch, SpyController, useContextSubscriber, NEW_SUB } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
 
-const Contexts = new Map<typeof Controller, Context<Controller>>();
+const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
 export interface Controller {
   /* Force compatibility with <InstanceType> */
@@ -53,15 +53,15 @@ export class Controller {
   }
 
   static specificContext<T extends Controller>(this: T){
-    const { prototype } = this;
-    let Context = Contexts.get(prototype)!;
+    const { constructor } = this.prototype;
+    let context = CACHE_CONTEXTS.get(constructor);
 
-    if(!Context){
-      Context = createContext(prototype);
-      Contexts.set(prototype, Context);
+    if(!context){
+      context = createContext(this.prototype);
+      CACHE_CONTEXTS.set(constructor, context);
     }
 
-    return Context;
+    return context;
   }
 
   static hook<T extends Controller>(this: T){
@@ -72,11 +72,11 @@ export class Controller {
   }
 
   private getSpecificContext(){
-    const prototype = Object.getPrototypeOf(this);
-    let Context = Contexts.get(prototype as any) as any;
+    const { constructor } = this;
+    let context = CACHE_CONTEXTS.get(constructor as any) as any;
 
-    if(!Context){
-      const { name } = this.constructor;
+    if(!context){
+      const { name } = constructor;
       throw new Error(
         `\nNo accessor for class ${name} has been declared in your app; ` +  
         `this is required before using a corresponding Provider! ` + 
@@ -84,7 +84,7 @@ export class Controller {
       );
     }
 
-    return Context as Context<Controller>;
+    return context as Context<Controller>;
   }
 
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
