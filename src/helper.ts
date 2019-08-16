@@ -4,12 +4,12 @@ export function invokeLifecycle(
   willUnmount?: VoidFunction){
 
   if(didMount)
-      didMount.call(target);
+    didMount.call(target);
   return () => {
-      if(willUnmount)
-          willUnmount.call(target);
-      for(const key in target)
-          try { delete target[key] }
-          catch(err) {}
+    if(willUnmount)
+      willUnmount.call(target);
+    for(const key in target)
+      try { delete target[key] }
+      catch(err) {}
   }
 }

@@ -9,12 +9,12 @@ export type ExpectsParams<A extends any[]> = new (...args: A) => any;
 export type UpdateTrigger = (beat: number) => void;
 
 export interface LiveState<State = any> {
-    refresh(): void;
-    add(key: string, initial?: any): void;
-    export(): State;
+  refresh(): void;
+  add(key: string, initial?: any): void;
+  export(): State;
 }
 
 export interface Lifecycle {
-    willUnmount?: VoidFunction
-    didMount?: VoidFunction
+  willUnmount?: VoidFunction
+  didMount?: VoidFunction
 }
