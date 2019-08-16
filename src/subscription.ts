@@ -105,7 +105,7 @@ function SpyController(
 
   const Spy = create(source) as any;
   let watch = new Set<string>();
-  let exclude: string[];
+  let exclude: Set<string>;
 
   for(const key in mutable)
     define(Spy, key, {
@@ -150,12 +150,16 @@ function SpyController(
   }
 
   function except(...keys: string[]){
-    exclude = keys;
+    exclude = new Set<string>();
+    for(let arg of keys)
+      for(const key of arg.split(","))
+        exclude.add(key);
     return Spy;
   }
 
   function also(...keys: string[]){
-    for(const key of keys)
+    for(let arg of keys)
+      for(const key of arg.split(","))
       watch.add(key);
     return Spy;
   }
