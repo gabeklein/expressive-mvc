@@ -32,3 +32,24 @@ export const Simple = () => {
     </div>
   )
 };
+
+export const Inline = () => {
+  const state = use(class {
+    number = 1
+  })
+
+  return (
+    <div
+    style={{
+      fontSize: 70
+    }}>
+      <span onClick={() => { 
+        state.number -= 1
+      }}>-</span>
+      <span> {state.number} </span>
+      <span onClick={() => { 
+        state.number += 1
+      }}>+</span>
+    </div>
+  )
+}
