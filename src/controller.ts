@@ -13,8 +13,9 @@ import {
 } from 'react';
 
 import { invokeLifecycle } from './helper';
-import { Dispatch, NEW_SUB, SpyController, useSubscriber } from './subscriber';
+import { SpyController, useSubscriber,  } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
+import { Dispatch, NEW_SUB } from './dispatcher';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
