@@ -1,4 +1,4 @@
-import { BunchOf, LiveState } from './types.d';
+import { BunchOf, LiveState, UpdateTrigger } from './types.d';
 
 const { random } = Math;
 const { 
@@ -8,9 +8,8 @@ const {
 } = Object;
 
 export function bootstrapForIn(
-  target: LiveState, 
-  prototype?: any, 
-  Root?: any){
+  target: LiveState){
+
   for(const key in target){
       const d = getDesc(target, key)!;
 
@@ -24,7 +23,7 @@ export function bootstrapForIn(
 
 export function applyLiveState(
   to: LiveState,
-  updateHook: (beat: number) => void
+  updateHook: UpdateTrigger
 ){
   function apply(method: string, value: Function){
       if((to as any)[method])
@@ -66,15 +65,10 @@ export function applyLiveState(
 
       values[key] = initial;
       define(this, key, {
-          get: () => {
-              //TODO register context listeners
-              return values[key]
-          },
+          get: () => values[key],
           set: (value) => {
               if(values[key] === value) 
                   return;
-
-              //TODO: Dispatch to context listeners
               values[key] = value;
               to.refresh()
           },

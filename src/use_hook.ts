@@ -10,23 +10,17 @@ function bootstrapFromSource(
     update: (x: any) => void,
     applyUnmount: (lc: Lifecycle) => void
 ){
-    let baseLayer: any;
-    let methods: any;
+    let base: LiveState<any> & Lifecycle;
 
     if(init.prototype){
-        let { constructor: _, willUnmount, didMount, ...prototype } = 
-            init.prototype as Lifecycle;
+        const { prototype } = init;
 
-        methods = prototype;
-        init = new init(...args);
-        
-        const { willUnmount: will, didMount: did } = init;
+        base = new init(...args);
 
-        if(will){ willUnmount = will }
-        if(did){ didMount = did }
-
-        applyUnmount({ willUnmount, didMount });
-        baseLayer = init;
+        applyUnmount({ 
+            willUnmount: base.willUnmount || prototype.willUnmount, 
+            didMount: base.didMount || prototype.willUnmount
+        });
     }
     else {
         if(typeof init == "function")
@@ -34,13 +28,13 @@ function bootstrapFromSource(
 
         const { willUnmount, didMount, ...values } = init;
         applyUnmount({ willUnmount, didMount });
-        baseLayer = values;
+        base = values;
     }
 
-    applyLiveState(baseLayer, update);
-    bootstrapForIn(baseLayer, methods, Object.prototype);
+    applyLiveState(base, update);
+    bootstrapForIn(base);
 
-    return baseLayer as State & LiveState;
+    return base as State & LiveState;
 }
 
 export const use = (() => {

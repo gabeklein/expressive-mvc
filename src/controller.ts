@@ -1,4 +1,5 @@
 import {
+  Context,
   createContext,
   createElement,
   FunctionComponentElement,
@@ -8,51 +9,52 @@ import {
   useEffect,
   useRef,
   useState,
-  Context,
-  useContext,
 } from 'react';
 
 import { invokeLifecycle } from './helper';
-import { Lifecycle } from './types.d';
-import { applyLiveState, bootstrapForIn } from './bootstrap';
+import { Dispatch, SpyController, useContextSubscriber, NEW_SUB } from './subscriber';
+import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
 
 const Contexts = new Map<typeof Controller, Context<Controller>>();
 
-type Class = new (...args: any) => any;
-
-interface ExpectsParams<A extends any[]> {
-  new(...args: A): any
+export interface Controller {
+  /* Force compatibility with <InstanceType> */
+  new (...args: any): any;
+  [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
 }
 
 export class Controller {
-  static use <T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A){
+  static use<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A){
 
     type I = InstanceType<T>;
 
     const update = useState(0);
     const ref = useRef(null) as MutableRefObject<I>
+    let state = ref.current;
 
-    if(ref.current === null){
+    if(state === null){
       const instance = new this(...args);
-      applyLiveState(instance, update[1]);
-      bootstrapForIn(instance, this.prototype, Controller.prototype);
-      ref.current = instance as I;
+      void update;
+      
+      Dispatch.apply(instance);
+      state = ref.current = instance as I;
     }
 
     useEffect(() => {
       let { willUnmount, didMount } = this.prototype as Lifecycle;
-      const { willUnmount: will, didMount: did } = ref.current;
+      const { willUnmount: will, didMount: did } = state;
       if(will) willUnmount = will;
       if(did) didMount = did;
-      return invokeLifecycle(ref.current, didMount, willUnmount);
+      return invokeLifecycle(state, didMount, willUnmount);
     }, [])
 
-    return ref.current;
+    return state;
   }
 
-  static specificContext<T extends Class>(this: T){
+  static specificContext<T extends Controller>(this: T){
     const { prototype } = this;
-    let Context = Contexts.get(prototype);
+    let Context = Contexts.get(prototype)!;
 
     if(!Context){
       Context = createContext(prototype);
@@ -62,15 +64,14 @@ export class Controller {
     return Context;
   }
 
-  static hook<T extends Class>(this: T){
-    const Context = (this as any).specificContext() as Context<Controller>;
+  static hook<T extends Controller>(this: T){
+    const Context = (this as any).specificContext();
 
-    return function useController(): InstanceType<T> {
-      return useContext(Context as any);
-    }
+    return () => 
+      useContextSubscriber(Context) as InstanceType<T>;
   }
 
-  private specificContext(){
+  private getSpecificContext(){
     const prototype = Object.getPrototypeOf(this);
     let Context = Contexts.get(prototype as any) as any;
 
@@ -83,11 +84,11 @@ export class Controller {
       );
     }
 
-    return Context as Context<this>;
+    return Context as Context<Controller>;
   }
 
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const { Provider } = this.specificContext();
+    const { Provider } = this.getSpecificContext();
     return <any> (
       (props: PropsWithChildren<any>) => 
       createElement(
