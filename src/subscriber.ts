@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './dispatcher';
+import { NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 
 export interface SpyController extends Controller {
   [UNSUBSCRIBE]: VoidFunction;

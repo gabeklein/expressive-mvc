@@ -15,7 +15,7 @@ import {
 import { invokeLifecycle } from './helper';
 import { SpyController, useSubscriber,  } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
-import { Dispatch, NEW_SUB } from './dispatcher';
+import { Dispatch, NEW_SUB } from './subscription';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
