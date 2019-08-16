@@ -8,7 +8,6 @@ interface BunchOf<T> {
 	[key: string]: T;
 }
 
-type Class = new (...args: any) => any;
 type ExpectsParams<A extends any[]> = new(...args: A) => any
   
 /**
@@ -23,7 +22,6 @@ type ExpectsParams<A extends any[]> = new(...args: A) => any
  */
 
 interface LiveState {
-
     /**
      * Trigger update of consumer component.
      * 
@@ -51,19 +49,6 @@ interface LiveState {
      */
     add(key: string, initial?: any, bootup?: true): boolean;
 }
-
-/**
- * @param {LiveState} this - LiveState, allows the updating of state from inside initializer.
- * @param {LiveState} onUnmount - adds EventListener, call with function as argument to set unmount callback.
- * @param {LiveState} state - [this] LiveState, allows the updating of state from inside initializer.
- * 
- * NOTE: `this` and `self` are only really initialized when accessed by closure!
- * 
- * @returns Initial values, and more importantly schema, for live state.
- * 
- */
-type InitStateOnMount<I extends BunchOf<any>, S = LiveState & I> =
-    (this: S, onUnmount: (cb: VoidFunction) => void, state: S) => I
 
 /**
  * LiveState Controller Hook.
@@ -95,10 +80,14 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
 declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
 declare function use<I>(init: I): LiveState & I;
 
+interface Controller {
+    new (...args: any): any;
+}
+
 declare class Controller {
     static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
-    static specificContect<T extends Class>(this: T): Context<T>;
-    static hook<T extends Class>(this: T): () => InstanceType<T>;
+    static specificContect<T extends Controller>(this: T): Context<T>;
+    static hook<T extends Controller>(this: T): () => InstanceType<T>;
     private specificContext(): Context<this>;
     Provider(): FunctionComponentElement<ProviderProps<this>>
     didMount?(): void;
