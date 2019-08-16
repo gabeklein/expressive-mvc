@@ -140,7 +140,10 @@ function SpyController(
   }
 
   function bail(...keys: string[]){
-    watch = new Set(keys);
+    const watch = new Set<string>();
+    for(let arg of keys)
+      for(const key of arg.split(","))
+        watch.add(key);
     for(const key of watch)
       register[key].add(hook);
     return source;
