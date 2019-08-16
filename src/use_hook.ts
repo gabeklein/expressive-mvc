@@ -4,6 +4,35 @@ import { bootstrapForIn, applyLiveState } from './bootstrap';
 import { invokeLifecycle } from './helper';
 import { Lifecycle, LiveState, State } from './types.d';
 
+function useSimpleEnclosure(){
+    let cycle = {} as Lifecycle;
+
+    return function useSimpleController(init: any, ...args: any[]){
+        const update = useState(0);
+        const ref = useRef(null) as any;
+
+        let live = ref.current;
+
+        if(live === null){
+            if(!init) throw new Error(
+                "useStateful needs some form of intializer."
+            )
+            live = ref.current = 
+                bootstrapFromSource(
+                    init, args, update[1], 
+                    (lc: Lifecycle) => { cycle = lc }
+                )
+        }
+
+        useEffect(() => {
+            const { didMount, willUnmount } = cycle;
+            return invokeLifecycle(live, didMount, willUnmount)
+        }, [])
+
+        return live;
+    }
+}
+
 function bootstrapFromSource(
     init: any,
     args: any[],
@@ -37,32 +66,4 @@ function bootstrapFromSource(
     return base as State & LiveState;
 }
 
-export const use = (() => {
-
-    let cycle = {} as Lifecycle;
-
-    return function useController(init: any, ...args: any[]){
-        const update = useState(0);
-        const ref = useRef(null) as any;
-
-        let live = ref.current;
-
-        if(live === null){
-            if(!init) throw new Error(
-                "useStateful needs some form of intializer."
-            )
-            live = ref.current = 
-                bootstrapFromSource(
-                    init, args, update[1], 
-                    (lc: Lifecycle) => { cycle = lc }
-                )
-        }
-
-        useEffect(() => {
-            const { didMount, willUnmount } = cycle;
-            return invokeLifecycle(live, didMount, willUnmount)
-        }, [])
-
-        return live;
-    }
-})()
+export const use = useSimpleEnclosure()
