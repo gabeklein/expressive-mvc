@@ -17,6 +17,10 @@ import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
+const { 
+  defineProperty: define
+} = Object;
+
 export interface Controller {
   /* Force compatibility with <InstanceType> */
   new (...args: any): any;
@@ -89,15 +93,17 @@ export class Controller {
   }
 
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const { Provider } = this.getSpecificContext();
-    return <any> (
+    const context = this.getSpecificContext();
+    const ControlProvider = <any> (
       (props: PropsWithChildren<any>) => 
       createElement(
-        Provider,
+        context.Provider,
         { value: this },
         props.children
       )
     )
+    define(this, "Provider", { value: ControlProvider });
+    return ControlProvider
   }
 
   didMount?(): void;
