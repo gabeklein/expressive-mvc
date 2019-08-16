@@ -26,6 +26,7 @@
     "build": "tsc",
     "watch": "tsc --watch --sourceMap",
     "start": "npm run --prefix examples start",
+    "prepare": "npm install --prefix examples",
     "prepublish": "npm run build",
     "prebuild": "rm -rf lib/"
   },
