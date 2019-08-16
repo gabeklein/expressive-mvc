@@ -92,6 +92,15 @@ declare class Controller {
     Provider(): FunctionComponentElement<ProviderProps<this>>
     didMount?(): void;
     willUnmount?(): void;
+
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    on(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    and(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    never(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    except(): this;
 }
 
 export { 

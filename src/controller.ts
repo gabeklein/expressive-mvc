@@ -112,4 +112,9 @@ export class Controller {
 
   didMount?(): void;
   willUnmount?(): void;
+
+  on(){ return this };
+  and(){ return this };
+  never(){ return this };
+  except(){ return this };
 }
