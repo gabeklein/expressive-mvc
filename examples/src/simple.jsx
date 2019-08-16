@@ -22,12 +22,8 @@ export const Simple = () => {
 
   return (
     <div
-      style={{
-        fontSize: 70
-      }}
-      onClick={() => {
-        state.value = "Hello Somebody?";
-      }}>
+      className="clicky"
+      onClick={() => { state.value = "Hello Somebody?"; }}>
       {state.value}
     </div>
   )
@@ -39,17 +35,14 @@ export const Inline = () => {
   })
 
   return (
-    <div
-    style={{
-      fontSize: 70
-    }}>
-      <span onClick={() => { 
-        state.number -= 1
-      }}>-</span>
+    <div>
+      <span 
+        className="clicky"
+        onClick={() => { state.number -= 1 }}>-</span>
       <span> {state.number} </span>
-      <span onClick={() => { 
-        state.number += 1
-      }}>+</span>
+      <span 
+        className="clicky"
+        onClick={() => { state.number += 1 }}>+</span>
     </div>
   )
 }
