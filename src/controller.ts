@@ -6,6 +6,7 @@ import {
   MutableRefObject,
   PropsWithChildren,
   ProviderProps,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -35,17 +36,17 @@ export class Controller {
 
     const update = useState(0);
     const ref = useRef(null) as MutableRefObject<I>
-    let state = ref.current;
 
-    if(state === null){
+    if(ref.current === null){
       const instance = new this(...args);
       void update;
       
       Dispatch.apply(instance);
-      state = ref.current = instance as I;
+      ref.current = instance as I;
     }
 
     useEffect(() => {
+      const state = ref.current;
       const proto = this.prototype as Lifecycle;
       return invokeLifecycle(
         state, 
@@ -54,7 +55,7 @@ export class Controller {
       );
     }, [])
 
-    return state;
+    return useSubscriber(ref.current);
   }
 
   static specificContext<T extends Controller>(this: T){
@@ -70,10 +71,12 @@ export class Controller {
   }
 
   static hook<T extends Controller>(this: T){
-    const Context = (this as any).specificContext();
+    const context = (this as any).specificContext();
 
-    return () => 
-      useContextSubscriber(Context) as InstanceType<T>;
+    return () => {
+      const controller = useContext(context) as Controller | SpyController;
+      return useSubscriber(controller) as InstanceType<T>;
+    }
   }
 
   private getSpecificContext(){

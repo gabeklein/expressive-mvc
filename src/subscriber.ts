@@ -1,4 +1,4 @@
-import { Context, useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
 import { BunchOf, UpdateTrigger } from './types';
@@ -21,12 +21,11 @@ export interface SpyController extends Controller {
   [SUBSCRIBE]: VoidFunction;
 };
 
-export function useContextSubscriber<T extends Controller>
-  (context: Context<Controller>): InstanceType<T> {
+export function useSubscriber<T extends Controller | SpyController>
+  (controller: T): InstanceType<T> {
 
   const firstRenderIs = useRef(true);
   const useUpdate = useState(0);
-  let controller = useContext(context) as Controller | SpyController;
 
   if(firstRenderIs.current){
     const init = controller[NEW_SUB];
@@ -38,7 +37,7 @@ export function useContextSubscriber<T extends Controller>
       )
     }
 
-    controller = init(useUpdate[1]) as SpyController;
+    controller = init(useUpdate[1]) as T;
     firstRenderIs.current = false
   }
 
