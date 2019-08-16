@@ -37,11 +37,10 @@ function bootstrapFromSource(
     return base as State & LiveState;
 }
 
-export const use = (() => {
-
+function useSimpleEnclosure(){
     let cycle = {} as Lifecycle;
 
-    return function useController(init: any, ...args: any[]){
+    return function useSimpleController(init: any, ...args: any[]){
         const update = useState(0);
         const ref = useRef(null) as any;
 
@@ -65,4 +64,6 @@ export const use = (() => {
 
         return live;
     }
-})()
+}
+
+export const use = useSimpleEnclosure()
