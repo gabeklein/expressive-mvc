@@ -25,15 +25,17 @@ export function applyLiveState(
   to: LiveState,
   updateHook: UpdateTrigger
 ){
-  function apply(method: string, value: Function){
-    if((to as any)[method])
-      throw `Can't bootstrap ${method} onto live state, it is reserved!`
+  function apply(key: string, value: Function | LiveState){
+    if((to as any)[key])
+      throw `Can't bootstrap ${key} onto live state, it is reserved!`
     else 
-      define(to, method, { value })
+      define(to, key, { value })
   }
   
   const values = {} as BunchOf<any>;
   let pending = false;
+
+  apply("set", to);
 
   apply("refresh", function(){
     if(pending)

@@ -26,7 +26,7 @@ interface LiveState {
      * Trigger update of consumer component.
      * 
      * I forget why I expose this.
-     * Drink Responibly.
+     * Drink Responsibly.
      * 
      */
     refresh(): void;
@@ -44,7 +44,7 @@ interface LiveState {
      * 
      * Will trigger renders on updates to this new value.
      * 
-     * @returns boolean - Did add opperation succeed. `false` means value already exists or is reserved.
+     * @returns boolean - Did add operation succeed. `false` means value already exists or is reserved.
      * 
      */
     add(key: string, initial?: any, bootup?: true): boolean;
@@ -72,7 +72,7 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
  * 
  * Initializer function which returns state at mount. Runs only once.
  * 
- * @param init Initital values or initializer (returning those values) of resulting state.
+ * @param init Initial values or initializer (returning those values) of resulting state.
  * 
  * @returns {LiveState} Live state: current state of component.
  * 
@@ -80,19 +80,21 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
 declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
 declare function use<I>(init: I): LiveState & I;
 
-interface Controller {
+interface Class {
     new (...args: any): any;
 }
 
 declare class Controller {
     static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
-    static specificContect<T extends Controller>(this: T): Context<T>;
-    static hook<T extends Controller>(this: T): () => InstanceType<T>;
+    static specificContext<T extends Class>(this: T): Context<T>;
+    static hook<T extends Class>(this: T): () => InstanceType<T>;
     private specificContext(): Context<this>;
     Provider(): FunctionComponentElement<ProviderProps<this>>
     didMount?(): void;
     willUnmount?(): void;
 
+    /** RESERVED: Used for controller destructuring. Overriding will be occluded. */
+    set: this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
     on(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */

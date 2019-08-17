@@ -96,6 +96,10 @@ export class Controller {
     return context as Context<Controller>;
   }
 
+  get set(){
+    return this;
+  }
+
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
     const context = this.getSpecificContext();
     const ControlProvider = <any> (
