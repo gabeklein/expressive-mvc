@@ -80,14 +80,14 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
 declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
 declare function use<I>(init: I): LiveState & I;
 
-interface Controller {
+interface Class {
     new (...args: any): any;
 }
 
 declare class Controller {
     static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
-    static specificContext<T extends Controller>(this: T): Context<T>;
-    static hook<T extends Controller>(this: T): () => InstanceType<T>;
+    static specificContext<T extends Class>(this: T): Context<T>;
+    static hook<T extends Class>(this: T): () => InstanceType<T>;
     private specificContext(): Context<this>;
     Provider(): FunctionComponentElement<ProviderProps<this>>
     didMount?(): void;
