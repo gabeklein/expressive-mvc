@@ -93,6 +93,8 @@ declare class Controller {
     didMount?(): void;
     willUnmount?(): void;
 
+    /** RESERVED: Used for controller destructuring. Overriding will be occluded. */
+    set: this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
     on(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
