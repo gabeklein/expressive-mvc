@@ -1,13 +1,13 @@
 {
-  "name": "use-stateful",
-  "version": "2.0.0",
-  "description": "React useState-like hooks but implemented with object setters",
+  "name": "@gabeklein/use-controller",
+  "version": "1.0.0-beta.0",
+  "description": "Easy to use state controllers using classes and hooks",
   "license": "MIT",
   "keywords": [
     "react",
     "hooks"
   ],
-  "repository": "https://github.com/gabeklein/use-stateful",
+  "repository": "https://github.com/gabeklein/use-controller",
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@termtm.com",
