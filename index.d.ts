@@ -26,7 +26,7 @@ interface LiveState {
      * Trigger update of consumer component.
      * 
      * I forget why I expose this.
-     * Drink Responibly.
+     * Drink Responsibly.
      * 
      */
     refresh(): void;
@@ -44,7 +44,7 @@ interface LiveState {
      * 
      * Will trigger renders on updates to this new value.
      * 
-     * @returns boolean - Did add opperation succeed. `false` means value already exists or is reserved.
+     * @returns boolean - Did add operation succeed. `false` means value already exists or is reserved.
      * 
      */
     add(key: string, initial?: any, bootup?: true): boolean;
@@ -72,7 +72,7 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
  * 
  * Initializer function which returns state at mount. Runs only once.
  * 
- * @param init Initital values or initializer (returning those values) of resulting state.
+ * @param init Initial values or initializer (returning those values) of resulting state.
  * 
  * @returns {LiveState} Live state: current state of component.
  * 
@@ -86,7 +86,7 @@ interface Controller {
 
 declare class Controller {
     static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
-    static specificContect<T extends Controller>(this: T): Context<T>;
+    static specificContext<T extends Controller>(this: T): Context<T>;
     static hook<T extends Controller>(this: T): () => InstanceType<T>;
     private specificContext(): Context<this>;
     Provider(): FunctionComponentElement<ProviderProps<this>>
