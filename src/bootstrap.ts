@@ -12,7 +12,7 @@ export function bootstrapForIn(
 
   for(const key in target){
     const d = getDesc(target, key)!;
-
+    
     if(d.get || d.set || typeof d.value === "function")
       continue
 
