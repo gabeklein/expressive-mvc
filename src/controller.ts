@@ -8,14 +8,14 @@ import {
   ProviderProps,
   useContext,
   useEffect,
-  useRef,
-  useState,
+  useRef
 } from 'react';
 
 import { invokeLifecycle } from './helper';
-import { SpyController, useSubscriber,  } from './subscriber';
+import { SpyController, useSubscriber } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
 import { Dispatch, NEW_SUB } from './subscription';
+import { bindMethods } from './use_hook';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
@@ -35,14 +35,13 @@ export class Controller {
 
     type I = InstanceType<T>;
 
-    const update = useState(0);
     const ref = useRef(null) as MutableRefObject<I>
 
     if(ref.current === null){
-      const instance = new this(...args);
-      void update;
+      let instance = new this(...args);
       
       Dispatch.apply(instance);
+      instance = bindMethods(instance, this.prototype, Controller.prototype);
       ref.current = instance as I;
     }
 

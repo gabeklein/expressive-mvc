@@ -4,6 +4,29 @@ import { bootstrapForIn, applyLiveState } from './bootstrap';
 import { invokeLifecycle } from './helper';
 import { Lifecycle, LiveState, State } from './types.d';
 
+const {
+  create,
+  defineProperty: define,
+  getOwnPropertyDescriptor: describe,
+  getOwnPropertyNames: keysIn,
+  getPrototypeOf: proto
+} = Object;
+
+const RESERVED = new Set([ 
+  "add",
+  "constructor", 
+  "didMount", 
+  "export",
+  "not",
+  "on",
+  "only",
+  "once",
+  "Provider",
+  "refresh",
+  "set",
+  "willUnmount", 
+]);
+
 function useSimpleEnclosure(){
   let cycle = {} as Lifecycle;
 
@@ -63,7 +86,43 @@ function bootstrapFromSource(
   applyLiveState(base, update);
   bootstrapForIn(base);
 
+  if(init.prototype)
+    base = bindMethods(base, init.prototype);
+
   return base as State & LiveState;
+}
+
+export function bindMethods(
+  instance: any, 
+  prototype: any, 
+  stopAt: any = Object.prototype){
+
+  const boundLayer = create(instance);
+  const chain = [];
+
+  while(prototype !== stopAt){
+    chain.push(prototype);
+    prototype = proto(prototype);
+  }
+
+  prototype = {};
+  for(const methods of chain){
+    for(const key of keysIn(methods)){
+      if(RESERVED.has(key))
+        continue;
+      const { value } = describe(methods, key)!;
+      if(typeof value === "function")
+        prototype[key] = value
+    }
+  } 
+
+  for(const key in prototype)
+    define(boundLayer, key, {
+      value: prototype[key].bind(instance),
+      writable: true
+    })
+
+  return boundLayer
 }
 
 export const use = useSimpleEnclosure()
