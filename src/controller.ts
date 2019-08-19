@@ -23,6 +23,35 @@ const {
   defineProperty: define
 } = Object;
 
+function useController<T extends Controller>( 
+  control: T,
+  args: any[]){
+
+  type I = InstanceType<T>;
+
+  const cache = useRef(null) as MutableRefObject<I>
+  let instance = cache.current as InstanceType<T>;
+
+  if(instance === null){
+    instance = new control(...args);
+    Dispatch.apply(instance);
+    instance = bindMethods(instance, control.prototype, Controller.prototype);
+    cache.current = instance;
+  }
+
+  useEffect(() => {
+    const state = instance;
+    const proto = control.prototype as Lifecycle;
+    return invokeLifecycle(
+      state, 
+      state.didMount || proto.didMount, 
+      state.willUnmount || proto.willUnmount
+    );
+  }, [])
+
+  return instance;
+}
+
 export interface Controller {
   /* Force compatibility with <InstanceType> */
   new (...args: any): any;
@@ -67,31 +96,12 @@ export class Controller {
   }
 
   static use<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A){
+    (this: T, ...args: A): InstanceType<T> {
 
-    type I = InstanceType<T>;
+    const control = 
+      useController(this as any, args);
 
-    const ref = useRef(null) as MutableRefObject<I>
-
-    if(ref.current === null){
-      let instance = new this(...args);
-      
-      Dispatch.apply(instance);
-      instance = bindMethods(instance, this.prototype, Controller.prototype);
-      ref.current = instance as I;
-    }
-
-    useEffect(() => {
-      const state = ref.current;
-      const proto = this.prototype as Lifecycle;
-      return invokeLifecycle(
-        state, 
-        state.didMount || proto.didMount, 
-        state.willUnmount || proto.willUnmount
-      );
-    }, [])
-
-    return useSubscriber(ref.current);
+    return useSubscriber(control);
   }
 
   static specificContext<T extends Controller>(this: T){
