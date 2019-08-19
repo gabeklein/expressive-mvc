@@ -23,6 +23,18 @@ const {
   defineProperty: define
 } = Object;
 
+function ownContext<T extends Controller>(of: T){
+  const { constructor } = of.prototype;
+  let context = CACHE_CONTEXTS.get(constructor) as any;
+
+  if(!context){
+    context = createContext(of.prototype);
+    CACHE_CONTEXTS.set(constructor, context);
+  }
+
+  return context as Context<T>;
+}
+
 function useController<T extends Controller>( 
   control: T,
   args: any[]){
@@ -104,20 +116,12 @@ export class Controller {
     return useSubscriber(control);
   }
 
-  static specificContext<T extends Controller>(this: T){
-    const { constructor } = this.prototype;
-    let context = CACHE_CONTEXTS.get(constructor);
-
-    if(!context){
-      context = createContext(this.prototype);
-      CACHE_CONTEXTS.set(constructor, context);
-    }
-
-    return context;
+  static context<T extends Controller>(this: T){
+    return ownContext(this as T);
   }
 
   static hook<T extends Controller>(this: T){
-    const context = (this as any).specificContext();
+    const context = ownContext(this);
 
     return () => {
       const controller = useContext(context) as Controller | SpyController;
