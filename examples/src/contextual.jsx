@@ -16,9 +16,9 @@ export const UsingContext = () => {
 }
 
 const InnerText = () => {
-  const { value } = useWhatever();
+  const { value, gotClicked } = useWhatever();
 
-  return <div>{value}</div>
+  return <div onClick={gotClicked}>{value}</div>
 }
 
 const InnerButton = () => {

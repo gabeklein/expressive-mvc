@@ -46,3 +46,40 @@ export const Inline = () => {
     </div>
   )
 }
+
+class EmotionalState {
+  name = "John Doe"
+  emotion = "meh"
+  reason = "reasons..."
+}
+
+export const Destructured = () => {
+  const {
+    set, // ⬅ proxy value for full state
+    name,
+    emotion,
+    reason
+  } = use(EmotionalState);
+
+  return (
+    <div>
+      <div onClick = {() => {
+        set.name = prompt("What is your name?", "John Doe");
+      }}>
+        My name is {name}.
+      </div>
+      <div>
+        <span onClick = {() => {
+          set.emotion = "doing better"
+        }}>
+          I am currently {emotion} 
+        </span>
+        <span onClick = {() => {
+          set.reason = "hooks are cooler than my cold-brew® coffee! 👓"
+        }}>
+          , because {reason}
+        </span>
+      </div>
+    </div>
+  )
+}
