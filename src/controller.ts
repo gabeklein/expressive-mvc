@@ -30,6 +30,31 @@ export interface Controller {
 }
 
 export class Controller {
+
+  didMount?(): void;
+  willUnmount?(): void;
+
+  on(){ return this };
+  not(){ return this };
+  only(){ return this };
+  once(){ return this };
+
+  get set(){ return this }
+
+  get Provider(): FunctionComponentElement<ProviderProps<this>> {
+    const context = this.getSpecificContext();
+    const ControlProvider = <any> (
+      (props: PropsWithChildren<any>) => 
+      createElement(
+        context.Provider,
+        { value: this },
+        props.children
+      )
+    )
+    define(this, "Provider", { value: ControlProvider });
+    return ControlProvider
+  }
+
   static use<T extends ExpectsParams<A>, A extends any[]>
     (this: T, ...args: A){
 
@@ -94,30 +119,4 @@ export class Controller {
 
     return context as Context<Controller>;
   }
-
-  get set(){
-    return this;
-  }
-
-  get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const context = this.getSpecificContext();
-    const ControlProvider = <any> (
-      (props: PropsWithChildren<any>) => 
-      createElement(
-        context.Provider,
-        { value: this },
-        props.children
-      )
-    )
-    define(this, "Provider", { value: ControlProvider });
-    return ControlProvider
-  }
-
-  didMount?(): void;
-  willUnmount?(): void;
-
-  on(){ return this };
-  not(){ return this };
-  only(){ return this };
-  once(){ return this };
 }
