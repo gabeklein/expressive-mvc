@@ -42,15 +42,26 @@ export class Controller {
   get set(){ return this }
 
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const context = this.getSpecificContext();
-    const ControlProvider = <any> (
+    let context = 
+      CACHE_CONTEXTS.get(this.constructor as any);
+
+    if(!context){
+      const { name } = this.constructor;
+      throw new Error(
+        `\nNo accessor for class ${name} has been declared in your app; ` +  
+        `this is required before using a corresponding Provider! ` + 
+        `Run \`${name}.hook()\` and/or \`${name}.specificContext()\` within a module first.\n`
+      );
+    }
+
+    const ControlProvider: any =
       (props: PropsWithChildren<any>) => 
       createElement(
-        context.Provider,
+          context!.Provider,
         { value: this },
         props.children
-      )
-    )
+        );
+
     define(this, "Provider", { value: ControlProvider });
     return ControlProvider
   }
@@ -102,21 +113,5 @@ export class Controller {
       const controller = useContext(context) as Controller | SpyController;
       return useSubscriber(controller) as InstanceType<T>;
     }
-  }
-
-  private getSpecificContext(){
-    const { constructor } = this;
-    let context = CACHE_CONTEXTS.get(constructor as any) as any;
-
-    if(!context){
-      const { name } = constructor;
-      throw new Error(
-        `\nNo accessor for class ${name} has been declared in your app; ` +  
-        `this is required before using a corresponding Provider! ` + 
-        `Run \`${name}.hook()\` and/or \`${name}.specificContext()\` within a module first.\n`
-      );
-    }
-
-    return context as Context<Controller>;
   }
 }
