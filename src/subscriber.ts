@@ -9,14 +9,14 @@ export interface SpyController extends Controller {
 };
 
 export function useSubscriber<T extends Controller | SpyController>
-  (controller: T): InstanceType<T> {
+  (controller: T){
 
   const firstRenderIs = useRef(true);
   const useUpdate = useState(0);
 
   if(firstRenderIs.current){
-    const init = controller[NEW_SUB];
-    if(!init){
+    const subscribe = controller[NEW_SUB];
+    if(!subscribe){
       const { name } = controller.constructor;
       throw new Error(
         `Can't subscribe to controller;` +
@@ -24,7 +24,7 @@ export function useSubscriber<T extends Controller | SpyController>
       )
     }
 
-    controller = init(useUpdate[1]) as T;
+    controller = subscribe(useUpdate[1]) as any;
     firstRenderIs.current = false
   }
 
@@ -37,5 +37,5 @@ export function useSubscriber<T extends Controller | SpyController>
       initialRenderControl[UNSUBSCRIBE]();
   }, [])
 
-  return controller as any;
+  return controller;
 }
