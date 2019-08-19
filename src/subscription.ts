@@ -118,10 +118,10 @@ function SpyController(
 
   define(Spy, SUBSCRIBE, { value: sub });
   define(Spy, UNSUBSCRIBE, { value: unSub });
-  define(Spy, "on", { value: bail });
-  define(Spy, "and", { value: also });
-  define(Spy, "never", { value: () => source });
-  define(Spy, "except", { value: except });
+  define(Spy, "once", { value: () => source });
+  define(Spy, "on", { value: also });
+  define(Spy, "only", { value: bail });
+  define(Spy, "not", { value: except });
 
   return Spy;
 

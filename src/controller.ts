@@ -118,7 +118,7 @@ export class Controller {
   willUnmount?(): void;
 
   on(){ return this };
-  and(){ return this };
-  never(){ return this };
-  except(){ return this };
+  not(){ return this };
+  only(){ return this };
+  once(){ return this };
 }

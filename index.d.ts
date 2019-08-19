@@ -98,11 +98,11 @@ declare class Controller {
     /** RESERVED: Used by context driver. Overriding this may break something. */
     on(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
-    and(): this;
+    not(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
-    never(): this;
+    once(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
-    except(): this;
+    only(): this;
 }
 
 export { 
