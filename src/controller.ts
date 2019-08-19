@@ -97,10 +97,10 @@ export class Controller {
 
     const ControlProvider: any =
       (props: PropsWithChildren<any>) => 
-      createElement(
+        createElement(
           context!.Provider,
-        { value: this },
-        props.children
+          { value: this },
+          props.children
         );
 
     define(this, "Provider", { value: ControlProvider });
@@ -114,6 +114,15 @@ export class Controller {
       useController(this as any, args);
 
     return useSubscriber(control);
+  }
+
+  static create<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
+
+    const control = 
+      useController(this as any, args);
+
+    return control.Provider;
   }
 
   static context<T extends Controller>(this: T){
