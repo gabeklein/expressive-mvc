@@ -30,6 +30,7 @@ export function Dispatch(this: Controller){
 
     mutable[key] = d.value;
     register[key] = new Set();
+
     define(this, key, {
       get: () => mutable[key],
       set: enqueue(key),

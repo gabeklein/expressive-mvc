@@ -1,3 +1,6 @@
-lib/
 node_modules/
-examples/public/bundle.js*
+
+/lib
+/examples/public/bundle.js*
+/examples/yarn.lock
+/examples/package-lock.json
