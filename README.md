@@ -190,7 +190,7 @@ This component now updates when any of your declared values change. Add as many 
 
 ## Destructuring
 
-Using reserved key `set`, we're also able to update values, even while destructuring.
+With two reserved keys `get` and `set`, we're still able to retrieve and update values, even after destructuring!
 
 ```jsx
 const HappyTown = () => {

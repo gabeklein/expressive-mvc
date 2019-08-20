@@ -18,7 +18,6 @@ type ExpectsParams<A extends any[]> = new(...args: A) => any
  * All values have getter-setter pair, setter will shallow compare and trigger update of react-component consumer.
  * 
  * Methods (ala `@actions`) have access to live values and may update them for same effect.
- * 
  */
 interface LiveState {
     /**
@@ -26,7 +25,6 @@ interface LiveState {
      * 
      * I forget why I expose this.
      * Drink Responsibly.
-     * 
      */
     refresh(): void;
 
@@ -34,17 +32,15 @@ interface LiveState {
      * Clone live state into new object.
      * 
      * @returns Clone - Side-effect safe object containing all enumerable values of current state.
-     * 
      */
     export(): { [P in keyof this]: this[P] };
 
     /**
-     * Add new tracked value to expressive.
+     * Add new tracked value to state-controller.
      * 
      * Will trigger renders on updates to this new value.
      * 
      * @returns boolean - Did add operation succeed. `false` means value already exists or is reserved.
-     * 
      */
     add(key: string, initial?: any, bootup?: true): boolean;
 }
@@ -58,7 +54,6 @@ interface LiveState {
  * Note: Properties starting with _ will not trigger any re-renders.
  * 
  * @returns {LiveState} Live state: interactive state of component.
- * 
  */
 declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args: A): LiveState & I;
 
@@ -74,7 +69,6 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
  * @param init Initial values or initializer (returning those values) of resulting state.
  * 
  * @returns {LiveState} Live state: current state of component.
- * 
  */
 declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
 declare function use<I>(init: I): LiveState & I;
@@ -85,12 +79,59 @@ interface Class {
 
 interface Controller extends LiveState {}
 
+interface SpyController<T> {
+    /** 
+     * Arguments add listed properties to watch list for live-reload for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    on(...properties: string[]): T & SpyController<T>;
+
+    /** 
+     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
+     * Use this to optimize when you refresh by ingoring unnecessary values which still are used to render.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    not(...properties: string[]): T & SpyController<T>;
+    
+    /** 
+     * Arguments determine entirely what properties will be watched for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    only(...properties: string[]): T;
+    
+    /** 
+     * Disable automatic reload on all properties for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    once(): T;
+    
+    /** 
+     * You're probably looking for `.not`
+     */
+    except: never;
+}
+
 declare class Controller {
 
     didMount?(): void;
     willUnmount?(): void;
 
     Provider(): FunctionComponentElement<ProviderProps<this>>
+    
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    on(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    once(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    only(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    not(): this;
+    /** RESERVED: Used by context driver. Overriding this may break something. */
+    except: never;
 
     /** 
      * Proxy for `this` controller when destructuring. 
@@ -100,36 +141,11 @@ declare class Controller {
     set: this;
 
     /** 
-     * Arguments add listed properties to watch list for live-reload for this component.
+     * Proxy for `this` controller when destructuring. 
      * 
-     * Reserved: Overrides of this method will be ignored. 
+     * Reserved: Setting this will not pass through to your components.
      */
-    on(...properties: string[]): this;
-
-    /** 
-     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
-     * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    not(...properties: string[]): this;
-    
-    /** 
-     * Arguments determine entirely what properties will be watched for this component.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    only(...properties: string[]): this;
-    
-    /** 
-     * Disable automatic reload on all properties for this component.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    once(): this;
-    
-    /** You're probably looking for `.not`*/
-    except: never;
+    get: this;
 
     /**
      * Create instance of this class and generate live-state. Arguments are forwarded to `constructor()`.
@@ -140,7 +156,7 @@ declare class Controller {
      * 
      * Use `.once`, `.only`, `.on` and/or `.not` or to control which properties trigger a refresh.
      */
-    static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
+    static use<T extends ExpectsParams<A>, A extends any[], I = InstanceType<T>>(this: T, ...args: A): SpyController<I> & I; 
 
     /**
      * Create instance of this class and generate live-state. 
@@ -157,14 +173,14 @@ declare class Controller {
      * 
      * If one does not already exist, it will be created.
      */
-    static context<T extends Class>(this: T): Context<T>;
+    static context<T extends Class>(this: T): Context<InstanceType<T>>;
 
     /**
      * Returns accessor-hook to use in your components.
      * 
      * Hook returns instance of nearest provided state-controller.
      */
-    static hook<T extends Class>(this: T): () => InstanceType<T>;
+    static hook<T extends Class, I = InstanceType<T>>(this: T): () => SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -175,7 +191,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOn<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static useOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -191,6 +207,7 @@ declare class Controller {
     /**
      * Create instance of this class and generate live-state. 
      * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
+     * 
      * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
      * 
      * Assumes no arguments are needed. 
@@ -198,7 +215,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useExcept<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static useExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 

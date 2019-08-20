@@ -80,20 +80,11 @@ export class Controller {
   only(){ return this };
   once(){ return this };
 
+  get get(){ return this }
   get set(){ return this }
 
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    let context = 
-      CACHE_CONTEXTS.get(this.constructor as any);
-
-    if(!context){
-      const { name } = this.constructor;
-      throw new Error(
-        `\nNo accessor for class ${name} has been declared in your app; ` +  
-        `this is required before using a corresponding Provider! ` + 
-        `Run \`${name}.hook()\` and/or \`${name}.specificContext()\` within a module first.\n`
-      );
-    }
+    const context = ownContext(this.constructor as any);
 
     const ControlProvider: any =
       (props: PropsWithChildren<any>) => 
@@ -107,52 +98,6 @@ export class Controller {
     return ControlProvider
   }
 
-  static use<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A): InstanceType<T> {
-
-    const control = 
-      useController(this as any, args);
-
-    return useSubscriber(control);
-  }
-
-  static create<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
-
-    const control = 
-      useController(this as any, args);
-
-    return control.Provider;
-  }
-
-  static useOnce(){
-    let state = this.use() as any;
-    if(SUBSCRIBE in state)
-      state = state.once();
-    return state;
-  }
-
-  static useOn(...args: any){
-    let state = this.use() as any;
-    if(SUBSCRIBE in state)
-      state = state.on(...args);
-    return state;
-  }
-
-  static useOnly(...args: any){
-    let state = this.use() as any;
-    if(SUBSCRIBE in state)
-      state = state.only(...args);
-    return state;
-  }
-
-  static useExcept(...args: any){
-    let state = this.use() as any;
-    if(SUBSCRIBE in state)
-      state = state.not(...args);
-    return state;
-  }
-
   static context<T extends Controller>(this: T){
     return ownContext(this as T);
   }
@@ -164,5 +109,93 @@ export class Controller {
       const controller = useContext(context) as Controller | SpyController;
       return useSubscriber(controller) as InstanceType<T>;
     }
+  }
+
+  static create<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
+
+    const control = 
+      useController(this as any, args);
+
+    return control.Provider;
+  }
+
+  static use<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A): InstanceType<T> {
+
+    const control = 
+      useController(this as any, args);
+
+    return useSubscriber(control);
+  }
+
+  static get<T extends ExpectsParams<any>>
+    (this: T): InstanceType<T> {
+
+    const context = ownContext(this as any);
+
+    function useContextSubscriber(){
+      const controller = useContext(context) as Controller | SpyController;
+      return useSubscriber(controller);
+    }
+    
+    define(this, `get`, { value: useContextSubscriber });
+    return useContextSubscriber() as any;
+  } 
+
+  static useOnce(){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.once()
+      : state;
+  }
+
+  static useOn(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.on(...args)
+      : state;
+  }
+
+  static useOnly(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.only(...args)
+      : state;
+  }
+
+  static useExcept(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.not(...args)
+      : state;
+  }
+
+  static getOnce(){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.once()
+      : state;
+  }
+
+  static getOn(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.on(...args)
+      : state;
+  }
+
+  static getOnly(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.only(...args)
+      : state;
+  }
+
+  static getExcept(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.not(...args)
+      : state;
   }
 }
