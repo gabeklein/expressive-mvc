@@ -144,10 +144,7 @@ export class Controller {
   } 
 
   static useOnce(){
-    let state = this.use() as any;
-    return SUBSCRIBE in state
-      ? state.once()
-      : state;
+    return useController(this as any);
   }
 
   static useOn(...args: any){
@@ -171,11 +168,13 @@ export class Controller {
       : state;
   }
 
-  static getOnce(){
-    let state = this.get() as any;
-    return SUBSCRIBE in state
-      ? state.once()
-      : state;
+  static getOnce(this: any){
+    const context = ownContext(this as any);
+    const getFromContext = () =>
+      useContext(context) as Controller | SpyController;
+
+    define(this, `get`, { value: getFromContext });
+    return getFromContext() as any;
   }
 
   static getOn(...args: any){
