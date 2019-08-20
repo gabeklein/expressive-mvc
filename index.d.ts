@@ -159,6 +159,14 @@ declare class Controller {
     static use<T extends ExpectsParams<A>, A extends any[], I = InstanceType<T>>(this: T, ...args: A): SpyController<I> & I; 
 
     /**
+     * Get instance of this class from context. 
+     * Returns parent state-controller, specially hooked to this component.
+     * 
+     * Chain `.once`, `.only`, `.on` and/or `.not` or to control which properties trigger a refresh here.
+     */
+    static get<T extends ExpectsParams<A>, A extends any[], I = InstanceType<T>>(this: T, ...args: A): SpyController<I> & I; 
+
+    /**
      * Create instance of this class and generate live-state. 
      * Arguments are forwarded to `constructor()`.
      * 
@@ -229,9 +237,43 @@ declare class Controller {
     static useOnce<T extends Class>(this: T): () => InstanceType<T>;
 
     /**
+     * Get instance of this class from context. 
+     * Returns parent state-controller, specially hooked to this component.
+     * 
+     * Arguments add listed properties to watch list for live-reload.
+     */
+    static getOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+
+    /**
+     * Get instance of this class from context. 
+     * Returns parent state-controller, specially hooked to this component.
+     * 
+     * Arguments determine entirely what properties will be watched from state in this component.
+     */
+    static getOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+
+    /**
+     * Get instance of this class from context. 
+     * Returns parent state-controller, specially hooked to this component.
+     * 
+     * Arguments determine what properties should NOT be watched from state in this component, despite what automatic inference sees. 
+     * 
+     * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
+     */
+    static getExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+
+    /**
+     * Get instance of this class from context. 
+     * Returns parent state-controller.
+     * 
+     * Automatic reload will be disabled on all properties.
+     */
+    static getOnce<T extends Class>(this: T): () => InstanceType<T>;
+
+    /**
      * You probably want `.useExcept()`
      */
-    static useNot: never;
+    static getNot: never;
 }
 
 export { 
