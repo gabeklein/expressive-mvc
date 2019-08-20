@@ -20,7 +20,6 @@ type ExpectsParams<A extends any[]> = new(...args: A) => any
  * Methods (ala `@actions`) have access to live values and may update them for same effect.
  * 
  */
-
 interface LiveState {
     /**
      * Trigger update of consumer component.
@@ -84,30 +83,141 @@ interface Class {
     new (...args: any): any;
 }
 
+interface Controller extends LiveState {}
+
 declare class Controller {
-    static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
-    static specificContext<T extends Class>(this: T): Context<T>;
-    static hook<T extends Class>(this: T): () => InstanceType<T>;
-    private specificContext(): Context<this>;
-    Provider(): FunctionComponentElement<ProviderProps<this>>
+
     didMount?(): void;
     willUnmount?(): void;
 
-    /** RESERVED: Used for controller destructuring. Overriding will be occluded. */
+    Provider(): FunctionComponentElement<ProviderProps<this>>
+
+    /** 
+     * Proxy for `this` controller when destructuring. 
+     * 
+     * Reserved: Setting this will not pass through to your components.
+     */
     set: this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
-    on(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
-    not(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+
+    /** 
+     * Arguments add listed properties to watch list for live-reload for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    on(...properties: string[]): this;
+
+    /** 
+     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
+     * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    not(...properties: string[]): this;
+    
+    /** 
+     * Arguments determine entirely what properties will be watched for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    only(...properties: string[]): this;
+    
+    /** 
+     * Disable automatic reload on all properties for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
     once(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
-    only(): this;
+    
+    /** You're probably looking for `.not`*/
+    except: never;
+
+    /**
+     * Create instance of this class and generate live-state. Arguments are forwarded to `constructor()`.
+     * 
+     * Returns hooked instance of state-controller.
+     * 
+     * To access Provider, use `.create(...)` or pull `{ Provider }` from returned controller.
+     * 
+     * Use `.once`, `.only`, `.on` and/or `.not` or to control which properties trigger a refresh.
+     */
+    static use<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): InstanceType<T>; 
+
+    /**
+     * Create instance of this class and generate live-state. 
+     * Arguments are forwarded to `constructor()`.
+     * 
+     * Returns `Provider` component containing instance of state.
+     * 
+     * Access this state by creating an access hook using `[this].hook()`
+     */
+    static create<T extends ExpectsParams<A>, A extends any[]>(this: T, ...args: A): FunctionComponentElement<ProviderProps<T>>; 
+    
+    /**
+     * Returns context assigned to this controller group.
+     * 
+     * If one does not already exist, it will be created.
+     */
+    static context<T extends Class>(this: T): Context<T>;
+
+    /**
+     * Returns accessor-hook to use in your components.
+     * 
+     * Hook returns instance of nearest provided state-controller.
+     */
+    static hook<T extends Class>(this: T): () => InstanceType<T>;
+
+    /**
+     * Create instance of this class and generate live-state. 
+     * Arguments add listed properties to watch list for live-reload.
+     * 
+     * Assumes no arguments are needed. 
+     * If you need to pass arguments to `constructor()` use `[this].use(...args).on(...properties)`
+     * 
+     * Returns hooked instance of state-controller.
+     */
+    static useOn<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+
+    /**
+     * Create instance of this class and generate live-state. 
+     * Arguments determine entirely what properties will be watched.
+     * 
+     * Assumes no arguments are needed. 
+     * If you need to pass arguments to `constructor()` use `[this].use(...args).only(...properties)`
+     * 
+     * Returns hooked instance of state-controller.
+     */
+    static useOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+
+    /**
+     * Create instance of this class and generate live-state. 
+     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
+     * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
+     * 
+     * Assumes no arguments are needed. 
+     * If you need to pass arguments to `constructor()` use `[this].use(...args).not(...properties)`
+     * 
+     * Returns hooked instance of state-controller.
+     */
+    static useExcept<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+
+    /**
+     * Create instance of this class and generate live-state. 
+     * Automatic reload will be disabled on all properties.
+     * 
+     * Assumes no arguments are needed. 
+     * If you need to pass arguments to `constructor()` use `[this].use(...args).once()`
+     * 
+     * Returns hooked instance of state-controller.
+     */
+    static useOnce<T extends Class>(this: T): () => InstanceType<T>;
+
+    /**
+     * You probably want `.useExcept()`
+     */
+    static useNot: never;
 }
 
 export { 
-    use, 
-    use as useStates,
-    use as useController,
+    use,
     Controller as default
 }

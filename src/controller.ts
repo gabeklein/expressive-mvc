@@ -14,7 +14,7 @@ import {
 import { invokeLifecycle } from './helper';
 import { SpyController, useSubscriber } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
-import { Dispatch, NEW_SUB } from './subscription';
+import { Dispatch, NEW_SUB, SUBSCRIBE } from './subscription';
 import { bindMethods } from './use_hook';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
@@ -37,7 +37,7 @@ function ownContext<T extends Controller>(of: T){
 
 function useController<T extends Controller>( 
   control: T,
-  args: any[]){
+  args: any[] = []){
 
   type I = InstanceType<T>;
 
@@ -123,6 +123,34 @@ export class Controller {
       useController(this as any, args);
 
     return control.Provider;
+  }
+
+  static useOnce(){
+    let state = this.use() as any;
+    if(SUBSCRIBE in state)
+      state = state.once();
+    return state;
+  }
+
+  static useOn(...args: any){
+    let state = this.use() as any;
+    if(SUBSCRIBE in state)
+      state = state.on(...args);
+    return state;
+  }
+
+  static useOnly(...args: any){
+    let state = this.use() as any;
+    if(SUBSCRIBE in state)
+      state = state.only(...args);
+    return state;
+  }
+
+  static useExcept(...args: any){
+    let state = this.use() as any;
+    if(SUBSCRIBE in state)
+      state = state.not(...args);
+    return state;
   }
 
   static context<T extends Controller>(this: T){

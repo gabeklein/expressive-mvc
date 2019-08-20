@@ -483,7 +483,7 @@ const View = () => {
 
 <br/>
 
-### `.except()`  `.useExcept()`
+### `.not()`  `.useExcept()`
 
 Declare properties you want to exclude. *May also be chained with `on()`*
 
