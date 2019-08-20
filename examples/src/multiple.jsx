@@ -1,7 +1,7 @@
 import Controller from 'use-stateful';
 import React from "react";
 
-export class MultiState extends Controller {
+export class FooBar extends Controller {
   foo = 0;
   bar = 0;
 
@@ -9,26 +9,24 @@ export class MultiState extends Controller {
   barUp = () => this.bar++ 
 };
 
-const useMultiState = MultiState.hook();
-
 export const Multi = () => {
-  const Provider = MultiState.create();
+  const Control = FooBar.create();
 
   return (
-    <Provider>
+    <Control>
       <InnerFoo/>
       <InnerBar/>
-    </Provider>
+    </Control>
   )
 }
 
 const InnerFoo = () => {
-  const { set, bar } = useMultiState();
+  const { fooUp, bar } = FooBar.get();
 
   return (
     <div
       className="clicky"
-      onClick={set.fooUp}>
+      onClick={fooUp}>
       <pre>Foo</pre>
       <small>Bar was clicked {bar} times!</small>
     </div>
@@ -36,12 +34,12 @@ const InnerFoo = () => {
 }
 
 const InnerBar = () => {
-  const { set, foo } = useMultiState();
+  const { barUp, foo } = FooBar.get();
 
   return (
     <div
       className="clicky"
-      onClick={set.barUp}>
+      onClick={barUp}>
       <pre>Bar</pre> 
       <small>Foo was clicked {foo} times!</small>
     </div>
