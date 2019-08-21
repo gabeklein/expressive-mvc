@@ -111,7 +111,7 @@ function SpyController(
   for(const key in mutable)
     define(Spy, key, {
       set: describe(source, key)!.set,
-      get(){
+      get: () => {
         watch.add(key);
         return mutable[key];
       }
