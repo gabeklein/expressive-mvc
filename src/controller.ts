@@ -64,13 +64,13 @@ function useController<T extends Controller>(
   return instance;
 }
 
-export interface Controller {
+interface Controller {
   /* Force compatibility with <InstanceType> */
   new (...args: any): any;
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
 }
 
-export class Controller {
+class Controller {
 
   didMount?(): void;
   willUnmount?(): void;
@@ -165,15 +165,6 @@ export class Controller {
       : state;
   }
 
-  static getOnce(this: any){
-    const context = ownContext(this as any);
-    const getFromContext = () =>
-      useContext(context) as Controller | SpyController;
-
-    define(this, `get`, { value: getFromContext });
-    return getFromContext() as any;
-  }
-
   static getOn(...args: any){
     let state = this.get() as any;
     return SUBSCRIBE in state
@@ -195,3 +186,20 @@ export class Controller {
       : state;
   }
 }
+
+define(Controller, "getOnce", {
+  configurable: true,
+  value: function(){
+    const context = ownContext(this as any);
+    const getFromContext = () =>
+      useContext(context) as Controller | SpyController;
+
+    define(this, `getOnce`, { 
+      configurable: true,
+      value: getFromContext
+    });
+    return getFromContext() as any;
+  }
+})
+
+export { Controller }
