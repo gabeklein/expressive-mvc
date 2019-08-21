@@ -122,6 +122,12 @@ export function bindMethods(
       writable: true
     })
 
+  for(const key of ["get", "set"])
+    define(boundLayer, key, {
+      value: instance,
+      writable: true
+    })
+
   return boundLayer
 }
 

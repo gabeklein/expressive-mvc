@@ -80,9 +80,6 @@ export class Controller {
   only(){ return this };
   once(){ return this };
 
-  get get(){ return this }
-  get set(){ return this }
-
   get Provider(): FunctionComponentElement<ProviderProps<this>> {
     const context = ownContext(this.constructor as any);
 
