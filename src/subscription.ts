@@ -15,6 +15,8 @@ export const NEW_SUB = Symbol("init_subscription");
 export const UNSUBSCRIBE = Symbol("delete_subscription");
 export const SUBSCRIBE = Symbol("activate_subscription");
 
+const TOGGLEABLE = /^is[A-Z]/;
+
 export function Dispatch(this: Controller){
   const mutable = {} as any;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
@@ -26,7 +28,7 @@ export function Dispatch(this: Controller){
     const d = describe(this, key)!;
 
     if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
-      continue
+      continue;
 
     mutable[key] = d.value;
     register[key] = new Set();
@@ -37,6 +39,11 @@ export function Dispatch(this: Controller){
       enumerable: true,
       configurable: false
     })
+
+    if(TOGGLEABLE.test(key) && typeof d.value == "boolean")
+      define(this, key.replace(/is/, "toggle"), {
+        value: setToggle(key)
+      })
   }
 
   define(this, "hold", {
@@ -77,6 +84,14 @@ export function Dispatch(this: Controller){
         return;
     isPending = true;
     setTimeout(dispatch, 0)
+  }
+
+  function setToggle(key: string){
+    return function toggle(to?: boolean){
+      mutable[key] = !mutable[key]
+      pending.add(key);
+      refresh();
+    }
   }
 
   function enqueue(to: string){
