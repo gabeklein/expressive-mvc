@@ -30,6 +30,7 @@ export function Dispatch(this: Controller){
 
     mutable[key] = d.value;
     register[key] = new Set();
+
     define(this, key, {
       get: () => mutable[key],
       set: enqueue(key),
@@ -38,13 +39,21 @@ export function Dispatch(this: Controller){
     })
   }
 
+  define(this, "hold", {
+    get: () => isPending,
+    set: to => isPending = to
+  })
+
+  define(this, "get", { value: this });
+  define(this, "set", { value: this });
+
   define(this, NEW_SUB, { 
     value: (hook: UpdateTrigger) => 
       SpyController(this, hook, mutable, register)
   })
 
   define(this, "refresh", { 
-    value(...watching: string[]){
+    value: function refreshSubscribersOf(...watching: string[]){
       for(const x of watching)
         pending.add(x)
       refresh();
@@ -52,7 +61,7 @@ export function Dispatch(this: Controller){
   });
 
   define(this, "export", {
-    value(){
+    value: function exportCurrentValues(){
       const acc = {} as BunchOf<any>;
       for(const key in this){
           const { value } = describe(this, key)!;
@@ -110,7 +119,7 @@ function SpyController(
   for(const key in mutable)
     define(Spy, key, {
       set: describe(source, key)!.set,
-      get(){
+      get: () => {
         watch.add(key);
         return mutable[key];
       }
@@ -118,10 +127,10 @@ function SpyController(
 
   define(Spy, SUBSCRIBE, { value: sub });
   define(Spy, UNSUBSCRIBE, { value: unSub });
-  define(Spy, "on", { value: bail });
-  define(Spy, "and", { value: also });
-  define(Spy, "never", { value: () => source });
-  define(Spy, "except", { value: except });
+  define(Spy, "once", { value: () => source });
+  define(Spy, "on", { value: also });
+  define(Spy, "only", { value: bail });
+  define(Spy, "not", { value: except });
 
   return Spy;
 
@@ -130,8 +139,12 @@ function SpyController(
     for(const k of exclude)
       watch.delete(k);
 
-    for(const key of watch)
-      register[key].add(hook);
+    for(const key of watch){
+      let set = register[key];
+      if(!set)
+        set = register[key] = new Set();
+      set.add(hook);
+    }
   }
 
   function unSub(){

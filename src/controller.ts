@@ -8,71 +8,112 @@ import {
   ProviderProps,
   useContext,
   useEffect,
-  useRef,
-  useState,
+  useRef
 } from 'react';
 
 import { invokeLifecycle } from './helper';
-import { SpyController, useSubscriber,  } from './subscriber';
+import { SpyController, useSubscriber } from './subscriber';
 import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
-import { Dispatch, NEW_SUB } from './subscription';
+import { Dispatch, NEW_SUB, SUBSCRIBE } from './subscription';
+import { bindMethods } from './use_hook';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
 const { 
-  defineProperty: define
+  defineProperty: define,
+  getPrototypeOf: proto
 } = Object;
 
-export interface Controller {
+function ownContext<T extends Controller>(of: T){
+  const { constructor } = of.prototype;
+  let context = CACHE_CONTEXTS.get(constructor) as any;
+
+  if(!context){
+    context = createContext(of.prototype);
+    CACHE_CONTEXTS.set(constructor, context);
+  }
+
+  return context as Context<T>;
+}
+
+function useController<T extends Controller>( 
+  control: T,
+  args: any[] = []){
+
+  type I = InstanceType<T>;
+
+  const cache = useRef(null) as MutableRefObject<I>
+  let instance = cache.current as InstanceType<T>;
+
+  if(instance === null){
+    instance = new control(...args);
+    if(instance.didHook)
+      instance.didHook.apply(instance)
+    Dispatch.apply(instance);
+    instance = bindMethods(instance, control.prototype, Controller.prototype);
+    cache.current = instance;
+  }
+  else if(instance.didHook)
+    instance.didHook.apply({})
+
+  if(instance.willHook){
+    instance.hold = true;
+    instance.willHook();
+    instance.hold = false;
+  }
+
+  useEffect(() => {
+    const state = proto(instance as any);
+    const methods = control.prototype as Lifecycle;
+    return invokeLifecycle(
+      state, 
+      state.didMount || methods.didMount, 
+      state.willUnmount || methods.willUnmount
+    );
+  }, [])
+
+  return instance;
+}
+
+interface Controller {
   /* Force compatibility with <InstanceType> */
   new (...args: any): any;
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
 }
 
-export class Controller {
-  static use<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A){
+class Controller {
 
-    type I = InstanceType<T>;
+  didMount?(): void;
+  willUnmount?(): void;
+  didHook?(): void;
+  willHook?(): void;
 
-    const update = useState(0);
-    const ref = useRef(null) as MutableRefObject<I>
+  on(){ return this };
+  not(){ return this };
+  only(){ return this };
+  once(){ return this };
 
-    if(ref.current === null){
-      const instance = new this(...args);
-      void update;
-      
-      Dispatch.apply(instance);
-      ref.current = instance as I;
-    }
+  get Provider(): FunctionComponentElement<ProviderProps<this>> {
+    const context = ownContext(this.constructor as any);
 
-    useEffect(() => {
-      const state = ref.current;
-      const proto = this.prototype as Lifecycle;
-      return invokeLifecycle(
-        state, 
-        state.didMount || proto.didMount, 
-        state.willUnmount || proto.willUnmount
-      );
-    }, [])
+    const ControlProvider: any =
+      (props: PropsWithChildren<any>) => 
+        createElement(
+          context!.Provider,
+          { value: this },
+          props.children
+        );
 
-    return useSubscriber(ref.current);
+    define(this, "Provider", { value: ControlProvider });
+    return ControlProvider
   }
 
-  static specificContext<T extends Controller>(this: T){
-    const { constructor } = this.prototype;
-    let context = CACHE_CONTEXTS.get(constructor);
-
-    if(!context){
-      context = createContext(this.prototype);
-      CACHE_CONTEXTS.set(constructor, context);
-    }
-
-    return context;
+  static context<T extends Controller>(this: T){
+    return ownContext(this as T);
   }
 
   static hook<T extends Controller>(this: T){
-    const context = (this as any).specificContext();
+    const context = ownContext(this);
 
     return () => {
       const controller = useContext(context) as Controller | SpyController;
@@ -80,45 +121,98 @@ export class Controller {
     }
   }
 
-  private getSpecificContext(){
-    const { constructor } = this;
-    let context = CACHE_CONTEXTS.get(constructor as any) as any;
+  static create<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
 
-    if(!context){
-      const { name } = constructor;
-      throw new Error(
-        `\nNo accessor for class ${name} has been declared in your app; ` +  
-        `this is required before using a corresponding Provider! ` + 
-        `Run \`${name}.hook()\` and/or \`${name}.specificContext()\` within a module first.\n`
-      );
+    const control = 
+      useController(this as any, args);
+
+    return control.Provider;
+  }
+
+  static use<T extends ExpectsParams<A>, A extends any[]>
+    (this: T, ...args: A): InstanceType<T> {
+
+    const control = 
+      useController(this as any, args);
+
+    return useSubscriber(control);
+  }
+
+  static get<T extends ExpectsParams<any>>
+    (this: T): InstanceType<T> {
+
+    const context = ownContext(this as any);
+
+    function useContextSubscriber(){
+      const controller = useContext(context) as Controller | SpyController;
+      return useSubscriber(controller);
     }
+    
+    define(this, `get`, { value: useContextSubscriber });
+    return useContextSubscriber() as any;
+  } 
 
-    return context as Context<Controller>;
+  static useOnce(){
+    return useController(this as any);
   }
 
-  get set(){
-    return this;
+  static useOn(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.on(...args)
+      : state;
   }
 
-  get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const context = this.getSpecificContext();
-    const ControlProvider = <any> (
-      (props: PropsWithChildren<any>) => 
-      createElement(
-        context.Provider,
-        { value: this },
-        props.children
-      )
-    )
-    define(this, "Provider", { value: ControlProvider });
-    return ControlProvider
+  static useOnly(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.only(...args)
+      : state;
   }
 
-  didMount?(): void;
-  willUnmount?(): void;
+  static useExcept(...args: any){
+    let state = this.use() as any;
+    return SUBSCRIBE in state
+      ? state.not(...args)
+      : state;
+  }
 
-  on(){ return this };
-  and(){ return this };
-  never(){ return this };
-  except(){ return this };
+  static getOn(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.on(...args)
+      : state;
+  }
+
+  static getOnly(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.only(...args)
+      : state;
+  }
+
+  static getExcept(...args: any){
+    let state = this.get() as any;
+    return SUBSCRIBE in state
+      ? state.not(...args)
+      : state;
+  }
 }
+
+define(Controller, "getOnce", {
+  configurable: true,
+  value: function(){
+    const context = ownContext(this as any);
+    const getFromContext = () =>
+      useContext(context) as Controller | SpyController;
+
+    define(this, `getOnce`, { 
+      configurable: true,
+      value: getFromContext
+    });
+    return getFromContext() as any;
+  }
+})
+
+export { Controller }

@@ -1,6 +1,6 @@
 {
-  "name": "@gabeklein/use-controller",
-  "version": "1.0.0-beta.0",
+  "name": "react-use-controller",
+  "version": "1.0.0-beta.1",
   "description": "Easy to use state controllers using classes and hooks",
   "license": "MIT",
   "keywords": [
@@ -30,7 +30,7 @@
     "prepublish": "npm run build",
     "prebuild": "rm -rf lib/"
   },
-  "peerDependencies": {
+  "dependencies": {
     "react": "^16.8.0"
   },
   "devDependencies": {

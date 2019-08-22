@@ -29,6 +29,7 @@ const Style = () => (
       margin: .5em;
       border-radius: .2em;
       background: #eee;
+      text-align: center;
       cursor: pointer;
       user-select: none;
       vertical-align: middle;

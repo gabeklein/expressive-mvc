@@ -19,7 +19,7 @@ export class Whatever extends Controller {
     }, 5000)
   }
 
-  gotClicked = () => {
+  gotClicked(){
     this.value = "I got clicked."
   }
 };

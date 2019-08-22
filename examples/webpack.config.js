@@ -8,7 +8,8 @@ const babelrc = {
 }
 
 module.exports = {
-  entry: dir("src/index.jsx"),
+  context: dir("../"),
+  entry: "./examples/src/index.jsx",
   mode: "development",
   output: {
     filename: "bundle.js",
@@ -24,11 +25,13 @@ module.exports = {
   },
   resolve: {
     modules: [
-      dir("node_modules")
+      "node_modules",
+      "../node_modules"
     ],
     extensions: [".ts", ".jsx", ".js"],
     alias: {
-      "use-stateful": "../../src",
+      "use-stateful": dir("../src/index.ts"),
+      "react": dir("node_modules/react"),
     }  
   },
   module: {
@@ -36,13 +39,13 @@ module.exports = {
       {
         test: /\.ts$/,
         exclude: dir("node_modules"),
-        loader: 'ts-loader'
+        loader: './examples/node_modules/ts-loader'
       }, 
       {
         test: /\.js(x?)$/,
         include: __dirname,
         exclude: dir("node_modules"),
-        loader: "babel-loader",
+        loader: "./examples/node_modules/babel-loader",
         options: babelrc
       }
     ]

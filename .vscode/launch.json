@@ -7,7 +7,7 @@
       "request": "launch",
       "port": 9222,
       "url": "http://localhost:3000/",
-      "webRoot": "${workspaceFolder}/example/src",
+      "webRoot": "${workspaceFolder}/",
       "sourceMaps": true
     }
   ]
