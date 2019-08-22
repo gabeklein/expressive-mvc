@@ -8,13 +8,13 @@
 </p>
  
 <p align="center">
-  <a href="https://www.npmjs.com/package/@gabeklein/use-controller"><img alt="NPM" src="https://img.shields.io/npm/v/@gabeklein/use-controller.svg"></a>
+  <a href="https://www.npmjs.com/package/react-use-controller"><img alt="NPM" src="https://img.shields.io/npm/v/@gabeklein/use-controller.svg"></a>
   <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/@gabeklein/use-controller.svg"></a>
 </p>
 
 <br/>
 <p align="center">
-  <b>Use any class into a hook-based view controller!</b>
+  <b>Use any class as a hook-based view controller!</b>
 
   <p align="center">Simply make a class with values, methods, and even life-cycle callbacks.<br/>
   The <code>use()</code> hook returns a live-state, which update components when properties do.<br/>Use both per-component or multi-component with the help of context, even as global state!</p>

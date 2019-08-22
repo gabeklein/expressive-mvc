@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  MutableRefObject,
+} from 'react';
 
-import { bootstrapForIn, applyLiveState } from './bootstrap';
-import { invokeLifecycle } from './helper';
-import { Lifecycle, LiveState, State } from './types.d';
+import { Controller } from './controller';
+import { Dispatch } from './subscription';
+import { Lifecycle } from './types.d';
+import { useSubscriber } from './subscriber';
 
 const {
   create,
@@ -29,72 +34,58 @@ const RESERVED = new Set([
   "willHook"
 ]);
 
-function useSimpleEnclosure(){
-  let cycle = {} as Lifecycle;
-
-  return function useSimpleController(init: any, ...args: any[]){
-    const update = useState(0);
-    const ref = useRef(null) as any;
-
-    let live = ref.current;
-
-    if(live === null){
-      if(!init) throw new Error(
-        "use() needs some form of intializer."
-      )
-      live = ref.current = 
-        bootstrapFromSource(
-          init, args, update[1], 
-          (lc: Lifecycle) => { cycle = lc }
-        )
-    }
-
-    useEffect(() => {
-      const { didMount, willUnmount } = cycle;
-      return invokeLifecycle(live, didMount, willUnmount)
-    }, [])
-
-    return live;
-  }
+function useSimpleController(init: any, ...args: any[]){
+  const control = useController(init, args, Object.prototype);
+  return useSubscriber(control);
 }
 
-function bootstrapFromSource(
-  init: any,
-  args: any[],
-  update: (x: any) => void,
-  applyUnmount: (lc: Lifecycle) => void
-){
-  let base: LiveState<any> & Lifecycle;
+export function useController<T extends Controller>( 
+  control: T,
+  args: any[] = [],
+  superType: any = Controller.prototype){
 
-  if(init.prototype){
-    const { prototype } = init;
+  type I = InstanceType<T>;
 
-    base = new init(...args);
+  const cache = useRef(null) as MutableRefObject<I>
+  let instance = cache.current as InstanceType<T>;
 
-    applyUnmount({ 
-      willUnmount: base.willUnmount || prototype.willUnmount, 
-      didMount: base.didMount || prototype.willUnmount
-    });
+  if(instance === null){
+    if(control.prototype)
+      instance = new control(...args);
+    else if(typeof instance == "function")
+      instance = (control as any)(...args)
+    else 
+      instance = control as any;
+
+    if(instance.didHook)
+      instance.didHook.apply(instance)
+    Dispatch.apply(instance);
+    instance = bindMethods(instance, control.prototype, superType);
+    cache.current = instance;
   }
-  else {
-    if(typeof init == "function")
-      init = init(...args);
+  else if(instance.didHook)
+    instance.didHook.apply({})
 
-    const { willUnmount, didMount, ...values } = init;
-    applyUnmount({ willUnmount, didMount });
-    base = values;
+  if(instance.willHook){
+    instance.hold = true;
+    instance.willHook();
+    instance.hold = false;
   }
 
-  applyLiveState(base, update);
-  bootstrapForIn(base);
+  useEffect(() => {
+    const state = proto(instance as any);
+    const methods: Lifecycle = control.prototype || {}
+    return invokeLifecycle(
+      state, 
+      state.didMount || methods.didMount, 
+      state.willUnmount || methods.willUnmount
+    );
+  }, [])
 
-  if(init.prototype)
-    base = bindMethods(base, init.prototype);
-
-  return base as State & LiveState;
+  return instance;
 }
 
-export function bindMethods(
+function bindMethods(
   instance: any, 
   prototype: any, 
   stopAt: any = Object.prototype){
@@ -133,4 +124,20 @@ export function bindMethods(
   return boundLayer
 }
 
-export const use = useSimpleEnclosure()
+export function invokeLifecycle(
+  target: any,
+  didMount?: VoidFunction, 
+  willUnmount?: VoidFunction){
+
+  if(didMount)
+    didMount.call(target);
+  return () => {
+    if(willUnmount)
+      willUnmount.call(target);
+    for(const key in target)
+      try { delete target[key] }
+      catch(err) {}
+  }
+}
+
+export { useSimpleController as use }
