@@ -14,7 +14,7 @@
 
 <br/>
 <p align="center">
-  <b>Use any class into a hook-based view controller!</b>
+  <b>Use any class as a hook-based view controller!</b>
 
   <p align="center">Simply make a class with values, methods, and even life-cycle callbacks.<br/>
   The <code>use()</code> hook returns a live-state, which update components when properties do.<br/>Use both per-component or multi-component with the help of context, even as global state!</p>
