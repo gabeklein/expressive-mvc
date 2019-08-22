@@ -39,6 +39,9 @@ export function Dispatch(this: Controller){
     })
   }
 
+  define(this, "get", { value: this });
+  define(this, "set", { value: this });
+
   define(this, NEW_SUB, { 
     value: (hook: UpdateTrigger) => 
       SpyController(this, hook, mutable, register)

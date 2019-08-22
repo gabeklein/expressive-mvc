@@ -20,7 +20,8 @@ import { bindMethods } from './use_hook';
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
 const { 
-  defineProperty: define
+  defineProperty: define,
+  getPrototypeOf: proto
 } = Object;
 
 function ownContext<T extends Controller>(of: T){
@@ -52,12 +53,12 @@ function useController<T extends Controller>(
   }
 
   useEffect(() => {
-    const state = instance;
-    const proto = control.prototype as Lifecycle;
+    const state = proto(instance as any);
+    const methods = control.prototype as Lifecycle;
     return invokeLifecycle(
       state, 
-      state.didMount || proto.didMount, 
-      state.willUnmount || proto.willUnmount
+      state.didMount || methods.didMount, 
+      state.willUnmount || methods.willUnmount
     );
   }, [])
 
