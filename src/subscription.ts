@@ -45,7 +45,7 @@ export function Dispatch(this: Controller){
   })
 
   define(this, "refresh", { 
-    value(...watching: string[]){
+    value: function refreshSubscribersOf(...watching: string[]){
       for(const x of watching)
         pending.add(x)
       refresh();
@@ -53,7 +53,7 @@ export function Dispatch(this: Controller){
   });
 
   define(this, "export", {
-    value(){
+    value: function exportCurrentValues(){
       const acc = {} as BunchOf<any>;
       for(const key in this){
           const { value } = describe(this, key)!;
