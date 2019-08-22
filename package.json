@@ -30,7 +30,7 @@
     "prepublish": "npm run build",
     "prebuild": "rm -rf lib/"
   },
-  "peerDependencies": {
+  "dependencies": {
     "react": "^16.8.0"
   },
   "devDependencies": {
