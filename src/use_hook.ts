@@ -16,6 +16,7 @@ const RESERVED = new Set([
   "add",
   "constructor", 
   "didMount", 
+  "didHook",
   "export",
   "not",
   "on",
@@ -25,6 +26,7 @@ const RESERVED = new Set([
   "refresh",
   "set",
   "willUnmount", 
+  "willHook"
 ]);
 
 function useSimpleEnclosure(){
@@ -38,7 +40,7 @@ function useSimpleEnclosure(){
 
     if(live === null){
       if(!init) throw new Error(
-        "useStateful needs some form of intializer."
+        "use() needs some form of intializer."
       )
       live = ref.current = 
         bootstrapFromSource(

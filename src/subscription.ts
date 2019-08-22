@@ -39,6 +39,11 @@ export function Dispatch(this: Controller){
     })
   }
 
+  define(this, "hold", {
+    get: () => isPending,
+    set: to => isPending = to
+  })
+
   define(this, "get", { value: this });
   define(this, "set", { value: this });
 

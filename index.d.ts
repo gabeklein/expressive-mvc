@@ -117,8 +117,40 @@ interface SpyController<T> {
 
 declare class Controller {
 
+    /**
+     * Lifecycle Method
+     * 
+     * Will be run once at mounting of this component. `useEvent()` surrogate for `comonentDidMount()`.
+     */
     didMount?(): void;
+
+    /**
+     * Lifecycle Method
+     * 
+     * Will be run before unmounting completes in this component. `useEvent()` surrogate for `comonentWillUnmount()`.
+     */
     willUnmount?(): void;
+
+    /**
+     * Lifecycle Method
+     * 
+     * Will be run at every render, however `this` will only reflect the controller at initial invocation (right after construction, right before live-state).
+     * To accomodate hook sensitivity, function will still run on subsequent renders, however bound on an empty object.
+     * 
+     * As such you may set properties from hook-based retreival (i.e. `useContext()`) without concern they will be repeatedly updated by the hook and/or may change due to an externality. Values you set in this function will also be trackable.
+     */
+    didHook?(): void;
+    
+    /**
+     * Lifecycle Method
+     * 
+     * Will be run on every render, unlike in `didHook`, `this` will always reflect instance of this controller. While executing this method however (async not withstanding), any value set *will not* dispatch an update. That's disabled because it only ever runs at the beginning of a new render.
+     * 
+     * If you must update the controller during this phase, set `this.hold` to false.
+
+     * **Drink responsibly**: Doing that may cause an infinte loop!
+     */
+    willHook?(): void;
 
     Provider(): FunctionComponentElement<ProviderProps<this>>
     
@@ -132,6 +164,11 @@ declare class Controller {
     not(): this;
     /** RESERVED: Used by context driver. Overriding this may break something. */
     except: never;
+
+    /**
+     * Freeze status of render updates. Proxy to value used by debounce system. Also usable to temporarily prevent updates from dispatching from this controller.
+     */
+    hold: boolean;
 
     /** 
      * Proxy for `this` controller when destructuring. 

@@ -47,9 +47,19 @@ function useController<T extends Controller>(
 
   if(instance === null){
     instance = new control(...args);
+    if(instance.didHook)
+      instance.didHook.apply(instance)
     Dispatch.apply(instance);
     instance = bindMethods(instance, control.prototype, Controller.prototype);
     cache.current = instance;
+  }
+  else if(instance.didHook)
+    instance.didHook.apply({})
+
+  if(instance.willHook){
+    instance.hold = true;
+    instance.willHook();
+    instance.hold = false;
   }
 
   useEffect(() => {
@@ -75,6 +85,8 @@ class Controller {
 
   didMount?(): void;
   willUnmount?(): void;
+  didHook?(): void;
+  willHook?(): void;
 
   on(){ return this };
   not(){ return this };
