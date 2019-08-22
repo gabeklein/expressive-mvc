@@ -134,8 +134,12 @@ function SpyController(
     for(const k of exclude)
       watch.delete(k);
 
-    for(const key of watch)
-      register[key].add(hook);
+    for(const key of watch){
+      let set = register[key];
+      if(!set)
+        set = register[key] = new Set();
+      set.add(hook);
+    }
   }
 
   function unSub(){
