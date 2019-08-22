@@ -3,25 +3,20 @@ import {
   createContext,
   createElement,
   FunctionComponentElement,
-  MutableRefObject,
   PropsWithChildren,
   ProviderProps,
   useContext,
-  useEffect,
-  useRef
 } from 'react';
 
-import { invokeLifecycle } from './helper';
 import { SpyController, useSubscriber } from './subscriber';
-import { ExpectsParams, Lifecycle, UpdateTrigger } from './types.d';
-import { Dispatch, NEW_SUB, SUBSCRIBE } from './subscription';
-import { bindMethods } from './use_hook';
+import { NEW_SUB, SUBSCRIBE } from './subscription';
+import { ExpectsParams, UpdateTrigger } from './types.d';
+import { useController } from './use_hook';
 
 const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
 
 const { 
-  defineProperty: define,
-  getPrototypeOf: proto
+  defineProperty: define
 } = Object;
 
 function ownContext<T extends Controller>(of: T){
@@ -34,45 +29,6 @@ function ownContext<T extends Controller>(of: T){
   }
 
   return context as Context<T>;
-}
-
-function useController<T extends Controller>( 
-  control: T,
-  args: any[] = []){
-
-  type I = InstanceType<T>;
-
-  const cache = useRef(null) as MutableRefObject<I>
-  let instance = cache.current as InstanceType<T>;
-
-  if(instance === null){
-    instance = new control(...args);
-    if(instance.didHook)
-      instance.didHook.apply(instance)
-    Dispatch.apply(instance);
-    instance = bindMethods(instance, control.prototype, Controller.prototype);
-    cache.current = instance;
-  }
-  else if(instance.didHook)
-    instance.didHook.apply({})
-
-  if(instance.willHook){
-    instance.hold = true;
-    instance.willHook();
-    instance.hold = false;
-  }
-
-  useEffect(() => {
-    const state = proto(instance as any);
-    const methods = control.prototype as Lifecycle;
-    return invokeLifecycle(
-      state, 
-      state.didMount || methods.didMount, 
-      state.willUnmount || methods.willUnmount
-    );
-  }, [])
-
-  return instance;
 }
 
 interface Controller {
