@@ -1,6 +1,6 @@
 {
   "name": "react-use-controller",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.3",
   "description": "Easy to use state controllers using classes and hooks",
   "license": "MIT",
   "keywords": [
@@ -23,7 +23,7 @@
     "index.d.ts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --sourceMap false",
     "watch": "tsc --watch --sourceMap",
     "start": "npm run --prefix examples start",
     "prepare": "npm install --prefix examples",
