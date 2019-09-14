@@ -34,12 +34,13 @@
   - [Lazy Updating](#concept-lazy)
 
 **[`Controller`](#controller-section) (Advanced)**
+  - [Constructor Arguments](#concept-constructor)
   - [Context](#concept-context)
   - [TypeScript](#concept-typescript)
 
 • **[Why better than hooks?](#compare-section)** <br/>
 • **[Property API](#property-api)** <br/>
-• **[Subscription API](#subscribe-api)**
+• **[Subscriber API](#subscribe-api)**
 
 <br/>
 
@@ -141,7 +142,7 @@ const KitchenCounter = () => {
 
 <br/>
 
-<h2 id="concept-lifecycle">Adding lifecycle methods</h2>
+<h2 id="concept-lifecycle">Lifecycle methods</h2>
 
 The `use()` hook will automatically call built-in [lifecycle helper methods](#lifecycle-list) when appropriate.
 ```jsx
@@ -218,22 +219,23 @@ class ZeroStakesGame {
 
   shuffle(){
     this.foo = "???"
-    setTimeout(() => {
-      this.foo = "baz"
-    }, 500)
     this.bar = "foo"
     this.baz = "bar"
+
+    setTimeout(() => {
+      this.foo = "baz"
+    }, 1000)
   }
 }
 
 const MusicalChairs = () => {
-  const chair = use(ZeroStakesGame);
+  const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
 
-  <span>Foo is {chair.foo}'s chair!</span>
-  <span>Bar is {chair.bar}'s chair!</span>
-  <span>Baz is {chair.baz}'s chair!</span>
+  <span>Foo is {foo}'s chair!</span>
+  <span>Bar is {bar}'s chair!</span>
+  <span>Baz is {baz}'s chair!</span>
 
-  <div onClick={chair.shuffle}>🎶🥁🎶🎷🎶</div>
+  <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
 }
 ```
 
@@ -268,14 +270,15 @@ const LazyComponent = () => {
 
 ### Automatic subscription
 
-Instances of `.use()` can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of any given component they're hooked into.
+Instances of `use()` can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of a component they hook into.
 
 **NOTE**: This does mean that it's generally recommended to always destructure. If a property is not accessed every render (within an `if` statement or ternary), it may not be detected!
 
 
 ### Explicit subscription
 
-There are a number of [helper methods](#subscription-api) you can call to specify which properties you wish to watch.
+There are a number of helper methods you can call to specify which properties you wish to watch. <br/>
+Check them out in [Subscription API](#subscription-api) section.
 
 <br/>
 
@@ -286,12 +289,57 @@ While you get a lot from `use()` and standard (or otherwise extended) classes, t
 - You can pass arguments to your constructor
 - Type inferences are maintained, making type-checking a lot better
 - Nuance your updates (explicit subscription based rendering)
-- Access to the `Provider`, making state accessible anywhere.
+- Generate a linked `Provider`, making state accessible anywhere.
 - An optional error-boundary (Coming Soon)
 
 <br/>
 
-<h2 id="concept-context">Access state anywhere</h2>
+> To use, rather than passing a class into `use`, extend it with `Controller` and call any static-method hooks.
+
+```jsx
+import Controller from "react-use-controller"
+
+class Control extends Controller {
+  value = 1;
+}
+```
+```jsx
+const Component = () => {
+  const { value } = Control.use();
+
+  return <div>{value}</div>;
+}
+```
+> `.use` will hook your component and construct state only once, the same as standard `use` would.
+
+<br/>
+
+<h2 id="concept-constructor">Passing arguments to constructor</h2>
+
+By extending Controller, the static method `use()` will pass its arguments to the constructor, while creating a new instance. 
+
+```typescript
+/* typescript */
+
+class Control extends Controller {
+  value: number;
+
+  constructor(init: number){
+    this.value = init;
+  }
+}
+```
+```jsx
+const Component = ({ initial }) => {
+  const { value } = Control.use(initial);
+
+  return <div>{value}</div>;
+}
+```
+
+<br/>
+
+<h2 id="concept-context">Access state anywhere <sup>(with context!)</sup></h2>
 
 One of the best features of `Controller` classes is [using Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/), to create and consume the same state from anywhere in your app. 
 
@@ -359,7 +407,9 @@ const InnerBar = () => {
 
 <h2 id="concept-typescript">Using with typescript</h2>
 
-Importing and extending **Controller** as whatever you like will allow type definitions to pass-through to your controllers definitions as well as instances.<br/>
+Importing and extending **Controller** as whatever you like will allow type definitions to pass-through to your controllers definitions.<br/>
+
+> For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component too.
 
 ```tsx
 /* typescript */
@@ -401,12 +451,6 @@ const PaintDrying = ({ alreadyMinutes }) => {
   )
 }
 ```
-
-### There's a lot to unpack here
-
-- This static method will hook your component and construct state only once, the same as standard `use()` would. <br/>
-- We can put the `setTimeout` in the constructor, to grab an initial value.
-- For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component.
 
 <br/>
 <br/>
@@ -496,7 +540,7 @@ This component now updates when any of your declared values change. Add as many 
 
 <h1 id="property-api">Property API</h1>
 
-Established behavior for certain methods on classes consumed by `use()` or extending `Controller`.
+Set behavior for certain methods on classes consumed by `use()` or extending `Controller`.
 
 While standard practice is for `use` to take all methods (and bind them), all properties (and watch them), there are special circumstances to be aware of.
 
@@ -504,17 +548,17 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 ### Properties
 
-#### `set`
-- Not to be confused with setters.
-- `state.set` always returns a reference to `state`
+#### `set` & `get`
+- Not to be confused with setters / getters.
+- `state.set` returns a circular reference to `state`
 - this is useful to access your state object when destructuring
 
 #### `Arrays`
-- if a property is an array, it will be forwarded to your components as a `ReactiveArray` which may also trigger a render on mutate.
+- if a property is an array, it will be forwarded to your components as a special `ReactiveArray` which can also trigger a render on mutate.
 
 
 #### `_anything`
-- if a key starts with an underscore it will not trigger a refresh when overwritten (or carry any overhead to do so). No special conversions will happen either. It's a shorthand for "private" keys which don't interact with the component.
+- if a key starts with an underscore it will not trigger a refresh when overwritten (or carry any overhead to do so). No special conversions will happen. It's a shorthand for "private" keys which don't interact with the component.
 
 #### `Anything defined post-constructor`
 - important to notice that `use()` can only detect properties which exist (and are enumerable) at time of creation. If you create them after, they're effectively ignored.
