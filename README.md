@@ -4,83 +4,96 @@
 </h1>
 
 <p align="center">
-  Easy to use state controllers using classes and hooks.
+  Easy to use state controllers, turning javascript classes into react super-hooks.
 </p>
  
 <p align="center">
   <a href="https://www.npmjs.com/package/react-use-controller"><img alt="NPM" src="https://img.shields.io/npm/v/@gabeklein/use-controller.svg"></a>
-  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/@gabeklein/use-controller.svg"></a>
+  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/react-use-controller.svg"></a>
 </p>
 
 <br/>
 <p align="center">
-  <b>Use any class as a hook-based view controller!</b>
-
-  <p align="center">Simply make a class with values, methods, and even life-cycle callbacks.<br/>
-  The <code>use()</code> hook returns a live-state, which update components when properties do.<br/>Use both per-component or multi-component with the help of context, even as global state!</p>
+  <b>Use any class as a hook-based view controller</b><br/>
+  with values, methods, and even some life-cycles ones to control components.
+  <p align="center">
+  The <code>use()</code> hook refreshes your components as needed, for any data.<br/>
+  When values update your component will too.<br/>
 </p>
+
+### Contents 
+
+• **[Install and Import](#install-section)**
+
+**[`use`](#started-section) hook (Simple)**
+  - [Basic Controller](#concept-basic)
+  - [Methods](#concept-method)
+  - [Lifecycle](#concept-lifecycle)
+  - [Destructuring](#concept-destruct)
+  - [Debouncing](#concept-debounce)
+  - [Lazy Updating](#concept-lazy)
+
+**[`Controller`](#controller-section) (Advanced)**
+  - [Constructor Arguments](#concept-constructor)
+  - [Context](#concept-context)
+  - [TypeScript](#concept-typescript)
+
+• **[Versus normal hooks](#compare-section)** <br/>
+• **[Property API](#property-api)** <br/>
+• **[Subscriber API](#subscribe-api)**
 
 <br/>
 
-
-
-## Install
+<h2 id="install-section">Installation</h2>
 
 <br />
 
-> Install with preferred package manager
+Install with your preferred package manager
 ```bash
 npm install --save react-use-controller
 ```
-<br />
 
-> Import and use in your react apps.
+Import and use in your react apps.
 
 ```js
-import Controller, { use } from "react-use-controller";
+import { use, Controller } from "react-use-controller";
 ```
 
-<br/>
-
-## Live demos
+> **Note:** `Controller` is also the default export
 
 <br/>
 
-Try it for yourself. 👍 Demo project is in the `/examples` directory with a series of examples you can launch, browse through and modify.
+<h1 id="started-section">Getting Started</h1>
 
-```bash
-git clone https://github.com/gabeklein/use-controller.git
-cd use-controller
-npm install
-npm start
-```
+There are two ways to use a view controller, supply any class to the `use` hook or [extend it with `Controller`](#controller-section). <br/>
+Both ways behave pretty much the same, though extending has some key benefits.
+
+> It is generally recommended to extend but, for simple controllers, `use` is best for its brevity.
 
 <br/>
 
-# Tutorial
+<h2 id="concept-simple">Simplest use-case</h2>
 
-There are two ways to use view-controllers, with the `use()` hook or by [extending `Controller`](#controller-section). Both ways behave pretty much the same, albeit with different features.
-
-What they both do is pretty simple. They take a class and turn it into ✨*live-state* ✨ for your components!
-
-
-<br/>
-
-## The `use()` hook
-
-> Let's start with a simple example to get the basic point across.
+Let's make a stateful counter component.
 
 ```jsx
-class Count {
+import { use } from "react-use-controller";
+
+/* Put together any class with as many values as you want. 
+ * They will be tracked for updates and trigger a render as needed. */
+class CountControl {
   number = 1
 }
 
-const Counter = () => {
-  const state = use(Count);
+const KitchenCounter = () => {
+  /* Pass your class to `use()` it will create and return a new instance, 
+   * bound to your component's instance as its controller. */
+  const state = use(CountControl);
 
+  /* Simply set new values to trigger a render. */
   return (
-    <Container>
-      <Button 
+    <Row>
+      <Button
         onClick={() => { state.number -= 1 }}>
         {"-"}
       </Button>
@@ -89,25 +102,362 @@ const Counter = () => {
         onClick={() => { state.number += 1 }}>
         {"+"}
       </Button>
-    </Container>
+    </Row>
   )
 }
 ```
 
-> Just for simplicity's sake, we are using only one value.
+<br/>
 
-Here we create a state controller `Count`, and pass it into `use()` hook within our component. This will create a new instance of the class and scan it for values. Our returned `state` reflects that instance exactly, however is able to watch for changes, compare values, and if different... trigger renders! 🐰🎩 No need for `setValue` callbacks, and you can have as many properties as you want!
+<h2 id="concept-method">Adding methods</h2>
+
+What's a view controller without its methods? Add some ["actions"](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
+
+```jsx
+class CountControl {
+  number = 1
+
+  /* We can edit state directly using `this`.
+   * Notice these are arrow functions and thus are bound */
+  increment = () => this.number++;
+  decrement = () => this.number--;
+}
+```
+
+```jsx
+const KitchenCounter = () => {
+  /* You can destructure for cleaner code, */
+  const { number, decrement, increment } = use(CountControl);
+
+  /* and pass bound-callbacks directly from the controller. */
+  return (
+    <Row>
+      <Button onClick={decrement}>{"-"}</Button>
+      <Box>{number}</Box>
+      <Button onClick={increment}>{"+"}</Button>
+    </Row>
+  )
+}
+```
 
 <br/>
 
-## Why do it this way? 
+<h2 id="concept-lifecycle">Lifecycle methods</h2>
 
-> Remember that React is an MVC?
+The `use()` hook will automatically call built-in [lifecycle helper methods](#lifecycle-list) when appropriate.
+```jsx
+import React from "react";
 
-### A quick comparison
+class TimerControl {
+  elapsed = 1;
 
-Here is an example where we have multiple values to track. <br/>
-> It's a heck-ton of vars and only adds up.
+  /* Automatically called from an internal `useEffect()` */
+  didMount(){
+    this.timer = 
+      setInterval(
+        () => this.elapsed++, 
+        1000
+      )
+  }
+
+  willUnmount(){
+    /* remember to cleanup too! */
+    clearInterval(this.timer);
+  }
+}
+```
+
+```jsx
+const KitchenTimer = () => {
+  const state = use(TimerControl);
+
+  return <Box>{state.elapsed}</Box>;
+}
+```
+
+<!-- > Technically, this does also work with `use()`, but it's still recommended you extend your classes. <br/> 
+> It's safer and more consistent, for anything but the simplest of controllers. -->
+
+<br />
+
+<h2 id="concept-destruct">Destructuring</h2>
+
+Not only can you destructure easily enough, with two reserved keys `get` and `set`, we can still retrieve and update values after doing so.
+
+> Both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
+
+```jsx
+const AboutMe = () => {
+  const {
+    set, // ⬅ a proxy for `state`
+    name
+  } = use(AboutYou);
+
+  return (
+    <div onClick = {() => {
+      set.name = window.prompt("What is your name?", "John Doe");
+    }}>
+      My name is {name}.
+    </div>
+  )
+}
+```
+
+> See what we did there? 🤔
+
+<br/>
+
+<h2 id="concept-debounce">Automatic debouncing</h2>
+
+Rest assured. Updates you make synchronously will be batched together as only one update.
+
+```jsx
+class ZeroStakesGame {
+  foo = "bar"
+  bar = "baz"
+  baz = "foo"
+
+  shuffle(){
+    this.foo = "???"
+    this.bar = "foo"
+    this.baz = "bar"
+
+    setTimeout(() => {
+      this.foo = "baz"
+    }, 1000)
+  }
+}
+
+const MusicalChairs = () => {
+  const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
+
+  <span>Foo is {foo}'s chair!</span>
+  <span>Bar is {bar}'s chair!</span>
+  <span>Baz is {baz}'s chair!</span>
+
+  <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
+}
+```
+
+> Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
+
+<br/>
+
+<h2 id="concept-lazy">Subscription based "lazy" updating</h2>
+
+Controllers uses a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are accessed on the first render.
+
+> Here `use` will not update `LazyComponent` when `bar` does change, because it *seems* to only use `foo` here. 
+
+```jsx
+class FooBar {
+  foo = "bar"
+  bar = "foo"
+}
+
+const LazyComponent = () => {
+  const { set, foo } = use(FooBar);
+
+  return (
+    <h1 
+      onClick={() => set.bar = "baz" }>
+      Foo is {foo} but click here to update bar!
+    </h1>
+  )
+}
+```
+
+### Automatic subscription
+
+Instances of a controller can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of a component they hook into.
+
+> **Recommended**: While `use` cannot read your functions, destructuring by default is a useful way to get consistent behavior. If a property is not accessed on initial render render (being within an `if` statement or ternary), it could fail to update as expected.
+
+### Explicit subscription
+
+There are also a number of helper methods you can call to specify which properties you wish to watch. <br/>
+Check them out in [Subscription API](#subscription-api) section.
+
+<br/>
+
+<h1 href="controller-section">The <code>Controller</code> superclass</h1>
+
+While you get a lot from `use()` and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
+
+- You can pass arguments to the constructor
+- Type inferences are maintained, making type-checking a lot better
+- Explicit subscription based rendering
+- Generate a linked `Provider`, making state accessible anywhere.
+- An optional error-boundary (Coming Soon)
+
+<br/>
+
+> To do it this way, rather than passing a class into `use`, extend it from `Controller` and call any of the static-method hooks.
+
+```jsx
+import Controller from "react-use-controller"
+
+class Control extends Controller {
+  value = 1;
+}
+```
+```jsx
+const Component = () => {
+  const { value } = Control.use();
+
+  return <div>{value}</div>;
+}
+```
+> `.use` will hook your component and construct state only once, the same as standard `use` would.
+
+<br/>
+
+<h2 id="concept-constructor">Passing arguments to constructor</h2>
+
+The static method `use()` supplied by `Controller` will pass its arguments to its constructor, while creating a new instance. 
+
+```typescript
+/* typescript */
+
+class Control extends Controller {
+  value: number;
+
+  constructor(init: number){
+    this.value = init;
+  }
+}
+```
+```jsx
+const Component = ({ initial }) => {
+  const { value } = Control.use(initial);
+
+  return <div>{value}</div>;
+}
+```
+
+<br/>
+
+<h2 id="concept-context">Access state anywhere <sup>(with context)</sup></h2>
+
+One of the best features of `Controller` classes is [using Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/), to create and consume the same state from anywhere in your app. 
+
+Of the available static methods, `.create()` will produce a [Provider](https://reactjs.org/docs/context.html#contextprovider) to wrap child-components with. Components nested can call the static-method `.get()` on the same constructor to access the nearest instance of that class.
+
+Thanks to [lazy-updating](#lazy-concept), only properties used by a consumer will trigger render for that component. Plus, actions are made available anywhere in your hierarchy, letting distant components cleanly "update" each other through a shared controller.
+
+<br/>
+
+```jsx
+export class Central extends Controller {
+  foo = 0;
+  bar = 0;
+
+  fooUp = () => this.foo++ 
+  barUp = () => this.bar++ 
+};
+
+export const App = () => {
+  /* An alternative to use(), create() will directly return a <Provider> with a new live-state. 
+   * If you want values too, you can access { Provider } from .use() as well. */
+  const Control = Central.create();
+
+  return (
+    <Control>
+      <InnerFoo/>
+      <InnerBar/>
+    </Control>
+  )
+}
+```
+
+```jsx
+const InnerFoo = () => {
+  /* .get, rather than making a new `Central` controller, 
+   * will return the nearest one (in this case from `App`). */
+  const { fooUp, bar } = Central.get();
+
+  return (
+    <div onClick={fooUp}>
+      <pre>Foo</pre>
+      <small>Bar was clicked {bar} times!</small>
+    </div>
+  )
+}
+```
+
+```jsx
+const InnerBar = () => {
+  /* Controller knows this component needs to update only when foo changes.
+   * Lazy refreshing ensures only properties accessed on initial render are watched here. */
+  const { barUp, foo } = Central.get();
+
+  return (
+    <div onClick={barUp}>
+      <pre>Bar</pre> 
+      <small>Foo was clicked {foo} times!</small>
+    </div>
+  )
+}
+```
+
+> This makes context kind of easy a little bit.
+
+<br/>
+
+<h2 id="concept-typescript">Using with typescript</h2>
+
+Importing and extending `default` (`Controller`), as whatever you like, will allow type definitions to pass to your controllers definitions. This gives you autocomplete, hints, and warns about potential errors.<br/>
+
+> For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component too.
+
+```tsx
+/* typescript */
+
+import Control from "react-use-controller";
+
+class FunActivity extends Control {
+  secondsSofar: number;
+  interval: number;
+
+  constructor(alreadyMinutes: number = 0){
+    this.secondsSofar = 
+      alreadyMinutes * 60;
+
+    this.interval = 
+      setInterval(() => {
+        this.secondsSofar++;
+      }, 1000)
+  }
+
+  /* JSDocs on the Controller class will also provide descriptors and 
+   * autocomplete, making it easier to avoid weird behavior over typos. */
+  willUnmount(){
+    clearInterval(this.interval)
+  }
+}
+```
+
+```jsx
+const PaintDrying = ({ alreadyMinutes }) => {
+  /* Your IDE will know secondsSofar is supposed to be a number 👌 */
+  const { secondsSofar } = FunActivity.use(alreadyMinutes);
+
+  return (
+    <div>
+      I've been staring for like, { secondsSofar } seconds now, 
+      and I'm starting to see what this is all about! 👀
+    </div>
+  )
+}
+```
+
+<br/>
+<br/>
+
+### (Besides all that)
+<h1 id="compare-section">How is this better than regular hooks?</h1>
+
+Here is an example where we have multiple values to track, showing the main rational. <br/>
 
 ```jsx
 const EmotionalState = () => {
@@ -139,12 +489,11 @@ const EmotionalState = () => {
   )
 }
 ```
+> Here is heck-ton of vars, inherently hard to scale or modify.
 
-<!-- <br/> -->
+### And how can we fix that?
 
-### How can we do better?
-
-Make a class containing state (*the Model*) and supply it to the `use()` hook.
+Simple, make a class containing state (*the Model*) and supply it to the `use()` hook.
 
 ```jsx
 class EmotionalState {
@@ -180,340 +529,13 @@ const HappyTown = () => {
 }
 ```
 
-> A lot better on the variables, plus we've removed our Model (the data) out of our View (the component)!
+> With a controller, we can do a lot better on scope. Plus in an [MVC](https://www.tutorialsteacher.com/mvc/mvc-architecture) sense, we've removed our Model (data) out of the View (component) which is nice.
 
-This hook's argument, its *constructor*, will only run at mount; and the returned object will be bootstrapped into a live state.
-
-This component now updates when any of your declared values change. Add as many values as you like, and they'll stay clean and relatively organized in your code.
-
-<br />
-
-## Destructuring
-
-With two reserved keys `get` and `set`, we're still able to retrieve and update values, even after destructuring!
-
-```jsx
-const HappyTown = () => {
-  const {
-    set, // ⬅ a proxy for `state`
-    name,
-    emotion,
-    reason
-  } = use(EmotionalState);
-
-  return (
-    <div>
-      <div onClick = {() => {
-        set.name = prompt("What is your name?", "John Doe");
-      }}>
-        My name is {name}.
-      </div>
-      <div>
-        <span onClick = {() => {
-          set.emotion = "doing better"
-        }}>
-          I am currently {emotion} 
-        </span>
-        <span onClick = {() => {
-          set.reason = "hooks are cooler than my nitro-cold-brew® coffee! 🕶"
-        }}>
-          , because {reason}.
-        </span>
-      </div>
-    </div>
-  )
-}
-```
-
-> See what we did there? 🤔
+Add as many values as you like, and they'll stay clean and _relatively_ organized in your code. (You still need good design!)
 
 <br/>
 
-# Adding Methods
-
-Similar to [MobX](https://github.com/mobxjs/mobx), we can place methods, getters, and setters along side watched values, to create transactions. <br/>
-They access live state and work [generally as you'd expect](https://www.destroyallsoftware.com/talks/wat), with regards to `this` keyword. 
-
-**All methods are bound automatically** (both arrow and proto functions), so you can pass them as callbacks or to sub-elements.
-
-<br/>
-
-> Let's go back to our counter example. There is one big improvement we can make.
-
-
-```jsx
-class Count {
-  current = 1
-
-  increment = () => this.current++;
-  decrement = () => this.current--;
-}
-
-const KitchenCounter = () => {
-  const count = use(Count);
-
-  return (
-    <Row>
-      <Button
-        onClick={count.decrement}>
-        {"-"}
-      </Button>
-      <Box>{count.current}</Box>
-      <Button 
-        onClick={count.increment}>
-        {"+"}
-      </Button>
-    </Row>
-  )
-}
-```
-
-> Nice! Now all logic (*the Controller*) is out of our component, and we're left with a pure *View*. Super clean 💪
-
-<br/>
-
-## Automatic debouncing
-
-Rest assured. Updates you make synchronously will be batched together as only one update.
-
-```jsx
-class ZeroStakesGame {
-  foo = "bar"
-  bar = "baz"
-  baz = "foo"
-
-  shuffle(){
-    this.foo = "???"
-    setTimeout(() => {
-      this.foo = "baz"
-    }, 500)
-    this.bar = "foo"
-    this.baz = "bar"
-  }
-}
-
-const MusicalChairs = () => {
-  const chair = use(ZeroStakesGame);
-
-  <span>Foo is {chair.foo}'s chair!</span>
-  <span>Bar is {chair.bar}'s chair!</span>
-  <span>Baz is {chair.baz}'s chair!</span>
-
-  <div onClick={chair.shuffle}>🎶🥁🎶🎷🎶</div>
-}
-```
-
-> Even though we're ultimately making four updates, `use()` only needs to update-render twice. It does it once for everybody (being on the same tick), resets, and again wakes for `foo` when all settled in.
-
-<br/>
-
-## Lifestyle methods
-
-If you define the [reserved callbacks](), `use()` will call them internally when appropriate!
-
-> Here we'll spawn an interval on mount, which should also be cleaned up when the component unmounts.
-
-```js
-class FunActivity {
-  duration = 0;
-
-  didMount(){
-    this._interval = 
-      setInterval(() => {
-        this.duration++;
-      }, 1000)
-  }
-
-  willUnmount(){
-      clearInterval(this._interval)
-  }
-}
-```
-
-```jsx
-const PaintDrying = () => {
-  const fun = use(FunActivity);
-
-  return <div>Well there's {fun.duration} seconds I'm never getting back...</div>
-}
-```
-> So boring, yet exciting at the same time. 👀
-
-<br/>
-<br/>
-
-<h1 href="controller-section">The <code>Controller</code> superclass</h1>
-
-While you get a lot from `use()` and standard (or otherwise extended) classes, there's a few key benefits in actually extending `Controller`.
-
-- You can pass arguments to your constructor
-- Type inferences are maintained, making type-checking a lot better
-- Nuanced updates (subscription based rendering)
-- No need for underscores on un-tracked properties.
-- Access to the `Provider`, making state accessible anywhere.
-- An optional error-boundary
-
-<br/>
-
-## Refactoring our previous example
-
-Import **Controller** as whatever you like from `"react-use-controller"` and extend your class with it. <br/>
-> We'll use TS for this example, because types inferences are back with this approach!
-
-```tsx
-/* typescript */
-
-import Control from "react-use-controller";
-
-class FunActivity extends Control {
-  secondsSofar: number;
-  interval: number;
-
-  constructor(alreadyMinutes: number = 0){
-    this.secondsSofar = 
-      alreadyMinutes * 60;
-
-    this.interval = 
-      setInterval(() => {
-        this.secondsSofar++;
-      }, 1000)
-  }
-
-  willUnmount(){
-    clearInterval(this.interval)
-  }
-}
-```
-> Now instead of the `use()` hook, we'll use *the 2019-all-new* `.use()` hook!
-
-```jsx
-const PaintDrying = ({ alreadyMinutes }) => {
-  const { secondsSofar } = FunActivity.use(alreadyMinutes);
-
-  return (
-    <div>
-      I've been staring for like, { secondsSofar } seconds now, 
-      and I'm starting to see what this is all about! 👀
-    </div>
-  )
-}
-```
-
-### There's a lot to unpack here
-
-- This static method will hook your component and construct state only once, the same as standard `use()` would. <br/>
-- We've moved the `setTimeout` to the constructor, to grab an initial value.
-- For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component.
-- Notice we did not underscore `interval` in this example. That's because of [lazy updating]() explained below.<br/>
-
-<br/>
-
-## Subscription based rendering
-
-Controller, unlike `use()`, uses a subscription model to decide when to render. Components will **only** update for changes to values which are needed for rendering.
-
-```jsx
-class LazyController extends Control {
-  foo = "bar"
-  bar = "foo"
-}
-
-const LazyComponent = () => {
-  const { set, foo } = LazyController.use();
-
-  function barIsBaz(){
-    set.bar = "baz"
-  }
-
-  return (
-    <h1 onClick={barIsBaz}>
-      Foo is {foo} but click here to update bar!
-    </h1>
-  )
-}
-```
-
-> Here, unlike regular use, `.use()` will not bother to update `LazyComponent` when `.bar` does, because it is only subscribes to `.foo` here. 
-
-<br/>
-
-## Automatic subscription
-
-Instances of `.use()` can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of any given component they're hooked into.
-
-> That's why, in [the refactor]() of `FunActivity`, we didn't need to hint with underscores anymore.
-
-**NOTE**: This does mean that it's generally recommended to always destructure. If a property is not accessed every render (within an `if` statement or ternary), it may not be detected!
-
-<br/>
-
-## Explicit subscription
-
-There are a number of helper methods you can call to specify which properties you wish to watch.
-
-> if you have constructor arguments chain after `use(...)`, if not you can also call a `"useVariant"` to keep things clean.
-
-<br/>
-
-### `.on()`  `.useOn()`
-
-Declare properties you want to do want to watch, in addition to inferred properties.
-
-```js
-const View = (props) => {
-  const { set, foo } = Controller.use(props).on("bar");
-  return foo && (
-    <span>{set.bar}</span>
-  );
-}
-```
-> This will refresh when either `foo` or `bar` change, even if `foo` starts out false.
-
-<br/>
-
-### `.only()`  `.useOnly()`
-Declare the properties you wish to renew for. This will skip automatic inference.
-
-```js
-const View = () => {
-  const control = Controller.useOnly("foo", "bar");
-  // ...
-}
-```
-
-<br/>
-
-### `.not()`  `.useExcept()`
-
-Declare properties you want to exclude. *May also be chained with `on()`*
-
-```js
-const View = () => {
-  const { foo, bar } = Controller.useExcept("bar");
-  return <span>{foo}</span>;
-}
-```
-> This will only update when `foo` is updated, even though `bar` is definitely accessed.
-
-<br/>
-
-### `.once()`  `.useOnce()`
-
-Will disable all but explicit `.refresh()` from this particular controller.
-
-```js
-const View = () => {
-  const { foo, bar } = Controller.useOnce("bar");
-  return false;
-}
-```
-> This generates state, but never automatically updates.
-
-
-
-<!--
-
-### We can very easily translate our previous example and build from there.
+## Work seamlessly with events, callbacks, and `async`
 
 ```jsx
 class StickySituation extends Control {
@@ -521,7 +543,7 @@ class StickySituation extends Control {
   surname = "bond";
 
   didMount(){
-    this._timer = 
+    this.timer = 
       setInterval(() => {
         const remains = this.remaining -= 1
         if(remains == 0)
@@ -534,38 +556,35 @@ class StickySituation extends Control {
   }
 
   cutTheDrama(){
-    clearInterval(this._timer);
+    clearInterval(this.timer);
   }
 
-  getSomebodyElse(){
-    fetch("https://randomuser.me/api/")
-    .then(res => res.json())
-    .then(data => data.results[0])
-    .then(recruit => {
-      this.surname = recruit.name.last
-    })
+  getSomebodyElse = async () => {
+    const res = await fetch("https://randomuser.me/api/");
+    const data = await res.json();
+    const recruit = data.results[0];
+
+    this.surname = recruit.name.last;
   }
 }
 ```
 
-Keeping the **M**, **V**, and **C** nice and separate.
-
 ```jsx
 const ActionSequence = () => {
-  const agent = StickySituation.use();
+  const { remaining, surname, getSomebodyElse } = StickySituation.use();
 
-  if(agent.remaining == 0)
+  if(remaining == 0)
     return <h1>🙀💥</h1>
 
   return (
     <div>
-      <div>Agent <b>{agent.surname}</b> we need you to diffuse the bomb!</div>
+      <div>Agent <b>{surname}</b> we need you to diffuse the bomb!</div>
       <div>
-        If you can't diffuse it in {agent.remaining} seconds, the cat may or may not die!
+        If you can't diffuse it in {remaining} seconds, the cat may or may not die!
       </div>
       <div>
         But there is time! 
-        <u onClick={agent.getSomebodyElse}>
+        <u onClick={getSomebodyElse}>
           Tap another agent
         </u> 
         if you think they can do it.
@@ -577,63 +596,31 @@ const ActionSequence = () => {
 
 <br/>
 
-# Sidebar: `use()` also accepts an object
+<h1 id="property-api">Property API</h1>
 
-If you prefer to prepare your initial values, without anything fancy, you can do that too.<br/>
-This can be especially useful for situations with closures or [HOC's](https://reactjs.org/docs/higher-order-components.html).
+Set behavior for certain methods on classes consumed by `use()` or extending `Controller`.
 
-> *Just don't give `use()` an object literal.*<br/>
-> *It will get regenerated every render!* 
+While standard practice is for `use` to take all methods (and bind them), all properties (and watch them), there are special circumstances to be aware of. <br /><br />
 
-
-```jsx
-const values = {
-  name: "Bob"
-}   
-
-const Component = () => {
-  const state = use(values);
-
-  return (
-    <div
-      onClick = {() => {
-        state.name = "Robert"
-      }}>
-      Hello {state.name}
-    </div>
-  )
-}
-```
-
-Keep in mind updated values are stored on the given object. This can be helpful but only in particular use cases.
-
--->
-
-<!--
-
-## Special Entries
-
-While standard practice is for `use` to take all methods (and bind them), all properties (and watch them), there are special circumstances to be aware of.
 
 ### Properties
 
-#### `set`
-- Not to be confused with setters.
-- `state.set` always returns a reference to `state`
+#### `set` & `get`
+- Not to be confused with setters / getters.
+- `state.set` returns a circular reference to `state`
 - this is useful to access your state object when destructuring
 
-<!--
-
 #### `Arrays`
-- if a property is an array, it will be forwarded to your components as a `ReactiveArray` which may also trigger a render on mutate.
+- if a property is an array, it will be forwarded to your components as a special `ReactiveArray` which can also trigger a render on mutate.
 
 
 #### `_anything`
-- if a key starts with an underscore it will not trigger a refresh when overwritten (or carry any overhead to do so). No special conversions will happen either. It's a shorthand for "private" keys which don't interact with the component.
+- if a key starts with an underscore it will not trigger a refresh when overwritten (or carry any overhead to do so). No special conversions will happen. It's a shorthand for "private" keys which don't interact with the component.
 
 #### `Anything defined post-constructor`
 - important to notice that `use()` can only detect properties which exist (and are enumerable) at time of creation. If you create them after, they're effectively ignored.
 
+<br />
 
 ### Reserved methods (`use` will define them)
 
@@ -651,8 +638,9 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 - setting value is optional, if absent, `key` simply begins watching.
 > Not really recommended after initializing, but can come in handy.
 
+<br />
 
-### LifeCycle Methods (`use` will call them)
+<h3 id="lifecycle-list">LifeCycle Methods (<code>use</code> will call them)</h3>
 
 #### `didMount(): void`
 - `use()` will call this while internally running `useEffect(fn, [])` for itself.
@@ -660,22 +648,102 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 #### `willUnmount(): void`
 - `use()` will call this before starting to clean up.
 
-<br/>
+#### `didHook(): void`
+- Called every render. A way to pipe in data from other hooks.
+
+#### `willHook(): void`
+- Called every render. However `this` references actual state only on first render. <br/>
+  Useful for grabbing data without re-evaluating a property every render. (e.g. `useContext`)
+
+<br/> 
+
+<h1 id="subscribe-api">Subscription API</h1>
+
+Chain after `use(...)` or your class to control what values explicitly will trigger a new render if-changed.
+
+> if you have constructor arguments chain after `use(...)` or `get()`, <br />
+> if not you can also call a `"useX"` / `"getX"` for brevity.
 
 <br/>
 
+#### `.use().once()` / `.useOnce()`
+
+Will disable all but explicit `.refresh()` from this particular controller.
+
+```js
+const View = () => {
+  const { foo, bar } = Controller.useOnce("bar");
+
+  return false;
+}
+```
+> This generates state, but never automatically updates.
+
+<br/>
+
+#### `.use().on()` / `.useOn()`
+
+Declare properties you want to do want to watch, in addition to any inferred properties.
+
+```js
+const View = (props) => {
+  const state = Controller.use(props).on("bar");
+
+  return state.foo && (
+    <span>{state.bar}</span>
+  );
+}
+```
+> This will refresh when either `foo` or `bar` change, even if `foo` starts out false.
+
+<br/>
+
+#### `.use().only()` / `.useOnly()`
+
+Declare the properties you wish to renew for. This will skip automatic inference.
+
+```js
+const View = () => {
+  const control = Controller.useOnly("foo", "bar");
+  // ...
+}
+```
+
+<br/>
+
+#### `.use().not()` / `.useExcept()`
+
+Declare properties you want to exclude. *May also be chained with `on()`*
+
+```js
+const View = () => {
+  const { foo, bar } = Controller.useExcept("bar");
+
+  return <span>{foo}</span>;
+}
+```
+> This will only update when `foo` is updated, even though `bar` is definitely accessed.
+
+<br/>
+<br/>
+
+# Live demos
+
+<br/>
+
+Try it for yourself! Demo project is in the `/examples` directory with a series of examples you can launch, browse through and modify.
+
+```bash
+git clone https://github.com/gabeklein/use-controller.git
+cd use-controller
+npm install
+npm start
+```
+
+<br/>
 
 ### 🚧 More ideas are currently under construction, so stay tuned! 🏗
 
--->
-
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
 <br/>
 
 # License
