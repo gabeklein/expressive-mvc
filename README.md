@@ -48,7 +48,7 @@
 
 <h2 id="overview-section">Overview</h2>
 
-With this you can seamlessly create and apply ES6 classes as a model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is simple, to watch all properties in an instance of some class, and trigger renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
+Seamlessly create and apply ES6 classes as a model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is simple, to watch all properties in an instance of some class, and trigger renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
 
 For this, you have the general-purpose `use()` hook, which can apply any class, and `Controller`, an inheritable abstract-class with several, more specialized hooks as static methods.
 
