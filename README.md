@@ -48,11 +48,11 @@
 
 <h2 id="overview-section">Overview</h2>
 
-Seamlessly create and apply ES6 classes as a model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is simple, to watch all properties in an instance of some class, and trigger renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
+Seamlessly create and apply ES6 classes as a model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is pretty simple, to watch all properties in an instance of some class, and trigger a render wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
 
-For this, you have the general-purpose `use()` hook, which can apply any class, and `Controller`, an inheritable abstract-class with several, more specialized hooks as static methods.
+For this, you have the general-purpose `use()` hook, which can apply any class, and `Controller`, an inheritable abstract-class with several more specialized hooks as its static methods.
 
-When you call any of these hooks in a component, a reference to a control instance is returned, bound to your mounted component. It contains current state, usable to elements, and changes to that object are sent to the component by triggered renders, where deemed necessary. 
+When any of these hooks are called in a component, a reference to a controller is returned, bound to that mounted component. It contains current state, usable for rendering, while changes to that object are reflected by triggering a new render, where deemed necessary. 
 
 This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
 
@@ -80,7 +80,7 @@ import { use, Controller } from "react-use-controller";
 There are two ways to use a controller, supply any class to the `use` hook or [extend one with `Controller`](#controller-section). <br/>
 Both ways behave pretty much the same, though extending has some key benefits.
 
-> It is generally recommended to extend but, for simple models, `use` is best for its brevity.
+> It is generally recommended you extend but, for simple models, `use` is best for its brevity.
 
 <br/>
 
@@ -91,7 +91,7 @@ Let's make a stateful counter.
 ```jsx
 import { use } from "react-use-controller";
 
-/* Make a class with some properties. They will be tracked for updates. */
+// Make a class with some properties. They will be tracked for updates. 
 class CountControl {
   number = 1
 }
@@ -293,7 +293,7 @@ Check them out in [Subscription API](#subscription-api) section. -->
 
 <br/>
 
-<h1 href="controller-section">The <code>Controller</code> superclass</h1>
+<h1 id="controller-section">The <code>Controller</code> superclass</h1>
 
 While you get a lot from `use()` and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
 
