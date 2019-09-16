@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  Easy to use state controllers, turning javascript classes into react super-hooks.
+  Turning plain-old classes into react super-hooks.
 </p>
  
 <p align="center">
@@ -13,24 +13,26 @@
 </p>
 
 <br/>
+
 <p align="center">
-  <b>Use any class as a hook-based view controller</b><br/>
-  with values, methods, and even some life-cycles ones to control components.
+  <b>Use any class as a hook-based model,</b><br/>
+  with values, actions, and lifecycle methods  to control your components.
   <p align="center">
-  The <code>use()</code> hook refreshes your components as needed, for any data.<br/>
-  When values update your component will too.<br/>
+  Controller hooks dispatch renders, as needed, for any data.<br/>
+  When values change your components will too.<br/>
 </p>
 
 ### Contents 
 
+• **[Overview](#overview-section)** <br/>
 • **[Install and Import](#install-section)**
 
 **[`use`](#started-section) hook (Simple)**
-  - [Basic Controller](#concept-basic)
+  - [Basics](#concept-basic)
   - [Methods](#concept-method)
   - [Lifecycle](#concept-lifecycle)
   - [Destructuring](#concept-destruct)
-  - [Debouncing](#concept-debounce)
+  - [Auto Debouncing](#concept-debounce)
   - [Lazy Updating](#concept-lazy)
 
 **[`Controller`](#controller-section) (Advanced)**
@@ -44,9 +46,19 @@
 
 <br/>
 
-<h2 id="install-section">Installation</h2>
+<h2 id="overview-section">Overview</h2>
 
-<br />
+With this you can seamlessly create and apply ES6 classes as a model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is simple, to watch all properties in an instance of some class, and trigger renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
+
+For this, you have the general-purpose `use()` hook, which can apply any class, and `Controller`, an inheritable abstract-class with several, more specialized hooks as static methods.
+
+When you call any of these hooks in a component, a reference to a control instance is returned, bound to your mounted component. It contains current state, usable to elements, and changes to that object are sent to the component by triggered renders, where deemed necessary. 
+
+This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
+
+<br/>
+
+<h2 id="install-section">Installation</h2>
 
 Install with your preferred package manager
 ```bash
@@ -59,38 +71,38 @@ Import and use in your react apps.
 import { use, Controller } from "react-use-controller";
 ```
 
-> **Note:** `Controller` is also the default export
+> **Note:** `Controller` can also be imported as default
 
 <br/>
 
 <h1 id="started-section">Getting Started</h1>
 
-There are two ways to use a view controller, supply any class to the `use` hook or [extend it with `Controller`](#controller-section). <br/>
+There are two ways to use a controller, supply any class to the `use` hook or [extend one with `Controller`](#controller-section). <br/>
 Both ways behave pretty much the same, though extending has some key benefits.
 
-> It is generally recommended to extend but, for simple controllers, `use` is best for its brevity.
+> It is generally recommended to extend but, for simple models, `use` is best for its brevity.
 
 <br/>
 
 <h2 id="concept-simple">Simplest use-case</h2>
 
-Let's make a stateful counter component.
+Let's make a stateful counter.
 
 ```jsx
 import { use } from "react-use-controller";
 
-/* Put together any class with as many values as you want. 
- * They will be tracked for updates and trigger a render as needed. */
+/* Make a class with some properties. They will be tracked for updates. */
 class CountControl {
   number = 1
 }
 
 const KitchenCounter = () => {
-  /* Pass your class to `use()` it will create and return a new instance, 
-   * bound to your component's instance as its controller. */
+  /* Pass your class to use(); it will create and return a new instance, 
+   * bound to your component's instance as its model or "state". */
   const state = use(CountControl);
 
-  /* Simply set new values to trigger a render. */
+  // Setting new values to its properties will trigger a render in order
+  // to keep synced.     ⌄               ⌄
   return (
     <Row>
       <Button
@@ -118,7 +130,7 @@ class CountControl {
   number = 1
 
   /* We can edit state directly using `this`.
-   * Notice these are arrow functions and thus are bound */
+   * Notice these are arrow functions, and thus bound. */
   increment = () => this.number++;
   decrement = () => this.number--;
 }
@@ -126,10 +138,11 @@ class CountControl {
 
 ```jsx
 const KitchenCounter = () => {
-  /* You can destructure for cleaner code, */
+  /* You can use destructuring too, */
   const { number, decrement, increment } = use(CountControl);
 
-  /* and pass bound-callbacks directly from the controller. */
+  // and pass bound callbacks directly from the controller
+  //                   ⌄       ⌄
   return (
     <Row>
       <Button onClick={decrement}>{"-"}</Button>
@@ -144,7 +157,7 @@ const KitchenCounter = () => {
 
 <h2 id="concept-lifecycle">Lifecycle methods</h2>
 
-The `use()` hook will automatically call built-in [lifecycle helper methods](#lifecycle-list) when appropriate.
+The `use()` hook will automatically call defined [lifecycle hooks](#lifecycle-list) when appropriate.
 ```jsx
 import React from "react";
 
@@ -182,9 +195,9 @@ const KitchenTimer = () => {
 
 <h2 id="concept-destruct">Destructuring</h2>
 
-Not only can you destructure easily enough, with two reserved keys `get` and `set`, we can still retrieve and update values after doing so.
+While destructuring, with two reserved keys `get` and `set`, we can still retrieve and update values after doing so.
 
-> Both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
+> Not to be confused with the keywords. As named properties both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
 
 ```jsx
 const AboutMe = () => {
@@ -203,7 +216,7 @@ const AboutMe = () => {
 }
 ```
 
-> See what we did there? 🤔
+> See what we did there? 😎
 
 <br/>
 
@@ -217,7 +230,7 @@ class ZeroStakesGame {
   bar = "baz"
   baz = "foo"
 
-  shuffle(){
+  shuffle = () => {
     this.foo = "???"
     this.bar = "foo"
     this.baz = "bar"
@@ -245,9 +258,9 @@ const MusicalChairs = () => {
 
 <h2 id="concept-lazy">Subscription based "lazy" updating</h2>
 
-Controllers uses a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are accessed on the first render.
+Controllers use a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are accessed on the first render.
 
-> Here `use` will not update `LazyComponent` when `bar` does change, because it *seems* to only use `foo` here. 
+> Here `LazyComponent` will not update when `bar` does change, because it *seems* to only access `foo` here. 
 
 ```jsx
 class FooBar {
@@ -267,16 +280,16 @@ const LazyComponent = () => {
 }
 ```
 
-### Automatic subscription
+### Automatic inference 
 
 Instances of a controller can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of a component they hook into.
 
 > **Recommended**: While `use` cannot read your functions, destructuring by default is a useful way to get consistent behavior. If a property is not accessed on initial render render (being within an `if` statement or ternary), it could fail to update as expected.
 
-### Explicit subscription
+<!-- ### Explicit subscription
 
 There are also a number of helper methods you can call to specify which properties you wish to watch. <br/>
-Check them out in [Subscription API](#subscription-api) section.
+Check them out in [Subscription API](#subscription-api) section. -->
 
 <br/>
 
@@ -285,14 +298,14 @@ Check them out in [Subscription API](#subscription-api) section.
 While you get a lot from `use()` and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
 
 - You can pass arguments to the constructor
-- Type inferences are maintained, making type-checking a lot better
+- Type are maintained, making inference a lot better
 - Explicit subscription based rendering
-- Generate a linked `Provider`, making state accessible anywhere.
-- An optional error-boundary (Coming Soon)
+- Ability to create a `Provider`, making state accessible anywhere.
+- An optional error-boundary with the use of a provider.
 
 <br/>
 
-> To do it this way, rather than passing a class into `use`, extend it from `Controller` and call any of the static-method hooks.
+> To hook this way, rather than passing a class into `use`, extend `Controller` and call the attached `.use()` method.
 
 ```jsx
 import Controller from "react-use-controller"
@@ -308,13 +321,13 @@ const Component = () => {
   return <div>{value}</div>;
 }
 ```
-> `.use` will hook your component and construct state only once, the same as standard `use` would.
+> `.use` will hook to your component and construct state only once per mount, same as a standard `use` would.
 
 <br/>
 
-<h2 id="concept-constructor">Passing arguments to constructor</h2>
+<h2 id="concept-constructor">Passing arguments to your constructor</h2>
 
-The static method `use()` supplied by `Controller` will pass its arguments to its constructor, while creating a new instance. 
+Method `use(...)` will pass its own arguments to the constructor while creating a new instance. 
 
 ```typescript
 /* typescript */
@@ -322,14 +335,14 @@ The static method `use()` supplied by `Controller` will pass its arguments to it
 class Control extends Controller {
   value: number;
 
-  constructor(init: number){
-    this.value = init;
+  constructor(props: MyComponentProps){
+    this.value = props.startWith;
   }
 }
 ```
 ```jsx
-const Component = ({ initial }) => {
-  const { value } = Control.use(initial);
+const MyComponent = (props) => {
+  const { value } = Control.use(props);
 
   return <div>{value}</div>;
 }
