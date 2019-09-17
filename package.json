@@ -1,6 +1,6 @@
 {
   "name": "react-use-controller",
-  "version": "1.0.0-beta.5",
+  "version": "1.0.0-beta.6",
   "description": "Easy to use state controllers using classes and hooks",
   "license": "MIT",
   "keywords": [
@@ -30,11 +30,12 @@
     "prepublish": "npm run build",
     "prebuild": "rm -rf lib/"
   },
-  "dependencies": {
+  "peerDependencies": {
     "react": "^16.8.0"
   },
   "devDependencies": {
-    "@types/react": "^16.9.1",
+    "react": "^16.8.0",
+    "@types/react": "^16.8.0",
     "typescript": "^3.5.3"
   }
 }
