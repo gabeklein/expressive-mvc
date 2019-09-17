@@ -315,5 +315,6 @@ declare class Controller {
 
 export { 
     use,
+    Controller,
     Controller as default
 }
