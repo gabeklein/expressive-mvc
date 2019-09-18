@@ -11,27 +11,61 @@ const {
 
 const { random } = Math;
 
-export const NEW_SUB = Symbol("init_subscription");
-export const UNSUBSCRIBE = Symbol("delete_subscription");
-export const SUBSCRIBE = Symbol("activate_subscription");
-
 const TOGGLEABLE = /^is[A-Z]/;
 
-export function Dispatch(this: Controller){
-  const mutable = {} as any;
-  const register = {} as BunchOf<Set<UpdateTrigger>>;
+const NEW_SUB = "__init_subscription__";
+const UNSUBSCRIBE = "__delete_subscription__";
+const SUBSCRIBE = "__activate_subscription__";
 
-  const pending = new Set<string>();
+interface PolySet<T> extends Array<T> {
+  new<T>(): PolySet<T>;
+  add(item: T): void;
+  delete(item: T): void;
+  clear(): void;
+}
+
+function PolySet<T>(){
+  const content = [] as T[];
+
+  define(content, "add", {
+    value: (x: T) => {
+      if(content.indexOf(x) < 0)
+        content.push(x);
+    }
+  })
+
+  define(content, "remove", {
+    value: (x: T) => {
+      const i = content.indexOf(x);
+      if(i >= 0)
+        content.splice(i, 1);
+    }
+  })
+
+  define(content, "clear", {
+    value: () => {
+      content.splice(0, content.length);
+    }
+  })
+
+  return content as PolySet<T>;
+}
+
+function Dispatch(this: Controller){
+  const mutable = {} as any;
+  const register = {} as BunchOf<PolySet<UpdateTrigger>>;
+
+  const pending = PolySet<string>();
   let isPending = false;
 
-  for(const key in this){
+  for(const key of Object.getOwnPropertyNames(this)){
     const d = describe(this, key)!;
 
     if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
       continue;
 
     mutable[key] = d.value;
-    register[key] = new Set();
+    register[key] = PolySet();
 
     define(this, key, {
       get: () => mutable[key],
@@ -107,7 +141,7 @@ export function Dispatch(this: Controller){
   }
 
   function dispatch(){
-    const inform = new Set<UpdateTrigger>();
+    const inform = PolySet<UpdateTrigger>();
     for(const key of pending)
       for(const sub of register[key] || [])
         inform.add(sub);
@@ -124,12 +158,12 @@ function SpyController(
   source: Controller, 
   hook: UpdateTrigger,
   mutable: BunchOf<any>,
-  register: BunchOf<Set<UpdateTrigger>>
+  register: BunchOf<PolySet<UpdateTrigger>>
 ): SpyController {
 
   const Spy = create(source) as any;
-  let watch = new Set<string>();
-  let exclude: Set<string>;
+  let watch = PolySet<string>();
+  let exclude: PolySet<string>;
 
   for(const key in mutable)
     define(Spy, key, {
@@ -157,7 +191,7 @@ function SpyController(
     for(const key of watch){
       let set = register[key];
       if(!set)
-        set = register[key] = new Set();
+        set = register[key] = PolySet();
       set.add(hook);
     }
   }
@@ -168,7 +202,7 @@ function SpyController(
   }
 
   function bail(...keys: string[]){
-    const watch = new Set<string>();
+    const watch = PolySet<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
@@ -178,7 +212,7 @@ function SpyController(
   }
 
   function except(...keys: string[]){
-    exclude = new Set<string>();
+    exclude = PolySet<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         exclude.add(key);
@@ -192,3 +226,5 @@ function SpyController(
     return Spy;
   }
 }
+
+export { Dispatch, SUBSCRIBE, UNSUBSCRIBE, NEW_SUB }

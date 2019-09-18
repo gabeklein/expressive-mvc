@@ -17,7 +17,7 @@ const {
   getPrototypeOf: proto
 } = Object;
 
-const RESERVED = new Set([ 
+const RESERVED = [ 
   "add",
   "constructor", 
   "didMount", 
@@ -32,7 +32,7 @@ const RESERVED = new Set([
   "set",
   "willUnmount", 
   "willHook"
-]);
+];
 
 function useSimpleController(init: any, ...args: any[]){
   const control = useController(init, args, Object.prototype);
@@ -101,7 +101,7 @@ function bindMethods(
   prototype = {};
   for(const methods of chain){
     for(const key of keysIn(methods)){
-      if(RESERVED.has(key))
+      if(RESERVED.indexOf(key) >= 0)
         continue;
       const { value } = describe(methods, key)!;
       if(typeof value === "function")
