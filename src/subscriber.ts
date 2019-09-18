@@ -4,8 +4,8 @@ import { Controller } from './controller';
 import { NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 
 export interface SpyController extends Controller {
-  [UNSUBSCRIBE]: VoidFunction;
-  [SUBSCRIBE]: VoidFunction;
+  [UNSUBSCRIBE]: () => void;
+  [SUBSCRIBE]: () => void;
 };
 
 export function useSubscriber<T extends Controller | SpyController>

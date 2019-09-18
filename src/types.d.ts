@@ -15,6 +15,6 @@ export interface LiveState<State = any> {
 }
 
 export interface Lifecycle {
-  willUnmount?: VoidFunction
-  didMount?: VoidFunction
+  willUnmount?: () => void
+  didMount?: () => void
 }

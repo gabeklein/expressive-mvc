@@ -126,8 +126,8 @@ function bindMethods(
 
 export function invokeLifecycle(
   target: any,
-  didMount?: VoidFunction, 
-  willUnmount?: VoidFunction){
+  didMount?: () => void, 
+  willUnmount?: () => void){
 
   if(didMount)
     didMount.call(target);
