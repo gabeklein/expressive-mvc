@@ -24,8 +24,10 @@ function ownContext<T extends Controller>(of: T){
   let context;
 
   for(const [ _constructor, _context ] of CONTEXT_ALLOCATED)
-    if(constructor === _constructor)
+    if(constructor === _constructor){
       context = _context;
+      break; 
+    }
 
   if(!context){
     context = createContext(of.prototype);
