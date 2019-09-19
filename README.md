@@ -21,34 +21,37 @@
   Controller hooks will trigger renders, as needed, for any data.<br/>
   When properties change your components will too.<br/>
 </p>
+<br/>
 
 ### Contents 
 
-- **[Overview](#overview-section)** <br/>
-- **[Install and Import](#install-section)**
+&emsp; • **[Overview](#overview-section)** <br/>
+&emsp; • **[Install and Import](#install-section)**
 
-**[`use`](#started-section) hook (Simple)**
-  - [Basics](#concept-basic)
-  - [Methods](#concept-method)
-  - [Lifecycle](#concept-lifecycle)
-  - [Destructuring](#concept-destruct)
-  - [Basic Composing](#concept-compose)
-  - [Auto Debounce](#concept-debounce)
-  - [Lazy Updating](#concept-lazy)
-  - [Advanced Async](#concept-async)
+**[`use`](#started-section) hook (Simple)** <br/>
 
-**[`Controller`](#controller-section) (Advanced)**
-  - [Constructor Arguments](#concept-constructor)
-  - [TypeScript](#concept-typescript)
-  - [Context](#concept-context)
+  &ensp; • [Basics](#concept-basic) <br/>
+  &ensp; • [Methods](#concept-method) <br/>
+  &ensp; • [Lifecycle](#concept-lifecycle) <br/>
+  &ensp; • [Destructuring](#concept-destruct) <br/>
+  &ensp; • [Basic Composing](#concept-compose) <br/>
+  &ensp; • [Auto Debounce](#concept-debounce) <br/>
+  &ensp; • [Lazy Updating](#concept-lazy) <br/>
+  &ensp; • [Advanced Async](#concept-async) <br/>
 
-**Concepts**
-  - [Using less `useState`](#concept-compare)
-  - [Basic Composition](#concept-compose)
+**[`Controller`](#controller-section) (Advanced)** <br/>
 
-**API**
-  - [Properties](#property-api)
-  - [Subscriber](#subscribe-api)
+  &ensp; • [Constructor Arguments](#concept-constructor) <br/>
+  &ensp; • [TypeScript](#concept-typescript) <br/>
+  &ensp; • [Context](#concept-context) <br/>
+
+**Concepts** <br/>
+  &ensp; • [Using less `useState`](#concept-compare) <br/>
+  &ensp; • [Basic Composition](#concept-compose) <br/>
+
+**API** <br/>
+  &ensp; • [Properties](#property-api) <br/>
+  &ensp; • [Subscriber](#subscribe-api)
 
 <br/>
 
@@ -165,7 +168,7 @@ const KitchenCounter = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup>
 
 
 > With this you can write the most complex functional-components while maintaining the key benefits of a stateless component (easier on the eyes).
@@ -205,7 +208,7 @@ const KitchenTimer = () => {
   return <Box>{state.elapsed}</Box>;
 }
 ```
-<a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup>
 
 <br />
 
@@ -234,7 +237,7 @@ const AboutMe = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sup>
 
 > See what we did there? 😎
 
@@ -277,7 +280,7 @@ const MusicalChairs = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup>
 
 > Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
 
@@ -307,7 +310,7 @@ const LazyComponent = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sup>
 
 ### Automatic inference 
 
@@ -385,7 +388,7 @@ const ActionSequence = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -417,7 +420,7 @@ const Component = () => {
   return <div>{value}</div>;
 }
 ```
-<a href="https://codesandbox.io/s/example-controller-class-xutgf">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-controller-class-xutgf">View in CodeSandbox</a></sup>
 
 > `.use` will hook to your component and construct state only once per mount, same as a standard `use` would.
 
@@ -446,7 +449,7 @@ const MyComponent = (props) => {
   return <div>{value}</div>;
 }
 ```
-<a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -497,7 +500,7 @@ const PaintDrying = ({ alreadyMinutes }) => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -563,7 +566,7 @@ const InnerBar = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup>
 
 > This makes context kind of easy a little bit.
 
@@ -644,7 +647,7 @@ const WhatsUp = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a></sup>
 
 > With a controller, we can do a lot better on scope. Here we've separated out our model (state) from the view (component) which is pretty nice.
 
@@ -687,7 +690,7 @@ Despite that intent, there is nothing preventing you from calling `use` more tha
     )
   }
 ```
-<a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a>
+<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -774,7 +777,7 @@ Chain after `use(...)` or `get()` to control what values explicitly will trigger
 
 <br/>
 
-<big><b><code>once</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+<big><b><code>once</code></b></big>&ensp;-&ensp; 
 `.use().once()` / `.useOnce()` / `.getOnce()`
 
 Will disable all but explicit `.refresh()` from this particular controller.
@@ -790,7 +793,7 @@ const View = () => {
 
 <br/>
 
-<big><b><code>on</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+<big><b><code>on</code></b></big>&ensp;-&ensp; 
 `.use().on()` / `.useOn()` / `.getOn()`
 
 Declare properties you want to do want to watch, in addition to any inferred properties.
@@ -808,7 +811,7 @@ const View = (props) => {
 
 <br/>
 
-<big><b><code>only</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+<big><b><code>only</code></b></big>&ensp;-&ensp; 
 `.use().only()` / `.useOnly()` / `.getOnly()`
 
 Declare the properties you wish to renew for. This will skip automatic inference.
@@ -822,7 +825,7 @@ const View = () => {
 
 <br/>
 
-<big><b><code>not</code></b> / <b><code>except</code></b> </big>&nbsp;&nbsp;-&nbsp;&nbsp;
+<big><b><code>not</code></b> / <b><code>except</code></b> </big>&ensp;-&ensp;
 `.use().not()` / `.useExcept()` / `.getExcept()`
 
 Declare properties you want to exclude. *May also be chained with `on()`*
