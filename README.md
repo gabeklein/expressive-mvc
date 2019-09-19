@@ -30,7 +30,7 @@
 
 **[`use`](#started-section) hook (Simple)** <br/>
 
-  &ensp; • [Basics](#concept-basic) <br/>
+  &ensp; • [Basics](#concept-simple) <br/>
   &ensp; • [Methods](#concept-method) <br/>
   &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Destructuring](#concept-destruct) <br/>
@@ -49,7 +49,8 @@
   &ensp; • [Auto Debounce](#concept-debounce) <br/>
 
 **API** <br/>
-  &ensp; • [Properties](#property-api) <br/>
+  &ensp; • [Hooks](#hooks-api) <br/>
+  &ensp; • [Controller](#property-api) <br/>
   &ensp; • [Subscriber](#subscribe-api)
 
 <br/>
@@ -242,46 +243,6 @@ const AboutMe = () => {
 
 <br/>
 
-<h2 id="concept-compose">Basic composition</h2>
-
-There is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
-
-```js
-  class PingController {
-    value = 1
-  }
-  
-  class PongController {
-    value = 2
-  }
-```
-
-> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
-
-```jsx
-  const ControllerAgnostic = () => {
-    const ping = use(PingController);
-    const pong = use(PongController);
-
-    return (
-      <div>
-        <div
-          onClick={() => { ping.value += pong.value }}>
-          Ping's value is ${ping.value}, click me to add in pong!
-        </div>
-        <div
-          onClick={() => { pong.value += pong.value }}>
-          Pong's value is ${pong.value}, click me to add in ping!
-        </div>
-      </div>
-    )
-  }
-```
-<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
-
-<br/>
-
-
 <h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
 
 ```jsx
@@ -346,6 +307,45 @@ const ActionSequence = () => {
 }
 ```
 <sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
+
+<br/>
+
+<h2 id="concept-compose">Basic composition</h2>
+
+There is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
+
+```js
+  class PingController {
+    value = 1
+  }
+  
+  class PongController {
+    value = 2
+  }
+```
+
+> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
+
+```jsx
+  const ControllerAgnostic = () => {
+    const ping = use(PingController);
+    const pong = use(PongController);
+
+    return (
+      <div>
+        <div
+          onClick={() => { ping.value += pong.value }}>
+          Ping's value is ${ping.value}, click me to add in pong!
+        </div>
+        <div
+          onClick={() => { pong.value += pong.value }}>
+          Pong's value is ${pong.value}, click me to add in ping!
+        </div>
+      </div>
+    )
+  }
+```
+<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -693,8 +693,55 @@ const MusicalChairs = () => {
 > Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
 
 <br/>
+<br/>
 
-<h1 id="property-api">Property API</h1>
+<h1>API</h1>
+<br/>
+
+<h2 id="hooks-api">Hooks</h2>
+
+There are a number of hooks you can you use create a `ModelController`, all references will remain constant between renders.
+
+
+#### `use()`
+
+- `Class` <br/>
+Controls component with given class as its ModelController.
+
+- `Function` <br/>
+Controlled component will execute function and returned object will be used as the Model.
+
+- `Object` <br/>
+Controlled component will watch object as its Model directly.
+
+<br/>
+
+#### `Controller.use()`
+Create and apply instance of type *Controller* return reference. 
+<br/>
+
+- `get Provider()` <br/>
+When accessed, a context provider will be retroactively created, keyed to the given
+
+- `on()` / `only()` / `not()` / `once()`   <br/>
+See [Subscriber API](subscribe-api)
+
+<br/>
+
+#### `Controller.create()`
+Create controller and directly return `Provider` keyed to proper context.
+
+<br/>
+
+#### `Controller.get()`
+Find nearest instance of `ModelController` keyed to typeof *Controller*.
+
+- `on()` / `only()` / `not()` / `once()`   <br/>
+See [Subscriber API](subscribe-api)
+
+<br/>
+
+<h2 id="property-api">ModelController</h2>
 
 Set behavior for certain methods on classes consumed by `use()` or extending `Controller`.
 
@@ -767,7 +814,7 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 <br/> 
 
-<h1 id="subscribe-api">Subscription API</h1>
+<h2 id="subscribe-api">Subscriber</h2>
 
 Chain after `use(...)` or `get()` to control what values explicitly will trigger a new render if-changed.
 
