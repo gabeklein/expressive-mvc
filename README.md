@@ -15,7 +15,7 @@
 <br/>
 
 <p align="center">
-  <b>Use any class as a hook-based model,</b><br/>
+  <b>Use any class as a hook based 'model-controller',</b><br/>
   with values, actions, and lifecycle methods  to control your components.
   <p align="center">
   Controller hooks will trigger renders, as needed, for any data.<br/>
@@ -49,11 +49,13 @@
 
 <h2 id="overview-section">Overview</h2>
 
-Seamlessly create and apply ES6 classes as the model [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component). The basic idea is pretty simple, to watch all properties in an instance of some class, and dispatch renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
+Seamlessly create and apply ES6 classes as the *`ModelController`* [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component) which serve as the *View*. 
 
-For this, you have the general-purpose hook `use()`, which can take a class, and `Controller`, an inheritable abstract-class with more specialized hooks as static methods.
+The basic idea is pretty simple, to watch all properties in an instance of some class and dispatch renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
 
-When any of these hooks are called in a function, a controller reference is returned, bound to the given component. It contains all the current state, used for rendering. Changes to that object are then reflected by triggering _another_ render, where deemed necessary. 
+For this, you have a general-purpose hook `use()`, which can take any class, and an inheritable abstract-class `Controller` with more specialized hooks available as static methods.
+
+When any of these hooks are called in a function, a `ModelController` reference is returned, bound to the component. It contains all current state, used for rendering. Changes to that object are then reflected by triggering a new render, where deemed necessary. 
 
 This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
 
@@ -92,7 +94,7 @@ Let's make a stateful counter.
 ```jsx
 import { use } from "react-use-controller";
 
-// Make a class with some properties. They will be tracked for updates. 
+/* Make a class with some properties. They will be tracked for updates. */ 
 class CountControl {
   number = 1
 }
@@ -102,48 +104,51 @@ const KitchenCounter = () => {
    * bound to your component's instance as its model or "state". */
   const state = use(CountControl);
 
-  // Setting new values to its properties will trigger a render in order
-  // to remain synced.   ⌄               ⌄
+  /* Setting new values to its properties will trigger a render in order
+   * to remain synced. */
   return (
-    <Row>
-      <Button
+    <div>
+      <span
         onClick={() => { state.number -= 1 }}>
-        {"-"}
-      </Button>
-      <Box>{state.number}</Box>
-      <Button 
+        {"−"}
+      </span>
+      <pre>{ state.number }</pre>
+      <span 
         onClick={() => { state.number += 1 }}>
         {"+"}
-      </Button>
-    </Row>
+      </span>
+    </div>
   )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a></sub>
 
 <br/>
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a view controller without its methods? Add some ["actions"](https://mobx.js.org/refguide/action.html) to easily abstract changes to the state.
+What's a view controller without its methods? Add some "actions" [(ala MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
 
 ```jsx
 class CountControl {
+  /* The values here can be thought of as Model. */
   number = 1
 
-  /* We can edit state directly using `this`.
-   * Notice these are arrow functions, and thus are bound. */
+  /* Any methods, which edit the model, are your Controller.*/
   increment = () => this.number++;
   decrement = () => this.number--;
 }
 ```
+
+> We can tinker with own properties as you would any class. <br/> The controller backend will handle rendering any changes. 
 
 ```jsx
 const KitchenCounter = () => {
   /* You can use destructuring too, */
   const { number, decrement, increment } = use(CountControl);
 
-  // and pass bound callbacks directly from the controller
-  //                   ⌄       ⌄
+  /* and pass bound callbacks directly from the controller */
   return (
     <Row>
       <Button onClick={decrement}>{"-"}</Button>
@@ -154,7 +159,10 @@ const KitchenCounter = () => {
 }
 ```
 
-> With this you can write even deeply stateful functional-components while keeping the benefits of stateless. 😍
+<sub><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sub>
+
+
+> With this you can write even deeply stateful functional-components while keeping a lot of the benefits of stateless.
 
 <br/>
 
@@ -167,7 +175,6 @@ import React from "react";
 class TimerControl {
   elapsed = 1;
 
-  /* Automatically called during an internal `useEffect()` step. */
   didMount(){
     this.timer = 
       setInterval(
@@ -177,11 +184,13 @@ class TimerControl {
   }
 
   willUnmount(){
-    /* oh and remember to cleanup too ♻ */
+    /* remember to cleanup too! ♻ */
     clearInterval(this.timer);
   }
 }
 ```
+
+> These, in particular, are called during an internal `useEffect()` step.
 
 ```jsx
 const KitchenTimer = () => {
@@ -190,6 +199,8 @@ const KitchenTimer = () => {
   return <Box>{state.elapsed}</Box>;
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sub>
 
 <br />
 
@@ -202,7 +213,7 @@ While destructuring, with two reserved keys `get` and `set`, we can still retrie
 ```jsx
 const AboutMe = () => {
   const {
-    set, // ⬅ a proxy for `state`
+    set, /* ⬅ a proxy for `state` */
     name
   } = use(AboutYou);
 
@@ -210,11 +221,16 @@ const AboutMe = () => {
     <div onClick = {() => {
       set.name = window.prompt("What is your name?", "John Doe");
     }}>
-      My name is {name}.
+      {name
+        ? `My name is ${name}.`
+        : "What is my name?"
+      }
     </div>
   )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sub>
 
 > See what we did there? 😎
 
@@ -222,7 +238,7 @@ const AboutMe = () => {
 
 <h2 id="concept-compose">Basic composition</h2>
 
-Generally the goal of this library is to enable the use of only one hook on a per-component basis. However, it's good to know, there is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. There's are better ways to do it, but calling multiple controllers can be a great way to separate concerns. 
+Generally the goal of this library is to allow the use of just one hook per-component. However it's good to know, there is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. There's are better ways to do it, but calling multiple controllers can be a great way to separate concerns. 
 
 ```js
   class PingController {
@@ -254,11 +270,13 @@ Generally the goal of this library is to enable the use of only one hook on a pe
   }
 ```
 
+<sub><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sub>
+
 <br/>
 
 <h2 id="concept-debounce">Automatic debouncing</h2>
 
-Rest assured. Updates you make synchronously will be batched together as a single rendered update.
+Rest assured. Changes made synchronously are batched as a single new render.
 
 ```jsx
 class ZeroStakesGame {
@@ -282,13 +300,19 @@ class ZeroStakesGame {
 const MusicalChairs = () => {
   const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
 
-  <span>Foo is {foo}'s chair!</span>
-  <span>Bar is {bar}'s chair!</span>
-  <span>Baz is {baz}'s chair!</span>
+  return (
+    <div>
+      <span>Foo is {foo}'s chair!</span>
+      <span>Bar is {bar}'s chair!</span>
+      <span>Baz is {baz}'s chair!</span>
 
-  <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
+      <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
+    </div>
+  )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sub>
 
 > Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
 
@@ -305,7 +329,8 @@ class FooBar {
   foo = "bar"
   bar = "foo"
 }
-
+```
+```jsx
 const LazyComponent = () => {
   const { set, foo } = use(FooBar);
 
@@ -317,6 +342,8 @@ const LazyComponent = () => {
   )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sub>
 
 ### Automatic inference 
 
@@ -333,7 +360,7 @@ Check them out in [Subscription API](#subscription-api) section. -->
 
 <h1 id="controller-section">The <code>Controller</code> superclass</h1>
 
-While you get a lot from `use()` and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
+While you get a lot from the `use` hook and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
 
 - You can pass arguments to the constructor
 - Type are maintained, making inference a lot better
@@ -343,7 +370,7 @@ While you get a lot from `use()` and standard (or otherwise extended) classes, t
 
 <br/>
 
-> To hook this way, rather than passing a class to `use`, extend `Controller` and call the attached `.use()` method.
+> To hook this way, rather than passing a class to `use`, extend `Controller` with it and call the available `.use()` method.
 
 ```jsx
 import Controller from "react-use-controller"
@@ -359,6 +386,9 @@ const Component = () => {
   return <div>{value}</div>;
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-controller-class-xutgf">View in CodeSandbox</a></sub>
+
 > `.use` will hook to your component and construct state only once per mount, same as a standard `use` would.
 
 <br/>
@@ -371,10 +401,11 @@ Method `use(...)` will pass its own arguments to the constructor while creating 
 /* typescript */
 
 class Control extends Controller {
-  value: number;
+  value: string;
 
-  constructor(props: MyComponentProps){
-    this.value = props.startWith;
+  constructor(startWith: string){
+    super();
+    this.value = startWith;
   }
 }
 ```
@@ -385,6 +416,8 @@ const MyComponent = (props) => {
   return <div>{value}</div>;
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sub>
 
 <br/>
 
@@ -451,6 +484,8 @@ const InnerBar = () => {
 }
 ```
 
+<sub><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sub>
+
 > This makes context kind of easy a little bit.
 
 <br/>
@@ -471,6 +506,7 @@ class FunActivity extends Controller {
   interval: number;
 
   constructor(alreadyMinutes: number = 0){
+    super();
     this.secondsSofar = 
       alreadyMinutes * 60;
 
@@ -502,12 +538,14 @@ const PaintDrying = ({ alreadyMinutes }) => {
 }
 ```
 
+<sub><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sub>
+
 <br/>
 
 <h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
 
 ```jsx
-class StickySituation extends Control {
+class StickySituation extends Controller {
   remaining = 60;
   surname = "bond";
 
@@ -520,8 +558,8 @@ class StickySituation extends Control {
   }
 
   tickTock = () => {
-    if(--this.remaining == 0)
-      cutTheDrama();
+    if(--this.remaining === 0)
+      this.cutTheDrama();
   }
 
   cutTheDrama(){
@@ -542,26 +580,29 @@ class StickySituation extends Control {
 const ActionSequence = () => {
   const { remaining, surname, getSomebodyElse } = StickySituation.use();
 
-  if(remaining == 0)
-    return <h1>🙀💥</h1>
+  if(remaining === 0)
+    return <h1>{"🙀💥"}</h1>
 
   return (
     <div>
-      <div>Agent <b>{surname}</b> we need you to diffuse the bomb!</div>
       <div>
-        If you can't diffuse it in {remaining} seconds, the cat may or may not die!
+        Agent <b>{surname}</b> we need you to diffuse the bomb!
       </div>
       <div>
-        But there is time! 
-        <u onClick={getSomebodyElse}>
-          Tap another agent
-        </u> 
-        if you think they can do it.
+        If you can't diffuse it in {remaining} seconds, 
+        the cat may or may not die!
+      </div>
+      <div>
+        <span>But there is time! </span>
+        <u onClick={getSomebodyElse}>Tap another agent</u> 
+        <span> if you think they can do it.</span>
       </div>
     </div>
   )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sub>
 
 <br/>
 <br/>
@@ -613,26 +654,24 @@ class EmotionalState {
   emotion = "meh"
   reason = "reasons"
 }
-
-const HappyTown = () => {
+```
+```jsx
+const WhatsUp = () => {
   const state = use(EmotionalState);
 
   return (
     <div>
-      <div onClick = {() => {
-        state.name = prompt("What is your name?", "John Doe");
-      }}>
+      <div onClick = {() => 
+        state.name = prompt("What is your name?", "John Doe") }>
         My name is {state.name}.
       </div>
       <div>
-        <span onClick = {() => {
-          state.emotion = "doing better"
-        }}>
-          I am currently {state.emotion} 
+        <span onClick = {() => 
+          state.emotion = "doing better" }>
+          I am currently {state.emotion}
         </span>
-        <span onClick = {() => {
-          state.reason = "hooks are cooler than my cold-brew coffee! 👓"
-        }}>
+        <span onClick = {() => 
+          state.reason = "hooks are cooler than my cold-brew coffee! 👓" }>
           , because {state.reason}.
         </span>
       </div>
@@ -640,6 +679,8 @@ const HappyTown = () => {
   )
 }
 ```
+
+<sub><a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a></sub>
 
 > With a controller, we can do a lot better on scope. Here we've separated out our model (state) from the view (component) which is pretty nice.
 
@@ -707,8 +748,16 @@ While standard practice is for `use` to take all methods (and bind them), all pr
   Useful for grabbing data without re-evaluating the properties you set in this callback every render. <br/> 
   (e.g. things from `useContext`)
 
-#### `willRender(): void`
-- Called before 
+<!--
+
+#### `willRefresh(didUpdate: Updates): void | false | Updates`
+- Called before `Controller` requests a render. <br/>
+  Passed as an argument is an object with values which triggered the refresh. <br/>
+  - If nothing is returned, update will proceed.
+  - If a new object with updates is returned, new state will reflect only those changes, and any others will be discarded.
+  - If `false` is returned the update will be canceled.
+
+-->
 
 <br/> 
 
