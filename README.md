@@ -35,9 +35,7 @@
   &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Destructuring](#concept-destruct) <br/>
   &ensp; • [Basic Composing](#concept-compose) <br/>
-  &ensp; • [Auto Debounce](#concept-debounce) <br/>
-  &ensp; • [Lazy Updating](#concept-lazy) <br/>
-  &ensp; • [Advanced Async](#concept-async) <br/>
+  &ensp; • [Async & Events](#concept-async) <br/>
 
 **[`Controller`](#controller-section) (Advanced)** <br/>
 
@@ -47,7 +45,8 @@
 
 **Concepts** <br/>
   &ensp; • [Using less `useState`](#concept-compare) <br/>
-  &ensp; • [Basic Composition](#concept-compose) <br/>
+  &ensp; • [Lazy Updating](#concept-lazy) <br/>
+  &ensp; • [Auto Debounce](#concept-debounce) <br/>
 
 **API** <br/>
   &ensp; • [Properties](#property-api) <br/>
@@ -243,87 +242,45 @@ const AboutMe = () => {
 
 <br/>
 
-<h2 id="concept-debounce">Automatic debouncing</h2>
+<h2 id="concept-compose">Basic composition</h2>
 
-Rest assured. Changes made synchronously are batched as a single new render.
+There is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
 
-```jsx
-class ZeroStakesGame {
-  foo = "bar"
-  bar = "baz"
-  baz = "foo"
-
-  shuffle = () => {
-    this.foo = "???"
-    this.bar = "foo"
-    this.baz = "bar"
-
-    setTimeout(() => {
-      this.foo = "baz"
-    }, 1000)
+```js
+  class PingController {
+    value = 1
   }
-}
+  
+  class PongController {
+    value = 2
+  }
 ```
+
+> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
 
 ```jsx
-const MusicalChairs = () => {
-  const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
+  const ControllerAgnostic = () => {
+    const ping = use(PingController);
+    const pong = use(PongController);
 
-  return (
-    <div>
-      <span>Foo is {foo}'s chair!</span>
-      <span>Bar is {bar}'s chair!</span>
-      <span>Baz is {baz}'s chair!</span>
-
-      <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
-    </div>
-  )
-}
+    return (
+      <div>
+        <div
+          onClick={() => { ping.value += pong.value }}>
+          Ping's value is ${ping.value}, click me to add in pong!
+        </div>
+        <div
+          onClick={() => { pong.value += pong.value }}>
+          Pong's value is ${pong.value}, click me to add in ping!
+        </div>
+      </div>
+    )
+  }
 ```
-<sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup>
-
-> Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
+<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
 
 <br/>
 
-<h2 id="concept-lazy">Subscription based "lazy" updating</h2>
-
-Controllers use a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are actually accessed.
-
-> Here `LazyComponent` will not update when `bar` does change, because it *seems* to only access `foo` here. 
-
-```jsx
-class FooBar {
-  foo = "bar"
-  bar = "foo"
-}
-```
-```jsx
-const LazyComponent = () => {
-  const { set, foo } = use(FooBar);
-
-  return (
-    <h1 
-      onClick={() => set.bar = "baz" }>
-      Foo is {foo} but click here to update bar!
-    </h1>
-  )
-}
-```
-<sup><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sup>
-
-### Automatic inference 
-
-Instances of a controller can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of a component they hook into.
-
-> **Recommended**: While `use` cannot read your functions, destructuring by default is a good way to get consistent behavior. If a property is not accessed on initial render render (being within an `if` statement or ternary), it could fail to update as expected. Destructuring pulls out properties no matter what, so helps in this regard.
-
-<!-- ### Explicit subscription
-
-There are also a number of helper methods you can call to specify which properties you wish to watch. <br/>
-Check them out in [Subscription API](#subscription-api) section. -->
-
-<br/>
 
 <h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
 
@@ -655,45 +612,87 @@ Add as many values as you like, and they'll stay clean and _relatively_ organize
 
 <br/>
 
-<h2 id="concept-compose">Basic composition</h2>
+<h2 id="concept-lazy">Subscription based "lazy" updating</h2>
 
-Despite that intent, there is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
+Controllers use a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are actually accessed.
 
-```js
-  class PingController {
-    value = 1
-  }
-  
-  class PongController {
-    value = 2
-  }
-```
-
-> There are better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
+> Here `LazyComponent` will not update when `bar` does change, because it *seems* to only access `foo` here. 
 
 ```jsx
-  const ControllerAgnostic = () => {
-    const ping = use(PingController);
-    const pong = use(PongController);
-
-    return (
-      <div>
-        <div
-          onClick={() => { ping.value += pong.value }}>
-          Ping's value is ${ping.value}, click me to add in pong!
-        </div>
-        <div
-          onClick={() => { pong.value += pong.value }}>
-          Pong's value is ${pong.value}, click me to add in ping!
-        </div>
-      </div>
-    )
-  }
+class FooBar {
+  foo = "bar"
+  bar = "foo"
+}
 ```
-<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
+```jsx
+const LazyComponent = () => {
+  const { set, foo } = use(FooBar);
+
+  return (
+    <h1 
+      onClick={() => set.bar = "baz" }>
+      Foo is {foo} but click here to update bar!
+    </h1>
+  )
+}
+```
+<sup><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sup>
+
+### Automatic inference 
+
+Instances of a controller can figure out what to subscribe to automatically. They do it by spying on what's **accessed on the initial render** of a component they hook into.
+
+> **Recommended**: While `use` cannot read your functions, destructuring by default is a good way to get consistent behavior. If a property is not accessed on initial render render (being within an `if` statement or ternary), it could fail to update as expected. Destructuring pulls out properties no matter what, so helps in this regard.
+
+<!-- ### Explicit subscription
+
+There are also a number of helper methods you can call to specify which properties you wish to watch. <br/>
+Check them out in [Subscription API](#subscription-api) section. -->
 
 <br/>
 
+<h2 id="concept-debounce">Automatic debouncing</h2>
+
+Rest assured. Changes made synchronously are batched as a single new render.
+
+```jsx
+class ZeroStakesGame {
+  foo = "bar"
+  bar = "baz"
+  baz = "foo"
+
+  shuffle = () => {
+    this.foo = "???"
+    this.bar = "foo"
+    this.baz = "bar"
+
+    setTimeout(() => {
+      this.foo = "baz"
+    }, 1000)
+  }
+}
+```
+
+```jsx
+const MusicalChairs = () => {
+  const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
+
+  return (
+    <div>
+      <span>Foo is {foo}'s chair!</span>
+      <span>Bar is {bar}'s chair!</span>
+      <span>Baz is {baz}'s chair!</span>
+
+      <div onClick={shuffle}>🎶🥁🎶🎷🎶</div>
+    </div>
+  )
+}
+```
+<sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup>
+
+> Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
+
+<br/>
 
 <h1 id="property-api">Property API</h1>
 
