@@ -24,8 +24,8 @@
 
 ### Contents 
 
-• **[Overview](#overview-section)** <br/>
-• **[Install and Import](#install-section)**
+- **[Overview](#overview-section)** <br/>
+- **[Install and Import](#install-section)**
 
 **[`use`](#started-section) hook (Simple)**
   - [Basics](#concept-basic)
@@ -42,9 +42,13 @@
   - [TypeScript](#concept-typescript)
   - [Context](#concept-context)
 
-• **[The Rational](#compare-section)** <br/>
-• **[Property API](#property-api)** <br/>
-• **[Subscriber API](#subscribe-api)**
+**Concepts**
+  - [Using less `useState`](#concept-compare)
+  - [Basic Composition](#concept-compose)
+
+**API**
+  - [Properties](#property-api)
+  - [Subscriber](#subscribe-api)
 
 <br/>
 
@@ -125,8 +129,7 @@ const KitchenCounter = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a>
 
 <br/>
 
@@ -162,8 +165,7 @@ const KitchenCounter = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a>
 
 
 > With this you can write the most complex functional-components while maintaining the key benefits of a stateless component (easier on the eyes).
@@ -203,8 +205,7 @@ const KitchenTimer = () => {
   return <Box>{state.elapsed}</Box>;
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a>
 
 <br />
 
@@ -233,48 +234,9 @@ const AboutMe = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a>
 
 > See what we did there? 😎
-
-<br/>
-
-<h2 id="concept-compose">Basic composition</h2>
-
-Generally the goal of this library is to allow the use of just one hook per-component. However it's good to know, there is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. There's are better ways to do it, but calling multiple controllers can be a great way to separate concerns. 
-
-```js
-  class PingController {
-    value = 1
-  }
-  
-  class PongController {
-    value = 2
-  }
-```
-
-```jsx
-  const ControllerAgnostic = () => {
-    const ping = use(PingController);
-    const pong = use(PongController);
-
-    return (
-      <div>
-        <div
-          onClick={() => { ping.value += pong.value }}>
-          Ping's value is ${ping.value}, click me to add in pong!
-        </div>
-        <div
-          onClick={() => { pong.value += pong.value }}>
-          Pong's value is ${pong.value}, click me to add in ping!
-        </div>
-      </div>
-    )
-  }
-```
-
-<sub><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sub>
 
 <br/>
 
@@ -315,8 +277,7 @@ const MusicalChairs = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a>
 
 > Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
 
@@ -346,8 +307,7 @@ const LazyComponent = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a>
 
 ### Automatic inference 
 
@@ -425,8 +385,7 @@ const ActionSequence = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a>
 
 <br/>
 
@@ -458,8 +417,7 @@ const Component = () => {
   return <div>{value}</div>;
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-controller-class-xutgf">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-controller-class-xutgf">View in CodeSandbox</a>
 
 > `.use` will hook to your component and construct state only once per mount, same as a standard `use` would.
 
@@ -488,8 +446,7 @@ const MyComponent = (props) => {
   return <div>{value}</div>;
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a>
 
 <br/>
 
@@ -540,8 +497,7 @@ const PaintDrying = ({ alreadyMinutes }) => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a>
 
 <br/>
 
@@ -607,15 +563,17 @@ const InnerBar = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a>
 
 > This makes context kind of easy a little bit.
 
 <br/>
 <br/>
 
-<h1 id="compare-concept">Reducing reliance on hooks</h1>
+<h1 id="concept-compare">Concepts</code></h1>
+<br/>
+
+<h2 id="concept-compare">Using less <code>useState</code></h2>
 
 The main rational of use-controller is to reduce, if not eliminate the need for multiple hooks in a functional-component. When working on complex state, hooks loose a lot of their appeal to raw messiness.<br/>
 
@@ -686,14 +644,53 @@ const WhatsUp = () => {
   )
 }
 ```
-
-<sub><a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a></sub>
+<a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a>
 
 > With a controller, we can do a lot better on scope. Here we've separated out our model (state) from the view (component) which is pretty nice.
 
 Add as many values as you like, and they'll stay clean and _relatively_ organized in your code. (You'll still need good design!)
 
 <br/>
+
+<h2 id="concept-compose">Basic composition</h2>
+
+Despite that intent, there is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
+
+```js
+  class PingController {
+    value = 1
+  }
+  
+  class PongController {
+    value = 2
+  }
+```
+
+> There are better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
+
+```jsx
+  const ControllerAgnostic = () => {
+    const ping = use(PingController);
+    const pong = use(PongController);
+
+    return (
+      <div>
+        <div
+          onClick={() => { ping.value += pong.value }}>
+          Ping's value is ${ping.value}, click me to add in pong!
+        </div>
+        <div
+          onClick={() => { pong.value += pong.value }}>
+          Pong's value is ${pong.value}, click me to add in ping!
+        </div>
+      </div>
+    )
+  }
+```
+<a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a>
+
+<br/>
+
 
 <h1 id="property-api">Property API</h1>
 
