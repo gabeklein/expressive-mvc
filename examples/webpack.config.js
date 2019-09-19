@@ -30,7 +30,7 @@ module.exports = {
     ],
     extensions: [".ts", ".jsx", ".js"],
     alias: {
-      "use-stateful": dir("../src/index.ts"),
+      "react-use-controller": dir("../src/index.ts"),
       "react": dir("node_modules/react"),
     }  
   },

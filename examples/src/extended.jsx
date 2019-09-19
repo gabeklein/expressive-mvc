@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom";
 import React from "react";
-import Controller from 'use-stateful';
+import Controller from 'react-use-controller';
 
 export class Whatever extends Controller {
   

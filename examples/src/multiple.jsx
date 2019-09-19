@@ -1,4 +1,4 @@
-import Controller from 'use-stateful';
+import Controller from 'react-use-controller';
 import React from "react";
 
 export class FooBar extends Controller {
