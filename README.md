@@ -19,7 +19,7 @@
   with values, actions, and lifecycle methods  to control your components.
   <p align="center">
   Controller hooks will trigger renders, as needed, for any data.<br/>
-  When values change your components will too.<br/>
+  When properties change your components will too.<br/>
 </p>
 
 ### Contents 
@@ -35,13 +35,14 @@
   - [Basic Composing](#concept-compose)
   - [Auto Debounce](#concept-debounce)
   - [Lazy Updating](#concept-lazy)
+  - [Advanced Async](#concept-async)
 
 **[`Controller`](#controller-section) (Advanced)**
   - [Constructor Arguments](#concept-constructor)
-  - [Context](#concept-context)
   - [TypeScript](#concept-typescript)
+  - [Context](#concept-context)
 
-• **[Versus normal hooks](#compare-section)** <br/>
+• **[The Rational](#compare-section)** <br/>
 • **[Property API](#property-api)** <br/>
 • **[Subscriber API](#subscribe-api)**
 
@@ -49,13 +50,13 @@
 
 <h2 id="overview-section">Overview</h2>
 
-Seamlessly create and apply ES6 classes as the *`ModelController`* [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component) which serve as the *View*. 
+Seamlessly create and apply ES6 classes as the *`ModelController`* [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component) which serve as your *View*. 
 
 The basic idea is pretty simple, to watch all properties in an instance of some class and dispatch renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
 
-For this, you have a general-purpose hook `use()`, which can take any class, and an inheritable abstract-class `Controller` with more specialized hooks available as static methods.
+For this, you have a general-purpose hook `use()`, which can take any class, and an inheritable abstract-class `Controller`, which makes more specialized hooks available as static methods.
 
-When any of these hooks are called in a function, a `ModelController` reference is returned, bound to the component. It contains all current state, used for rendering. Changes to that object are then reflected by triggering a new render, where deemed necessary. 
+When any of these hooks are called, a `ModelController` reference is returned, bound to the component. It contains all current state, used for rendering. Changes to that object are then reflected by triggering a new render, where deemed necessary. 
 
 This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
 
@@ -80,7 +81,9 @@ import { use, Controller } from "react-use-controller";
 
 <h1 id="started-section">Getting Started</h1>
 
-There are two ways to use a controller, supply any class to the `use` hook or [extend one with `Controller`](#controller-section). <br/>
+There are two ways to use a controller, supply any class to the `use` hook or [extend one with `Controller`](#controller-section). 
+
+
 Both ways behave pretty much the same, though extending has some key benefits.
 
 > It is generally recommended you extend but, for simple models, `use` is best for its brevity.
@@ -94,18 +97,19 @@ Let's make a stateful counter.
 ```jsx
 import { use } from "react-use-controller";
 
-/* Make a class with some properties. They will be tracked for updates. */ 
+/* Make a class with some properties to represent state.
+ * Initial values are default state naturally. */ 
 class CountControl {
   number = 1
 }
 
 const KitchenCounter = () => {
-  /* Pass your class to use(); it will create and return a new instance, 
-   * bound to your component's instance as its model or "state". */
+  /* Pass your class to use(). It will create and return 
+   * a new instance bound to your component via hooks. */
   const state = use(CountControl);
 
-  /* Setting new values to its properties will trigger a render in order
-   * to remain synced. */
+  /* Applying new values to its properties will 
+   * trigger a render in order to remain synced. */
   return (
     <div>
       <span
@@ -128,20 +132,20 @@ const KitchenCounter = () => {
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a view controller without its methods? Add some "actions" [(ala MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
+What's a model-view-controller without some methods? Add some "actions" [(ala MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
 
 ```jsx
 class CountControl {
-  /* The values here can be thought of as Model. */
+  /* Values here can be thought of as the Model. */
   number = 1
 
-  /* Any methods, which edit the model, are your Controller.*/
-  increment = () => this.number++;
-  decrement = () => this.number--;
+  /* The methods which edit model are your Controller.*/
+  increment = () => { this.number++ };
+  decrement = () => { this.number-- };
 }
 ```
 
-> We can tinker with own properties as you would any class. <br/> The controller backend will handle rendering any changes. 
+> We can tinker with own properties as you would any class. <br/> The controller backend will handle rendering actual updates. 
 
 ```jsx
 const KitchenCounter = () => {
@@ -162,7 +166,7 @@ const KitchenCounter = () => {
 <sub><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sub>
 
 
-> With this you can write even deeply stateful functional-components while keeping a lot of the benefits of stateless.
+> With this you can write the most complex functional-components while maintaining the key benefits of a stateless component (easier on the eyes).
 
 <br/>
 
@@ -358,6 +362,74 @@ Check them out in [Subscription API](#subscription-api) section. -->
 
 <br/>
 
+<h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
+
+```jsx
+class StickySituation {
+  remaining = 60;
+  surname = "bond";
+
+  didMount(){
+    this.timer = setInterval(this.tickTock, 1000);
+  }
+
+  willUnmount(){
+    this.cutTheDrama()
+  }
+
+  tickTock = () => {
+    if(--this.remaining === 0)
+      this.cutTheDrama();
+  }
+
+  cutTheDrama(){
+    clearInterval(this.timer);
+  }
+
+  getSomebodyElse = async () => {
+    const res = await fetch("https://randomuser.me/api/");
+    const data = await res.json();
+    const recruit = data.results[0];
+
+    this.surname = recruit.name.last;
+  }
+}
+```
+
+```jsx
+const ActionSequence = () => {
+  const {
+    remaining,
+    surname,
+    getSomebodyElse
+  } = use(StickySituation);
+
+  if(remaining === 0)
+    return <h1>{"🙀💥"}</h1>
+
+  return (
+    <div>
+      <div>
+        Agent <b>{surname}</b> we need you to diffuse the bomb!
+      </div>
+      <div>
+        If you can't diffuse it in {remaining} seconds, 
+        the cat may or may not die!
+      </div>
+      <div>
+        <span>But there is time! </span>
+        <u onClick={getSomebodyElse}>Tap another agent</u> 
+        <span> if you think they can do it.</span>
+      </div>
+    </div>
+  )
+}
+```
+
+<sub><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sub>
+
+<br/>
+
 <h1 id="controller-section">The <code>Controller</code> superclass</h1>
 
 While you get a lot from the `use` hook and standard (or otherwise extended) classes, there are a few key benefits to extending `Controller`.
@@ -421,9 +493,61 @@ const MyComponent = (props) => {
 
 <br/>
 
-<h2 id="concept-context">Access state anywhere <sup>(with context!)</sup></h2>
+<h2 id="concept-typescript">Using with typescript</h2>
 
-One of the best features of `Controller` classes is [using Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/), to create and consume the same state from anywhere in your app. 
+Importing and extending `default` (`Controller`), as whatever you like, will allow type definitions to pass to your controllers definitions. This hooks you up (pun intended) with autocomplete, hints, and warnings about potential errors.<br/>
+
+> For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component too.
+
+```tsx
+/* typescript */
+
+import Controller from "react-use-controller";
+
+class FunActivity extends Controller {
+  secondsSofar: number;
+  interval: number;
+
+  constructor(alreadyMinutes: number = 0){
+    super();
+    this.secondsSofar = 
+      alreadyMinutes * 60;
+
+    this.interval = 
+      setInterval(() => {
+        this.secondsSofar++;
+      }, 1000)
+  }
+
+  /* JSDocs on the Controller class will provide descriptors and 
+   * autocomplete, making it easier to avoid weird behavior over typos. */
+  willUnmount(){
+    clearInterval(this.interval)
+  }
+}
+```
+
+```jsx
+const PaintDrying = ({ alreadyMinutes }) => {
+  /* Your IDE might even know secondsSofar is supposed to be a number 👌 */
+  const { secondsSofar } = FunActivity.use(alreadyMinutes);
+
+  return (
+    <div>
+      I've been staring for like, { secondsSofar } seconds now, 
+      and I'm starting to see what this is all about! 👀
+    </div>
+  )
+}
+```
+
+<sub><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sub>
+
+<br/>
+
+<h1 id="concept-context">Access state anywhere <sup>(with context!)</sup></h1>
+
+One of the best features of `Controller` is the use of [Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/), to create and consume the same state from anywhere in your app. 
 
 Of the available static methods, `.create()` will produce a [Provider](https://reactjs.org/docs/context.html#contextprovider) to wrap child-components with. Components nested can call the static-method `.get()` on the same constructor to access the nearest instance of that class.
 
@@ -489,128 +613,11 @@ const InnerBar = () => {
 > This makes context kind of easy a little bit.
 
 <br/>
-
-<h2 id="concept-typescript">Using with typescript</h2>
-
-Importing and extending `default` (`Controller`), as whatever you like, will allow type definitions to pass to your controllers definitions. This hooks you up (pun intended) with autocomplete, hints, and warnings about potential errors.<br/>
-
-> For class `T` the static method `.use()` returns `InstanceType<T>` thus provides full type inference within the component too.
-
-```tsx
-/* typescript */
-
-import Controller from "react-use-controller";
-
-class FunActivity extends Controller {
-  secondsSofar: number;
-  interval: number;
-
-  constructor(alreadyMinutes: number = 0){
-    super();
-    this.secondsSofar = 
-      alreadyMinutes * 60;
-
-    this.interval = 
-      setInterval(() => {
-        this.secondsSofar++;
-      }, 1000)
-  }
-
-  /* JSDocs on the Controller class will provide descriptors and 
-   * autocomplete, making it easier to avoid weird behavior over typos. */
-  willUnmount(){
-    clearInterval(this.interval)
-  }
-}
-```
-
-```jsx
-const PaintDrying = ({ alreadyMinutes }) => {
-  /* Your IDE might even know secondsSofar is supposed to be a number 👌 */
-  const { secondsSofar } = FunActivity.use(alreadyMinutes);
-
-  return (
-    <div>
-      I've been staring for like, { secondsSofar } seconds now, 
-      and I'm starting to see what this is all about! 👀
-    </div>
-  )
-}
-```
-
-<sub><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sub>
-
 <br/>
 
-<h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
+<h1 id="compare-concept">Reducing reliance on hooks</h1>
 
-```jsx
-class StickySituation extends Controller {
-  remaining = 60;
-  surname = "bond";
-
-  didMount(){
-    this.timer = setInterval(this.tickTock, 1000);
-  }
-
-  willUnmount(){
-    this.cutTheDrama()
-  }
-
-  tickTock = () => {
-    if(--this.remaining === 0)
-      this.cutTheDrama();
-  }
-
-  cutTheDrama(){
-    clearInterval(this.timer);
-  }
-
-  getSomebodyElse = async () => {
-    const res = await fetch("https://randomuser.me/api/");
-    const data = await res.json();
-    const recruit = data.results[0];
-
-    this.surname = recruit.name.last;
-  }
-}
-```
-
-```jsx
-const ActionSequence = () => {
-  const { remaining, surname, getSomebodyElse } = StickySituation.use();
-
-  if(remaining === 0)
-    return <h1>{"🙀💥"}</h1>
-
-  return (
-    <div>
-      <div>
-        Agent <b>{surname}</b> we need you to diffuse the bomb!
-      </div>
-      <div>
-        If you can't diffuse it in {remaining} seconds, 
-        the cat may or may not die!
-      </div>
-      <div>
-        <span>But there is time! </span>
-        <u onClick={getSomebodyElse}>Tap another agent</u> 
-        <span> if you think they can do it.</span>
-      </div>
-    </div>
-  )
-}
-```
-
-<sub><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sub>
-
-<br/>
-<br/>
-
-### (Besides all that)
-<h1 id="compare-section">How is this better than regular hooks?</h1>
-
-Here is an example where we have multiple values to track, showing the main rational here. <br/>
+The main rational of use-controller is to reduce, if not eliminate the need for multiple hooks in a functional-component. When working on complex state, hooks loose a lot of their appeal to raw messiness.<br/>
 
 ```jsx
 const EmotionalState = () => {
@@ -657,22 +664,22 @@ class EmotionalState {
 ```
 ```jsx
 const WhatsUp = () => {
-  const state = use(EmotionalState);
+  const { name, emotion, reason, set } = use(EmotionalState);
 
   return (
     <div>
       <div onClick = {() => 
-        state.name = prompt("What is your name?", "John Doe") }>
-        My name is {state.name}.
+        set.name = prompt("What is your name?", "John Doe") }>
+        My name is {name}.
       </div>
       <div>
         <span onClick = {() => 
-          state.emotion = "doing better" }>
-          I am currently {state.emotion}
+          set.emotion = "doing better" }>
+          I am currently {emotion}
         </span>
         <span onClick = {() => 
-          state.reason = "hooks are cooler than my cold-brew coffee! 👓" }>
-          , because {state.reason}.
+          set.reason = "hooks are cooler than my cold-brew coffee! 👓" }>
+          , because {reason}.
         </span>
       </div>
     </div>
@@ -770,7 +777,8 @@ Chain after `use(...)` or `get()` to control what values explicitly will trigger
 
 <br/>
 
-#### `.use().once()` / `.useOnce()` / `.getOnce()`
+<big><b><code>once</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+`.use().once()` / `.useOnce()` / `.getOnce()`
 
 Will disable all but explicit `.refresh()` from this particular controller.
 
@@ -785,7 +793,8 @@ const View = () => {
 
 <br/>
 
-#### `.use().on()` / `.useOn()` / `.getOn()`
+<big><b><code>on</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+`.use().on()` / `.useOn()` / `.getOn()`
 
 Declare properties you want to do want to watch, in addition to any inferred properties.
 
@@ -802,7 +811,8 @@ const View = (props) => {
 
 <br/>
 
-#### `.use().only()` / `.useOnly()` / `.getOnly()`
+<big><b><code>only</code></b></big>&nbsp;&nbsp;-&nbsp;&nbsp; 
+`.use().only()` / `.useOnly()` / `.getOnly()`
 
 Declare the properties you wish to renew for. This will skip automatic inference.
 
@@ -815,7 +825,8 @@ const View = () => {
 
 <br/>
 
-#### `.use().not()` / `.useExcept()` / `.getExcept()`
+<big><b><code>not</code></b> / <b><code>except</code></b> </big>&nbsp;&nbsp;-&nbsp;&nbsp;
+`.use().not()` / `.useExcept()` / `.getExcept()`
 
 Declare properties you want to exclude. *May also be chained with `on()`*
 
@@ -835,7 +846,7 @@ const View = () => {
 
 <br/>
 
-Try it for yourself! Demo project is in the `/examples` directory with a series of examples you can launch, browse through and modify.
+A demo project is in the `/examples` directory with a series of examples you can launch, browse through and modify.
 
 ```bash
 git clone https://github.com/gabeklein/use-controller.git
@@ -843,10 +854,6 @@ cd use-controller
 npm install
 npm start
 ```
-
-<br/>
-
-### 🚧 More ideas are currently under construction, so stay tuned! 🏗
 
 <br/>
 
