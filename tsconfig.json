@@ -8,7 +8,9 @@
         "moduleResolution": "node",
         "noUnusedLocals": true,
         "strict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "lib": [ "es2015" ],
+        "types": [ "node" ]
     },
     "exclude": [
         "index.d.ts"

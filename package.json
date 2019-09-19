@@ -34,8 +34,9 @@
     "react": "^16.8.0"
   },
   "devDependencies": {
-    "react": "^16.8.0",
+    "@types/node": "^12.7.5",
     "@types/react": "^16.8.0",
+    "react": "^16.8.0",
     "typescript": "^3.5.3"
   }
 }

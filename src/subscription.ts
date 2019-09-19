@@ -5,7 +5,6 @@ import { SpyController } from 'subscriber';
 const { 
   defineProperty: define, 
   getOwnPropertyDescriptor: describe, 
-  assign,
   create
 } = Object;
 
@@ -34,7 +33,7 @@ function PolySet<T>(){
     }
   })
 
-  define(content, "remove", {
+  define(content, "delete", {
     value: (x: T) => {
       const i = content.indexOf(x);
       if(i >= 0)
@@ -109,7 +108,10 @@ function Dispatch(this: Controller){
           if(value)
             acc[key] = value;
       }
-      return assign(acc, mutable);
+      for(const key in mutable)
+        acc[key] = mutable[key]
+
+      return acc;
     }
   })
 
