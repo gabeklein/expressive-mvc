@@ -225,7 +225,7 @@ declare class Controller {
      * 
      * Hook returns instance of nearest provided state-controller.
      */
-    static hook<T extends Class, I = InstanceType<T>>(this: T): () => SpyController<I> & I;
+    static hook<T extends Class, I = InstanceType<T>>(this: T): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -236,7 +236,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static useOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -247,7 +247,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static useOnly<T extends Class>(this: T, ...properties: string[]): InstanceType<T>;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -260,7 +260,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static useExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -271,7 +271,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOnce<T extends Class>(this: T): () => InstanceType<T>;
+    static useOnce<T extends Class>(this: T): InstanceType<T>;
 
     /**
      * Get instance of this class from context. 
@@ -279,7 +279,7 @@ declare class Controller {
      * 
      * Arguments add listed properties to watch list for live-reload.
      */
-    static getOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static getOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Get instance of this class from context. 
@@ -287,7 +287,7 @@ declare class Controller {
      * 
      * Arguments determine entirely what properties will be watched from state in this component.
      */
-    static getOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static getOnly<T extends Class>(this: T, ...properties: string[]): InstanceType<T>;
 
     /**
      * Get instance of this class from context. 
@@ -297,7 +297,7 @@ declare class Controller {
      * 
      * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
      */
-    static getExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static getExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Get instance of this class from context. 
@@ -305,7 +305,7 @@ declare class Controller {
      * 
      * Automatic reload will be disabled on all properties.
      */
-    static getOnce<T extends Class>(this: T): () => InstanceType<T>;
+    static getOnce<T extends Class>(this: T): InstanceType<T>;
 
     /**
      * You probably want `.useExcept()`
