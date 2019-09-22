@@ -1,41 +1,14 @@
-import {
-  Context,
-  createContext,
-  createElement,
-  FunctionComponentElement,
-  PropsWithChildren,
-  ProviderProps,
-  useContext,
-} from 'react';
+import { FunctionComponentElement, ProviderProps, useContext, Context } from 'react';
 
+import { getContext, getControlProvider, getHook, getFromContext } from './context';
 import { SpyController, useSubscriber } from './subscriber';
 import { NEW_SUB, SUBSCRIBE } from './subscription';
 import { ExpectsParams, UpdateTrigger } from './types.d';
 import { useController } from './use_hook';
 
-const CONTEXT_ALLOCATED = [] as Array<[typeof Controller, Context<Controller>]>;
-
 const { 
   defineProperty: define
 } = Object;
-
-function ownContext<T extends Controller>(of: T){
-  const { constructor } = of.prototype;
-  let context;
-
-  for(const [ _constructor, _context ] of CONTEXT_ALLOCATED)
-    if(constructor === _constructor){
-      context = _context;
-      break; 
-    }
-
-  if(!context){
-    context = createContext(of.prototype);
-    CONTEXT_ALLOCATED.push([constructor, context]);
-  }
-
-  return context as Context<T>;
-}
 
 interface Controller {
   /* Force compatibility with <InstanceType> */
@@ -59,6 +32,7 @@ interface TypeofController {
   new (...args: any[]): any;
   use<T extends ExpectsParams>(this: T, ...args: any[]): InstanceType<T>;
   get<T extends ExpectsParams>(this: T): InstanceType<T>;
+  context(): Context<any>;
 }
 
 function Controller(){}
@@ -70,37 +44,13 @@ Controller.prototype = {
   once(){ return this }
 };
 
-define(Controller.prototype, "Provider", {
-  get: function(): FunctionComponentElement<ProviderProps<Controller>> {
-    const context = ownContext(this.constructor as any);
-
-    const ControlProvider: any =
-      (props: PropsWithChildren<any>) => 
-        createElement(
-          context!.Provider,
-          { value: this },
-          props.children
-        );
-
-    define(this, "Provider", { value: ControlProvider });
-    return ControlProvider
-  }
+define(prototype, "Provider", {
+  get: getControlProvider
 })
 
-Controller.context = function context(this: any){
-  return ownContext(this);
-}
-
-Controller.hook = function hook<T extends ExpectsParams>
-  (this: any){
-    
-  const context = ownContext(this);
-
-  return () => {
-    const controller = useContext(context) as Controller | SpyController;
-    return useSubscriber(controller) as InstanceType<T>;
-  }
-}
+Controller.context = getContext;
+Controller.hook = getHook;
+Controller.get = getFromContext;
 
 Controller.create = function create<T extends ExpectsParams<A>, A extends any[]>
   (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
@@ -119,20 +69,6 @@ Controller.use = function use<T extends ExpectsParams>
 
   return useSubscriber(control);
 }
-
-Controller.get = function get<T extends ExpectsParams>
-  (this: T): InstanceType<T> {
-
-  const context = ownContext(this as any);
-
-  function useContextSubscriber(){
-    const controller = useContext(context) as Controller | SpyController;
-    return useSubscriber(controller);
-  }
-  
-  define(this, `get`, { value: useContextSubscriber });
-  return useContextSubscriber() as any;
-} 
 
 Controller.useOnce = function useOnce(this: any){
   return useController(this);
@@ -195,7 +131,7 @@ Controller.getExcept = function getExcept(
 Controller.getOnce = function getOnce(
   this: TypeofController, ...args: string[]){
 
-  const context = ownContext(this as any);
+  const context = this.context();
   const getFromContext = () =>
     useContext(context) as Controller | SpyController;
 
