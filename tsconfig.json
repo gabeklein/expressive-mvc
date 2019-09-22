@@ -9,9 +9,11 @@
         "noUnusedLocals": true,
         "strict": true,
         "esModuleInterop": true,
-        "lib": [ "es2015" ]
+        "lib": [ "es2015" ],
+        "types": [ "jest" ]
     },
     "exclude": [
-        "index.d.ts"
+        "index.d.ts",
+        "tests"
     ]
 }
