@@ -32,9 +32,8 @@
 
   &ensp; • [Basics](#concept-simple) <br/>
   &ensp; • [Methods](#concept-method) <br/>
-  &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Destructuring](#concept-destruct) <br/>
-  &ensp; • [Basic Composing](#concept-compose) <br/>
+  &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Async & Events](#concept-async) <br/>
 
 **[`Controller`](#controller-section) (Advanced)** <br/>
@@ -45,6 +44,7 @@
 
 **Concepts** <br/>
   &ensp; • [Using less `useState`](#concept-compare) <br/>
+  &ensp; • [Simple Composition](#concept-compose) <br/>
   &ensp; • [Lazy Updating](#concept-lazy) <br/>
   &ensp; • [Auto Debounce](#concept-debounce) <br/>
 
@@ -104,19 +104,13 @@ Let's make a stateful counter.
 ```jsx
 import { use } from "react-use-controller";
 
-/* Make a class with some properties to represent state.
- * Initial values are default state naturally. */ 
 class CountControl {
   number = 1
 }
 
 const KitchenCounter = () => {
-  /* Pass your class to use(). It will create and return 
-   * a new instance bound to your component via hooks. */
   const state = use(CountControl);
 
-  /* Applying new values to its properties will 
-   * trigger a render in order to remain synced. */
   return (
     <div>
       <span
@@ -134,28 +128,32 @@ const KitchenCounter = () => {
 ```
 <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a>
 
+> First, make a class with properties we wish track. Values given will be the initial state. 
+>
+> Pass the class to `use()` which will create a new instance, bound to the component. 
+>
+> Now, as values on the model change, our `use` hook will trigger new renders in order to remain synced!
+
 <br/>
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a model-view-controller without some methods? Add some "actions" [(ala MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
+What's a model-view-controller without some methods? Add some *actions* [(similar to that in MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
 
 ```jsx
 class CountControl {
-  /* Values here can be thought of as the Model. */
+  /* Values here can be thought of as the Model */
   number = 1
 
-  /* The methods which edit model are your Controller.*/
+  /* The methods which edit model are your Controller */
   increment = () => { this.number++ };
   decrement = () => { this.number-- };
 }
 ```
 
-> We can tinker with own properties as you would any class. <br/> The controller backend will handle rendering actual updates. 
-
 ```jsx
 const KitchenCounter = () => {
-  /* You can use destructuring too, */
+  /* Now we can simply destructure, */
   const { number, decrement, increment } = use(CountControl);
 
   /* and pass bound callbacks directly from the controller */
@@ -172,6 +170,35 @@ const KitchenCounter = () => {
 
 
 > With this you can write the most complex functional-components while maintaining the key benefits of a stateless component (easier on the eyes).
+
+<br/>
+
+<h2 id="concept-destruct">Enhanced Destructuring</h2>
+
+While destructuring, with two reserved keys `get` and `set`, we can retrieve and update values even after doing so.
+
+> Not to be confused with keywords. As named properties, they are both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
+
+```jsx
+const AboutMe = () => {
+  const {
+    set, /* ⬅ a proxy for `state` */
+    name
+  } = use(AboutYou);
+
+  return (
+    <div>
+      <div>My name is { name || "John Doe" }.</div>
+      <u onClick = {() => {
+        set.name = window.prompt("What is your name?");
+      }}>...or is it?..</u>
+    </div>
+  )
+}
+```
+<sup><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sup>
+
+> `set.name` See what we did there? 🤔
 
 <br/>
 
@@ -211,37 +238,6 @@ const KitchenTimer = () => {
 <sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup>
 
 <br />
-
-<h2 id="concept-destruct">Destructuring</h2>
-
-While destructuring, with two reserved keys `get` and `set`, we can still retrieve and update values after doing so.
-
-> Not to be confused with keywords. As named properties, they are both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
-
-```jsx
-const AboutMe = () => {
-  const {
-    set, /* ⬅ a proxy for `state` */
-    name
-  } = use(AboutYou);
-
-  return (
-    <div onClick = {() => {
-      set.name = window.prompt("What is your name?", "John Doe");
-    }}>
-      {name
-        ? `My name is ${name}.`
-        : "What is my name?"
-      }
-    </div>
-  )
-}
-```
-<sup><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sup>
-
-> See what we did there? 😎
-
-<br/>
 
 <h2 id="concept-async">Working with events, callbacks, and <code>async</code> code</h2>
 
@@ -307,45 +303,6 @@ const ActionSequence = () => {
 }
 ```
 <sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
-
-<br/>
-
-<h2 id="concept-compose">Basic composition</h2>
-
-There is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
-
-```js
-  class PingController {
-    value = 1
-  }
-  
-  class PongController {
-    value = 2
-  }
-```
-
-> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
-
-```jsx
-  const ControllerAgnostic = () => {
-    const ping = use(PingController);
-    const pong = use(PongController);
-
-    return (
-      <div>
-        <div
-          onClick={() => { ping.value += pong.value }}>
-          Ping's value is ${ping.value}, click me to add in pong!
-        </div>
-        <div
-          onClick={() => { pong.value += pong.value }}>
-          Pong's value is ${pong.value}, click me to add in ping!
-        </div>
-      </div>
-    )
-  }
-```
-<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
 
 <br/>
 
@@ -612,6 +569,45 @@ Add as many values as you like, and they'll stay clean and _relatively_ organize
 
 <br/>
 
+<h2 id="concept-compose">Simple composition</h2>
+
+There is nothing preventing you from calling `use` more than once, or making use of other hooks at the same time. 
+
+```js
+  class PingController {
+    value = 1
+  }
+  
+  class PongController {
+    value = 2
+  }
+```
+
+> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
+
+```jsx
+  const ControllerAgnostic = () => {
+    const ping = use(PingController);
+    const pong = use(PongController);
+
+    return (
+      <div>
+        <div
+          onClick={() => { ping.value += pong.value }}>
+          Ping's value is ${ping.value}, click me to add in pong!
+        </div>
+        <div
+          onClick={() => { pong.value += pong.value }}>
+          Pong's value is ${pong.value}, click me to add in ping!
+        </div>
+      </div>
+    )
+  }
+```
+<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
+
+<br/>
+
 <h2 id="concept-lazy">Subscription based "lazy" updating</h2>
 
 Controllers use a subscription model to decide when to render. Through automatic subscription, components will **only** update for changes to values which are actually accessed.
@@ -716,9 +712,12 @@ Controlled component will watch object as its Model directly.
 
 <br/>
 
-#### `Controller.use()`
+#### `Controller.use(...arguments)`
 Create and apply instance of type *Controller* return reference. 
 <br/>
+
+- `arguments` <br/>
+Will be passed to constructor.
 
 - `get Provider()` <br/>
 When accessed, a context provider will be retroactively created, keyed to the given
@@ -728,8 +727,11 @@ See [Subscriber API](subscribe-api)
 
 <br/>
 
-#### `Controller.create()`
+#### `Controller.create(...arguments)`
 Create controller and directly return `Provider` keyed to proper context.
+
+- `arguments` <br/>
+Will be passed to constructor.
 
 <br/>
 
@@ -750,24 +752,30 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 ### Properties
 
-#### `set` & `get`
-- Not to be confused with setters / getters.
-- `state.set` returns a circular reference to `state`
-- this is useful to access your state object while destructuring
-
 #### `Arrays`
 - if a property is an array, it will be forwarded to your components as a special `ReactiveArray` which can also trigger renders on mutate.
+
+#### `isProperty`
+- Properties matching `/is([A-Z]\w+)/` and whose value is a boolean will get a corresponding action `toggle$1`.
 
 
 #### `_anything`
 - if a key starts with an underscore it will not trigger a refresh when overwritten (or carry any overhead to do so). No special conversions will happen. It's a shorthand for "private" keys which don't interact with the component.
 
 #### `Anything defined post-constructor`
-- important to notice that `use()` can only detect properties which exist (and are enumerable) at time of creation. If you create them after, they're effectively ignored.
+- important to notice that `use()` can only detect properties which exist (and are enumerable) at time of creation. If you create them after, they're also ignored.
 
 <br />
 
-### Reserved methods (`use` will define them)
+### Reserved
+
+#### `set` / `get`
+- Not to be confused with setters / getters.
+- `state.set` returns a circular reference to `state`
+- this is useful to access your state object while destructuring
+
+#### `on` / `once` / `only` / `except`
+- Defined by [subscription](#subscribe-api) driver.
 
 #### `refresh(): void`
 - requests a render without requiring that a value has changed. 
