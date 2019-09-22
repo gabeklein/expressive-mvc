@@ -5,20 +5,19 @@ import { Set } from './polyfill';
 
 const { 
   defineProperty: define, 
-  getOwnPropertyDescriptor: describe, 
-  create
+  getOwnPropertyDescriptor: describe
 } = Object;
 
 const { random } = Math;
 
 const TOGGLEABLE = /^is[A-Z]/;
 
-const NEW_SUB = "__init_subscription__";
-const UNSUBSCRIBE = "__delete_subscription__";
-const SUBSCRIBE = "__activate_subscription__";
+export const NEW_SUB = "__init_subscription__";
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
 
-function Dispatch(this: Controller){
-  const mutable = {} as any;
+export function Dispatch(this: Controller){
+  const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
   const pending = Set<string>();
@@ -122,78 +121,3 @@ function Dispatch(this: Controller){
     isPending = false;
   }
 }
-
-function SpyController(
-  source: Controller, 
-  hook: UpdateTrigger,
-  mutable: BunchOf<any>,
-  register: BunchOf<Set<UpdateTrigger>>
-): SpyController {
-
-  const Spy = create(source) as any;
-  let watch = Set<string>();
-  let exclude: Set<string>;
-
-  for(const key in mutable)
-    define(Spy, key, {
-      set: describe(source, key)!.set,
-      get: () => {
-        watch.add(key);
-        return mutable[key];
-      }
-    })
-
-  define(Spy, SUBSCRIBE, { value: sub });
-  define(Spy, UNSUBSCRIBE, { value: unSub });
-  define(Spy, "once", { value: () => source });
-  define(Spy, "on", { value: also });
-  define(Spy, "only", { value: bail });
-  define(Spy, "not", { value: except });
-
-  return Spy;
-
-  function sub(){
-    if(exclude)
-    for(const k of exclude)
-      watch.delete(k);
-
-    for(const key of watch){
-      let set = register[key];
-      if(!set)
-        set = register[key] = Set();
-      set.add(hook);
-    }
-  }
-
-  function unSub(){
-    for(const key of watch)
-      register[key].delete(hook);
-  }
-
-  function bail(...keys: string[]){
-    const watch = Set<string>();
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        watch.add(key);
-    for(const key of watch)
-      register[key].add(hook);
-    return source;
-  }
-
-  function except(...keys: string[]){
-    exclude = Set<string>();
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        exclude.add(key);
-    return Spy;
-  }
-
-  function also(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-      watch.add(key);
-    return Spy;
-  }
-}
-
-export { Dispatch, SUBSCRIBE, UNSUBSCRIBE, NEW_SUB }
