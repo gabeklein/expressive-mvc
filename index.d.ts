@@ -4,22 +4,73 @@ import {
     Context,
 } from 'react';
 
-interface BunchOf<T> {
-	[key: string]: T;
+interface BunchOf<T> { [key: string]: T }
+
+type Class = new (...args: any) => any;
+type ExpectsParams<A extends any[]> = new(...args: A) => any
+
+/**
+ * General-purpose Controller hook.
+ * 
+ * @param define ModelController Class Definition
+ * 
+ * @returns {LiveState} Reference to bound ModelController.
+ */
+declare function use<I, A extends any[]>(define: { new (...args: A): I; }, ...args: A): Controller & I;
+
+/**
+ * LiveState React Hook 
+ * Returned object sets initial state, and determines what values are live.
+ * 
+ * Any value initialized will be included as getter-setter pair on returned object.
+ * Updates to values on state object will trigger a re-render.
+ * 
+ * Initializer function which returns state at mount. Runs only once.
+ * 
+ * @param init Initial values or initializer (returning those values) of resulting state.
+ * 
+ * @returns {LiveState} Live state: current state of component.
+ */
+declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): Controller & I;
+declare function use<I>(init: I): Controller & I;
+
+interface SpyController<T> {
+    /** 
+     * Arguments add listed properties to watch list for live-reload for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    on(...properties: string[]): SpyController<T> | T;
+
+    /** 
+     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
+     * Use this to optimize when you refresh by ingoring unnecessary values which still are used to render.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    not(...properties: string[]): SpyController<T> | T;
+    
+    /** 
+     * Arguments determine entirely what properties will be watched for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    only(...properties: string[]): T;
+    
+    /** 
+     * Disable automatic reload on all properties for this component.
+     * 
+     * Reserved: Overrides of this method will be ignored. 
+     */
+    once(): T;
+    
+    /** 
+     * You're probably looking for `.not`
+     */
+    except: never;
 }
 
-type ExpectsParams<A extends any[]> = new(...args: A) => any
-  
-/**
- * LiveState
- * 
- * State based on source schema `T`.
- * 
- * All values have getter-setter pair, setter will shallow compare and trigger update of react-component consumer.
- * 
- * Methods (ala `@actions`) have access to live values and may update them for same effect.
- */
-interface LiveState {
+interface Controller {
     /**
      * Trigger update of consumer component.
      * 
@@ -45,78 +96,7 @@ interface LiveState {
     add(key: string, initial?: any, bootup?: true): boolean;
 }
 
-/**
- * LiveState Controller Hook.
- * 
- * @param init Controller Class
- * Class properties determine what values are live. 
- * 
- * Note: Properties starting with _ will not trigger any re-renders.
- * 
- * @returns {LiveState} Live state: interactive state of component.
- */
-declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args: A): LiveState & I;
-
-/**
- * LiveState React Hook 
- * Returned object sets initial state, and determines what values are live.
- * 
- * Any value initialized will be included as getter-setter pair on returned object.
- * Updates to values on state object will trigger a re-render.
- * 
- * Initializer function which returns state at mount. Runs only once.
- * 
- * @param init Initial values or initializer (returning those values) of resulting state.
- * 
- * @returns {LiveState} Live state: current state of component.
- */
-declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
-declare function use<I>(init: I): LiveState & I;
-
-interface Class {
-    new (...args: any): any;
-}
-
-interface Controller extends LiveState {}
-
-interface SpyController<T> {
-    /** 
-     * Arguments add listed properties to watch list for live-reload for this component.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    on(...properties: string[]): T & SpyController<T>;
-
-    /** 
-     * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
-     * Use this to optimize when you refresh by ingoring unnecessary values which still are used to render.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    not(...properties: string[]): T & SpyController<T>;
-    
-    /** 
-     * Arguments determine entirely what properties will be watched for this component.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    only(...properties: string[]): T;
-    
-    /** 
-     * Disable automatic reload on all properties for this component.
-     * 
-     * Reserved: Overrides of this method will be ignored. 
-     */
-    once(): T;
-    
-    /** 
-     * You're probably looking for `.not`
-     */
-    except: never;
-}
-
 declare class Controller {
-
     /**
      * Lifecycle Method
      * 
@@ -154,15 +134,19 @@ declare class Controller {
 
     Provider(): FunctionComponentElement<ProviderProps<this>>
     
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     on(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     once(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     only(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     not(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** 
+     * **Reserved** - (not actually) used by subscription driver. 
+     * 
+     * You probably mean `not`
+     * */
     except: never;
 
     /**
@@ -171,16 +155,16 @@ declare class Controller {
     hold: boolean;
 
     /** 
-     * Proxy for `this` controller when destructuring. 
+     * **Reserved**
      * 
-     * Reserved: Setting this will not pass through to your components.
+     * Proxy for `this` controller when destructuring. 
      */
     set: this;
 
     /** 
-     * Proxy for `this` controller when destructuring. 
+     * **Reserved**
      * 
-     * Reserved: Setting this will not pass through to your components.
+     * Proxy for `this` controller when destructuring. 
      */
     get: this;
 
@@ -308,7 +292,7 @@ declare class Controller {
     static getOnce<T extends Class>(this: T): InstanceType<T>;
 
     /**
-     * You probably want `.useExcept()`
+     * You probably mean `.useExcept()`
      */
     static getNot: never;
 }
