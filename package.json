@@ -28,14 +28,22 @@
     "start": "npm run --prefix examples start",
     "prepare": "npm install --prefix examples",
     "prepublish": "npm run build",
-    "prebuild": "rm -rf lib/"
+    "prebuild": "rm -rf lib/",
+    "test": "jest --watchAll"
   },
   "peerDependencies": {
     "react": "^16.8.0"
   },
   "devDependencies": {
+    "@testing-library/react-hooks": "^2.0.1",
+    "@types/jest": "^24.0.18",
     "@types/react": "^16.8.0",
+    "jest": "^24.9.0",
     "react": "^16.8.0",
+    "react-test-renderer": "^16.9.0",
     "typescript": "^3.5.3"
+  },
+  "dependencies": {
+    "ts-jest": "^24.1.0"
   }
 }
