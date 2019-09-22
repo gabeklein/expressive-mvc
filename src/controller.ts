@@ -3,46 +3,41 @@ import { FunctionComponentElement, ProviderProps, useContext, Context } from 're
 import { getContext, getControlProvider, getHook, getFromContext } from './context';
 import { SpyController, useSubscriber } from './subscriber';
 import { NEW_SUB, SUBSCRIBE } from './subscription';
-import { ExpectsParams, UpdateTrigger } from './types.d';
+import { UpdateTrigger, Class } from './types.d';
 import { useController } from './use_hook';
 
 const { 
-  defineProperty: define
+  defineProperty: define 
 } = Object;
 
-interface Controller {
-  /* Force compatibility with <InstanceType> */
-  new (...args: any): any;
+declare class ModelController {
 
   didMount?(): void;
   willUnmount?(): void;
   didHook?(): void;
   willHook?(): void;
 
-  on(): this;
-  not(): this;
-  only(): this;
+  on(...args: string[]): this;
+  not(...args: string[]): this;
+  only(...args: string[]): this;
   once(): this;
 
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   Provider: FunctionComponentElement<ProviderProps<this>>;
+
+  static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
+  static get<T extends Class>(this: T): InstanceType<T>;
+  static context(): Context<any>;
 }
 
-interface TypeofController {
-  new (...args: any[]): any;
-  use<T extends ExpectsParams>(this: T, ...args: any[]): InstanceType<T>;
-  get<T extends ExpectsParams>(this: T): InstanceType<T>;
-  context(): Context<any>;
+function Controller(){
+  /* Just the host function, nothing initialized here */
 }
 
-function Controller(){}
+const prototype = Controller.prototype = {} as any;
 
-Controller.prototype = {
-  on(){ return this },
-  not(){ return this },
-  only(){ return this },
-  once(){ return this }
-};
+for(const f of ["on", "not", "only", "once"])
+  prototype[f] = function(){ return this }
 
 define(prototype, "Provider", {
   get: getControlProvider
@@ -52,95 +47,88 @@ Controller.context = getContext;
 Controller.hook = getHook;
 Controller.get = getFromContext;
 
-Controller.create = function create<T extends ExpectsParams<A>, A extends any[]>
-  (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
+Controller.create = function create(...args: any[]): 
+  FunctionComponentElement<ProviderProps<any>> {
 
-  const control = 
-    useController(this as any, args);
-
+  const control = useController(this, args);
   return control.Provider;
 }
 
-Controller.use = function use<T extends ExpectsParams>
-  (this: T, ...args: any[]): InstanceType<T> {
-
-  const control = 
-    useController(this as any, args);
-
+Controller.use = function use(...args: any[]){
+  const control = useController(this, args);
   return useSubscriber(control);
 }
 
-Controller.useOnce = function useOnce(this: any){
+Controller.useOnce = function useOnce(){
   return useController(this);
 }
 
 Controller.useOn = function useOn(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.use() as any;
+  let state = this.use();
   return SUBSCRIBE in state
     ? state.on(...args)
     : state;
 }
 
 Controller.useOnly = function useOnly(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.use() as any;
+  let state = this.use();
   return SUBSCRIBE in state
     ? state.only(...args)
     : state;
 }
 
 Controller.useExcept = function useExcept(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.use() as any;
+  let state = this.use();
   return SUBSCRIBE in state
     ? state.not(...args)
     : state;
 }
 
 Controller.getOn = function getOn(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.get() as any;
+  let state = this.get();
   return SUBSCRIBE in state
     ? state.on(...args)
     : state;
 }
 
 Controller.getOnly = function getOnly(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.get() as any;
+  let state = this.get();
   return SUBSCRIBE in state
     ? state.only(...args)
     : state;
 }
 
 Controller.getExcept = function getExcept(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  let state = this.get() as any;
+  let state = this.get();
   return SUBSCRIBE in state
     ? state.not(...args)
     : state;
 }
 
 Controller.getOnce = function getOnce(
-  this: TypeofController, ...args: string[]){
+  this: typeof ModelController, ...args: string[]){
 
-  const context = this.context();
-  const getFromContext = () =>
-    useContext(context) as Controller | SpyController;
+  const properContext = this.context();
+  const getFromContext = () => useContext(properContext);
 
   define(this, `getOnce`, { 
     configurable: true,
     value: getFromContext
   });
   
-  return getFromContext() as any;
+  return getFromContext();
 }
 
-export { Controller }
+export { Controller, ModelController }

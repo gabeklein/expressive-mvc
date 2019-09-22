@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Controller } from './controller';
+import { ModelController } from './controller';
 import { Set } from './polyfill';
 import { NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { BunchOf, UpdateTrigger } from './types';
@@ -11,11 +11,10 @@ const {
   create
 } = Object;
 
-export function useSubscriber<T extends Controller | SpyController>
-  (controller: T){
-
+export function useSubscriber(controller: ModelController){
+  let instance: ModelController | SpyController = controller;
   const firstRenderIs = useRef(true);
-  const useUpdate = useState(0);
+  const setUpdate = useState(0)[1];
 
   if(firstRenderIs.current){
     const subscribe = controller[NEW_SUB];
@@ -27,35 +26,32 @@ export function useSubscriber<T extends Controller | SpyController>
       )
     }
 
-    controller = subscribe(useUpdate[1]) as any;
+    instance = subscribe(setUpdate);
     firstRenderIs.current = false
   }
 
   useEffect(() => {
-    const initialRenderControl = 
-      controller as SpyController;
-
+    const initialRenderControl = controller as unknown as SpyController;
     initialRenderControl[SUBSCRIBE]();
-    return () => 
-      initialRenderControl[UNSUBSCRIBE]();
+    return () => initialRenderControl[UNSUBSCRIBE]();
   }, [])
 
-  return controller;
+  return instance;
 }
 
-export interface SpyController extends Controller {
+export interface SpyController extends ModelController {
   [UNSUBSCRIBE]: () => void;
   [SUBSCRIBE]: () => void;
 };
 
 export function SpyController(
-  source: Controller, 
+  source: ModelController, 
   hook: UpdateTrigger,
   mutable: BunchOf<any>,
   register: BunchOf<Set<UpdateTrigger>>
 ): SpyController {
 
-  const Spy = create(source) as any;
+  const Spy = create(source);
   let watch = Set<string>();
   let exclude: Set<string>;
 

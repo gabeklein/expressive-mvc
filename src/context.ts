@@ -4,16 +4,16 @@ import {
   useContext,
 } from 'react';
 
-import { Controller } from './controller';
+import { ModelController } from './controller';
 import { useSubscriber } from './subscriber';
 
-const CONTEXT_ALLOCATED = [] as Array<[Function, Context<Controller>]>;
+const CONTEXT_ALLOCATED = [] as Array<[Function, Context<ModelController>]>;
 
 const { 
   defineProperty: define
 } = Object;
 
-function ownContext(of: typeof Controller){
+function ownContext(of: typeof ModelController){
   const { constructor } = of.prototype;
   let context;
 
@@ -32,7 +32,7 @@ function ownContext(of: typeof Controller){
 }
 
 export function getFromContext(
-  this: typeof Controller){
+  this: typeof ModelController){
     
   const context = ownContext(this);
  
@@ -42,17 +42,17 @@ export function getFromContext(
   }
   
   define(this, `get`, { value: useContextSubscriber });
-  return useContextSubscriber() as Controller;
+  return useContextSubscriber() as ModelController;
 }
 
 export function getContext(
-  this: typeof Controller){
+  this: typeof ModelController){
 
   return ownContext(this);
 }
 
 export function getHook(
-  this: typeof Controller){
+  this: typeof ModelController){
 
   const context = ownContext(this);
 
@@ -63,7 +63,7 @@ export function getHook(
 }
 
 export function getControlProvider(
-  this: typeof Controller){
+  this: typeof ModelController){
 
   const context = ownContext(this);
 

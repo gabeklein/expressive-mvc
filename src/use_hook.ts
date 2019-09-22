@@ -4,9 +4,9 @@ import {
   MutableRefObject,
 } from 'react';
 
-import { Controller } from './controller';
+import { Controller, ModelController } from './controller';
 import { applyDispatch } from './subscription';
-import { Lifecycle } from './types.d';
+import { Lifecycle, Class } from './types.d';
 import { useSubscriber } from './subscriber';
 
 const {
@@ -39,28 +39,29 @@ export function useModelController(init: any, ...args: any[]){
   return useSubscriber(control);
 }
 
-export function useController<T extends Controller>( 
-  control: T,
+export function useController( 
+  model: Class | Function,
   args: any[] = [],
-  superType: any = Controller.prototype){
+  superType: any = Controller.prototype
+): ModelController {
 
-  type I = InstanceType<T>;
-
-  const cache = useRef(null) as MutableRefObject<I>
-  let instance = cache.current as InstanceType<T>;
+  const cache = useRef(null) as MutableRefObject<any>
+  let instance = cache.current;
 
   if(instance === null){
-    if(control.prototype)
-      instance = new control(...args);
+    if(model.prototype)
+      instance = new (model as Class)(...args);
     else if(typeof instance == "function")
-      instance = (control as any)(...args)
+      instance = (model as Function)(...args)
     else 
-      instance = control as any;
+      instance = model;
 
     if(instance.didHook)
       instance.didHook.apply(instance)
+      
     applyDispatch(instance);
-    instance = bindMethods(instance, control.prototype, superType);
+    instance = bindMethods(instance, model.prototype, superType);
+
     cache.current = instance;
   }
   else if(instance.didHook)
@@ -73,8 +74,8 @@ export function useController<T extends Controller>(
   }
 
   useEffect(() => {
-    const state = proto(instance as any);
-    const methods: Lifecycle = control.prototype || {}
+    const state = proto(instance);
+    const methods: Lifecycle = model.prototype || {}
     return invokeLifecycle(
       state, 
       state.didMount || methods.didMount, 

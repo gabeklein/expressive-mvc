@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { ModelController } from './controller';
 import { BunchOf, UpdateTrigger } from './types';
 import { SpyController } from './subscriber';
 import { Set } from './polyfill';
@@ -16,12 +16,14 @@ export const NEW_SUB = "__init_subscription__";
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
 
-export function applyDispatch(control: Controller){
+export function applyDispatch(control: ModelController){
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
   const pending = Set<string>();
   let isPending = false;
+  
+  define(control, NEW_SUB, { value: startSpying })
 
   for(const key of Object.getOwnPropertyNames(control)){
     const d = describe(control, key)!;
@@ -39,7 +41,7 @@ export function applyDispatch(control: Controller){
       configurable: false
     })
 
-    if(TOGGLEABLE.test(key) && typeof d.value == "boolean")
+    if(typeof d.value == "boolean" && TOGGLEABLE.test(key))
       define(control, key.replace(/is/, "toggle"), {
         value: setToggle(key)
       })
@@ -52,11 +54,6 @@ export function applyDispatch(control: Controller){
 
   define(control, "get", { value: control });
   define(control, "set", { value: control });
-
-  define(control, NEW_SUB, { 
-    value: (hook: UpdateTrigger) => 
-      SpyController(control, hook, mutable, register)
-  })
 
   define(control, "refresh", { 
     value: function refreshSubscribersOf(...watching: string[]){
@@ -80,6 +77,10 @@ export function applyDispatch(control: Controller){
       return acc;
     }
   })
+
+  function startSpying(hook: UpdateTrigger){
+    return SpyController(control, hook, mutable, register)
+  }
 
   function refresh(){
     if(isPending)
