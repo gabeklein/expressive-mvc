@@ -1,6 +1,7 @@
 import { Controller } from './controller';
 import { BunchOf, UpdateTrigger } from './types';
-import { SpyController } from 'subscriber';
+import { SpyController } from './subscriber';
+import { Set } from './polyfill';
 
 const { 
   defineProperty: define, 
@@ -16,45 +17,11 @@ const NEW_SUB = "__init_subscription__";
 const UNSUBSCRIBE = "__delete_subscription__";
 const SUBSCRIBE = "__activate_subscription__";
 
-interface PolySet<T> extends Array<T> {
-  new<T>(): PolySet<T>;
-  add(item: T): void;
-  delete(item: T): void;
-  clear(): void;
-}
-
-function PolySet<T>(){
-  const content = [] as T[];
-
-  define(content, "add", {
-    value: (x: T) => {
-      if(content.indexOf(x) < 0)
-        content.push(x);
-    }
-  })
-
-  define(content, "delete", {
-    value: (x: T) => {
-      const i = content.indexOf(x);
-      if(i >= 0)
-        content.splice(i, 1);
-    }
-  })
-
-  define(content, "clear", {
-    value: () => {
-      content.splice(0, content.length);
-    }
-  })
-
-  return content as PolySet<T>;
-}
-
 function Dispatch(this: Controller){
   const mutable = {} as any;
-  const register = {} as BunchOf<PolySet<UpdateTrigger>>;
+  const register = {} as BunchOf<Set<UpdateTrigger>>;
 
-  const pending = PolySet<string>();
+  const pending = Set<string>();
   let isPending = false;
 
   for(const key of Object.getOwnPropertyNames(this)){
@@ -64,7 +31,7 @@ function Dispatch(this: Controller){
       continue;
 
     mutable[key] = d.value;
-    register[key] = PolySet();
+    register[key] = Set();
 
     define(this, key, {
       get: () => mutable[key],
@@ -143,7 +110,7 @@ function Dispatch(this: Controller){
   }
 
   function dispatch(){
-    const inform = PolySet<UpdateTrigger>();
+    const inform = Set<UpdateTrigger>();
     for(const key of pending)
       for(const sub of register[key] || [])
         inform.add(sub);
@@ -160,12 +127,12 @@ function SpyController(
   source: Controller, 
   hook: UpdateTrigger,
   mutable: BunchOf<any>,
-  register: BunchOf<PolySet<UpdateTrigger>>
+  register: BunchOf<Set<UpdateTrigger>>
 ): SpyController {
 
   const Spy = create(source) as any;
-  let watch = PolySet<string>();
-  let exclude: PolySet<string>;
+  let watch = Set<string>();
+  let exclude: Set<string>;
 
   for(const key in mutable)
     define(Spy, key, {
@@ -193,7 +160,7 @@ function SpyController(
     for(const key of watch){
       let set = register[key];
       if(!set)
-        set = register[key] = PolySet();
+        set = register[key] = Set();
       set.add(hook);
     }
   }
@@ -204,7 +171,7 @@ function SpyController(
   }
 
   function bail(...keys: string[]){
-    const watch = PolySet<string>();
+    const watch = Set<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
@@ -214,7 +181,7 @@ function SpyController(
   }
 
   function except(...keys: string[]){
-    exclude = PolySet<string>();
+    exclude = Set<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         exclude.add(key);
