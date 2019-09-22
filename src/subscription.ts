@@ -3,6 +3,8 @@ import { BunchOf, UpdateTrigger } from './types';
 import { SpyController } from './subscriber';
 import { Set } from './polyfill';
 
+declare const setTimeout: (callback: () => void, ms: number) => number;
+
 const { 
   defineProperty: define, 
   getOwnPropertyDescriptor: describe
