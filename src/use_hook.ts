@@ -5,7 +5,7 @@ import {
 } from 'react';
 
 import { Controller } from './controller';
-import { Dispatch } from './subscription';
+import { applyDispatch } from './subscription';
 import { Lifecycle } from './types.d';
 import { useSubscriber } from './subscriber';
 
@@ -59,7 +59,7 @@ export function useController<T extends Controller>(
 
     if(instance.didHook)
       instance.didHook.apply(instance)
-    Dispatch.apply(instance);
+    applyDispatch(instance);
     instance = bindMethods(instance, control.prototype, superType);
     cache.current = instance;
   }

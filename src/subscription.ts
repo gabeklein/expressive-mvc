@@ -16,15 +16,15 @@ export const NEW_SUB = "__init_subscription__";
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
 
-export function Dispatch(this: Controller){
+export function applyDispatch(control: Controller){
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
   const pending = Set<string>();
   let isPending = false;
 
-  for(const key of Object.getOwnPropertyNames(this)){
-    const d = describe(this, key)!;
+  for(const key of Object.getOwnPropertyNames(control)){
+    const d = describe(control, key)!;
 
     if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
       continue;
@@ -32,7 +32,7 @@ export function Dispatch(this: Controller){
     mutable[key] = d.value;
     register[key] = Set();
 
-    define(this, key, {
+    define(control, key, {
       get: () => mutable[key],
       set: enqueue(key),
       enumerable: true,
@@ -40,25 +40,25 @@ export function Dispatch(this: Controller){
     })
 
     if(TOGGLEABLE.test(key) && typeof d.value == "boolean")
-      define(this, key.replace(/is/, "toggle"), {
+      define(control, key.replace(/is/, "toggle"), {
         value: setToggle(key)
       })
   }
 
-  define(this, "hold", {
+  define(control, "hold", {
     get: () => isPending,
     set: to => isPending = to
   })
 
-  define(this, "get", { value: this });
-  define(this, "set", { value: this });
+  define(control, "get", { value: control });
+  define(control, "set", { value: control });
 
-  define(this, NEW_SUB, { 
+  define(control, NEW_SUB, { 
     value: (hook: UpdateTrigger) => 
-      SpyController(this, hook, mutable, register)
+      SpyController(control, hook, mutable, register)
   })
 
-  define(this, "refresh", { 
+  define(control, "refresh", { 
     value: function refreshSubscribersOf(...watching: string[]){
       for(const x of watching)
         pending.add(x)
@@ -66,7 +66,7 @@ export function Dispatch(this: Controller){
     }
   });
 
-  define(this, "export", {
+  define(control, "export", {
     value: function exportCurrentValues(){
       const acc = {} as BunchOf<any>;
       for(const key in this){
