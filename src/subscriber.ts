@@ -31,7 +31,7 @@ export function useSubscriber(controller: ModelController){
   }
 
   useEffect(() => {
-    const initialRenderControl = controller as unknown as SpyController;
+    const initialRenderControl = instance as unknown as SpyController;
     initialRenderControl[SUBSCRIBE]();
     return () => initialRenderControl[UNSUBSCRIBE]();
   }, [])
