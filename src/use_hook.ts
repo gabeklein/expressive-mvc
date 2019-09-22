@@ -34,7 +34,7 @@ const RESERVED = [
   "willHook"
 ];
 
-function useSimpleController(init: any, ...args: any[]){
+export function useModelController(init: any, ...args: any[]){
   const control = useController(init, args, Object.prototype);
   return useSubscriber(control);
 }
@@ -139,5 +139,3 @@ export function invokeLifecycle(
       catch(err) {}
   }
 }
-
-export { useSimpleController as use }
