@@ -1,52 +1,75 @@
-import { renderHook, act } from "@testing-library/react-hooks";
-import { use } from "../";
+import { renderHook } from '@testing-library/react-hooks';
 
-class TestController {
+import Controller, { use } from '../';
+import { trySubscriber } from './adapter';
+
+class TestController extends Controller {
   value = 1;
   value2 = 2;
 
   setValueToThree = () => this.value = 3
 }
 
-const useTestController = () => {
-  const { result } =  renderHook(() => use(TestController));
-  return result;
-}
-
-it('loads values from class', () => {
-  const hook = useTestController();
-  expect(hook.current.value).toBe(1);
-  expect(hook.current.value2).toBe(2);
+test('loads values from class', () => {
+  const { result } = renderHook(() => use(TestController));
+  expect(result.current.value).toBe(1);
+  expect(result.current.value2).toBe(2);
 })
 
-it('updates on value change', () => {
-  const hook = useTestController();
+test('updates on value change', async () => {
+  const { result, assertDidUpdate } = 
+    trySubscriber({
+      use: TestController,
+      peek: "value" 
+    })
   
-  act(() => {
-    hook.current.value = 2
-  })
+  result.current.value = 2
 
-  expect(hook.current.value).toBe(2)
-})
-
-it('allows methods to change state', () => {
-  const hook = useTestController();
+  await assertDidUpdate();
   
-  act(() => {
-    hook.current.setValueToThree();
-  })
-
-  expect(hook.current.value).toBe(3)
+  expect(result.current.value).toBe(2);
 })
 
-test('set/get reference full state', () => {
-  const hook = useTestController();
+test('will not update on untracked value change', async () => {
+  const { result, assertDidNotUpdate } = 
+    trySubscriber({
+      use: TestController,
+      // peek: "value"
+    })
+  
+  result.current.value = 2
 
-  expect(hook.current.get.value).toBe(1);
+  await assertDidNotUpdate();
+  
+  expect(result.current.value).toBe(2);
+})
 
-  act(() => {
-    hook.current.set.value = 2;
-  })
+test('allows methods to change state', async () => {
+  const { result, assertDidUpdate } = 
+    trySubscriber({
+      use: TestController,
+      peek: "value" 
+    })
+  
+  result.current.setValueToThree();
 
-  expect(hook.current.value).toBe(2)
+  await assertDidUpdate();
+
+  expect(result.current.value).toBe(3)
+})
+
+test('set/get reference full state', async () => {
+  const { result, assertDidUpdate } = 
+    trySubscriber({
+      use: TestController,
+      peek: "value" 
+    })
+  
+  expect(result.current.get.value).toBe(1);
+
+  result.current.set.value = 2;
+
+  await assertDidUpdate()
+
+  expect(result.current.value).toBe(2)
 })

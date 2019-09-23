@@ -10,7 +10,7 @@
         "strict": true,
         "esModuleInterop": true,
         "lib": [ "es2015" ],
-        "types": [ "jest" ]
+        "types": [ "node", "jest" ]
     },
     "exclude": [
         "index.d.ts",
