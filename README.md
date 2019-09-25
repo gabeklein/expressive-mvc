@@ -63,7 +63,7 @@ The basic idea is pretty simple, to watch all properties in an instance of some 
 
 For this, you have a general-purpose hook `use()`, which can take any class, and an inheritable abstract-class `Controller`, which makes more specialized hooks available as static methods.
 
-When any of these hooks are called, a `ModelController` reference is returned, bound to the component. It contains all current state, used for rendering. Changes to that object are then reflected by triggering a new render, where deemed necessary. 
+When any of these hooks are called, a new `ModelController` reference is returned, bound to the component. It contains all current state, usable for rendering. Changes to that object are then reflected by triggering a new render, only when necessary of-course. 
 
 This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
 
@@ -128,11 +128,11 @@ const KitchenCounter = () => {
 ```
 <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a>
 
-> First, make a class with properties we wish track. Values given will be the initial state. 
+> First, make a class with properties we wish track. Values given serve as initial/default state. 
 >
-> Pass the class to `use()` which will create a new instance, bound to the component. 
+> Pass the class to `use()` which will create a new instance, hooked into your component. 
 >
-> Now, as values on the model change, our `use` hook will trigger new renders in order to remain synced!
+> Now, as values on the model change, our `use` hook will trigger new renders, enough to remain synced!
 
 <br/>
 
@@ -255,7 +255,8 @@ class StickySituation {
   }
 
   tickTock = () => {
-    if(--this.remaining === 0)
+    const timeLeft = --this.remaining;
+    if(timeLeft === 0)
       this.cutTheDrama();
   }
 
@@ -266,7 +267,7 @@ class StickySituation {
   getSomebodyElse = async () => {
     const res = await fetch("https://randomuser.me/api/");
     const data = await res.json();
-    const recruit = data.results[0];
+    const [ recruit ] = data.results;
 
     this.surname = recruit.name.last;
   }
