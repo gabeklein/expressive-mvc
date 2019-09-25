@@ -2,24 +2,24 @@ import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
 import Controller, { use } from '../';
 
+type Class = new (...args: any[]) => any;
+
 const HOOK_METHODS = [
-  "use",
-  "useOn",
-  "useOnly",
-  "useOnce",
-  "useExcept",
-  "get",
-  "getOn",
-  "getOnly",
-  "getOnce",
-  "getExcept"
+  "use", "useOn", "useOnly", "useOnce", "useExcept", 
+  "get", "getOn", "getOnly", "getOnce", "getExcept"
 ]
 
-function toArray<T>(x: T[] | T){
-  return ([] as T[]).concat(x) as T[]
+function ensureArray<T>(x: T | T[]){
+  return ([] as T[]).concat(x);
 }
 
-class PromiseError extends Error {
+/**
+ * Error with test-friendlier stack-trace. 
+ * 
+ * Create prior to running an async operation. 
+ * Throwing this as a closure-variable highlights the failed promise.
+ */
+class TraceableError extends Error {
   constructor(message: string){
     super(message);
     const stack = (this.stack as string).split(/\n/);
@@ -27,35 +27,26 @@ class PromiseError extends Error {
   }
 }
 
-type Class = new (...args: any[]) => any;
-
-interface ControllerHookTestable<T> 
-  extends RenderHookResult<unknown, T> {
-
-  /** Check if rerender was requested. Will reject if not. */
-  assertDidUpdate(): Promise<void>
-
-  /** Assert a rerender was not requested. Will reject if one was. */
-  assertDidNotUpdate(): Promise<void>
-}
-
 /**
  * Test-definition, activate Controller hook on a given class.
  */
 interface TestSuite<T> {
-  /** Activate controller. Pass `args` to constructor */
+  /** Activate controller. Passes `args` to constructor */
   use?: T;
   /** Capture controller from context.*/
   get?: T;
 
-  useOn?: T;
-  useOnly?: T;
-  useOnce?: T;
-  useExcept?: T;
+  /** forward these arguments to the activated method */
+  args?: any[];
 
+  /* Chained subsription methods, use ones below instead. */
+  useOn?: T;
+  useOnce?: T;
+  useOnly?: T;
+  useExcept?: T;
   getOn?: T;
-  getOnly?: T;
   getOnce?: T;
+  getOnly?: T;
   getExcept?: T;
 
   /** Subscribe to this, plus whatever automatic inference finds */
@@ -73,9 +64,6 @@ interface TestSuite<T> {
    * subscription can infer what to watch. 
    */
   peek?: string | string[];
-
-  /** forward these arguments to the activated method */
-  args?: any[];
 }
 
 /**
@@ -88,31 +76,23 @@ interface TestSuite<T> {
  * 
  * e.g. `{ use: TestController }`
  * 
+ * `peek` simulates access on first render.
+ * 
+ * `args` passes arguments to `Controller.use()`
+ * 
  * Available Hooks:
  * - use
- * - useOn
- * - useOnly
- * - useOnce
- * - useExcept
  * - get
- * - getOn
- * - getOnly
- * - getOnce
- * - getExcept
  * 
- * Refresh Modifiers:
+ * Refresh Directives:
  * - on
  * - only
  * - not
  * - once
- * 
  */
-export function trySubscriber<T extends Class>(config: TestSuite<T>): ControllerHookTestable<InstanceType<T>>
-export function trySubscriber<T>(init: () => T): ControllerHookTestable<T>
-export function trySubscriber<T extends Class>(config: TestSuite<T> | Function){
-
-  type Out = ControllerHookTestable<InstanceType<T>>;
-
+export function trySubscriber<T extends Class>(config: TestSuite<T>): PlusAssertions<InstanceType<T>>
+export function trySubscriber<T>(init: () => T): PlusAssertions<T>
+export function trySubscriber(config: TestSuite<any> | Function){
   let init: Function | undefined;
 
   if(typeof config === "function")
@@ -120,82 +100,85 @@ export function trySubscriber<T extends Class>(config: TestSuite<T> | Function){
   else {
     init = appliedMethod(config);
     init = applySubscription(init, config);
-    init = applyDestructure(init, config);
+    init = mockPropertyAccess(init, config);
   }
 
-  const api = renderHook(init as any) as Out;
-  applyExtraAssertions(api);
+  const api = renderHook(init as any);
+  addExtraAssertions(api as any);
   return api;
 }
 
 function appliedMethod(config: TestSuite<any>){
   for(const key of HOOK_METHODS){
-    const handler = (config as any)[key];
-    if(!handler)
+    const Definition = (config as any)[key];
+    if(!Definition)
       continue;
 
-    if(handler.prototype instanceof Controller === false)
+    if(Definition.prototype instanceof Controller === false)
       if(key === "use")
         return () => use(config.use)
       else
-        throw new Error(`Controller of type ${handler.name} does not extend Controller!`)
+        throw new Error(`Controller of type ${Definition.name} does not extend Controller!`)
     
-    return () => (<any>Controller)[key].apply(handler, config.args);
+    return () => (Controller as any)[key].apply(Definition, config.args);
   }
   throw new Error(`No hook specified in test suite!`);
 }
 
-function applyDestructure(
-  chain: Function, { peek }: TestSuite<any> ){
+function mockPropertyAccess(
+  chain: Function, 
+  { peek }: TestSuite<any> ){
     
-  if(peek){
-    const link = chain;
-    const keys = toArray(peek);
-    chain = () => {
-      const reference = link();
-      for(const key of keys)
-        void reference[key];
-      return reference;
-    }
+  if(!peek) return chain;
+
+  return () => {
+    const ref = chain();
+    const keys = ensureArray(peek);
+    for(const key of keys)
+      void ref[key];
+    return ref;
   }
-  return chain;
 }
 
 function applySubscription(
-  chain: Function, suite: TestSuite<any>){
+  chain: Function, 
+  { once, only, on, not }: TestSuite<any>){
 
-  if(suite.once){
-    const link = chain;
-    chain = () => link().once();
-  }
-  else if(suite.only){
-    const link = chain;
-    const list = toArray(suite.only)
-    chain = () => link().only(...list)
-  }
+  if(once)
+    return () => chain().once();
+  else if(only)
+    return () => chain().only(...ensureArray(only))
   else {
-    if(suite.not){
+    if(on){
       const link = chain;
-      const list = toArray(suite.not)
-      chain = () => link().not(...list)
+      chain = () => link().on(...ensureArray(on))
     }
-    if(suite.on){
-      const link = chain;
-      const list = toArray(suite.on);
-      
-      chain = () => link().on(...list)
-    }
+    if(not)
+      return () => chain().not(...ensureArray(not))
+    else
+      return chain;
   }
-  return chain;
 }
 
-function applyExtraAssertions(hook: ControllerHookTestable<any>){
-  hook.assertDidUpdate = () => {
-    const error = new PromiseError("Assertion failed: hook did not update");
+interface PlusAssertions<T> 
+  extends RenderHookResult<unknown, T> {
+
+  /** Check if rerender was requested. Will reject if not. */
+  assertDidUpdate(): Promise<void>
+
+  /** Assert a rerender was not requested. Will reject if one was. */
+  assertDidNotUpdate(): Promise<void>
+}
+
+function addExtraAssertions(
+  append: PlusAssertions<any>){
+
+  append.assertDidUpdate = () => {
+    const error = new TraceableError("Assertion failed: hook did not update");
     let done = false;
 
     return Promise.race([
-      hook.waitForNextUpdate(),
+      append.waitForNextUpdate(),
       new Promise<never>((resolve) => {
         setTimeout(() => { 
           if(!done) 
@@ -206,20 +189,20 @@ function applyExtraAssertions(hook: ControllerHookTestable<any>){
       done = true
     })
   }
-  
-  hook.assertDidNotUpdate = () => {
-    const error = new PromiseError("Assertion failed: hook did update")
+
+  append.assertDidNotUpdate = () => {
+    const error = new TraceableError("Assertion failed: hook did update")
     let done = false;
 
     return Promise.race([
-      hook.waitForNextUpdate().then(() => {
+      append.waitForNextUpdate().then(() => {
         if(!done) throw error;
       }),
       new Promise<void>((resolve) => {
         setTimeout(() => {
           done = true;
           resolve();
-          hook.rerender();
+          append.rerender();
         }, 500)
       })
     ])
