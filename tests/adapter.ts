@@ -90,9 +90,9 @@ interface TestSuite<T> {
  * - not
  * - once
  */
-export function trySubscriber<T extends Class>(config: TestSuite<T>): PlusAssertions<InstanceType<T>>
-export function trySubscriber<T>(init: () => T): PlusAssertions<T>
-export function trySubscriber(config: TestSuite<any> | Function){
+export function trySubscribe<T extends Class>(config: TestSuite<T>): RenderControllerResult<InstanceType<T>>
+export function trySubscribe<T>(init: () => T): RenderControllerResult<T>
+export function trySubscribe(config: TestSuite<any> | Function){
   let init: Function | undefined;
 
   if(typeof config === "function")
@@ -160,8 +160,14 @@ function applySubscription(
   }
 }
 
-interface PlusAssertions<T> 
+interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
+
+  /** 
+   * Controller reference never actually changes. 
+   * Is destructure safe techincally. 
+   * */
+  state: T;
 
   /** Check if rerender was requested. Will reject if not. */
   assertDidUpdate(): Promise<void>
@@ -171,7 +177,9 @@ interface PlusAssertions<T>
 }
 
 function addExtraAssertions(
-  append: PlusAssertions<any>){
+  append: RenderControllerResult<any>){
+
+  append.state = append.result.current;
 
   append.assertDidUpdate = () => {
     const error = new TraceableError("Assertion failed: hook did not update");

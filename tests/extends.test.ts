@@ -1,5 +1,5 @@
 import Controller from "../";
-import { trySubscriber } from "./adapter";
+import { trySubscribe } from "./adapter";
 
 class TestController extends Controller {
 
@@ -17,30 +17,30 @@ class TestController extends Controller {
 }
 
 test('initializes from extended Controller', () => {
-  const { result } = trySubscriber(
+  const { state } = trySubscribe(
     () => TestController.use()
   )
 
-  expect(result.current.value).toBe(1);
-  expect(result.current.value2).toBe(2);
+  expect(state.value).toBe(1);
+  expect(state.value2).toBe(2);
 })
 
 test('passes arguments to constructor', () => {
-  const { result } = trySubscriber(
+  const { state } = trySubscribe(
     () => TestController.use("Hello World!")
   )
 
-  expect(result.current.init).toBe("Hello World!");
+  expect(state.init).toBe("Hello World!");
 })
 
 test('ignores updates on useOnce', async () => {
-  const { result, assertDidNotUpdate } = trySubscriber(
+  const { state, assertDidNotUpdate } = trySubscribe(
     () => TestController.useOnce()
   )
 
-  expect(result.current.value).toBe(1);
+  expect(state.value).toBe(1);
 
-  result.current.value = 2;
+  state.value = 2;
 
   await assertDidNotUpdate();
 })
