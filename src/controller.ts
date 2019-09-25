@@ -7,7 +7,7 @@ import { UpdateTrigger, Class } from './types.d';
 import { useController } from './use_hook';
 
 const { 
-  defineProperty: define 
+  defineProperties: define 
 } = Object;
 
 declare class ModelController {
@@ -39,8 +39,10 @@ const prototype = Controller.prototype = {} as any;
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = function(){ return this }
 
-define(prototype, "Provider", {
-  get: getControlProvider
+define(prototype, {
+  Provider: {
+    get: getControlProvider
+  }
 })
 
 Controller.context = getContext;
@@ -123,9 +125,11 @@ Controller.getOnce = function getOnce(
   const properContext = this.context();
   const getFromContext = () => useContext(properContext);
 
-  define(this, `getOnce`, { 
-    configurable: true,
-    value: getFromContext
+  define(this, { 
+    getOnce: {
+      configurable: true,
+      value: getFromContext
+    }
   });
   
   return getFromContext();

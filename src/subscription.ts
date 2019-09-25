@@ -22,7 +22,7 @@ export function applyDispatch(control: ModelController){
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
-  const pending = Set<string>();
+  const pending = new Set<string>();
   let isPending = false;
   
   define(control, NEW_SUB, { value: startSpying })
@@ -34,7 +34,7 @@ export function applyDispatch(control: ModelController){
       continue;
 
     mutable[key] = d.value;
-    register[key] = Set();
+    register[key] = new Set();
 
     define(control, key, {
       get: () => mutable[key],
@@ -112,7 +112,7 @@ export function applyDispatch(control: ModelController){
   }
 
   function dispatch(){
-    const inform = Set<UpdateTrigger>();
+    const inform = new Set<UpdateTrigger>();
     for(const key of pending)
       for(const sub of register[key] || [])
         inform.add(sub);

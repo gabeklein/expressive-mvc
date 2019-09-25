@@ -52,7 +52,7 @@ export function SpyController(
 ): SpyController {
 
   const Spy = create(source);
-  let watch = Set<string>();
+  let watch = new Set<string>();
   let exclude: Set<string>;
 
   for(const key in mutable)
@@ -81,7 +81,7 @@ export function SpyController(
     for(const key of watch){
       let set = register[key];
       if(!set)
-        set = register[key] = Set();
+        set = register[key] = new Set();
       set.add(hook);
     }
   }
@@ -92,7 +92,7 @@ export function SpyController(
   }
 
   function bail(...keys: string[]){
-    const watch = Set<string>();
+    const watch = new Set<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
@@ -102,7 +102,7 @@ export function SpyController(
   }
 
   function except(...keys: string[]){
-    exclude = Set<string>();
+    exclude = new Set<string>();
     for(let arg of keys)
       for(const key of arg.split(","))
         exclude.add(key);
