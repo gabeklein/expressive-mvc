@@ -16,7 +16,7 @@ class TestController extends Controller {
   setValueToThree = () => this.value = 3;
 }
 
-test('initializes from `extends Controller`', () => {
+test('initializes from extended Controller', () => {
   const { result } = trySubscriber(
     () => TestController.use()
   )
