@@ -1,7 +1,7 @@
 import Controller from 'react-use-controller';
 import React from "react";
 
-export class FooBar extends Controller {
+export class Central extends Controller {
   foo = 0;
   bar = 0;
 
@@ -10,7 +10,7 @@ export class FooBar extends Controller {
 };
 
 export const Multi = () => {
-  const Control = FooBar.create();
+  const Control = Central.create();
 
   return (
     <Control>
@@ -21,7 +21,7 @@ export const Multi = () => {
 }
 
 const InnerFoo = () => {
-  const { fooUp, bar } = FooBar.get();
+  const { fooUp, bar } = Central.get();
 
   return (
     <div
@@ -34,7 +34,7 @@ const InnerFoo = () => {
 }
 
 const InnerBar = () => {
-  const { barUp, foo } = FooBar.get();
+  const { barUp, foo } = Central.get();
 
   return (
     <div
