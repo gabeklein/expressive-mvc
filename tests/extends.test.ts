@@ -44,3 +44,10 @@ test('ignores updates on useOnce', async () => {
 
   await assertDidNotUpdate();
 })
+
+test('can initialize a Provider', () => {
+  trySubscribe({
+    use: TestController,
+    peek: "Provider"
+  })
+})

@@ -57,7 +57,7 @@ export function useController(
       instance = model;
 
     if(instance.didHook)
-      instance.didHook.apply(instance)
+      instance.didHook()
       
     applyDispatch(instance);
     instance = bindMethods(instance, model.prototype, superType);

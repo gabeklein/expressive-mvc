@@ -1,20 +1,32 @@
 import {
   Context,
   createContext,
+  createElement,
+  PropsWithChildren,
   useContext,
 } from 'react';
 
 import { ModelController } from './controller';
 import { useSubscriber } from './subscriber';
 
-const CONTEXT_ALLOCATED = [] as Array<[Function, Context<ModelController>]>;
+const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
 const { 
   defineProperty: define
 } = Object;
 
-function ownContext(of: typeof ModelController){
-  const { constructor } = of.prototype;
+function ownContext(from: typeof ModelController){
+  let constructor;
+
+  if(!from.prototype)
+    do {
+      from = Object.getPrototypeOf(from);
+      constructor = from.constructor;
+    }
+    while(!constructor)
+  else 
+    constructor = from.prototype.constructor;
+
   let context;
 
   for(const [ _constructor, _context ] of CONTEXT_ALLOCATED)
@@ -24,7 +36,7 @@ function ownContext(of: typeof ModelController){
     }
 
   if(!context){
-    context = createContext(of.prototype);
+    context = createContext(constructor.prototype);
     CONTEXT_ALLOCATED.push([constructor, context]);
   }
 
@@ -65,13 +77,15 @@ export function getHook(
 export function getControlProvider(
   this: typeof ModelController){
 
-  const context = ownContext(this);
+  const context = ownContext(this.constructor as any);
+  const ControlProvider: any =
+    (props: PropsWithChildren<any>) => 
+      createElement(
+        context!.Provider,
+        { value: this },
+        props.children
+      );
 
-  function useContextSubscriber(){
-    const controller = useContext(context);
-    return useSubscriber(controller);
-  }
-
-  define(this, `get`, { value: useContextSubscriber });
-  return useContextSubscriber();
-} 
+  define(this, "Provider", { value: ControlProvider });
+  return ControlProvider
+}
