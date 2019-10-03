@@ -5,7 +5,8 @@ import {
   FunctionComponentElement,
   PropsWithChildren,
   ProviderProps,
-  useContext
+  useContext,
+  useMemo
 } from 'react';
 
 import { ModelController } from './controller';
@@ -89,6 +90,9 @@ export function controllerCreateParent(
 
     if(keysIn(rest).length)
       controller.watch(rest);
+
+    if(typeof children == "function")
+      children = useMemo(children, []);
 
     if(className || style)
       children = createElement("div", { className, style }, children);
