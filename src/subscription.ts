@@ -43,10 +43,7 @@ export function applyDispatch(control: ModelController){
       configurable: false
     })
 
-    if(typeof d.value == "boolean" && TOGGLEABLE.test(key))
-      define(control, key.replace(/is/, "toggle"), {
-        value: setToggle(key)
-      })
+    defineToggle(key, d);
   }
 
   define(control, "hold", {
@@ -91,8 +88,13 @@ export function applyDispatch(control: ModelController){
     setTimeout(dispatch, 0)
   }
 
-  function setToggle(key: string){
-    return function toggle(to?: boolean){
+  function defineToggle(key: string, desc: PropertyDescriptor){
+    if(typeof desc.value !== "boolean") return;
+    if(TOGGLEABLE.test(key) === false) return;
+
+    define(control, key.replace(/is/, "toggle"), { value: toggle })
+
+    function toggle(){
       mutable[key] = !mutable[key]
       pending.add(key);
       refresh();
