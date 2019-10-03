@@ -6,8 +6,10 @@ import { Set } from './polyfill';
 declare const setTimeout: (callback: () => void, ms: number) => number;
 
 const { 
-  defineProperty: define, 
-  getOwnPropertyDescriptor: describe
+  defineProperty: define,
+  defineProperties: defineThese, 
+  getOwnPropertyDescriptor: describe,
+  getOwnPropertyNames: keysOf
 } = Object;
 
 const { random } = Math;
@@ -24,10 +26,20 @@ export function applyDispatch(control: ModelController){
 
   const pending = new Set<string>();
   let isPending = false;
-  
-  define(control, NEW_SUB, { value: startSpying })
 
-  for(const key of Object.getOwnPropertyNames(control)){
+  defineThese(control, {
+    [NEW_SUB]: { value: startSpying },
+    get: { value: control },
+    set: { value: control },
+    refresh: { value: refreshSubscribersOf },
+    export: { value: exportCurrentValues },
+    hold: {
+      get: () => isPending,
+      set: to => isPending = to
+    }
+  })
+
+  for(const key of keysOf(control)){
     const d = describe(control, key)!;
 
     if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
@@ -46,36 +58,24 @@ export function applyDispatch(control: ModelController){
     defineToggle(key, d);
   }
 
-  define(control, "hold", {
-    get: () => isPending,
-    set: to => isPending = to
-  })
+  function refreshSubscribersOf(...watching: string[]){
+    for(const x of watching)
+      pending.add(x)
+    refresh();
+  }
 
-  define(control, "get", { value: control });
-  define(control, "set", { value: control });
-
-  define(control, "refresh", { 
-    value: function refreshSubscribersOf(...watching: string[]){
-      for(const x of watching)
-        pending.add(x)
-      refresh();
+  function exportCurrentValues(this: BunchOf<any>){
+    const acc = {} as BunchOf<any>;
+    for(const key in this){
+        const { value } = describe(this, key)!;
+        if(value)
+          acc[key] = value;
     }
-  });
+    for(const key in mutable)
+      acc[key] = mutable[key]
 
-  define(control, "export", {
-    value: function exportCurrentValues(){
-      const acc = {} as BunchOf<any>;
-      for(const key in this){
-          const { value } = describe(this, key)!;
-          if(value)
-            acc[key] = value;
-      }
-      for(const key in mutable)
-        acc[key] = mutable[key]
-
-      return acc;
-    }
-  })
+    return acc;
+  }
 
   function startSpying(hook: UpdateTrigger){
     return SpyController(control, hook, mutable, register)
