@@ -27,18 +27,6 @@ export function applyDispatch(control: ModelController){
   const pending = new Set<string>();
   let isPending = false;
 
-  defineThese(control, {
-    [NEW_SUB]: { value: startSpying },
-    get: { value: control },
-    set: { value: control },
-    refresh: { value: refreshSubscribersOf },
-    export: { value: exportCurrentValues },
-    hold: {
-      get: () => isPending,
-      set: to => isPending = to
-    }
-  })
-
   for(const key of keysOf(control)){
     const d = describe(control, key)!;
 
@@ -57,6 +45,18 @@ export function applyDispatch(control: ModelController){
 
     defineToggle(key, d);
   }
+
+  defineThese(control, {
+    [NEW_SUB]: { value: startSpying },
+    get: { value: control },
+    set: { value: control },
+    refresh: { value: refreshSubscribersOf },
+    export: { value: exportCurrentValues },
+    hold: {
+      get: () => isPending,
+      set: to => isPending = to
+    }
+  })
 
   function refreshSubscribersOf(...watching: string[]){
     for(const x of watching)
