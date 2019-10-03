@@ -65,7 +65,7 @@ For this, you have a general-purpose hook `use()`, which can take any class, and
 
 When any of these hooks are called, a new `ModelController` reference is returned, bound to the component. It contains all current state, usable for rendering. Changes to that object are then reflected by triggering a new render, only when necessary of-course. 
 
-This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller.
+This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-*component*-controller.
 
 <br/>
 
