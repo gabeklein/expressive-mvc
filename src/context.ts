@@ -15,7 +15,8 @@ import { useController } from './use_hook';
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
 const { 
-  defineProperty: define
+  defineProperty: define,
+  keys: keysIn
 } = Object;
 
 function ownContext(from: typeof ModelController){
@@ -74,6 +75,25 @@ export function getHook(
   return () => {
     const controller = useContext(context);
     return useSubscriber(controller);
+  }
+}
+
+export function controllerCreateParent(
+  this: typeof ModelController): any {
+
+  const { Provider } = ownContext(this.constructor as any);
+
+  return (props: PropsWithChildren<any>) => {
+    let { children, className, style, ...rest } = props;
+    let controller = useController(this);
+
+    if(keysIn(rest).length)
+      controller.watch(rest);
+
+    if(className || style)
+      children = createElement("div", { className, style }, children);
+
+    return createElement(Provider, { value: controller }, children);
   }
 }
 
