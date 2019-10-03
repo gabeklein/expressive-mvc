@@ -3,7 +3,7 @@ import { FunctionComponentElement, ProviderProps, useContext, Context } from 're
 import { getContext, getControlProvider, getHook, getFromContext, controllerCreateProvider } from './context';
 import { SpyController, useSubscriber } from './subscriber';
 import { NEW_SUB, SUBSCRIBE } from './subscription';
-import { UpdateTrigger, Class } from './types.d';
+import { UpdateTrigger, Class, BunchOf } from './types.d';
 import { useController } from './use_hook';
 
 const { 
@@ -21,6 +21,8 @@ declare class ModelController {
   not(...args: string[]): this;
   only(...args: string[]): this;
   once(): this;
+
+  watch(props: BunchOf<any>): this;
 
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   Provider: FunctionComponentElement<ProviderProps<this>>;

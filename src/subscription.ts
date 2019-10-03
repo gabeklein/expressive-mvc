@@ -33,6 +33,10 @@ export function applyDispatch(control: ModelController){
     set: { value: control },
     refresh: { value: refreshSubscribersOf },
     export: { value: exportCurrentValues },
+    watch: { 
+      value: applyExternal,
+      configurable: true
+    },
     hold: {
       get: () => isPending,
       set: to => isPending = to
@@ -75,6 +79,50 @@ export function applyDispatch(control: ModelController){
       acc[key] = mutable[key]
 
     return acc;
+  }
+
+  function applyExternal(
+    this: ModelController,
+    external: BunchOf<any>){
+
+    for(const key of keysOf(external)){
+      mutable[key] = external[key];
+      define(control, key, {
+        get: () => mutable[key],
+        set: directUpdateRestricted(key),
+        enumerable: true,
+        configurable: false
+      })
+    }
+    define(control, "watch", {
+      value: updateExternal,
+      configurable: false
+    })
+    return this;
+  }
+
+  function updateExternal(
+    this: ModelController,
+    external: BunchOf<any>){
+
+    let diff = false;
+
+    for(const key of keysOf(external)){
+      if(external[key] == mutable[key])
+        continue;
+      mutable[key] = external[key];
+      pending.add(key);
+      diff = true;
+    }
+
+    if(diff)
+      refresh();
+
+    return this;
+  }
+
+  function directUpdateRestricted(key: string){
+    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
   }
 
   function startSpying(hook: UpdateTrigger){
