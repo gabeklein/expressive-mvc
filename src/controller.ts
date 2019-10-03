@@ -1,6 +1,6 @@
 import { FunctionComponentElement, ProviderProps, useContext, Context } from 'react';
 
-import { getContext, getControlProvider, getHook, getFromContext } from './context';
+import { getContext, getControlProvider, getHook, getFromContext, controllerCreateProvider } from './context';
 import { SpyController, useSubscriber } from './subscriber';
 import { NEW_SUB, SUBSCRIBE } from './subscription';
 import { UpdateTrigger, Class } from './types.d';
@@ -48,13 +48,7 @@ define(prototype, {
 Controller.context = getContext;
 Controller.hook = getHook;
 Controller.get = getFromContext;
-
-Controller.create = function create(...args: any[]): 
-  FunctionComponentElement<ProviderProps<any>> {
-
-  const control = useController(this, args);
-  return control.Provider;
-}
+Controller.create = controllerCreateProvider;
 
 Controller.use = function use(...args: any[]){
   const control = useController(this, args);

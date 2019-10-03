@@ -50,7 +50,7 @@ export function applyDispatch(control: ModelController){
 
     define(control, key, {
       get: () => mutable[key],
-      set: enqueue(key),
+      set: setTrigger(key),
       enumerable: true,
       configurable: false
     })
@@ -101,7 +101,7 @@ export function applyDispatch(control: ModelController){
     }
   }
 
-  function enqueue(to: string){
+  function setTrigger(to: string){
     return (value: any) => {
       if(mutable[to] === value) 
           return;

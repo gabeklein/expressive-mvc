@@ -2,12 +2,15 @@ import {
   Context,
   createContext,
   createElement,
+  FunctionComponentElement,
   PropsWithChildren,
-  useContext,
+  ProviderProps,
+  useContext
 } from 'react';
 
 import { ModelController } from './controller';
 import { useSubscriber } from './subscriber';
+import { useController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
@@ -74,17 +77,20 @@ export function getHook(
   }
 }
 
-export function getControlProvider(
-  this: typeof ModelController){
+export function controllerCreateProvider(
+  this: typeof ModelController, ...args: any[]): 
+  FunctionComponentElement<ProviderProps<any>> {
 
-  const context = ownContext(this.constructor as any);
+  return useController(this, args).Provider;
+}
+
+export function getControlProvider(
+  this: ModelController){
+
+  const { Provider } = ownContext(this.constructor as any);
   const ControlProvider: any =
     (props: PropsWithChildren<any>) => 
-      createElement(
-        context!.Provider,
-        { value: this },
-        props.children
-      );
+      createElement(Provider, { value: this }, props.children);
 
   define(this, "Provider", { value: ControlProvider });
   return ControlProvider
