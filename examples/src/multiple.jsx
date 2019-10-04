@@ -1,5 +1,5 @@
 import Controller from 'react-use-controller';
-import React from "react";
+import React, { useState } from "react";
 
 export class Central extends Controller {
   foo = 0;
@@ -9,39 +9,45 @@ export class Central extends Controller {
   barUp = () => this.bar++ 
 };
 
-export const Multi = () => {
-  const Control = Central.create();
+export default () => {
+  const [ value, setValue ] = useState("Foo");
 
   return (
-    <Control>
-      <InnerFoo/>
-      <InnerBar/>
-    </Control>
+    <div>
+      <div onClick={() => setValue("Bar")}>
+        Hello {value}
+      </div>
+
+      <Central.Provider value={value}>
+        <InnerFoo/>
+        <InnerBar/>
+      </Central.Provider>
+    </div>
   )
 }
 
 const InnerFoo = () => {
-  const { fooUp, bar } = Central.get();
+  const { fooUp, bar, value } = Central.get();
 
   return (
-    <div
-      className="clicky"
-      onClick={fooUp}>
+    <div className="clicky" onClick={fooUp}>
       <pre>Foo</pre>
-      <small>Bar was clicked {bar} times!</small>
+      <small>Bar was clicked {bar} times!</small><br/>
+      <small>Oh and value prop is {value}</small>
     </div>
   )
 }
 
 const InnerBar = () => {
-  const { barUp, foo } = Central.get();
+  const { barUp, foo, value } = Central.get();
 
   return (
     <div
       className="clicky"
       onClick={barUp}>
       <pre>Bar</pre> 
-      <small>Foo was clicked {foo} times!</small>
+      <small>Foo was clicked {foo} times!</small><br/>
+      <small>Oh and value prop is {value}</small>
     </div>
   )
 }
