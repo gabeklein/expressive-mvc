@@ -6,7 +6,7 @@ import {
   PropsWithChildren,
   ProviderProps,
   useContext,
-  useMemo
+  ProviderExoticComponent
 } from 'react';
 
 import { ModelController } from './controller';
@@ -82,17 +82,22 @@ export function getHook(
 export function controllerCreateParent(
   this: typeof ModelController): any {
 
-  const { Provider } = ownContext(this.constructor as any);
+  const memoizedProvider = () => useController(this).Provider;
 
+  define(this, "Provider", { get: memoizedProvider });
+
+  return memoizedProvider();
+}
+
+function ParentProviderFor(
+  controller: ModelController,
+  Provider: ProviderExoticComponent<any>): any {
+    
   return (props: PropsWithChildren<any>) => {
     let { children, className, style, ...rest } = props;
-    let controller = useController(this);
 
     if(keysIn(rest).length)
       controller.watch(rest);
-
-    if(typeof children == "function")
-      children = useMemo(children, []);
 
     if(className || style)
       children = createElement("div", { className, style }, children);
@@ -112,9 +117,7 @@ export function getControlProvider(
   this: ModelController){
 
   const { Provider } = ownContext(this.constructor as any);
-  const ControlProvider: any =
-    (props: PropsWithChildren<any>) => 
-      createElement(Provider, { value: this }, props.children);
+  const ControlProvider = ParentProviderFor(this, Provider);
 
   define(this, "Provider", { value: ControlProvider });
   return ControlProvider

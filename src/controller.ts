@@ -29,6 +29,7 @@ declare class ModelController {
 
   static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
   static get<T extends Class>(this: T): InstanceType<T>;
+  static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
   static context(): Context<any>;
 }
 
@@ -48,7 +49,7 @@ define(prototype, {
 })
 
 define(Controller, {
-  Parent: { 
+  Provider: { 
     get: controllerCreateParent 
   }
 })
