@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  Turning plain-old classes into react super-hooks.
+  Turning plain-old classes into react super-hooks! 🦸
 </p>
  
 <p align="center">
@@ -28,7 +28,9 @@
 &emsp; • **[Overview](#overview-section)** <br/>
 &emsp; • **[Install and Import](#install-section)**
 
-**[`use`](#started-section) hook (Simple)** <br/>
+**Examples**
+
+[`use`](#started-section) hook (Simple) <br/>
 
   &ensp; • [Basics](#concept-simple) <br/>
   &ensp; • [Methods](#concept-method) <br/>
@@ -36,7 +38,7 @@
   &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Async & Events](#concept-async) <br/>
 
-**[`Controller`](#controller-section) (Advanced)** <br/>
+[`Controller`](#controller-section) (Advanced) <br/>
 
   &ensp; • [Constructor Arguments](#concept-constructor) <br/>
   &ensp; • [TypeScript](#concept-typescript) <br/>
