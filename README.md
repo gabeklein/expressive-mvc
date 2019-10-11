@@ -151,9 +151,7 @@ class CountControl {
   increment = () => { this.number++ };
   decrement = () => { this.number-- };
 }
-```
 
-```jsx
 const KitchenCounter = () => {
   /* Now we can simply destructure, */
   const { number, decrement, increment } = use(CountControl);
@@ -226,11 +224,7 @@ class TimerControl {
     clearInterval(this.timer);
   }
 }
-```
 
-> These, in particular, are called during an internal `useEffect()` step.
-
-```jsx
 const KitchenTimer = () => {
   const state = use(TimerControl);
 
@@ -238,6 +232,8 @@ const KitchenTimer = () => {
 }
 ```
 <sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup>
+
+> These, in particular, are called during an internal `useEffect()` step.
 
 <br />
 
@@ -274,9 +270,7 @@ class StickySituation {
     this.surname = recruit.name.last;
   }
 }
-```
 
-```jsx
 const ActionSequence = () => {
   const {
     remaining,
@@ -329,8 +323,7 @@ import Controller from "react-use-controller"
 class Control extends Controller {
   value = 1;
 }
-```
-```jsx
+
 const Component = () => {
   const { value } = Control.use();
 
@@ -358,8 +351,7 @@ class Control extends Controller {
     this.value = startWith;
   }
 }
-```
-```jsx
+
 const MyComponent = (props) => {
   const { value } = Control.use(props);
 
@@ -402,9 +394,7 @@ class FunActivity extends Controller {
     clearInterval(this.interval)
   }
 }
-```
 
-```jsx
 const PaintDrying = ({ alreadyMinutes }) => {
   /* Your IDE might even know secondsSofar is supposed to be a number 👌 */
   const { secondsSofar } = FunActivity.use(alreadyMinutes);
@@ -451,9 +441,7 @@ export const App = () => {
     </Control>
   )
 }
-```
 
-```jsx
 const InnerFoo = () => {
   /* .get, rather than making a new `Central` controller, 
    * will find the nearest one (in this case from `App`). */
@@ -466,9 +454,7 @@ const InnerFoo = () => {
     </div>
   )
 }
-```
 
-```jsx
 const InnerBar = () => {
   /* Controller knows this component needs to update only when foo changes.
    * Lazy refreshing ensures only properties accessed here are watched here.
@@ -539,8 +525,7 @@ class EmotionalState {
   emotion = "meh"
   reason = "reasons"
 }
-```
-```jsx
+
 const WhatsUp = () => {
   const { name, emotion, reason, set } = use(EmotionalState);
 
@@ -584,11 +569,7 @@ There is nothing preventing you from calling `use` more than once, or making use
   class PongController {
     value = 2
   }
-```
 
-> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
-
-```jsx
   const ControllerAgnostic = () => {
     const ping = use(PingController);
     const pong = use(PongController);
@@ -609,6 +590,8 @@ There is nothing preventing you from calling `use` more than once, or making use
 ```
 <sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
 
+> There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
+
 <br/>
 
 <h2 id="concept-lazy">Subscription based "lazy" updating</h2>
@@ -622,8 +605,7 @@ class FooBar {
   foo = "bar"
   bar = "foo"
 }
-```
-```jsx
+
 const LazyComponent = () => {
   const { set, foo } = use(FooBar);
 
@@ -670,9 +652,7 @@ class ZeroStakesGame {
     }, 1000)
   }
 }
-```
 
-```jsx
 const MusicalChairs = () => {
   const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
 
