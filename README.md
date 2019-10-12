@@ -151,7 +151,8 @@ class CountControl {
   increment = () => { this.number++ };
   decrement = () => { this.number-- };
 }
-
+```
+```jsx
 const KitchenCounter = () => {
   /* Now we can simply destructure, */
   const { number, decrement, increment } = use(CountControl);
@@ -224,7 +225,8 @@ class TimerControl {
     clearInterval(this.timer);
   }
 }
-
+```
+```jsx
 const KitchenTimer = () => {
   const state = use(TimerControl);
 
@@ -270,7 +272,8 @@ class StickySituation {
     this.surname = recruit.name.last;
   }
 }
-
+```
+```jsx
 const ActionSequence = () => {
   const {
     remaining,
@@ -394,7 +397,8 @@ class FunActivity extends Controller {
     clearInterval(this.interval)
   }
 }
-
+```
+```jsx
 const PaintDrying = ({ alreadyMinutes }) => {
   /* Your IDE might even know secondsSofar is supposed to be a number 👌 */
   const { secondsSofar } = FunActivity.use(alreadyMinutes);
@@ -428,7 +432,8 @@ export class Central extends Controller {
 
   fooUp = () => this.foo++ 
 };
-
+```
+```jsx
 export const App = () => {
   /* An alternative to use(), create() will directly return a <Provider> with a new live-state. 
    * If you want values too, you can get { Provider } from use() as well. */
@@ -652,7 +657,8 @@ class ZeroStakesGame {
     }, 1000)
   }
 }
-
+```
+```jsx
 const MusicalChairs = () => {
   const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
 
