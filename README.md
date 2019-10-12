@@ -59,15 +59,15 @@
 
 <h2 id="overview-section">Overview</h2>
 
-Seamlessly create and apply ES6 classes as the *`ModelController`* [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for [React function-components](https://www.robinwieruch.de/react-function-component) which serve as your *View*. 
+Seamlessly create and apply ES6 classes as a *`ModelController`* [(of MVC fame)](https://en.wikipedia.org/wiki/Model–view–controller) for React [function-components](https://www.robinwieruch.de/react-function-component) which serve as your *View*. 
 
-The basic idea is pretty simple, to watch all properties in an instance of some class and dispatch renders wherever those changes might be visible. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
+The basic idea is pretty simple, to watch any number of properties in an instance of some class, bound to a mounted component. When property values change, the component will re-render. This is done with the help of [accessors (`get` & `set`)](https://www.w3schools.com/js/js_object_accessors.asp) and `useReducer` behind the scenes.
 
-For this, you have a general-purpose hook `use()`, which can take any class, and an inheritable abstract-class `Controller`, which makes more specialized hooks available as static methods.
+For this, you have a general-purpose hook `use()`, taking any class, and an inheritable class `Controller`, which makes special hooks available as its static methods.
 
-When any of these hooks are called, a new `ModelController` reference is returned, bound to the component. It contains all current state, usable for rendering. Changes to that object are then reflected by triggering a new render, only when necessary of-course. 
+When any of these hooks are called, a `ModelController` reference is returned within and bound to your components. It contains all current state, usable for rendering, called *the model*. When watched properties change in a given model, any bound component, be it one-to-one, or many-to-one (with the help of context) will update to the newest state automatically.
 
-This "live-state" combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-*component*-controller.
+This behavior combines with actions, computed properties, some lifecycle hooks, and the component itself to create what is effectively a model-view-controller!
 
 <br/>
 
@@ -130,11 +130,11 @@ const KitchenCounter = () => {
 ```
 <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a>
 
-> First, make a class with properties we wish track. Values given serve as initial/default state. 
+> First, make a class with properties we wish track. Values given serve as initial/default state. **Place as many properties as you like!**
 >
-> Pass the class to `use()` which will create a new instance, hooked into your component. 
+> Pass your class directly to `use()`. It will create a new instance, hooked up to your component. 
 >
-> Now, as values on the model change, our `use` hook will trigger new renders, enough to remain synced!
+> Now, as values on the model change, our `use` hook will trigger new renders, and remain fully synced!
 
 <br/>
 
@@ -144,19 +144,17 @@ What's a model-view-controller without some methods? Add some *actions* [(simila
 
 ```jsx
 class CountControl {
-  /* Values here can be thought of as the Model */
   number = 1
 
-  /* The methods which edit model are your Controller */
   increment = () => { this.number++ };
   decrement = () => { this.number-- };
 }
-
+```
+```jsx
 const KitchenCounter = () => {
-  /* Now we can simply destructure, */
+  /* Now we can just destructure! */
   const { number, decrement, increment } = use(CountControl);
 
-  /* and pass bound callbacks directly from the controller */
   return (
     <Row>
       <Button onClick={decrement}>{"-"}</Button>
@@ -168,14 +166,13 @@ const KitchenCounter = () => {
 ```
 <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup>
 
-
-> With this you can write the most complex functional-components while maintaining the key benefits of a stateless component (easier on the eyes).
+> With this you can write even the most complex functional-components while maintaining the key benefits of a stateless component (being much easier on the eyes).
 
 <br/>
 
 <h2 id="concept-destruct">Enhanced Destructuring</h2>
 
-While destructuring, with two reserved keys `get` and `set`, we can retrieve and update values even after doing so.
+While destructuring, with two reserved keys `get` and `set`, we can retrieve and update values the full model even after doing so.
 
 > Not to be confused with keywords. As named properties, they are both are the same, just a circular reference to `state`. Use whatever makes the most sense semantically.
 
@@ -188,10 +185,13 @@ const AboutMe = () => {
 
   return (
     <div>
-      <div>My name is { name || "John Doe" }.</div>
-      <u onClick = {() => {
-        set.name = window.prompt("What is your name?");
-      }}>...or is it?..</u>
+      <div>My name is { name || "John Doe" }!</div>
+      <u 
+        onClick = {() => {
+          set.name = window.prompt("What is your name?");
+        }}>
+        ...or is it?...
+      </u>
     </div>
   )
 }
@@ -204,7 +204,7 @@ const AboutMe = () => {
 
 <h2 id="concept-lifecycle">Lifecycle methods</h2>
 
-The `use()` hook can automatically call defined [lifecycle hooks](#lifecycle-list) when appropriate.
+The `use()` hook can automatically call upon predefined [lifecycle hooks](#lifecycle-list) when appropriate.
 ```jsx
 import React from "react";
 

@@ -5,7 +5,8 @@ import {
   FunctionComponentElement,
   PropsWithChildren,
   ProviderProps,
-  useContext
+  useContext,
+  ProviderExoticComponent
 } from 'react';
 
 import { ModelController } from './controller';
@@ -15,7 +16,8 @@ import { useController } from './use_hook';
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
 const { 
-  defineProperty: define
+  defineProperty: define,
+  keys: keysIn
 } = Object;
 
 function ownContext(from: typeof ModelController){
@@ -77,6 +79,33 @@ export function getHook(
   }
 }
 
+export function controllerCreateParent(
+  this: typeof ModelController): any {
+
+  const memoizedProvider = () => useController(this).Provider;
+
+  define(this, "Provider", { get: memoizedProvider });
+
+  return memoizedProvider();
+}
+
+function ParentProviderFor(
+  controller: ModelController,
+  Provider: ProviderExoticComponent<any>): any {
+    
+  return (props: PropsWithChildren<any>) => {
+    let { children, className, style, ...rest } = props;
+
+    if(keysIn(rest).length)
+      controller.watch(rest);
+
+    if(className || style)
+      children = createElement("div", { className, style }, children);
+
+    return createElement(Provider, { value: controller }, children);
+  }
+}
+
 export function controllerCreateProvider(
   this: typeof ModelController, ...args: any[]): 
   FunctionComponentElement<ProviderProps<any>> {
@@ -88,9 +117,7 @@ export function getControlProvider(
   this: ModelController){
 
   const { Provider } = ownContext(this.constructor as any);
-  const ControlProvider: any =
-    (props: PropsWithChildren<any>) => 
-      createElement(Provider, { value: this }, props.children);
+  const ControlProvider = ParentProviderFor(this, Provider);
 
   define(this, "Provider", { value: ControlProvider });
   return ControlProvider
