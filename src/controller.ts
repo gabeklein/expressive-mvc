@@ -1,9 +1,9 @@
 import { FunctionComponentElement, ProviderProps, useContext, Context } from 'react';
 
-import { getContext, getControlProvider, getHook, getFromContext, controllerCreateProvider } from './context';
+import { getContext, getControlProvider, getHook, getFromContext, controllerCreateProvider, controllerCreateParent } from './context';
 import { SpyController, useSubscriber } from './subscriber';
 import { NEW_SUB, SUBSCRIBE } from './subscription';
-import { UpdateTrigger, Class } from './types.d';
+import { UpdateTrigger, Class, BunchOf } from './types.d';
 import { useController } from './use_hook';
 
 const { 
@@ -22,11 +22,14 @@ declare class ModelController {
   only(...args: string[]): this;
   once(): this;
 
+  watch(props: BunchOf<any>): this;
+
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   Provider: FunctionComponentElement<ProviderProps<this>>;
 
   static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
   static get<T extends Class>(this: T): InstanceType<T>;
+  static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
   static context(): Context<any>;
 }
 
@@ -42,6 +45,12 @@ for(const f of ["on", "not", "only", "once"])
 define(prototype, {
   Provider: {
     get: getControlProvider
+  }
+})
+
+define(Controller, {
+  Provider: { 
+    get: controllerCreateParent 
   }
 })
 

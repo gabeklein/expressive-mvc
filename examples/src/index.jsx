@@ -2,11 +2,11 @@ import ReactDOM from "react-dom";
 import React from "react";
 
 import { Wrapper } from "./common";
-import { Simple } from "./simple";
+import Multi from './multiple';
 
 ReactDOM.render(
   <Wrapper>
-    <Simple />
+    <Multi />
   </Wrapper>, 
   document.getElementById("root")
 );

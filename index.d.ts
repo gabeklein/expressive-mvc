@@ -169,6 +169,11 @@ declare class Controller {
     get: this;
 
     /**
+     * Initialize this controller and provide it to children.
+     */
+    static get Provider(): FunctionComponentElement<any>;
+
+    /**
      * Create instance of this class and generate live-state. Arguments are forwarded to `constructor()`.
      * 
      * Returns hooked instance of state-controller.
