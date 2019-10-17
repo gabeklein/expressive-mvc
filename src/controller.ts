@@ -33,14 +33,15 @@ declare class ModelController {
   static context(): Context<any>;
 }
 
-function Controller(){
-  /* Just the host function, nothing initialized here */
-}
+function returnThis<T = any>(this: T){ return this as T }
+
+/** Just the host function, nothing initialized here */
+function Controller(){}
 
 const prototype = Controller.prototype = {} as any;
 
 for(const f of ["on", "not", "only", "once"])
-  prototype[f] = function(){ return this }
+  prototype[f] = returnThis
 
 define(prototype, {
   Provider: {
