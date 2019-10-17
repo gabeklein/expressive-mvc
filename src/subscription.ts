@@ -14,7 +14,7 @@ const {
 
 const { random } = Math;
 
-const TOGGLEABLE = /^is[A-Z]/;
+const TOGGLEABLE_IMPLIED = /^is[A-Z]/;
 
 export const NEW_SUB = "__init_subscription__";
 export const UNSUBSCRIBE = "__delete_subscription__";
@@ -138,7 +138,7 @@ export function applyDispatch(control: ModelController){
 
   function defineToggle(key: string, desc: PropertyDescriptor){
     if(typeof desc.value !== "boolean") return;
-    if(TOGGLEABLE.test(key) === false) return;
+    if(TOGGLEABLE_IMPLIED.test(key) === false) return;
 
     define(control, key.replace(/is/, "toggle"), { value: toggle })
 
