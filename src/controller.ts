@@ -7,7 +7,7 @@ import { UpdateTrigger, Class, BunchOf } from './types.d';
 import { useController } from './use_hook';
 
 const { 
-  defineProperties: define 
+  defineProperty: define 
 } = Object;
 
 declare class ModelController {
@@ -43,16 +43,12 @@ const prototype = Controller.prototype = {} as any;
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis
 
-define(prototype, {
-  Provider: {
+define(prototype, "Provider", {
     get: getControlProvider
-  }
 })
 
-define(Controller, {
-  Provider: { 
+define(Controller, "Provider", {
     get: controllerCreateParent 
-  }
 })
 
 Controller.context = getContext;
@@ -129,11 +125,9 @@ Controller.getOnce = function getOnce(
   const properContext = this.context();
   const getFromContext = () => useContext(properContext);
 
-  define(this, { 
-    getOnce: {
+  define(this, "getOnce", { 
       configurable: true,
       value: getFromContext
-    }
   });
   
   return getFromContext();
