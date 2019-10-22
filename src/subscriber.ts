@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ModelController } from './controller';
 import { Set } from './polyfill';
-import { NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
-import { BunchOf, UpdateTrigger } from './types';
+import { DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
+import { UpdateTrigger } from './types';
 
 const { 
   defineProperty: define, 
-  getOwnPropertyDescriptor: describe, 
+  getOwnPropertyDescriptor: describe,
+  getPrototypeOf: prototypeOf, 
   create
 } = Object;
 
@@ -46,18 +47,23 @@ export interface SpyController extends ModelController {
 
 export function SpyController(
   source: ModelController, 
-  hook: UpdateTrigger,
-  mutable: BunchOf<any>,
-  register: BunchOf<Set<UpdateTrigger>>
+  hook: UpdateTrigger
 ): SpyController {
 
+  const {
+    [SOURCE]: mutable,
+    [DISPATCH]: register
+  } = source;
+
   const Spy = create(source);
+  const inner = prototypeOf(source);
+
   let watch = new Set<string>();
   let exclude: Set<string>;
 
   for(const key in mutable)
     define(Spy, key, {
-      set: describe(source, key)!.set,
+      set: describe(inner, key)!.set,
       get: () => {
         watch.add(key);
         return mutable[key];

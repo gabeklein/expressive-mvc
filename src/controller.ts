@@ -1,13 +1,14 @@
-import { FunctionComponentElement, ProviderProps, useContext, Context } from 'react';
+import { Context, FunctionComponentElement, ProviderProps, useContext } from 'react';
 
-import { getContext, getControlProvider, getHook, getFromContext, controllerCreateProvider, controllerCreateParent } from './context';
+import { controllerCreateParent, controllerCreateProvider, getContext, getFromContext, getControlProvider, getHook } from './context';
+import { Set } from './polyfill';
 import { SpyController, useSubscriber } from './subscriber';
-import { NEW_SUB, SUBSCRIBE } from './subscription';
-import { UpdateTrigger, Class, BunchOf } from './types.d';
+import { applyExternal, firstCreateDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
+import { BunchOf, Class, UpdateTrigger } from './types.d';
 import { useController } from './use_hook';
 
 const { 
-  defineProperties: define 
+  defineProperty: define 
 } = Object;
 
 declare class ModelController {
@@ -23,35 +24,46 @@ declare class ModelController {
   once(): this;
 
   watch(props: BunchOf<any>): this;
-
+  refresh(keys: string[]): void;
+  
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
+  [SOURCE]: BunchOf<any>;
+  [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
+  
   Provider: FunctionComponentElement<ProviderProps<this>>;
-
+  
   static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
   static get<T extends Class>(this: T): InstanceType<T>;
   static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
   static context(): Context<any>;
 }
 
-function Controller(){
-  /* Just the host function, nothing initialized here */
-}
+function returnThis<T = any>(this: T){ return this as T }
+
+/** Just the host function, nothing initialized here */
+function Controller(){}
 
 const prototype = Controller.prototype = {} as any;
 
 for(const f of ["on", "not", "only", "once"])
-  prototype[f] = function(){ return this }
+  prototype[f] = returnThis
 
-define(prototype, {
-  Provider: {
-    get: getControlProvider
-  }
+define(prototype, "Provider", {
+  get: getControlProvider
 })
 
-define(Controller, {
-  Provider: { 
-    get: controllerCreateParent 
-  }
+define(Controller, "Provider", {
+  get: controllerCreateParent 
+})
+
+define(prototype, "watch", {
+  value: applyExternal,
+  configurable: true
+})
+
+define(prototype, NEW_SUB, {
+  get: firstCreateDispatch,
+  configurable: true
 })
 
 Controller.context = getContext;
@@ -128,11 +140,9 @@ Controller.getOnce = function getOnce(
   const properContext = this.context();
   const getFromContext = () => useContext(properContext);
 
-  define(this, { 
-    getOnce: {
-      configurable: true,
-      value: getFromContext
-    }
+  define(this, "getOnce", { 
+    configurable: true,
+    value: getFromContext
   });
   
   return getFromContext();
