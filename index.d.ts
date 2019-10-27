@@ -77,7 +77,7 @@ interface Controller {
      * I forget why I expose this.
      * Drink Responsibly.
      */
-    refresh(): void;
+    refresh(...keys: string[]): void;
 
     /**
      * Clone live state into new object.
