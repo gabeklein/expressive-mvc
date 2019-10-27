@@ -1,7 +1,7 @@
 import { ModelController } from './controller';
-import { BunchOf, UpdateTrigger } from './types';
-import { SpyController } from './subscriber';
 import { Set } from './polyfill';
+import { SpyController } from './subscriber';
+import { BunchOf, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
 
@@ -9,18 +9,37 @@ const {
   defineProperty: define,
   defineProperties: defineThese, 
   getOwnPropertyDescriptor: describe,
-  getOwnPropertyNames: keysOf
+  getOwnPropertyNames: keysOf,
+  getPrototypeOf: prototypeOf
 } = Object;
 
 const { random } = Math;
 
-const TOGGLEABLE = /^is[A-Z]/;
+const TOGGLEABLE_IMPLIED = /^is[A-Z]/;
 
 export const NEW_SUB = "__init_subscription__";
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
+export const DISPATCH = "__subscription_dispatch__";
+export const SOURCE = "__subscription_source__";
+
+export function firstCreateDispatch(this: ModelController){
+  const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
+    SpyController(this, hook)
+  
+  if(DISPATCH in this === false)
+    applyDispatch(this);
+
+  define(this, NEW_SUB, {
+    value: yeildSubsciptionWatcher
+  });
+
+  return yeildSubsciptionWatcher;
+}
 
 export function applyDispatch(control: ModelController){
+  control = prototypeOf(control);
+
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
@@ -47,15 +66,12 @@ export function applyDispatch(control: ModelController){
   }
 
   defineThese(control, {
-    [NEW_SUB]: { value: startSpying },
+    [SOURCE]: { value: mutable },
+    [DISPATCH]: { value: register },
     get: { value: control },
     set: { value: control },
     refresh: { value: refreshSubscribersOf },
     export: { value: exportCurrentValues },
-    watch: { 
-      value: applyExternal,
-      configurable: true
-    },
     hold: {
       get: () => isPending,
       set: to => isPending = to
@@ -81,54 +97,6 @@ export function applyDispatch(control: ModelController){
     return acc;
   }
 
-  function applyExternal(
-    this: ModelController,
-    external: BunchOf<any>){
-
-    for(const key of keysOf(external)){
-      mutable[key] = external[key];
-      define(control, key, {
-        get: () => mutable[key],
-        set: directUpdateRestricted(key),
-        enumerable: true,
-        configurable: false
-      })
-    }
-    define(control, "watch", {
-      value: updateExternal,
-      configurable: false
-    })
-    return this;
-  }
-
-  function updateExternal(
-    this: ModelController,
-    external: BunchOf<any>){
-
-    let diff = false;
-
-    for(const key of keysOf(external)){
-      if(external[key] == mutable[key])
-        continue;
-      mutable[key] = external[key];
-      pending.add(key);
-      diff = true;
-    }
-
-    if(diff)
-      refresh();
-
-    return this;
-  }
-
-  function directUpdateRestricted(key: string){
-    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
-  }
-
-  function startSpying(hook: UpdateTrigger){
-    return SpyController(control, hook, mutable, register)
-  }
-
   function refresh(){
     if(isPending)
         return;
@@ -138,7 +106,7 @@ export function applyDispatch(control: ModelController){
 
   function defineToggle(key: string, desc: PropertyDescriptor){
     if(typeof desc.value !== "boolean") return;
-    if(TOGGLEABLE.test(key) === false) return;
+    if(TOGGLEABLE_IMPLIED.test(key) === false) return;
 
     define(control, key.replace(/is/, "toggle"), { value: toggle })
 
@@ -173,4 +141,55 @@ export function applyDispatch(control: ModelController){
     pending.clear();
     isPending = false;
   }
+}
+
+export function applyExternal(
+  this: ModelController,
+  external: BunchOf<any>){
+
+  if(DISPATCH in this === false)
+    applyDispatch(this);
+
+  const mutable = this[SOURCE];
+  const inner = prototypeOf(this);
+
+  for(const key of keysOf(external)){
+    mutable[key] = external[key];
+    define(inner, key, {
+      get: () => mutable[key],
+      set: willThrowUpdateIsForbidden(key),
+      enumerable: true,
+      configurable: false
+    })
+  }
+
+  define(this, "watch", {
+    value: updateExternal,
+    configurable: false
+  })
+
+  function updateExternal(
+    this: ModelController,
+    external: BunchOf<any>){
+
+    let diff = [];
+
+    for(const key of keysOf(external)){
+      if(external[key] == mutable[key])
+        continue;
+      mutable[key] = external[key];
+      diff.push(key);
+    }
+
+    if(diff.length)
+      this.refresh(diff);
+
+    return this;
+  }
+
+  function willThrowUpdateIsForbidden(key: string){
+    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
+  }
+
+  return this;
 }

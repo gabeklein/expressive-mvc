@@ -1,13 +1,9 @@
-import {
-  useEffect,
-  useRef,
-  MutableRefObject,
-} from 'react';
+import { MutableRefObject, useEffect, useRef } from 'react';
 
 import { Controller, ModelController } from './controller';
-import { applyDispatch } from './subscription';
-import { Lifecycle, Class } from './types.d';
 import { useSubscriber } from './subscriber';
+import { firstCreateDispatch, NEW_SUB } from './subscription';
+import { Class, Lifecycle } from './types.d';
 
 const {
   create,
@@ -51,15 +47,21 @@ export function useController(
   if(instance === null){
     if(model.prototype)
       instance = new (model as Class)(...args);
-    else if(typeof instance == "function")
-      instance = (model as Function)(...args)
-    else 
-      instance = model;
+    else {
+      if(typeof instance == "function")
+        instance = (model as Function)(...args)
+      else 
+        instance = model;
+
+      define(instance, NEW_SUB, {
+        get: firstCreateDispatch,
+        configurable: true
+      })
+    }
 
     if(instance.didHook)
       instance.didHook()
       
-    applyDispatch(instance);
     instance = bindMethods(instance, model.prototype, superType);
 
     cache.current = instance;
@@ -113,12 +115,6 @@ function bindMethods(
   for(const key in prototype)
     define(boundLayer, key, {
       value: prototype[key].bind(instance),
-      writable: true
-    })
-
-  for(const key of ["get", "set"])
-    define(boundLayer, key, {
-      value: instance,
       writable: true
     })
 
