@@ -66,7 +66,7 @@ export function useOwnController(
       instance.componentWillRender(true)
 
     cache.current = bindMethods(instance, model.prototype, superType);
-    instance = cache.current[NEW_SUB](setUpdate);
+    instance = instance[NEW_SUB](setUpdate);
   }
   else if(instance.componentWillRender)
     instance.componentWillRender()

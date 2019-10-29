@@ -38,8 +38,6 @@ export function ensureDispatch(this: ModelController){
 }
 
 export function applyDispatch(control: ModelController){
-  control = prototypeOf(control);
-
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
