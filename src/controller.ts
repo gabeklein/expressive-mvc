@@ -5,7 +5,7 @@ import { Set } from './polyfill';
 import { SpyController } from './subscriber';
 import { applyExternal, ensureDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
 import { BunchOf, Class, UpdateTrigger } from './types.d';
-import { useNewController } from './use_hook';
+import { useOwnController } from './use_hook';
 
 const { 
   defineProperty: define 
@@ -75,11 +75,11 @@ Controller.get = getFromContext;
 Controller.create = controllerCreateProvider;
 
 Controller.use = function use(...args: any[]){
-  return useNewController(this, args);
+  return useOwnController(this, args);
 }
 
 Controller.useOnce = function useOnce(){
-  return useNewController(this);
+  return useOwnController(this);
 }
 
 Controller.useOn = function useOn(

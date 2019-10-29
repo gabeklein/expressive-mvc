@@ -34,10 +34,10 @@ const RESERVED = [
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
     ? useSubscription(init as ModelController)
-    : useNewController(init, args, Object.prototype);
+    : useOwnController(init, args, Object.prototype);
 }
 
-export function useNewController( 
+export function useOwnController( 
   model: Class | Function,
   args: any[] = [],
   superType: any = Controller.prototype

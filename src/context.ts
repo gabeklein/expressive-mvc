@@ -11,7 +11,7 @@ import {
 
 import { ModelController } from './controller';
 import { useSubscription } from './subscriber';
-import { useNewController } from './use_hook';
+import { useOwnController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
@@ -82,7 +82,7 @@ export function getHook(
 export function controllerCreateParent(
   this: typeof ModelController): any {
 
-  const memoizedProvider = () => useNewController(this).Provider;
+  const memoizedProvider = () => useOwnController(this).Provider;
 
   define(this, "Provider", { get: memoizedProvider });
 
@@ -110,7 +110,7 @@ export function controllerCreateProvider(
   this: typeof ModelController, ...args: any[]): 
   FunctionComponentElement<ProviderProps<any>> {
 
-  return useNewController(this, args).Provider;
+  return useOwnController(this, args).Provider;
 }
 
 export function getControlProvider(
