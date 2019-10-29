@@ -79,7 +79,7 @@ Controller.use = function use(...args: any[]){
 }
 
 Controller.useOnce = function useOnce(){
-  return useOwnController(this);
+  return useOwnController(this).once();
 }
 
 Controller.useOn = function useOn(
