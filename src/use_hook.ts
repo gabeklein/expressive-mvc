@@ -16,8 +16,8 @@ const {
 const RESERVED = [ 
   "add",
   "constructor", 
-  "didMount", 
-  "didHook",
+  "componentDidMount", 
+  "componentDidHook",
   "export",
   "not",
   "on",
@@ -26,8 +26,8 @@ const RESERVED = [
   "Provider",
   "refresh",
   "set",
-  "willUnmount", 
-  "willHook"
+  "componentWillUnmount", 
+  "componentWillHook"
 ];
 
 export function useModelController(init: any, ...args: any[]){
@@ -61,34 +61,28 @@ export function useNewController(
       })
     }
 
-    if(instance.didHook)
-      instance.didHook()
+    if(instance.componentWillRender)
+      instance.componentWillRender(true)
       
     instance = bindMethods(instance, model.prototype, superType);
 
     cache.current = instance;
   }
-  else if(instance.didHook)
-    instance.didHook.apply({})
-
-  if(instance.willHook){
-    instance.hold = true;
-    instance.willHook();
-    instance.hold = false;
-  }
+  else if(instance.componentWillRender)
+    instance.componentWillRender()
 
   useEffect(() => {
     const state = proto(instance);
     const methods: Lifecycle = model.prototype || {};
 
-    const didMount = state.didMount || methods.didMount;
-    const willUnmount = state.willUnmount || methods.willUnmount;
+    const componentDidMount = state.componentDidMount || methods.componentDidMount;
+    const componentWillUnmount = state.componentWillUnmount || methods.componentWillUnmount;
 
-    if(didMount)
-      didMount.call(state);
+    if(componentDidMount)
+      componentDidMount.call(state);
     return () => {
-      if(willUnmount)
-        willUnmount.call(state);
+      if(componentWillUnmount)
+        componentWillUnmount.call(state);
       nuke(state);
     }
   }, [])

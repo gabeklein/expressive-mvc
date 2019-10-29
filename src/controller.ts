@@ -13,10 +13,9 @@ const {
 
 export declare class ModelController {
 
-  didMount?(): void;
-  willUnmount?(): void;
-  didHook?(): void;
-  willHook?(): void;
+  componentWillRender(initial?: true): void;
+  componentDidMount?(): void;
+  componentWillUnmount?(): void;
 
   elementWillRender?(local: BunchOf<any>, initial?: true): void;
   elementDidMount?(local: BunchOf<any>): void;

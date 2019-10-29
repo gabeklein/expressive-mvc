@@ -13,6 +13,6 @@ export interface LiveState<State = any> {
 }
 
 export interface Lifecycle {
-  willUnmount?: () => void
-  didMount?: () => void
+  componentWillUnmount?: () => void
+  componentDidMount?: () => void
 }
