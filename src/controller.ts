@@ -28,6 +28,7 @@ export declare class ModelController {
 
   watch(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
+  destroy(callback?: () => void): void;
   
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   [SOURCE]: BunchOf<any>;
@@ -61,6 +62,14 @@ define(Controller, "Provider", {
 
 define(prototype, "watch", {
   value: applyExternal,
+  configurable: true
+})
+
+define(prototype, "destroy", {
+  value(callback?: () => void) {
+    if(callback)
+      callback();
+  },
   configurable: true
 })
 
