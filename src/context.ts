@@ -82,7 +82,7 @@ function ownContext(from: typeof ModelController){
   return context as Context<any>;
 }
 
-export function getFromContext(
+export function watchFromContext(
   this: typeof ModelController){
     
   const { name } = this;
@@ -105,7 +105,7 @@ export function getFromContext(
     return useSubscription(controller);
   }
   
-  define(this, `get`, { value: useContextSubscriber });
+  define(this, `watch`, { value: useContextSubscriber });
   return useContextSubscriber() as ModelController;
 }
 
