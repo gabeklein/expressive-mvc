@@ -75,7 +75,7 @@ function ownContext(from: typeof ModelController){
     }
 
   if(!context){
-    context = createContext(constructor.prototype);
+    context = createContext(null as any);
     CONTEXT_ALLOCATED.push([constructor, context]);
   }
 
