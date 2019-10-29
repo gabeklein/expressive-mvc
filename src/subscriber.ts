@@ -12,7 +12,7 @@ const {
   create
 } = Object;
 
-export function useSubscriber(control: ModelController){
+export function useSubscription(control: ModelController){
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
 

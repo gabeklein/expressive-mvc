@@ -1,7 +1,7 @@
 import { MutableRefObject, useEffect, useRef } from 'react';
 
 import { Controller, ModelController } from './controller';
-import { useSubscriber } from './subscriber';
+import { useSubscription } from './subscriber';
 import { firstCreateDispatch, NEW_SUB } from './subscription';
 import { Class, Lifecycle } from './types.d';
 
@@ -34,7 +34,7 @@ export function useModelController(init: any, ...args: any[]){
   const control = init instanceof Controller
     ? init as ModelController
     : useNewController(init, args, Object.prototype);
-  return useSubscriber(control);
+  return useSubscription(control);
 }
 
 export function useNewController( 

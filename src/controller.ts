@@ -2,7 +2,7 @@ import { Context, FunctionComponentElement, ProviderProps, useContext } from 're
 
 import { controllerCreateParent, controllerCreateProvider, getContext, getFromContext, getControlProvider, getHook } from './context';
 import { Set } from './polyfill';
-import { SpyController, useSubscriber } from './subscriber';
+import { SpyController, useSubscription } from './subscriber';
 import { applyExternal, firstCreateDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
 import { BunchOf, Class, UpdateTrigger } from './types.d';
 import { useNewController } from './use_hook';
@@ -76,7 +76,7 @@ Controller.create = controllerCreateProvider;
 
 Controller.use = function use(...args: any[]){
   const control = useNewController(this, args);
-  return useSubscriber(control);
+  return useSubscription(control);
 }
 
 Controller.useOnce = function useOnce(){

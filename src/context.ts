@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import { ModelController } from './controller';
-import { useSubscriber } from './subscriber';
+import { useSubscription } from './subscriber';
 import { useNewController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
@@ -55,7 +55,7 @@ export function getFromContext(
  
   function useContextSubscriber(){
     const controller = useContext(context);
-    return useSubscriber(controller);
+    return useSubscription(controller);
   }
   
   define(this, `get`, { value: useContextSubscriber });
@@ -75,7 +75,7 @@ export function getHook(
 
   return () => {
     const controller = useContext(context);
-    return useSubscriber(controller);
+    return useSubscription(controller);
   }
 }
 
