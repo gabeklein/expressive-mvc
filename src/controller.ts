@@ -1,6 +1,6 @@
 import { Context, FunctionComponentElement, ProviderProps, useContext } from 'react';
 
-import { controllerCreateParent, controllerCreateProvider, getContext, watchFromContext, getControlProvider, getHook } from './context';
+import { controllerCreateParent, controllerCreateProvider, getContext, watchFromContext, accessFromContext, getControlProvider, getHook } from './context';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
 import { applyExternal, ensureDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
@@ -37,6 +37,7 @@ export declare class ModelController {
   Provider: FunctionComponentElement<ProviderProps<this>>;
   
   static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
+  static get<T extends Class>(this: T): InstanceType<T>;
   static watch<T extends Class>(this: T): InstanceType<T>;
   static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
   static context(): Context<any>;
@@ -80,6 +81,7 @@ define(Controller, "Provider", {
 
 Controller.context = getContext;
 Controller.hook = getHook;
+Controller.get = accessFromContext;
 Controller.watch = watchFromContext;
 Controller.create = controllerCreateProvider;
 

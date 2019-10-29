@@ -22,7 +22,8 @@ const CONTEXT_MULTIPROVIDER = createContext({} as any);
 const { 
   defineProperty: define,
   keys: keysIn,
-  values: valuesIn
+  values: valuesIn,
+  create
 } = Object;
 
 export const MultiProvider = (props: PropsWithChildren<any>) => {
@@ -82,31 +83,39 @@ function ownContext(from: typeof ModelController){
   return context as Context<any>;
 }
 
-export function watchFromContext(
-  this: typeof ModelController){
+function findInMultiProvider(
+  name: string): ModelController {
     
-  const { name } = this;
+  const multi = useContext(CONTEXT_MULTIPROVIDER) as any;
+  if(multi[name])
+    return multi[name];
+  else
+    throw new Error(
+      `Can't subscribe to controller;` +
+      ` this accessor can only be used within a Provider keyed to \`${name}\``
+    )
+} 
+
+export function watchFromContext(this: typeof ModelController){
   let context = ownContext(this);
  
-  function useContextSubscriber(){
-    let controller = useContext(context);
-
-    if(!controller){
-      const multi = useContext(CONTEXT_MULTIPROVIDER) as any;
-      if(multi[name])
-        controller = multi[name];
-      else
-        throw new Error(
-          `Can't subscribe to controller;` +
-          ` this accessor can only be used within a Provider keyed to \`${name}\``
-        )
-    }
-
-    return useSubscription(controller);
-  }
+  const find = () => useSubscription(
+    useContext(context) || findInMultiProvider(this.name)
+  );
   
-  define(this, `watch`, { value: useContextSubscriber });
-  return useContextSubscriber() as ModelController;
+  define(this, `watch`, { value: find });
+  return find() as ModelController;
+}
+
+export function accessFromContext(this: typeof ModelController){
+  let context = ownContext(this);
+
+  const find = () => create(
+    useContext(context) || findInMultiProvider(this.name)
+  );
+
+  define(this, `get`, { value: find });
+  return find() as ModelController;
 }
 
 export function getContext(
