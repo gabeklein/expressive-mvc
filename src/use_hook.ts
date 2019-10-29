@@ -2,7 +2,7 @@ import { MutableRefObject, useEffect, useRef } from 'react';
 
 import { Controller, ModelController } from './controller';
 import { useSubscription } from './subscriber';
-import { firstCreateDispatch, NEW_SUB } from './subscription';
+import { ensureDispatch, NEW_SUB } from './subscription';
 import { Class, Lifecycle } from './types.d';
 
 const {
@@ -56,7 +56,7 @@ export function useNewController(
         instance = model;
 
       define(instance, NEW_SUB, {
-        get: firstCreateDispatch,
+        get: ensureDispatch,
         configurable: true
       })
     }

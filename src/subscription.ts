@@ -23,7 +23,7 @@ export const SUBSCRIBE = "__activate_subscription__";
 export const DISPATCH = "__subscription_dispatch__";
 export const SOURCE = "__subscription_source__";
 
-export function firstCreateDispatch(this: ModelController){
+export function ensureDispatch(this: ModelController){
   const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
     SpyController(this, hook)
   

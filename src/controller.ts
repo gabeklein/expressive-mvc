@@ -3,7 +3,7 @@ import { Context, FunctionComponentElement, ProviderProps, useContext } from 're
 import { controllerCreateParent, controllerCreateProvider, getContext, getFromContext, getControlProvider, getHook } from './context';
 import { Set } from './polyfill';
 import { SpyController, useSubscription } from './subscriber';
-import { applyExternal, firstCreateDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
+import { applyExternal, ensureDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
 import { BunchOf, Class, UpdateTrigger } from './types.d';
 import { useNewController } from './use_hook';
 
@@ -65,7 +65,7 @@ define(prototype, "watch", {
 })
 
 define(prototype, NEW_SUB, {
-  get: firstCreateDispatch,
+  get: ensureDispatch,
   configurable: true
 })
 
