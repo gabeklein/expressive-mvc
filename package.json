@@ -44,9 +44,7 @@
     "jest": "^24.9.0",
     "react": "^16.8.0",
     "react-test-renderer": "^16.9.0",
-    "typescript": "^3.5.3"
-  },
-  "dependencies": {
+    "typescript": "^3.5.3",
     "ts-jest": "^24.1.0"
   }
 }
