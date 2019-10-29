@@ -7,8 +7,6 @@ import { UpdateTrigger } from './types';
 
 const { 
   defineProperty: define, 
-  getOwnPropertyDescriptor: describe,
-  getPrototypeOf: prototypeOf, 
   create
 } = Object;
 
@@ -67,14 +65,13 @@ export function SpyController(
   } = source;
 
   const Spy = create(source);
-  const inner = prototypeOf(source);
 
   let watch = new Set<string>();
   let exclude: Set<string>;
 
   for(const key in mutable)
     define(Spy, key, {
-      set: describe(inner, key)!.set,
+      set: (value: any) => mutable[key] = value,
       get: () => {
         watch.add(key);
         return mutable[key];

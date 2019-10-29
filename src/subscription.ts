@@ -163,7 +163,7 @@ export function applyExternal(
     })
   }
 
-  define(this, "watch", {
+  define(inner, "watch", {
     value: updateExternal,
     configurable: false
   })
