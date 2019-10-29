@@ -5,18 +5,22 @@ import { Set } from './polyfill';
 import { SpyController, useSubscriber } from './subscriber';
 import { applyExternal, firstCreateDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
 import { BunchOf, Class, UpdateTrigger } from './types.d';
-import { useController } from './use_hook';
+import { useNewController } from './use_hook';
 
 const { 
   defineProperty: define 
 } = Object;
 
-declare class ModelController {
+export declare class ModelController {
 
   didMount?(): void;
   willUnmount?(): void;
   didHook?(): void;
   willHook?(): void;
+
+  elementWillRender?(local: BunchOf<any>, initial?: true): void;
+  elementDidMount?(local: BunchOf<any>): void;
+  elementWillUnmount?(local: BunchOf<any>): void;
 
   on(...args: string[]): this;
   not(...args: string[]): this;
@@ -41,7 +45,7 @@ declare class ModelController {
 function returnThis<T = any>(this: T){ return this as T }
 
 /** Just the host function, nothing initialized here */
-function Controller(){}
+export function Controller(){}
 
 const prototype = Controller.prototype = {} as any;
 
@@ -72,12 +76,12 @@ Controller.get = getFromContext;
 Controller.create = controllerCreateProvider;
 
 Controller.use = function use(...args: any[]){
-  const control = useController(this, args);
+  const control = useNewController(this, args);
   return useSubscriber(control);
 }
 
 Controller.useOnce = function useOnce(){
-  return useController(this);
+  return useNewController(this);
 }
 
 Controller.useOn = function useOn(
@@ -147,5 +151,3 @@ Controller.getOnce = function getOnce(
   
   return getFromContext();
 }
-
-export { Controller, ModelController }

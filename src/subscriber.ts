@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, MutableRefObject } from 'react';
 
 import { ModelController } from './controller';
 import { Set } from './polyfill';
@@ -12,32 +12,46 @@ const {
   create
 } = Object;
 
-export function useSubscriber(controller: ModelController){
-  let instance: ModelController | SpyController = controller;
-  const firstRenderIs = useRef(true);
+export function useSubscriber(control: ModelController){
   const setUpdate = useState(0)[1];
+  const cache = useRef(null) as MutableRefObject<any>;
 
-  if(firstRenderIs.current){
-    const subscribe = controller[NEW_SUB];
-    if(!subscribe){
-      const { name } = controller.constructor;
+  let local = cache.current;
+
+  if(!local){
+    local = cache.current = {}
+
+    if(control.elementWillRender)
+      control.elementWillRender(local, true)
+    
+    if(!control[NEW_SUB]){
+      const { name } = control.constructor;
       throw new Error(
         `Can't subscribe to controller;` +
         ` this accessor can only be used within { Provider } given to you by \`${name}.use()\``
       )
     }
 
-    instance = subscribe(setUpdate);
-    firstRenderIs.current = false
+    control = control[NEW_SUB](setUpdate) as any;
   }
+  else if(control.elementWillRender)
+    control.elementWillRender(local)
 
   useEffect(() => {
-    const initialRenderControl = instance as unknown as SpyController;
-    initialRenderControl[SUBSCRIBE]();
-    return () => initialRenderControl[UNSUBSCRIBE]();
+    const spyControl = control as unknown as SpyController;
+    spyControl[SUBSCRIBE]();
+
+    if(control.elementDidMount)
+      control.elementDidMount(local);
+
+    return () => {
+      if(control.elementWillUnmount)
+        control.elementWillUnmount(local);
+      spyControl[UNSUBSCRIBE]()
+    };
   }, [])
 
-  return instance;
+  return control;
 }
 
 export interface SpyController extends ModelController {

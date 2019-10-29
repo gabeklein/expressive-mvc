@@ -31,11 +31,13 @@ const RESERVED = [
 ];
 
 export function useModelController(init: any, ...args: any[]){
-  const control = useController(init, args, Object.prototype);
+  const control = init instanceof Controller
+    ? init as ModelController
+    : useNewController(init, args, Object.prototype);
   return useSubscriber(control);
 }
 
-export function useController( 
+export function useNewController( 
   model: Class | Function,
   args: any[] = [],
   superType: any = Controller.prototype
@@ -77,12 +79,18 @@ export function useController(
 
   useEffect(() => {
     const state = proto(instance);
-    const methods: Lifecycle = model.prototype || {}
-    return invokeLifecycle(
-      state, 
-      state.didMount || methods.didMount, 
-      state.willUnmount || methods.willUnmount
-    );
+    const methods: Lifecycle = model.prototype || {};
+
+    const didMount = state.didMount || methods.didMount;
+    const willUnmount = state.willUnmount || methods.willUnmount;
+
+    if(didMount)
+      didMount.call(state);
+    return () => {
+      if(willUnmount)
+        willUnmount.call(state);
+      nuke(state);
+    }
   }, [])
 
   return instance;
@@ -121,18 +129,8 @@ function bindMethods(
   return boundLayer
 }
 
-export function invokeLifecycle(
-  target: any,
-  didMount?: () => void, 
-  willUnmount?: () => void){
-
-  if(didMount)
-    didMount.call(target);
-  return () => {
-    if(willUnmount)
-      willUnmount.call(target);
-    for(const key in target)
-      try { delete target[key] }
-      catch(err) {}
-  }
+function nuke(target: any){
+  for(const key in target)
+    try { delete target[key] }
+    catch(err) {}
 }
