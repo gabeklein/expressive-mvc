@@ -11,7 +11,7 @@ const {
   defineProperty: define 
 } = Object;
 
-declare class ModelController {
+export declare class ModelController {
 
   didMount?(): void;
   willUnmount?(): void;
@@ -41,7 +41,7 @@ declare class ModelController {
 function returnThis<T = any>(this: T){ return this as T }
 
 /** Just the host function, nothing initialized here */
-function Controller(){}
+export function Controller(){}
 
 const prototype = Controller.prototype = {} as any;
 
@@ -147,5 +147,3 @@ Controller.getOnce = function getOnce(
   
   return getFromContext();
 }
-
-export { Controller, ModelController }
