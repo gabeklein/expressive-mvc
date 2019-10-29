@@ -1,6 +1,6 @@
 {
   "name": "react-use-controller",
-  "version": "1.0.0-beta.3",
+  "version": "1.3.1",
   "description": "Easy to use state controllers using classes and hooks",
   "license": "MIT",
   "keywords": [
@@ -27,14 +27,24 @@
     "watch": "tsc --watch --sourceMap",
     "start": "npm run --prefix examples start",
     "prepare": "npm install --prefix examples",
-    "prepublish": "npm run build",
-    "prebuild": "rm -rf lib/"
+    "prebuild": "rm -rf lib/",
+    "preversion": "npm run build; jest",
+    "postversion": "npm publish",
+    "postpublish": "git push; git push --tags; rm -rf lib",
+    "test": "jest --watchAll"
   },
-  "dependencies": {
+  "peerDependencies": {
     "react": "^16.8.0"
   },
   "devDependencies": {
-    "@types/react": "^16.9.1",
-    "typescript": "^3.5.3"
+    "@testing-library/react-hooks": "^2.0.1",
+    "@types/jest": "^24.0.18",
+    "@types/node": "^12.7.5",
+    "@types/react": "^16.8.0",
+    "jest": "^24.9.0",
+    "react": "^16.8.0",
+    "react-test-renderer": "^16.9.0",
+    "typescript": "^3.5.3",
+    "ts-jest": "^24.1.0"
   }
 }

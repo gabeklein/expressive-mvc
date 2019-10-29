@@ -1,174 +1,151 @@
-import {
-  Context,
-  createContext,
-  createElement,
-  FunctionComponentElement,
-  PropsWithChildren,
-  ProviderProps,
-  useContext,
-} from 'react';
+import { Context, FunctionComponentElement, ProviderProps, useContext } from 'react';
 
+import { controllerCreateParent, controllerCreateProvider, getContext, getFromContext, getControlProvider, getHook } from './context';
+import { Set } from './polyfill';
 import { SpyController, useSubscriber } from './subscriber';
-import { NEW_SUB, SUBSCRIBE } from './subscription';
-import { ExpectsParams, UpdateTrigger } from './types.d';
+import { applyExternal, firstCreateDispatch, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE } from './subscription';
+import { BunchOf, Class, UpdateTrigger } from './types.d';
 import { useController } from './use_hook';
 
-const CACHE_CONTEXTS = new Map<typeof Controller, Context<Controller>>();
-
 const { 
-  defineProperty: define
+  defineProperty: define 
 } = Object;
 
-function ownContext<T extends Controller>(of: T){
-  const { constructor } = of.prototype;
-  let context = CACHE_CONTEXTS.get(constructor) as any;
-
-  if(!context){
-    context = createContext(of.prototype);
-    CACHE_CONTEXTS.set(constructor, context);
-  }
-
-  return context as Context<T>;
-}
-
-interface Controller {
-  /* Force compatibility with <InstanceType> */
-  new (...args: any): any;
-  [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
-}
-
-class Controller {
+declare class ModelController {
 
   didMount?(): void;
   willUnmount?(): void;
   didHook?(): void;
   willHook?(): void;
 
-  on(){ return this };
-  not(){ return this };
-  only(){ return this };
-  once(){ return this };
+  on(...args: string[]): this;
+  not(...args: string[]): this;
+  only(...args: string[]): this;
+  once(): this;
 
-  get Provider(): FunctionComponentElement<ProviderProps<this>> {
-    const context = ownContext(this.constructor as any);
-
-    const ControlProvider: any =
-      (props: PropsWithChildren<any>) => 
-        createElement(
-          context!.Provider,
-          { value: this },
-          props.children
-        );
-
-    define(this, "Provider", { value: ControlProvider });
-    return ControlProvider
-  }
-
-  static context<T extends Controller>(this: T){
-    return ownContext(this as T);
-  }
-
-  static hook<T extends Controller>(this: T){
-    const context = ownContext(this);
-
-    return () => {
-      const controller = useContext(context) as Controller | SpyController;
-      return useSubscriber(controller) as InstanceType<T>;
-    }
-  }
-
-  static create<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A): FunctionComponentElement<ProviderProps<T>> {
-
-    const control = 
-      useController(this as any, args);
-
-    return control.Provider;
-  }
-
-  static use<T extends ExpectsParams<A>, A extends any[]>
-    (this: T, ...args: A): InstanceType<T> {
-
-    const control = 
-      useController(this as any, args);
-
-    return useSubscriber(control);
-  }
-
-  static get<T extends ExpectsParams<any>>
-    (this: T): InstanceType<T> {
-
-    const context = ownContext(this as any);
-
-    function useContextSubscriber(){
-      const controller = useContext(context) as Controller | SpyController;
-      return useSubscriber(controller);
-    }
-    
-    define(this, `get`, { value: useContextSubscriber });
-    return useContextSubscriber() as any;
-  } 
-
-  static useOnce(){
-    return useController(this as any);
-  }
-
-  static useOn(...args: any){
-    let state = this.use() as any;
-    return SUBSCRIBE in state
-      ? state.on(...args)
-      : state;
-  }
-
-  static useOnly(...args: any){
-    let state = this.use() as any;
-    return SUBSCRIBE in state
-      ? state.only(...args)
-      : state;
-  }
-
-  static useExcept(...args: any){
-    let state = this.use() as any;
-    return SUBSCRIBE in state
-      ? state.not(...args)
-      : state;
-  }
-
-  static getOn(...args: any){
-    let state = this.get() as any;
-    return SUBSCRIBE in state
-      ? state.on(...args)
-      : state;
-  }
-
-  static getOnly(...args: any){
-    let state = this.get() as any;
-    return SUBSCRIBE in state
-      ? state.only(...args)
-      : state;
-  }
-
-  static getExcept(...args: any){
-    let state = this.get() as any;
-    return SUBSCRIBE in state
-      ? state.not(...args)
-      : state;
-  }
+  watch(props: BunchOf<any>): this;
+  refresh(keys: string[]): void;
+  
+  [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
+  [SOURCE]: BunchOf<any>;
+  [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
+  
+  Provider: FunctionComponentElement<ProviderProps<this>>;
+  
+  static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
+  static get<T extends Class>(this: T): InstanceType<T>;
+  static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
+  static context(): Context<any>;
 }
 
-define(Controller, "getOnce", {
-  configurable: true,
-  value: function(){
-    const context = ownContext(this as any);
-    const getFromContext = () =>
-      useContext(context) as Controller | SpyController;
+function returnThis<T = any>(this: T){ return this as T }
 
-    define(this, `getOnce`, { 
-      configurable: true,
-      value: getFromContext
-    });
-    return getFromContext() as any;
-  }
+/** Just the host function, nothing initialized here */
+function Controller(){}
+
+const prototype = Controller.prototype = {} as any;
+
+for(const f of ["on", "not", "only", "once"])
+  prototype[f] = returnThis
+
+define(prototype, "Provider", {
+  get: getControlProvider
 })
 
-export { Controller }
+define(Controller, "Provider", {
+  get: controllerCreateParent 
+})
+
+define(prototype, "watch", {
+  value: applyExternal,
+  configurable: true
+})
+
+define(prototype, NEW_SUB, {
+  get: firstCreateDispatch,
+  configurable: true
+})
+
+Controller.context = getContext;
+Controller.hook = getHook;
+Controller.get = getFromContext;
+Controller.create = controllerCreateProvider;
+
+Controller.use = function use(...args: any[]){
+  const control = useController(this, args);
+  return useSubscriber(control);
+}
+
+Controller.useOnce = function useOnce(){
+  return useController(this);
+}
+
+Controller.useOn = function useOn(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.use();
+  return SUBSCRIBE in state
+    ? state.on(...args)
+    : state;
+}
+
+Controller.useOnly = function useOnly(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.use();
+  return SUBSCRIBE in state
+    ? state.only(...args)
+    : state;
+}
+
+Controller.useExcept = function useExcept(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.use();
+  return SUBSCRIBE in state
+    ? state.not(...args)
+    : state;
+}
+
+Controller.getOn = function getOn(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.get();
+  return SUBSCRIBE in state
+    ? state.on(...args)
+    : state;
+}
+
+Controller.getOnly = function getOnly(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.get();
+  return SUBSCRIBE in state
+    ? state.only(...args)
+    : state;
+}
+
+Controller.getExcept = function getExcept(
+  this: typeof ModelController, ...args: string[]){
+
+  let state = this.get();
+  return SUBSCRIBE in state
+    ? state.not(...args)
+    : state;
+}
+
+Controller.getOnce = function getOnce(
+  this: typeof ModelController, ...args: string[]){
+
+  const properContext = this.context();
+  const getFromContext = () => useContext(properContext);
+
+  define(this, "getOnce", { 
+    configurable: true,
+    value: getFromContext
+  });
+  
+  return getFromContext();
+}
+
+export { Controller, ModelController }

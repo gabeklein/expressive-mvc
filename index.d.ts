@@ -4,58 +4,19 @@ import {
     Context,
 } from 'react';
 
-interface BunchOf<T> {
-	[key: string]: T;
-}
+interface BunchOf<T> { [key: string]: T }
 
+type Class = new (...args: any) => any;
 type ExpectsParams<A extends any[]> = new(...args: A) => any
-  
-/**
- * LiveState
- * 
- * State based on source schema `T`.
- * 
- * All values have getter-setter pair, setter will shallow compare and trigger update of react-component consumer.
- * 
- * Methods (ala `@actions`) have access to live values and may update them for same effect.
- */
-interface LiveState {
-    /**
-     * Trigger update of consumer component.
-     * 
-     * I forget why I expose this.
-     * Drink Responsibly.
-     */
-    refresh(): void;
-
-    /**
-     * Clone live state into new object.
-     * 
-     * @returns Clone - Side-effect safe object containing all enumerable values of current state.
-     */
-    export(): { [P in keyof this]: this[P] };
-
-    /**
-     * Add new tracked value to state-controller.
-     * 
-     * Will trigger renders on updates to this new value.
-     * 
-     * @returns boolean - Did add operation succeed. `false` means value already exists or is reserved.
-     */
-    add(key: string, initial?: any, bootup?: true): boolean;
-}
 
 /**
- * LiveState Controller Hook.
+ * General-purpose Controller hook.
  * 
- * @param init Controller Class
- * Class properties determine what values are live. 
+ * @param define ModelController Class Definition
  * 
- * Note: Properties starting with _ will not trigger any re-renders.
- * 
- * @returns {LiveState} Live state: interactive state of component.
+ * @returns {LiveState} Reference to bound ModelController.
  */
-declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args: A): LiveState & I;
+declare function use<I, A extends any[]>(define: { new (...args: A): I; }, ...args: A): Controller & I;
 
 /**
  * LiveState React Hook 
@@ -70,14 +31,8 @@ declare function use<I, A extends any[]>(init: { new (...args: A): I; }, ...args
  * 
  * @returns {LiveState} Live state: current state of component.
  */
-declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): LiveState & I;
-declare function use<I>(init: I): LiveState & I;
-
-interface Class {
-    new (...args: any): any;
-}
-
-interface Controller extends LiveState {}
+declare function use<I, A extends any[]>(init: (...args: A) => I, ...args: A): Controller & I;
+declare function use<I>(init: I): Controller & I;
 
 interface SpyController<T> {
     /** 
@@ -85,7 +40,7 @@ interface SpyController<T> {
      * 
      * Reserved: Overrides of this method will be ignored. 
      */
-    on(...properties: string[]): T & SpyController<T>;
+    on(...properties: string[]): SpyController<T> | T;
 
     /** 
      * Arguments determine what properties should NOT be watched, despite what automatic inference sees. 
@@ -93,7 +48,7 @@ interface SpyController<T> {
      * 
      * Reserved: Overrides of this method will be ignored. 
      */
-    not(...properties: string[]): T & SpyController<T>;
+    not(...properties: string[]): SpyController<T> | T;
     
     /** 
      * Arguments determine entirely what properties will be watched for this component.
@@ -115,8 +70,33 @@ interface SpyController<T> {
     except: never;
 }
 
-declare class Controller {
+interface Controller {
+    /**
+     * Trigger update of consumer component.
+     * 
+     * I forget why I expose this.
+     * Drink Responsibly.
+     */
+    refresh(...keys: string[]): void;
 
+    /**
+     * Clone live state into new object.
+     * 
+     * @returns Clone - Side-effect safe object containing all enumerable values of current state.
+     */
+    export(): { [P in keyof this]: this[P] };
+
+    /**
+     * Add new tracked value to state-controller.
+     * 
+     * Will trigger renders on updates to this new value.
+     * 
+     * @returns boolean - Did add operation succeed. `false` means value already exists or is reserved.
+     */
+    add(key: string, initial?: any, bootup?: true): boolean;
+}
+
+declare class Controller {
     /**
      * Lifecycle Method
      * 
@@ -154,15 +134,19 @@ declare class Controller {
 
     Provider(): FunctionComponentElement<ProviderProps<this>>
     
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     on(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     once(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     only(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** **Reserved** - Used by subscription driver. */
     not(): this;
-    /** RESERVED: Used by context driver. Overriding this may break something. */
+    /** 
+     * **Reserved** - (not actually) used by subscription driver. 
+     * 
+     * You probably mean `not`
+     * */
     except: never;
 
     /**
@@ -171,18 +155,23 @@ declare class Controller {
     hold: boolean;
 
     /** 
-     * Proxy for `this` controller when destructuring. 
+     * **Reserved**
      * 
-     * Reserved: Setting this will not pass through to your components.
+     * Proxy for `this` controller when destructuring. 
      */
     set: this;
 
     /** 
-     * Proxy for `this` controller when destructuring. 
+     * **Reserved**
      * 
-     * Reserved: Setting this will not pass through to your components.
+     * Proxy for `this` controller when destructuring. 
      */
     get: this;
+
+    /**
+     * Initialize this controller and provide it to children.
+     */
+    static get Provider(): FunctionComponentElement<any>;
 
     /**
      * Create instance of this class and generate live-state. Arguments are forwarded to `constructor()`.
@@ -225,7 +214,7 @@ declare class Controller {
      * 
      * Hook returns instance of nearest provided state-controller.
      */
-    static hook<T extends Class, I = InstanceType<T>>(this: T): () => SpyController<I> & I;
+    static hook<T extends Class, I = InstanceType<T>>(this: T): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -236,7 +225,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static useOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -247,7 +236,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static useOnly<T extends Class>(this: T, ...properties: string[]): InstanceType<T>;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -260,7 +249,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static useExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Create instance of this class and generate live-state. 
@@ -271,7 +260,7 @@ declare class Controller {
      * 
      * Returns hooked instance of state-controller.
      */
-    static useOnce<T extends Class>(this: T): () => InstanceType<T>;
+    static useOnce<T extends Class>(this: T): InstanceType<T>;
 
     /**
      * Get instance of this class from context. 
@@ -279,7 +268,7 @@ declare class Controller {
      * 
      * Arguments add listed properties to watch list for live-reload.
      */
-    static getOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static getOn<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Get instance of this class from context. 
@@ -287,7 +276,7 @@ declare class Controller {
      * 
      * Arguments determine entirely what properties will be watched from state in this component.
      */
-    static getOnly<T extends Class>(this: T, ...properties: string[]): () => InstanceType<T>;
+    static getOnly<T extends Class>(this: T, ...properties: string[]): InstanceType<T>;
 
     /**
      * Get instance of this class from context. 
@@ -297,7 +286,7 @@ declare class Controller {
      * 
      * Use this to optimize when you refresh by ingoring unnecessary values which still may be used to render.
      */
-    static getExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): () => SpyController<I> & I;
+    static getExcept<T extends Class, I = InstanceType<T>>(this: T, ...properties: string[]): SpyController<I> & I;
 
     /**
      * Get instance of this class from context. 
@@ -305,15 +294,16 @@ declare class Controller {
      * 
      * Automatic reload will be disabled on all properties.
      */
-    static getOnce<T extends Class>(this: T): () => InstanceType<T>;
+    static getOnce<T extends Class>(this: T): InstanceType<T>;
 
     /**
-     * You probably want `.useExcept()`
+     * You probably mean `.useExcept()`
      */
     static getNot: never;
 }
 
 export { 
     use,
+    Controller,
     Controller as default
 }

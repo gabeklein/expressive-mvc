@@ -1,31 +1,53 @@
-import { Controller } from './controller';
+import { ModelController } from './controller';
+import { Set } from './polyfill';
+import { SpyController } from './subscriber';
 import { BunchOf, UpdateTrigger } from './types';
-import { SpyController } from 'subscriber';
+
+declare const setTimeout: (callback: () => void, ms: number) => number;
 
 const { 
-  defineProperty: define, 
-  getOwnPropertyDescriptor: describe, 
-  assign,
-  create
+  defineProperty: define,
+  defineProperties: defineThese, 
+  getOwnPropertyDescriptor: describe,
+  getOwnPropertyNames: keysOf,
+  getPrototypeOf: prototypeOf
 } = Object;
 
 const { random } = Math;
 
-export const NEW_SUB = Symbol("init_subscription");
-export const UNSUBSCRIBE = Symbol("delete_subscription");
-export const SUBSCRIBE = Symbol("activate_subscription");
+const TOGGLEABLE_IMPLIED = /^is[A-Z]/;
 
-const TOGGLEABLE = /^is[A-Z]/;
+export const NEW_SUB = "__init_subscription__";
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
+export const DISPATCH = "__subscription_dispatch__";
+export const SOURCE = "__subscription_source__";
 
-export function Dispatch(this: Controller){
-  const mutable = {} as any;
+export function firstCreateDispatch(this: ModelController){
+  const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
+    SpyController(this, hook)
+  
+  if(DISPATCH in this === false)
+    applyDispatch(this);
+
+  define(this, NEW_SUB, {
+    value: yeildSubsciptionWatcher
+  });
+
+  return yeildSubsciptionWatcher;
+}
+
+export function applyDispatch(control: ModelController){
+  control = prototypeOf(control);
+
+  const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
   const pending = new Set<string>();
   let isPending = false;
 
-  for(const key in this){
-    const d = describe(this, key)!;
+  for(const key of keysOf(control)){
+    const d = describe(control, key)!;
 
     if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
       continue;
@@ -33,51 +55,47 @@ export function Dispatch(this: Controller){
     mutable[key] = d.value;
     register[key] = new Set();
 
-    define(this, key, {
+    define(control, key, {
       get: () => mutable[key],
-      set: enqueue(key),
+      set: setTrigger(key),
       enumerable: true,
       configurable: false
     })
 
-    if(TOGGLEABLE.test(key) && typeof d.value == "boolean")
-      define(this, key.replace(/is/, "toggle"), {
-        value: setToggle(key)
-      })
+    defineToggle(key, d);
   }
 
-  define(this, "hold", {
-    get: () => isPending,
-    set: to => isPending = to
-  })
-
-  define(this, "get", { value: this });
-  define(this, "set", { value: this });
-
-  define(this, NEW_SUB, { 
-    value: (hook: UpdateTrigger) => 
-      SpyController(this, hook, mutable, register)
-  })
-
-  define(this, "refresh", { 
-    value: function refreshSubscribersOf(...watching: string[]){
-      for(const x of watching)
-        pending.add(x)
-      refresh();
-    }
-  });
-
-  define(this, "export", {
-    value: function exportCurrentValues(){
-      const acc = {} as BunchOf<any>;
-      for(const key in this){
-          const { value } = describe(this, key)!;
-          if(value)
-            acc[key] = value;
-      }
-      return assign(acc, mutable);
+  defineThese(control, {
+    [SOURCE]: { value: mutable },
+    [DISPATCH]: { value: register },
+    get: { value: control },
+    set: { value: control },
+    refresh: { value: refreshSubscribersOf },
+    export: { value: exportCurrentValues },
+    hold: {
+      get: () => isPending,
+      set: to => isPending = to
     }
   })
+
+  function refreshSubscribersOf(...watching: string[]){
+    for(const x of watching)
+      pending.add(x)
+    refresh();
+  }
+
+  function exportCurrentValues(this: BunchOf<any>){
+    const acc = {} as BunchOf<any>;
+    for(const key in this){
+        const { value } = describe(this, key)!;
+        if(value)
+          acc[key] = value;
+    }
+    for(const key in mutable)
+      acc[key] = mutable[key]
+
+    return acc;
+  }
 
   function refresh(){
     if(isPending)
@@ -86,15 +104,20 @@ export function Dispatch(this: Controller){
     setTimeout(dispatch, 0)
   }
 
-  function setToggle(key: string){
-    return function toggle(to?: boolean){
+  function defineToggle(key: string, desc: PropertyDescriptor){
+    if(typeof desc.value !== "boolean") return;
+    if(TOGGLEABLE_IMPLIED.test(key) === false) return;
+
+    define(control, key.replace(/is/, "toggle"), { value: toggle })
+
+    function toggle(){
       mutable[key] = !mutable[key]
       pending.add(key);
       refresh();
     }
   }
 
-  function enqueue(to: string){
+  function setTrigger(to: string){
     return (value: any) => {
       if(mutable[to] === value) 
           return;
@@ -120,75 +143,53 @@ export function Dispatch(this: Controller){
   }
 }
 
-function SpyController(
-  source: Controller, 
-  hook: UpdateTrigger,
-  mutable: BunchOf<any>,
-  register: BunchOf<Set<UpdateTrigger>>
-): SpyController {
+export function applyExternal(
+  this: ModelController,
+  external: BunchOf<any>){
 
-  const Spy = create(source) as any;
-  let watch = new Set<string>();
-  let exclude: Set<string>;
+  if(DISPATCH in this === false)
+    applyDispatch(this);
 
-  for(const key in mutable)
-    define(Spy, key, {
-      set: describe(source, key)!.set,
-      get: () => {
-        watch.add(key);
-        return mutable[key];
-      }
+  const mutable = this[SOURCE];
+  const inner = prototypeOf(this);
+
+  for(const key of keysOf(external)){
+    mutable[key] = external[key];
+    define(inner, key, {
+      get: () => mutable[key],
+      set: willThrowUpdateIsForbidden(key),
+      enumerable: true,
+      configurable: false
     })
+  }
 
-  define(Spy, SUBSCRIBE, { value: sub });
-  define(Spy, UNSUBSCRIBE, { value: unSub });
-  define(Spy, "once", { value: () => source });
-  define(Spy, "on", { value: also });
-  define(Spy, "only", { value: bail });
-  define(Spy, "not", { value: except });
+  define(this, "watch", {
+    value: updateExternal,
+    configurable: false
+  })
 
-  return Spy;
+  function updateExternal(
+    this: ModelController,
+    external: BunchOf<any>){
 
-  function sub(){
-    if(exclude)
-    for(const k of exclude)
-      watch.delete(k);
+    let diff = [];
 
-    for(const key of watch){
-      let set = register[key];
-      if(!set)
-        set = register[key] = new Set();
-      set.add(hook);
+    for(const key of keysOf(external)){
+      if(external[key] == mutable[key])
+        continue;
+      mutable[key] = external[key];
+      diff.push(key);
     }
+
+    if(diff.length)
+      this.refresh(diff);
+
+    return this;
   }
 
-  function unSub(){
-    for(const key of watch)
-      register[key].delete(hook);
+  function willThrowUpdateIsForbidden(key: string){
+    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
   }
 
-  function bail(...keys: string[]){
-    const watch = new Set<string>();
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        watch.add(key);
-    for(const key of watch)
-      register[key].add(hook);
-    return source;
-  }
-
-  function except(...keys: string[]){
-    exclude = new Set<string>();
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        exclude.add(key);
-    return Spy;
-  }
-
-  function also(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-      watch.add(key);
-    return Spy;
-  }
+  return this;
 }

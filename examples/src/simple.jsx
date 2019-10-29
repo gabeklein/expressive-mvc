@@ -1,7 +1,7 @@
 import ReactDOM from "react-dom";
 import React from "react";
 
-import { use } from 'use-stateful';
+import { use } from 'react-use-controller';
 
 class Whatever {
   value = "Hello World"

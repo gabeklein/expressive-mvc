@@ -1,13 +1,9 @@
-import {
-  useEffect,
-  useRef,
-  MutableRefObject,
-} from 'react';
+import { MutableRefObject, useEffect, useRef } from 'react';
 
-import { Controller } from './controller';
-import { Dispatch } from './subscription';
-import { Lifecycle } from './types.d';
+import { Controller, ModelController } from './controller';
 import { useSubscriber } from './subscriber';
+import { firstCreateDispatch, NEW_SUB } from './subscription';
+import { Class, Lifecycle } from './types.d';
 
 const {
   create,
@@ -17,7 +13,7 @@ const {
   getPrototypeOf: proto
 } = Object;
 
-const RESERVED = new Set([ 
+const RESERVED = [ 
   "add",
   "constructor", 
   "didMount", 
@@ -32,35 +28,42 @@ const RESERVED = new Set([
   "set",
   "willUnmount", 
   "willHook"
-]);
+];
 
-function useSimpleController(init: any, ...args: any[]){
+export function useModelController(init: any, ...args: any[]){
   const control = useController(init, args, Object.prototype);
   return useSubscriber(control);
 }
 
-export function useController<T extends Controller>( 
-  control: T,
+export function useController( 
+  model: Class | Function,
   args: any[] = [],
-  superType: any = Controller.prototype){
+  superType: any = Controller.prototype
+): ModelController {
 
-  type I = InstanceType<T>;
-
-  const cache = useRef(null) as MutableRefObject<I>
-  let instance = cache.current as InstanceType<T>;
+  const cache = useRef(null) as MutableRefObject<any>
+  let instance = cache.current;
 
   if(instance === null){
-    if(control.prototype)
-      instance = new control(...args);
-    else if(typeof instance == "function")
-      instance = (control as any)(...args)
-    else 
-      instance = control as any;
+    if(model.prototype)
+      instance = new (model as Class)(...args);
+    else {
+      if(typeof instance == "function")
+        instance = (model as Function)(...args)
+      else 
+        instance = model;
+
+      define(instance, NEW_SUB, {
+        get: firstCreateDispatch,
+        configurable: true
+      })
+    }
 
     if(instance.didHook)
-      instance.didHook.apply(instance)
-    Dispatch.apply(instance);
-    instance = bindMethods(instance, control.prototype, superType);
+      instance.didHook()
+      
+    instance = bindMethods(instance, model.prototype, superType);
+
     cache.current = instance;
   }
   else if(instance.didHook)
@@ -73,8 +76,8 @@ export function useController<T extends Controller>(
   }
 
   useEffect(() => {
-    const state = proto(instance as any);
-    const methods: Lifecycle = control.prototype || {}
+    const state = proto(instance);
+    const methods: Lifecycle = model.prototype || {}
     return invokeLifecycle(
       state, 
       state.didMount || methods.didMount, 
@@ -101,7 +104,7 @@ function bindMethods(
   prototype = {};
   for(const methods of chain){
     for(const key of keysIn(methods)){
-      if(RESERVED.has(key))
+      if(RESERVED.indexOf(key) >= 0)
         continue;
       const { value } = describe(methods, key)!;
       if(typeof value === "function")
@@ -115,19 +118,13 @@ function bindMethods(
       writable: true
     })
 
-  for(const key of ["get", "set"])
-    define(boundLayer, key, {
-      value: instance,
-      writable: true
-    })
-
   return boundLayer
 }
 
 export function invokeLifecycle(
   target: any,
-  didMount?: VoidFunction, 
-  willUnmount?: VoidFunction){
+  didMount?: () => void, 
+  willUnmount?: () => void){
 
   if(didMount)
     didMount.call(target);
@@ -139,5 +136,3 @@ export function invokeLifecycle(
       catch(err) {}
   }
 }
-
-export { useSimpleController as use }

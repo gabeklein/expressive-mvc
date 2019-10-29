@@ -9,6 +9,15 @@
       "url": "http://localhost:3000/",
       "webRoot": "${workspaceFolder}/",
       "sourceMaps": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Tests",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": ["--watchAll", "--runInBand", "--config=${workspaceFolder}/jest.config.js"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }
