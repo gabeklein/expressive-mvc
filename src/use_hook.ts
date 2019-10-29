@@ -77,12 +77,18 @@ export function useController(
 
   useEffect(() => {
     const state = proto(instance);
-    const methods: Lifecycle = model.prototype || {}
-    return invokeLifecycle(
-      state, 
-      state.didMount || methods.didMount, 
-      state.willUnmount || methods.willUnmount
-    );
+    const methods: Lifecycle = model.prototype || {};
+
+    const didMount = state.didMount || methods.didMount;
+    const willUnmount = state.willUnmount || methods.willUnmount;
+
+    if(didMount)
+      didMount.call(state);
+    return () => {
+      if(willUnmount)
+        willUnmount.call(state);
+      nuke(state);
+    }
   }, [])
 
   return instance;
@@ -121,18 +127,8 @@ function bindMethods(
   return boundLayer
 }
 
-export function invokeLifecycle(
-  target: any,
-  didMount?: () => void, 
-  willUnmount?: () => void){
-
-  if(didMount)
-    didMount.call(target);
-  return () => {
-    if(willUnmount)
-      willUnmount.call(target);
+function nuke(target: any){
     for(const key in target)
       try { delete target[key] }
       catch(err) {}
   }
-}
