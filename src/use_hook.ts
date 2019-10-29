@@ -1,9 +1,10 @@
 import { MutableRefObject, useEffect, useRef } from 'react';
 
 import { Controller, ModelController } from './controller';
-import { useSubscription } from './subscriber';
-import { ensureDispatch, NEW_SUB } from './subscription';
+import { useSubscription, SpyController } from './subscriber';
+import { ensureDispatch, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Class, Lifecycle } from './types.d';
+import { useState } from 'react';
 
 const {
   create,
@@ -31,10 +32,9 @@ const RESERVED = [
 ];
 
 export function useModelController(init: any, ...args: any[]){
-  const control = init instanceof Controller
-    ? init as ModelController
+  return init instanceof Controller
+    ? useSubscription(init as ModelController)
     : useNewController(init, args, Object.prototype);
-  return useSubscription(control);
 }
 
 export function useNewController( 
@@ -43,7 +43,8 @@ export function useNewController(
   superType: any = Controller.prototype
 ): ModelController {
 
-  const cache = useRef(null) as MutableRefObject<any>
+  const setUpdate = useState(0)[1];
+  const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
 
   if(instance === null){
@@ -63,15 +64,17 @@ export function useNewController(
 
     if(instance.componentWillRender)
       instance.componentWillRender(true)
-      
-    instance = bindMethods(instance, model.prototype, superType);
 
-    cache.current = instance;
+    cache.current = bindMethods(instance, model.prototype, superType);
+    instance = cache.current[NEW_SUB](setUpdate);
   }
   else if(instance.componentWillRender)
     instance.componentWillRender()
 
   useEffect(() => {
+    const spyControl = instance as unknown as SpyController;
+    spyControl[SUBSCRIBE]();
+
     const state = proto(instance);
     const methods: Lifecycle = model.prototype || {};
 
@@ -80,9 +83,12 @@ export function useNewController(
 
     if(componentDidMount)
       componentDidMount.call(state);
+
     return () => {
       if(componentWillUnmount)
         componentWillUnmount.call(state);
+
+      spyControl[UNSUBSCRIBE]();
       nuke(state);
     }
   }, [])
