@@ -4,21 +4,55 @@ import {
   createElement,
   FunctionComponentElement,
   PropsWithChildren,
+  ProviderExoticComponent,
   ProviderProps,
   useContext,
-  ProviderExoticComponent
+  useEffect,
+  useMemo,
 } from 'react';
+import { BunchOf } from 'types';
 
 import { ModelController } from './controller';
 import { useSubscription } from './subscriber';
 import { useOwnController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
+const CONTEXT_MULTIPROVIDER = createContext({} as any);
 
 const { 
   defineProperty: define,
-  keys: keysIn
+  keys: keysIn,
+  values: valuesIn
 } = Object;
+
+export const MultiProvider = (props: PropsWithChildren<any>) => {
+  const { Provider } = CONTEXT_MULTIPROVIDER;
+  let { children, className, style, using, ...rest } = props;
+
+  if(className || style)
+    children = createElement("div", { className, style }, children);
+
+  const provide: BunchOf<ModelController> = useMemo(() => {
+    const scan = valuesIn(rest).concat(using || []);
+    const map = {} as any;
+    for(const item of scan as (typeof ModelController)[]){
+      const { name } = item;
+      if(!name) continue;
+      map[name] = new item();
+    }
+
+    return map;
+  }, []);
+
+  function destroyOnUnmount(){
+    for(const type in provide)
+      provide[type].destroy();
+  }
+
+  useEffect(() => destroyOnUnmount, [])
+
+  return createElement(Provider, { value: provide }, children);
+}
 
 function ownContext(from: typeof ModelController){
   let constructor;
@@ -51,10 +85,23 @@ function ownContext(from: typeof ModelController){
 export function getFromContext(
   this: typeof ModelController){
     
-  const context = ownContext(this);
+  const { name } = this;
+  let context = ownContext(this);
  
   function useContextSubscriber(){
-    const controller = useContext(context);
+    let controller = useContext(context);
+
+    if(!controller){
+      const multi = useContext(CONTEXT_MULTIPROVIDER) as any;
+      if(multi[name])
+        controller = multi[name];
+      else
+        throw new Error(
+          `Can't subscribe to controller;` +
+          ` this accessor can only be used within a Provider keyed to \`${name}\``
+        )
+    }
+
     return useSubscription(controller);
   }
   

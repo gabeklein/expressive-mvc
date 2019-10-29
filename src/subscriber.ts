@@ -24,13 +24,10 @@ export function useSubscription(control: ModelController){
     if(control.elementWillRender)
       control.elementWillRender(local, true)
     
-    if(!control[NEW_SUB]){
-      const { name } = control.constructor;
+    if(!control[NEW_SUB])
       throw new Error(
-        `Can't subscribe to controller;` +
-        ` this accessor can only be used within { Provider } given to you by \`${name}.use()\``
+        `Can't subscribe to controller; it doesn't contain proper interface for watching.`
       )
-    }
 
     control = control[NEW_SUB](setUpdate) as any;
   }
