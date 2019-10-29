@@ -32,7 +32,7 @@ const RESERVED = [
 
 export function useModelController(init: any, ...args: any[]){
   const control = init instanceof Controller
-    ? useExistingController(init)
+    ? init as ModelController
     : useNewController(init, args, Object.prototype);
   return useSubscriber(control);
 }
@@ -94,41 +94,6 @@ export function useNewController(
   }, [])
 
   return instance;
-}
-
-function useExistingController(
-  control: any
-): ModelController {
-
-  const cache = useRef(null) as MutableRefObject<any>
-  let instance = cache.current;
-
-  if(instance === null){
-    instance = cache.current = {
-      //todo: maybe UID here?
-    };
-    
-    if(control.instanceDidHook)
-      control.instanceDidHook(instance)
-  }
-  else if(control.instanceDidHook)
-    control.instanceDidHook.call({}, instance)
-
-  if(control.instanceWillHook){
-    control.hold = true;
-    control.instanceWillHook(instance);
-    control.hold = false;
-  }
-  
-  useEffect(() => {
-    if(control.instanceDidMount)
-      control.instanceDidMount(instance);
-
-    if(control.instanceWillUnmount)
-      return () => control.instanceWillUnmount(instance);
-  }, [])
-
-  return control;
 }
 
 function bindMethods(

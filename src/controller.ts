@@ -18,6 +18,10 @@ export declare class ModelController {
   didHook?(): void;
   willHook?(): void;
 
+  elementWillRender?(local: BunchOf<any>, initial?: true): void;
+  elementDidMount?(local: BunchOf<any>): void;
+  elementWillUnmount?(local: BunchOf<any>): void;
+
   on(...args: string[]): this;
   not(...args: string[]): this;
   only(...args: string[]): this;
