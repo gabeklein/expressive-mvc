@@ -50,17 +50,16 @@ export function useOwnController(
   if(instance === null){
     if(model.prototype)
       instance = new (model as Class)(...args);
-    else {
-      if(typeof instance == "function")
-        instance = (model as Function)(...args)
-      else 
-        instance = model;
+    else if(typeof instance == "function")
+      instance = (model as Function)(...args)
+    else 
+      instance = model;
 
+    if(!instance[NEW_SUB])
       define(instance, NEW_SUB, {
         get: ensureDispatch,
         configurable: true
       })
-    }
 
     if(instance.componentWillRender)
       instance.componentWillRender(true)
