@@ -4,10 +4,7 @@ import Controller, { use } from '../';
 
 type Class = new (...args: any[]) => any;
 
-const HOOK_METHODS = [
-  "use", "useOn", "useOnly", "useOnce", "useExcept", 
-  "get", "getOn", "getOnly", "getOnce", "getExcept"
-]
+const HOOK_METHODS = [ "use", "get" ];
 
 function ensureArray<T>(x: T | T[]){
   return ([] as T[]).concat(x);
@@ -34,20 +31,10 @@ interface TestSuite<T> {
   /** Activate controller. Passes `args` to constructor */
   use?: T;
   /** Capture controller from context.*/
-  get?: T;
+  pull?: T;
 
   /** forward these arguments to the activated method */
   args?: any[];
-
-  /* Chained subsription methods, use ones below instead. */
-  useOn?: T;
-  useOnce?: T;
-  useOnly?: T;
-  useExcept?: T;
-  getOn?: T;
-  getOnce?: T;
-  getOnly?: T;
-  getExcept?: T;
 
   /** Subscribe to this, plus whatever automatic inference finds */
   on?: string | string[];
