@@ -55,8 +55,8 @@ declare class Controller {
     static create <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
     static use    <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
     
-    static get    <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): I;
-    static pull   <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
+    static get    <T extends Class> (this: T): InstanceType<T>;
+    static pull   <T extends Class, I = InstanceType<T>> (this: T): SpyController<I> & I;
 
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
     static hook    <T extends Class, I = InstanceType<T>> (this: T): SpyController<I> & I;
