@@ -181,38 +181,32 @@ function addExtraAssertions(
 
   append.state = append.result.current;
 
-  append.assertDidUpdate = () => {
+  append.assertDidUpdate = async () => {
     const error = new TraceableError("Assertion failed: hook did not update");
-    let done = false;
+    let didUpdate = false;
 
-    return Promise.race([
-      append.waitForNextUpdate(),
-      new Promise<never>((resolve) => {
-        setTimeout(() => { 
-          if(!done) 
-            throw error
-        }, 500)
-      })
-    ]).then(() => {
-      done = true
-    })
+    setTimeout(() => { 
+      if(!didUpdate) 
+        throw error
+    }, 500)
+
+    await append.waitForNextUpdate();
+
+    didUpdate = true
   }
 
-  append.assertDidNotUpdate = () => {
-    const error = new TraceableError("Assertion failed: hook did update")
-    let done = false;
+  append.assertDidNotUpdate = async () => {
+    const error = new TraceableError("Assertion failed: hook did update");
+    let elapsed = false;
 
-    return Promise.race([
-      append.waitForNextUpdate().then(() => {
-        if(!done) throw error;
-      }),
-      new Promise<void>((resolve) => {
-        setTimeout(() => {
-          done = true;
-          resolve();
-          append.rerender();
-        }, 500)
-      })
-    ])
+    setTimeout(() => {
+      elapsed = true;
+      append.rerender();
+    }, 500)
+    
+    await append.waitForNextUpdate();
+
+    if(!elapsed) 
+      throw error;
   }
 }
