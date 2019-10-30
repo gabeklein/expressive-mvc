@@ -52,6 +52,7 @@ declare class Controller {
 
     static create <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
     static use    <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
+    
     static get    <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): I;
     static pull   <A extends any[], T extends Expects<A>, I = InstanceType<T>> (this: T, ...args: A): SpyController<I> & I;
 
@@ -59,8 +60,15 @@ declare class Controller {
     static hook    <T extends Class, I = InstanceType<T>> (this: T): SpyController<I> & I;
 }
 
+interface MultiProviderProps {
+    using: Controller[]
+}
+
+type MultiProvider = FunctionComponentElement<MultiProviderProps>
+
 export { 
     use,
     Controller,
-    Controller as default
+    Controller as default,
+    MultiProvider as Provide
 }
