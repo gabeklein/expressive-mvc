@@ -14,13 +14,17 @@ export function useSubscription(control: ModelController){
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
 
+  const willRender = control.elementWillRender || control.willRender;
+  const willUnmount = control.elementWillUnmount || control.willUnmount;
+  const didMount = control.elementDidMount || control.didMount;
+
   let local = cache.current;
 
   if(!local){
     local = cache.current = {}
 
-    if(control.elementWillRender)
-      control.elementWillRender(local, true)
+    if(willRender)
+      willRender.call(control, true, local)
     
     if(!control[NEW_SUB])
       throw new Error(
@@ -29,19 +33,19 @@ export function useSubscription(control: ModelController){
 
     control = control[NEW_SUB](setUpdate) as any;
   }
-  else if(control.elementWillRender)
-    control.elementWillRender(local)
+  else if(willRender)
+    willRender.call(control, false, local)
 
   useEffect(() => {
     const spyControl = control as unknown as SpyController;
     spyControl[SUBSCRIBE]();
 
-    if(control.elementDidMount)
-      control.elementDidMount(local);
+    if(didMount)
+      didMount.call(control, local);
 
     return () => {
-      if(control.elementWillUnmount)
-        control.elementWillUnmount(local);
+      if(willUnmount)
+        willUnmount.call(control, local);
       spyControl[UNSUBSCRIBE]()
     };
   }, [])

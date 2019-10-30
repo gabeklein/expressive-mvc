@@ -6,6 +6,7 @@ import {
 
 type Class = new (...args: any) => any;
 type Expects<A extends any[]> = new(...args: A) => any
+type BunchOf<T> = { [key: string]: T }
 
 declare function use<I, A extends any[]> (define: new (...args: A) => I, ...args: A): Controller & I;
 declare function use<I, A extends any[]> (init: (...args: A) => I, ...args: A): Controller & I;
@@ -29,13 +30,17 @@ declare class Controller {
     export(): { [P in keyof this]: this[P] };
     add(key: string, initial?: any, bootup?: true): boolean;
 
-    componentWillRender?(): void;
+    willRender?(initial: boolean, local?: BunchOf<any>): void;
+    didMount?(local?: BunchOf<any>): void;
+    willUnmount?(local?: BunchOf<any>): void;
+  
+    elementWillRender?(initial: boolean, local: BunchOf<any>): void;
+    elementDidMount?(local: BunchOf<any>): void;
+    elementWillUnmount?(local: BunchOf<any>): void;
+  
+    componentWillRender?(initial: true): void;
     componentDidMount?(): void;
     componentWillUnmount?(): void;
-
-    elementWillRender?(): void;
-    elementDidMount?(): void;
-    elementWillUnmount?(): void;
 
     on(): this;
     once(): this

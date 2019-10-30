@@ -3,7 +3,7 @@ import { MutableRefObject, useEffect, useRef } from 'react';
 import { Controller, ModelController } from './controller';
 import { useSubscription, SpyController } from './subscriber';
 import { ensureDispatch, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
-import { Class, Lifecycle } from './types.d';
+import { Class } from './types.d';
 import { useState } from 'react';
 
 const {
@@ -47,6 +47,12 @@ export function useOwnController(
   const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
 
+  const { prototype: p = {} } = model;
+
+  const willRender = p.componentWillRender || p.willRender;
+  const willUnmount = p.componentWillUnmount || p.willUnmount;
+  const didMount = p.componentDidMount || p.didMount;
+
   if(instance === null){
     if(model.prototype)
       instance = new (model as Class)(...args);
@@ -61,31 +67,27 @@ export function useOwnController(
         configurable: true
       })
 
-    if(instance.componentWillRender)
-      instance.componentWillRender(true)
+    if(willRender)
+      willRender.call(instance, true)
 
     cache.current = bindMethods(instance, model.prototype, superType);
     instance = instance[NEW_SUB](setUpdate);
   }
-  else if(instance.componentWillRender)
-    instance.componentWillRender()
+  else if(willRender)
+    willRender.call(instance)
 
   useEffect(() => {
     const spyControl = instance as unknown as SpyController;
+    const state = proto(instance);
+    
     spyControl[SUBSCRIBE]();
 
-    const state = proto(instance);
-    const methods: Lifecycle = model.prototype || {};
-
-    const componentDidMount = state.componentDidMount || methods.componentDidMount;
-    const componentWillUnmount = state.componentWillUnmount || methods.componentWillUnmount;
-
-    if(componentDidMount)
-      componentDidMount.call(state);
+    if(didMount)
+      didMount.call(state);
 
     return () => {
-      if(componentWillUnmount)
-        componentWillUnmount.call(state);
+      if(willUnmount)
+        willUnmount.call(state);
 
       spyControl[UNSUBSCRIBE]();
       nuke(state);

@@ -13,11 +13,15 @@ const {
 
 export declare class ModelController { 
 
-  componentWillRender(initial?: true): void;
+  willRender?(initial: boolean, local?: BunchOf<any>): void;
+  didMount?(local?: BunchOf<any>): void;
+  willUnmount?(local?: BunchOf<any>): void;
+
+  componentWillRender?(initial: true): void;
   componentDidMount?(): void;
   componentWillUnmount?(): void;
 
-  elementWillRender?(local: BunchOf<any>, initial?: true): void;
+  elementWillRender?(initial: boolean, local: BunchOf<any>): void;
   elementDidMount?(local: BunchOf<any>): void;
   elementWillUnmount?(local: BunchOf<any>): void;
 
