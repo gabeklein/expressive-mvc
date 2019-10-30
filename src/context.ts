@@ -103,7 +103,7 @@ export function watchFromContext(this: typeof ModelController){
     useContext(context) || findInMultiProvider(this.name)
   );
   
-  define(this, `watch`, { value: find });
+  define(this, `pull`, { value: find });
   return find() as ModelController;
 }
 
