@@ -61,11 +61,14 @@ export function useOwnController(
     else 
       instance = model;
 
-    if(!instance[NEW_SUB])
+    if(instance instanceof Controller == false){
       define(instance, NEW_SUB, {
         get: ensureDispatch,
         configurable: true
       })
+      if(typeof instance.didInit == "function")
+        instance.didInit();
+    }
 
     if(willRender)
       willRender.call(instance, true)

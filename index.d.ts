@@ -30,6 +30,8 @@ declare class Controller {
     export(): { [P in keyof this]: this[P] };
     add(key: string, initial?: any, bootup?: true): boolean;
 
+    didInit?(): void;
+
     willRender?(initial: boolean, local?: BunchOf<any>): void;
     didMount?(local?: BunchOf<any>): void;
     willUnmount?(local?: BunchOf<any>): void;

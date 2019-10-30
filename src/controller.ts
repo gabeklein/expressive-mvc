@@ -13,6 +13,8 @@ const {
 
 export declare class ModelController { 
 
+  didInit?(): void;
+
   willRender?(initial: boolean, local?: BunchOf<any>): void;
   didMount?(local?: BunchOf<any>): void;
   willUnmount?(local?: BunchOf<any>): void;
@@ -50,7 +52,10 @@ export declare class ModelController {
 function returnThis<T = any>(this: T){ return this as T }
 
 /** Just the host function, nothing initialized here */
-export function Controller(){}
+export function Controller(this: ModelController){
+  if(this.didInit)
+    setImmediate(() => this.didInit!())
+}
 
 const prototype = Controller.prototype = {} as any;
 
