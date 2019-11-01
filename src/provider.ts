@@ -42,7 +42,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     children = createElement("div", { className, style }, children);
 
   function createOnMount(){
-    return initGroupControllers(using as any, rest as any)
+    return initGroupControllers(using, rest)
   }
   
   function destroyOnUnmount(){
