@@ -70,6 +70,11 @@ function initGroupControllers(
     map[key] = new fromProps[key]();
   }
 
+  for(const source in map)
+    for(const target in map)
+      if(source !== target)
+        (map[target] as any)[source] = map[source];
+
   return map;
 }
 
