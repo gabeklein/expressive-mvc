@@ -17,6 +17,7 @@ export function useSubscription(control: ModelController){
   const willRender = control.elementWillRender || control.willRender;
   const willUnmount = control.elementWillUnmount || control.willUnmount;
   const didMount = control.elementDidMount || control.didMount;
+  const willMount = control.elementWillMount || control.willMount;
 
   let local = cache.current;
 
@@ -25,6 +26,9 @@ export function useSubscription(control: ModelController){
 
     if(willRender)
       willRender.call(control, true, local)
+
+    if(willMount)
+      willMount.call(control, local)
     
     if(!control[NEW_SUB])
       throw new Error(

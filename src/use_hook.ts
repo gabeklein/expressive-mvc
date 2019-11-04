@@ -52,6 +52,7 @@ export function useOwnController(
   const willRender = p.componentWillRender || p.willRender;
   const willUnmount = p.componentWillUnmount || p.willUnmount;
   const didMount = p.componentDidMount || p.didMount;
+  const willMount = p.componentWillMount || p.willMount;
 
   if(instance === null){
     if(model.prototype)
@@ -71,7 +72,10 @@ export function useOwnController(
     }
 
     if(willRender)
-      willRender.call(instance, true)
+      willRender.call(instance, true);
+
+    if(willMount)
+      willMount.call(instance);
 
     cache.current = bindMethods(instance, model.prototype, superType);
     instance = instance[NEW_SUB](setUpdate);

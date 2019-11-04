@@ -33,14 +33,17 @@ declare class Controller {
     didInit?(): void;
 
     willRender?(initial: boolean, local?: BunchOf<any>): void;
+    willMount?(local?: BunchOf<any>): void;
     didMount?(local?: BunchOf<any>): void;
     willUnmount?(local?: BunchOf<any>): void;
   
     elementWillRender?(initial: boolean, local: BunchOf<any>): void;
+    elementWillMount?(local: BunchOf<any>): void;
     elementDidMount?(local: BunchOf<any>): void;
     elementWillUnmount?(local: BunchOf<any>): void;
   
     componentWillRender?(initial: true): void;
+    componentWillMount?(): void;
     componentDidMount?(): void;
     componentWillUnmount?(): void;
 
