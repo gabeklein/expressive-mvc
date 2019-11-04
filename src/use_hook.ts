@@ -33,7 +33,7 @@ const RESERVED = [
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
-    ? useSubscription(init as ModelController)
+    ? useSubscription(init as ModelController, args)
     : useOwnController(init, args, Object.prototype);
 }
 
@@ -71,11 +71,11 @@ export function useOwnController(
         instance.didInit();
     }
 
-    if(willRender)
-      willRender.call(instance, true);
-
     if(willMount)
       willMount.call(instance);
+
+    if(willRender)
+      willRender.call(instance, true);
 
     cache.current = bindMethods(instance, model.prototype, superType);
     instance = instance[NEW_SUB](setUpdate);

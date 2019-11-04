@@ -10,7 +10,7 @@ const {
   create
 } = Object;
 
-export function useSubscription(control: ModelController){
+export function useSubscription(control: ModelController, args: any[]){
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
 
@@ -24,11 +24,11 @@ export function useSubscription(control: ModelController){
   if(!local){
     local = cache.current = {}
 
+    if(willMount)
+      willMount.apply(control, [local, ...args])
+
     if(willRender)
       willRender.call(control, true, local)
-
-    if(willMount)
-      willMount.call(control, local)
     
     if(!control[NEW_SUB])
       throw new Error(
