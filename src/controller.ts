@@ -14,6 +14,7 @@ const {
 export declare class ModelController { 
 
   didInit?(): void;
+  willDestroy(callback?: () => void): void;
 
   willMount?(local?: BunchOf<any>, ...args: any[]): void;
   willRender?(initial: boolean, local?: BunchOf<any>): void;
@@ -37,7 +38,6 @@ export declare class ModelController {
 
   watch(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
-  destroy(callback?: () => void): void;
   
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   [SOURCE]: BunchOf<any>;
@@ -66,7 +66,7 @@ for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
 prototype.watch = applyExternal;
-prototype.destroy = (cb?: () => void) => cb && cb();
+prototype.willDestroy = (cb?: () => void) => cb && cb();
 
 define(prototype, NEW_SUB, {
   get: ensureDispatch,

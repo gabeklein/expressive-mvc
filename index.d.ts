@@ -31,6 +31,7 @@ declare class Controller {
     add(key: string, initial?: any, bootup?: true): boolean;
 
     didInit?(): void;
+    willDestroy(callback?: () => void): void;
 
     willMount?(local?: BunchOf<any>, ...args: any[]): void;
     willRender?(initial: boolean, local?: BunchOf<any>): void;

@@ -47,7 +47,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   
   function destroyOnUnmount(){
     for(const type in provide)
-      provide[type].destroy();
+      provide[type].willDestroy();
   }
 
   const provide = useMemo(createOnMount, []); 
