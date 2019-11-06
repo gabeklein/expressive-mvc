@@ -34,7 +34,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     children,
     className,
     style,
-    using = [],
+    of: controllers = {},
     ...rest
   } = props;
 
@@ -42,7 +42,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     children = createElement("div", { className, style }, children);
 
   function createOnMount(){
-    return initGroupControllers(using, rest)
+    return initGroupControllers(controllers, rest)
   }
   
   function destroyOnUnmount(){
@@ -57,23 +57,18 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 }
 
 function initGroupControllers(
-  explicit: Array<ControlClass> = [],
+  explicit: BunchOf<ControlClass>,
   fromProps: BunchOf<ControlClass> 
 ){
   const map = {} as BunchOf<ModelController>;
-  
-  for(const item of explicit){
-    const { name } = item;
-    if(!name) continue;
-    map[name] = new item();
-  }
 
-  for(const key in fromProps){
-    if(isCapital.test(key) === false)
-      continue;
+  for(const group of [ fromProps, explicit ])
+    for(const key in group){
+      if(isCapital.test(key) === false)
+        continue;
 
-    map[key] = new fromProps[key]();
-  }
+      map[key] = new group[key]();
+    }
 
   for(const source in map)
     for(const target in map)

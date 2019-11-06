@@ -76,5 +76,5 @@ export {
     use,
     Controller,
     Controller as default,
-    MultiProvider as Provide
+    MultiProvider as Provider
 }
