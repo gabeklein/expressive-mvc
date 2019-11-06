@@ -13,9 +13,9 @@ declare function use<I, A extends any[]> (init: (...args: A) => I, ...args: A): 
 declare function use<I> (controller: Controller): Controller;
 declare function use<I> (init: I): Controller & I;
 
-interface Subscribed<T> {
-    on(...properties: string[]): Subscribed<T> | T;
-    not(...properties: string[]): Subscribed<T> | T;
+interface Subscriber<T> {
+    on(...properties: string[]): Subscriber<T> | T;
+    not(...properties: string[]): Subscriber<T> | T;
     only(...properties: string[]): T;
     once(): T;
     except: never;
@@ -57,10 +57,10 @@ declare class Controller {
     static get Provider(): FunctionComponentElement<any>;
 
     static create <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T>;
-    static use    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscribed<InstanceType<T>>;
+    static use    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
     static get    <T extends Class> (this: T): InstanceType<T>;
-    static pull   <T extends Class> (this: T): InstanceType<T> & Subscribed<InstanceType<T>>;
+    static pull   <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
 
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
     static hook    <T extends Class> (this: T): InstanceType<T>;
