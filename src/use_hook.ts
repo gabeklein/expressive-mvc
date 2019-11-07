@@ -96,6 +96,9 @@ export function useOwnController(
       if(willUnmount)
         willUnmount.call(state);
 
+      if("willDestroy" in instance)
+        instance.willDestroy();
+
       spyControl[UNSUBSCRIBE]();
       nuke(state);
     }
