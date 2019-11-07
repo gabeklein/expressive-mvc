@@ -53,12 +53,12 @@ function ownContext(from: typeof ModelController){
 export function watchFromContext(this: typeof ModelController, ...args: any[]){
   let context = ownContext(this);
  
-  const find = () => useSubscription(
+  const find = (...args: any[]) => useSubscription(
     useContext(context) || findInMultiProvider(this.name), args
   );
   
   define(this, `pull`, { value: find });
-  return find() as ModelController;
+  return find.apply(null, args) as ModelController;
 }
 
 export function accessFromContext(this: typeof ModelController, ...args: any[]){
