@@ -20,13 +20,15 @@ export function useSubscription(control: ModelController, args: any[]){
   const didMount = control.elementDidMount || control.didMount;
   const willMount = control.elementWillMount || control.willMount;
   
-  let local = control.local = cache.current;
+  let local = cache.current;
 
   if(!local){
     local = control.local = cache.current = {}
 
     if(willMount)
         willMount.apply(control, args);
+
+    delete control.local;
 
     if(!control[NEW_SUB])
       throw new Error(
@@ -35,8 +37,12 @@ export function useSubscription(control: ModelController, args: any[]){
 
     control = control[NEW_SUB](setUpdate) as any;
   }
-  else if(willUpdate)
-    willUpdate.apply(control, args);
+  else {
+    control.local = local;
+
+    if(willUpdate)
+      willUpdate.apply(control, args);
+  }
 
   if(willRender)
     willRender.apply(control, args)
