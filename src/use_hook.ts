@@ -50,6 +50,7 @@ export function useOwnController(
   const { prototype: p = {} } = model;
 
   const willRender = p.componentWillRender || p.willRender;
+  const willUpdate = p.componentWillUpdate || p.willUpdate;
   const willUnmount = p.componentWillUnmount || p.willUnmount;
   const didMount = p.componentDidMount || p.didMount;
   const willMount = p.componentWillMount || p.willMount;
@@ -74,13 +75,13 @@ export function useOwnController(
     if(willMount)
       willMount.call(instance);
 
-    if(willRender)
-      willRender.call(instance, true);
-
     cache.current = bindMethods(instance, model.prototype, superType);
     instance = instance[NEW_SUB](setUpdate);
   }
-  else if(willRender)
+  else if(willUpdate)
+    willUpdate.call(instance)
+
+  if(willRender)
     willRender.call(instance)
 
   useEffect(() => {

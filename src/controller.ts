@@ -13,21 +13,26 @@ const {
 
 export declare class ModelController { 
 
+  local: BunchOf<any>;
+
   didInit?(): void;
   willDestroy(callback?: () => void): void;
 
-  willMount?(local?: BunchOf<any>, ...args: any[]): void;
-  willRender?(initial: boolean, local?: BunchOf<any>): void;
-  didMount?(local?: BunchOf<any>): void;
-  willUnmount?(local?: BunchOf<any>): void;
+  willRender?(...args: any[]): void;
+  willMount?(...args: any[]): void;
+  willUpdate?(...args: any[]): void;
+  didMount?(...args: any[]): void;
+  willUnmount?(...args: any[]): void;
 
-  elementWillMount?(local: BunchOf<any>, ...args: any[]): void;
-  elementWillRender?(initial: boolean, local: BunchOf<any>): void;
-  elementDidMount?(local: BunchOf<any>): void;
-  elementWillUnmount?(local: BunchOf<any>): void;
+  elementWillRender?(...args: any[]): void;
+  elementWillMount?(...args: any[]): void;
+  elementWillUpdate?(...args: any[]): void;
+  elementDidMount?(...args: any[]): void;
+  elementWillUnmount?(...args: any[]): void;
 
+  componentWillRender?(): void;
   componentWillMount?(): void;
-  componentWillRender?(initial: true): void;
+  componentWillUpdate?(): void;
   componentDidMount?(): void;
   componentWillUnmount?(): void;
 

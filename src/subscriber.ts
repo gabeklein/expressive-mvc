@@ -15,41 +15,50 @@ export function useSubscription(control: ModelController, args: any[]){
   const cache = useRef(null) as MutableRefObject<any>;
 
   const willRender = control.elementWillRender || control.willRender;
+  const willUpdate = control.elementWillUpdate || control.willUpdate;
   const willUnmount = control.elementWillUnmount || control.willUnmount;
   const didMount = control.elementDidMount || control.didMount;
   const willMount = control.elementWillMount || control.willMount;
-
-  let local = cache.current;
+  
+  let local = control.local = cache.current;
 
   if(!local){
-    local = cache.current = {}
+    local = control.local = cache.current = {}
 
     if(willMount)
-      willMount.apply(control, [local, ...args])
+        willMount.apply(control, args);
 
-    if(willRender)
-      willRender.call(control, true, local)
-    
     if(!control[NEW_SUB])
       throw new Error(
-        `Can't subscribe to controller; it doesn't contain proper interface for watching.`
+        `Can't subscribe to controller; it doesn't contain a proper interface for watching.`
       )
 
     control = control[NEW_SUB](setUpdate) as any;
   }
-  else if(willRender)
-    willRender.call(control, false, local)
+  else if(willUpdate)
+    willUpdate.apply(control, args);
+
+  if(willRender)
+    willRender.apply(control, args)
+
+  delete control.local;
 
   useEffect(() => {
     const spyControl = control as unknown as SpyController;
     spyControl[SUBSCRIBE]();
 
-    if(didMount)
-      didMount.call(control, local);
+    if(didMount){
+      control.local = local;
+      didMount.apply(control, args);
+      delete control.local;
+    }
 
     return () => {
-      if(willUnmount)
-        willUnmount.call(control, local);
+      if(willUnmount){
+        control.local = local;
+        willUnmount.apply(control, args);
+        delete control.local;
+      }
       spyControl[UNSUBSCRIBE]()
     };
   }, [])
