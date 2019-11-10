@@ -4,17 +4,17 @@ import Controller, { use } from '../';
 
 type Class = new (...args: any[]) => any;
 
-const HOOK_METHODS = [ "use", "get" ];
+const HOOK_METHODS = [ "use", "pull" ];
 
 function ensureArray<T>(x: T | T[]){
   return ([] as T[]).concat(x);
 }
 
 /**
- * Error with test-friendlier stack-trace. 
+ * Error with test-friendlier stack trace. 
  * 
  * Create prior to running an async operation. 
- * Throwing this as a closure-variable highlights the failed promise.
+ * Throwing already initialized error from closure highlights the failed promise.
  */
 class TraceableError extends Error {
   constructor(message: string){
@@ -69,7 +69,7 @@ interface TestSuite<T> {
  * 
  * Available Hooks:
  * - use
- * - get
+ * - pull
  * 
  * Refresh Directives:
  * - on
