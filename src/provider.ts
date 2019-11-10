@@ -10,8 +10,10 @@ import { BunchOf } from 'types';
 
 import { ModelController } from './controller';
 
-const CONTEXT_MULTIPROVIDER = createContext({} as any);
-const isCapital = /^[A-Z]/;
+const CONTEXT_MULTIPROVIDER = createContext(null as any);
+const isCapitalized = /^[A-Z]/;
+
+const { create, getPrototypeOf: proto } = Object;
 
 type ControlClass = typeof ModelController;
 
@@ -29,7 +31,6 @@ export function findInMultiProvider(
 } 
 
 export const MultiProvider = (props: PropsWithChildren<any>) => {
-  const { Provider } = CONTEXT_MULTIPROVIDER;
   let {
     children,
     className,
@@ -38,11 +39,13 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     ...rest
   } = props;
 
+  const Own = CONTEXT_MULTIPROVIDER;
+
   if(className || style)
     children = createElement("div", { className, style }, children);
-
-  function createOnMount(){
-    return initGroupControllers(controllers, rest)
+    
+  function createOnWillMount(){
+    return initGroupControllers(parent, controllers, rest)
   }
   
   function destroyOnUnmount(){
@@ -50,30 +53,34 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
       provide[type].willDestroy();
   }
 
-  const provide = useMemo(createOnMount, []); 
-  useEffect(() => destroyOnUnmount, [])
+  const parent = useContext(Own);
+  const provide = useMemo(createOnWillMount, []); 
+  useEffect(() => destroyOnUnmount, []);
 
-  return createElement(Provider, { value: provide }, children);
+
+  return createElement(Own.Provider, { value: provide }, children);
 }
 
 function initGroupControllers(
+  parent: any,
   explicit: BunchOf<ControlClass>,
   fromProps: BunchOf<ControlClass> 
 ){
-  const map = {} as BunchOf<ModelController>;
+  const map = create(parent) as BunchOf<ModelController>;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
-      if(isCapital.test(key) === false)
+      if(isCapitalized.test(key) === false)
         continue;
 
       map[key] = new group[key]();
     }
 
-  for(const source in map)
-    for(const target in map)
-      if(source !== target)
-        (map[target] as any)[source] = map[source];
+  for(let layer = map; layer; layer = proto(layer))
+  for(const source in layer)
+  for(const target in map)
+  if(source !== target)
+    (map[target] as any)[source] = layer[source];
 
   return map;
 }
