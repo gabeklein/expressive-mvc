@@ -1,8 +1,8 @@
 import { MutableRefObject, useEffect, useRef } from 'react';
 
-import { Controller, ModelController } from './controller';
+import { Controller, ModelController, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './controller';
 import { useSubscription, SpyController } from './subscriber';
-import { ensureDispatch, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
+import { ensureDispatch } from './subscription';
 import { Class } from './types.d';
 import { useState } from 'react';
 

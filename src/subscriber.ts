@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, MutableRefObject } from 'react';
 
-import { ModelController } from './controller';
+import { ModelController, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './controller';
 import { Set } from './polyfill';
-import { DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { UpdateTrigger } from './types';
 
 const { 

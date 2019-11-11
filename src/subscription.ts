@@ -1,4 +1,4 @@
-import { ModelController } from './controller';
+import { ModelController, NEW_SUB, DISPATCH, SOURCE } from './controller';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
 import { BunchOf, UpdateTrigger } from './types';
@@ -16,12 +16,6 @@ const {
 const { random } = Math;
 
 const TOGGLEABLE_IMPLIED = /^is[A-Z]/;
-
-export const NEW_SUB = "__init_subscription__";
-export const UNSUBSCRIBE = "__delete_subscription__";
-export const SUBSCRIBE = "__activate_subscription__";
-export const DISPATCH = "__subscription_dispatch__";
-export const SOURCE = "__subscription_source__";
 
 export function ensureDispatch(this: ModelController){
   const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>

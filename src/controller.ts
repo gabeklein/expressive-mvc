@@ -3,9 +3,15 @@ import { Context, FunctionComponentElement, ProviderProps } from 'react';
 import { controllerCreateParent, getContext, watchFromContext, accessFromContext, getControlProvider, getHook } from './context';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
-import { applyExternal, ensureDispatch, DISPATCH, NEW_SUB, SOURCE } from './subscription';
+import { applyExternal, ensureDispatch } from './subscription';
 import { BunchOf, Class, UpdateTrigger } from './types.d';
 import { useOwnController } from './use_hook';
+
+export const NEW_SUB = "__init_subscription__";
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
+export const DISPATCH = "__subscription_dispatch__";
+export const SOURCE = "__subscription_source__";
 
 const { 
   defineProperty: define 
