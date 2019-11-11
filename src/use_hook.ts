@@ -7,29 +7,9 @@ import { Class } from './types.d';
 import { useState } from 'react';
 
 const {
-  create,
   defineProperty: define,
-  getOwnPropertyDescriptor: describe,
-  getOwnPropertyNames: keysIn,
   getPrototypeOf: proto
 } = Object;
-
-const RESERVED = [ 
-  "add",
-  "constructor", 
-  "componentDidMount", 
-  "componentDidHook",
-  "export",
-  "not",
-  "on",
-  "only",
-  "once",
-  "Provider",
-  "refresh",
-  "set",
-  "componentWillUnmount", 
-  "componentWillHook"
-];
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
@@ -75,7 +55,6 @@ export function useOwnController(
     if(willMount)
       willMount.call(instance);
 
-    cache.current = bindMethods(instance, model.prototype, superType);
     instance = instance[NEW_SUB](setUpdate);
   }
   else if(willUpdate)
@@ -106,39 +85,6 @@ export function useOwnController(
   }, [])
 
   return instance;
-}
-
-function bindMethods(
-  instance: any, 
-  prototype: any, 
-  stopAt: any = Object.prototype){
-
-  const boundLayer = create(instance);
-  const chain = [];
-
-  while(prototype !== stopAt){
-    chain.push(prototype);
-    prototype = proto(prototype);
-  }
-
-  prototype = {};
-  for(const methods of chain){
-    for(const key of keysIn(methods)){
-      if(RESERVED.indexOf(key) >= 0)
-        continue;
-      const { value } = describe(methods, key)!;
-      if(typeof value === "function")
-        prototype[key] = value
-    }
-  } 
-
-  for(const key in prototype)
-    define(boundLayer, key, {
-      value: prototype[key].bind(instance),
-      writable: true
-    })
-
-  return boundLayer
 }
 
 function nuke(target: any){
