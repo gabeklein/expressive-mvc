@@ -1,6 +1,6 @@
 import { Context, FunctionComponentElement, ProviderProps } from 'react';
 
-import { controllerCreateParent, getContext, watchFromContext, accessFromContext, getControlProvider, getHook } from './context';
+import { controllerCreateParent, getContext, watchFromContext, accessFromContext, getControlProvider } from './context';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
 import { applyExternal, ensureDispatch } from './subscription';
@@ -90,7 +90,6 @@ define(prototype, "Provider", {
 
 Controller.pull = watchFromContext;
 Controller.context = getContext;
-Controller.hook = getHook;
 Controller.get = accessFromContext;
 
 Controller.create = function 

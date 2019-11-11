@@ -78,17 +78,6 @@ export function getContext(
   return ownContext(this);
 }
 
-export function getHook(
-  this: typeof ModelController){
-
-  const context = ownContext(this);
-
-  return () => {
-    const controller = useContext(context);
-    return useSubscription(controller, []);
-  }
-}
-
 export function controllerCreateParent(
   this: typeof ModelController): any {
 

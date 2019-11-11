@@ -66,7 +66,6 @@ declare class Controller {
     static pull   <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
 
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
-    static hook    <T extends Class> (this: T): InstanceType<T>;
 }
 
 interface MultiProviderProps {
