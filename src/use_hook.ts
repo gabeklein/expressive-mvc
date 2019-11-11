@@ -55,13 +55,18 @@ export function useOwnController(
     if(willMount)
       willMount.call(instance);
 
+    if(willRender)
+      willRender.call(instance);
+
     instance = instance[NEW_SUB](setUpdate);
   }
-  else if(willUpdate)
-    willUpdate.call(instance)
+  else {
+    if(willUpdate)
+      willUpdate.call(instance);
 
   if(willRender)
-    willRender.call(instance)
+      willRender.call(instance);
+  }
 
   useEffect(() => {
     const spyControl = instance as unknown as SpyController;
