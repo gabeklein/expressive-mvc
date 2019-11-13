@@ -6,20 +6,23 @@ import {
   PropsWithChildren,
   ProviderExoticComponent,
   ProviderProps,
-  useContext
+  useContext,
+  useEffect,
+  useState,
 } from 'react';
 
-import { ModelController } from './controller';
+import { DISPATCH, ModelController } from './controller';
+import { Set } from './polyfill';
+import { findInMultiProvider } from './provider';
 import { useSubscription } from './subscriber';
 import { useOwnController } from './use_hook';
-import { findInMultiProvider } from './provider';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
 const { 
   defineProperty: define,
   keys: keysIn,
-  create
+  create: inherit
 } = Object;
 
 function ownContext(from: typeof ModelController){
@@ -50,26 +53,69 @@ function ownContext(from: typeof ModelController){
   return context as Context<any>;
 }
 
-export function watchFromContext(this: typeof ModelController, ...args: any[]){
-  let context = ownContext(this);
- 
-  const find = (...args: any[]) => useSubscription(
-    useContext(context) || findInMultiProvider(this.name), args
-  );
-  
-  define(this, `pull`, { value: find });
-  return find.apply(null, args) as ModelController;
+function contextFor(target: typeof ModelController){
+  const context = ownContext(target);
+  return () => useContext(context) || findInMultiProvider(target.name);
+} 
+
+export function accessFromController(
+  this: typeof ModelController, 
+  key: string){
+
+  const getInstance = contextFor(this);
+  const hook = (key: string) => getInstance()[key];
+
+  define(this, `get`, { value: hook });
+  return hook(key) as unknown;
 }
 
-export function accessFromContext(this: typeof ModelController, ...args: any[]){
-  let context = ownContext(this);
+export function watchFromController(
+  this: typeof ModelController, 
+  key: string){
 
-  const find = () => create(
-    useContext(context) || findInMultiProvider(this.name)
-  );
+  const getInstance = contextFor(this);
+  const hook = (key: string) => {
+    const instance = getInstance();
+    const dispatch = (instance as ModelController)[DISPATCH];
+    const setUpdate = useState(0)[1];
 
-  define(this, `get`, { value: find });
-  return find() as ModelController;
+    useEffect(() => {
+      let watchers: Set<any> = 
+        dispatch[key] || (dispatch[key] = new Set());
+
+      watchers.add(setUpdate);
+
+      return () => watchers.delete(setUpdate);
+    })
+
+    return instance[key];
+  }
+
+  define(this, `tap`, { value: hook });
+  return hook(key) as unknown;
+}
+
+export function watchFromContext(
+  this: typeof ModelController, 
+  ...args: any[]){
+
+  const getInstance = contextFor(this);
+  const hook = (...args: any[]) => 
+    useSubscription(getInstance(), args);
+  
+  define(this, `watch`, { value: hook });
+  return hook.apply(null, args) as ModelController;
+}
+
+export function accessFromContext(
+  this: typeof ModelController, 
+  ...args: any[]){
+
+  const getInstance = contextFor(this);
+  const hook = () => inherit(getInstance());
+
+  define(this, `fetch`, { value: hook });
+  return hook() as ModelController;
 }
 
 export function getContext(

@@ -58,15 +58,17 @@ declare class Controller {
     
     get Provider(): FunctionComponentElement<ProviderProps<this>>
     static get Provider(): FunctionComponentElement<any>;
-
+    
     static create <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T>;
     static use    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
-    static get    <T extends Class> (this: T): InstanceType<T>;
-    static pull   <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
-
-    static context <T extends Class> (this: T): Context<InstanceType<T>>;
+    static fetch  <T extends Class> (this: T): InstanceType<T>;
+    static watch <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    
     static sub<T extends Class> (this: T): InstanceType<T>;
+    static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 
 interface MultiProviderProps {

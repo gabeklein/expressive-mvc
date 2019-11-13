@@ -1,10 +1,18 @@
-import { Context, FunctionComponentElement, ProviderProps } from 'react';
+import { FunctionComponentElement, ProviderProps } from 'react';
 
-import { controllerCreateParent, getContext, watchFromContext, accessFromContext, getControlProvider } from './context';
+import {
+  accessFromContext,
+  accessFromController,
+  controllerCreateParent,
+  getContext,
+  getControlProvider,
+  watchFromContext,
+  watchFromController,
+} from './context';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
 import { applyExternal, ensureDispatch } from './subscription';
-import { BunchOf, Class, UpdateTrigger } from './types.d';
+import { BunchOf, UpdateTrigger } from './types.d';
 import { useOwnController } from './use_hook';
 
 export const NEW_SUB = "__init_subscription__";
@@ -82,10 +90,13 @@ define(prototype, "Provider", {
   get: getControlProvider
 })
 
-Controller.pull = watchFromContext;
-Controller.context = getContext;
+Controller.fetch = accessFromContext;
+Controller.watch = watchFromContext;
+Controller.get = accessFromController;
+Controller.tap = watchFromController;
+
 Controller.sub = getContext;
-Controller.get = accessFromContext;
+Controller.context = getContext;
 
 Controller.create = function 
   useOnce(...args: any[]){
