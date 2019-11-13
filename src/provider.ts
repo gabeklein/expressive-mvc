@@ -10,7 +10,7 @@ import { BunchOf } from 'types';
 
 import { ModelController } from './controller';
 
-const CONTEXT_MULTIPROVIDER = createContext(null as any);
+export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 const isCapitalized = /^[A-Z]/;
 
 const { create, getPrototypeOf: proto } = Object;

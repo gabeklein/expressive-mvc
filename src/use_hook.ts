@@ -1,10 +1,12 @@
-import { MutableRefObject, useEffect, useRef } from 'react';
+import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
 import { Controller, ModelController, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './controller';
-import { useSubscription, SpyController } from './subscriber';
+import { CONTEXT_MULTIPROVIDER } from './provider';
+import { SpyController, useSubscription } from './subscriber';
 import { ensureDispatch } from './subscription';
-import { Class } from './types.d';
-import { useState } from 'react';
+import { BunchOf, Class } from './types';
+
+const RENEW_CONSUMERS = "__renew_consumers__";
 
 const {
   create,
@@ -63,12 +65,15 @@ export function useOwnController(
     else 
       instance = model;
 
-    if(instance instanceof Controller == false){
+    if(instance instanceof Controller)
+      applyAutomaticContext(instance)
+    else {
       define(instance, NEW_SUB, {
         get: ensureDispatch,
         configurable: true
       })
-      if(typeof instance.didInit == "function")
+    
+      if(instance.didInit)
         instance.didInit();
     }
 
@@ -79,13 +84,16 @@ export function useOwnController(
       willRender.call(instance);
 
     cache.current = bindMethods(instance, model.prototype, superType);
-    instance = instance[NEW_SUB](setUpdate);
+  instance = instance[NEW_SUB](setUpdate);
   }
   else {
+    if(RENEW_CONSUMERS in instance)
+      instance[RENEW_CONSUMERS]()
+
     if(willUpdate)
       willUpdate.call(instance);
 
-  if(willRender)
+    if(willRender)
       willRender.call(instance);
   }
 
@@ -111,6 +119,41 @@ export function useOwnController(
   }, [])
 
   return instance;
+}
+
+function applyAutomaticContext(instance: any){
+  const consumable = {} as BunchOf<Context<any>>;
+
+  for(const property in instance)
+  if(/^[A-Z]/.test(property)){
+    const context = (instance as any)[property];
+
+    if(typeof context == "object" && 
+       "Consumer" in context &&
+       "Provider" in context)
+      consumable[property] = context;
+  }
+
+  if(keysIn(consumable).length == 0)
+    return;
+
+  let multi = useContext(CONTEXT_MULTIPROVIDER);
+  const required = [ multi ] as Context<any>[];
+
+  for(const key in consumable)
+    if(multi && multi[key])
+      instance[key] = multi[key];
+    else {
+      required.push(consumable[key])
+      instance[key] = useContext(consumable[key])
+    }
+
+  define(instance, RENEW_CONSUMERS, { 
+    value: () => {
+      for(const C of required)
+        useContext(C)
+    } 
+  })
 }
 
 function bindMethods(

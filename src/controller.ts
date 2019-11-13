@@ -90,6 +90,7 @@ define(prototype, "Provider", {
 
 Controller.pull = watchFromContext;
 Controller.context = getContext;
+Controller.sub = getContext;
 Controller.get = accessFromContext;
 
 Controller.create = function 
