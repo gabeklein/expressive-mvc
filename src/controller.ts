@@ -55,15 +55,9 @@ export declare class ModelController {
   [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
-  
-  static use<T extends Class>(this: T, ...args: any[]): InstanceType<T>;
-  static get<T extends Class>(this: T): InstanceType<T>;
-  static watch<T extends Class>(this: T): InstanceType<T>;
-  static create<T extends Class>(this: T, ...args: any[]): FunctionComponentElement<any>; 
-  static context(): Context<any>;
 }
 
-function returnThis<T = any>(this: T){ return this as T }
+function returnThis(this: any){ return this }
 
 /** Just the host function, nothing initialized here */
 export function Controller(this: ModelController){
