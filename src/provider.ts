@@ -8,10 +8,9 @@ import {
 } from 'react';
 import { BunchOf } from 'types';
 
-import { ModelController } from './controller';
+import { ModelController, Controller } from './controller';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
-const isCapitalized = /^[A-Z]/;
 
 const { create, getPrototypeOf: proto } = Object;
 
@@ -57,7 +56,6 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   const provide = useMemo(createOnWillMount, []); 
   useEffect(() => destroyOnUnmount, []);
 
-
   return createElement(Own.Provider, { value: provide }, children);
 }
 
@@ -70,7 +68,7 @@ function initGroupControllers(
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
-      if(isCapitalized.test(key) === false)
+      if(proto(group[key]) !== Controller)
         continue;
 
       map[key] = new group[key]();

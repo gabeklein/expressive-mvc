@@ -124,13 +124,11 @@ export function useOwnController(
 function applyAutomaticContext(instance: any){
   const consumable = {} as BunchOf<Context<any>>;
 
-  for(const property in instance)
-  if(/^[A-Z]/.test(property)){
-    const context = (instance as any)[property];
-
-    if(typeof context == "object" && 
-       "Consumer" in context &&
-       "Provider" in context)
+  for(const property in instance){
+    const context: any = instance[property]
+    if(typeof context == "object"
+    && "Consumer" in context 
+    && "Provider" in context)
       consumable[property] = context;
   }
 
