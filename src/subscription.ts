@@ -39,7 +39,7 @@ export function applyDispatch(control: ModelController){
   for(const key of keysOf(control)){
     const d = describe(control, key)!;
 
-    if(d.get || d.set || typeof d.value === "function" || key[0] === "_")
+    if(d.get || d.set || typeof d.value === "function")
       continue;
 
     mutable[key] = d.value;
