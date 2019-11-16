@@ -15,8 +15,6 @@ const {
 
 const { random } = Math;
 
-const TOGGLEABLE_IMPLIED = /^is[A-Z]/;
-
 export function ensureDispatch(this: ModelController){
   const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
     SpyController(this, hook)
@@ -53,8 +51,6 @@ export function applyDispatch(control: ModelController){
       enumerable: true,
       configurable: false
     })
-
-    defineToggle(key, d);
   }
 
   defineThese(control, {
@@ -62,6 +58,7 @@ export function applyDispatch(control: ModelController){
     [DISPATCH]: { value: register },
     get: { value: control },
     set: { value: control },
+    toggle: { value: toggle },
     refresh: { value: refreshSubscribersOf },
     export: { value: exportCurrentValues },
     hold: {
@@ -69,6 +66,10 @@ export function applyDispatch(control: ModelController){
       set: to => isPending = to
     }
   })
+
+  function toggle(key: string){
+    return (control as any)[key] = !(control as any)[key]
+  }
 
   function refreshSubscribersOf(...watching: string[]){
     for(const x of watching)
@@ -94,19 +95,6 @@ export function applyDispatch(control: ModelController){
         return;
     isPending = true;
     setTimeout(dispatch, 0)
-  }
-
-  function defineToggle(key: string, desc: PropertyDescriptor){
-    if(typeof desc.value !== "boolean") return;
-    if(TOGGLEABLE_IMPLIED.test(key) === false) return;
-
-    define(control, key.replace(/is/, "toggle"), { value: toggle })
-
-    function toggle(){
-      mutable[key] = !mutable[key]
-      pending.add(key);
-      refresh();
-    }
   }
 
   function setTrigger(to: string){

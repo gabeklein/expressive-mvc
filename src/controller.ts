@@ -31,6 +31,7 @@ export declare class ModelController {
 
   didInit?(): void;
   willDestroy(callback?: () => void): void;
+  toggle(key: string): boolean;
 
   willRender?(...args: any[]): void;
   willMount?(...args: any[]): void;
@@ -79,7 +80,7 @@ for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
 prototype.watch = applyExternal;
-prototype.willDestroy = (cb?: () => void) => cb && cb();
+prototype.willDestroy = function(cb?: () => void){ if(cb) cb() };
 
 define(prototype, NEW_SUB, {
   get: ensureDispatch,
