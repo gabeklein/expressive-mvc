@@ -1,10 +1,10 @@
 import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
-import { Controller, ModelController, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './controller';
+import { Controller, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { SpyController, useSubscriber } from './subscriber';
+import { useSubscriber } from './subscriber';
 import { ensureDispatch } from './subscription';
-import { BunchOf, Class } from './types';
+import { BunchOf, Class, ModelController, SpyController } from './types';
 
 const RENEW_CONSUMERS = "__renew_consumers__";
 

@@ -11,10 +11,11 @@ import {
   useState,
 } from 'react';
 
-import { DISPATCH, ModelController } from './controller';
+import { DISPATCH } from './controller';
 import { Set } from './polyfill';
 import { findInMultiProvider } from './provider';
 import { useSubscriber, useWatcher } from './subscriber';
+import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];

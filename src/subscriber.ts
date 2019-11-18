@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, MutableRefObject } from 'react';
+import { MutableRefObject, useEffect, useRef, useState } from 'react';
 
-import { ModelController, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './controller';
+import { DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './controller';
 import { Set } from './polyfill';
-import { UpdateTrigger } from './types';
+import { ModelController, UpdateTrigger, SpyController } from './types';
 
 const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
 
@@ -92,11 +92,6 @@ export function useSubscriber(control: ModelController, args: any[]){
 
   return control;
 }
-
-export interface SpyController extends ModelController {
-  [UNSUBSCRIBE]: () => void;
-  [SUBSCRIBE]: () => void;
-};
 
 export function SpyController(
   source: ModelController, 

@@ -1,7 +1,7 @@
-import { ModelController, NEW_SUB, DISPATCH, SOURCE } from './controller';
+import { DISPATCH, NEW_SUB, SOURCE } from './controller';
 import { Set } from './polyfill';
 import { SpyController } from './subscriber';
-import { BunchOf, UpdateTrigger } from './types';
+import { BunchOf, ModelController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
 

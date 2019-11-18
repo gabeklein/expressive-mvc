@@ -1,20 +1,11 @@
-import {
-  createContext,
-  createElement,
-  PropsWithChildren,
-  useEffect,
-  useMemo,
-  useContext,
-} from 'react';
-import { BunchOf } from 'types';
+import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { ModelController, Controller } from './controller';
+import { Controller } from './controller';
+import { BunchOf, ModelController } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
 const { create, getPrototypeOf: proto } = Object;
-
-type ControlClass = typeof ModelController;
 
 export function findInMultiProvider(
   name: string): ModelController {
@@ -61,8 +52,8 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 
 function initGroupControllers(
   parent: any,
-  explicit: BunchOf<ControlClass>,
-  fromProps: BunchOf<ControlClass> 
+  explicit: BunchOf<typeof ModelController>,
+  fromProps: BunchOf<typeof ModelController> 
 ){
   const map = create(parent) as BunchOf<ModelController>;
 
