@@ -1,6 +1,6 @@
 import { DISPATCH, NEW_SUB, SOURCE } from './controller';
 import { Set } from './polyfill';
-import { SpyController } from './subscriber';
+import { Subscription } from './subscriber';
 import { BunchOf, ModelController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
@@ -17,7 +17,7 @@ const { random } = Math;
 
 export function ensureDispatch(this: ModelController){
   const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
-    SpyController(this, hook)
+    Subscription(this, hook)
   
   if(DISPATCH in this === false)
     applyDispatch(this);

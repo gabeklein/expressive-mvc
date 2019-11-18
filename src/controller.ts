@@ -8,7 +8,7 @@ import {
   watchFromContext,
   watchFromController,
 } from './context';
-import { applyExternal, ensureDispatch } from './subscription';
+import { applyExternal, ensureDispatch } from './dispatch';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 

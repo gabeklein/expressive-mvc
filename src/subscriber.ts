@@ -93,7 +93,7 @@ export function useSubscriber(control: ModelController, args: any[]){
   return control;
 }
 
-export function SpyController(
+export function Subscription(
   source: ModelController, 
   hook: UpdateTrigger
 ): SpyController {
