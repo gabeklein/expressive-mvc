@@ -1,8 +1,11 @@
 import { MutableRefObject, useEffect, useRef, useState } from 'react';
 
-import { DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './controller';
+import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
-import { ModelController, UpdateTrigger, SpyController } from './types';
+import { ModelController, SpyController, UpdateTrigger } from './types';
+
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
 
 const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
 

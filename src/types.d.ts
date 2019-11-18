@@ -1,7 +1,8 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
+import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
-import { SUBSCRIBE, UNSUBSCRIBE, DISPATCH, NEW_SUB, SOURCE } from './controller';
+import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 
 export type BunchOf<T> = { [key: string]: T }
 

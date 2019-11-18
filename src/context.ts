@@ -11,7 +11,7 @@ import {
   useState,
 } from 'react';
 
-import { DISPATCH } from './controller';
+import { DISPATCH } from './dispatch';
 import { Set } from './polyfill';
 import { findInMultiProvider } from './provider';
 import { useSubscriber, useWatcher } from './subscriber';

@@ -8,15 +8,9 @@ import {
   watchFromContext,
   watchFromController,
 } from './context';
-import { applyExternal, ensureDispatch } from './dispatch';
+import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-
-export const NEW_SUB = "__init_subscription__";
-export const UNSUBSCRIBE = "__delete_subscription__";
-export const SUBSCRIBE = "__activate_subscription__";
-export const DISPATCH = "__subscription_dispatch__";
-export const SOURCE = "__subscription_source__";
 
 const { 
   defineProperty: define 
