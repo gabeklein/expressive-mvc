@@ -3,6 +3,7 @@ import { FunctionComponentElement, ProviderProps } from 'react';
 import {
   accessFromContext,
   accessFromController,
+  attachFromContext,
   controllerCreateParent,
   getContext,
   getControlProvider,
@@ -93,6 +94,7 @@ define(prototype, "Provider", {
 
 Controller.fetch = accessFromContext;
 Controller.watch = watchFromContext;
+Controller.attach = attachFromContext;
 Controller.get = accessFromController;
 Controller.tap = watchFromController;
 

@@ -4,12 +4,36 @@ import { ModelController, DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } fr
 import { Set } from './polyfill';
 import { UpdateTrigger } from './types';
 
+const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
+
 const { 
   defineProperty: define, 
   create
 } = Object;
 
-export function useSubscription(control: ModelController, args: any[]){
+export function useWatcher(control: ModelController){
+  const setUpdate = useState(0)[1];
+  const cache = useRef(null) as MutableRefObject<any>;
+
+  let { current } = cache;
+  
+  if(!current){
+    if(!control[NEW_SUB])
+      throw new Error(ERR_NOT_CONTROLLER)
+
+    current = cache.current = control[NEW_SUB](setUpdate) as any;
+  }
+
+  useEffect(() => {
+    const spyControl = control as unknown as SpyController;
+    spyControl[SUBSCRIBE]();
+    return () => spyControl[UNSUBSCRIBE]();
+  }, [])
+
+  return control;
+}
+
+export function useSubscriber(control: ModelController, args: any[]){
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
 
@@ -30,9 +54,7 @@ export function useSubscription(control: ModelController, args: any[]){
     delete control.local;
 
     if(!control[NEW_SUB])
-      throw new Error(
-        `Can't subscribe to controller; it doesn't contain a proper interface for watching.`
-      )
+      throw new Error(ERR_NOT_CONTROLLER)
 
     control = control[NEW_SUB](setUpdate) as any;
   }

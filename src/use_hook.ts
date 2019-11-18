@@ -2,7 +2,7 @@ import { Context, MutableRefObject, useContext, useEffect, useRef, useState } fr
 
 import { Controller, ModelController, NEW_SUB, SUBSCRIBE, UNSUBSCRIBE } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { SpyController, useSubscription } from './subscriber';
+import { SpyController, useSubscriber } from './subscriber';
 import { ensureDispatch } from './subscription';
 import { BunchOf, Class } from './types';
 
@@ -35,7 +35,7 @@ const RESERVED = [
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
-    ? useSubscription(init as ModelController, args)
+    ? useSubscriber(init as ModelController, args)
     : useOwnController(init, args, Object.prototype);
 }
 
