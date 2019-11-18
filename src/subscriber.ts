@@ -28,12 +28,12 @@ export function useWatcher(control: ModelController){
   }
 
   useEffect(() => {
-    const spyControl = control as unknown as SpyController;
+    const spyControl = current as unknown as SpyController;
     spyControl[SUBSCRIBE]();
     return () => spyControl[UNSUBSCRIBE]();
   }, [])
 
-  return control;
+  return current;
 }
 
 export function useSubscriber(control: ModelController, args: any[]){
