@@ -58,8 +58,11 @@ export function useOwnController(
   const willMount = p.componentWillMount || p.willMount;
 
   if(instance === null){
-    if(model.prototype)
+    if(model.prototype){
       instance = new (model as Class)(...args);
+      if(!model.prototype.cache)
+        model.prototype.cache = {}
+    }
     else if(typeof instance == "function")
       instance = (model as Function)(...args)
     else 
