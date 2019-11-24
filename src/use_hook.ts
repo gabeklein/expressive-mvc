@@ -36,13 +36,12 @@ const RESERVED = [
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
     ? useSubscriber(init as ModelController, args)
-    : useOwnController(init, args, Object.prototype);
+    : useOwnController(init, args);
 }
 
 export function useOwnController( 
   model: Class | Function,
-  args: any[] = [],
-  superType: any = Controller.prototype
+  args: any[] = []
 ): ModelController {
 
   const setUpdate = useState(0)[1];
@@ -86,8 +85,8 @@ export function useOwnController(
     if(willRender)
       willRender.call(instance);
 
-    cache.current = bindMethods(instance, model.prototype, superType);
-  instance = instance[NEW_SUB](setUpdate);
+    cache.current = bindMethods(instance, model.prototype);
+    instance = instance[NEW_SUB](setUpdate);;
   }
   else {
     if(RENEW_CONSUMERS in instance)
@@ -159,13 +158,13 @@ function applyAutomaticContext(instance: any){
 
 function bindMethods(
   instance: any, 
-  prototype: any, 
-  stopAt: any = Object.prototype){
+  prototype: any){
 
   const boundLayer = create(instance);
   const chain = [];
 
-  while(prototype !== stopAt){
+  while(prototype !== Object.prototype 
+     && prototype !== Controller.prototype){
     chain.push(prototype);
     prototype = proto(prototype);
   }

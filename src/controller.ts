@@ -47,13 +47,11 @@ Controller.watch = watchFromContext;
 Controller.attach = attachFromContext;
 Controller.get = accessFromController;
 Controller.tap = watchFromController;
-
 Controller.context = getContext;
 
-Controller.create = function 
-  useOnce(...args: any[]){
-    return useOwnController(this, args).once();
-  }
+Controller.new = function (...args: any[]){
+  return useOwnController(this, args).once();
+}
 
 Controller.use = function 
   use(...args: any[]){
