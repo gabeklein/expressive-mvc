@@ -26,7 +26,7 @@ const {
   create: inheriting
 } = Object;
 
-function ownContext(from: typeof ModelController){
+export function ownContext(from: typeof ModelController){
   let constructor;
 
   if(!from.prototype)
@@ -138,12 +138,6 @@ export function accessFromContext(
 
   define(this, `fetch`, { value: hook });
   return hook();
-}
-
-export function getContext(
-  this: typeof ModelController){
-
-  return ownContext(this);
 }
 
 export function controllerCreateParent(

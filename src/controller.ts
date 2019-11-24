@@ -3,10 +3,10 @@ import {
   accessFromController,
   attachFromContext,
   controllerCreateParent,
-  getContext,
   getControlProvider,
   watchFromContext,
   watchFromController,
+  ownContext
 } from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { ModelController } from './types';
@@ -17,6 +17,7 @@ const {
 } = Object;
 
 function returnThis(this: any){ return this }
+function getContext(this: typeof ModelController){ return ownContext(this) }
 
 /** Just the host function, nothing initialized here */
 export function Controller(this: ModelController){
@@ -47,7 +48,6 @@ Controller.attach = attachFromContext;
 Controller.get = accessFromController;
 Controller.tap = watchFromController;
 
-Controller.sub = getContext;
 Controller.context = getContext;
 
 Controller.create = function 

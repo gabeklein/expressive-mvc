@@ -15,6 +15,8 @@ declare function use<I, A extends any[]> (init: (...args: A) => I, ...args: A): 
 declare function use<I> (controller: Controller): Controller;
 declare function use<I> (init: I): Controller & I;
 
+declare function get<T extends Class> (type: T): InstanceType<T>;
+
 interface Subscriber<T> {
     on(...properties: string[]): Subscriber<T> | T;
     not(...properties: string[]): Subscriber<T> | T;
@@ -71,7 +73,6 @@ declare class Controller {
     static get    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
     static tap    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
      
-    static sub<T extends Class> (this: T): InstanceType<T>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 
@@ -83,6 +84,7 @@ type MultiProvider = FunctionComponentElement<MultiProviderProps>
 
 export { 
     use,
+    get,
     Controller,
     Controller as default,
     MultiProvider as Provider
