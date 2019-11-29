@@ -1,4 +1,4 @@
-import Controller, { use } from '../';
+import Controller, { use } from './lib';
 import { trySubscribe } from './adapter';
 
 class TestController extends Controller {

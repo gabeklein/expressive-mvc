@@ -1,4 +1,4 @@
-import Controller from "../";
+import Controller from "./lib";
 import { trySubscribe } from "./adapter";
 
 class TestController extends Controller {
