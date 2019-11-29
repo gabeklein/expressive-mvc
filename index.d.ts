@@ -72,7 +72,7 @@ declare class Controller {
     static attach <T extends Class> (this: T, args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
     static get    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
     static tap    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
-     
+        
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 
@@ -80,7 +80,7 @@ interface MultiProviderProps {
     using: Controller[]
 }
 
-type MultiProvider = FunctionComponentElement<MultiProviderProps>
+declare const MultiProvider: FunctionComponentElement<MultiProviderProps>
 
 export { 
     use,
