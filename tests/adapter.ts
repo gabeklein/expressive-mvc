@@ -1,6 +1,7 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
 import Controller, { use } from '../';
+import { SUBSCRIBE } from '../src/subscriber';
 
 type Class = new (...args: any[]) => any;
 
@@ -122,8 +123,9 @@ function mockPropertyAccess(
     const ref = chain();
     const keys = ensureArray(peek);
     for(const key of keys)
-      void ref[key];
-    return ref;
+      void ref[key]; 
+    ref[SUBSCRIBE]();
+    return Object.getPrototypeOf(ref);
   }
 }
 
