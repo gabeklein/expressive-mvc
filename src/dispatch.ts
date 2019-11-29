@@ -1,6 +1,7 @@
+import { Controller } from './controller';
 import { Set } from './polyfill';
-import { Subscription } from './subscriber';
-import { BunchOf, ModelController, UpdateTrigger } from './types';
+import { SUBSCRIBE, Subscription } from './subscriber';
+import { BunchOf, ModelController, SpyController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
 
@@ -12,6 +13,7 @@ const {
   defineProperty: define,
   defineProperties: defineThese, 
   getOwnPropertyDescriptor: describe,
+  getOwnPropertyDescriptors: describeAll,
   getOwnPropertyNames: keysOf,
   getPrototypeOf: prototypeOf
 } = Object;
@@ -30,6 +32,24 @@ export function ensureDispatch(this: ModelController){
   });
 
   return yeildSubsciptionWatcher;
+}
+
+function gettersFor(prototype: any){
+  const getters = {} as any;
+
+  do {
+    prototype = Object.getPrototypeOf(prototype);
+
+    const described = describeAll(prototype);
+    
+    for(const item in described)
+      if("get" in described[item] && !getters[item])
+        getters[item] = described[item].get
+  }
+  while(prototype !== Object.prototype 
+     && prototype !== Controller.prototype);
+
+  return getters as BunchOf<Function>
 }
 
 export function applyDispatch(control: ModelController){
@@ -56,9 +76,18 @@ export function applyDispatch(control: ModelController){
     })
   }
 
+  const getters = gettersFor(control);
+
   defineThese(control, {
     [SOURCE]: { value: mutable },
-    [DISPATCH]: { value: register },
+    [DISPATCH]: { value: register }
+  })
+
+  for(const key in getters)
+    if(key !== "Provider")
+      createComputed(key);
+
+  defineThese(control, {
     get: { value: control },
     set: { value: control },
     toggle: { value: toggle },
@@ -69,6 +98,33 @@ export function applyDispatch(control: ModelController){
       set: to => isPending = to
     }
   })
+
+  function createComputed(key: string){
+    const recompute = () => {
+      const value = getters[key].call(control);
+
+      if(mutable[key] === value)
+        return
+
+      mutable[key] = value;
+      pending.add(key);
+      for(const sub of register[key] || [])
+        sub(random());
+    }
+
+    recompute.immediate = true;
+
+    const spy: SpyController = Subscription(control, recompute);
+    mutable[key] = getters[key].call(spy);
+    spy[SUBSCRIBE]();
+
+    define(control, key, {
+      set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },
+      get: () => getters[key].call(control),
+      enumerable: true,
+      configurable: true
+    })
+  }
 
   function toggle(key: string){
     return (control as any)[key] = !(control as any)[key]
@@ -104,7 +160,7 @@ export function applyDispatch(control: ModelController){
     return (value: any) => {
       if(mutable[to] === value) 
           return;
-
+        
       mutable[to] = value;
       pending.add(to);
 
