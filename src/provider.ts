@@ -1,11 +1,35 @@
-import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo, FunctionComponent } from 'react';
 
 import { Controller } from './controller';
 import { BunchOf, ModelController } from './types';
+import { useOwnController } from './use_hook';
+import { ownContext } from './context';
+import { SOURCE } from './dispatch';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
-const { create, getPrototypeOf: proto } = Object;
+const { create, getPrototypeOf: proto, assign } = Object;
+
+export function createWrappedComponent<T extends typeof ModelController>(
+  this: T,
+  fn: FunctionComponent<InstanceType<T>> ){
+
+  const { Provider } = ownContext(this as any);
+  
+  return (forwardedProps: PropsWithChildren<any>) => {
+    const controller = useOwnController(this).watch(forwardedProps);
+    const unwrapped = assign({}, controller[SOURCE]);
+
+    const useProps: any = {
+      ...unwrapped,
+      use: controller
+    }
+    
+    return (
+      createElement(Provider, { value: controller }, createElement(fn, useProps))
+    )
+  }
+}
 
 export function findInMultiProvider(
   name: string): ModelController {

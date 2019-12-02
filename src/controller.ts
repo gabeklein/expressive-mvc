@@ -11,6 +11,7 @@ import {
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
+import { createWrappedComponent } from './provider';
 
 const { 
   defineProperty: define 
@@ -48,6 +49,7 @@ Controller.attach = attachFromContext;
 Controller.get = accessFromController;
 Controller.tap = watchFromController;
 Controller.context = getContext;
+Controller.hoc = createWrappedComponent;
 
 Controller.new = function (...args: any[]){
   return useOwnController(this, args).once();

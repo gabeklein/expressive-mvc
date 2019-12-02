@@ -2,6 +2,8 @@ import {
     FunctionComponentElement,
     ProviderProps,
     Context,
+    Component,
+    FunctionComponent,
 } from 'react';
 
 type Class = new (...args: any) => any;
@@ -72,7 +74,8 @@ declare class Controller {
     static attach <T extends Class> (this: T, args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
     static get    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
     static tap    <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
-        
+
+    static hoc    <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 
