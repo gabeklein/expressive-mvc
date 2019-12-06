@@ -1,17 +1,15 @@
 import {
-  accessFromContext,
-  accessFromController,
-  attachFromContext,
   controllerCreateParent,
   getControlProvider,
-  watchFromContext,
-  watchFromController,
-  ownContext
+  getFromController,
+  ownContext,
+  subToController,
+  tapFromController,
 } from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
+import { createWrappedComponent } from './provider';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { createWrappedComponent } from './provider';
 
 const { 
   defineProperty: define 
@@ -43,11 +41,10 @@ define(prototype, "Provider", {
   get: getControlProvider
 })
 
-Controller.fetch = accessFromContext;
-Controller.watch = watchFromContext;
-Controller.attach = attachFromContext;
-Controller.get = accessFromController;
-Controller.tap = watchFromController;
+Controller.sub = subToController;
+Controller.get = getFromController;
+Controller.tap = tapFromController;
+
 Controller.context = getContext;
 Controller.hoc = createWrappedComponent;
 

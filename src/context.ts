@@ -62,57 +62,48 @@ function contextGetterFor(
   return instance as () => ModelController;
 } 
 
-export function accessFromController(
+export function getFromController(
   this: typeof ModelController, 
   key: string){
 
-  const getInstance = contextGetterFor(this);
-  const hook = (key: string) => (getInstance() as any)[key];
+  const getInstance = contextGetterFor(this)
+  const hook = key === undefined
+  ? (key: string) => inheriting(getInstance())
+  : (key: string) => (getInstance() as any)[key];
 
   define(this, `get`, { value: hook });
   return hook(key) as unknown;
 }
 
-export function watchFromController(
+export function tapFromController(
   this: typeof ModelController, 
   key: string){
 
   const getInstance = contextGetterFor(this);
-  const hook = (key: string) => {
-    const instance: any = getInstance();
-    const dispatch = (instance as ModelController)[DISPATCH];
-    const setUpdate = useState(0)[1];
+  const hook = key === undefined
+    ? () => useWatcher(getInstance())
+    : (key: string) => {
+      const instance = getInstance();
+      const dispatch = instance[DISPATCH];
+      const setUpdate = useState(0)[1];
 
-    useEffect(() => {
-      let watchers: Set<any> = 
-        dispatch[key] || (dispatch[key] = new Set());
+      useEffect(() => {
+        let watchers: Set<any> = 
+          dispatch[key] || (dispatch[key] = new Set());
 
-      watchers.add(setUpdate);
+        watchers.add(setUpdate);
 
-      return () => watchers.delete(setUpdate);
-    })
+        return () => watchers.delete(setUpdate);
+      })
 
-    return instance[key];
-  }
+      return (instance as any)[key];
+    }
 
   define(this, `tap`, { value: hook });
   return hook(key) as unknown;
 }
 
-export function watchFromContext(
-  this: typeof ModelController){
-
-  const getInstance = contextGetterFor(this);
-  const hook = () => {
-    const controller = getInstance();
-    return useWatcher(controller);
-  }
-
-  define(this, `watch`, { value: hook });
-  return hook()
-}
-
-export function attachFromContext(
+export function subToController(
   this: typeof ModelController, 
   ...args: any[]){
 
@@ -124,20 +115,6 @@ export function attachFromContext(
   
   define(this, `attach`, { value: hook });
   return hook.apply(null, args);
-}
-
-export function accessFromContext(
-  this: typeof ModelController, 
-  ...args: any[]){
-
-  const getInstance = contextGetterFor(this);
-  const hook = (...args: any[]) => {
-    const controller = getInstance();
-    return inheriting(controller)
-  }
-
-  define(this, `fetch`, { value: hook });
-  return hook();
 }
 
 export function controllerCreateParent(
