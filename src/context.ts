@@ -2,10 +2,8 @@ import {
   Context,
   createContext,
   createElement,
-  FunctionComponentElement,
   PropsWithChildren,
   ProviderExoticComponent,
-  ProviderProps,
   useContext,
   useEffect,
   useState,
@@ -16,7 +14,6 @@ import { Set } from './polyfill';
 import { findInMultiProvider } from './provider';
 import { useSubscriber, useWatcher } from './subscriber';
 import { ModelController } from './types';
-import { useOwnController } from './use_hook';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
 
@@ -132,13 +129,6 @@ function ParentProviderFor(
 
     return createElement(Provider, { value: controller }, children);
   }
-}
-
-export function controllerCreateProvider(
-  this: typeof ModelController, ...args: any[]): 
-  FunctionComponentElement<ProviderProps<any>> {
-
-  return useOwnController(this, args).Provider;
 }
 
 export function getControlProvider(
