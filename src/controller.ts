@@ -1,5 +1,4 @@
 import {
-  controllerCreateParent,
   getControlProvider,
   getFromController,
   ownContext,
@@ -58,5 +57,5 @@ Controller.use = function
   }
 
 define(Controller, "Provider", {
-  get: controllerCreateParent 
+  get(){ return useOwnController(this).Provider }
 })

@@ -117,16 +117,6 @@ export function subToController(
   return hook.apply(null, args);
 }
 
-export function controllerCreateParent(
-  this: typeof ModelController): any {
-
-  const memoizedProvider = () => useOwnController(this).Provider;
-
-  define(this, "Provider", { get: memoizedProvider });
-
-  return memoizedProvider();
-}
-
 function ParentProviderFor(
   controller: ModelController,
   Provider: ProviderExoticComponent<any>): any {
