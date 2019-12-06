@@ -47,14 +47,9 @@ Controller.tap = tapFromController;
 Controller.context = getContext;
 Controller.hoc = createWrappedComponent;
 
-Controller.new = function (...args: any[]){
-  return useOwnController(this, args).once();
+Controller.use = function use(...args: any[]){
+  return useOwnController(this, args);
 }
-
-Controller.use = function 
-  use(...args: any[]){
-    return useOwnController(this, args);
-  }
 
 define(Controller, "Provider", {
   get(){ return useOwnController(this).Provider }

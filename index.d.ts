@@ -66,7 +66,6 @@ declare class Controller {
     get Provider(): FunctionComponentElement<ProviderProps<this>>
     static get Provider(): FunctionComponentElement<any>;
     
-    static new    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T>;
     static use    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
     static sub <T extends Class> (this: T, args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
