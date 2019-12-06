@@ -51,21 +51,13 @@ export function ownContext(from: typeof ModelController){
   return context as Context<any>;
 }
 
-function contextGetterFor(
-  target: typeof ModelController) {
-
-  const context = ownContext(target);
-  const instance: any = () => useContext(context) || findInMultiProvider(target.name);
-  return instance as () => ModelController;
-} 
-
 export function getFromController(
   this: typeof ModelController, 
   key: string){
 
   const getInstance = contextGetterFor(this)
   const hook = key === undefined
-  ? (key: string) => inheriting(getInstance())
+  ? () => inheriting(getInstance())
   : (key: string) => (getInstance() as any)[key];
 
   define(this, `get`, { value: hook });
@@ -114,6 +106,25 @@ export function subToController(
   return hook.apply(null, args);
 }
 
+export function getControlProvider(
+  this: ModelController){
+
+  const { Provider } = ownContext(this.constructor as any);
+  const ControlProvider = ParentProviderFor(this, Provider);
+
+  define(this, "Provider", { value: ControlProvider });
+  return ControlProvider
+}
+
+
+function contextGetterFor(
+  target: typeof ModelController) {
+
+  const context = ownContext(target);
+  const instance: any = () => useContext(context) || findInMultiProvider(target.name);
+  return instance as () => ModelController;
+} 
+
 function ParentProviderFor(
   controller: ModelController,
   Provider: ProviderExoticComponent<any>): any {
@@ -129,14 +140,4 @@ function ParentProviderFor(
 
     return createElement(Provider, { value: controller }, children);
   }
-}
-
-export function getControlProvider(
-  this: ModelController){
-
-  const { Provider } = ownContext(this.constructor as any);
-  const ControlProvider = ParentProviderFor(this, Provider);
-
-  define(this, "Provider", { value: ControlProvider });
-  return ControlProvider
 }

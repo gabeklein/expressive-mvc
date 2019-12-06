@@ -25,8 +25,8 @@ export function createWrappedComponent<T extends typeof ModelController>(
       use: controller
     }
     
-    return (
-      createElement(Provider, { value: controller }, createElement(fn, useProps))
+    return createElement(
+      Provider, { value: controller }, createElement(fn, useProps)
     )
   }
 }
