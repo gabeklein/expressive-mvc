@@ -66,7 +66,7 @@ declare class Controller {
     get Provider(): FunctionComponentElement<ProviderProps<this>>
     static get Provider(): FunctionComponentElement<any>;
     
-    static use    <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
     static sub <T extends Class> (this: T, args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
 
@@ -76,7 +76,7 @@ declare class Controller {
     static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
-    static hoc    <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
+    static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 
