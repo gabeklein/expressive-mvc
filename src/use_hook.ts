@@ -138,7 +138,7 @@ function applyAutomaticContext(instance: any){
     return;
 
   let multi = useContext(CONTEXT_MULTIPROVIDER);
-  const required = [ multi ] as Context<any>[];
+  const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
 
   for(const key in consumable)
     if(multi && multi[key])
