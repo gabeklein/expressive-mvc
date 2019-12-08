@@ -6,7 +6,7 @@ import { CONTEXT_MULTIPROVIDER } from './provider';
 import { SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
 import { BunchOf, Class, ModelController, SpyController } from './types';
 
-const RENEW_CONSUMERS = "__renew_consumers__";
+export const RENEW_CONSUMERS = "__renew_consumers__";
 
 const {
   create,
@@ -123,15 +123,16 @@ export function useOwnController(
   return instance;
 }
 
-function applyAutomaticContext(instance: any){
+export function applyAutomaticContext(instance: any){
   const consumable = {} as BunchOf<Context<any>>;
 
   for(const property in instance){
     const context: any = instance[property]
-    if(typeof context == "object"
-    && "Consumer" in context 
-    && "Provider" in context)
-      consumable[property] = context;
+    if(context && typeof context == "object"){
+      if("Consumer" in context 
+      && "Provider" in context)
+        consumable[property] = context;
+    }
   }
 
   if(keysIn(consumable).length == 0)

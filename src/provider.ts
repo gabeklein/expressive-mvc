@@ -2,7 +2,7 @@ import { createContext, createElement, PropsWithChildren, useContext, useEffect,
 
 import { Controller } from './controller';
 import { BunchOf, ModelController } from './types';
-import { useOwnController } from './use_hook';
+import { useOwnController, applyAutomaticContext, RENEW_CONSUMERS } from './use_hook';
 import { ownContext } from './context';
 import { SOURCE } from './dispatch';
 
@@ -53,25 +53,35 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     ...rest
   } = props;
 
-  const Own = CONTEXT_MULTIPROVIDER;
+  const Multi = CONTEXT_MULTIPROVIDER;
+  let initial: true | undefined;
 
   if(className || style)
     children = createElement("div", { className, style }, children);
-    
-  function createOnWillMount(){
-    return initGroupControllers(parent, controllers, rest)
-  }
+
+  const parent = useContext(Multi);
+  const provide = useMemo(
+    () => {
+      initial = true;
+      return initGroupControllers(parent, controllers, rest)
+    }, []
+  ); 
+
+  useEffect(() => {
   
-  function destroyOnUnmount(){
     for(const type in provide)
       provide[type].willDestroy();
+  }, []);
+
+  for(const key in provide){
+    const mc: any = provide[key];
+    if(initial)
+      applyAutomaticContext(mc)
+    else if(RENEW_CONSUMERS in mc)
+      mc[RENEW_CONSUMERS]()
   }
 
-  const parent = useContext(Own);
-  const provide = useMemo(createOnWillMount, []); 
-  useEffect(() => destroyOnUnmount, []);
-
-  return createElement(Own.Provider, { value: provide }, children);
+  return createElement(Multi.Provider, { value: provide }, children);
 }
 
 function initGroupControllers(
