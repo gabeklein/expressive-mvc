@@ -102,7 +102,7 @@ export function subToController(
     return useSubscriber(controller, args);
   }
   
-  define(this, `attach`, { value: hook });
+  define(this, `sub`, { value: hook });
   return hook.apply(null, args);
 }
 
