@@ -11,7 +11,7 @@ import {
 
 import { DISPATCH } from './dispatch';
 import { Set } from './polyfill';
-import { findInMultiProvider } from './provider';
+import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber, useWatcher } from './subscriber';
 import { ModelController } from './types';
 
@@ -120,9 +120,22 @@ export function getControlProvider(
 function contextGetterFor(
   target: typeof ModelController) {
 
+  const { name } = target;
   const context = ownContext(target);
-  const instance: any = () => useContext(context) || findInMultiProvider(target.name);
-  return instance as () => ModelController;
+
+  function controllerFromContext(): ModelController {
+    const instance = useContext(context) || useContext(CONTEXT_MULTIPROVIDER)[name];;
+
+    if(instance)
+      return instance;
+
+    throw new Error(
+      `Can't subscribe to controller;` +
+      ` this accessor can only be used within a Provider keyed to \`${name}\``
+    );
+  }
+
+  return controllerFromContext;
 } 
 
 function ParentProviderFor(

@@ -31,19 +31,6 @@ export function createWrappedComponent<T extends typeof ModelController>(
   }
 }
 
-export function findInMultiProvider(
-  name: string): ModelController {
-    
-  const multi = useContext(CONTEXT_MULTIPROVIDER) as any;
-  if(multi[name])
-    return multi[name];
-  else
-    throw new Error(
-      `Can't subscribe to controller;` +
-      ` this accessor can only be used within a Provider keyed to \`${name}\``
-    )
-} 
-
 export const MultiProvider = (props: PropsWithChildren<any>) => {
   let {
     children,
@@ -68,7 +55,6 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   ); 
 
   useEffect(() => {
-  
     for(const type in provide)
       provide[type].willDestroy();
   }, []);
