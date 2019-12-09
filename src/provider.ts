@@ -93,10 +93,10 @@ function initGroupControllers(
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
-      if(proto(group[key]) !== Controller)
-        continue;
-
-      map[key] = new group[key]();
+      let Super = group[key];
+      while(Super = proto(Super))
+        if(Super === Controller as any)
+          map[key] = new group[key]();
     }
 
   for(let layer = map; layer; layer = proto(layer))
