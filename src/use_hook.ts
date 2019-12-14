@@ -27,6 +27,7 @@ const RESERVED = [
   "only",
   "once",
   "Provider",
+  "Value",
   "refresh",
   "set",
   "componentWillUnmount", 

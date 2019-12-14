@@ -3,6 +3,7 @@ import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { createWrappedComponent } from './provider';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
+import { useAccessorComponent } from './accessor';
 
 const { 
   defineProperty: define,
@@ -29,6 +30,10 @@ define(prototype, NEW_SUB, {
 
 define(prototype, "Provider", {
   get: getControlProvider
+})
+
+define(prototype, "Value", {
+  get: useAccessorComponent
 })
 
 defineAll(Controller, {

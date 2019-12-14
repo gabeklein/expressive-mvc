@@ -84,7 +84,8 @@ export function applyDispatch(control: ModelController){
   })
 
   for(const key in getters)
-    if(key !== "Provider")
+    if(key !== "Provider"
+    && key !== "Value")
       createComputed(key);
 
   defineThese(control, {
