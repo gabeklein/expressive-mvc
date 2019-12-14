@@ -4,15 +4,11 @@ import {
   createElement,
   PropsWithChildren,
   ProviderExoticComponent,
-  useContext,
-  useEffect,
-  useState,
+  useContext
 } from 'react';
 
-import { DISPATCH } from './dispatch';
-import { Set } from './polyfill';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber, useWatcher } from './subscriber';
+import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 
 const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
@@ -71,22 +67,7 @@ export function tapFromController(
   const getInstance = contextGetterFor(this);
   const hook = key === undefined
     ? () => useWatcher(getInstance())
-    : (key: string) => {
-      const instance = getInstance();
-      const dispatch = instance[DISPATCH];
-      const setUpdate = useState(0)[1];
-
-      useEffect(() => {
-        let watchers: Set<any> = 
-          dispatch[key] || (dispatch[key] = new Set());
-
-        watchers.add(setUpdate);
-
-        return () => watchers.delete(setUpdate);
-      })
-
-      return (instance as any)[key];
-    }
+    : (key: string) => useWatcherFor(key, getInstance())
 
   define(this, `tap`, { value: hook });
   return hook(key) as unknown;
@@ -115,7 +96,6 @@ export function getControlProvider(
   define(this, "Provider", { value: ControlProvider });
   return ControlProvider
 }
-
 
 function contextGetterFor(
   target: typeof ModelController) {

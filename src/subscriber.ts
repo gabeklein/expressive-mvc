@@ -36,6 +36,24 @@ export function useWatcher(control: ModelController){
   return current;
 }
 
+export function useWatcherFor(
+  key: string, instance: ModelController){
+
+  const dispatch = instance[DISPATCH];
+  const setUpdate = useState(0)[1];
+
+  useEffect(() => {
+    let watchers: Set<any> = 
+      dispatch[key] || (dispatch[key] = new Set());
+
+    watchers.add(setUpdate);
+
+    return () => watchers.delete(setUpdate);
+  })
+
+  return (instance as any)[key];
+}
+
 export function useSubscriber(control: ModelController, args: any[]){
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
