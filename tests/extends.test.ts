@@ -35,7 +35,7 @@ test('passes arguments to constructor', () => {
 
 test('ignores updates on useOnce', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(
-    () => TestController.new()
+    () => TestController.use().once()
   )
 
   expect(state.value).toBe(1);
