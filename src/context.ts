@@ -47,17 +47,33 @@ export function ownContext(from: typeof ModelController){
   return context as Context<any>;
 }
 
-export function getFromController(
-  this: typeof ModelController, 
+export function mustGetFromController(
+  this: typeof ModelController,
   key: string){
 
   const getInstance = contextGetterFor(this)
+  const hook = (key: string) => {
+    const instance = getInstance();
+    const value = (instance as any)[key];
+    if(value === undefined)
+      throw new Error(`${this.name}.${key} must be defined this render.`)
+    return value;
+  }
+  define(this, `has`, { value: hook });
+  return hook(key) as unknown;
+}
+
+export function getFromController(
+  this: typeof ModelController, 
+  key?: string){
+
+  const getInstance = contextGetterFor(this)
   const hook = key === undefined
-  ? () => inheriting(getInstance())
-  : (key: string) => (getInstance() as any)[key];
+    ? () => inheriting(getInstance())
+    : (key: string) => (getInstance() as any)[key];
 
   define(this, `get`, { value: hook });
-  return hook(key) as unknown;
+  return hook(key!) as unknown;
 }
 
 export function tapFromController(

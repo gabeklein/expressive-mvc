@@ -75,6 +75,8 @@ declare class Controller {
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
+    static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
+
     static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 

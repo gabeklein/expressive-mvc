@@ -1,4 +1,4 @@
-import { getControlProvider, getFromController, ownContext, subToController, tapFromController } from './context';
+import { getControlProvider, getFromController, ownContext, subToController, tapFromController, mustGetFromController } from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { createWrappedComponent } from './provider';
 import { ModelController } from './types';
@@ -40,6 +40,7 @@ defineAll(Controller, {
   use: { value: useController },
   sub: { value: subToController },
   get: { value: getFromController },
+  has: { value: mustGetFromController },
   tap: { value: tapFromController },
   hoc: { value: createWrappedComponent },
   context: { value: getContext },
