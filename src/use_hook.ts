@@ -49,7 +49,7 @@ export function useOwnController(
   const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
 
-  const { prototype: p = {} } = model;
+  const p: ModelController = model.prototype || {};
 
   const willRender = p.componentWillRender || p.willRender;
   const willUpdate = p.componentWillUpdate || p.willUpdate;
@@ -81,10 +81,10 @@ export function useOwnController(
     }
 
     if(willMount)
-      willMount.call(instance);
+      willMount.apply(instance, args);
 
     if(willRender)
-      willRender.call(instance);
+      willRender.apply(instance, args);
 
     cache.current = bindMethods(instance, model.prototype);
     instance = instance[NEW_SUB](setUpdate);;
@@ -94,10 +94,10 @@ export function useOwnController(
       instance[RENEW_CONSUMERS]()
 
     if(willUpdate)
-      willUpdate.call(instance);
+      willUpdate.apply(instance, args);
 
     if(willRender)
-      willRender.call(instance);
+      willRender.apply(instance, args);
   }
 
   useEffect(() => {
@@ -107,11 +107,11 @@ export function useOwnController(
     spyControl[SUBSCRIBE]();
 
     if(didMount)
-      didMount.call(state);
+      didMount.apply(state, args);
 
     return () => {
       if(willUnmount)
-        willUnmount.call(state);
+        willUnmount.apply(state, args);
 
       if("willDestroy" in instance)
         instance.willDestroy();

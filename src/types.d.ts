@@ -43,11 +43,11 @@ export declare class ModelController {
   elementDidMount?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
 
-  componentWillRender?(): void;
-  componentWillMount?(): void;
-  componentWillUpdate?(): void;
-  componentDidMount?(): void;
-  componentWillUnmount?(): void;
+  componentWillRender?(...args: any[]): void;
+  componentWillMount?(...args: any[]): void;
+  componentWillUpdate?(...args: any[]): void;
+  componentDidMount?(...args: any[]): void;
+  componentWillUnmount?(...args: any[]): void;
 
   on(...args: string[]): this;
   not(...args: string[]): this;
