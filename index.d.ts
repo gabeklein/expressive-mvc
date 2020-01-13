@@ -62,6 +62,11 @@ declare class Controller {
     once(): this
     only(): this;
     not(): this;
+
+    tap(): this;
+    tap<K extends keyof this>(key?: K): this[K];
+
+    sub(...args: any[]): this & Subscriber<this>;
     
     get Provider(): FunctionComponentElement<ProviderProps<this>>
     get Value(): FunctionComponent<{ of: string }>
@@ -70,7 +75,7 @@ declare class Controller {
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
-    static sub <T extends Class> (this: T, args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
 
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];

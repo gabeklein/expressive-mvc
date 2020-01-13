@@ -4,10 +4,10 @@ import { createWrappedComponent } from './provider';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 import { useAccessorComponent } from './accessor';
+import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 
-const { 
-  defineProperty: define,
-  defineProperties: defineAll
+const {
+  defineProperties: define
 } = Object;
 
 export function Controller(this: ModelController){
@@ -23,20 +23,18 @@ for(const f of ["on", "not", "only", "once"])
 prototype.watch = applyExternal;
 prototype.willDestroy = runCallback;
 
-define(prototype, NEW_SUB, {
-  get: ensureDispatch,
-  configurable: true
+define(prototype, {
+  [NEW_SUB]: {
+    get: ensureDispatch,
+    configurable: true
+  },
+  sub: { value: useSubscribeToThis },
+  tap: { value: useLiveThis },
+  Provider: { get: getControlProvider },
+  Value: { get: useAccessorComponent }
 })
 
-define(prototype, "Provider", {
-  get: getControlProvider
-})
-
-define(prototype, "Value", {
-  get: useAccessorComponent
-})
-
-defineAll(Controller, {
+define(Controller, {
   use: { value: useController },
   sub: { value: subToController },
   get: { value: getFromController },
@@ -65,4 +63,13 @@ function getProvider(this: typeof ModelController){
 
 function useController(this: typeof ModelController, ...args: any[]){
   return useOwnController(this, args) 
+}
+
+function useSubscribeToThis(this: ModelController, ...args: any[]){
+  return useSubscriber(this, args) 
+}
+
+function useLiveThis(this: ModelController, key?: string){
+  if(key) return useWatcherFor(key, this);
+  else return useWatcher(this) 
 }
