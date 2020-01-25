@@ -10,8 +10,10 @@ import {
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
+import { Map } from './polyfill';
 
-const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
+const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
+const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
 
 const { 
   defineProperty: define,
@@ -20,38 +22,43 @@ const {
 } = Object;
 
 export function ownContext(from: typeof ModelController){
-  let constructor;
-
-  if(!from.prototype)
-    do {
-      from = Object.getPrototypeOf(from);
-      constructor = from.constructor;
-    }
-    while(!constructor)
-  else 
-    constructor = from.prototype.constructor;
-
-  let context;
-
-  for(const [ _constructor, _context ] of CONTEXT_ALLOCATED)
-    if(constructor === _constructor){
-      context = _context;
-      break; 
-    }
+  const constructor = getConstructor(from);
+  
+  let context = CONTEXT_ALLOCATED.get(constructor);
 
   if(!context){
     context = createContext(null as any);
-    CONTEXT_ALLOCATED.push([constructor, context]);
+    CONTEXT_ALLOCATED.set(constructor, context);
   }
 
   return context as Context<any>;
 }
 
-export function mustGetFromController(
+function getterFor(target: typeof ModelController){
+  const global = GLOBAL_ALLOCATED.get(target);
+
+  if(global)
+    return () => global;
+  else 
+    return contextGetterFor(target)
+}
+
+function getConstructor(obj: any){
+  if(obj.prototype)
+    return obj.prototype.constructor;
+
+  while(obj){
+    obj = Object.getPrototypeOf(obj);
+    if(obj.constructor)
+      return obj.constructor;
+  }
+}
+
+export function getFromControllerOrFail(
   this: typeof ModelController,
   key: string){
 
-  const getInstance = contextGetterFor(this)
+  const getInstance = getterFor(this)
   const hook = (key: string) => {
     const instance = getInstance();
     const value = (instance as any)[key];
@@ -67,7 +74,7 @@ export function getFromController(
   this: typeof ModelController, 
   key?: string){
 
-  const getInstance = contextGetterFor(this)
+  const getInstance = getterFor(this)
   const hook = key === undefined
     ? () => inheriting(getInstance())
     : (key: string) => (getInstance() as any)[key];
@@ -80,7 +87,7 @@ export function tapFromController(
   this: typeof ModelController, 
   key: string){
 
-  const getInstance = contextGetterFor(this);
+  const getInstance = getterFor(this);
   const hook = key === undefined
     ? () => useWatcher(getInstance())
     : (key: string) => useWatcherFor(key, getInstance())
@@ -93,7 +100,7 @@ export function subToController(
   this: typeof ModelController, 
   ...args: any[]){
 
-  const getInstance = contextGetterFor(this);
+  const getInstance = getterFor(this);
   const hook = (...args: any[]) => {
     const controller = getInstance();
     return useSubscriber(controller, args);
@@ -113,14 +120,23 @@ export function getControlProvider(
   return ControlProvider
 }
 
+export function initGlobalController(this: typeof ModelController){
+  const constructor = getConstructor(this);
+  const instance = new this();
+
+  GLOBAL_ALLOCATED.set(constructor, instance);
+  return instance;
+}
+
 function contextGetterFor(
   target: typeof ModelController) {
 
   const { name } = target;
+  
   const context = ownContext(target);
 
   function controllerFromContext(): ModelController {
-    const instance = useContext(context) || useContext(CONTEXT_MULTIPROVIDER)[name];;
+    const instance = useContext(context) || useContext(CONTEXT_MULTIPROVIDER)[name];
 
     if(instance)
       return instance;

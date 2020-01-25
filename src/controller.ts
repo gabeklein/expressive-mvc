@@ -1,10 +1,18 @@
-import { getControlProvider, getFromController, ownContext, subToController, tapFromController, mustGetFromController } from './context';
+import { useAccessorComponent } from './accessor';
+import {
+  getControlProvider,
+  getFromController,
+  getFromControllerOrFail,
+  initGlobalController,
+  ownContext,
+  subToController,
+  tapFromController,
+} from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { createWrappedComponent } from './provider';
+import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { useAccessorComponent } from './accessor';
-import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 
 const {
   defineProperties: define
@@ -38,12 +46,29 @@ define(Controller, {
   use: { value: useController },
   sub: { value: subToController },
   get: { value: getFromController },
-  has: { value: mustGetFromController },
+  has: { value: getFromControllerOrFail },
   tap: { value: tapFromController },
   hoc: { value: createWrappedComponent },
+  makeGlobal: { value: initGlobalController },
+  singleton: { value: createSingletonAccess },
   context: { value: getContext },
   Provider: { get: getProvider }
 })
+
+function createSingletonAccess(this: typeof ModelController){
+  const instance = new this();
+  return {
+    sub: (...args: any[]) => useSubscriber(instance, args),
+    get: (key?: string) => key ? (instance as any)[key] : instance,
+    tap: (key?: string) => key ? useWatcherFor(key, instance) : useWatcher(instance),
+    has: (key: string) => {
+      const value = (instance as any)[key];
+      if(!value)
+        throw new Error(`${this.name}.${key} must be defined when this component renders.`);
+      return value;
+    }
+  }
+}
 
 function returnThis(this: any){ 
   return this
