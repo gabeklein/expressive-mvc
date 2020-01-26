@@ -23,7 +23,6 @@ const {
 
 export function ownContext(from: typeof ModelController){
   const constructor = getConstructor(from);
-  
   let context = CONTEXT_ALLOCATED.get(constructor);
 
   if(!context){

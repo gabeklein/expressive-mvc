@@ -86,15 +86,21 @@ function getProvider(this: typeof ModelController){
   return useOwnController(this).Provider
 }
 
-function useController(this: typeof ModelController, ...args: any[]){
+function useController(
+  this: typeof ModelController, ...args: any[]){
+
   return useOwnController(this, args) 
 }
 
-function useSubscribeToThis(this: ModelController, ...args: any[]){
+function useSubscribeToThis(
+  this: ModelController, ...args: any[]){
+    
   return useSubscriber(this, args) 
 }
 
-function useLiveThis(this: ModelController, key?: string){
+function useLiveThis(
+  this: ModelController, key?: string){
+    
   if(key) return useWatcherFor(key, this);
   else return useWatcher(this) 
 }
