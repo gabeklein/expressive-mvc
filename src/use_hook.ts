@@ -1,5 +1,6 @@
 import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
+import { DeferredPeerController } from './context';
 import { Controller } from './controller';
 import { ensureDispatch, NEW_SUB } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
@@ -140,12 +141,18 @@ export function applyAutomaticContext(instance: any){
   const consumable = {} as BunchOf<Context<any>>;
 
   for(const property in instance){
-    const context: any = instance[property]
-    if(context && typeof context == "object"){
-      if("Consumer" in context 
-      && "Provider" in context)
-        consumable[property] = context;
-    }
+    const placeholder: any = instance[property];
+    if(!placeholder)
+      continue;
+
+    if(placeholder instanceof DeferredPeerController)
+      instance[property] = placeholder.apply();
+
+    else if(
+      typeof placeholder == "object"
+      && "Consumer" in placeholder 
+      && "Provider" in placeholder)
+        consumable[property] = placeholder;
   }
 
   if(keysIn(consumable).length == 0)

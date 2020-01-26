@@ -37,6 +37,21 @@ export function useGlobalController(
   return useSubscriber(global, args, true);
 }
 
+export class DeferredPeerController {
+  constructor(
+    public controller: typeof ModelController
+  ){}
+
+  apply(){
+    const global = GLOBAL_ALLOCATED.get(this.controller);
+
+    if(!global)
+      throw globalNotFoundError(this.controller.name);
+  
+    return global;
+  }
+}
+
 export function usePeerController(
   from: typeof ModelController){
 
@@ -45,7 +60,7 @@ export function usePeerController(
   if(global)
     return global;
   else if(from.global)
-    throw globalNotFoundError(from.name)
+    return new DeferredPeerController(from);
   else 
     return ownContext(from);
 }
