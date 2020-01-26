@@ -25,6 +25,8 @@ export interface SpyController extends ModelController {
 
 export declare class ModelController { 
 
+  static global: boolean;
+
   local: BunchOf<any>;
 
   didInit?(): void;

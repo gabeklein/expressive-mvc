@@ -7,12 +7,17 @@ import {
   ownContext,
   subToController,
   tapFromController,
+  useGlobalController,
 } from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
 import { createWrappedComponent } from './provider';
 import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
+
+const controllerIsGlobalError = (name: string) => new Error(
+  `Controller ${name} is tagged as global. Context API does not apply.`
+)
 
 const {
   defineProperties: define
@@ -52,7 +57,8 @@ define(Controller, {
   makeGlobal: { value: initGlobalController },
   singleton: { value: createSingletonAccess },
   context: { value: getContext },
-  Provider: { get: getProvider }
+  Provider: { get: getProvider },
+  global: { value: false, writable: true }
 })
 
 function createSingletonAccess(this: typeof ModelController){
@@ -79,17 +85,26 @@ function runCallback(cb?: () => void){
 }
 
 function getContext(this: typeof ModelController){ 
+  if(this.global)
+    throw controllerIsGlobalError(this.name)
+
   return ownContext(this)
 }
 
 function getProvider(this: typeof ModelController){
+  if(this.global)
+    throw controllerIsGlobalError(this.name)
+    
   return useOwnController(this).Provider
 }
 
 function useController(
   this: typeof ModelController, ...args: any[]){
 
-  return useOwnController(this, args) 
+  if(this.global)
+    return useGlobalController(this, args)
+  else 
+    return useOwnController(this, args) 
 }
 
 function useSubscribeToThis(

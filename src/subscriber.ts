@@ -3,6 +3,7 @@ import { MutableRefObject, useEffect, useRef, useState } from 'react';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
+import { applyAutomaticContext, lifecycleComponent, RENEW_CONSUMERS } from './use_hook';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -54,20 +55,41 @@ export function useWatcherFor(
   return (instance as any)[key];
 }
 
-export function useSubscriber(control: ModelController, args: any[]){
+function lifecycleSubscriber(control: ModelController){
+  return {
+    willRender: control.elementWillRender || control.willRender,
+    willUpdate: control.elementWillUpdate || control.willUpdate,
+    willUnmount: control.elementWillUnmount || control.willUnmount,
+    didMount: control.elementDidMount || control.didMount,
+    willMount: control.elementWillMount || control.willMount
+  }
+}
+
+export function useSubscriber(
+  control: ModelController, 
+  args: any[], 
+  main?: boolean){
+    
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
 
-  const willRender = control.elementWillRender || control.willRender;
-  const willUpdate = control.elementWillUpdate || control.willUpdate;
-  const willUnmount = control.elementWillUnmount || control.willUnmount;
-  const didMount = control.elementDidMount || control.didMount;
-  const willMount = control.elementWillMount || control.willMount;
+  const {
+    willRender,
+    willUpdate,
+    willUnmount,
+    didMount,
+    willMount
+  } = main 
+    ? lifecycleComponent(control) 
+    : lifecycleSubscriber(control)
   
   let local = cache.current;
 
   if(!local){
-    local = control.local = cache.current = {}
+    local = control.local = cache.current = {};
+
+    if(main)
+      applyAutomaticContext(local)
 
     if(willMount)
         willMount.apply(control, args);
@@ -81,6 +103,9 @@ export function useSubscriber(control: ModelController, args: any[]){
   }
   else {
     control.local = local;
+
+    if(RENEW_CONSUMERS in local)
+      local[RENEW_CONSUMERS]()
 
     if(willUpdate)
       willUpdate.apply(control, args);

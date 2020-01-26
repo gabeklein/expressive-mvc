@@ -15,11 +15,40 @@ import { Map } from './polyfill';
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
 
+const globalNotFoundError = (name: string) => new Error(
+  `Controller ${name} is tagged as global. Instance must exist before use.`
+)
+
 const { 
   defineProperty: define,
   keys: keysIn,
   create: inheriting
 } = Object;
+
+export function useGlobalController(
+  type: typeof ModelController,
+  args: any[]){
+
+  const global = GLOBAL_ALLOCATED.get(type);
+
+  if(!global)
+    throw globalNotFoundError(type.name)
+    
+  return useSubscriber(global, args, true);
+}
+
+export function usePeerController(
+  from: typeof ModelController){
+
+  const global = GLOBAL_ALLOCATED.get(from);
+
+  if(global)
+    return global;
+  else if(from.global)
+    throw globalNotFoundError(from.name)
+  else 
+    return ownContext(from);
+}
 
 export function ownContext(from: typeof ModelController){
   const constructor = getConstructor(from);
@@ -120,6 +149,7 @@ export function getControlProvider(
 }
 
 export function initGlobalController(this: typeof ModelController){
+  this.global = true;
   const constructor = getConstructor(this);
   const instance = new this();
 

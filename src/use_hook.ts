@@ -40,6 +40,16 @@ export function useModelController(init: any, ...args: any[]){
     : useOwnController(init, args);
 }
 
+export function lifecycleComponent(control: ModelController){
+  return {
+    willRender: control.componentWillRender || control.willRender,
+    willUpdate: control.componentWillUpdate || control.willUpdate,
+    willUnmount: control.componentWillUnmount || control.willUnmount,
+    willMount: control.componentWillMount || control.willMount,
+    didMount: control.componentDidMount || control.didMount
+  }
+}
+
 export function useOwnController( 
   model: Class | Function,
   args: any[] = []
@@ -51,11 +61,13 @@ export function useOwnController(
 
   const p: ModelController = model.prototype || {};
 
-  const willRender = p.componentWillRender || p.willRender;
-  const willUpdate = p.componentWillUpdate || p.willUpdate;
-  const willUnmount = p.componentWillUnmount || p.willUnmount;
-  const didMount = p.componentDidMount || p.didMount;
-  const willMount = p.componentWillMount || p.willMount;
+  const {
+    willRender,
+    willUpdate,
+    willUnmount,
+    didMount,
+    willMount
+  } = lifecycleComponent(p);
 
   if(instance === null){
     if(model.prototype){
