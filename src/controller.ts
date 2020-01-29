@@ -3,21 +3,16 @@ import {
   getControlProvider,
   getFromController,
   getFromControllerOrFail,
-  initGlobalController,
   ownContext,
   subToController,
   tapFromController,
-  useGlobalController,
 } from './context';
 import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
+import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { createWrappedComponent } from './provider';
 import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-
-const controllerIsGlobalError = (name: string) => new Error(
-  `Controller ${name} is tagged as global. Context API does not apply.`
-)
 
 const {
   defineProperties: define

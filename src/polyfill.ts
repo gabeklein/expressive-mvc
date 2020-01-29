@@ -33,3 +33,14 @@ export class Map<K, V> extends Array<[K, V]> {
     return;
   }
 }
+
+export function constructorOf(obj: any){
+  if(obj.prototype)
+    return obj.prototype.constructor;
+
+  while(obj){
+    obj = Object.getPrototypeOf(obj);
+    if(obj.constructor)
+      return obj.constructor;
+  }
+}

@@ -10,14 +10,10 @@ import {
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
-import { Map } from './polyfill';
+import { Map, constructorOf } from './polyfill';
+import { globalController } from './global';
 
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
-const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
-
-const globalNotFoundError = (name: string) => new Error(
-  `Controller ${name} is tagged as global. Instance must exist before use.`
-)
 
 const { 
   defineProperty: define,
@@ -25,48 +21,14 @@ const {
   create: inheriting
 } = Object;
 
-export function useGlobalController(
-  type: typeof ModelController,
-  args: any[]){
-
-  const global = GLOBAL_ALLOCATED.get(type);
-
-  if(!global)
-    throw globalNotFoundError(type.name)
-    
-  return useSubscriber(global, args, true);
-}
-
-export class DeferredPeerController {
-  constructor(
-    public controller: typeof ModelController
-  ){}
-
-  apply(){
-    const global = GLOBAL_ALLOCATED.get(this.controller);
-
-    if(!global)
-      throw globalNotFoundError(this.controller.name);
-  
-    return global;
-  }
-}
-
 export function usePeerController(
   from: typeof ModelController){
 
-  const global = GLOBAL_ALLOCATED.get(from);
-
-  if(global)
-    return global;
-  else if(from.global)
-    return new DeferredPeerController(from);
-  else 
-    return ownContext(from);
+  return globalController(from, false) || ownContext(from);
 }
 
 export function ownContext(from: typeof ModelController){
-  const constructor = getConstructor(from);
+  const constructor = constructorOf(from);
   let context = CONTEXT_ALLOCATED.get(constructor);
 
   if(!context){
@@ -78,23 +40,11 @@ export function ownContext(from: typeof ModelController){
 }
 
 function getterFor(target: typeof ModelController){
-  const global = GLOBAL_ALLOCATED.get(target);
+  const controller = globalController(target, true);
 
-  if(global)
-    return () => global;
-  else 
-    return contextGetterFor(target)
-}
-
-function getConstructor(obj: any){
-  if(obj.prototype)
-    return obj.prototype.constructor;
-
-  while(obj){
-    obj = Object.getPrototypeOf(obj);
-    if(obj.constructor)
-      return obj.constructor;
-  }
+  return controller 
+    ? () => controller 
+    : contextGetterFor(target)
 }
 
 export function getFromControllerOrFail(
@@ -163,14 +113,7 @@ export function getControlProvider(
   return ControlProvider
 }
 
-export function initGlobalController(this: typeof ModelController){
-  this.global = true;
-  const constructor = getConstructor(this);
-  const instance = new this();
 
-  GLOBAL_ALLOCATED.set(constructor, instance);
-  return instance;
-}
 
 function contextGetterFor(
   target: typeof ModelController) {
