@@ -40,7 +40,7 @@ export function ownContext(from: typeof ModelController){
 }
 
 function getterFor(target: typeof ModelController){
-  const controller = globalController(target, true);
+  const controller = globalController(target);
 
   return controller 
     ? () => controller 
