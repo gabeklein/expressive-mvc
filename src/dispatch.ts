@@ -78,11 +78,12 @@ export function applyDispatch(control: ModelController){
 
   const getters = gettersFor(control, ["Provider", "Value"]);
 
+  define(control, SOURCE, { value: mutable })
+  define(control, DISPATCH, { value: register })
+
   for(const key in getters)
     createComputed(key);
 
-  define(control, SOURCE, { value: mutable })
-  define(control, DISPATCH, { value: register })
   define(control, "observeValue", { value: addUpdateListener })
   define(control, "observeValues", { value: addValuesObserver })
   define(control, "get", { value: control })
