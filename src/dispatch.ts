@@ -85,7 +85,7 @@ export function applyDispatch(control: ModelController){
   define(control, "set", { value: control })
   define(control, "toggle", { value: toggle })
   define(control, "refresh", { value: refreshSubscribersOf })
-  define(control, "export", { value: exportCurrentValues })
+  define(control, "export", { value: exportWatchedValues })
   define(control, "hold", {
     get: () => isPending,
     set: to => isPending = to
@@ -131,7 +131,7 @@ export function applyDispatch(control: ModelController){
     refresh();
   }
 
-  function exportCurrentValues(this: BunchOf<any>){
+  function exportWatchedValues(this: BunchOf<any>){
     const acc = {} as BunchOf<any>;
 
     for(const key in this){
