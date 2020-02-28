@@ -163,7 +163,7 @@ function plusUpdateAssertions(
     }, 500)
 
     await patched.waitForNextUpdate();
-
+    
     didUpdate = true
   }
 
