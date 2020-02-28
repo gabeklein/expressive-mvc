@@ -27,15 +27,25 @@ interface Subscriber<T> {
     except: never;
 }
 
+type HandleUpdated<T extends object, U extends keyof T> = 
+    (values: Pick<T, U>, changed: U[]) => void
+
 declare class Controller {
     set: this;
     get: this;
     hold: boolean;
 
     refresh(...keys: string[]): void;
-    export(): { [P in keyof this]: this[P] };
     add(key: string, initial?: any, bootup?: true): boolean;
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
+    
+    observe<K extends keyof this>(key: K, listener: (value: this[K], changed: K) => void): void;
+    observe<K extends keyof this>(keys: K[], listener: (value: this[K], changed: K) => void): void;
+
+    export(): { [P in keyof this]: this[P] };
+    export(onValue: HandleUpdated<this, keyof this>, initial?: boolean): () => void;
+    export<K extends keyof this>(keys: K[]): Pick<this, K>;
+    export<K extends keyof this>(keys: K[], onChange: HandleUpdated<this, K>, initial?: boolean): () => void;
 
     didInit?(): void;
     willDestroy(callback?: () => void): void;
