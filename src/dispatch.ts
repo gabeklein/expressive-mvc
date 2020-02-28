@@ -11,7 +11,6 @@ export const SOURCE = "__subscription_source__";
 
 const { 
   defineProperty: define,
-  defineProperties: defineThese, 
   getOwnPropertyDescriptor: describe,
   getOwnPropertyDescriptors: describeAll,
   getOwnPropertyNames: keysOf,
@@ -80,23 +79,16 @@ export function applyDispatch(control: ModelController){
   for(const key in getters)
     createComputed(key);
 
-  defineThese(control, {
-    [SOURCE]: { value: mutable },
-    [DISPATCH]: { value: register }
-  })
-
-
-
-  defineThese(control, {
-    get: { value: control },
-    set: { value: control },
-    toggle: { value: toggle },
-    refresh: { value: refreshSubscribersOf },
-    export: { value: exportCurrentValues },
-    hold: {
-      get: () => isPending,
-      set: to => isPending = to
-    }
+  define(control, SOURCE, { value: mutable })
+  define(control, DISPATCH, { value: register })
+  define(control, "get", { value: control })
+  define(control, "set", { value: control })
+  define(control, "toggle", { value: toggle })
+  define(control, "refresh", { value: refreshSubscribersOf })
+  define(control, "export", { value: exportCurrentValues })
+  define(control, "hold", {
+    get: () => isPending,
+    set: to => isPending = to
   })
 
   function createComputed(key: string){
