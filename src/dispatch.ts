@@ -84,19 +84,36 @@ export function applyDispatch(control: ModelController){
   for(const key in getters)
     createComputed(key);
 
-  define(control, "observeValue", { value: addUpdateListener })
-  define(control, "observeValues", { value: addValuesObserver })
+  define(control, "observe", { value: addUpdateListener })
+  define(control, "export", { value: exportValues })
   define(control, "get", { value: control })
   define(control, "set", { value: control })
   define(control, "toggle", { value: toggle })
   define(control, "refresh", { value: refreshSubscribersOf })
-  define(control, "export", { value: exportWatchedValues })
   define(control, "hold", {
     get: () => isPending,
     set: to => isPending = to
   })
 
   /* closured subroutines */
+
+  function exportValues(
+    this: BunchOf<any>,
+    subset?: string[] | (() => void), 
+    onChange?: (() => void) | boolean,
+    initial?: boolean){
+
+    if(typeof subset == "function"){
+      initial = onChange as boolean;
+      onChange = subset;
+      subset = Object.keys(mutable).filter(x => !x.match(/^_/));
+    }
+
+    if(typeof onChange == "function")
+      return addValuesObserver(subset!, onChange, initial)
+    else 
+      return getValues.call(this, subset)
+  }
 
   function addUpdateListener(
     watch: string | string[], 
@@ -126,7 +143,8 @@ export function applyDispatch(control: ModelController){
 
   function addValuesObserver(
     keys: string[], 
-    observer: UpdatesEventHandler){
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
 
     const flush: Function[] = [];
     const pending = new Set<string>();
@@ -140,7 +158,7 @@ export function applyDispatch(control: ModelController){
         )
 
       const trigger = () => {
-        if(!pending.size)
+        if(!pending.length)
           setTimeout(dispatch, 0)
         pending.add(key);
       };
@@ -159,6 +177,9 @@ export function applyDispatch(control: ModelController){
       
       pending.clear();
     }
+
+    if(fireInitial)
+      dispatch()
 
     return () => flush.forEach(x => x());
   }
@@ -206,13 +227,30 @@ export function applyDispatch(control: ModelController){
     refresh();
   }
 
-  function exportWatchedValues(this: BunchOf<any>){
+  function getValues(this: BunchOf<any>, subset?: string[]){
     const acc = {} as BunchOf<any>;
 
+    if(subset){
+      for(const key of subset){
+        let desc = describe(this, key);
+
+        acc[key] = 
+          desc && 
+          desc.value !== undefined && 
+          desc.value || 
+          mutable[key]
+      }
+
+      return acc;
+    }
+
     for(const key in this){
-      const { value } = describe(this, key)!;
-      if(value)
-        acc[key] = value;
+      const desc = describe(this, key);
+
+      if(!desc) continue;
+
+      if(desc.value !== undefined)
+        acc[key] = desc.value;
     }
     for(const key in mutable)
       acc[key] = mutable[key]
