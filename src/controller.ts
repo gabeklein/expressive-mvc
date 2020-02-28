@@ -7,7 +7,7 @@ import {
   subToController,
   tapFromController,
 } from './context';
-import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
+import { integrateExternalValues, ensureDispatch, NEW_SUB } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
@@ -28,7 +28,7 @@ for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
 define(prototype, {
-  watch: { value: applyExternal },
+  watch: { value: integrateExternalValues },
   willDestroy: { value: runCallback },
   sub: { value: useSubscribeToThis },
   tap: { value: useLiveThis },

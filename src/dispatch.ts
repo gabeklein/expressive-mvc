@@ -184,7 +184,7 @@ export function applyDispatch(control: ModelController){
   }
 }
 
-export function applyExternal(
+export function integrateExternalValues(
   this: ModelController,
   external: BunchOf<any>){
 
@@ -197,40 +197,35 @@ export function applyExternal(
   for(const key of keysOf(external)){
     mutable[key] = external[key];
     define(inner, key, {
-      get: () => mutable[key],
-      set: willThrowUpdateIsForbidden(key),
       enumerable: true,
-      configurable: false
+      get: () => mutable[key],
+      set: () => {
+        throw new Error(`Cannot modify external prop '${key}'!`)
+      }
     })
   }
 
-  define(inner, "watch", {
-    value: updateExternal,
-    configurable: false
-  })
+  define(inner, "watch", { value: updateExternalValues })
 
-  function updateExternal(
-    this: ModelController,
-    external: BunchOf<any>){
+  return this;
+}
 
-    let diff = [];
+function updateExternalValues(
+  this: ModelController,
+  external: BunchOf<any>){
 
-    for(const key of keysOf(external)){
-      if(external[key] == mutable[key])
-        continue;
-      mutable[key] = external[key];
-      diff.push(key);
-    }
+  const mutable = this[SOURCE];
+  let diff = [];
 
-    if(diff.length)
-      this.refresh(diff);
-
-    return this;
+  for(const key of keysOf(external)){
+    if(external[key] == mutable[key])
+      continue;
+    mutable[key] = external[key];
+    diff.push(key);
   }
 
-  function willThrowUpdateIsForbidden(key: string){
-    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
-  }
+  if(diff.length)
+    this.refresh(diff);
 
   return this;
 }
