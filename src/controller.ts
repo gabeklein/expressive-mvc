@@ -14,9 +14,7 @@ import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 
-const {
-  defineProperties: define
-} = Object;
+const { defineProperties: define } = Object;
 
 export function Controller(this: ModelController){
   if(this.didInit)

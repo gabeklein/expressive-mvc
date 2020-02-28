@@ -21,8 +21,8 @@ const {
 const { random } = Math;
 
 export function ensureDispatch(this: ModelController){
-  const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
-    Subscription(this, hook)
+  const yeildSubsciptionWatcher = 
+    (hook: UpdateTrigger) => Subscription(this, hook)
   
   if(DISPATCH in this === false)
     applyDispatch(this);
@@ -83,10 +83,12 @@ export function applyDispatch(control: ModelController){
     [DISPATCH]: { value: register }
   })
 
-  for(const key in getters)
-    if(key !== "Provider"
-    && key !== "Value")
-      createComputed(key);
+  for(const key in getters){
+    if(key == "Provider" || key == "Value")
+      continue;
+
+    createComputed(key);
+  }
 
   defineThese(control, {
     get: { value: control },
@@ -134,15 +136,17 @@ export function applyDispatch(control: ModelController){
   function refreshSubscribersOf(...watching: string[]){
     for(const x of watching)
       pending.add(x)
+      
     refresh();
   }
 
   function exportCurrentValues(this: BunchOf<any>){
     const acc = {} as BunchOf<any>;
+
     for(const key in this){
-        const { value } = describe(this, key)!;
-        if(value)
-          acc[key] = value;
+      const { value } = describe(this, key)!;
+      if(value)
+        acc[key] = value;
     }
     for(const key in mutable)
       acc[key] = mutable[key]
