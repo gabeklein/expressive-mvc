@@ -176,6 +176,8 @@ export function applyDispatch(control: ModelController){
         sub(random());
     }
 
+    register[key] = new Set();
+
     //TODO: why is this here?
     recompute.immediate = true;
 
