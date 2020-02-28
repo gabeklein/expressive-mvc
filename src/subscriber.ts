@@ -3,7 +3,7 @@ import { MutableRefObject, useEffect, useRef, useState } from 'react';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
-import { getAttachedControllers, lifecycleComponent, RENEW_CONSUMERS } from './use_hook';
+import { componentLifecycle, RENEW_CONSUMERS, resolveAttachedControllers } from './use_hook';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -52,7 +52,7 @@ export function useWatcherFor(
   return (instance as any)[key];
 }
 
-function lifecycleSubscriber(control: ModelController){
+function subscriberLifecycle(control: ModelController){
   return {
     willRender: control.elementWillRender || control.willRender,
     willUpdate: control.elementWillUpdate || control.willUpdate,
@@ -77,8 +77,8 @@ export function useSubscriber(
     didMount,
     willMount
   } = main 
-    ? lifecycleComponent(control) 
-    : lifecycleSubscriber(control)
+    ? componentLifecycle(control) 
+    : subscriberLifecycle(control)
   
   let local = cache.current;
 
@@ -86,7 +86,7 @@ export function useSubscriber(
     local = control.local = cache.current = {};
 
     if(main)
-      getAttachedControllers(local)
+      resolveAttachedControllers(local)
 
     if(willMount)
       willMount.apply(control, args);
@@ -136,7 +136,7 @@ export function useSubscriber(
   return control;
 }
 
-export function Subscription(
+export function createSubscription(
   source: ModelController, 
   hook: UpdateTrigger
 ): SpyController {

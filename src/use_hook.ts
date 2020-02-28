@@ -40,7 +40,7 @@ export function useModelController(init: any, ...args: any[]){
     : useOwnController(init, args);
 }
 
-export function lifecycleComponent(control: ModelController){
+export function componentLifecycle(control: ModelController){
   return {
     willRender: control.componentWillRender || control.willRender,
     willUpdate: control.componentWillUpdate || control.willUpdate,
@@ -67,7 +67,7 @@ export function useOwnController(
     willUnmount,
     didMount,
     willMount
-  } = lifecycleComponent(p);
+  } = componentLifecycle(p);
 
   if(instance === null){
     if(model.prototype){
@@ -81,7 +81,7 @@ export function useOwnController(
       instance = model;
 
     if(instance instanceof Controller)
-      getAttachedControllers(instance)
+      resolveAttachedControllers(instance)
     else {
       define(instance, NEW_SUB, {
         get: ensureDispatch,
@@ -136,7 +136,7 @@ export function useOwnController(
   return instance;
 }
 
-export function getAttachedControllers(instance: any){
+export function resolveAttachedControllers(instance: any){
   const consumable = {} as BunchOf<Context<any>>;
 
   for(const property in instance){

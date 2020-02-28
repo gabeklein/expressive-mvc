@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Set } from './polyfill';
-import { SUBSCRIBE, Subscription } from './subscriber';
+import { SUBSCRIBE, createSubscription } from './subscriber';
 import { BunchOf, ModelController, SpyController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
@@ -22,7 +22,7 @@ const { random } = Math;
 
 export function ensureDispatch(this: ModelController){
   const yeildSubsciptionWatcher = 
-    (hook: UpdateTrigger) => Subscription(this, hook)
+    (hook: UpdateTrigger) => createSubscription(this, hook)
   
   if(DISPATCH in this === false)
     applyDispatch(this);
@@ -118,7 +118,7 @@ export function applyDispatch(control: ModelController){
     //TODO: why is this here?
     recompute.immediate = true;
 
-    const spy: SpyController = Subscription(control, recompute);
+    const spy: SpyController = createSubscription(control, recompute);
     mutable[key] = getters[key].call(spy);
     spy[SUBSCRIBE]();
 
