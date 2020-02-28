@@ -1,9 +1,11 @@
 import { Controller } from './controller';
 import { Set } from './polyfill';
-import { SUBSCRIBE, Subscription } from './subscriber';
+import { SUBSCRIBE, createSubscription } from './subscriber';
 import { BunchOf, ModelController, SpyController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
+export type UpdateEventHandler = (value: any, key: string) => void;
+export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 export const NEW_SUB = "__init_subscription__";
 export const DISPATCH = "__subscription_dispatch__";
@@ -11,7 +13,6 @@ export const SOURCE = "__subscription_source__";
 
 const { 
   defineProperty: define,
-  defineProperties: defineThese, 
   getOwnPropertyDescriptor: describe,
   getOwnPropertyDescriptors: describeAll,
   getOwnPropertyNames: keysOf,
@@ -20,21 +21,16 @@ const {
 
 const { random } = Math;
 
-export function ensureDispatch(this: ModelController){
-  const yeildSubsciptionWatcher = (hook: UpdateTrigger) =>
-    Subscription(this, hook)
+export function ensureDispatch(this: ModelController){  
+  const initialized = DISPATCH in this;
   
-  if(DISPATCH in this === false)
+  if(!initialized)
     applyDispatch(this);
 
-  define(this, NEW_SUB, {
-    value: yeildSubsciptionWatcher
-  });
-
-  return yeildSubsciptionWatcher;
+  return (hook: UpdateTrigger) => createSubscription(this, hook)
 }
 
-function gettersFor(prototype: any){
+function gettersFor(prototype: any, ignore?: string[]){
   const getters = {} as any;
 
   do {
@@ -42,9 +38,13 @@ function gettersFor(prototype: any){
 
     const described = describeAll(prototype);
     
-    for(const item in described)
+    for(const item in described){
+      if(ignore && ignore.indexOf(item) >= 0)
+        continue;
+
       if("get" in described[item] && !getters[item])
         getters[item] = described[item].get
+    }
   }
   while(prototype !== Object.prototype 
      && prototype !== Controller.prototype);
@@ -76,29 +76,113 @@ export function applyDispatch(control: ModelController){
     })
   }
 
-  const getters = gettersFor(control);
+  const getters = gettersFor(control, ["Provider", "Value"]);
 
-  defineThese(control, {
-    [SOURCE]: { value: mutable },
-    [DISPATCH]: { value: register }
-  })
+  define(control, SOURCE, { value: mutable })
+  define(control, DISPATCH, { value: register })
 
   for(const key in getters)
-    if(key !== "Provider"
-    && key !== "Value")
-      createComputed(key);
+    createComputed(key);
 
-  defineThese(control, {
-    get: { value: control },
-    set: { value: control },
-    toggle: { value: toggle },
-    refresh: { value: refreshSubscribersOf },
-    export: { value: exportCurrentValues },
-    hold: {
-      get: () => isPending,
-      set: to => isPending = to
-    }
+  define(control, "observe", { value: addUpdateListener })
+  define(control, "export", { value: exportValues })
+  define(control, "get", { value: control })
+  define(control, "set", { value: control })
+  define(control, "toggle", { value: toggle })
+  define(control, "refresh", { value: refreshSubscribersOf })
+  define(control, "hold", {
+    get: () => isPending,
+    set: to => isPending = to
   })
+
+  /* closured subroutines */
+
+  function exportValues(
+    this: BunchOf<any>,
+    subset?: string[] | (() => void), 
+    onChange?: (() => void) | boolean,
+    initial?: boolean){
+
+    if(typeof subset == "function"){
+      initial = onChange as boolean;
+      onChange = subset;
+      subset = Object.keys(mutable).filter(x => !x.match(/^_/));
+    }
+
+    if(typeof onChange == "function")
+      return addValuesObserver(subset!, onChange, initial)
+    else 
+      return getValues.call(this, subset)
+  }
+
+  function addUpdateListener(
+    watch: string | string[], 
+    handler: UpdateEventHandler){
+
+    const flush: Function[] = [];
+
+    if(typeof watch == "string")
+      watch = [watch];
+
+    for(const key of watch){
+      const listeners = register[key];
+  
+      if(!listeners)
+        throw new Error(
+          `Can't watch property ${key}, it's not tracked on this instance.`
+        )
+  
+      const trigger = () => handler(mutable[key], key);
+  
+      listeners.add(trigger);
+      flush.push(() => listeners.delete(trigger))
+    }
+
+    return () => flush.forEach(x => x());
+  }
+
+  function addValuesObserver(
+    keys: string[], 
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
+
+    const flush: Function[] = [];
+    const pending = new Set<string>();
+
+    for(const key of keys){
+      const listeners = register[key];
+  
+      if(!listeners)
+        throw new Error(
+          `Can't watch property ${key}, it's not tracked on this instance.`
+        )
+
+      const trigger = () => {
+        if(!pending.length)
+          setTimeout(dispatch, 0)
+        pending.add(key);
+      };
+
+      listeners.add(trigger);
+      flush.push(() => listeners.delete(trigger))
+    }
+
+    function dispatch(){
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = mutable[k];
+
+      observer(acc, Array.from(pending))
+      
+      pending.clear();
+    }
+
+    if(fireInitial)
+      dispatch()
+
+    return () => flush.forEach(x => x());
+  }
 
   function createComputed(key: string){
     const recompute = () => {
@@ -113,9 +197,13 @@ export function applyDispatch(control: ModelController){
         sub(random());
     }
 
+    register[key] = new Set();
+
+    //TODO: why is this here?
     recompute.immediate = true;
 
-    const spy: SpyController = Subscription(control, recompute);
+    const spy: SpyController = createSubscription(control, recompute);
+
     mutable[key] = getters[key].call(spy);
     spy[SUBSCRIBE]();
 
@@ -128,21 +216,41 @@ export function applyDispatch(control: ModelController){
   }
 
   function toggle(key: string){
-    return (control as any)[key] = !(control as any)[key]
+    const cast = control as any;
+    return cast[key] = !cast[key]
   }
 
   function refreshSubscribersOf(...watching: string[]){
     for(const x of watching)
       pending.add(x)
+      
     refresh();
   }
 
-  function exportCurrentValues(this: BunchOf<any>){
+  function getValues(this: BunchOf<any>, subset?: string[]){
     const acc = {} as BunchOf<any>;
+
+    if(subset){
+      for(const key of subset){
+        let desc = describe(this, key);
+
+        acc[key] = 
+          desc && 
+          desc.value !== undefined && 
+          desc.value || 
+          mutable[key]
+      }
+
+      return acc;
+    }
+
     for(const key in this){
-        const { value } = describe(this, key)!;
-        if(value)
-          acc[key] = value;
+      const desc = describe(this, key);
+
+      if(!desc) continue;
+
+      if(desc.value !== undefined)
+        acc[key] = desc.value;
     }
     for(const key in mutable)
       acc[key] = mutable[key]
@@ -183,7 +291,7 @@ export function applyDispatch(control: ModelController){
   }
 }
 
-export function applyExternal(
+export function integrateExternalValues(
   this: ModelController,
   external: BunchOf<any>){
 
@@ -196,40 +304,35 @@ export function applyExternal(
   for(const key of keysOf(external)){
     mutable[key] = external[key];
     define(inner, key, {
-      get: () => mutable[key],
-      set: willThrowUpdateIsForbidden(key),
       enumerable: true,
-      configurable: false
+      get: () => mutable[key],
+      set: () => {
+        throw new Error(`Cannot modify external prop '${key}'!`)
+      }
     })
   }
 
-  define(inner, "watch", {
-    value: updateExternal,
-    configurable: false
-  })
+  define(inner, "watch", { value: updateExternalValues })
 
-  function updateExternal(
-    this: ModelController,
-    external: BunchOf<any>){
+  return this;
+}
 
-    let diff = [];
+function updateExternalValues(
+  this: ModelController,
+  external: BunchOf<any>){
 
-    for(const key of keysOf(external)){
-      if(external[key] == mutable[key])
-        continue;
-      mutable[key] = external[key];
-      diff.push(key);
-    }
+  const mutable = this[SOURCE];
+  let diff = [];
 
-    if(diff.length)
-      this.refresh(diff);
-
-    return this;
+  for(const key of keysOf(external)){
+    if(external[key] == mutable[key])
+      continue;
+    mutable[key] = external[key];
+    diff.push(key);
   }
 
-  function willThrowUpdateIsForbidden(key: string){
-    return () => { throw new Error(`Cannot modify external prop '${key}'!`) }
-  }
+  if(diff.length)
+    this.refresh(diff);
 
   return this;
 }

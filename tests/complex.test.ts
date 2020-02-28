@@ -25,11 +25,13 @@ test('dispatches computed values when new', async () => {
 
   expect(state.seconds).toEqual(30);
   expect(state.minutes).toEqual(0);
+
+  await assertDidNotUpdate();
   
   state.seconds = 60;
 
+  await assertDidUpdate();
+
   expect(state.seconds).toEqual(60);
   expect(state.minutes).toEqual(1);
-
-  await assertDidUpdate();
 })

@@ -7,16 +7,15 @@ import {
   subToController,
   tapFromController,
 } from './context';
-import { applyExternal, ensureDispatch, NEW_SUB } from './dispatch';
+import { integrateExternalValues, ensureDispatch, NEW_SUB } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
+import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
 import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 
-const {
-  defineProperties: define
-} = Object;
+const { defineProperties: define } = Object;
 
 export function Controller(this: ModelController){
   if(this.didInit)
@@ -28,19 +27,16 @@ const prototype = Controller.prototype = {} as any;
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
-prototype.watch = applyExternal;
-prototype.willDestroy = runCallback;
-
 define(prototype, {
-  [NEW_SUB]: {
-    get: ensureDispatch,
-    configurable: true
-  },
+  watch: { value: integrateExternalValues },
+  willDestroy: { value: runCallback },
   sub: { value: useSubscribeToThis },
   tap: { value: useLiveThis },
   Provider: { get: getControlProvider },
   Value: { get: useAccessorComponent }
 })
+
+defineInitializer(prototype, NEW_SUB, ensureDispatch)
 
 define(Controller, {
   use: { value: useController },

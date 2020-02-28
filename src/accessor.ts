@@ -8,9 +8,7 @@ interface AccessorComponentProps {
   of: string;
 }
 
-const {
-  defineProperty: define
-} = Object;
+const { defineProperty: define } = Object;
 
 export function useAccessorComponent(
   this: ModelController ){
