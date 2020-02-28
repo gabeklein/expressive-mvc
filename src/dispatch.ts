@@ -29,7 +29,7 @@ export function ensureDispatch(this: ModelController){
   return (hook: UpdateTrigger) => createSubscription(this, hook)
 }
 
-function gettersFor(prototype: any){
+function gettersFor(prototype: any, ignore?: string[]){
   const getters = {} as any;
 
   do {
@@ -37,9 +37,13 @@ function gettersFor(prototype: any){
 
     const described = describeAll(prototype);
     
-    for(const item in described)
+    for(const item in described){
+      if(ignore && ignore.indexOf(item) >= 0)
+        continue;
+
       if("get" in described[item] && !getters[item])
         getters[item] = described[item].get
+    }
   }
   while(prototype !== Object.prototype 
      && prototype !== Controller.prototype);
@@ -71,19 +75,17 @@ export function applyDispatch(control: ModelController){
     })
   }
 
-  const getters = gettersFor(control);
+  const getters = gettersFor(control, ["Provider", "Value"]);
+
+  for(const key in getters)
+    createComputed(key);
 
   defineThese(control, {
     [SOURCE]: { value: mutable },
     [DISPATCH]: { value: register }
   })
 
-  for(const key in getters){
-    if(key == "Provider" || key == "Value")
-      continue;
 
-    createComputed(key);
-  }
 
   defineThese(control, {
     get: { value: control },
