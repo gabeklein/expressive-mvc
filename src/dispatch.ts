@@ -121,7 +121,8 @@ export function applyDispatch(control: ModelController){
   }
 
   function toggle(key: string){
-    return (control as any)[key] = !(control as any)[key]
+    const cast = control as any;
+    return cast[key] = !cast[key]
   }
 
   function refreshSubscribersOf(...watching: string[]){
