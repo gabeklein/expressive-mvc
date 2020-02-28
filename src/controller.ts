@@ -27,10 +27,9 @@ const prototype = Controller.prototype = {} as any;
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
-prototype.watch = applyExternal;
-prototype.willDestroy = runCallback;
-
 define(prototype, {
+  watch: { value: applyExternal },
+  willDestroy: { value: runCallback },
   sub: { value: useSubscribeToThis },
   tap: { value: useLiveThis },
   Provider: { get: getControlProvider },
