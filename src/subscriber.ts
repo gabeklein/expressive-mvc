@@ -3,7 +3,7 @@ import { MutableRefObject, useEffect, useRef, useState } from 'react';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
-import { applyAutomaticContext, lifecycleComponent, RENEW_CONSUMERS } from './use_hook';
+import { getAttachedControllers, lifecycleComponent, RENEW_CONSUMERS } from './use_hook';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -89,7 +89,7 @@ export function useSubscriber(
     local = control.local = cache.current = {};
 
     if(main)
-      applyAutomaticContext(local)
+      getAttachedControllers(local)
 
     if(willMount)
         willMount.apply(control, args);

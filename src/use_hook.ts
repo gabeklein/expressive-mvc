@@ -81,7 +81,7 @@ export function useOwnController(
       instance = model;
 
     if(instance instanceof Controller)
-      applyAutomaticContext(instance)
+      getAttachedControllers(instance)
     else {
       define(instance, NEW_SUB, {
         get: ensureDispatch,
@@ -136,7 +136,7 @@ export function useOwnController(
   return instance;
 }
 
-export function applyAutomaticContext(instance: any){
+export function getAttachedControllers(instance: any){
   const consumable = {} as BunchOf<Context<any>>;
 
   for(const property in instance){
