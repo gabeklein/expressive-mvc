@@ -1,11 +1,10 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
-import Controller, { use } from '../';
+import { use } from '../';
 import { SUBSCRIBE } from '../src/subscriber';
 
 type Class = new (...args: any[]) => any;
-
-const HOOK_METHODS = [ "use", "pull" ];
+type Initializer = () => any;
 
 function ensureArray<T>(x: T | T[]){
   return ([] as T[]).concat(x);
@@ -15,7 +14,7 @@ function ensureArray<T>(x: T | T[]){
  * Error with test-friendlier stack trace. 
  * 
  * Create prior to running an async operation. 
- * Throwing already initialized error from closure highlights the failed promise.
+ * Throwing a pre-initialized error from closure highlights the failed promise.
  */
 class TraceableError extends Error {
   constructor(message: string){
@@ -28,12 +27,9 @@ class TraceableError extends Error {
 /**
  * Test-definition, activate Controller hook on a given class.
  */
-interface TestSuite<T> {
+interface TestSuite<T extends Class> {
   /** Activate controller. Passes `args` to constructor */
   use?: T;
-  /** Capture controller from context.*/
-  pull?: T;
-
   /** forward these arguments to the activated method */
   args?: any[];
 
@@ -70,7 +66,6 @@ interface TestSuite<T> {
  * 
  * Available Hooks:
  * - use
- * - pull
  * 
  * Refresh Directives:
  * - on
@@ -80,57 +75,45 @@ interface TestSuite<T> {
  */
 export function trySubscribe<T extends Class>(config: TestSuite<T>): RenderControllerResult<InstanceType<T>>
 export function trySubscribe<T>(init: () => T): RenderControllerResult<T>
-export function trySubscribe(config: TestSuite<any> | Function){
-  let init: Function | undefined;
+export function trySubscribe(config: TestSuite<any> | Initializer){
+  let init: Initializer;
 
   if(typeof config === "function")
     init = config;
+
   else {
-    init = appliedMethod(config);
-    init = applySubscription(init, config);
-    init = mockPropertyAccess(init, config);
+    if(!config.use)
+      throw new Error(`\`use: Controller\` not specified in test suite!`);
+
+    init = () => use(config.use);
+    init = adjustSubscription(init, config);
+
+    if(config.peek)
+      init = mockPropertyAccess(init, config.peek);
   }
 
-  const api = renderHook(init as any);
-  addUpdateAssertions(api as any);
-  return api;
-}
-
-function appliedMethod(config: TestSuite<any>){
-  for(const key of HOOK_METHODS){
-    const Definition = (config as any)[key];
-    if(!Definition)
-      continue;
-
-    if(Definition.prototype instanceof Controller === false)
-      if(key === "use")
-        return () => use(config.use)
-      else
-        throw new Error(`Controller of type ${Definition.name} does not extend Controller!`)
-    
-    return () => (Controller as any)[key].apply(Definition, config.args);
-  }
-  throw new Error(`No hook specified in test suite!`);
+  let api = renderHook(init);
+  
+  return plusUpdateAssertions(api);
 }
 
 function mockPropertyAccess(
-  chain: Function, 
-  { peek }: TestSuite<any> ){
-    
-  if(!peek) return chain;
+  chain: Initializer, 
+  vars: string | string[] ){
 
   return () => {
     const ref = chain();
-    const keys = ensureArray(peek);
-    for(const key of keys)
+
+    for(const key of ensureArray(vars))
       void ref[key]; 
+
     ref[SUBSCRIBE]();
     return Object.getPrototypeOf(ref);
   }
 }
 
-function applySubscription(
-  chain: Function, 
+function adjustSubscription(
+  chain: Initializer, 
   { once, only, on, not }: TestSuite<any>){
 
   if(once)
@@ -152,10 +135,7 @@ function applySubscription(
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
 
-  /** 
-   * Controller reference never actually changes. 
-   * Is destructure safe techincally. 
-   * */
+  /** Reference to controller instance. */
   state: T;
 
   /** Check if rerender was requested. Will reject if not. */
@@ -165,12 +145,15 @@ interface RenderControllerResult<T>
   assertDidNotUpdate(): Promise<void>
 }
 
-function addUpdateAssertions(
-  append: RenderControllerResult<any>){
+function plusUpdateAssertions(
+  result: RenderHookResult<any, any>){
 
-  append.state = append.result.current;
+  const patched = result as RenderControllerResult<any>;
+  const { current } = patched.result;
 
-  append.assertDidUpdate = async () => {
+  patched.state = SUBSCRIBE in current ? Object.getPrototypeOf(current) : current;
+
+  patched.assertDidUpdate = async () => {
     const error = new TraceableError("Assertion failed: hook did not update");
     let didUpdate = false;
 
@@ -179,23 +162,25 @@ function addUpdateAssertions(
         throw error
     }, 500)
 
-    await append.waitForNextUpdate();
+    await patched.waitForNextUpdate();
 
     didUpdate = true
   }
 
-  append.assertDidNotUpdate = async () => {
+  patched.assertDidNotUpdate = async () => {
     const error = new TraceableError("Assertion failed: hook did update");
     let elapsed = false;
 
     setTimeout(() => {
       elapsed = true;
-      append.rerender();
+      patched.rerender();
     }, 500)
     
-    await append.waitForNextUpdate();
+    await patched.waitForNextUpdate();
 
     if(!elapsed) 
       throw error;
   }
+
+  return patched;
 }
