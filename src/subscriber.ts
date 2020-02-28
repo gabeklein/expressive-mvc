@@ -10,10 +10,7 @@ export const SUBSCRIBE = "__activate_subscription__";
 
 const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
 
-const { 
-  defineProperty: define, 
-  create
-} = Object;
+const { create, defineProperty: define } = Object;
 
 export function useWatcher(control: ModelController){
   const setUpdate = useState(0)[1];
@@ -92,7 +89,7 @@ export function useSubscriber(
       getAttachedControllers(local)
 
     if(willMount)
-        willMount.apply(control, args);
+      willMount.apply(control, args);
 
     delete control.local;
 
@@ -144,10 +141,8 @@ export function Subscription(
   hook: UpdateTrigger
 ): SpyController {
 
-  const {
-    [SOURCE]: mutable,
-    [DISPATCH]: register
-  } = source;
+  const mutable = source[SOURCE];
+  const register = source[DISPATCH];
 
   const Spy = create(source);
 
@@ -174,8 +169,8 @@ export function Subscription(
 
   function sub(){
     if(exclude)
-    for(const k of exclude)
-      watch.delete(k);
+      for(const k of exclude)
+        watch.delete(k);
 
     for(const key of watch){
       let set = register[key];
@@ -192,26 +187,32 @@ export function Subscription(
 
   function bail(...keys: string[]){
     const watch = new Set<string>();
+
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
+
     for(const key of watch)
       register[key].add(hook);
+
     return source;
   }
 
   function except(...keys: string[]){
     exclude = new Set<string>();
+
     for(let arg of keys)
       for(const key of arg.split(","))
         exclude.add(key);
+        
     return Spy;
   }
 
   function also(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
-      watch.add(key);
+        watch.add(key);
+
     return Spy;
   }
 }
