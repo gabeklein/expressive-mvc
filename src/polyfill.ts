@@ -13,6 +13,10 @@ export class Set<T> extends Array<T> {
     if(i >= 0)
       this.splice(i, 1);
   }
+
+  get size(){
+    return this.length;
+  }
 }
 
 export class Map<K, V> extends Array<[K, V]> {

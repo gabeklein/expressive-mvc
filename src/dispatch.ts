@@ -4,6 +4,8 @@ import { SUBSCRIBE, createSubscription } from './subscriber';
 import { BunchOf, ModelController, SpyController, UpdateTrigger } from './types';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
+export type UpdateEventHandler = (value: any, key: string) => void;
+export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 export const NEW_SUB = "__init_subscription__";
 export const DISPATCH = "__subscription_dispatch__";
@@ -81,6 +83,8 @@ export function applyDispatch(control: ModelController){
 
   define(control, SOURCE, { value: mutable })
   define(control, DISPATCH, { value: register })
+  define(control, "observeValue", { value: addUpdateListener })
+  define(control, "observeValues", { value: addValuesObserver })
   define(control, "get", { value: control })
   define(control, "set", { value: control })
   define(control, "toggle", { value: toggle })
@@ -90,6 +94,73 @@ export function applyDispatch(control: ModelController){
     get: () => isPending,
     set: to => isPending = to
   })
+
+  /* closured subroutines */
+
+  function addUpdateListener(
+    watch: string | string[], 
+    handler: UpdateEventHandler){
+
+    const flush: Function[] = [];
+
+    if(typeof watch == "string")
+      watch = [watch];
+
+    for(const key of watch){
+      const listeners = register[key];
+  
+      if(!listeners)
+        throw new Error(
+          `Can't watch property ${key}, it's not tracked on this instance.`
+        )
+  
+      const trigger = () => handler(mutable[key], key);
+  
+      listeners.add(trigger);
+      flush.push(() => listeners.delete(trigger))
+    }
+
+    return () => flush.forEach(x => x());
+  }
+
+  function addValuesObserver(
+    keys: string[], 
+    observer: UpdatesEventHandler){
+
+    const flush: Function[] = [];
+    const pending = new Set<string>();
+
+    for(const key of keys){
+      const listeners = register[key];
+  
+      if(!listeners)
+        throw new Error(
+          `Can't watch property ${key}, it's not tracked on this instance.`
+        )
+
+      const trigger = () => {
+        if(!pending.size)
+          setTimeout(dispatch, 0)
+        pending.add(key);
+      };
+
+      listeners.add(trigger);
+      flush.push(() => listeners.delete(trigger))
+    }
+
+    function dispatch(){
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = mutable[k];
+
+      observer(acc, Array.from(pending))
+      
+      pending.clear();
+    }
+
+    return () => flush.forEach(x => x());
+  }
 
   function createComputed(key: string){
     const recompute = () => {
