@@ -115,6 +115,7 @@ export function applyDispatch(control: ModelController){
         sub(random());
     }
 
+    //TODO: why is this here?
     recompute.immediate = true;
 
     const spy: SpyController = Subscription(control, recompute);
