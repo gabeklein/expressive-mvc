@@ -44,24 +44,10 @@ export function initGlobalController(this: typeof ModelController){
   return instance;
 }
 
-export function globalController(
-  from: typeof ModelController
-): ModelController | null;
-
-export function globalController(
-  from: typeof ModelController,
-  mustExist: false
-): DeferredPeerController;
-
-export function globalController(
-  from: typeof ModelController,
-  mustExist: true
-): ModelController | never;
-
-export function globalController(
-  from: typeof ModelController,
-  mustExist?: boolean){
-
+export function globalController(from: typeof ModelController): ModelController | null;
+export function globalController(from: typeof ModelController, mustExist: false): DeferredPeerController;
+export function globalController(from: typeof ModelController, mustExist: true): ModelController | never;
+export function globalController(from: typeof ModelController, mustExist?: boolean){
   const global = GLOBAL_ALLOCATED.get(from);
 
   if(global)
