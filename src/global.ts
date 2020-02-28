@@ -1,8 +1,9 @@
 import { ModelController } from './types';
 import { useSubscriber } from './subscriber';
-import { constructorOf, Map } from './polyfill';
+import { constructorOf, Map, defineInitializer } from './polyfill';
 
 const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
+const { entries } = Object;
 
 const globalNotFoundError = (name: string) => new Error(
   `Controller ${name} is tagged as global. Instance must exist before use.`
@@ -61,18 +62,9 @@ export function globalController(from: typeof ModelController, mustExist?: boole
 }
 
 export function ensurePeersOnAccess(instance: ModelController){
-  for(const property in instance){
-    const placeholder = (instance as any)[property];
-
-    if(placeholder instanceof DeferredPeerController){
-      const load = () => {
-        const peer = globalController(placeholder.type, true);
-        Object.defineProperty(instance, property, { value: peer })
-        return peer;
-      }
-      Object.defineProperty(instance, property, {
-        get: load, configurable: true,
-      })
-    }
-  }
+  for(const [property, placeholder] of entries(instance))
+    if(placeholder instanceof DeferredPeerController)
+      defineInitializer(instance, property, 
+        () => globalController(placeholder.type, true)
+      )
 }

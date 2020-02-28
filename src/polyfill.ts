@@ -44,3 +44,16 @@ export function constructorOf(obj: any){
       return obj.constructor;
   }
 }
+
+export function defineInitializer(
+  object: any, property: string, init: () => any){
+
+  Object.defineProperty(object, property, { 
+    configurable: true,
+    get: function(){
+      const value = init.call(this);
+      Object.defineProperty(this, property, { value });
+      return value;
+    }
+  });
+}

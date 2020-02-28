@@ -2,6 +2,7 @@ import { Context, MutableRefObject, useContext, useEffect, useRef, useState } fr
 
 import { Controller } from './controller';
 import { ensureDispatch, NEW_SUB } from './dispatch';
+import { defineInitializer } from './polyfill';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
 import { BunchOf, Class, ModelController, SpyController } from './types';
@@ -83,11 +84,8 @@ export function useOwnController(
     if(instance instanceof Controller)
       resolveAttachedControllers(instance)
     else {
-      define(instance, NEW_SUB, {
-        get: ensureDispatch,
-        configurable: true
-      })
-    
+      defineInitializer(instance, NEW_SUB, ensureDispatch);
+      
       if(instance.didInit)
         instance.didInit();
     }

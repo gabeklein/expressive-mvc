@@ -20,18 +20,13 @@ const {
 
 const { random } = Math;
 
-export function ensureDispatch(this: ModelController){
-  const yeildSubsciptionWatcher = 
-    (hook: UpdateTrigger) => createSubscription(this, hook)
+export function ensureDispatch(this: ModelController){  
+  const initialized = DISPATCH in this;
   
-  if(DISPATCH in this === false)
+  if(!initialized)
     applyDispatch(this);
 
-  define(this, NEW_SUB, {
-    value: yeildSubsciptionWatcher
-  });
-
-  return yeildSubsciptionWatcher;
+  return (hook: UpdateTrigger) => createSubscription(this, hook)
 }
 
 function gettersFor(prototype: any){
@@ -119,6 +114,7 @@ export function applyDispatch(control: ModelController){
     recompute.immediate = true;
 
     const spy: SpyController = createSubscription(control, recompute);
+
     mutable[key] = getters[key].call(spy);
     spy[SUBSCRIBE]();
 
