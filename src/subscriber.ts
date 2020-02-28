@@ -1,69 +1,157 @@
-import { useEffect, useRef, useState } from 'react';
+import { MutableRefObject, useEffect, useRef, useState } from 'react';
 
-import { ModelController } from './controller';
+import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
-import { DISPATCH, NEW_SUB, SOURCE, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
-import { UpdateTrigger } from './types';
+import { ModelController, SpyController, UpdateTrigger } from './types';
+import { componentLifecycle, RENEW_CONSUMERS, resolveAttachedControllers } from './use_hook';
 
-const { 
-  defineProperty: define, 
-  getOwnPropertyDescriptor: describe,
-  getPrototypeOf: prototypeOf, 
-  create
-} = Object;
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
 
-export function useSubscriber(controller: ModelController){
-  let instance: ModelController | SpyController = controller;
-  const firstRenderIs = useRef(true);
+const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
+
+const { create, defineProperty: define } = Object;
+
+export function useWatcher(control: ModelController){
   const setUpdate = useState(0)[1];
+  const cache = useRef(null) as MutableRefObject<any>;
 
-  if(firstRenderIs.current){
-    const subscribe = controller[NEW_SUB];
-    if(!subscribe){
-      const { name } = controller.constructor;
-      throw new Error(
-        `Can't subscribe to controller;` +
-        ` this accessor can only be used within { Provider } given to you by \`${name}.use()\``
-      )
-    }
+  let { current } = cache;
+  
+  if(!current){
+    if(!control[NEW_SUB])
+      throw new Error(ERR_NOT_CONTROLLER)
 
-    instance = subscribe(setUpdate);
-    firstRenderIs.current = false
+    current = cache.current = control[NEW_SUB](setUpdate) as any;
   }
 
   useEffect(() => {
-    const initialRenderControl = instance as unknown as SpyController;
-    initialRenderControl[SUBSCRIBE]();
-    return () => initialRenderControl[UNSUBSCRIBE]();
+    const spyControl = current as unknown as SpyController;
+    spyControl[SUBSCRIBE]();
+    return () => spyControl[UNSUBSCRIBE]();
   }, [])
 
-  return instance;
+  return current;
 }
 
-export interface SpyController extends ModelController {
-  [UNSUBSCRIBE]: () => void;
-  [SUBSCRIBE]: () => void;
-};
+export function useWatcherFor(
+  key: string, instance: ModelController){
 
-export function SpyController(
+  const dispatch = instance[DISPATCH];
+  const setUpdate = useState(0)[1];
+
+  useEffect(() => {
+    let watchers: Set<any> = 
+      dispatch[key] || (dispatch[key] = new Set());
+
+    watchers.add(setUpdate);
+
+    return () => watchers.delete(setUpdate);
+  })
+
+  return (instance as any)[key];
+}
+
+function subscriberLifecycle(control: ModelController){
+  return {
+    willRender: control.elementWillRender || control.willRender,
+    willUpdate: control.elementWillUpdate || control.willUpdate,
+    willUnmount: control.elementWillUnmount || control.willUnmount,
+    didMount: control.elementDidMount || control.didMount,
+    willMount: control.elementWillMount || control.willMount
+  }
+}
+
+export function useSubscriber(
+  control: ModelController, 
+  args: any[], 
+  main?: boolean){
+    
+  const setUpdate = useState(0)[1];
+  const cache = useRef(null) as MutableRefObject<any>;
+
+  const {
+    willRender,
+    willUpdate,
+    willUnmount,
+    didMount,
+    willMount
+  } = main 
+    ? componentLifecycle(control) 
+    : subscriberLifecycle(control)
+  
+  let local = cache.current;
+
+  if(!local){
+    local = control.local = cache.current = {};
+
+    if(main)
+      resolveAttachedControllers(local)
+
+    if(willMount)
+      willMount.apply(control, args);
+
+    delete control.local;
+
+    if(!control[NEW_SUB])
+      throw new Error(ERR_NOT_CONTROLLER)
+
+    control = control[NEW_SUB](setUpdate) as any;
+  }
+  else {
+    control.local = local;
+
+    if(RENEW_CONSUMERS in local)
+      local[RENEW_CONSUMERS]()
+
+    if(willUpdate)
+      willUpdate.apply(control, args);
+  }
+
+  if(willRender)
+    willRender.apply(control, args)
+
+  delete control.local;
+
+  useEffect(() => {
+    const spyControl = control as unknown as SpyController;
+    spyControl[SUBSCRIBE]();
+
+    if(didMount){
+      control.local = local;
+      didMount.apply(control, args);
+      delete control.local;
+    }
+
+    return () => {
+      if(willUnmount){
+        control.local = local;
+        willUnmount.apply(control, args);
+        delete control.local;
+      }
+      spyControl[UNSUBSCRIBE]()
+    };
+  }, [])
+
+  return control;
+}
+
+export function createSubscription(
   source: ModelController, 
   hook: UpdateTrigger
 ): SpyController {
 
-  const {
-    [SOURCE]: mutable,
-    [DISPATCH]: register
-  } = source;
+  const mutable = source[SOURCE];
+  const register = source[DISPATCH];
 
   const Spy = create(source);
-  const inner = prototypeOf(source);
 
   let watch = new Set<string>();
   let exclude: Set<string>;
 
   for(const key in mutable)
     define(Spy, key, {
-      set: describe(inner, key)!.set,
+      set: (value: any) => mutable[key] = value,
       get: () => {
         watch.add(key);
         return mutable[key];
@@ -81,8 +169,8 @@ export function SpyController(
 
   function sub(){
     if(exclude)
-    for(const k of exclude)
-      watch.delete(k);
+      for(const k of exclude)
+        watch.delete(k);
 
     for(const key of watch){
       let set = register[key];
@@ -99,26 +187,32 @@ export function SpyController(
 
   function bail(...keys: string[]){
     const watch = new Set<string>();
+
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
+
     for(const key of watch)
       register[key].add(hook);
+
     return source;
   }
 
   function except(...keys: string[]){
     exclude = new Set<string>();
+
     for(let arg of keys)
       for(const key of arg.split(","))
         exclude.add(key);
+        
     return Spy;
   }
 
   function also(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
-      watch.add(key);
+        watch.add(key);
+
     return Spy;
   }
 }

@@ -1,4 +1,4 @@
-import Controller from "../";
+import Controller from "./lib";
 import { trySubscribe } from "./adapter";
 
 class TestController extends Controller {
@@ -35,7 +35,7 @@ test('passes arguments to constructor', () => {
 
 test('ignores updates on useOnce', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(
-    () => TestController.useOnce()
+    () => TestController.use().once()
   )
 
   expect(state.value).toBe(1);

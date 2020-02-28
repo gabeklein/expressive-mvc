@@ -2,92 +2,140 @@ import {
   Context,
   createContext,
   createElement,
-  FunctionComponentElement,
   PropsWithChildren,
-  ProviderProps,
-  useContext,
-  ProviderExoticComponent
+  ProviderExoticComponent,
+  useContext
 } from 'react';
 
-import { ModelController } from './controller';
-import { useSubscriber } from './subscriber';
-import { useController } from './use_hook';
+import { CONTEXT_MULTIPROVIDER } from './provider';
+import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
+import { ModelController } from './types';
+import { Map, constructorOf } from './polyfill';
+import { globalController } from './global';
 
-const CONTEXT_ALLOCATED = [] as [Function, Context<ModelController>][];
+const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
 const { 
   defineProperty: define,
-  keys: keysIn
+  keys: keysIn,
+  create: inheriting
 } = Object;
 
-function ownContext(from: typeof ModelController){
-  let constructor;
+export function usePeerController(
+  from: typeof ModelController){
 
-  if(!from.prototype)
-    do {
-      from = Object.getPrototypeOf(from);
-      constructor = from.constructor;
-    }
-    while(!constructor)
-  else 
-    constructor = from.prototype.constructor;
+  return globalController(from, false) || ownContext(from);
+}
 
-  let context;
-
-  for(const [ _constructor, _context ] of CONTEXT_ALLOCATED)
-    if(constructor === _constructor){
-      context = _context;
-      break; 
-    }
+export function ownContext(from: typeof ModelController){
+  const constructor = constructorOf(from);
+  let context = CONTEXT_ALLOCATED.get(constructor);
 
   if(!context){
-    context = createContext(constructor.prototype);
-    CONTEXT_ALLOCATED.push([constructor, context]);
+    context = createContext(null as any);
+    CONTEXT_ALLOCATED.set(constructor, context);
   }
 
   return context as Context<any>;
 }
 
-export function getFromContext(
-  this: typeof ModelController){
-    
-  const context = ownContext(this);
- 
-  function useContextSubscriber(){
-    const controller = useContext(context);
-    return useSubscriber(controller);
+function getterFor(target: typeof ModelController){
+  const controller = globalController(target);
+
+  return controller 
+    ? () => controller 
+    : contextGetterFor(target)
+}
+
+export function getFromControllerOrFail(
+  this: typeof ModelController,
+  key: string){
+
+  const getInstance = getterFor(this)
+  const hook = (key: string) => {
+    const instance = getInstance();
+    const value = (instance as any)[key];
+    if(value === undefined)
+      throw new Error(`${this.name}.${key} must be defined this render.`)
+    return value;
+  }
+  define(this, `has`, { value: hook });
+  return hook(key) as unknown;
+}
+
+export function getFromController(
+  this: typeof ModelController, 
+  key?: string){
+
+  const getInstance = getterFor(this)
+  const hook = key === undefined
+    ? () => inheriting(getInstance())
+    : (key: string) => (getInstance() as any)[key];
+
+  define(this, `get`, { value: hook });
+  return hook(key!) as unknown;
+}
+
+export function tapFromController(
+  this: typeof ModelController, 
+  key: string){
+
+  const getInstance = getterFor(this);
+  const hook = key === undefined
+    ? () => useWatcher(getInstance())
+    : (key: string) => useWatcherFor(key, getInstance())
+
+  define(this, `tap`, { value: hook });
+  return hook(key) as unknown;
+}
+
+export function subToController(
+  this: typeof ModelController, 
+  ...args: any[]){
+
+  const getInstance = getterFor(this);
+  const hook = (...args: any[]) => {
+    const controller = getInstance();
+    return useSubscriber(controller, args);
   }
   
-  define(this, `get`, { value: useContextSubscriber });
-  return useContextSubscriber() as ModelController;
+  define(this, `sub`, { value: hook });
+  return hook.apply(null, args);
 }
 
-export function getContext(
-  this: typeof ModelController){
+export function getControlProvider(
+  this: ModelController){
 
-  return ownContext(this);
+  const { Provider } = ownContext(this.constructor as any);
+  const ControlProvider = ParentProviderFor(this, Provider);
+
+  define(this, "Provider", { value: ControlProvider });
+  return ControlProvider
 }
 
-export function getHook(
-  this: typeof ModelController){
 
-  const context = ownContext(this);
 
-  return () => {
-    const controller = useContext(context);
-    return useSubscriber(controller);
+function contextGetterFor(
+  target: typeof ModelController) {
+
+  const { name } = target;
+  
+  const context = ownContext(target);
+
+  function controllerFromContext(): ModelController {
+    const instance = useContext(context) || useContext(CONTEXT_MULTIPROVIDER)[name];
+
+    if(instance)
+      return instance;
+
+    throw new Error(
+      `Can't subscribe to controller;` +
+      ` this accessor can only be used within a Provider keyed to \`${name}\``
+    );
   }
-}
 
-export function controllerCreateParent(
-  this: typeof ModelController): any {
-
-  const memoizedProvider = () => useController(this).Provider;
-
-  define(this, "Provider", { get: memoizedProvider });
-
-  return memoizedProvider();
-}
+  return controllerFromContext;
+} 
 
 function ParentProviderFor(
   controller: ModelController,
@@ -104,21 +152,4 @@ function ParentProviderFor(
 
     return createElement(Provider, { value: controller }, children);
   }
-}
-
-export function controllerCreateProvider(
-  this: typeof ModelController, ...args: any[]): 
-  FunctionComponentElement<ProviderProps<any>> {
-
-  return useController(this, args).Provider;
-}
-
-export function getControlProvider(
-  this: ModelController){
-
-  const { Provider } = ownContext(this.constructor as any);
-  const ControlProvider = ParentProviderFor(this, Provider);
-
-  define(this, "Provider", { value: ControlProvider });
-  return ControlProvider
 }
