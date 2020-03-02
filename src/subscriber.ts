@@ -85,8 +85,7 @@ export function useSubscriber(
   if(!local){
     local = control.local = cache.current = {};
 
-    if(main)
-      resolveAttachedControllers(local)
+    resolveAttachedControllers(local)
 
     if(willMount)
       willMount.apply(control, args);
@@ -101,7 +100,7 @@ export function useSubscriber(
   else {
     control.local = local;
 
-    if(RENEW_CONSUMERS in local)
+    if(local[RENEW_CONSUMERS])
       local[RENEW_CONSUMERS]()
 
     if(willUpdate)

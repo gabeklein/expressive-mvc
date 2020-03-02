@@ -135,6 +135,9 @@ export function useOwnController(
 }
 
 export function resolveAttachedControllers(instance: any){
+  if(RENEW_CONSUMERS in instance)
+    return;
+
   const consumable = {} as BunchOf<Context<any>>;
 
   for(const property in instance){
@@ -150,7 +153,7 @@ export function resolveAttachedControllers(instance: any){
   }
 
   if(keysIn(consumable).length == 0)
-    return;
+    define(instance, RENEW_CONSUMERS, { value: undefined })
 
   let multi = useContext(CONTEXT_MULTIPROVIDER);
   const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
