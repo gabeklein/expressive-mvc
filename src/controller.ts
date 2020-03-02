@@ -1,4 +1,4 @@
-import { ControlledValue } from './accessor';
+import { ControlledValue, ControlledInput } from './hoc';
 import {
   ControlProvider,
   getFromController,
@@ -37,6 +37,7 @@ define(prototype, {
 
 defineInitializer(prototype, "Provider", ControlProvider)
 defineInitializer(prototype, "Value", ControlledValue)
+defineInitializer(prototype, "Input", ControlledInput)
 defineInitializer(prototype, NEW_SUB, ensureDispatch)
 
 define(Controller, {

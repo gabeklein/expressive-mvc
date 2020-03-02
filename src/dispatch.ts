@@ -76,7 +76,7 @@ export function applyDispatch(control: ModelController){
     })
   }
 
-  const getters = gettersFor(control, ["Provider", "Value"]);
+  const getters = gettersFor(control, ["Provider", "Input", "Value"]);
 
   define(control, SOURCE, { value: mutable })
   define(control, DISPATCH, { value: register })
