@@ -21,8 +21,12 @@ const {
   create: inheriting
 } = Object;
 
-export function usePeerController(
-  from: typeof ModelController){
+export function retrieveController(
+  from: ModelController | typeof ModelController,
+  ...args: any[]){
+
+  if(from instanceof ModelController)
+    return useSubscriber(from, args, false)
 
   return globalController(from, false) || ownContext(from);
 }

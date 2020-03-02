@@ -65,7 +65,7 @@ function subscriberLifecycle(control: ModelController){
 export function useSubscriber(
   control: ModelController, 
   args: any[], 
-  main?: boolean){
+  main: boolean){
     
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;

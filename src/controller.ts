@@ -7,7 +7,7 @@ import {
   subToController,
   tapFromController,
 } from './context';
-import { integrateExternalValues, ensureDispatch, NEW_SUB } from './dispatch';
+import { ensureDispatch, integrateExternalValues, NEW_SUB } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
@@ -85,7 +85,7 @@ function useController(
 function useSubscribeToThis(
   this: ModelController, ...args: any[]){
     
-  return useSubscriber(this, args) 
+  return useSubscriber(this, args, true) 
 }
 
 function useLiveThis(
