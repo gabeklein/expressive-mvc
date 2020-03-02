@@ -37,7 +37,7 @@ const RESERVED = [
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
-    ? useSubscriber(init as ModelController, args)
+    ? useSubscriber(init as ModelController, args, true)
     : useOwnController(init, args);
 }
 
@@ -153,7 +153,7 @@ export function resolveAttachedControllers(instance: any){
   }
 
   if(keysIn(consumable).length == 0)
-    define(instance, RENEW_CONSUMERS, { value: undefined })
+    define(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
 
   let multi = useContext(CONTEXT_MULTIPROVIDER);
   const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
