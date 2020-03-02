@@ -103,17 +103,10 @@ export function subToController(
   return hook.apply(null, args);
 }
 
-export function getControlProvider(
-  this: ModelController){
-
+export function ControlProvider(this: ModelController){
   const { Provider } = ownContext(this.constructor as any);
-  const ControlProvider = ParentProviderFor(this, Provider);
-
-  define(this, "Provider", { value: ControlProvider });
-  return ControlProvider
+  return ParentProviderFor(this, Provider);
 }
-
-
 
 function contextGetterFor(
   target: typeof ModelController) {

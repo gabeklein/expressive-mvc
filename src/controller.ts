@@ -1,6 +1,6 @@
-import { useAccessorComponent } from './accessor';
+import { ControlledValue } from './accessor';
 import {
-  getControlProvider,
+  ControlProvider,
   getFromController,
   getFromControllerOrFail,
   ownContext,
@@ -32,10 +32,10 @@ define(prototype, {
   willDestroy: { value: runCallback },
   sub: { value: useSubscribeToThis },
   tap: { value: useLiveThis },
-  Provider: { get: getControlProvider },
-  Value: { get: useAccessorComponent }
 })
 
+defineInitializer(prototype, "Provider", ControlProvider)
+defineInitializer(prototype, "Value", ControlledValue)
 defineInitializer(prototype, NEW_SUB, ensureDispatch)
 
 define(Controller, {
