@@ -25,10 +25,11 @@ export function retrieveController(
   from: ModelController | typeof ModelController,
   ...args: any[]){
 
-  if(from instanceof ModelController)
-    return useSubscriber(from, args, false)
+  if(from instanceof Controller)
+    return useSubscriber(from as ModelController, args, false)
 
-  return globalController(from, false) || ownContext(from);
+  return globalController(from as typeof ModelController, false) 
+      || ownContext(from as typeof ModelController);
 }
 
 export function ownContext(from: typeof ModelController){
