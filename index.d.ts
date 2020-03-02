@@ -95,7 +95,7 @@ declare class Controller {
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
-    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;

@@ -8,10 +8,11 @@ import {
 } from 'react';
 
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber, useWatcher, useWatcherFor } from './subscriber';
+import { useSubscriber, useWatcher, useWatchedValue } from './subscriber';
 import { ModelController } from './types';
 import { Map, constructorOf } from './polyfill';
 import { globalController } from './global';
+import { Controller } from './controller';
 
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
@@ -83,15 +84,29 @@ export function getFromController(
 
 export function tapFromController(
   this: typeof ModelController, 
-  key: string){
+  key: string,
+  main?: boolean){
 
   const getInstance = getterFor(this);
-  const hook = key === undefined
-    ? () => useWatcher(getInstance())
-    : (key: string) => useWatcherFor(key, getInstance())
+  //TODO: Implement better caching here
+  if(key)
+    return useSubscribedValue(getInstance(), key, main)
+  else
+    return useWatcher(getInstance())
+}
 
-  define(this, `tap`, { value: hook });
-  return hook(key) as unknown;
+export function useSubscribedValue(
+  instance: any, 
+  key: string, 
+  main?: boolean 
+){
+  const value = instance[key];
+
+  if(value instanceof Controller)
+    //TODO: better handling for inconsistently defined
+    return useSubscriber(value as ModelController, [], main || false)
+  else
+    useWatchedValue(value, instance, main)
 }
 
 export function subToController(
@@ -101,7 +116,7 @@ export function subToController(
   const getInstance = getterFor(this);
   const hook = (...args: any[]) => {
     const controller = getInstance();
-    return useSubscriber(controller, args);
+    return useSubscriber(controller, args, false);
   }
   
   define(this, `sub`, { value: hook });

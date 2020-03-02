@@ -34,8 +34,8 @@ export function useWatcher(control: ModelController){
   return current;
 }
 
-export function useWatcherFor(
-  key: string, instance: ModelController){
+export function useWatchedValue(
+  instance: any, key: string, main?: boolean){
 
   const dispatch = instance[DISPATCH];
   const setUpdate = useState(0)[1];
@@ -49,7 +49,7 @@ export function useWatcherFor(
     return () => watchers.delete(setUpdate);
   })
 
-  return (instance as any)[key];
+  return instance[key];
 }
 
 function subscriberLifecycle(control: ModelController){
