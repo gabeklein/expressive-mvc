@@ -46,26 +46,10 @@ define(Controller, {
   tap: { value: tapFromController },
   hoc: { value: createWrappedComponent },
   makeGlobal: { value: initGlobalController },
-  singleton: { value: createSingletonAccess },
   context: { value: getContext },
   Provider: { get: getProvider },
   global: { value: false, writable: true }
 })
-
-function createSingletonAccess(this: typeof ModelController){
-  const instance = new this();
-  return {
-    sub: (...args: any[]) => useSubscriber(instance, args),
-    get: (key?: string) => key ? (instance as any)[key] : instance,
-    tap: (key?: string) => key ? useWatcherFor(key, instance) : useWatcher(instance),
-    has: (key: string) => {
-      const value = (instance as any)[key];
-      if(!value)
-        throw new Error(`${this.name}.${key} must be defined when this component renders.`);
-      return value;
-    }
-  }
-}
 
 function returnThis(this: any){ 
   return this

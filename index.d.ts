@@ -83,7 +83,6 @@ declare class Controller {
 
     static get Provider(): FunctionComponentElement<any>;
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
-    static singleton<T extends Class>(this: T): Singleton<InstanceType<T>>;
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
     
@@ -99,15 +98,6 @@ declare class Controller {
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
-}
-
-interface Singleton<T extends Controller>{
-    get (): T;
-    get <K extends keyof T> (key: K): T[K];
-    has <K extends keyof T> (key: K): Exclude<T[K], undefined>;
-    tap <K extends keyof T> (key: K): T[K];
-    tap (this: T): T & Subscriber<T>;
-    sub(...args: any[]): T & Subscriber<T>;
 }
 
 interface MultiProviderProps {
