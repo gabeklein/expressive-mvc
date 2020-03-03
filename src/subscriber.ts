@@ -83,6 +83,9 @@ export function useSubscriber(
   let local = cache.current;
 
   if(!local){
+    if(!control[NEW_SUB])
+      throw new Error(ERR_NOT_CONTROLLER)
+
     local = control.local = cache.current = {};
 
     ensureAttachedControllers(control)
@@ -91,9 +94,6 @@ export function useSubscriber(
       willMount.apply(control, args);
 
     delete control.local;
-
-    if(!control[NEW_SUB])
-      throw new Error(ERR_NOT_CONTROLLER)
 
     control = control[NEW_SUB](setUpdate) as any;
   }
