@@ -81,7 +81,7 @@ export function useOwnController(
       instance = model;
 
     if(instance instanceof Controller)
-      resolveAttachedControllers(instance as ModelController)
+      ensureAttachedControllers(instance as ModelController)
     else {
       defineInitializer(instance, NEW_SUB, ensureDispatch);
       
@@ -133,7 +133,7 @@ export function useOwnController(
   return instance;
 }
 
-export function resolveAttachedControllers(instance: ModelController){
+export function ensureAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance)
     return;
 
