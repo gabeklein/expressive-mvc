@@ -85,7 +85,7 @@ export function useSubscriber(
   if(!local){
     local = control.local = cache.current = {};
 
-    resolveAttachedControllers(local)
+    resolveAttachedControllers(control)
 
     if(willMount)
       willMount.apply(control, args);

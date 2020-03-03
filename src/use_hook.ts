@@ -5,12 +5,11 @@ import { ensureDispatch, NEW_SUB } from './dispatch';
 import { defineInitializer } from './polyfill';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
-import { BunchOf, Class, ModelController, SpyController } from './types';
+import { Class, ModelController, SpyController } from './types';
 
 export const RENEW_CONSUMERS = "__renew_consumers__";
 
 const {
-  create,
   defineProperty: define,
   getOwnPropertyDescriptor: describe,
   getPrototypeOf: proto,
@@ -82,7 +81,7 @@ export function useOwnController(
       instance = model;
 
     if(instance instanceof Controller)
-      resolveAttachedControllers(instance)
+      resolveAttachedControllers(instance as ModelController)
     else {
       defineInitializer(instance, NEW_SUB, ensureDispatch);
       
@@ -100,7 +99,7 @@ export function useOwnController(
     instance = instance[NEW_SUB](setUpdate);;
   }
   else {
-    if(RENEW_CONSUMERS in instance)
+    if(instance[RENEW_CONSUMERS])
       instance[RENEW_CONSUMERS]()
 
     if(willUpdate)
@@ -134,51 +133,39 @@ export function useOwnController(
   return instance;
 }
 
-export function resolveAttachedControllers(instance: any){
+export function resolveAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance)
     return;
 
-  const consumable = {} as BunchOf<Context<any>>;
-
-  for(const property in instance){
-    const placeholder: any = instance[property];
-    if(!placeholder)
-      continue;
-
-    else if(
-      typeof placeholder == "object"
-      && "Consumer" in placeholder 
-      && "Provider" in placeholder)
-        consumable[property] = placeholder;
-  }
-
-  if(keysIn(consumable).length == 0)
-    define(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
-
-  let multi = useContext(CONTEXT_MULTIPROVIDER);
-  const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
-
-  for(const key in consumable)
-    if(multi && multi[key])
-      instance[key] = multi[key];
-    else {
-      required.push(consumable[key])
-      instance[key] = useContext(consumable[key])
-    }
-
-  define(instance, RENEW_CONSUMERS, { 
-    value: () => {
-      for(const C of required)
-        useContext(C)
-    } 
+  const pending = Object.entries(instance).filter(([ k, v ]) => {
+    return typeof v == "object" && "Consumer" in v && "Provider" in v
   })
+
+  if(pending.length){
+    let multi = useContext(CONTEXT_MULTIPROVIDER);
+    const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
+
+    for(const [name, context] of pending)
+      if(multi && multi[name])
+        define(instance, name, multi[name])
+      else {
+        required.push(context)
+        define(instance, name, useContext(context))
+      }
+
+    define(instance, RENEW_CONSUMERS, { 
+      value: () => required.forEach(useContext)
+    })
+  }
+  else 
+    define(instance, RENEW_CONSUMERS, { value: undefined })
 }
 
 function bindMethods(
   instance: any, 
   prototype: any){
 
-  const boundLayer = create(instance);
+  const boundLayer = Object.create(instance);
   const chain = [];
 
   while(prototype !== Object.prototype 
