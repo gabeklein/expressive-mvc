@@ -138,7 +138,7 @@ export function ensureAttachedControllers(instance: ModelController){
     return;
 
   const pending = Object.entries(instance).filter(([ k, v ]) => {
-    return typeof v == "object" && "Consumer" in v && "Provider" in v
+    return v && typeof v == "object" && "Consumer" in v && "Provider" in v
   })
 
   if(pending.length){
@@ -158,7 +158,8 @@ export function ensureAttachedControllers(instance: ModelController){
     })
   }
   else 
-    define(instance, RENEW_CONSUMERS, { value: undefined })
+    //TODO: Why does this need to be configurable?
+    define(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
 }
 
 function bindMethods(

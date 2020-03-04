@@ -322,17 +322,17 @@ function updateExternalValues(
   external: BunchOf<any>){
 
   const mutable = this[SOURCE];
-  let diff = [];
+  let updated = [];
 
   for(const key of keysOf(external)){
     if(external[key] == mutable[key])
       continue;
     mutable[key] = external[key];
-    diff.push(key);
+    updated.push(key);
   }
 
-  if(diff.length)
-    this.refresh(diff);
+  if(updated.length)
+    this.refresh(updated);
 
   return this;
 }

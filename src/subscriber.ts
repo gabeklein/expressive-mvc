@@ -1,4 +1,4 @@
-import { MutableRefObject, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
@@ -127,7 +127,7 @@ export function useSubscriber(
   main: boolean){
     
   const setUpdate = useState(0)[1];
-  const cache = useRef(null) as MutableRefObject<any>;
+  const cache = useRef<any>(null);
 
   const {
     willRender,

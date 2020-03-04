@@ -33,7 +33,7 @@ export function ControlledValue(
 export function ControlledInput(
   this: ModelController): FC<AccessorComponentProps> {
     
-  const dispatch = this[DISPATCH] as any;
+  const dispatch = this[DISPATCH];
   const control = this as any;
 
   return forwardRef(({ of: key, ...props }, ref) => {

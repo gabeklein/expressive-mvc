@@ -1,4 +1,3 @@
-import { ControlledValue, ControlledInput } from './hoc';
 import {
   ControlProvider,
   getFromController,
@@ -9,6 +8,7 @@ import {
 } from './context';
 import { ensureDispatch, integrateExternalValues, NEW_SUB } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
+import { ControlledInput, ControlledValue } from './hoc';
 import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
 import { useSubscriber, useWatchedProperty, useWatcher } from './subscriber';
