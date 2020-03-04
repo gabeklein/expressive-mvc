@@ -28,8 +28,11 @@ interface Subscriber<T> {
     except: never;
 }
 
-type HandleUpdated<T extends object, U extends keyof T> = 
-    (values: Pick<T, U>, changed: U[]) => void
+type HandleUpdatedValues<T extends object, P extends keyof T> = 
+    (this: T, values: Pick<T, P>, changed: P[]) => void
+
+type HandleUpdatedValue<T extends object, P extends keyof T> = 
+    (this: T, value: T[P], changed: P) => void
 
 declare class Controller {
     set: this;
@@ -40,13 +43,12 @@ declare class Controller {
     add(key: string, initial?: any, bootup?: true): boolean;
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
     
-    observe<K extends keyof this>(key: K, listener: (value: this[K], changed: K) => void): void;
-    observe<K extends keyof this>(keys: K[], listener: (value: this[K], changed: K) => void): void;
+    observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
     export(): { [P in keyof this]: this[P] };
-    export(onValue: HandleUpdated<this, keyof this>, initial?: boolean): () => void;
-    export<K extends keyof this>(keys: K[]): Pick<this, K>;
-    export<K extends keyof this>(keys: K[], onChange: HandleUpdated<this, K>, initial?: boolean): () => void;
+    export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): () => void;
+    export<P extends keyof this>(keys: P[]): Pick<this, P>;
+    export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): () => void;
 
     didInit?(): void;
     willDestroy(callback?: () => void): void;

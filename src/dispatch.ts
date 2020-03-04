@@ -132,7 +132,7 @@ export function applyDispatch(control: ModelController){
           `Can't watch property ${key}, it's not tracked on this instance.`
         )
   
-      const trigger = () => handler(mutable[key], key);
+      const trigger = () => handler.call(control, mutable[key], key);
   
       listeners.add(trigger);
       flush.push(() => listeners.delete(trigger))
@@ -173,7 +173,7 @@ export function applyDispatch(control: ModelController){
       for(const k of keys)
         acc[k] = mutable[k];
 
-      observer(acc, Array.from(pending))
+      observer.call(control, acc, Array.from(pending))
       
       pending.clear();
     }
