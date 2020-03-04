@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber, useWatcher, useWatchedValue } from './subscriber';
+import { useSubscriber, useWatcher, useWatchedProperty } from './subscriber';
 import { ModelController } from './types';
 import { Map, constructorOf } from './polyfill';
 import { globalController } from './global';
@@ -90,23 +90,9 @@ export function tapFromController(
   const getInstance = getterFor(this);
   //TODO: Implement better caching here
   if(key)
-    return useSubscribedValue(getInstance(), key, main)
+    return useWatchedProperty(getInstance(), key, main)
   else
     return useWatcher(getInstance())
-}
-
-export function useSubscribedValue(
-  instance: any, 
-  key: string, 
-  main?: boolean 
-){
-  const value = instance[key];
-
-  if(value instanceof Controller)
-    //TODO: better handling for inconsistently defined
-    return useSubscriber(value as ModelController, [], main || false)
-  else
-    useWatchedValue(value, instance, main)
 }
 
 export function subToController(

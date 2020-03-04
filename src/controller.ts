@@ -6,13 +6,12 @@ import {
   ownContext,
   subToController,
   tapFromController,
-  useSubscribedValue,
 } from './context';
 import { ensureDispatch, integrateExternalValues, NEW_SUB } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
-import { useSubscriber, useWatcher } from './subscriber';
+import { useSubscriber, useWatchedProperty, useWatcher } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
 
@@ -94,6 +93,6 @@ function useLiveThis(
   this: ModelController, key?: string, main?: boolean){
 
   return key 
-    ? useSubscribedValue(this, key, main) 
+    ? useWatchedProperty(this, key, main) 
     : useWatcher(this);
 }

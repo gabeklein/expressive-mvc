@@ -1,9 +1,10 @@
 import { MutableRefObject, useEffect, useRef, useState } from 'react';
 
+import { Controller } from './controller';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
-import { componentLifecycle, RENEW_CONSUMERS, ensureAttachedControllers } from './use_hook';
+import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -12,9 +13,19 @@ const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a 
 
 const { create, defineProperty: define } = Object;
 
+function subscriberLifecycle(control: ModelController){
+  return {
+    willRender: control.elementWillRender || control.willRender,
+    willUpdate: control.elementWillUpdate || control.willUpdate,
+    willUnmount: control.elementWillUnmount || control.willUnmount,
+    didMount: control.elementDidMount || control.didMount,
+    willMount: control.elementWillMount || control.willMount
+  }
+}
+
 export function useWatcher(control: ModelController){
   const setUpdate = useState(0)[1];
-  const cache = useRef(null) as MutableRefObject<any>;
+  const cache = useRef<any>(null);
 
   let { current } = cache;
   
@@ -26,40 +37,88 @@ export function useWatcher(control: ModelController){
   }
 
   useEffect(() => {
-    const spyControl = current as unknown as SpyController;
-    spyControl[SUBSCRIBE]();
-    return () => spyControl[UNSUBSCRIBE]();
+    const listener = current as SpyController;
+    listener[SUBSCRIBE]();
+    return () => listener[UNSUBSCRIBE]();
   }, [])
 
   return current;
 }
 
-export function useWatchedValue(
-  instance: any, key: string, main?: boolean){
+export function useWatchedProperty(
+  parent: any, key: string, main?: boolean){
 
-  const dispatch = instance[DISPATCH];
-  const setUpdate = useState(0)[1];
+  const value = parent[key];
+  const dispatch = parent[DISPATCH];
+  const watchers = dispatch[key] || (dispatch[key] = new Set());
+  const setRefresh = useState(0)[1];
+  const subscription = useRef<SpyController | null>(null);
+
+  function childDidUpdate(beat: number){
+    setRefresh(beat);
+  }
+
+  function parentDidUpdate(beat: number){
+    if(subscription.current)
+      deallocate(subscription.current)
+
+    setRefresh(beat);
+  };
+
+  function deallocate(subscriber: SpyController){
+    const unfocus = 
+      subscriber.elementWillLoseFocus || 
+      subscriber.willLoseFocus;
+
+    if(unfocus) 
+      unfocus(parent, key);
+
+    subscriber[UNSUBSCRIBE]();
+    subscription.current = null;
+  }
 
   useEffect(() => {
-    let watchers: Set<any> = 
-      dispatch[key] || (dispatch[key] = new Set());
+    watchers.add(parentDidUpdate);
 
-    watchers.add(setUpdate);
+    return () => {
+      if(subscription.current)
+        deallocate(subscription.current)
 
-    return () => watchers.delete(setUpdate);
-  })
+      watchers.delete(parentDidUpdate)
+    }
+  }, []);
 
-  return instance[key];
-}
+  useEffect(() => {
+    if(subscription.current)
+      subscription.current[SUBSCRIBE]();
+  }, [value])
 
-function subscriberLifecycle(control: ModelController){
-  return {
-    willRender: control.elementWillRender || control.willRender,
-    willUpdate: control.elementWillUpdate || control.willUpdate,
-    willUnmount: control.elementWillUnmount || control.willUnmount,
-    didMount: control.elementDidMount || control.didMount,
-    willMount: control.elementWillMount || control.willMount
+  if(value instanceof Controller){
+    const instance = value as ModelController;
+
+    if(!subscription.current){
+      if(!instance[NEW_SUB])
+        throw new Error(ERR_NOT_CONTROLLER)
+
+      ensureAttachedControllers(instance);
+
+      const didFocus = instance.elementDidFocus || instance.didFocus;
+
+      if(didFocus)
+        didFocus.call(instance, parent, key);
+
+      const spy = subscription.current = instance[NEW_SUB](childDidUpdate);
+      return spy;
+    }
+    else {
+      if(instance[RENEW_CONSUMERS])
+        instance[RENEW_CONSUMERS]!()
+
+      return instance;
+    }
   }
+  else
+    return value;
 }
 
 export function useSubscriber(

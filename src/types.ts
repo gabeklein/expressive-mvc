@@ -3,6 +3,7 @@ import { FunctionComponentElement, ProviderProps } from 'react';
 import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
+import { RENEW_CONSUMERS } from './use_hook';
 
 export type BunchOf<T> = { [key: string]: T }
 
@@ -38,12 +39,16 @@ export declare class ModelController {
   willUpdate?(...args: any[]): void;
   didMount?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
+  didFocus?(parent: ModelController, as: string): void;
+  willLoseFocus?(parent: ModelController, as: string): void;
 
   elementWillRender?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
   elementDidMount?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
+  elementDidFocus?(parent: ModelController, as: string): void;
+  elementWillLoseFocus?(parent: ModelController, as: string): void;
 
   componentWillRender?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
@@ -62,6 +67,7 @@ export declare class ModelController {
   [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   [SOURCE]: BunchOf<any>;
   [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
+  [RENEW_CONSUMERS]?: () => void;
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
 }

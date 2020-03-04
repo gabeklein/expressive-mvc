@@ -58,12 +58,16 @@ declare class Controller {
     willUpdate?(...args: any[]): void;
     didMount?(...args: any[]): void;
     willUnmount?(...args: any[]): void;
+    didFocus?(parent: Controller, as: string): void;
+    willLoseFocus?(parent: Controller, as: string): void;
 
     elementWillRender?(...args: any[]): void;
     elementWillMount?(...args: any[]): void;
     elementWillUpdate?(...args: any[]): void;
     elementDidMount?(...args: any[]): void;
     elementWillUnmount?(...args: any[]): void;
+    elementDidFocus?(parent: Controller, as: string): void;
+    elementWillLoseFocus?(parent: Controller, as: string): void;
 
     componentWillRender?(...args: any[]): void;
     componentWillMount?(...args: any[]): void;
@@ -98,6 +102,13 @@ declare class Controller {
 
     static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
+
+    /**
+     * Easy way to iterate over data to create live controllers.
+     * 
+     * Equivalent to: `array.map(x => new this(x))`
+     */
+    static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
