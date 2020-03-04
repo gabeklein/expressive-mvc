@@ -46,11 +46,16 @@ define(Controller, {
   has: { value: getFromControllerOrFail },
   tap: { value: tapFromController },
   hoc: { value: createWrappedComponent },
+  map: { value: makeFromArray },
   makeGlobal: { value: initGlobalController },
   context: { value: getContext },
   Provider: { get: getProvider },
   global: { value: false, writable: true }
 })
+
+function makeFromArray(this: any, from: any[]){
+  return from.map((item, index) => new this(item, index))
+}
 
 function returnThis(this: any){ 
   return this
