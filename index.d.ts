@@ -53,6 +53,7 @@ declare class Controller {
     didInit?(): void;
     willDestroy(callback?: () => void): void;
 
+    willUse?(): void;
     willRender?(...args: any[]): void;
     willMount?(...args: any[]): void;
     willUpdate?(...args: any[]): void;

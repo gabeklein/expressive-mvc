@@ -160,6 +160,9 @@ export function ensureAttachedControllers(instance: ModelController){
   else 
     //TODO: Why does this need to be configurable?
     define(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
+
+  if(instance.willUse)
+    instance.willUse();
 }
 
 function bindMethods(

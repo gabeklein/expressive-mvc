@@ -41,6 +41,7 @@ export declare class ModelController {
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
+  willUse?(): void;
 
   elementDidFocus?(parent: ModelController, as: string): void;
   elementDidMount?(...args: any[]): void;
