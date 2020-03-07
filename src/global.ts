@@ -17,10 +17,14 @@ export function useGlobalController(
   type: typeof ModelController,
   args: any[]){
 
-  const global = GLOBAL_ALLOCATED.get(type);
+  let global = GLOBAL_ALLOCATED.get(type); 
 
-  if(!global)
-    throw globalNotFoundError(type.name)
+  if(!global){
+    if(!type.global)
+      throw globalNotFoundError(type.name)
+
+    global = initGlobalController.call(type);
+  }
     
   return useSubscriber(global, args, true);
 }
@@ -32,16 +36,18 @@ class DeferredPeerController {
 }
 
 export function initGlobalController(this: typeof ModelController){
-  if(GLOBAL_ALLOCATED.get(this))
-    return;
+  let instance = GLOBAL_ALLOCATED.get(this);
 
-  this.global = true;
-  const constructor = constructorOf(this);
-  const instance = new this();
+  if(!instance){
+    this.global = true;
+    const constructor = constructorOf(this);
+    instance = new this();
+    
+    ensurePeersOnAccess(instance);
   
-  ensurePeersOnAccess(instance);
+    GLOBAL_ALLOCATED.set(constructor, instance);
+  }
 
-  GLOBAL_ALLOCATED.set(constructor, instance);
   return instance;
 }
 
@@ -53,6 +59,8 @@ export function globalController(from: typeof ModelController, mustExist?: boole
 
   if(global)
     return global;
+  else if(from.global)
+    return initGlobalController.call(from);
   else if(mustExist)
     throw globalNotFoundError(from.name);
   else if(mustExist === false)
