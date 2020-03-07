@@ -30,36 +30,36 @@ export declare class ModelController {
 
   local: BunchOf<any>;
 
-  didInit?(): void;
-  willDestroy(callback?: () => void): void;
   toggle(key: string): boolean;
 
-  willRender?(...args: any[]): void;
-  willMount?(...args: any[]): void;
-  willUpdate?(...args: any[]): void;
-  didMount?(...args: any[]): void;
-  willUnmount?(...args: any[]): void;
   didFocus?(parent: ModelController, as: string): void;
+  didInit?(): void;
+  didMount?(...args: any[]): void;
+  willDestroy(callback?: () => void): void;
+  willMount?(...args: any[]): void;
   willLoseFocus?(parent: ModelController, as: string): void;
+  willRender?(...args: any[]): void;
+  willUnmount?(...args: any[]): void;
+  willUpdate?(...args: any[]): void;
 
-  elementWillRender?(...args: any[]): void;
-  elementWillMount?(...args: any[]): void;
-  elementWillUpdate?(...args: any[]): void;
-  elementDidMount?(...args: any[]): void;
-  elementWillUnmount?(...args: any[]): void;
   elementDidFocus?(parent: ModelController, as: string): void;
+  elementDidMount?(...args: any[]): void;
   elementWillLoseFocus?(parent: ModelController, as: string): void;
+  elementWillMount?(...args: any[]): void;
+  elementWillRender?(...args: any[]): void;
+  elementWillUnmount?(...args: any[]): void;
+  elementWillUpdate?(...args: any[]): void;
 
-  componentWillRender?(...args: any[]): void;
-  componentWillMount?(...args: any[]): void;
-  componentWillUpdate?(...args: any[]): void;
   componentDidMount?(...args: any[]): void;
+  componentWillMount?(...args: any[]): void;
+  componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
+  componentWillUpdate?(...args: any[]): void;
 
-  on(...args: string[]): this;
   not(...args: string[]): this;
-  only(...args: string[]): this;
+  on(...args: string[]): this;
   once(): this;
+  only(...args: string[]): this;
 
   watch(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
