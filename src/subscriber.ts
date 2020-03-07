@@ -46,9 +46,13 @@ export function useWatcher(control: ModelController){
 }
 
 export function useWatchedProperty(
-  parent: any, key: string, main?: boolean){
+  parent: any, key: string, required?: boolean){
 
   const value = parent[key];
+
+  if(value === undefined && required)
+    throw new Error(`${parent.name}.${key} must be defined this render.`)
+
   const dispatch = parent[DISPATCH];
   const watchers = dispatch[key] || (dispatch[key] = new Set());
   const setRefresh = useState(0)[1];

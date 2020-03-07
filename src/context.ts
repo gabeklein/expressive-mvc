@@ -58,13 +58,9 @@ export function getFromControllerOrFail(
   key: string){
 
   const getInstance = getterFor(this)
-  const hook = (key: string) => {
-    const instance = getInstance();
-    const value = (instance as any)[key];
-    if(value === undefined)
-      throw new Error(`${this.name}.${key} must be defined this render.`)
-    return value;
-  }
+  const hook = (key: string) =>
+    useWatchedProperty(getInstance(), key, true);
+
   define(this, `has`, { value: hook });
   return hook(key) as unknown;
 }
