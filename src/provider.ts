@@ -36,9 +36,12 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     children,
     className,
     style,
-    of: controllers = {},
-    ...rest
+    of: controllers = {}
   } = props;
+
+  props = assign({}, props);
+  for(const k of ["children", "className", "style", "of"])
+    delete props[k];
 
   const Multi = CONTEXT_MULTIPROVIDER;
   let initial: true | undefined;
@@ -50,7 +53,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   const provide = useMemo(
     () => {
       initial = true;
-      return initGroupControllers(parent, controllers, rest)
+      return initGroupControllers(parent, controllers, props)
     }, []
   ); 
 

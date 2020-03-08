@@ -4,6 +4,8 @@ import { DISPATCH } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, UpdateTrigger } from './types';
 
+const { assign } = Object;
+
 interface AccessorComponentProps {
   of: string;
 }
@@ -13,9 +15,12 @@ export function ControlledValue(
     
   const dispatch = this[DISPATCH];
 
-  return ({ of: ofProp, ...props }) => {
+  return (props) => {
     const setUpdate = useState(0)[1];
-    const key = ofProp;
+    const key = props.of;
+    props = assign({}, props);
+    delete props.of;
+
 
     useEffect(() => {
       let watchers: Set<UpdateTrigger> = 
@@ -36,8 +41,12 @@ export function ControlledInput(
   const dispatch = this[DISPATCH];
   const control = this as any;
 
-  return forwardRef(({ of: key, ...props }, ref) => {
+  return forwardRef((props, ref) => {
     const setUpdate = useState(0)[1];
+
+    const key = props.of;
+    props = assign({}, props);
+    delete props.of;
 
     useEffect(() => {
       let watchers: Set<UpdateTrigger> = 

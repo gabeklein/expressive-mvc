@@ -3,7 +3,7 @@
         "baseUrl": "src",
         "rootDir": "src",
         "outDir": "lib",
-        "target": "ES2018",
+        "target": "ES6",
         "sourceMap": true,
         "moduleResolution": "node",
         "noUnusedLocals": true,

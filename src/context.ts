@@ -11,6 +11,7 @@ import { useWatchedProperty, useWatcher } from './watcher';
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
 const { 
+  assign,
   defineProperty: define,
   keys: keysIn,
   create: inheriting
@@ -131,10 +132,14 @@ function ParentProviderFor(
   Provider: ProviderExoticComponent<any>): any {
     
   return (props: PropsWithChildren<any>) => {
-    let { children, className, style, ...rest } = props;
+    let { children, className, style } = props;
 
-    if(keysIn(rest).length)
-      controller.watch(rest);
+    props = assign({}, props);
+    for(const k of ["children", "className", "style"])
+      delete props[k];
+
+    if(keysIn(props).length)
+      controller.watch(props);
 
     if(className || style)
       children = createElement("div", { className, style }, children);
