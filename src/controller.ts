@@ -11,9 +11,10 @@ import { controllerIsGlobalError, initGlobalController, useGlobalController } fr
 import { ControlledInput, ControlledValue } from './hoc';
 import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
-import { useSubscriber, useWatchedProperty, useWatcher } from './subscriber';
+import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
+import { useWatchedProperty, useWatcher } from './watcher';
 
 const { defineProperties: define } = Object;
 

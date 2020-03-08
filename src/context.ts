@@ -1,18 +1,12 @@
-import {
-  Context,
-  createContext,
-  createElement,
-  PropsWithChildren,
-  ProviderExoticComponent,
-  useContext
-} from 'react';
+import { Context, createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
 
-import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber, useWatcher, useWatchedProperty } from './subscriber';
-import { ModelController } from './types';
-import { Map, constructorOf } from './polyfill';
-import { globalController } from './global';
 import { Controller } from './controller';
+import { globalController } from './global';
+import { constructorOf, Map } from './polyfill';
+import { CONTEXT_MULTIPROVIDER } from './provider';
+import { useSubscriber } from './subscriber';
+import { ModelController } from './types';
+import { useWatchedProperty, useWatcher } from './watcher';
 
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
