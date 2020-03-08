@@ -7,7 +7,6 @@ declare const setTimeout: (callback: () => void, ms: number) => number;
 export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
-export const NEW_SUB = "__init_subscription__";
 export const DISPATCH = "__subscription_dispatch__";
 export const SOURCE = "__subscription_source__";
 
@@ -20,15 +19,6 @@ const {
 } = Object;
 
 const { random } = Math;
-
-export function ensureDispatch(this: ModelController){  
-  const initialized = DISPATCH in this;
-  
-  if(!initialized)
-    applyDispatch(this);
-
-  return (hook: UpdateTrigger) => createSubscription(this, hook)
-}
 
 function gettersFor(prototype: any, ignore?: string[]){
   const getters = {} as any;
@@ -53,6 +43,11 @@ function gettersFor(prototype: any, ignore?: string[]){
 }
 
 export function applyDispatch(control: ModelController){
+  if(DISPATCH in control)
+    return
+    
+  //TODO: What doesn't qualify as Controller?
+
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
 
@@ -295,8 +290,7 @@ export function integrateExternalValues(
   this: ModelController,
   external: BunchOf<any>){
 
-  if(DISPATCH in this === false)
-    applyDispatch(this);
+  applyDispatch(this);
 
   const mutable = this[SOURCE];
   const inner = prototypeOf(this);

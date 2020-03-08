@@ -1,10 +1,9 @@
 import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { ensureDispatch, NEW_SUB } from './dispatch';
-import { defineInitializer } from './polyfill';
+import { applyDispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
+import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController } from './types';
 
 export const RENEW_CONSUMERS = "__renew_consumers__";
@@ -83,7 +82,7 @@ export function useOwnController(
     if(instance instanceof Controller)
       ensureAttachedControllers(instance as ModelController)
     else {
-      defineInitializer(instance, NEW_SUB, ensureDispatch);
+      applyDispatch(instance);
       
       if(instance.didInit)
         instance.didInit();
@@ -96,7 +95,7 @@ export function useOwnController(
       willRender.apply(instance, args);
 
     cache.current = bindMethods(instance, model.prototype);
-    instance = instance[NEW_SUB](setUpdate);;
+    instance = createSubscription(instance, setUpdate);
   }
   else {
     if(instance[RENEW_CONSUMERS])

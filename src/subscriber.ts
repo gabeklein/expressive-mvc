@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
+import { applyDispatch, DISPATCH, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
-
-const ERR_NOT_CONTROLLER = "Can't subscribe to controller; it doesn't contain a proper interface for watching."
 
 const { create, defineProperty: define } = Object;
 
@@ -30,10 +28,8 @@ export function useWatcher(control: ModelController){
   let { current } = cache;
   
   if(!current){
-    if(!control[NEW_SUB])
-      throw new Error(ERR_NOT_CONTROLLER)
-
-    current = cache.current = control[NEW_SUB](setUpdate) as any;
+    applyDispatch(control);
+    current = cache.current = createSubscription(control, setUpdate);
   }
 
   useEffect(() => {
@@ -101,17 +97,16 @@ export function useWatchedProperty(
     const instance = value as ModelController;
 
     if(!subscription.current){
-      if(!instance[NEW_SUB])
-        throw new Error(ERR_NOT_CONTROLLER)
-
+      applyDispatch(instance);
       ensureAttachedControllers(instance);
 
+      const spy = createSubscription(instance, childDidUpdate);
       const didFocus = instance.elementDidFocus || instance.didFocus;
 
       if(didFocus)
         didFocus.call(instance, parent, key);
 
-      const spy = subscription.current = instance[NEW_SUB](childDidUpdate);
+      subscription.current = spy;
       return spy;
     }
     else {
@@ -146,19 +141,17 @@ export function useSubscriber(
   let local = cache.current;
 
   if(!local){
-    if(!control[NEW_SUB])
-      throw new Error(ERR_NOT_CONTROLLER)
-
-    local = control.local = cache.current = {};
+    applyDispatch(control);
+    
+    const spy = createSubscription(control, setUpdate);
 
     ensureAttachedControllers(control)
 
     if(willMount)
       willMount.apply(control, args);
 
-    delete control.local;
-
-    control = control[NEW_SUB](setUpdate) as any;
+    cache.current = control;
+    control = spy as any;
   }
   else {
     control.local = local;

@@ -6,7 +6,7 @@ import {
   subToController,
   tapFromController,
 } from './context';
-import { ensureDispatch, integrateExternalValues, NEW_SUB } from './dispatch';
+import { integrateExternalValues } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { defineInitializer } from './polyfill';
@@ -37,7 +37,6 @@ define(prototype, {
 defineInitializer(prototype, "Provider", ControlProvider)
 defineInitializer(prototype, "Value", ControlledValue)
 defineInitializer(prototype, "Input", ControlledInput)
-defineInitializer(prototype, NEW_SUB, ensureDispatch)
 
 define(Controller, {
   use: { value: useController },

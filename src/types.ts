@@ -1,6 +1,6 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
-import { DISPATCH, NEW_SUB, SOURCE } from './dispatch';
+import { DISPATCH, SOURCE } from './dispatch';
 import { Set } from './polyfill';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 import { RENEW_CONSUMERS } from './use_hook';
@@ -65,7 +65,6 @@ export declare class ModelController {
   watch(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
   
-  [NEW_SUB]: (hook: UpdateTrigger) => SpyController;
   [SOURCE]: BunchOf<any>;
   [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
   [RENEW_CONSUMERS]?: () => void;
