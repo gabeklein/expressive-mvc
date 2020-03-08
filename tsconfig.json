@@ -3,13 +3,12 @@
         "baseUrl": "src",
         "rootDir": "src",
         "outDir": "lib",
-        "target": "es5",
+        "target": "ES2018",
         "sourceMap": true,
         "moduleResolution": "node",
         "noUnusedLocals": true,
         "strict": true,
         "esModuleInterop": true,
-        "lib": [ "es2015" ],
         "types": [ "node", "jest" ]
     },
     "exclude": [
