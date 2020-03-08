@@ -38,6 +38,16 @@ export class Map<K, V> extends Array<[K, V]> {
   }
 }
 
+export function dedent(t: TemplateStringsArray, ...v: any[]): string {
+  const text = v.reduce((a, v, i) => a + v + t[i + 1], t[0]);
+  const starting = /^\n( *)/.exec(text);
+  if(starting){
+    const indent = new RegExp("\n" + starting[1], "g");
+    return text.replace(starting[0], "").replace(indent, "\n").replace(/\s*\n*$/, "")
+  } 
+  else return text;
+}
+
 export function constructorOf(obj: any){
   if(obj.prototype)
     return obj.prototype.constructor;

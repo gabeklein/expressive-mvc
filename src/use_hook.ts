@@ -79,14 +79,13 @@ export function useOwnController(
     else 
       instance = model;
 
+    applyDispatch(instance);
+    cache.current = bindMethods(instance, model.prototype);
+    
     if(instance instanceof Controller)
       ensureAttachedControllers(instance as ModelController)
-    else {
-      applyDispatch(instance);
-      
-      if(instance.didInit)
-        instance.didInit();
-    }
+    else if(instance.didInit)
+      instance.didInit();
 
     if(willMount)
       willMount.apply(instance, args);
@@ -94,7 +93,6 @@ export function useOwnController(
     if(willRender)
       willRender.apply(instance, args);
 
-    cache.current = bindMethods(instance, model.prototype);
     instance = createSubscription(instance, setUpdate);
   }
   else {

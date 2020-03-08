@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
 import { applyDispatch, DISPATCH, SOURCE } from './dispatch';
-import { Set } from './polyfill';
+import { dedent, Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
 
@@ -10,6 +10,24 @@ export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
 
 const { create, defineProperty: define } = Object;
+
+function ErrorUnexpectedController(got: any, expected: any){
+  const ControlType = expected.constructor;
+  if(got instanceof ControlType)
+    return new Error(dedent`
+      Unexpected Instance:
+      use() received unexpected instance of ${ControlType.name}! 
+      This should not change between renders of the same component. 
+      Force a remount instead using key props.
+    `)
+  else
+    return new Error(dedent`
+      Unexpected Controller:
+      use() received unexpected controller between renders!
+      Expected ${ControlType.name} and got ${got.constructor.name}!
+      This should never happen; force a remount where a passed controller may change.
+    `)
+}
 
 function subscriberLifecycle(control: ModelController){
   return {
@@ -137,10 +155,8 @@ export function useSubscriber(
   } = main 
     ? componentLifecycle(control) 
     : subscriberLifecycle(control)
-  
-  let local = cache.current;
 
-  if(!local){
+  if(!cache.current){
     applyDispatch(control);
     
     const spy = createSubscription(control, setUpdate);
@@ -153,11 +169,14 @@ export function useSubscriber(
     cache.current = control;
     control = spy as any;
   }
-  else {
-    control.local = local;
+  else if(control !== cache.current)
+    throw ErrorUnexpectedController(control, cache.current);
 
-    if(local[RENEW_CONSUMERS])
-      local[RENEW_CONSUMERS]()
+  else {
+    const consumers = control[RENEW_CONSUMERS];
+
+    if(consumers)
+      consumers()
 
     if(willUpdate)
       willUpdate.apply(control, args);
@@ -166,25 +185,19 @@ export function useSubscriber(
   if(willRender)
     willRender.apply(control, args)
 
-  delete control.local;
-
   useEffect(() => {
-    const spyControl = control as unknown as SpyController;
-    spyControl[SUBSCRIBE]();
+    const spy = control as unknown as SpyController;
 
-    if(didMount){
-      control.local = local;
+    spy[SUBSCRIBE]();
+
+    if(didMount)
       didMount.apply(control, args);
-      delete control.local;
-    }
 
     return () => {
-      if(willUnmount){
-        control.local = local;
+      if(willUnmount)
         willUnmount.apply(control, args);
-        delete control.local;
-      }
-      spyControl[UNSUBSCRIBE]()
+
+      spy[UNSUBSCRIBE]()
     };
   }, [])
 
