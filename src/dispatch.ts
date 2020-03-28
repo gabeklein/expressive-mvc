@@ -11,6 +11,7 @@ export const DISPATCH = "__subscription_dispatch__";
 export const SOURCE = "__subscription_source__";
 
 const { 
+  entries: entriesIn,
   defineProperty: define,
   getOwnPropertyDescriptor: describe,
   getOwnPropertyDescriptors: describeAll,
@@ -19,27 +20,22 @@ const {
 } = Object;
 
 const { random } = Math;
+const isDeadEnd = (x: any) => x === Controller.prototype || x === Object.prototype;
+ 
+function gettersWithin(source: any, ignore: string[] = []){
+  const getters = {} as BunchOf<() => any>;
 
-function gettersFor(prototype: any, ignore?: string[]){
-  const getters = {} as any;
+  while(!isDeadEnd(source)) {
+    source = Object.getPrototypeOf(source);
 
-  do {
-    prototype = Object.getPrototypeOf(prototype);
+    const descriptors = describeAll(source);
 
-    const described = describeAll(prototype);
-    
-    for(const item in described){
-      if(ignore && ignore.indexOf(item) >= 0)
-        continue;
+    for(const [key, item] of entriesIn(descriptors))
+      if("get" in item && !getters[key] && ignore.indexOf(key) < 0)
+        getters[key] = item.get!
+  };
 
-      if("get" in described[item] && !getters[item])
-        getters[item] = described[item].get
-    }
-  }
-  while(prototype !== Object.prototype 
-     && prototype !== Controller.prototype);
-
-  return getters as BunchOf<Function>
+  return getters;
 }
 
 export function createDispatch(control: ModelController){
@@ -68,7 +64,7 @@ export function createDispatch(control: ModelController){
     })
   }
 
-  const getters = gettersFor(control, ["Provider", "Input", "Value"]);
+  const getters = gettersWithin(control, ["Provider", "Input", "Value"]);
 
   define(control, SOURCE, { value: mutable })
   define(control, DISPATCH, { value: register })
