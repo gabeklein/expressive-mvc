@@ -42,6 +42,7 @@ export declare class ModelController {
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
   willUse?(): void;
+  onLifecycle(...args: any[]): () => void;
 
   elementDidFocus?(parent: ModelController, as: string): void;
   elementDidMount?(...args: any[]): void;
@@ -50,12 +51,14 @@ export declare class ModelController {
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
+  onElementLifecycle(...args: any[]): () => void;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
+  onComponentLifecycle(...args: any[]): () => void;
 
   not(...args: string[]): this;
   on(...args: string[]): this;

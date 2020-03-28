@@ -12,6 +12,7 @@ const { create, defineProperty: define } = Object;
 
 function subscriberLifecycle(control: ModelController){
   return {
+    onLifecycle: control.onElementLifecycle || control.onLifecycle,
     willRender: control.elementWillRender || control.willRender,
     willUpdate: control.elementWillUpdate || control.willUpdate,
     willUnmount: control.elementWillUnmount || control.willUnmount,
@@ -27,13 +28,15 @@ export function useSubscriber(
     
   const setUpdate = useState(0)[1];
   const cache = useRef<any>(null);
+  let endLifecycle: undefined | (() => void)
 
   const {
     willRender,
     willUpdate,
     willUnmount,
     didMount,
-    willMount
+    willMount,
+    onLifecycle
   } = main 
     ? componentLifecycle(control) 
     : subscriberLifecycle(control)
@@ -88,10 +91,16 @@ export function useSubscriber(
 
     spy[SUBSCRIBE]();
 
+    if(onLifecycle)
+      endLifecycle = onLifecycle.apply(control, args);
+
     if(didMount)
       didMount.apply(control, args);
 
     return () => {
+      if(endLifecycle)
+        endLifecycle()
+
       if(willUnmount)
         willUnmount.apply(control, args);
 

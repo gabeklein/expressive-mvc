@@ -41,6 +41,7 @@ export function useModelController(init: any, ...args: any[]){
 
 export function componentLifecycle(control: ModelController){
   return {
+    onLifecycle: control.onComponentLifecycle || control.onLifecycle,
     willRender: control.componentWillRender || control.willRender,
     willUpdate: control.componentWillUpdate || control.willUpdate,
     willUnmount: control.componentWillUnmount || control.willUnmount,
@@ -57,6 +58,7 @@ export function useOwnController(
   const setUpdate = useState(0)[1];
   const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
+  let endLifecycle: undefined | (() => void)
 
   const p: ModelController = model.prototype || {};
 
@@ -65,7 +67,8 @@ export function useOwnController(
     willUpdate,
     willUnmount,
     didMount,
-    willMount
+    willMount,
+    onLifecycle
   } = componentLifecycle(p);
 
   if(instance === null){
@@ -112,10 +115,16 @@ export function useOwnController(
     
     spyControl[SUBSCRIBE]();
 
+    if(onLifecycle)
+      endLifecycle = onLifecycle.apply(state, args);
+
     if(didMount)
       didMount.apply(state, args);
 
     return () => {
+      if(endLifecycle)
+        endLifecycle()
+
       if(willUnmount)
         willUnmount.apply(state, args);
 
