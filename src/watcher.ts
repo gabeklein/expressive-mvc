@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { applyDispatch, DISPATCH } from './dispatch';
+import { createDispatch, DISPATCH } from './dispatch';
 import { Set } from './polyfill';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 import { ModelController, SpyController } from './types';
@@ -15,7 +15,7 @@ export function useWatcher(control: ModelController){
   let { current } = cache;
   
   if(!current){
-    applyDispatch(control);
+    createDispatch(control);
     current = cache.current = createSubscription(control, setUpdate);
   }
 
@@ -83,8 +83,15 @@ export function useWatchedProperty(
   if(value instanceof Controller){
     const instance = value as ModelController;
 
-    if(!subscription.current){
-      applyDispatch(instance);
+    if(subscription.current){
+      const hookMaintainance = instance[RENEW_CONSUMERS];
+      if(hookMaintainance)
+        hookMaintainance()
+
+      return instance;
+    }
+    else {
+      createDispatch(instance);
       ensureAttachedControllers(instance);
 
       const spy = createSubscription(instance, childDidUpdate);
@@ -95,12 +102,6 @@ export function useWatchedProperty(
 
       subscription.current = spy;
       return spy;
-    }
-    else {
-      if(instance[RENEW_CONSUMERS])
-        instance[RENEW_CONSUMERS]!()
-
-      return instance;
     }
   }
   else

@@ -42,15 +42,12 @@ function gettersFor(prototype: any, ignore?: string[]){
   return getters as BunchOf<Function>
 }
 
-export function applyDispatch(control: ModelController){
+export function createDispatch(control: ModelController){
   if(DISPATCH in control)
     return
-    
-  //TODO: What doesn't qualify as Controller?
 
   const mutable = {} as BunchOf<any>;
   const register = {} as BunchOf<Set<UpdateTrigger>>;
-
   const pending = new Set<string>();
   let isPending = false;
 
@@ -77,7 +74,7 @@ export function applyDispatch(control: ModelController){
   define(control, DISPATCH, { value: register })
 
   for(const key in getters)
-    createComputed(key);
+    createComputed(key, getters[key]);
 
   define(control, "observe", { value: addUpdateListener })
   define(control, "export", { value: exportValues })
@@ -179,9 +176,9 @@ export function applyDispatch(control: ModelController){
     return () => flush.forEach(x => x());
   }
 
-  function createComputed(key: string){
+  function createComputed(key: string, fn: () => any){
     const recompute = () => {
-      const value = getters[key].call(control);
+      const value = fn.call(control);
 
       if(mutable[key] === value)
         return
@@ -199,12 +196,12 @@ export function applyDispatch(control: ModelController){
 
     const spy: SpyController = createSubscription(control, recompute);
 
-    mutable[key] = getters[key].call(spy);
+    mutable[key] = fn.call(spy);
     spy[SUBSCRIBE]();
 
     define(control, key, {
       set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },
-      get: () => getters[key].call(control),
+      get: () => fn.call(control),
       enumerable: true,
       configurable: true
     })
@@ -254,10 +251,10 @@ export function applyDispatch(control: ModelController){
   }
 
   function refresh(){
-    if(isPending)
-        return;
-    isPending = true;
-    setTimeout(dispatch, 0)
+    if(!isPending){
+      isPending = true;
+      setTimeout(dispatch, 0)
+    }
   }
 
   function setTrigger(to: string){
@@ -290,7 +287,7 @@ export function integrateExternalValues(
   this: ModelController,
   external: BunchOf<any>){
 
-  applyDispatch(this);
+  createDispatch(this);
 
   const mutable = this[SOURCE];
   const inner = prototypeOf(this);

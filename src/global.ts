@@ -71,8 +71,8 @@ export function globalController(from: typeof ModelController, mustExist?: boole
 
 export function ensurePeersOnAccess(instance: ModelController){
   for(const [property, placeholder] of entries(instance))
-    if(placeholder instanceof DeferredPeerController)
-      defineInitializer(instance, property, 
-        () => globalController(placeholder.type, true)
-      )
+    if(placeholder instanceof DeferredPeerController){
+      const newSingleton = () => globalController(placeholder.type, true);
+      defineInitializer(instance, property, newSingleton)
+    }
 }

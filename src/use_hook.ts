@@ -1,7 +1,7 @@
 import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { applyDispatch } from './dispatch';
+import { createDispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController } from './types';
@@ -11,7 +11,7 @@ export const RENEW_CONSUMERS = "__renew_consumers__";
 const {
   defineProperty: define,
   getOwnPropertyDescriptor: describe,
-  getPrototypeOf: proto,
+  getPrototypeOf: prototypeOf,
   keys: keysIn
 } = Object;
 
@@ -79,7 +79,7 @@ export function useOwnController(
     else 
       instance = model;
 
-    applyDispatch(instance);
+    createDispatch(instance);
     cache.current = bindMethods(instance, model.prototype);
     
     if(instance instanceof Controller)
@@ -108,7 +108,7 @@ export function useOwnController(
 
   useEffect(() => {
     const spyControl = instance as unknown as SpyController;
-    const state = proto(instance);
+    const state = prototypeOf(instance);
     
     spyControl[SUBSCRIBE]();
 
@@ -134,9 +134,9 @@ export function ensureAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance)
     return;
 
-  const pending = Object.entries(instance).filter(([ k, v ]) => {
-    return v && typeof v == "object" && "Consumer" in v && "Provider" in v
-  })
+  const pending = Object.entries(instance).filter(([ k, v ]) =>
+    v && typeof v == "object" && "Consumer" in v && "Provider" in v
+  )
 
   if(pending.length){
     let multi = useContext(CONTEXT_MULTIPROVIDER);
@@ -172,7 +172,7 @@ function bindMethods(
   while(prototype !== Object.prototype 
      && prototype !== Controller.prototype){
     chain.push(prototype);
-    prototype = proto(prototype);
+    prototype = prototypeOf(prototype);
   }
 
   prototype = {};

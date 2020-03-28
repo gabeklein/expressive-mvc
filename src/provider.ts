@@ -32,14 +32,10 @@ export function createWrappedComponent<T extends typeof ModelController>(
 }
 
 export const MultiProvider = (props: PropsWithChildren<any>) => {
-  let {
-    children,
-    className,
-    style,
-    of: controllers = {}
-  } = props;
+  let { children, className, style, of: controllers = {} } = props;
 
   props = assign({}, props);
+  
   for(const k of ["children", "className", "style", "of"])
     delete props[k];
 

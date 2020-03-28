@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { applyDispatch, DISPATCH, SOURCE } from './dispatch';
+import { createDispatch, DISPATCH, SOURCE } from './dispatch';
 import { dedent, Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
@@ -39,7 +39,7 @@ export function useSubscriber(
     : subscriberLifecycle(control)
 
   if(!cache.current){
-    applyDispatch(control);
+    createDispatch(control);
     
     const spy = createSubscription(control, setUpdate);
 
