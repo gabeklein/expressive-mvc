@@ -44,17 +44,20 @@ export class Map<K, V> extends Array<[K, V]> {
   }
 }
 
-export function define(target: {}, x: {} | string, y?: {}){
-  if(typeof x == "string")
-    defineProperty(target, x, { value: y })
+export function define(target: {}, values: {}): void;
+export function define(target: {}, key: string, value: any): void;
+export function define(target: {}, kv: {} | string, v?: {}){
+  if(typeof kv == "string")
+    defineProperty(target, kv, { value: v })
   else
-    for(const [key, value] of entries(x))
+    for(const [key, value] of entries(kv))
       defineProperty(target, key, { value });
 }
 
 export function dedent(t: TemplateStringsArray, ...v: any[]): string {
   const text = v.reduce((a, v, i) => a + v + t[i + 1], t[0]);
   const starting = /^\n( *)/.exec(text);
+  
   if(starting){
     const indent = new RegExp("\n" + starting[1], "g");
     return text.replace(starting[0], "").replace(indent, "\n").replace(/\s*\n*$/, "")
