@@ -2,13 +2,15 @@ import { FunctionComponentElement, ProviderProps } from 'react';
 
 import { DISPATCH, SOURCE } from './dispatch';
 import { Set } from './util';
-import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
-import { RENEW_CONSUMERS } from './use_hook';
 
 export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>
 export type Class = new(...args: any[]) => any;
 export type UpdateTrigger = (beat: number) => void;
+
+export const UNSUBSCRIBE = "__delete_subscription__";
+export const SUBSCRIBE = "__activate_subscription__";
+export const RENEW_CONSUMERS = "__renew_consumers__";
 
 export interface LiveState<State = any> {
   refresh(): void;

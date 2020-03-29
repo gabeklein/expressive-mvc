@@ -3,11 +3,9 @@ import { Context, MutableRefObject, useContext, useEffect, useRef, useState } fr
 import { Controller } from './controller';
 import { createDispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
-import { Class, ModelController, SpyController } from './types';
+import { createSubscription, useSubscriber } from './subscriber';
+import { Class, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { define } from './util';
-
-export const RENEW_CONSUMERS = "__renew_consumers__";
 
 const {
   defineProperty,

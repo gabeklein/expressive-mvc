@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { createDispatch, DISPATCH, SOURCE } from './dispatch';
-import { ModelController, SpyController, UpdateTrigger } from './types';
-import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
+import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE, UpdateTrigger } from './types';
+import { componentLifecycle, ensureAttachedControllers } from './use_hook';
 import { dedent, define, Set } from './util';
-
-export const UNSUBSCRIBE = "__delete_subscription__";
-export const SUBSCRIBE = "__activate_subscription__";
 
 const { create, defineProperty } = Object;
 

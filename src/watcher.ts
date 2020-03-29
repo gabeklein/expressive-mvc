@@ -3,10 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Controller } from './controller';
 import { createDispatch, DISPATCH } from './dispatch';
 import { Set } from './util';
-import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
-import { ModelController, SpyController } from './types';
-import { ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
-
+import { createSubscription } from './subscriber';
+import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { ensureAttachedControllers } from './use_hook';
 
 export function useWatcher(control: ModelController){
   const setUpdate = useState(0)[1];

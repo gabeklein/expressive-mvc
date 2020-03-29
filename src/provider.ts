@@ -1,8 +1,8 @@
 import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo, FunctionComponent } from 'react';
 
 import { Controller } from './controller';
-import { BunchOf, ModelController } from './types';
-import { useOwnController, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
+import { BunchOf, ModelController, RENEW_CONSUMERS } from './types';
+import { useOwnController, ensureAttachedControllers } from './use_hook';
 import { ownContext } from './context';
 import { SOURCE } from './dispatch';
 
