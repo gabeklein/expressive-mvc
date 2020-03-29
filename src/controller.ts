@@ -13,10 +13,10 @@ import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { defineInitializer } from './util';
+import { defineInitializer, defineValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
-const { defineProperties: define } = Object;
+const { defineProperty } = Object;
 
 export function Controller(this: ModelController){
   if(this.didInit)
@@ -24,33 +24,34 @@ export function Controller(this: ModelController){
 }
 
 const prototype = Controller.prototype = {} as any;
+Controller.global = false;
 
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
-
-define(prototype, {
-  watch: { value: integrateExternalValues },
-  willDestroy: { value: runCallback },
-  sub: { value: useSubscribeToThis },
-  tap: { value: useLiveThis },
-})
 
 defineInitializer(prototype, "Provider", ControlProvider)
 defineInitializer(prototype, "Value", ControlledValue)
 defineInitializer(prototype, "Input", ControlledInput)
 
-define(Controller, {
-  use: { value: useController },
-  sub: { value: subToController },
-  get: { value: getFromController },
-  has: { value: getFromControllerOrFail },
-  tap: { value: tapFromController },
-  hoc: { value: createWrappedComponent },
-  map: { value: makeFromArray },
-  makeGlobal: { value: initGlobalController },
-  context: { value: getContext },
-  Provider: { get: getProvider },
-  global: { value: false, writable: true }
+defineValues(prototype, {
+  watch: integrateExternalValues,
+  willDestroy: runCallback,
+  sub: useSubscribeToThis,
+  tap: useLiveThis,
+})
+
+defineProperty(Controller, "Provider", { get: getProvider });
+
+defineValues(Controller, {
+  use: useController,
+  sub: subToController,
+  get: getFromController,
+  has: getFromControllerOrFail,
+  tap: tapFromController,
+  hoc: createWrappedComponent,
+  map: makeFromArray,
+  makeGlobal: initGlobalController,
+  context: getContext,
 })
 
 function makeFromArray(this: any, from: any[]){

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createDispatch, DISPATCH, SOURCE } from './dispatch';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
-import { dedent, Set } from './util';
+import { dedent, defineValues, Set } from './util';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -133,12 +133,14 @@ export function createSubscription(
       }
     })
 
-  define(Spy, SUBSCRIBE, { value: sub });
-  define(Spy, UNSUBSCRIBE, { value: unSub });
-  define(Spy, "once", { value: () => source });
-  define(Spy, "on", { value: also });
-  define(Spy, "only", { value: bail });
-  define(Spy, "not", { value: except });
+  defineValues(Spy, {
+    [SUBSCRIBE]: sub,
+    [UNSUBSCRIBE]: unSub,
+    once: () => source,
+    on: also,
+    only: bauk,
+    not: except
+  })
 
   return Spy;
 

@@ -1,3 +1,8 @@
+const { 
+  entries,
+  defineProperty
+} = Object;
+
 export class Set<T> extends Array<T> {
   add = (item: T) => {
     if(this.indexOf(item) < 0)
@@ -36,6 +41,11 @@ export class Map<K, V> extends Array<[K, V]> {
     this.push([key, value]);
     return;
   }
+}
+
+export function defineValues(target: {}, values: {}){
+  for(const [key, value] of entries(values))
+    defineProperty(target, key, { value });
 }
 
 export function dedent(t: TemplateStringsArray, ...v: any[]): string {
