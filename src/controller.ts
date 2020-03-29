@@ -13,7 +13,7 @@ import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { defineInitializer, defineValues } from './util';
+import { defineInitializer, define } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 const { defineProperty } = Object;
@@ -33,7 +33,7 @@ defineInitializer(prototype, "Provider", ControlProvider)
 defineInitializer(prototype, "Value", ControlledValue)
 defineInitializer(prototype, "Input", ControlledInput)
 
-defineValues(prototype, {
+define(prototype, {
   watch: integrateExternalValues,
   willDestroy: runCallback,
   sub: useSubscribeToThis,
@@ -42,7 +42,7 @@ defineValues(prototype, {
 
 defineProperty(Controller, "Provider", { get: getProvider });
 
-defineValues(Controller, {
+define(Controller, {
   use: useController,
   sub: subscribeToController,
   get: getFromController,

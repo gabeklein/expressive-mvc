@@ -2,7 +2,7 @@ import { Context, createContext, createElement, PropsWithChildren, ProviderExoti
 
 import { Controller } from './controller';
 import { globalController } from './global';
-import { constructorOf, Map } from './util';
+import { constructorOf, Map, define } from './util';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
@@ -12,7 +12,6 @@ const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
 const { 
   assign,
-  defineProperty: define,
   keys: keysIn,
   create: inheriting
 } = Object;
@@ -56,7 +55,7 @@ export function getFromControllerOrFail(
   const hook = (key: string) =>
     useWatchedProperty(getInstance(), key, true);
 
-  define(this, `has`, { value: hook });
+  define(this, "has", hook);
   return hook(key) as unknown;
 }
 
@@ -69,7 +68,7 @@ export function getFromController(
     ? () => inheriting(getInstance())
     : (key: string) => (getInstance() as any)[key];
 
-  define(this, `get`, { value: hook });
+  define(this, "get", hook);
   return hook(key!) as unknown;
 }
 
@@ -96,7 +95,7 @@ export function subscribeToController(
     return useSubscriber(controller, args, false);
   }
   
-  define(this, `sub`, { value: hook });
+  define(this, "sub", hook);
   return hook.apply(null, args);
 }
 

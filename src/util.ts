@@ -44,9 +44,12 @@ export class Map<K, V> extends Array<[K, V]> {
   }
 }
 
-export function defineValues(target: {}, values: {}){
-  for(const [key, value] of entries(values))
-    defineProperty(target, key, { value });
+export function define(target: {}, x: {} | string, y?: {}){
+  if(typeof x == "string")
+    defineProperty(target, x, { value: y })
+  else
+    for(const [key, value] of entries(x))
+      defineProperty(target, key, { value });
 }
 
 export function dedent(t: TemplateStringsArray, ...v: any[]): string {

@@ -5,11 +5,12 @@ import { createDispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController } from './types';
+import { define } from './util';
 
 export const RENEW_CONSUMERS = "__renew_consumers__";
 
 const {
-  defineProperty: define,
+  defineProperty,
   getOwnPropertyDescriptor: describe,
   getPrototypeOf: prototypeOf,
   keys: keysIn
@@ -159,13 +160,13 @@ export function ensureAttachedControllers(instance: ModelController){
         define(instance, name, useContext(context))
       }
 
-    define(instance, RENEW_CONSUMERS, { 
-      value: () => required.forEach(useContext)
-    })
+    define(instance, RENEW_CONSUMERS, 
+      () => required.forEach(useContext)
+    )
   }
   else 
     //TODO: Why does this need to be configurable?
-    define(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
+    defineProperty(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
 
   if(instance.willUse)
     instance.willUse();
@@ -196,7 +197,7 @@ function bindMethods(
   } 
 
   for(const key in prototype)
-    define(boundLayer, key, {
+    defineProperty(boundLayer, key, {
       value: prototype[key].bind(instance),
       writable: true
     })

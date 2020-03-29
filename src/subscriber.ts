@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { createDispatch, DISPATCH, SOURCE } from './dispatch';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
-import { dedent, defineValues, Set } from './util';
+import { dedent, define, Set } from './util';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
 
-const { create, defineProperty: define } = Object;
+const { create, defineProperty } = Object;
 
 function subscriberLifecycle(control: ModelController){
   return {
@@ -125,7 +125,7 @@ export function createSubscription(
   let exclude: Set<string>;
 
   for(const key in mutable)
-    define(Spy, key, {
+    defineProperty(Spy, key, {
       set: (value: any) => mutable[key] = value,
       get: () => {
         watch.add(key);
@@ -133,7 +133,7 @@ export function createSubscription(
       }
     })
 
-  defineValues(Spy, {
+  define(Spy, {
     [SUBSCRIBE]: subscribe,
     [UNSUBSCRIBE]: unsubscribe,
     once: () => source,
