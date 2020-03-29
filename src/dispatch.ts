@@ -1,7 +1,7 @@
 import { Controller } from './controller';
-import { Set } from './polyfill';
 import { SUBSCRIBE, createSubscription } from './subscriber';
 import { BunchOf, ModelController, SpyController, UpdateTrigger } from './types';
+import { Set } from './util';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
 export type UpdateEventHandler = (value: any, key: string) => void;

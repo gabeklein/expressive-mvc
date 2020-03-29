@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { createDispatch, DISPATCH, SOURCE } from './dispatch';
-import { dedent, Set } from './polyfill';
 import { ModelController, SpyController, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';
+import { dedent, Set } from './util';
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";

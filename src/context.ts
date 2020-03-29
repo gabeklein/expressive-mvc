@@ -2,7 +2,7 @@ import { Context, createContext, createElement, PropsWithChildren, ProviderExoti
 
 import { Controller } from './controller';
 import { globalController } from './global';
-import { constructorOf, Map } from './polyfill';
+import { constructorOf, Map } from './util';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';

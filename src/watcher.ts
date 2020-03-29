@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
 import { createDispatch, DISPATCH } from './dispatch';
-import { Set } from './polyfill';
+import { Set } from './util';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 import { ModelController, SpyController } from './types';
 import { ensureAttachedControllers, RENEW_CONSUMERS } from './use_hook';

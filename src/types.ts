@@ -1,7 +1,7 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
 import { DISPATCH, SOURCE } from './dispatch';
-import { Set } from './polyfill';
+import { Set } from './util';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 import { RENEW_CONSUMERS } from './use_hook';
 

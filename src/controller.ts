@@ -9,11 +9,11 @@ import {
 import { integrateExternalValues } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
-import { defineInitializer } from './polyfill';
 import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
+import { defineInitializer } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 const { defineProperties: define } = Object;

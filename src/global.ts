@@ -1,6 +1,6 @@
 import { ModelController } from './types';
 import { useSubscriber } from './subscriber';
-import { constructorOf, Map, defineInitializer } from './polyfill';
+import { constructorOf, Map, defineInitializer } from './util';
 
 const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
 const { entries } = Object;
