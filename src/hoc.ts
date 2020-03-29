@@ -1,7 +1,7 @@
 import { createElement, FC, forwardRef, useEffect, useState } from 'react';
 
 import { DISPATCH } from './dispatch';
-import { Set } from './polyfill';
+import { Set } from './util';
 import { ModelController, UpdateTrigger } from './types';
 
 const { assign } = Object;
