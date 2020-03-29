@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { createDispatch, DISPATCH } from './dispatch';
-import { Set } from './util';
+import { Dispatch } from './dispatch';
 import { createSubscription } from './subscriber';
 import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { ensureAttachedControllers } from './use_hook';
@@ -14,7 +13,7 @@ export function useWatcher(control: ModelController){
   let { current } = cache;
   
   if(!current){
-    createDispatch(control);
+    Dispatch.applyTo(control);
     current = cache.current = createSubscription(control, setUpdate);
   }
 
@@ -35,8 +34,6 @@ export function useWatchedProperty(
   if(value === undefined && required)
     throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
-  const dispatch = parent[DISPATCH];
-  const watchers = dispatch[key] || (dispatch[key] = new Set());
   const setRefresh = useState(0)[1];
   const subscription = useRef<SpyController | null>(null);
 
@@ -64,13 +61,14 @@ export function useWatchedProperty(
   }
 
   useEffect(() => {
-    watchers.add(parentDidUpdate);
+    const removeListener = 
+      parent.dispatch.addListener(key, parentDidUpdate);
 
     return () => {
       if(subscription.current)
         deallocate(subscription.current)
 
-      watchers.delete(parentDidUpdate)
+      removeListener()
     }
   }, []);
 
@@ -90,7 +88,7 @@ export function useWatchedProperty(
       return instance;
     }
     else {
-      createDispatch(instance);
+      Dispatch.applyTo(instance);
       ensureAttachedControllers(instance);
 
       const spy = createSubscription(instance, childDidUpdate);

@@ -1,10 +1,9 @@
-import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo, FunctionComponent } from 'react';
+import { createContext, createElement, FunctionComponent, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
+import { ownContext } from './context';
 import { Controller } from './controller';
 import { BunchOf, ModelController, RENEW_CONSUMERS } from './types';
-import { useOwnController, ensureAttachedControllers } from './use_hook';
-import { ownContext } from './context';
-import { SOURCE } from './dispatch';
+import { ensureAttachedControllers, useOwnController } from './use_hook';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
@@ -18,7 +17,7 @@ export function createWrappedComponent<T extends typeof ModelController>(
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useOwnController(this).watch(forwardedProps);
-    const unwrapped = assign({}, controller[SOURCE]);
+    const unwrapped = assign({}, controller.dispatch.current);
 
     const useProps: any = {
       ...unwrapped,

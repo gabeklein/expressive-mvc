@@ -1,8 +1,6 @@
 import { createElement, FC, forwardRef, useEffect, useState } from 'react';
 
-import { DISPATCH } from './dispatch';
-import { Set } from './util';
-import { ModelController, UpdateTrigger } from './types';
+import { ModelController } from './types';
 
 const { assign } = Object;
 
@@ -13,22 +11,17 @@ interface AccessorComponentProps {
 export function ControlledValue(
   this: ModelController): FC<AccessorComponentProps> {
     
-  const dispatch = this[DISPATCH];
-
   return (props) => {
     const setUpdate = useState(0)[1];
     const key = props.of;
     props = assign({}, props);
     delete props.of;
 
-
     useEffect(() => {
-      let watchers: Set<UpdateTrigger> = 
-        dispatch[key] || ((<any>dispatch[key]) = new Set());
+      const removeListener = 
+        this.dispatch.addListener(key, setUpdate);
 
-      watchers.add(setUpdate);
-
-      return () => watchers.delete(setUpdate);
+      return removeListener;
     })
 
     return createElement("span", props, (this as any)[key])
@@ -38,7 +31,6 @@ export function ControlledValue(
 export function ControlledInput(
   this: ModelController): FC<AccessorComponentProps> {
     
-  const dispatch = this[DISPATCH];
   const control = this as any;
 
   return forwardRef((props, ref) => {
@@ -49,13 +41,11 @@ export function ControlledInput(
     delete props.of;
 
     useEffect(() => {
-      let watchers: Set<UpdateTrigger> = 
-        dispatch[key] || (dispatch[key] = new Set());
+      const removeListener =
+        this.dispatch.addListener(props.of, setUpdate);
 
-      watchers.add(setUpdate);
-
-      return () => watchers.delete(setUpdate);
-    });
+      return removeListener;
+    })
     
     props = Object.assign(props, {
       ref,

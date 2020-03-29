@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { createDispatch, DISPATCH, SOURCE } from './dispatch';
+import { Dispatch } from './dispatch';
 import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE, UpdateTrigger } from './types';
 import { componentLifecycle, ensureAttachedControllers } from './use_hook';
 import { dedent, define, Set } from './util';
@@ -39,7 +39,7 @@ export function useSubscriber(
     : subscriberLifecycle(control)
 
   if(!cache.current){
-    createDispatch(control);
+    Dispatch.applyTo(control);
     
     const spy = createSubscription(control, setUpdate);
 
@@ -109,24 +109,25 @@ export function useSubscriber(
 }
 
 export function createSubscription(
-  source: ModelController, 
+  source: ModelController,
   hook: UpdateTrigger
 ): SpyController {
 
-  const mutable = source[SOURCE];
-  const register = source[DISPATCH];
-
   const Spy = create(source);
-
-  let watch = new Set<string>();
+  const { dispatch } = source;
+  const { current } = dispatch;
+  const cleanup = new Set<() => void>();
+  const watch = new Set<string>();
   let exclude: Set<string>;
 
-  for(const key in mutable)
+  for(const key in current)
     defineProperty(Spy, key, {
-      set: (value: any) => mutable[key] = value,
+      set: (value: any) => {
+        current[key] = value
+      },
       get: () => {
         watch.add(key);
-        return mutable[key];
+        return current[key];
       }
     })
 
@@ -146,17 +147,15 @@ export function createSubscription(
       for(const k of exclude)
         watch.delete(k);
 
-    for(const key of watch){
-      let set = register[key];
-      if(!set)
-        set = register[key] = new Set();
-      set.add(hook);
-    }
+    for(const key of watch)
+      cleanup.add(
+        dispatch.addListener(key, hook)
+      )
   }
 
   function unsubscribe(){
-    for(const key of watch)
-      register[key].delete(hook);
+    for(const unsub of cleanup)
+      unsub()
   }
 
   function onlySubscribeTo(...keys: string[]){
@@ -167,7 +166,9 @@ export function createSubscription(
         watch.add(key);
 
     for(const key of watch)
-      register[key].add(hook);
+      cleanup.add(
+        dispatch.addListener(key, hook)
+      )
 
     return source;
   }

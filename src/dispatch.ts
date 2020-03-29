@@ -1,232 +1,136 @@
 import { Controller } from './controller';
 import { createSubscription } from './subscriber';
-import { BunchOf, ModelController, SpyController, SUBSCRIBE, UpdateTrigger } from './types';
-import { Set } from './util';
+import { BunchOf, ModelController, SUBSCRIBE, UpdateTrigger } from './types';
+import { define, entriesOf, Set } from './util';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
+
 export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
-export const DISPATCH = "__subscription_dispatch__";
-export const SOURCE = "__subscription_source__";
-
 const { 
-  entries: entriesIn,
-  defineProperty: define,
+  defineProperty,
+  entries,
   getOwnPropertyDescriptor: describe,
-  getOwnPropertyDescriptors: describeAll,
   getOwnPropertyNames: keysOf,
-  getPrototypeOf: prototypeOf
+  getPrototypeOf
 } = Object;
 
 const { random } = Math;
-const isDeadEnd = (x: any) => x === Controller.prototype || x === Object.prototype;
- 
-function gettersWithin(source: any, ignore: string[] = []){
-  const getters = {} as BunchOf<() => any>;
 
-  while(!isDeadEnd(source)) {
-    source = Object.getPrototypeOf(source);
+export class Dispatch {
+  current: BunchOf<any> = {};
+  subscribers: BunchOf<Set<UpdateTrigger>> = {};
+  pendingUpdates = new Set<string>();
+  pendingRefresh = false;
 
-    const descriptors = describeAll(source);
+  constructor(
+    public control: ModelController
+  ){}
 
-    for(const [key, item] of entriesIn(descriptors))
-      if("get" in item && !getters[key] && ignore.indexOf(key) < 0)
-        getters[key] = item.get!
-  };
+  static applyTo(control: ModelController){
+    if("dispatch" in control)
+      return
 
-  return getters;
-}
+    const dispatch = new this(control);
 
-export function createDispatch(control: ModelController){
-  if(DISPATCH in control)
-    return
-
-  const mutable = {} as BunchOf<any>;
-  const register = {} as BunchOf<Set<UpdateTrigger>>;
-  const pending = new Set<string>();
-  let isPending = false;
-
-  for(const key of keysOf(control)){
-    const d = describe(control, key)!;
-
-    if(d.get || d.set || typeof d.value === "function")
-      continue;
-
-    mutable[key] = d.value;
-    register[key] = new Set();
-
-    define(control, key, {
-      get: () => mutable[key],
-      set: setTrigger(key),
-      enumerable: true,
-      configurable: false
+    dispatch.initObservable();
+    define(control, {
+      dispatch,
+      get: control,
+      set: control,
+      observe: dispatch.observe,
+      export: dispatch.export,
+      toggle: dispatch.toggle,
+      refresh: dispatch.refresh
     })
+    dispatch.initComputed();
   }
 
-  const getters = gettersWithin(control, ["Provider", "Input", "Value"]);
+  public addListener(
+    key: string, callback: (beat: number) => void){
 
-  define(control, SOURCE, { value: mutable })
-  define(control, DISPATCH, { value: register })
+    let register = this.subscribers[key];
 
-  for(const key in getters)
-    createComputed(key, getters[key]);
+    if(!register)
+      register = this.subscribers[key] = new Set();
 
-  define(control, "observe", { value: addUpdateListener })
-  define(control, "export", { value: exportValues })
-  define(control, "get", { value: control })
-  define(control, "set", { value: control })
-  define(control, "toggle", { value: toggle })
-  define(control, "refresh", { value: refreshSubscribersOf })
-  define(control, "hold", {
-    get: () => isPending,
-    set: to => isPending = to
-  })
+    register.add(callback);
 
-  /* closured subroutines */
+    return () => register.delete(callback);
+  }
 
-  function exportValues(
-    this: BunchOf<any>,
+  toggle = (key: string) => {
+    this.current[key] = !this.current[key];
+    this.refresh(key)
+  }
+  
+  refresh = (...watching: string[]) => {
+    for(const x of watching)
+      this.pendingUpdates.add(x)
+      
+    this.update();
+  }
+
+  export = (
     subset?: string[] | (() => void), 
     onChange?: (() => void) | boolean,
-    initial?: boolean){
+    initial?: boolean) => {
 
     if(typeof subset == "function"){
       initial = onChange as boolean;
       onChange = subset;
-      subset = Object.keys(mutable).filter(x => !x.match(/^_/));
+      subset = Object
+        .keys(this.current)
+        .filter(x => !x.match(/^_/));
     }
 
     if(typeof onChange == "function")
-      return addValuesObserver(subset!, onChange, initial)
+      return this.watch(subset!, onChange, initial)
     else 
-      return getValues.call(this, subset)
+      return this.get(subset)
   }
 
-  function addUpdateListener(
+  observe = (
     watch: string | string[], 
-    handler: UpdateEventHandler){
+    handler: UpdateEventHandler) => {
 
-    const flush: Function[] = [];
+    const { control, current, subscribers} = this;
+    const cleanup: Function[] = [];
 
     if(typeof watch == "string")
       watch = [watch];
 
     for(const key of watch){
-      const listeners = register[key];
+      const listeners = subscribers[key];
   
       if(!listeners)
         throw new Error(
           `Can't watch property ${key}, it's not tracked on this instance.`
         )
   
-      const trigger = () => handler.call(control, mutable[key], key);
+      const trigger = () => handler.call(control, current[key], key);
   
       listeners.add(trigger);
-      flush.push(() => listeners.delete(trigger))
+      cleanup.push(() => listeners.delete(trigger))
     }
 
-    return () => flush.forEach(x => x());
+    return () => cleanup.forEach(x => x());
   }
-
-  function addValuesObserver(
-    keys: string[], 
-    observer: UpdatesEventHandler,
-    fireInitial?: boolean){
-
-    const flush: Function[] = [];
-    const pending = new Set<string>();
-
-    for(const key of keys){
-      const listeners = register[key];
   
-      if(!listeners)
-        throw new Error(
-          `Can't watch property ${key}, it's not tracked on this instance.`
-        )
-
-      const trigger = () => {
-        if(!pending.length)
-          setTimeout(dispatch, 0)
-        pending.add(key);
-      };
-
-      listeners.add(trigger);
-      flush.push(() => listeners.delete(trigger))
-    }
-
-    function dispatch(){
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = mutable[k];
-
-      observer.call(control, acc, Array.from(pending))
-      
-      pending.clear();
-    }
-
-    if(fireInitial)
-      dispatch()
-
-    return () => flush.forEach(x => x());
-  }
-
-  function createComputed(key: string, fn: () => any){
-    const recompute = () => {
-      const value = fn.call(control);
-
-      if(mutable[key] === value)
-        return
-
-      mutable[key] = value;
-      pending.add(key);
-      for(const sub of register[key] || [])
-        sub(random());
-    }
-
-    register[key] = new Set();
-
-    //TODO: why is this here?
-    recompute.immediate = true;
-
-    const spy: SpyController = createSubscription(control, recompute);
-
-    mutable[key] = fn.call(spy);
-    spy[SUBSCRIBE]();
-
-    define(control, key, {
-      set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },
-      get: () => fn.call(control),
-      enumerable: true,
-      configurable: true
-    })
-  }
-
-  function toggle(key: string){
-    const cast = control as any;
-    return cast[key] = !cast[key]
-  }
-
-  function refreshSubscribersOf(...watching: string[]){
-    for(const x of watching)
-      pending.add(x)
-      
-    refresh();
-  }
-
-  function getValues(this: BunchOf<any>, subset?: string[]){
+  private get(keys?: string[]){
     const acc = {} as BunchOf<any>;
+    const { current } = this;
 
-    if(subset){
-      for(const key of subset){
+    if(keys){
+      for(const key of keys){
         let desc = describe(this, key);
 
         acc[key] = 
           desc && 
           desc.value !== undefined && 
           desc.value || 
-          mutable[key]
+          current[key]
       }
 
       return acc;
@@ -240,66 +144,184 @@ export function createDispatch(control: ModelController){
       if(desc.value !== undefined)
         acc[key] = desc.value;
     }
-    for(const key in mutable)
-      acc[key] = mutable[key]
+    for(const key in current)
+      acc[key] = current[key]
 
     return acc;
   }
 
-  function refresh(){
-    if(!isPending){
-      isPending = true;
-      setTimeout(dispatch, 0)
+  private watch(
+    keys: string[], 
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
+
+    const { subscribers, current, control } = this;
+    const deallocate: Function[] = [];
+    const pending = new Set<string>();
+
+    function callback(){
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = current[k];
+
+      observer.call(control, acc, Array.from(pending))
+      pending.clear();
+    }
+
+    for(const key of keys){
+      const listeners = subscribers[key];
+  
+      if(!listeners)
+        throw new Error(
+          `Can't watch property ${key}, it's not tracked on this instance.`
+        )
+
+      const trigger = () => {
+        if(!pending.length)
+          setTimeout(callback, 0)
+        pending.add(key);
+      };
+
+      listeners.add(trigger);
+      deallocate.push(() => listeners.delete(trigger))
+    }
+
+    if(fireInitial)
+      callback()
+
+    return () => deallocate.forEach(x => x());
+  }
+
+  private update(){
+    if(this.pendingRefresh)
+      return;
+    else
+      this.pendingRefresh = true;
+
+    setTimeout(() => {
+      const needsRefresh = new Set<UpdateTrigger>();
+      const { pendingUpdates, subscribers } = this;
+
+      for(const key of pendingUpdates)
+        for(const sub of subscribers[key] || [])
+          needsRefresh.add(sub);
+
+      for(const refresh of needsRefresh)
+        refresh(random());
+
+      pendingUpdates.clear();
+      this.pendingRefresh = false;
+    }, 0)
+  }
+
+  private initObservable(){
+    const { 
+      current, 
+      control, 
+      subscribers, 
+      pendingUpdates 
+    } = this;
+
+    for(const [key, desc] of entriesOf(control)){
+      if("value" in desc === false)
+        continue;
+
+      if(typeof desc.value === "function")
+        continue;
+
+      current[key] = desc.value;
+      subscribers[key] = new Set();
+
+      defineProperty(control, key, {
+        enumerable: true,
+        configurable: false,
+        get: () => this.current[key],
+        set: (value: any) => {
+          if(current[key] === value) 
+            return;
+            
+          current[key] = value;
+          pendingUpdates.add(key);
+    
+          this.update();
+        }
+      })
     }
   }
 
-  function setTrigger(to: string){
-    return (value: any) => {
-      if(mutable[to] === value) 
-          return;
-        
-      mutable[to] = value;
-      pending.add(to);
+  private initComputed(){
+    const { current, subscribers, control } = this;
+    const getters = collectGetters(control, ["Provider", "Input", "Value"]);
 
-      refresh();
+    for(const [key, fn] of entries(getters)){
+      subscribers[key] = new Set();
+  
+      const onValueDidChange = () => {
+        const value = fn.call(control);
+  
+        if(current[key] === value)
+          return
+  
+        current[key] = value;
+        this.pendingUpdates.add(key);
+
+        for(const sub of subscribers[key] || [])
+          sub(random());
+      }
+
+      const spy = createSubscription(control, onValueDidChange);
+  
+      current[key] = fn.call(spy);
+      spy[SUBSCRIBE]();
+  
+      defineProperty(control, key, {
+        set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },
+        get: () => fn.call(control),
+        enumerable: true,
+        configurable: true
+      })
     }
-  }
-
-  function dispatch(){
-    const inform = new Set<UpdateTrigger>();
-    for(const key of pending)
-      for(const sub of register[key] || [])
-        inform.add(sub);
-
-    for(const refresh of inform)
-      refresh(random());
-
-    pending.clear();
-    isPending = false;
   }
 }
 
+function collectGetters(
+  source: any, ignore: string[] = []){
+
+  const getters = {} as BunchOf<() => any>;
+
+  do {
+    source = getPrototypeOf(source);
+    for(const [key, item] of entriesOf(source))
+      if("get" in item && !getters[key] && ignore.indexOf(key) < 0)
+        getters[key] = item.get!
+  }
+  while(source.constructor !== Controller 
+     && source.constructor !== Object);
+
+  return getters;
+}
+
 export function integrateExternalValues(
-  this: ModelController,
-  external: BunchOf<any>){
+  this: ModelController, external: BunchOf<any>){
 
-  createDispatch(this);
+  Dispatch.applyTo(this);
 
-  const mutable = this[SOURCE];
-  const inner = prototypeOf(this);
+  const { current } = this.dispatch;
+  const inner = getPrototypeOf(this);
 
   for(const key of keysOf(external)){
-    mutable[key] = external[key];
-    define(inner, key, {
+    current[key] = external[key];
+    defineProperty(inner, key, {
       enumerable: true,
-      get: () => mutable[key],
+      get: () => current[key],
       set: () => {
         throw new Error(`Cannot modify external prop '${key}'!`)
       }
     })
   }
 
-  define(inner, "watch", { value: updateExternalValues })
+  define(inner, "watch", updateExternalValues);
 
   return this;
 }
@@ -308,15 +330,14 @@ function updateExternalValues(
   this: ModelController,
   external: BunchOf<any>){
 
-  const mutable = this[SOURCE];
+  const { current } = this.dispatch;
   let updated = [];
 
-  for(const key of keysOf(external)){
-    if(external[key] == mutable[key])
-      continue;
-    mutable[key] = external[key];
-    updated.push(key);
-  }
+  for(const key of keysOf(external))
+    if(external[key] !== current[key]){
+      current[key] = external[key];
+      updated.push(key);
+    }
 
   if(updated.length)
     this.refresh(updated);

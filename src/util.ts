@@ -1,6 +1,7 @@
 const { 
   entries,
   defineProperty,
+  getOwnPropertyDescriptors,
   getPrototypeOf
 } = Object;
 
@@ -87,4 +88,8 @@ export function defineInitializer(
       return value;
     }
   });
+}
+
+export function entriesOf(obj: {}){
+  return entries(getOwnPropertyDescriptors(obj));
 }

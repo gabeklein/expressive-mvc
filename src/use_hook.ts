@@ -1,7 +1,7 @@
 import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
 
 import { Controller } from './controller';
-import { createDispatch } from './dispatch';
+import { Dispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { createSubscription, useSubscriber } from './subscriber';
 import { Class, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
@@ -81,7 +81,7 @@ export function useOwnController(
     else 
       instance = model;
 
-    createDispatch(instance);
+    Dispatch.applyTo(instance);
     cache.current = bindMethods(instance, model.prototype);
     
     if(instance instanceof Controller)

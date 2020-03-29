@@ -1,7 +1,6 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
-import { DISPATCH, SOURCE } from './dispatch';
-import { Set } from './util';
+import { Dispatch } from './dispatch';
 
 export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>
@@ -27,6 +26,7 @@ export declare class ModelController {
   static global: boolean;
 
   local: BunchOf<any>;
+  dispatch: Dispatch;
 
   toggle(key: string): boolean;
 
@@ -66,8 +66,6 @@ export declare class ModelController {
   watch(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
   
-  [SOURCE]: BunchOf<any>;
-  [DISPATCH]: BunchOf<Set<UpdateTrigger>>;
   [RENEW_CONSUMERS]?: () => void;
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
