@@ -1,6 +1,7 @@
 const { 
   entries,
-  defineProperty
+  defineProperty,
+  getPrototypeOf
 } = Object;
 
 export class Set<T> extends Array<T> {
@@ -63,7 +64,7 @@ export function constructorOf(obj: any){
     return obj.prototype.constructor;
 
   while(obj){
-    obj = Object.getPrototypeOf(obj);
+    obj = getPrototypeOf(obj);
     if(obj.constructor)
       return obj.constructor;
   }

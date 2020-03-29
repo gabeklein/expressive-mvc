@@ -74,10 +74,10 @@ export function useSubscriber(
         `)
     }
 
-    const consumers = control[RENEW_CONSUMERS];
+    const hookMaintenance = control[RENEW_CONSUMERS];
 
-    if(consumers)
-      consumers()
+    if(hookMaintenance)
+      hookMaintenance()
 
     if(willUpdate)
       willUpdate.apply(control, args);
@@ -134,17 +134,17 @@ export function createSubscription(
     })
 
   defineValues(Spy, {
-    [SUBSCRIBE]: sub,
-    [UNSUBSCRIBE]: unSub,
+    [SUBSCRIBE]: subscribe,
+    [UNSUBSCRIBE]: unsubscribe,
     once: () => source,
-    on: also,
-    only: bauk,
-    not: except
+    on: alsoWatchValues,
+    only: onlySubscribeTo,
+    not: dontWatchValues
   })
 
   return Spy;
 
-  function sub(){
+  function subscribe(){
     if(exclude)
       for(const k of exclude)
         watch.delete(k);
@@ -157,12 +157,12 @@ export function createSubscription(
     }
   }
 
-  function unSub(){
+  function unsubscribe(){
     for(const key of watch)
       register[key].delete(hook);
   }
 
-  function bail(...keys: string[]){
+  function onlySubscribeTo(...keys: string[]){
     const watch = new Set<string>();
 
     for(let arg of keys)
@@ -175,7 +175,7 @@ export function createSubscription(
     return source;
   }
 
-  function except(...keys: string[]){
+  function dontWatchValues(...keys: string[]){
     exclude = new Set<string>();
 
     for(let arg of keys)
@@ -185,7 +185,7 @@ export function createSubscription(
     return Spy;
   }
 
-  function also(...keys: string[]){
+  function alsoWatchValues(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);

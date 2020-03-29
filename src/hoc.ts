@@ -1,4 +1,4 @@
-import { createElement, FC, useEffect, useState, forwardRef } from 'react';
+import { createElement, FC, forwardRef, useEffect, useState } from 'react';
 
 import { DISPATCH } from './dispatch';
 import { Set } from './polyfill';

@@ -6,11 +6,8 @@ import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 import { RENEW_CONSUMERS } from './use_hook';
 
 export type BunchOf<T> = { [key: string]: T }
-
 export type State = LiveState & BunchOf<any>
-
 export type Class = new(...args: any[]) => any;
-
 export type UpdateTrigger = (beat: number) => void;
 
 export interface LiveState<State = any> {
@@ -25,7 +22,6 @@ export interface SpyController extends ModelController {
 }
 
 export declare class ModelController { 
-
   static global: boolean;
 
   local: BunchOf<any>;

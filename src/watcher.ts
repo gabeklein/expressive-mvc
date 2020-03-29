@@ -29,12 +29,12 @@ export function useWatcher(control: ModelController){
 }
 
 export function useWatchedProperty(
-  parent: any, key: string, required?: boolean){
+  parent: ModelController, key: string, required?: boolean){
 
-  const value = parent[key];
+  const value = (parent as any)[key];
 
   if(value === undefined && required)
-    throw new Error(`${parent.name}.${key} must be defined this render.`)
+    throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
   const dispatch = parent[DISPATCH];
   const watchers = dispatch[key] || (dispatch[key] = new Set());
@@ -84,9 +84,9 @@ export function useWatchedProperty(
     const instance = value as ModelController;
 
     if(subscription.current){
-      const hookMaintainance = instance[RENEW_CONSUMERS];
-      if(hookMaintainance)
-        hookMaintainance()
+      const hookMaintenance = instance[RENEW_CONSUMERS];
+      if(hookMaintenance)
+        hookMaintenance()
 
       return instance;
     }

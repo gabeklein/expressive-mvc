@@ -3,7 +3,7 @@ import {
   getFromController,
   getFromControllerOrFail,
   ownContext,
-  subToController,
+  subscribeToController,
   tapFromController,
 } from './context';
 import { integrateExternalValues } from './dispatch';
@@ -44,7 +44,7 @@ defineProperty(Controller, "Provider", { get: getProvider });
 
 defineValues(Controller, {
   use: useController,
-  sub: subToController,
+  sub: subscribeToController,
   get: getFromController,
   has: getFromControllerOrFail,
   tap: tapFromController,
@@ -55,43 +55,42 @@ defineValues(Controller, {
 })
 
 function makeFromArray(this: any, from: any[]){
-  return from.map((item, index) => new this(item, index))
+  return from.map((item, index) => new this(item, index));
 }
 
 function returnThis(this: any){ 
-  return this
+  return this;
 }
 
 function runCallback(cb?: () => void){
-  if(cb) cb()
+  if(cb) cb();
 }
 
 function getContext(this: typeof ModelController){ 
   if(this.global)
     throw controllerIsGlobalError(this.name)
-
-  return ownContext(this)
+  else
+    return ownContext(this)
 }
 
 function getProvider(this: typeof ModelController){
   if(this.global)
     throw controllerIsGlobalError(this.name)
-    
-  return useOwnController(this).Provider
+  else 
+    return useOwnController(this).Provider
 }
 
 function useController(
   this: typeof ModelController, ...args: any[]){
 
-  if(this.global)
-    return useGlobalController(this, args)
-  else 
-    return useOwnController(this, args) 
+  return this.global
+    ? useGlobalController(this, args)
+    : useOwnController(this, args); 
 }
 
 function useSubscribeToThis(
   this: ModelController, ...args: any[]){
-    
+
   return useSubscriber(this, args, true) 
 }
 

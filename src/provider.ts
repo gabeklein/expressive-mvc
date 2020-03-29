@@ -8,7 +8,7 @@ import { SOURCE } from './dispatch';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
-const { create, getPrototypeOf: proto, assign } = Object;
+const { assign, create, getPrototypeOf: proto } = Object;
 
 export function createWrappedComponent<T extends typeof ModelController>(
   this: T,

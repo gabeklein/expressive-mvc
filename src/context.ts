@@ -86,7 +86,7 @@ export function tapFromController(
     return useWatcher(getInstance())
 }
 
-export function subToController(
+export function subscribeToController(
   this: typeof ModelController, 
   ...args: any[]){
 
