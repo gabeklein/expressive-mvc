@@ -90,7 +90,7 @@ export class Dispatch {
     else 
       return this.get(subset)
   }
-
+  
   observe = (
     watch: string | string[], 
     handler: UpdateEventHandler) => {

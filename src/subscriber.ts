@@ -34,9 +34,9 @@ export function useSubscriber(
     didMount,
     willMount,
     onLifecycle
-  } = main 
-    ? componentLifecycle(control) 
-    : subscriberLifecycle(control)
+  } = main ? 
+    componentLifecycle(control) : 
+    subscriberLifecycle(control)
 
   if(!cache.current){
     Dispatch.applyTo(control);
@@ -131,9 +131,9 @@ export function createSubscription(
       }
     })
 
+  define(Spy, SUBSCRIBE, subscribe);
+  define(Spy, UNSUBSCRIBE, unsubscribe);
   define(Spy, {
-    [SUBSCRIBE]: subscribe,
-    [UNSUBSCRIBE]: unsubscribe,
     once: () => source,
     on: alsoWatchValues,
     only: onlySubscribeTo,

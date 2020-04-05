@@ -27,7 +27,7 @@ const prototype = Controller.prototype = {} as any;
 Controller.global = false;
 
 for(const f of ["on", "not", "only", "once"])
-  prototype[f] = returnThis;
+  prototype[f] = function(){ return this };
 
 defineOnAccess(prototype, "Provider", ControlProvider)
 defineOnAccess(prototype, "Value", ControlledValue)
@@ -56,10 +56,6 @@ define(Controller, {
 
 function makeFromArray(this: any, from: any[]){
   return from.map((item, index) => new this(item, index));
-}
-
-function returnThis(this: any){ 
-  return this;
 }
 
 function runCallback(cb?: () => void){

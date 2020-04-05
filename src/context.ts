@@ -10,21 +10,16 @@ import { useWatchedProperty, useWatcher } from './watcher';
 
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
 
-const { 
-  assign,
-  keys: keysIn,
-  create: inheriting
-} = Object;
+const { assign, keys: keysIn, create: inheriting } = Object;
 
 export function retrieveController(
   from: ModelController | typeof ModelController,
   ...args: any[]){
 
-  if(from instanceof Controller)
-    return useSubscriber(from as ModelController, args, false)
-
-  return globalController(from as typeof ModelController, false) 
-      || ownContext(from as typeof ModelController);
+  return from instanceof Controller ?
+    useSubscriber(from as ModelController, args, false) :
+    globalController(from as typeof ModelController, false) ||
+    ownContext(from as typeof ModelController);
 }
 
 export function ownContext(from: typeof ModelController){
@@ -79,10 +74,10 @@ export function tapFromController(
 
   const getInstance = getterFor(this);
   //TODO: Implement better caching here
-  if(key)
-    return useWatchedProperty(getInstance(), key, main)
-  else
-    return useWatcher(getInstance())
+
+  return key ?
+    useWatchedProperty(getInstance(), key, main) :
+    useWatcher(getInstance());
 }
 
 export function subscribeToController(
