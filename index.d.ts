@@ -20,7 +20,7 @@ declare function use<I> (init: I): Controller & I;
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
 
-interface Subscriber<T> {
+export interface Subscriber<T> {
     on(...properties: string[]): Subscriber<T> | T;
     not(...properties: string[]): Subscriber<T> | T;
     only(...properties: string[]): T;
