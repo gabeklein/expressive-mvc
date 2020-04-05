@@ -13,7 +13,7 @@ import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { defineInitializer, define } from './util';
+import { defineOnAccess, define } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 const { defineProperty } = Object;
@@ -29,9 +29,9 @@ Controller.global = false;
 for(const f of ["on", "not", "only", "once"])
   prototype[f] = returnThis;
 
-defineInitializer(prototype, "Provider", ControlProvider)
-defineInitializer(prototype, "Value", ControlledValue)
-defineInitializer(prototype, "Input", ControlledInput)
+defineOnAccess(prototype, "Provider", ControlProvider)
+defineOnAccess(prototype, "Value", ControlledValue)
+defineOnAccess(prototype, "Input", ControlledInput)
 
 define(prototype, {
   watch: integrateExternalValues,

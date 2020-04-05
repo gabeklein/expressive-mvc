@@ -77,7 +77,7 @@ export function constructorOf(obj: any){
   }
 }
 
-export function defineInitializer(
+export function defineOnAccess(
   object: any, property: string, init: () => any){
 
   Object.defineProperty(object, property, { 

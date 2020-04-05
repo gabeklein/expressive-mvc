@@ -1,6 +1,6 @@
 import { ModelController } from './types';
 import { useSubscriber } from './subscriber';
-import { constructorOf, Map, defineInitializer } from './util';
+import { constructorOf, Map, defineOnAccess } from './util';
 
 const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
 const { entries } = Object;
@@ -73,6 +73,6 @@ export function ensurePeersOnAccess(instance: ModelController){
   for(const [property, placeholder] of entries(instance))
     if(placeholder instanceof DeferredPeerController){
       const newSingleton = () => globalController(placeholder.type, true);
-      defineInitializer(instance, property, newSingleton)
+      defineOnAccess(instance, property, newSingleton)
     }
 }
