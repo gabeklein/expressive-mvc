@@ -43,7 +43,10 @@ declare class Controller {
     add(key: string, initial?: any, bootup?: true): boolean;
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
     
-    observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
+    onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
+    onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
+
+    observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 
     export(): { [P in keyof this]: this[P] };
     export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): () => void;

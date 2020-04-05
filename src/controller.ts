@@ -34,6 +34,7 @@ defineOnAccess(prototype, "Value", ControlledValue)
 defineOnAccess(prototype, "Input", ControlledInput)
 
 define(prototype, {
+  onChange: handleOnChange,
   watch: integrateExternalValues,
   willDestroy: runCallback,
   sub: useSubscribeToThis,
@@ -79,9 +80,9 @@ function getProvider(this: typeof ModelController){
 function useController(
   this: typeof ModelController, ...args: any[]){
 
-  return this.global
-    ? useGlobalController(this, args)
-    : useOwnController(this, args); 
+  return this.global ? 
+    useGlobalController(this, args) : 
+    useOwnController(this, args); 
 }
 
 function useSubscribeToThis(
@@ -90,10 +91,24 @@ function useSubscribeToThis(
   return useSubscriber(this, args, true) 
 }
 
+function handleOnChange(
+  this: ModelController, 
+  key: string | string[], 
+  listener?: (changed: string[]) => void){
+
+  if(listener)
+    this.observe(key as any, listener, true);
+  else {
+    return new Promise(resolve => {
+      this.observe(key as any, resolve, true);
+    })
+  }
+}
+
 function useLiveThis(
   this: ModelController, key?: string, main?: boolean){
 
-  return key 
-    ? useWatchedProperty(this, key, main) 
-    : useWatcher(this);
+  return key ? 
+    useWatchedProperty(this, key, main) : 
+    useWatcher(this);
 }

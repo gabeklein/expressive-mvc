@@ -6,6 +6,8 @@ export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>
 export type Class = new(...args: any[]) => any;
 export type UpdateTrigger = (beat: number) => void;
+export type HandleUpdatedValue<T extends object, P extends keyof T> = 
+  (this: T, value: T[P], changed: P) => void
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -57,6 +59,8 @@ export declare class ModelController {
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
   onComponentLifecycle(...args: any[]): () => void;
+
+  observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 
   not(...args: string[]): this;
   on(...args: string[]): this;

@@ -93,10 +93,12 @@ export class Dispatch {
   
   observe = (
     watch: string | string[], 
-    handler: UpdateEventHandler) => {
+    handler: UpdateEventHandler,
+    once?: boolean) => {
 
     const { control, current, subscribers} = this;
     const cleanup: Function[] = [];
+    const unwatch = () => cleanup.forEach(x => x());
 
     if(typeof watch == "string")
       watch = [watch];
@@ -109,13 +111,16 @@ export class Dispatch {
           `Can't watch property ${key}, it's not tracked on this instance.`
         )
   
-      const trigger = () => handler.call(control, current[key], key);
+      const trigger = () => { 
+        if(once) unwatch();
+        handler.call(control, current[key], key) 
+      };
   
       listeners.add(trigger);
       cleanup.push(() => listeners.delete(trigger))
     }
 
-    return () => cleanup.forEach(x => x());
+    return unwatch;
   }
   
   private get(keys?: string[]){

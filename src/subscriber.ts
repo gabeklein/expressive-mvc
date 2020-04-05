@@ -123,7 +123,8 @@ export function createSubscription(
   for(const key in current)
     defineProperty(Spy, key, {
       set: (value: any) => {
-        current[key] = value
+        current[key] = value;
+        dispatch.refresh(key);
       },
       get: () => {
         watch.add(key);
