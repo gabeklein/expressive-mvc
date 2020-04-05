@@ -4,12 +4,8 @@ import { ModelController } from './types';
 
 const { assign } = Object;
 
-interface AccessorComponentProps {
-  of: string;
-}
-
 export function ControlledValue(
-  this: ModelController): FC<AccessorComponentProps> {
+  this: ModelController): FC<{ of: string }> {
     
   return (props) => {
     const setUpdate = useState(0)[1];
@@ -29,20 +25,20 @@ export function ControlledValue(
 }
 
 export function ControlledInput(
-  this: ModelController): FC<AccessorComponentProps> {
+  this: ModelController): FC<{ to: string }> {
     
   const control = this as any;
 
   return forwardRef((props, ref) => {
     const setUpdate = useState(0)[1];
 
-    const key = props.of;
+    const key = props.to;
     props = assign({}, props);
-    delete props.of;
+    delete props.to;
 
     useEffect(() => {
       const removeListener =
-        this.dispatch.addListener(props.of, setUpdate);
+        control.dispatch.addListener(key, setUpdate);
 
       return removeListener;
     })
