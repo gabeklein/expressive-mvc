@@ -133,7 +133,7 @@ function ParentProviderFor(
       delete props[k];
 
     if(keysIn(props).length)
-      controller.watch(props);
+      controller.apply(props);
 
     if(className || style)
       children = createElement("div", { className, style }, children);

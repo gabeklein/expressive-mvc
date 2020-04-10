@@ -6,7 +6,7 @@ import {
   subscribeToController,
   tapFromController,
 } from './context';
-import { integrateExternalValues } from './dispatch';
+import { integrateExternal } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
@@ -39,7 +39,7 @@ export function bootstrapController(fn: any){
   define(prototype, {
     constructor: fn,
     onChange: handleOnChange,
-    watch: integrateExternalValues,
+    apply: integrateExternal,
     willDestroy: runCallback,
     sub: useSubscribeToThis,
     tap: useLiveThis,

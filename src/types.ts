@@ -67,7 +67,7 @@ export declare class ModelController {
   once(): this;
   only(...args: string[]): this;
 
-  watch(props: BunchOf<any>): this;
+  apply(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
   
   [RENEW_CONSUMERS]?: () => void;

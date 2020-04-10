@@ -307,7 +307,7 @@ function collectGetters(
   return getters;
 }
 
-export function integrateExternalValues(
+export function integrateExternal(
   this: ModelController, external: BunchOf<any>){
 
   Dispatch.applyTo(this);
