@@ -108,6 +108,7 @@ export function useSubscriber(
   return control;
 }
 
+//TODO: Turn this into a class like Dispatch
 export function createSubscription(
   source: ModelController,
   hook: UpdateTrigger
