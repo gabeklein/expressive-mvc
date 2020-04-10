@@ -43,7 +43,7 @@ export declare class ModelController {
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
   isReady?(): void;
-  onLifecycle(...args: any[]): () => void;
+  willExist(...args: any[]): () => void;
 
   elementDidFocus?(parent: ModelController, as: string): void;
   elementDidMount?(...args: any[]): void;
@@ -52,14 +52,14 @@ export declare class ModelController {
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
-  onElementLifecycle(...args: any[]): () => void;
+  elementWillExist(...args: any[]): () => void;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
-  onComponentLifecycle(...args: any[]): () => void;
+  componentWillExist(...args: any[]): () => void;
 
   observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 

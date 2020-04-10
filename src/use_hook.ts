@@ -40,7 +40,7 @@ export function useModelController(init: any, ...args: any[]){
 
 export function componentLifecycle(control: ModelController){
   return {
-    onLifecycle: control.onComponentLifecycle || control.onLifecycle,
+    willExist: control.componentWillExist || control.willExist,
     willRender: control.componentWillRender || control.willRender,
     willUpdate: control.componentWillUpdate || control.willUpdate,
     willUnmount: control.componentWillUnmount || control.willUnmount,
@@ -67,7 +67,7 @@ export function useOwnController(
     willUnmount,
     didMount,
     willMount,
-    onLifecycle
+    willExist
   } = componentLifecycle(p);
 
   if(instance === null){
@@ -114,8 +114,8 @@ export function useOwnController(
     
     spyControl[SUBSCRIBE]();
 
-    if(onLifecycle)
-      endLifecycle = onLifecycle.apply(state, args);
+    if(willExist)
+      endLifecycle = willExist.apply(state, args);
 
     if(didMount)
       didMount.apply(state, args);

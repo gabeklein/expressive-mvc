@@ -9,7 +9,7 @@ const { create, defineProperty } = Object;
 
 function subscriberLifecycle(control: ModelController){
   return {
-    onLifecycle: control.onElementLifecycle || control.onLifecycle,
+    willExist: control.elementWillExist || control.willExist,
     willRender: control.elementWillRender || control.willRender,
     willUpdate: control.elementWillUpdate || control.willUpdate,
     willUnmount: control.elementWillUnmount || control.willUnmount,
@@ -33,7 +33,7 @@ export function useSubscriber(
     willUnmount,
     didMount,
     willMount,
-    onLifecycle
+    willExist
   } = main ? 
     componentLifecycle(control) : 
     subscriberLifecycle(control)
@@ -88,8 +88,8 @@ export function useSubscriber(
 
     spy[SUBSCRIBE]();
 
-    if(onLifecycle)
-      endLifecycle = onLifecycle.apply(control, args);
+    if(willExist)
+      endLifecycle = willExist.apply(control, args);
 
     if(didMount)
       didMount.apply(control, args);

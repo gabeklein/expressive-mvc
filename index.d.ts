@@ -64,7 +64,7 @@ declare class Controller {
     willUnmount?(...args: any[]): void;
     didFocus?(parent: Controller, as: string): void;
     willLoseFocus?(parent: Controller, as: string): void;
-    onLifecycle(...args: any[]): void | (() => void);
+    willExist(...args: any[]): void | (() => void);
 
     elementWillRender?(...args: any[]): void;
     elementWillMount?(...args: any[]): void;
@@ -73,14 +73,14 @@ declare class Controller {
     elementWillUnmount?(...args: any[]): void;
     elementDidFocus?(parent: Controller, as: string): void;
     elementWillLoseFocus?(parent: Controller, as: string): void;
-    onElementLifecycle(...args: any[]): void | (() => void);
+    elementWillExist(...args: any[]): void | (() => void);
 
     componentWillRender?(...args: any[]): void;
     componentWillMount?(...args: any[]): void;
     componentWillUpdate?(...args: any[]): void;
     componentDidMount?(...args: any[]): void;
     componentWillUnmount?(...args: any[]): void;
-    onComponentLifecycle(...args: any[]): void | (() => void);
+    componentWillExist(...args: any[]): void | (() => void);
 
     on(): this;
     once(): this
