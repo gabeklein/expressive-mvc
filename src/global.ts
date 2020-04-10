@@ -1,6 +1,7 @@
 import { ModelController } from './types';
 import { useSubscriber } from './subscriber';
 import { constructorOf, Map, defineOnAccess } from './util';
+import { Controller, bootstrapController } from './controller';
 
 const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
 const { entries } = Object;
@@ -12,6 +13,13 @@ const globalNotFoundError = (name: string) => new Error(
 export const controllerIsGlobalError = (name: string) => new Error(
   `Controller ${name} is tagged as global. Context API does not apply.`
 )
+
+export function Singleton(this: ModelController){
+  Controller.apply(this);
+}
+
+bootstrapController(Singleton);
+Singleton.global = true;
 
 export function useGlobalController(
   type: typeof ModelController,

@@ -131,6 +131,7 @@ export {
     use,
     get,
     Controller,
+    Controller as Singleton,
     Controller as default,
     MultiProvider as Provider
 }
