@@ -16,44 +16,49 @@ import { useOwnController } from './use_hook';
 import { defineOnAccess, define } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
-const { defineProperty } = Object;
-
 export function Controller(this: ModelController){
   if(this.didInit)
     setImmediate(() => this.didInit!())
 }
 
-const prototype = Controller.prototype = {} as any;
-Controller.global = false;
+bootstrapController(Controller);
 
-for(const f of ["on", "not", "only", "once"])
-  prototype[f] = function(){ return this };
+export function bootstrapController(fn: any){
+  const noop = function(this: any){ return this };
 
-defineOnAccess(prototype, "Provider", ControlProvider)
-defineOnAccess(prototype, "Value", ControlledValue)
-defineOnAccess(prototype, "Input", ControlledInput)
+  const prototype = Controller.prototype = {} as any;
+  fn.global = false;
 
-define(prototype, {
-  onChange: handleOnChange,
-  watch: integrateExternalValues,
-  willDestroy: runCallback,
-  sub: useSubscribeToThis,
-  tap: useLiveThis,
-})
+  for(const f of ["on", "not", "only", "once"])
+    prototype[f] = noop;
 
-defineProperty(Controller, "Provider", { get: getProvider });
+  defineOnAccess(prototype, "Provider", ControlProvider)
+  defineOnAccess(prototype, "Value", ControlledValue)
+  defineOnAccess(prototype, "Input", ControlledInput)
 
-define(Controller, {
-  use: useController,
-  sub: subscribeToController,
-  get: getFromController,
-  has: getFromControllerOrFail,
-  tap: tapFromController,
-  hoc: createWrappedComponent,
-  map: makeFromArray,
-  makeGlobal: initGlobalController,
-  context: getContext,
-})
+  define(prototype, {
+    constructor: fn,
+    onChange: handleOnChange,
+    watch: integrateExternalValues,
+    willDestroy: runCallback,
+    sub: useSubscribeToThis,
+    tap: useLiveThis,
+  })
+
+  Object.defineProperty(fn, "Provider", { get: getProvider })
+
+  define(fn, {
+    use: useController,
+    sub: subscribeToController,
+    get: getFromController,
+    has: getFromControllerOrFail,
+    tap: tapFromController,
+    hoc: createWrappedComponent,
+    map: makeFromArray,
+    makeGlobal: initGlobalController,
+    context: getContext,
+  })
+}
 
 function makeFromArray(this: any, from: any[]){
   return from.map((item, index) => new this(item, index));
