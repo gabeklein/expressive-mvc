@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { createSubscription } from './subscriber';
 import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
-import { ensureAttachedControllers } from './use_hook';
+import { initializeController } from './use_hook';
 
 export function useWatcher(control: ModelController){
   const setUpdate = useState(0)[1];
@@ -89,7 +89,7 @@ export function useWatchedProperty(
     }
     else {
       Dispatch.applyTo(instance);
-      ensureAttachedControllers(instance);
+      initializeController(instance);
 
       const spy = createSubscription(instance, childDidUpdate);
       const didFocus = instance.elementDidFocus || instance.didFocus;

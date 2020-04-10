@@ -138,7 +138,13 @@ export function useOwnController(
   return instance;
 }
 
-export function ensureAttachedControllers(instance: ModelController){
+export function initializeController(instance: ModelController){
+  ensureAttachedControllers(instance);
+
+  if(instance.isReady)
+    instance.isReady();
+}
+function ensureAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance)
     return;
 
@@ -165,9 +171,6 @@ export function ensureAttachedControllers(instance: ModelController){
   else 
     //TODO: Why does this need to be configurable?
     defineProperty(instance, RENEW_CONSUMERS, { value: undefined, configurable: true })
-
-  if(instance.willUse)
-    instance.willUse();
 }
 
 function bindMethods(

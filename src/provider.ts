@@ -3,7 +3,7 @@ import { createContext, createElement, FunctionComponent, PropsWithChildren, use
 import { ownContext } from './context';
 import { Controller } from './controller';
 import { BunchOf, ModelController, RENEW_CONSUMERS } from './types';
-import { ensureAttachedControllers, useOwnController } from './use_hook';
+import { initializeController, useOwnController } from './use_hook';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
@@ -60,7 +60,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   for(const key in provide){
     const mc: any = provide[key];
     if(initial)
-      ensureAttachedControllers(mc)
+      initializeController(mc)
     else if(RENEW_CONSUMERS in mc)
       mc[RENEW_CONSUMERS]()
   }

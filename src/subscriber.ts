@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Dispatch } from './dispatch';
 import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE, UpdateTrigger } from './types';
-import { componentLifecycle, ensureAttachedControllers } from './use_hook';
+import { componentLifecycle, initializeController } from './use_hook';
 import { dedent, define, Set } from './util';
 
 const { create, defineProperty } = Object;
@@ -43,7 +43,7 @@ export function useSubscriber(
     
     const spy = createSubscription(control, setUpdate);
 
-    ensureAttachedControllers(control)
+    initializeController(control)
 
     if(willMount)
       willMount.apply(control, args);
