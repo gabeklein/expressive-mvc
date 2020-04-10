@@ -1,3 +1,5 @@
+import { BunchOf } from './types';
+import { Controller } from './controller';
 const { 
   entries,
   defineProperty,
@@ -92,4 +94,21 @@ export function defineOnAccess(
 
 export function entriesOf(obj: {}){
   return entries(getOwnPropertyDescriptors(obj));
+}
+
+export function collectGetters(
+  source: any, except: string[] = []){
+
+  const getters = {} as BunchOf<() => any>;
+
+  do {
+    source = getPrototypeOf(source);
+    for(const [key, item] of entriesOf(source))
+      if("get" in item && !getters[key] && except.indexOf(key) < 0)
+        getters[key] = item.get!
+  }
+  while(source.constructor !== Controller
+     && source.constructor !== Object);
+
+  return getters;
 }

@@ -1,7 +1,6 @@
-import { Controller } from './controller';
 import { createSubscription } from './subscriber';
 import { BunchOf, ModelController, SUBSCRIBE, UpdateTrigger } from './types';
-import { define, entriesOf, Set } from './util';
+import { define, entriesOf, Set, collectGetters } from './util';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
 
@@ -288,23 +287,6 @@ export class Dispatch {
       })
     }
   }
-}
-
-function collectGetters(
-  source: any, ignore: string[] = []){
-
-  const getters = {} as BunchOf<() => any>;
-
-  do {
-    source = getPrototypeOf(source);
-    for(const [key, item] of entriesOf(source))
-      if("get" in item && !getters[key] && ignore.indexOf(key) < 0)
-        getters[key] = item.get!
-  }
-  while(source.constructor !== Controller 
-     && source.constructor !== Object);
-
-  return getters;
 }
 
 export function applyExternalValues(
