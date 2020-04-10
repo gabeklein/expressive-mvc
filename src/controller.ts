@@ -21,7 +21,14 @@ export function Controller(this: ModelController){
     setImmediate(() => this.didInit!())
 }
 
+export function Singleton(this: ModelController){
+  Controller.apply(this);
+}
+
 bootstrapController(Controller);
+
+bootstrapController(Singleton);
+Singleton.global = true;
 
 export function bootstrapController(fn: any){
   const noop = function(this: any){ return this };
