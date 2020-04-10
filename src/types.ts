@@ -41,7 +41,7 @@ export declare class ModelController {
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
-  willUse?(): void;
+  isReady?(): void;
   onLifecycle(...args: any[]): () => void;
 
   elementDidFocus?(parent: ModelController, as: string): void;
