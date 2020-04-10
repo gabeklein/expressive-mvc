@@ -97,6 +97,8 @@ declare class Controller {
     get Provider(): FunctionComponentElement<ProviderProps<this>>
     get Value(): FunctionComponent<{ of: string }>
 
+    static apply <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & Subscriber<I>;
+
     static get Provider(): FunctionComponentElement<any>;
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
     

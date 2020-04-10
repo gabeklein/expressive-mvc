@@ -307,6 +307,13 @@ function collectGetters(
   return getters;
 }
 
+export function applyExternalValues(
+  this: typeof ModelController, 
+  external: BunchOf<any>
+){
+  this.tap().apply(external);
+}
+
 export function integrateExternal(
   this: ModelController, external: BunchOf<any>){
 
