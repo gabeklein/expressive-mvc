@@ -39,7 +39,7 @@ export function bootstrapController(fn: any){
   define(prototype, {
     constructor: fn,
     onChange: handleOnChange,
-    apply: integrateExternal,
+    assign: integrateExternal,
     willDestroy: runCallback,
     sub: useSubscribeToThis,
     tap: useLiveThis,
@@ -55,7 +55,7 @@ export function bootstrapController(fn: any){
     tap: tapFromController,
     hoc: createWrappedComponent,
     map: makeFromArray,
-    apply: applyExternalValues,
+    assign: applyExternalValues,
     makeGlobal: initGlobalController,
     context: getContext,
   })
