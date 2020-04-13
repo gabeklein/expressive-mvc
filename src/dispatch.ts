@@ -293,7 +293,7 @@ export function applyExternalValues(
   this: typeof ModelController, 
   external: BunchOf<any>
 ){
-  this.tap().assign(external);
+  return this.tap().assign(external);
 }
 
 export function integrateExternal(

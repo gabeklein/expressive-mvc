@@ -87,7 +87,7 @@ declare class Controller {
     only(): this;
     not(): this;
 
-    apply(props: Partial<this>): this;
+    assign(props: Partial<this>): this;
 
     tap(): this;
     tap<K extends keyof this>(key?: K): this[K];
