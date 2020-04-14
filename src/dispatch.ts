@@ -11,8 +11,8 @@ const {
   defineProperty,
   entries,
   getOwnPropertyDescriptor: describe,
-  getOwnPropertyNames: keysOf,
-  getPrototypeOf
+  // getOwnPropertyNames: keysOf,
+  // getPrototypeOf
 } = Object;
 
 const { random } = Math;
@@ -38,6 +38,7 @@ export class Dispatch {
       dispatch,
       get: control,
       set: control,
+      assign: simpleIntegrateExternal,
       observe: dispatch.observe,
       export: dispatch.export,
       toggle: dispatch.toggle,
@@ -299,45 +300,51 @@ export function applyExternalValues(
   return this.tap().assign(external);
 }
 
-export function integrateExternal(
+export function simpleIntegrateExternal(
   this: ModelController, external: BunchOf<any>){
 
-  Dispatch.applyTo(this);
-
-  const { current } = this.dispatch;
-  const inner = getPrototypeOf(this);
-
-  for(const key of keysOf(external)){
-    current[key] = external[key];
-    defineProperty(inner, key, {
-      enumerable: true,
-      get: () => current[key],
-      set: () => {
-        throw new Error(`Cannot modify external prop '${key}'!`)
-      }
-    })
-  }
-
-  define(inner, "watch", updateExternalValues);
-
-  return this;
+  return Object.assign(this, external);
 }
 
-function updateExternalValues(
-  this: ModelController,
-  external: BunchOf<any>){
+// export function integrateExternal(
+//   this: ModelController, external: BunchOf<any>){
 
-  const { current } = this.dispatch;
-  let updated = [];
+//   Dispatch.applyTo(this);
 
-  for(const key of keysOf(external))
-    if(external[key] !== current[key]){
-      current[key] = external[key];
-      updated.push(key);
-    }
+//   const { current } = this.dispatch;
+//   const inner = getPrototypeOf(this);
 
-  if(updated.length)
-    this.refresh(updated);
+//   for(const key of keysOf(external)){
+//     current[key] = external[key];
+//     defineProperty(inner, key, {
+//       enumerable: true,
+//       get: () => current[key],
+//       set: () => {
+//         throw new Error(`Cannot modify external prop '${key}'!`)
+//       }
+//     })
+//   }
 
-  return this;
-}
+//   define(inner, "watch", updateExternalValues);
+
+//   return this;
+// }
+
+// function updateExternalValues(
+//   this: ModelController,
+//   external: BunchOf<any>){
+
+//   const { current } = this.dispatch;
+//   let updated = [];
+
+//   for(const key of keysOf(external))
+//     if(external[key] !== current[key]){
+//       current[key] = external[key];
+//       updated.push(key);
+//     }
+
+//   if(updated.length)
+//     this.refresh(updated);
+
+//   return this;
+// }

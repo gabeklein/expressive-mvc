@@ -6,7 +6,7 @@ import {
   subscribeToController,
   tapFromController,
 } from './context';
-import { integrateExternal, applyExternalValues } from './dispatch';
+import { applyExternalValues } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
@@ -42,11 +42,10 @@ export function bootstrapController(fn: any){
   defineOnAccess(prototype, "Provider", ControlProvider)
   defineOnAccess(prototype, "Value", ControlledValue)
   defineOnAccess(prototype, "Input", ControlledInput)
-
+  
   define(prototype, {
     constructor: fn,
     onChange: handleOnChange,
-    assign: integrateExternal,
     willDestroy: runCallback,
     sub: useSubscribeToThis,
     tap: useLiveThis,
