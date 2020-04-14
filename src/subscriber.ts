@@ -116,7 +116,7 @@ export function createSubscription(
 
   const Spy = create(source);
   const { dispatch } = source;
-  const { current } = dispatch;
+  const { current, refresh } = dispatch!;
   const cleanup = new Set<() => void>();
   const watch = new Set<string>();
   let exclude: Set<string>;
@@ -125,7 +125,7 @@ export function createSubscription(
     defineProperty(Spy, key, {
       set: (value: any) => {
         current[key] = value;
-        dispatch.refresh(key);
+        refresh(key);
       },
       get: () => {
         watch.add(key);
@@ -151,7 +151,7 @@ export function createSubscription(
 
     for(const key of watch)
       cleanup.add(
-        dispatch.addListener(key, hook)
+        dispatch!.addListener(key, hook)
       )
   }
 
@@ -169,7 +169,7 @@ export function createSubscription(
 
     for(const key of watch)
       cleanup.add(
-        dispatch.addListener(key, hook)
+        dispatch!.addListener(key, hook)
       )
 
     return source;

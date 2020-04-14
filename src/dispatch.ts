@@ -44,6 +44,9 @@ export class Dispatch {
       refresh: dispatch.refresh
     })
     dispatch.initComputed();
+
+    if(control.isReady)
+      control.isReady();
   }
 
   public addListener(

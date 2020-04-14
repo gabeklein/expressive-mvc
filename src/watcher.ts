@@ -14,6 +14,7 @@ export function useWatcher(control: ModelController){
   
   if(!current){
     Dispatch.applyTo(control);
+    initializeController(control);
     current = cache.current = createSubscription(control, setUpdate);
   }
 
@@ -62,7 +63,7 @@ export function useWatchedProperty(
 
   useEffect(() => {
     const removeListener = 
-      parent.dispatch.addListener(key, parentDidUpdate);
+      parent.dispatch!.addListener(key, parentDidUpdate);
 
     return () => {
       if(subscription.current)

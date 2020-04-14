@@ -29,7 +29,7 @@ export declare class ModelController {
   static tap(): ModelController;
 
   local: BunchOf<any>;
-  dispatch: Dispatch;
+  dispatch?: Dispatch;
 
   toggle(key: string): boolean;
 

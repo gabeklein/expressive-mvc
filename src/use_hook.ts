@@ -140,10 +140,8 @@ export function useOwnController(
 
 export function initializeController(instance: ModelController){
   ensureAttachedControllers(instance);
-
-  if(instance.isReady)
-    instance.isReady();
 }
+
 function ensureAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance)
     return;

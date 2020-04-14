@@ -15,7 +15,7 @@ export function ControlledValue(
 
     useEffect(() => {
       const removeListener = 
-        this.dispatch.addListener(key, setUpdate);
+        this.dispatch!.addListener(key, setUpdate);
 
       return removeListener;
     })
