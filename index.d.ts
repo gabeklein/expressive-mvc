@@ -71,8 +71,6 @@ declare class Controller {
     elementWillUpdate?(...args: any[]): void;
     elementDidMount?(...args: any[]): void;
     elementWillUnmount?(...args: any[]): void;
-    elementDidFocus?(parent: Controller, as: string): void;
-    elementWillLoseFocus?(parent: Controller, as: string): void;
     elementWillExist(...args: any[]): void | (() => void);
 
     componentWillRender?(...args: any[]): void;

@@ -101,7 +101,7 @@ export function useWatchedProperty(
       initializeController(instance);
 
       const spy = createSubscription(instance, childDidUpdate);
-      const didFocus = instance.elementDidFocus || instance.didFocus;
+      const { didFocus } = instance;
 
       if(didFocus)
         didFocus.call(instance, parent, key);

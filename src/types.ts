@@ -44,9 +44,7 @@ export declare class ModelController {
   isReady?(): void;
   willExist(...args: any[]): () => void;
 
-  elementDidFocus?(parent: ModelController, as: string): void;
   elementDidMount?(...args: any[]): void;
-  elementWillLoseFocus?(parent: ModelController, as: string): void;
   elementWillMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
