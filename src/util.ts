@@ -1,5 +1,6 @@
-import { BunchOf } from './types';
 import { Controller } from './controller';
+import { BunchOf } from './types';
+
 const { 
   entries,
   defineProperty,
