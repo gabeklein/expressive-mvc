@@ -1,5 +1,6 @@
-import { createElement, FC, forwardRef, useEffect, useState } from 'react';
+import { createElement, FC, forwardRef, useEffect } from 'react';
 
+import { useRefresh } from './subscriber';
 import { ModelController } from './types';
 
 const { assign } = Object;
@@ -8,14 +9,14 @@ export function ControlledValue(
   this: ModelController): FC<{ of: string }> {
     
   return (props) => {
-    const setUpdate = useState(0)[1];
+    const onDidUpdate = useRefresh();
     const key = props.of;
     props = assign({}, props);
     delete props.of;
 
     useEffect(() => {
       const removeListener = 
-        this.dispatch!.addListener(key, setUpdate);
+        this.dispatch!.addListener(key, onDidUpdate);
 
       return removeListener;
     })
@@ -30,7 +31,7 @@ export function ControlledInput(
   const control = this as any;
 
   return forwardRef((props, ref) => {
-    const setUpdate = useState(0)[1];
+    const onDidUpdate = useRefresh();
 
     const key = props.to;
     props = assign({}, props);
@@ -38,7 +39,7 @@ export function ControlledInput(
 
     useEffect(() => {
       const removeListener =
-        control.dispatch.addListener(key, setUpdate);
+        control.dispatch.addListener(key, onDidUpdate);
 
       return removeListener;
     })

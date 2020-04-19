@@ -1,9 +1,9 @@
-import { Context, MutableRefObject, useContext, useEffect, useRef, useState } from 'react';
+import { Context, MutableRefObject, useContext, useEffect, useRef } from 'react';
 
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { createSubscription, useSubscriber } from './subscriber';
+import { createSubscription, useSubscriber, useRefresh } from './subscriber';
 import { Class, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { define } from './util';
 
@@ -54,7 +54,7 @@ export function useOwnController(
   args: any[] = []
 ): ModelController {
 
-  const setUpdate = useState(0)[1];
+  const setUpdate = useRefresh();
   const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
   let endLifecycle: undefined | (() => void)

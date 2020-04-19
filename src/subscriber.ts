@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Dispatch } from './dispatch';
-import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE, UpdateTrigger } from './types';
+import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { componentLifecycle, initializeController } from './use_hook';
 import { dedent, define, Set } from './util';
 
 const { create, defineProperty } = Object;
+
+export type UpdateTrigger = () => void;
+
+export const useRefresh = (): UpdateTrigger => {
+  const updateHook = useState(0)[1];
+  return () => updateHook(Math.random());
+}
 
 function subscriberLifecycle(control: ModelController){
   return {
@@ -23,7 +30,7 @@ export function useSubscriber(
   args: any[], 
   main: boolean){
     
-  const setUpdate = useState(0)[1];
+  const onDidUpdate = useRefresh();
   const cache = useRef<any>(null);
   let endLifecycle: undefined | (() => void)
 
@@ -41,7 +48,7 @@ export function useSubscriber(
   if(!cache.current){
     Dispatch.applyTo(control);
     
-    const spy = createSubscription(control, setUpdate);
+    const spy = createSubscription(control, onDidUpdate);
 
     initializeController(control)
 

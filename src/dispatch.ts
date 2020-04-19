@@ -1,5 +1,5 @@
-import { createSubscription } from './subscriber';
-import { BunchOf, ModelController, SUBSCRIBE, UpdateTrigger } from './types';
+import { createSubscription, UpdateTrigger } from './subscriber';
+import { BunchOf, ModelController, SUBSCRIBE } from './types';
 import { define, entriesOf, Set, collectGetters } from './util';
 
 declare const setTimeout: (callback: () => void, ms: number) => number;
@@ -14,8 +14,6 @@ const {
   // getOwnPropertyNames: keysOf,
   // getPrototypeOf
 } = Object;
-
-const { random } = Math;
 
 export class Dispatch {
   current: BunchOf<any> = {};
@@ -51,7 +49,7 @@ export class Dispatch {
   }
 
   public addListener(
-    key: string, callback: (beat: number) => void){
+    key: string, callback: UpdateTrigger){
 
     let register = this.subscribers[key];
 
@@ -208,15 +206,15 @@ export class Dispatch {
       this.pendingRefresh = true;
 
     setTimeout(() => {
-      const needsRefresh = new Set<UpdateTrigger>();
+      const queued = new Set<UpdateTrigger>();
       const { pendingUpdates, subscribers } = this;
 
       for(const key of pendingUpdates)
         for(const sub of subscribers[key] || [])
-          needsRefresh.add(sub);
+          queued.add(sub);
 
-      for(const refresh of needsRefresh)
-        refresh(random());
+      for(const onDidUpdate of queued)
+        onDidUpdate();
 
       pendingUpdates.clear();
       this.pendingRefresh = false;
@@ -267,6 +265,7 @@ export class Dispatch {
   
       const onValueDidChange = () => {
         const value = fn.call(control);
+        const subscribed = subscribers[key] || [];
   
         if(current[key] === value)
           return
@@ -274,8 +273,8 @@ export class Dispatch {
         current[key] = value;
         this.pendingUpdates.add(key);
 
-        for(const sub of subscribers[key] || [])
-          sub(random());
+        for(const onDidUpdate of subscribed)
+          onDidUpdate();
       }
 
       const spy = createSubscription(control, onValueDidChange);

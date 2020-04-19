@@ -5,7 +5,6 @@ import { Dispatch } from './dispatch';
 export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>
 export type Class = new(...args: any[]) => any;
-export type UpdateTrigger = (beat: number) => void;
 export type HandleUpdatedValue<T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
 
