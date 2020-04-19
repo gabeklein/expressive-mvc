@@ -11,8 +11,6 @@ const {
   defineProperty,
   entries,
   getOwnPropertyDescriptor: describe,
-  // getOwnPropertyNames: keysOf,
-  // getPrototypeOf
 } = Object;
 
 export class Dispatch {
@@ -137,7 +135,6 @@ export class Dispatch {
 
         acc[key] = 
           desc && 
-          desc.value !== undefined && 
           desc.value || 
           current[key]
       }
@@ -307,46 +304,3 @@ export function simpleIntegrateExternal(
 
   return Object.assign(this, external);
 }
-
-// export function integrateExternal(
-//   this: ModelController, external: BunchOf<any>){
-
-//   Dispatch.applyTo(this);
-
-//   const { current } = this.dispatch;
-//   const inner = getPrototypeOf(this);
-
-//   for(const key of keysOf(external)){
-//     current[key] = external[key];
-//     defineProperty(inner, key, {
-//       enumerable: true,
-//       get: () => current[key],
-//       set: () => {
-//         throw new Error(`Cannot modify external prop '${key}'!`)
-//       }
-//     })
-//   }
-
-//   define(inner, "watch", updateExternalValues);
-
-//   return this;
-// }
-
-// function updateExternalValues(
-//   this: ModelController,
-//   external: BunchOf<any>){
-
-//   const { current } = this.dispatch;
-//   let updated = [];
-
-//   for(const key of keysOf(external))
-//     if(external[key] !== current[key]){
-//       current[key] = external[key];
-//       updated.push(key);
-//     }
-
-//   if(updated.length)
-//     this.refresh(updated);
-
-//   return this;
-// }
