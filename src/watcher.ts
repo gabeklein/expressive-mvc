@@ -38,18 +38,43 @@ export function useWatchedProperty(
   const onDidUpdate = useRefresh();
   const subscription = useRef<SpyController | null>(null);
 
+  useEffect(() => {
+    const removeListener = 
+      parent.dispatch!.addListener(key, parentDidUpdate);
+
+    return () => {
+      clearSubscription()
+      removeListener()
+    }
+  }, []);
+
+  useEffect(() => {
+    if(subscription.current)
+      subscription.current[SUBSCRIBE]();
+  }, [value])
+
+  if(value instanceof Controller)
+    return newSubscription()
+  else
+    return value;
+
+  /* Subroutines */
+
   function childDidUpdate(){
     onDidUpdate();
   }
 
   function parentDidUpdate(){
-    if(subscription.current)
-      deallocate(subscription.current)
-
+    clearSubscription();
     onDidUpdate();
   };
 
-  function deallocate(subscriber: SpyController){
+  function clearSubscription(){
+    const subscriber = subscription.current;
+
+    if(!subscriber)
+      return;
+
     const unfocus = 
       subscriber.elementWillLoseFocus || 
       subscriber.willLoseFocus;
@@ -61,24 +86,7 @@ export function useWatchedProperty(
     subscription.current = null;
   }
 
-  useEffect(() => {
-    const removeListener = 
-      parent.dispatch!.addListener(key, parentDidUpdate);
-
-    return () => {
-      if(subscription.current)
-        deallocate(subscription.current)
-
-      removeListener()
-    }
-  }, []);
-
-  useEffect(() => {
-    if(subscription.current)
-      subscription.current[SUBSCRIBE]();
-  }, [value])
-
-  if(value instanceof Controller){
+  function newSubscription(){
     const instance = value as ModelController;
 
     if(subscription.current){
@@ -102,6 +110,4 @@ export function useWatchedProperty(
       return spy;
     }
   }
-  else
-    return value;
 }
