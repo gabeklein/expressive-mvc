@@ -98,8 +98,11 @@ export class Dispatch {
     once?: boolean) => {
 
     const { control, current, subscribers} = this;
-    const cleanup: Function[] = [];
-    const unwatch = () => cleanup.forEach(x => x());
+    let cleanup: Function[] = [];
+    const unwatch = () => {
+      cleanup.forEach(x => x());
+      cleanup = [];
+    };
 
     if(typeof watch == "string")
       watch = [watch];
