@@ -43,7 +43,7 @@ export function useWatchedProperty(
       parent.dispatch!.addListener(key, parentDidUpdate);
 
     return () => {
-      clearSubscription()
+      resetSubscription()
       removeListener()
     }
   }, []);
@@ -65,26 +65,9 @@ export function useWatchedProperty(
   }
 
   function parentDidUpdate(){
-    clearSubscription();
+    resetSubscription();
     onDidUpdate();
   };
-
-  function clearSubscription(){
-    const subscriber = subscription.current;
-
-    if(!subscriber)
-      return;
-
-    const unfocus = 
-      subscriber.elementWillLoseFocus || 
-      subscriber.willLoseFocus;
-
-    if(unfocus) 
-      unfocus(parent, key);
-
-    subscriber[UNSUBSCRIBE]();
-    subscription.current = null;
-  }
 
   function newSubscription(){
     const instance = value as ModelController;
@@ -109,5 +92,20 @@ export function useWatchedProperty(
       subscription.current = spy;
       return spy;
     }
+  }
+
+  function resetSubscription(){
+    const subscriber = subscription.current;
+
+    if(!subscriber)
+      return;
+
+    const { willLoseFocus } = subscriber;
+
+    if(willLoseFocus) 
+      willLoseFocus(parent, key);
+
+    subscriber[UNSUBSCRIBE]();
+    subscription.current = null;
   }
 }
