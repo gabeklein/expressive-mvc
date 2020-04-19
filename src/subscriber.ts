@@ -59,24 +59,8 @@ export function useSubscriber(
     control = spy as any;
   }
   else {
-    if(control !== cache.current){
-      const ControlType = cache.current.constructor;
-
-      if(control instanceof ControlType)
-        console.warn(dedent`
-          Unexpected Instance:
-          use() received unexpected instance of ${ControlType.name}!
-          This should not change between renders of the same component. 
-          Force a remount instead using key props.
-        `)
-      else
-        throw new Error(dedent`
-          Unexpected Controller:
-          use() received unexpected controller between renders!
-          Expected ${ControlType.name} and got ${control.constructor.name}!
-          This should never happen; force a remount where a passed controller may change.
-        `)
-    }
+    if(control !== cache.current)
+      controllerIsUnexpected(control, cache.current)
 
     const hookMaintenance = control[RENEW_CONSUMERS];
 
@@ -113,6 +97,27 @@ export function useSubscriber(
   }, [])
 
   return control;
+}
+
+function controllerIsUnexpected(
+  control: ModelController, cached: ModelController){
+
+  const ControlType = cached.constructor;
+
+  if(control instanceof ControlType)
+    console.warn(dedent`
+      Unexpected Instance:
+      use() received unexpected instance of ${ControlType.name}!
+      This should not change between renders of the same component. 
+      Force a remount instead using key props.
+    `)
+  else
+    throw new Error(dedent`
+      Unexpected Controller:
+      use() received unexpected controller between renders!
+      Expected ${ControlType.name} and got ${control.constructor.name}!
+      This should never happen; force a remount where a passed controller may change.
+    `)
 }
 
 //TODO: Turn this into a class like Dispatch
