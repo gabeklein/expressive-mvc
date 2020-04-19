@@ -1,8 +1,8 @@
 import { createSubscription, UpdateTrigger } from './subscriber';
-import { BunchOf, ModelController, SUBSCRIBE } from './types';
+import { BunchOf, ModelController, SUBSCRIBE, Callback } from './types';
 import { define, entriesOf, Set, collectGetters } from './util';
 
-declare const setTimeout: (callback: () => void, ms: number) => number;
+declare const setTimeout: (callback: Callback, ms: number) => number;
 
 export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
@@ -72,8 +72,8 @@ export class Dispatch {
   }
 
   export = (
-    subset?: string[] | (() => void), 
-    onChange?: (() => void) | boolean,
+    subset?: string[] | Callback, 
+    onChange?: Callback | boolean,
     initial?: boolean) => {
 
     if(typeof subset == "function"){

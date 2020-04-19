@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Dispatch } from './dispatch';
-import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Callback, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { componentLifecycle, ensureAttachedControllers } from './use_hook';
 import { dedent, define, Set } from './util';
 
 const { create, defineProperty } = Object;
 
-export type UpdateTrigger = () => void;
+export type UpdateTrigger = Callback;
 
 export const useRefresh = (): UpdateTrigger => {
   const updateHook = useState(0)[1];
@@ -32,7 +32,7 @@ export function useSubscriber(
     
   const onDidUpdate = useRefresh();
   const cache = useRef<any>(null);
-  let endLifecycle: undefined | (() => void)
+  let endLifecycle: undefined | Callback
 
   const {
     willRender,
@@ -123,13 +123,13 @@ function controllerIsUnexpected(
 //TODO: Turn this into a class like Dispatch
 export function createSubscription(
   source: ModelController,
-  hook: UpdateTrigger
+  onUpdate: UpdateTrigger
 ): SpyController {
 
   const Spy = create(source);
   const { dispatch } = source;
   const { current, refresh } = dispatch!;
-  const cleanup = new Set<() => void>();
+  const cleanup = new Set<Callback>();
   const watch = new Set<string>();
   let exclude: Set<string>;
 
@@ -163,7 +163,7 @@ export function createSubscription(
 
     for(const key of watch)
       cleanup.add(
-        dispatch!.addListener(key, hook)
+        dispatch!.addListener(key, onUpdate)
       )
   }
 
@@ -181,7 +181,7 @@ export function createSubscription(
 
     for(const key of watch)
       cleanup.add(
-        dispatch!.addListener(key, hook)
+        dispatch!.addListener(key, onUpdate)
       )
 
     return source;

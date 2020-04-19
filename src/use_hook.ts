@@ -57,7 +57,7 @@ export function useOwnController(
   const setUpdate = useRefresh();
   const cache = useRef(null) as MutableRefObject<any>;
   let instance = cache.current;
-  let endLifecycle: undefined | (() => void)
+  let endLifecycle: Callback | undefined;
 
   const p: ModelController = model.prototype || {};
 

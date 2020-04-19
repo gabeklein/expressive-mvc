@@ -7,6 +7,7 @@ export type State = LiveState & BunchOf<any>
 export type Class = new(...args: any[]) => any;
 export type HandleUpdatedValue<T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
+export type Callback = () => void;
 
 export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
@@ -19,8 +20,8 @@ export interface LiveState<State = any> {
 }
 
 export interface SpyController extends ModelController {
-  [UNSUBSCRIBE]: () => void;
-  [SUBSCRIBE]: () => void;
+  [UNSUBSCRIBE]: Callback;
+  [SUBSCRIBE]: Callback;
 }
 
 export declare class ModelController { 
@@ -35,30 +36,30 @@ export declare class ModelController {
   didFocus?(parent: ModelController, as: string): void;
   didInit?(): void;
   didMount?(...args: any[]): void;
-  willDestroy(callback?: () => void): void;
+  willDestroy(callback?: Callback): void;
   willMount?(...args: any[]): void;
   willLoseFocus?(parent: ModelController, as: string): void;
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
   isReady?(): void;
-  willExist(...args: any[]): () => void;
+  willExist(...args: any[]): Callback;
 
   elementDidMount?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
-  elementWillExist(...args: any[]): () => void;
+  elementWillExist(...args: any[]): Callback;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
-  componentWillExist(...args: any[]): () => void;
+  componentWillExist(...args: any[]): Callback;
 
-  observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+  observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
 
   not(...args: string[]): this;
   on(...args: string[]): this;
@@ -68,7 +69,7 @@ export declare class ModelController {
   assign(props: BunchOf<any>): this;
   refresh(keys: string[]): void;
   
-  [RENEW_CONSUMERS]?: () => void;
+  [RENEW_CONSUMERS]?: Callback;
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
 }

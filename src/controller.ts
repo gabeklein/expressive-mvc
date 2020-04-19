@@ -11,7 +11,7 @@ import { controllerIsGlobalError, initGlobalController, useGlobalController } fr
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
-import { ModelController } from './types';
+import { Callback, ModelController } from './types';
 import { useOwnController } from './use_hook';
 import { defineOnAccess, define } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
@@ -71,7 +71,7 @@ function makeFromArray(this: any, from: any[]){
   return from.map((item, index) => new this(item, index));
 }
 
-function runCallback(cb?: () => void){
+function runCallback(cb?: Callback){
   if(cb) cb();
 }
 
