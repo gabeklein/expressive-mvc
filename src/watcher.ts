@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { createSubscription, useRefresh } from './subscriber';
 import { ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
-import { initializeController } from './use_hook';
+import { ensureAttachedControllers } from './use_hook';
 
 export function useWatcher(control: ModelController){
   const onDidUpdate = useRefresh();
@@ -14,7 +14,7 @@ export function useWatcher(control: ModelController){
   
   if(!current){
     Dispatch.applyTo(control);
-    initializeController(control);
+    ensureAttachedControllers(control);
     current = cache.current = createSubscription(control, onDidUpdate);
   }
 
@@ -98,7 +98,7 @@ export function useWatchedProperty(
     }
     else {
       Dispatch.applyTo(instance);
-      initializeController(instance);
+      ensureAttachedControllers(instance);
 
       const spy = createSubscription(instance, childDidUpdate);
       const { didFocus } = instance;
