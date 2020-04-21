@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { createSubscription, useSubscriber, useRefresh } from './subscriber';
-import { Class, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Class, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback } from './types';
 import { define } from './util';
 
 const {
