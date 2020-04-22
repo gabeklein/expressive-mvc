@@ -2,12 +2,13 @@ import { createContext, createElement, FunctionComponent, PropsWithChildren, use
 
 import { ownContext } from './context';
 import { Controller } from './controller';
-import { BunchOf, ModelController, RENEW_CONSUMERS } from './types';
-import { useOwnController, ensureAttachedControllers } from './use_hook';
+import { BunchOf, ModelController, Callback } from './types';
+import { useOwnController } from './use_hook';
+import { ensureAttachedControllers } from './bootstrap';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
-const { assign, create, getPrototypeOf: proto } = Object;
+const { assign, create, values: valuesIn, getPrototypeOf: proto } = Object;
 
 export function createWrappedComponent<T extends typeof ModelController>(
   this: T,
@@ -39,31 +40,29 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     delete props[k];
 
   const Multi = CONTEXT_MULTIPROVIDER;
-  let initial: true | undefined;
 
   if(className || style)
     children = createElement("div", { className, style }, children);
 
+  let flushHooks = [] as Callback[];
+
   const parent = useContext(Multi);
   const provide = useMemo(
-    () => {
-      initial = true;
-      return initGroupControllers(parent, controllers, props)
-    }, []
+    () => initGroupControllers(parent, controllers, props), []
   ); 
 
-  useEffect(() => {
-    for(const type in provide)
-      provide[type].willDestroy();
-  }, []);
+  valuesIn(provide).forEach(mc => {
+    const onDidUnmount = ensureAttachedControllers(mc);
+    if(onDidUnmount)
+      flushHooks.push(onDidUnmount);
+  })
 
-  for(const key in provide){
-    const mc: any = provide[key];
-    if(initial)
-      ensureAttachedControllers(mc)
-    else if(RENEW_CONSUMERS in mc)
-      mc[RENEW_CONSUMERS]()
-  }
+  useEffect(() => {
+    return () => {
+      flushHooks.forEach(x => x());
+      valuesIn(provide).forEach(x => x.willDestroy());
+    }
+  }, []);
 
   return createElement(Multi.Provider, { value: provide }, children);
 }

@@ -24,9 +24,6 @@ export class Dispatch {
   ){}
 
   static applyTo(control: ModelController){
-    if("dispatch" in control)
-      return
-
     const dispatch = new this(control);
 
     dispatch.initObservable();

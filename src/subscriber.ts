@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Dispatch } from './dispatch';
-import { Callback, ModelController, RENEW_CONSUMERS, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
-import { componentLifecycle, ensureAttachedControllers } from './use_hook';
+import { ensureBootstrap } from './bootstrap';
+import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { componentLifecycle } from './use_hook';
 import { dedent, define, Set } from './util';
 
 const { create, defineProperty } = Object;
@@ -43,14 +43,12 @@ export function useSubscriber(
     willExist
   } = main ? 
     componentLifecycle(control) : 
-    subscriberLifecycle(control)
+    subscriberLifecycle(control);
+
+  const willDeallocate = ensureBootstrap(control);
 
   if(!cache.current){
-    Dispatch.applyTo(control);
-    
     const spy = createSubscription(control, onDidUpdate);
-
-    ensureAttachedControllers(control);
 
     if(willMount)
       willMount.apply(control, args);
@@ -60,12 +58,7 @@ export function useSubscriber(
   }
   else {
     if(control !== cache.current)
-      controllerIsUnexpected(control, cache.current)
-
-    const hookMaintenance = control[RENEW_CONSUMERS];
-
-    if(hookMaintenance)
-      hookMaintenance()
+      controllerIsUnexpected(control, cache.current);
 
     if(willUpdate)
       willUpdate.apply(control, args);
@@ -86,6 +79,9 @@ export function useSubscriber(
       didMount.apply(control, args);
 
     return () => {
+      if(willDeallocate)
+        willDeallocate();
+      
       if(endLifecycle)
         endLifecycle()
 

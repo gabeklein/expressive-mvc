@@ -13,7 +13,7 @@ import { createWrappedComponent } from './provider';
 import { useSubscriber } from './subscriber';
 import { Callback, ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { defineOnAccess, define } from './util';
+import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export function Controller(this: ModelController){
