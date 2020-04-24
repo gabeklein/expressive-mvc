@@ -33,7 +33,7 @@ Singleton.global = true;
 export function bootstrapController(fn: any){
   const noop = function(this: any){ return this };
 
-  const prototype = Controller.prototype = {} as any;
+  const prototype = fn.prototype = {} as any;
   fn.global = false;
 
   for(const f of ["on", "not", "only", "once"])
