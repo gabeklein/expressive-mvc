@@ -62,10 +62,19 @@ export function useSubscriber(
 
     if(willUpdate)
       willUpdate.apply(control, args);
+
+    control = Object.create(control);
   }
 
   if(willRender)
     willRender.apply(control, args)
+
+  Object.defineProperty(control, "refresh", {
+    value: (...keys: string[]) => {
+      if(!keys[0]) onDidUpdate();
+      else return cache.current.refresh(...keys)
+    }
+  })
 
   useEffect(() => {
     const spy = control as unknown as SpyController;

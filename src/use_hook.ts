@@ -77,12 +77,22 @@ export function useOwnController(
     instance = createSubscription(instance, setUpdate);
   }
   else {
+    // TODO: return Spycontroller always
+    instance = Object.create(instance);
+
     if(willUpdate)
       willUpdate.apply(instance, args);
 
     if(willRender)
       willRender.apply(instance, args);
   }
+
+  Object.defineProperty(instance, "refresh", {
+    value: (...keys: string[]) => {
+      if(!keys[0]) setUpdate();
+      else return cache.current.refresh(...keys)
+    }
+  })
 
   useEffect(() => {
     const spyControl = instance as unknown as SpyController;

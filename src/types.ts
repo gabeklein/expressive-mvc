@@ -67,7 +67,7 @@ export declare class ModelController {
   only(...args: string[]): this;
 
   assign(props: BunchOf<any>): this;
-  refresh(keys: string[]): void;
+  refresh(...keys: string[]): void;
   
   [RENEW_CONSUMERS]?: Callback;
   

@@ -20,7 +20,17 @@ export function useWatcher(control: ModelController){
     const listener = current as SpyController;
     listener[SUBSCRIBE]();
     return () => listener[UNSUBSCRIBE]();
-  }, [])
+  }, []);
+
+  // TODO redo how spycontroller is retained
+  if(current.hasOwnProperty("refresh") === false)
+    Object.defineProperty(current, "refresh", {
+      configurable: true,
+      value: (...keys: string[]) => {
+        if(!keys[0]) onDidUpdate();
+        else return control.refresh(...keys)
+      }
+    })
 
   return current;
 }
