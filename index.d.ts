@@ -53,32 +53,32 @@ declare class Controller {
     export<P extends keyof this>(keys: P[]): Pick<this, P>;
     export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): () => void;
 
-    didInit?(): void;
-    willDestroy(callback?: () => void): void;
+    protected didInit?(): void;
+    protected willDestroy(callback?: () => void): void;
 
-    isReady?(): void;
-    willRender?(...args: any[]): void;
-    willMount?(...args: any[]): void;
-    willUpdate?(...args: any[]): void;
-    didMount?(...args: any[]): void;
-    willUnmount?(...args: any[]): void;
-    didFocus?(parent: Controller, as: string): void;
-    willLoseFocus?(parent: Controller, as: string): void;
-    willExist(...args: any[]): void | (() => void);
+    protected isReady?(): void;
+    protected willRender?(...args: any[]): void;
+    protected willMount?(...args: any[]): void;
+    protected willUpdate?(...args: any[]): void;
+    protected didMount?(...args: any[]): void;
+    protected willUnmount?(...args: any[]): void;
+    protected didFocus?(parent: Controller, as: string): void;
+    protected willLoseFocus?(parent: Controller, as: string): void;
+    protected willExist?(...args: any[]): void | (() => void);
 
-    elementWillRender?(...args: any[]): void;
-    elementWillMount?(...args: any[]): void;
-    elementWillUpdate?(...args: any[]): void;
-    elementDidMount?(...args: any[]): void;
-    elementWillUnmount?(...args: any[]): void;
-    elementWillExist(...args: any[]): void | (() => void);
+    protected elementWillRender?(...args: any[]): void;
+    protected elementWillMount?(...args: any[]): void;
+    protected elementWillUpdate?(...args: any[]): void;
+    protected elementDidMount?(...args: any[]): void;
+    protected elementWillUnmount?(...args: any[]): void;
+    protected elementWillExist?(...args: any[]): void | (() => void);
 
-    componentWillRender?(...args: any[]): void;
-    componentWillMount?(...args: any[]): void;
-    componentWillUpdate?(...args: any[]): void;
-    componentDidMount?(...args: any[]): void;
-    componentWillUnmount?(...args: any[]): void;
-    componentWillExist(...args: any[]): void | (() => void);
+    protected componentWillRender?(...args: any[]): void;
+    protected componentWillMount?(...args: any[]): void;
+    protected componentWillUpdate?(...args: any[]): void;
+    protected componentDidMount?(...args: any[]): void;
+    protected componentWillUnmount?(...args: any[]): void;
+    protected componentWillExist?(...args: any[]): void | (() => void);
 
     on(): this;
     once(): this
