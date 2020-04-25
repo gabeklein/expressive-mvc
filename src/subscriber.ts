@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ensureBootstrap } from './bootstrap';
 import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
@@ -9,9 +9,10 @@ const { create, defineProperty } = Object;
 
 export type UpdateTrigger = Callback;
 
-export const useRefresh = (): UpdateTrigger => {
-  const updateHook = useState(0)[1];
-  return () => updateHook(Math.random());
+export const useManualRefresh = () => {
+  const [ state, update ] = useState({} as any);
+  const refresh = () => update(Object.assign({}, state));
+  return [ state, refresh ] as const;
 }
 
 function subscriberLifecycle(control: ModelController){
@@ -29,9 +30,8 @@ export function useSubscriber(
   control: ModelController, 
   args: any[], 
   main: boolean){
-    
-  const onDidUpdate = useRefresh();
-  const cache = useRef<any>(null);
+
+  const [ cache, onDidUpdate ] = useManualRefresh();
   let endLifecycle: undefined | Callback
 
   const {

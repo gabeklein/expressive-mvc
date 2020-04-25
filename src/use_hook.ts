@@ -1,7 +1,7 @@
-import {  MutableRefObject, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { Controller } from './controller';
-import { createSubscription, useRefresh, useSubscriber } from './subscriber';
+import { createSubscription, useManualRefresh, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback } from './types';
 import { ensureBootstrap, bindMethods, nuke } from './bootstrap';
 
@@ -31,8 +31,7 @@ export function useOwnController(
   args: any[] = []
 ): ModelController {
 
-  const setUpdate = useRefresh();
-  const cache = useRef(null) as MutableRefObject<any>;
+  const [ cache, setUpdate ] = useManualRefresh();
   let instance = cache.current;
   let endLifecycle: Callback | undefined;
 
@@ -47,7 +46,7 @@ export function useOwnController(
     willExist
   } = componentLifecycle(p);
 
-  if(instance === null)
+  if(!instance)
     if(typeof model === "function"){
       if(model.prototype){
         instance = new (model as Class)(...args);
@@ -62,7 +61,7 @@ export function useOwnController(
       
   const willDeallocate = ensureBootstrap(instance);
 
-  if(cache.current === null){
+  if(!cache.current){
     cache.current = bindMethods(instance, model.prototype);
     
     if(instance.didInit && !(instance instanceof Controller))

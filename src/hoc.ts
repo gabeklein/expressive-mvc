@@ -1,6 +1,6 @@
 import { createElement, FC, forwardRef, useEffect } from 'react';
 
-import { useRefresh } from './subscriber';
+import { useManualRefresh } from './subscriber';
 import { ModelController } from './types';
 
 const { assign } = Object;
@@ -9,7 +9,7 @@ export function ControlledValue(
   this: ModelController): FC<{ of: string }> {
     
   return (props) => {
-    const onDidUpdate = useRefresh();
+    const onDidUpdate = useManualRefresh()[1];
     const key = props.of;
     props = assign({}, props);
     delete props.of;
@@ -31,7 +31,7 @@ export function ControlledInput(
   const control = this as any;
 
   return forwardRef((props, ref) => {
-    const onDidUpdate = useRefresh();
+    const onDidUpdate = useManualRefresh()[1];
 
     const key = props.to;
     props = assign({}, props);

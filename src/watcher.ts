@@ -1,13 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { Controller } from './controller';
-import { createSubscription, useRefresh } from './subscriber';
+import { createSubscription, useManualRefresh } from './subscriber';
 import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { ensureBootstrap } from './bootstrap';
 
 export function useWatcher(control: ModelController){
-  const onDidUpdate = useRefresh();
-  const cache = useRef<any>(null);
+  const [ cache, onDidUpdate ] = useManualRefresh();
 
   let { current } = cache;
   
@@ -43,8 +42,8 @@ export function useWatchedProperty(
   if(value === undefined && required)
     throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
-  const onDidUpdate = useRefresh();
-  const subscription = useRef<SpyController | null>(null);
+  const [ cache, onDidUpdate ] = useManualRefresh();
+
   let flushUtilityHooks: undefined | Callback;
 
   if(value instanceof Controller){
@@ -53,14 +52,14 @@ export function useWatchedProperty(
     //TODO: Changing out instance breaks this.
     flushUtilityHooks = ensureBootstrap(instance);
 
-    if(!subscription.current){
+    if(!cache.current){
       const spy = createSubscription(instance, childDidUpdate);
       const { didFocus } = instance;
 
       if(didFocus)
         didFocus.call(instance, parent, key);
 
-      subscription.current = value = spy;
+      cache.current = value = spy;
     } 
   }
 
@@ -78,8 +77,8 @@ export function useWatchedProperty(
   }, []);
 
   useEffect(() => {
-    if(subscription.current)
-      subscription.current[SUBSCRIBE]();
+    if(cache.current)
+      cache.current[SUBSCRIBE]();
   }, [value])
 
   return value;
@@ -96,7 +95,7 @@ export function useWatchedProperty(
   };
 
   function resetSubscription(){
-    const subscriber = subscription.current;
+    const subscriber = cache.current;
 
     if(!subscriber)
       return;
@@ -107,6 +106,6 @@ export function useWatchedProperty(
       willLoseFocus(parent, key);
 
     subscriber[UNSUBSCRIBE]();
-    subscription.current = null;
+    cache.current = null;
   }
 }
