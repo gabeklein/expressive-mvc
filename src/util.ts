@@ -49,7 +49,7 @@ export class Map<K, V> extends Array<[K, V]> {
 }
 
 export function define(target: {}, values: {}): void;
-export function define(target: {}, key: string, value: any): void;
+export function define(target: {}, key: string | symbol, value: any): void;
 export function define(target: {}, kv: {} | string, v?: {}){
   if(typeof kv == "string")
     defineProperty(target, kv, { value: v })

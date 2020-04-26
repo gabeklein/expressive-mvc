@@ -135,9 +135,9 @@ export function createSubscription(
       }
     })
 
+  define(Spy, SUBSCRIBE, subscribe)
+  define(Spy, UNSUBSCRIBE, unsubscribe)
   define(Spy, {
-    [SUBSCRIBE]: subscribe,
-    [UNSUBSCRIBE]: unsubscribe,
     refresh: forceRefresh,
     on: alsoWatch,
     only: onlyWatch,
