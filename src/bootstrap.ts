@@ -15,7 +15,7 @@ export function ensureReady(instance: ModelController){
     Dispatch.applyTo(instance as any);
 
   if(instance instanceof Controller)
-    return ensureAttachedControllers(instance as ModelController);
+    return ensureAttachedControllers(instance);
   else
     return;
 }

@@ -9,7 +9,6 @@ export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 const { 
   defineProperty,
-  entries,
   getOwnPropertyDescriptor: describe,
 } = Object;
 
@@ -257,7 +256,7 @@ export class Dispatch {
     const { current, subscribers, control } = this;
     const getters = collectGetters(control, ["Provider", "Input", "Value"]);
 
-    for(const [key, fn] of entries(getters)){
+    for(const [key, fn] of Object.entries(getters)){
       subscribers[key] = new Set();
   
       const onValueDidChange = () => {
