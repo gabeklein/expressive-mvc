@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Controller } from './controller';
 import { createSubscription, useManualRefresh, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback } from './types';
-import { bindMethods, ensureReady, nuke } from './bootstrap';
+import { bindMethods, ensureReady } from './bootstrap';
 
 const {
   getPrototypeOf: prototypeOf
@@ -119,7 +119,6 @@ export function useOwnController(
         willDeallocate();
 
       spyControl[UNSUBSCRIBE]();
-      nuke(state);
     }
   }, [])
 

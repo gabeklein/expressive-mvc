@@ -115,9 +115,3 @@ export function bindMethods(
 
   return boundLayer
 }
-
-export function nuke(target: any){
-  for(const key in target)
-    try { delete target[key] }
-    catch(err) {}
-}
