@@ -277,7 +277,7 @@ export class Dispatch {
       const spy = createSubscription(control, onValueDidChange);
   
       current[key] = fn.call(spy);
-      spy[SUBSCRIBE]();
+      spy[SUBSCRIBE]!();
   
       defineProperty(control, key, {
         set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },

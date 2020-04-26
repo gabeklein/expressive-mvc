@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { ensureReady } from './bootstrap';
 import { Controller } from './controller';
 import { createSubscription, useManualRefresh } from './subscriber';
-import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Callback, ModelController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 
 export function useWatcher(control: ModelController){
   const [ cache, onDidUpdate ] = useManualRefresh();
@@ -16,9 +16,8 @@ export function useWatcher(control: ModelController){
   }
 
   useEffect(() => {
-    const listener = current as SpyController;
-    listener[SUBSCRIBE]();
-    return () => listener[UNSUBSCRIBE]();
+    current[SUBSCRIBE]();
+    return () => current[UNSUBSCRIBE]();
   }, []);
 
   return current;

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { ensureReady } from './bootstrap';
 import { Controller } from './controller';
 import { createSubscription, LIFECYCLE, useManualRefresh, useSubscriber } from './subscriber';
-import { Callback, Class, LifeCycle, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Callback, Class, LifeCycle, ModelController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
@@ -58,10 +58,9 @@ export function useOwnController(
     event.willRender.apply(control, args);
 
   useEffect(() => {
-    const spy = control as SpyController;
     let endLifecycle: Callback | undefined;
     
-    spy[SUBSCRIBE]();
+    control[SUBSCRIBE]();
 
     if(event.willCycle)
       endLifecycle = event.willCycle.apply(control, args);
@@ -79,7 +78,7 @@ export function useOwnController(
       if(event.willUnmount)
         event.willUnmount.apply(control, args);
 
-      spy[UNSUBSCRIBE]();
+      control[UNSUBSCRIBE]();
 
       if(control.willDestroy)
         control.willDestroy();

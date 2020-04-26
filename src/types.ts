@@ -29,11 +29,6 @@ export interface LiveState<State = any> {
   export(): State;
 }
 
-export interface SpyController extends ModelController {
-  [UNSUBSCRIBE]: Callback;
-  [SUBSCRIBE]: Callback;
-}
-
 export declare class ModelController { 
   static global: boolean;
   static tap(): ModelController;
@@ -79,6 +74,8 @@ export declare class ModelController {
   refresh(...keys: string[]): void;
   
   [RENEW_CONSUMERS]?: Callback;
+  [UNSUBSCRIBE]?: Callback;
+  [SUBSCRIBE]?: Callback;
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
 }

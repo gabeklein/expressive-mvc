@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { ensureReady } from './bootstrap';
-import { Callback, LifeCycle, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Callback, LifeCycle, ModelController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { componentLifecycle } from './use_hook';
 import { dedent, define, Set } from './util';
 
@@ -59,10 +59,9 @@ export function useSubscriber(
     event.willRender.apply(control, args)
 
   useEffect(() => {
-    const spy = control as unknown as SpyController;
     let endLifecycle: Callback | undefined;
 
-    spy[SUBSCRIBE]();
+    control[SUBSCRIBE]!();
 
     if(event.willCycle)
       endLifecycle = event.willCycle.apply(control, args);
@@ -80,7 +79,7 @@ export function useSubscriber(
       if(event.willUnmount)
         event.willUnmount.apply(control, args);
 
-      spy[UNSUBSCRIBE]()
+      control[UNSUBSCRIBE]!()
     };
   }, [])
 
@@ -112,7 +111,7 @@ function instanceIsUnexpected(
 export function createSubscription(
   source: ModelController,
   onUpdate: UpdateTrigger
-): SpyController {
+): ModelController {
 
   const Spy = Object.create(source);
   const dispatch = source.dispatch!;
