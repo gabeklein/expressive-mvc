@@ -4,13 +4,15 @@ import { collectGetters, define, entriesOf, Set } from './util';
 
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
-export type UpdateEventHandler = (value: any, key: string) => void;
-export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
-
 const { 
   defineProperty,
   getOwnPropertyDescriptor: describe,
 } = Object;
+
+export const DISPATCH = Symbol("controller_dispatch");
+
+export type UpdateEventHandler = (value: any, key: string) => void;
+export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 export class Dispatch {
   current: BunchOf<any> = {};
@@ -22,12 +24,15 @@ export class Dispatch {
     public control: ModelController
   ){}
 
-  static applyTo(control: ModelController){
+  static readyFor(control: ModelController){
+    if(DISPATCH in control)
+      return;
+
     const dispatch = new this(control);
 
     dispatch.initObservable();
+    define(control, DISPATCH, dispatch);
     define(control, {
-      dispatch,
       get: control,
       set: control,
       assign: simpleIntegrateExternal,
@@ -289,9 +294,8 @@ export class Dispatch {
 }
 
 export function applyExternalValues(
-  this: typeof ModelController, 
-  external: BunchOf<any>
-){
+  this: typeof ModelController, external: BunchOf<any>){
+    
   return this.tap().assign(external);
 }
 

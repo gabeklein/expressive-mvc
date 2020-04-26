@@ -2,6 +2,7 @@ import { createElement, FC, forwardRef, useEffect } from 'react';
 
 import { useManualRefresh } from './subscriber';
 import { ModelController } from './types';
+import { DISPATCH } from './dispatch';
 
 const { assign } = Object;
 
@@ -16,7 +17,7 @@ export function ControlledValue(
 
     useEffect(() => {
       const removeListener = 
-        this.dispatch!.addListener(key, onDidUpdate);
+        this[DISPATCH]!.addListener(key, onDidUpdate);
 
       return removeListener;
     })
@@ -27,24 +28,23 @@ export function ControlledValue(
 
 export function ControlledInput(
   this: ModelController): FC<{ to: string }> {
-    
-  const control = this as any;
 
   return forwardRef((props, ref) => {
     const onDidUpdate = useManualRefresh()[1];
+    const values = this as any;
 
     const key = props.to;
     props = assign({}, props);
     delete props.to;
 
-    useEffect(() => control.dispatch.addListener(key, onDidUpdate))
+    useEffect(() => this[DISPATCH]!.addListener(key, onDidUpdate))
     
     props = Object.assign(props, {
       ref,
       type: "text",
-      value: control[key],
+      value: values[key],
       onChange: (e: any) => {
-        control[key] = e.target.value;
+        values[key] = e.target.value;
       }
     })
 

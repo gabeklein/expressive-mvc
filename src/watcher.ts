@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-import { ensureReady } from './bootstrap';
+import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
+import { DISPATCH, Dispatch } from './dispatch';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh } from './subscriber';
 import { Callback, ModelController } from './types';
 
@@ -11,7 +12,7 @@ export function useWatcher(control: ModelController){
   let { current } = cache;
   
   if(!current){
-    ensureReady(control);
+    Dispatch.readyFor(control);
     current = cache.current = createSubscription(control, onDidUpdate);
   }
 
@@ -27,19 +28,19 @@ export function useWatchedProperty(
   parent: ModelController, key: string, required?: boolean){
 
   let value = (parent as any)[key];
+  let releaseHooks: Callback | undefined;
 
   if(value === undefined && required)
     throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
   const [ cache, onDidUpdate ] = useManualRefresh();
 
-  let flushUtilityHooks: undefined | Callback;
-
   if(value instanceof Controller){
     const instance = value as ModelController;
 
+    Dispatch.readyFor(instance);
     //TODO: Changing out instance breaks this.
-    flushUtilityHooks = ensureReady(instance);
+    releaseHooks = ensureAttachedControllers(instance);
 
     if(!cache.current){
       const spy = createSubscription(instance, childDidUpdate);
@@ -54,14 +55,14 @@ export function useWatchedProperty(
 
   useEffect(() => {
     const removeListener = 
-      parent.dispatch!.addListener(key, parentDidUpdate);
+      parent[DISPATCH]!.addListener(key, parentDidUpdate);
 
     return () => {
       resetSubscription()
       removeListener()
       
-      if(flushUtilityHooks)
-        flushUtilityHooks()
+      if(releaseHooks)
+        releaseHooks()
     }
   }, []);
 

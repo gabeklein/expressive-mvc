@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-import { ensureReady } from './bootstrap';
+import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
+import { Dispatch } from './dispatch';
 import { createSubscription, LIFECYCLE, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh, useSubscriber } from './subscriber';
 import { Class, LifeCycle, ModelController } from './types';
 import { callIfExists as ifExists } from './util';
@@ -39,7 +40,8 @@ export function useOwnController(
       model
     )
 
-  const willDeallocate = ensureReady(control);
+  Dispatch.readyFor(control);
+  const willDeallocate = ensureAttachedControllers(control);
 
   if(!cache.current){
     // cache.current = bindMethods(instance, model.prototype);

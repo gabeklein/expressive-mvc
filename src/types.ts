@@ -1,7 +1,7 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
 import { RENEW_CONSUMERS } from './bootstrap';
-import { Dispatch } from './dispatch';
+import { Dispatch, DISPATCH } from './dispatch';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 
 export type BunchOf<T> = { [key: string]: T }
@@ -31,8 +31,7 @@ export declare class ModelController {
   static global: boolean;
   static tap(): ModelController;
 
-  local: BunchOf<any>;
-  dispatch?: Dispatch;
+  local: BunchOf<any>
 
   toggle(key: string): boolean;
 
@@ -74,6 +73,7 @@ export declare class ModelController {
   [RENEW_CONSUMERS]?: Callback;
   [UNSUBSCRIBE]?: Callback;
   [SUBSCRIBE]?: Callback;
+  [DISPATCH]?: Dispatch
   
   Provider: FunctionComponentElement<ProviderProps<this>>;
 }

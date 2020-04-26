@@ -1,7 +1,5 @@
 import { Context, useContext } from 'react';
 
-import { Controller } from './controller';
-import { Dispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { ModelController } from './types';
 import { define } from './util';
@@ -9,16 +7,6 @@ import { define } from './util';
 const { defineProperty } = Object;
 
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
-
-export function ensureReady(instance: ModelController){
-  if(!("dispatch" in instance))
-    Dispatch.applyTo(instance as any);
-
-  if(instance instanceof Controller)
-    return ensureAttachedControllers(instance);
-  else
-    return;
-}
 
 export function ensureAttachedControllers(instance: ModelController){
   if(RENEW_CONSUMERS in instance){

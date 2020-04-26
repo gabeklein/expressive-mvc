@@ -3,6 +3,7 @@ import { createContext, createElement, FunctionComponent, PropsWithChildren, use
 import { ensureAttachedControllers } from './bootstrap';
 import { ownContext } from './context';
 import { Controller } from './controller';
+import { DISPATCH } from './dispatch';
 import { BunchOf, Callback, ModelController } from './types';
 import { useOwnController } from './use_hook';
 
@@ -18,7 +19,7 @@ export function createWrappedComponent<T extends typeof ModelController>(
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useOwnController(this).assign(forwardedProps);
-    const unwrapped = assign({}, controller.dispatch!.current);
+    const unwrapped = assign({}, controller[DISPATCH]!.current);
 
     const useProps: any = {
       ...unwrapped,

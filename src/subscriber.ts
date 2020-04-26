@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { ensureReady } from './bootstrap';
+import { ensureAttachedControllers } from './bootstrap';
 import { Callback, LifeCycle, ModelController } from './types';
 import { componentLifecycle } from './use_hook';
 import { dedent, define, Set, callIfExists as ifExists } from './util';
+import { DISPATCH, Dispatch } from './dispatch';
 
 export type UpdateTrigger = Callback;
 
@@ -36,7 +37,8 @@ export function useSubscriber(
   const [ cache, onShouldUpdate ] = useManualRefresh();
   let event: LifeCycle = cache[LIFECYCLE];
 
-  const willDeallocate = ensureReady(control);
+  Dispatch.readyFor(control)
+  const willDeallocate = ensureAttachedControllers(control);
 
   if(!cache.current){
     event = cache[LIFECYCLE] = main ? 
@@ -106,7 +108,7 @@ export function createSubscription(
 ): ModelController {
 
   const Spy = Object.create(source);
-  const dispatch = source.dispatch!;
+  const dispatch = source[DISPATCH]!;
   const { current, refresh } = dispatch;
   const watch = new Set<string>();
 
