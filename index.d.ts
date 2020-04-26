@@ -63,21 +63,21 @@ declare class Controller {
     protected willUnmount?(...args: any[]): void;
     protected didFocus?(parent: Controller, as: string): void;
     protected willLoseFocus?(parent: Controller, as: string): void;
-    protected willExist?(...args: any[]): void | (() => void);
+    protected willCycle?(...args: any[]): void | (() => void);
 
     protected elementWillRender?(...args: any[]): void;
     protected elementWillMount?(...args: any[]): void;
     protected elementWillUpdate?(...args: any[]): void;
     protected elementDidMount?(...args: any[]): void;
     protected elementWillUnmount?(...args: any[]): void;
-    protected elementWillExist?(...args: any[]): void | (() => void);
+    protected elementWillCycle?(...args: any[]): void | (() => void);
 
     protected componentWillRender?(...args: any[]): void;
     protected componentWillMount?(...args: any[]): void;
     protected componentWillUpdate?(...args: any[]): void;
     protected componentDidMount?(...args: any[]): void;
     protected componentWillUnmount?(...args: any[]): void;
-    protected componentWillExist?(...args: any[]): void | (() => void);
+    protected componentWillCycle?(...args: any[]): void | (() => void);
 
     on(): this;
     only(): this;

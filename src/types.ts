@@ -19,7 +19,7 @@ export interface LifeCycle {
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
-  willExist(...args: any[]): Callback;
+  willCycle(...args: any[]): Callback;
   isReady?(): void;
 }
 
@@ -53,21 +53,21 @@ export declare class ModelController {
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
   isReady?(): void;
-  willExist(...args: any[]): Callback;
+  willCycle(...args: any[]): Callback;
 
   elementDidMount?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
-  elementWillExist(...args: any[]): Callback;
+  elementWillCycle(...args: any[]): Callback;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
-  componentWillExist(...args: any[]): Callback;
+  componentWillCycle(...args: any[]): Callback;
 
   observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
 

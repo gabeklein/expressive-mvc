@@ -16,7 +16,7 @@ export const useManualRefresh = () => {
 
 function subscriberLifecycle(control: ModelController){
   return {
-    willExist: control.elementWillExist || control.willExist,
+    willCycle: control.elementWillCycle || control.willCycle,
     willRender: control.elementWillRender || control.willRender,
     willUpdate: control.elementWillUpdate || control.willUpdate,
     willUnmount: control.elementWillUnmount || control.willUnmount,
@@ -64,8 +64,8 @@ export function useSubscriber(
 
     spy[SUBSCRIBE]();
 
-    if(event.willExist)
-      endLifecycle = event.willExist.apply(control, args);
+    if(event.willCycle)
+      endLifecycle = event.willCycle.apply(control, args);
 
     if(event.didMount)
       event.didMount.apply(control, args);

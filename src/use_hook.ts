@@ -13,7 +13,7 @@ export function useModelController(init: any, ...args: any[]){
 
 export function componentLifecycle(control: ModelController){
   return {
-    willExist: control.componentWillExist || control.willExist,
+    willCycle: control.componentWillCycle || control.willCycle,
     willRender: control.componentWillRender || control.willRender,
     willUpdate: control.componentWillUpdate || control.willUpdate,
     willUnmount: control.componentWillUnmount || control.willUnmount,
@@ -63,8 +63,8 @@ export function useOwnController(
     
     spy[SUBSCRIBE]();
 
-    if(event.willExist)
-      endLifecycle = event.willExist.apply(control, args);
+    if(event.willCycle)
+      endLifecycle = event.willCycle.apply(control, args);
 
     if(event.didMount)
       event.didMount.apply(control, args);
