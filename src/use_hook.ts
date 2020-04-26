@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { ensureReady } from './bootstrap';
 import { Controller } from './controller';
 import { createSubscription, LIFECYCLE, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh, useSubscriber } from './subscriber';
-import { Callback, Class, LifeCycle, ModelController } from './types';
+import { Class, LifeCycle, ModelController } from './types';
+import { callIfExists as ifExists } from './util';
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
@@ -28,60 +29,45 @@ export function useOwnController(
 ): ModelController {
 
   const [ cache, onShouldUpdate ] = useManualRefresh();
-  let control = cache.current;
-  let event: LifeCycle = cache[LIFECYCLE];
 
-  if(!control)
-    if(typeof model === "function")
-      control = model.prototype 
-        ? new (model as Class)(...args) 
-        : (model as Function)(...args)
-    else 
-      control = model;
-      
+  let event: LifeCycle = cache[LIFECYCLE];
+  let control: ModelController = cache.current || (
+    typeof model === "function" ?
+      model.prototype ?
+        new (model as Class)(...args) :
+        (model as Function)(...args) :
+      model
+    )
+
   const willDeallocate = ensureReady(control);
 
   if(!cache.current){
     // cache.current = bindMethods(instance, model.prototype);
     event = cache[LIFECYCLE] = componentLifecycle(control);
-
-    if(event.willMount)
-      event.willMount.apply(control, args);
-
     control = cache.current = createSubscription(control, onShouldUpdate);
+
+    ifExists(event.willMount, control, args);
   }
   else 
-    if(event.willUpdate)
-      event.willUpdate.apply(control, args);
+    ifExists(event.willUpdate, control, args);
 
-  if(event.willRender)
-    event.willRender.apply(control, args);
+  ifExists(event.willRender, control, args);
 
   useEffect(() => {
-    let endLifecycle: Callback | undefined;
+    let onEOL = ifExists(event.willCycle, control, args);
+
+    ifExists(event.didMount, control, args);
     
-    control[SUBSCRIBE]();
-
-    if(event.willCycle)
-      endLifecycle = event.willCycle.apply(control, args);
-
-    if(event.didMount)
-      event.didMount.apply(control, args);
+    control[SUBSCRIBE]!();
 
     return () => {
-      if(willDeallocate)
-        willDeallocate();
+      ifExists(willDeallocate);
+      ifExists(event.willUnmount, control, args);
+      ifExists(onEOL);
 
-      if(endLifecycle)
-        endLifecycle()
+      control[UNSUBSCRIBE]!();
 
-      if(event.willUnmount)
-        event.willUnmount.apply(control, args);
-
-      control[UNSUBSCRIBE]();
-
-      if(control.willDestroy)
-        control.willDestroy();
+      ifExists(control.willDestroy, control);
     }
   }, [])
 

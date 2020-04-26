@@ -58,6 +58,12 @@ export function define(target: {}, kv: {} | string, v?: {}){
       defineProperty(target, key, { value });
 }
 
+export function callIfExists<T, A extends any[]>(
+  fn?: (...args: A) => T, on?: any, args?: A){
+    
+  return fn && fn.apply(on, args as any)
+}
+
 export function dedent(t: TemplateStringsArray, ...v: any[]): string {
   const text = v.reduce((a, v, i) => a + v + t[i + 1], t[0]);
   const starting = /^\n( *)/.exec(text);

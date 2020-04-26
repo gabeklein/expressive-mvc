@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ensureReady } from './bootstrap';
 import { Callback, LifeCycle, ModelController } from './types';
 import { componentLifecycle } from './use_hook';
-import { dedent, define, Set } from './util';
+import { dedent, define, Set, callIfExists as ifExists } from './util';
 
 export type UpdateTrigger = Callback;
 
@@ -43,10 +43,10 @@ export function useSubscriber(
       componentLifecycle(control) : 
       subscriberLifecycle(control);
 
-    if(event.willMount)
-      event.willMount.apply(control, args);
+    control = cache.current = 
+      createSubscription(control, onShouldUpdate) as any;
 
-    control = cache.current = createSubscription(control, onShouldUpdate) as any;
+    ifExists(event.willMount, control, args);
   }
   else {
     const current = Object.getPrototypeOf(cache.current);
@@ -54,35 +54,24 @@ export function useSubscriber(
     if(control !== current)
       instanceIsUnexpected(control, current);
 
-    if(event.willUpdate)
-      event.willUpdate.apply(control, args);
+    ifExists(event.willUpdate, control, args);
   }
 
-  if(event.willRender)
-    event.willRender.apply(control, args)
+  ifExists(event.willRender, control, args);
 
   useEffect(() => {
-    let endLifecycle: Callback | undefined;
+    let onEOL = ifExists(event.willCycle, control, args);
+
+    ifExists(event.didMount, control, args);
 
     control[SUBSCRIBE]!();
 
-    if(event.willCycle)
-      endLifecycle = event.willCycle.apply(control, args);
-
-    if(event.didMount)
-      event.didMount.apply(control, args);
-
     return () => {
-      if(willDeallocate)
-        willDeallocate();
-      
-      if(endLifecycle)
-        endLifecycle()
+      ifExists(willDeallocate);
+      ifExists(event.willUnmount, control, args);
+      ifExists(onEOL);
 
-      if(event.willUnmount)
-        event.willUnmount.apply(control, args);
-
-      control[UNSUBSCRIBE]!()
+      control[UNSUBSCRIBE]!();
     };
   }, [])
 
