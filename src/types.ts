@@ -1,6 +1,8 @@
 import { FunctionComponentElement, ProviderProps } from 'react';
 
+import { RENEW_CONSUMERS } from './bootstrap';
 import { Dispatch } from './dispatch';
+import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
 
 export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>
@@ -8,10 +10,6 @@ export type Class = new(...args: any[]) => any;
 export type HandleUpdatedValue<T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
 export type Callback = () => void;
-
-export const UNSUBSCRIBE = "__delete_subscription__";
-export const SUBSCRIBE = "__activate_subscription__";
-export const RENEW_CONSUMERS = "__renew_consumers__";
 
 export interface LifeCycle {
   didMount?(...args: any[]): void;

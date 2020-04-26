@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
 import { ensureReady } from './bootstrap';
-import { Callback, LifeCycle, ModelController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { Callback, LifeCycle, ModelController } from './types';
 import { componentLifecycle } from './use_hook';
 import { dedent, define, Set } from './util';
 
 export type UpdateTrigger = Callback;
 export const LIFECYCLE = Symbol("subscription_lifecycle");
+export const UNSUBSCRIBE = Symbol("add_subscription");
+export const SUBSCRIBE = Symbol("end_subscription");
 
 export const useManualRefresh = () => {
   const [ state, update ] = useState({} as any);

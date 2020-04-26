@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 
 import { ensureReady } from './bootstrap';
 import { Controller } from './controller';
-import { createSubscription, useManualRefresh } from './subscriber';
-import { Callback, ModelController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh } from './subscriber';
+import { Callback, ModelController } from './types';
 
 export function useWatcher(control: ModelController){
   const [ cache, onDidUpdate ] = useManualRefresh();

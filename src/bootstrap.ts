@@ -3,7 +3,7 @@ import { Context, useContext } from 'react';
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { ModelController, RENEW_CONSUMERS } from './types';
+import { ModelController } from './types';
 import { define } from './util';
 
 const {
@@ -12,6 +12,8 @@ const {
   getPrototypeOf: prototypeOf,
   keys: keysIn
 } = Object;
+
+export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
 const RESERVED = [ 
   "add",
