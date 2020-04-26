@@ -50,8 +50,8 @@ export class Map<K, V> extends Array<[K, V]> {
 
 export function define(target: {}, values: {}): void;
 export function define(target: {}, key: string | symbol, value: any): void;
-export function define(target: {}, kv: {} | string, v?: {}){
-  if(typeof kv == "string")
+export function define(target: {}, kv: {} | string | symbol, v?: {}){
+  if(typeof kv == "string" || typeof kv == "symbol")
     defineProperty(target, kv, { value: v })
   else
     for(const [key, value] of entries(kv))
