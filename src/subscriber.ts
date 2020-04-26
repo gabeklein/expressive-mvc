@@ -8,6 +8,7 @@ import { DISPATCH, Dispatch } from './dispatch';
 
 export type UpdateTrigger = Callback;
 
+export const MAIN = Symbol("core_subscription");
 export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const UNSUBSCRIBE = Symbol("add_subscription");
 export const SUBSCRIBE = Symbol("end_subscription");
@@ -36,22 +37,23 @@ export function useSubscriber(
 
   const [ cache, onShouldUpdate ] = useManualRefresh();
   let event: LifeCycle = cache[LIFECYCLE];
+  let releaseHooks: Callback | undefined;
 
   Dispatch.readyFor(control)
-  const willDeallocate = ensureAttachedControllers(control);
+  releaseHooks = ensureAttachedControllers(control);
 
-  if(!cache.current){
+  if(!cache[MAIN]){
     event = cache[LIFECYCLE] = main ? 
       componentLifecycle(control) : 
       subscriberLifecycle(control);
 
-    control = cache.current = 
+    control = cache[MAIN] = 
       createSubscription(control, onShouldUpdate) as any;
 
     ifExists(event.willMount, control, args);
   }
   else {
-    const current = Object.getPrototypeOf(cache.current);
+    const current = Object.getPrototypeOf(cache[MAIN]);
 
     if(control !== current)
       instanceIsUnexpected(control, current);
@@ -62,22 +64,22 @@ export function useSubscriber(
   ifExists(event.willRender, control, args);
 
   useEffect(() => {
-    let onEOL = ifExists(event.willCycle, control, args);
+    let endOfLife = ifExists(event.willCycle, control, args);
 
     ifExists(event.didMount, control, args);
 
     control[SUBSCRIBE]!();
 
     return () => {
-      ifExists(willDeallocate);
+      ifExists(releaseHooks);
       ifExists(event.willUnmount, control, args);
-      ifExists(onEOL);
+      ifExists(endOfLife);
 
       control[UNSUBSCRIBE]!();
     };
   }, [])
 
-  return cache.current;
+  return cache[MAIN];
 }
 
 function instanceIsUnexpected(

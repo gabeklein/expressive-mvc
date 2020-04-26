@@ -3,8 +3,8 @@ import { useEffect } from 'react';
 import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { createSubscription, LIFECYCLE, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh, useSubscriber } from './subscriber';
-import { Class, LifeCycle, ModelController } from './types';
+import { createSubscription, LIFECYCLE, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh, useSubscriber, MAIN } from './subscriber';
+import { Class, LifeCycle, ModelController, Callback } from './types';
 import { callIfExists as ifExists } from './util';
 
 export function useModelController(init: any, ...args: any[]){
@@ -32,7 +32,8 @@ export function useOwnController(
   const [ cache, onShouldUpdate ] = useManualRefresh();
 
   let event: LifeCycle = cache[LIFECYCLE];
-  let control: ModelController = cache.current || (
+  let releaseHooks: Callback | undefined;
+  let control: ModelController = cache[MAIN] || (
     typeof model === "function" ?
       model.prototype ?
         new (model as Class)(...args) :
@@ -41,12 +42,12 @@ export function useOwnController(
     )
 
   Dispatch.readyFor(control);
-  const willDeallocate = ensureAttachedControllers(control);
+  releaseHooks = ensureAttachedControllers(control);
 
-  if(!cache.current){
-    // cache.current = bindMethods(instance, model.prototype);
+  if(!cache[MAIN]){
+    // cache[MAIN] = bindMethods(instance, model.prototype);
     event = cache[LIFECYCLE] = componentLifecycle(control);
-    control = cache.current = createSubscription(control, onShouldUpdate);
+    control = cache[MAIN] = createSubscription(control, onShouldUpdate);
 
     ifExists(event.willMount, control, args);
   }
@@ -56,16 +57,16 @@ export function useOwnController(
   ifExists(event.willRender, control, args);
 
   useEffect(() => {
-    let onEOL = ifExists(event.willCycle, control, args);
+    let endOfLife = ifExists(event.willCycle, control, args);
 
     ifExists(event.didMount, control, args);
     
     control[SUBSCRIBE]!();
 
     return () => {
-      ifExists(willDeallocate);
+      ifExists(releaseHooks);
       ifExists(event.willUnmount, control, args);
-      ifExists(onEOL);
+      ifExists(endOfLife);
 
       control[UNSUBSCRIBE]!();
 
