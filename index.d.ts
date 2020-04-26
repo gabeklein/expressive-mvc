@@ -24,7 +24,6 @@ export interface Subscriber<T> {
     on(...properties: string[]): Subscriber<T> & T;
     not(...properties: string[]): Subscriber<T> & T;
     only(...properties: string[]): T;
-    once(): T;
     except: never;
 }
 
@@ -81,7 +80,6 @@ declare class Controller {
     protected componentWillExist?(...args: any[]): void | (() => void);
 
     on(): this;
-    once(): this
     only(): this;
     not(): this;
 

@@ -33,18 +33,6 @@ test('passes arguments to constructor', () => {
   expect(state.init).toBe("Hello World!");
 })
 
-test('ignores updates on useOnce', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(
-    () => TestController.use().once()
-  )
-
-  expect(state.value).toBe(1);
-
-  state.value = 2;
-
-  await assertDidNotUpdate();
-})
-
 test('can initialize a Provider', () => {
   trySubscribe({
     use: TestController,

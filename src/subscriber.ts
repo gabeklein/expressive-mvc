@@ -153,7 +153,6 @@ export function createSubscription(
   define(Spy, SUBSCRIBE, subscribe);
   define(Spy, UNSUBSCRIBE, unsubscribe);
   define(Spy, {
-    once: () => source,
     on: alsoWatchValues,
     only: onlySubscribeTo,
     not: dontWatchValues

@@ -22,7 +22,6 @@ const RESERVED = [
   "not",
   "on",
   "only",
-  "once",
   "Provider",
   "Value",
   "refresh",

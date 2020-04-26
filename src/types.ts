@@ -63,7 +63,6 @@ export declare class ModelController {
 
   not(...args: string[]): this;
   on(...args: string[]): this;
-  once(): this;
   only(...args: string[]): this;
 
   assign(props: BunchOf<any>): this;

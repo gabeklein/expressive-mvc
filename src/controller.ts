@@ -36,7 +36,7 @@ export function bootstrapController(fn: any){
   const prototype = fn.prototype = {} as any;
   fn.global = false;
 
-  for(const f of ["on", "not", "only", "once"])
+  for(const f of ["on", "not", "only"])
     prototype[f] = noop;
 
   defineOnAccess(prototype, "Provider", ControlProvider)
