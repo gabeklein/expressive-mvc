@@ -30,32 +30,43 @@ function subscriberLifecycle(control: ModelController){
   }
 }
 
+// export function useActiveSubscription(
+//   target: ModelController,
+//   event: (name: string) => void
+// ){
+  
+// }
+
 export function useSubscriber(
-  control: ModelController, 
+  target: ModelController, 
   args: any[], 
   main: boolean){
 
   const [ cache, onShouldUpdate ] = useManualRefresh();
+  
+  let control: ModelController = cache[MAIN];
   let event: LifeCycle = cache[LIFECYCLE];
   let releaseHooks: Callback | undefined;
 
-  Dispatch.readyFor(control)
-  releaseHooks = ensureAttachedControllers(control);
+  if(!control)
+    Dispatch.readyFor(target);
+
+  releaseHooks = ensureAttachedControllers(target);
 
   if(!cache[MAIN]){
     event = cache[LIFECYCLE] = main ? 
-      componentLifecycle(control) : 
-      subscriberLifecycle(control);
+      componentLifecycle(target) : 
+      subscriberLifecycle(target);
 
     control = cache[MAIN] = 
-      createSubscription(control, onShouldUpdate) as any;
+      createSubscription(target, onShouldUpdate) as any;
 
     ifExists(event.willMount, control, args);
   }
   else {
-    const current = Object.getPrototypeOf(cache[MAIN]);
+    const current = Object.getPrototypeOf(control);
 
-    if(control !== current)
+    if(target !== current)
       instanceIsUnexpected(control, current);
 
     ifExists(event.willUpdate, control, args);
@@ -71,15 +82,15 @@ export function useSubscriber(
     control[SUBSCRIBE]!();
 
     return () => {
+      control[UNSUBSCRIBE]!();
+
       ifExists(releaseHooks);
       ifExists(event.willUnmount, control, args);
       ifExists(endOfLife);
-
-      control[UNSUBSCRIBE]!();
     };
   }, [])
 
-  return cache[MAIN];
+  return control;
 }
 
 function instanceIsUnexpected(

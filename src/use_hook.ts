@@ -31,21 +31,24 @@ export function useOwnController(
 
   const [ cache, onShouldUpdate ] = useManualRefresh();
 
+  let control: ModelController = cache[MAIN];
   let event: LifeCycle = cache[LIFECYCLE];
   let releaseHooks: Callback | undefined;
-  let control: ModelController = cache[MAIN] || (
-    typeof model === "function" ?
-      model.prototype ?
-        new (model as Class)(...args) :
-        (model as Function)(...args) :
-      model
-    )
 
-  Dispatch.readyFor(control);
+  if(!control){
+    control = 
+      typeof model === "function" ?
+        model.prototype ?
+          new (model as Class)(...args) :
+          (model as Function)(...args) :
+        model;
+
+    Dispatch.readyFor(control);
+  }
+
   releaseHooks = ensureAttachedControllers(control);
 
   if(!cache[MAIN]){
-    // cache[MAIN] = bindMethods(instance, model.prototype);
     event = cache[LIFECYCLE] = componentLifecycle(control);
     control = cache[MAIN] = createSubscription(control, onShouldUpdate);
 
