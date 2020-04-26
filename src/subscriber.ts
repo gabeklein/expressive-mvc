@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 
 import { ensureReady } from './bootstrap';
-import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, LifeCycle } from './types';
+import { Callback, LifeCycle, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 import { componentLifecycle } from './use_hook';
 import { dedent, define, Set } from './util';
 
-const { create, defineProperty, getPrototypeOf } = Object;
-
 export type UpdateTrigger = Callback;
+export const LIFECYCLE = Symbol("subscription_lifecycle");
 
 export const useManualRefresh = () => {
   const [ state, update ] = useState({} as any);
@@ -25,8 +24,6 @@ function subscriberLifecycle(control: ModelController){
     willMount: control.elementWillMount || control.willMount
   }
 }
-
-export const LIFECYCLE = Symbol("subscription_lifecycle");
 
 export function useSubscriber(
   control: ModelController, 
@@ -49,7 +46,7 @@ export function useSubscriber(
     control = cache.current = createSubscription(control, onShouldUpdate) as any;
   }
   else {
-    const current = getPrototypeOf(cache.current);
+    const current = Object.getPrototypeOf(cache.current);
 
     if(control !== current)
       instanceIsUnexpected(control, current);
@@ -117,7 +114,7 @@ export function createSubscription(
   onUpdate: UpdateTrigger
 ): SpyController {
 
-  const Spy = create(source);
+  const Spy = Object.create(source);
   const dispatch = source.dispatch!;
   const { current, refresh } = dispatch;
   const watch = new Set<string>();
@@ -126,7 +123,7 @@ export function createSubscription(
   let cleanup: Set<Callback>;
 
   for(const key in current)
-    defineProperty(Spy, key, {
+    Object.defineProperty(Spy, key, {
       configurable: true,
       enumerable: true,
       set: (value: any) => {

@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 
-import { Controller } from './controller';
-import { createSubscription, useManualRefresh, useSubscriber, LIFECYCLE } from './subscriber';
-import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback, LifeCycle } from './types';
 import { ensureReady } from './bootstrap';
+import { Controller } from './controller';
+import { createSubscription, LIFECYCLE, useManualRefresh, useSubscriber } from './subscriber';
+import { Callback, Class, LifeCycle, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller

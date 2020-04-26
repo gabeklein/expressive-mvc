@@ -2,10 +2,10 @@ import { Context, createContext, createElement, PropsWithChildren, ProviderExoti
 
 import { Controller } from './controller';
 import { globalController } from './global';
-import { constructorOf, Map, define } from './util';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 import { ModelController } from './types';
+import { constructorOf, define, Map } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();

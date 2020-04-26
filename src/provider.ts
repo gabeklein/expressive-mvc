@@ -1,10 +1,10 @@
 import { createContext, createElement, FunctionComponent, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
+import { ensureAttachedControllers } from './bootstrap';
 import { ownContext } from './context';
 import { Controller } from './controller';
-import { BunchOf, ModelController, Callback } from './types';
+import { BunchOf, Callback, ModelController } from './types';
 import { useOwnController } from './use_hook';
-import { ensureAttachedControllers } from './bootstrap';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
