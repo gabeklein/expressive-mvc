@@ -1,13 +1,9 @@
 import { useEffect } from 'react';
 
 import { Controller } from './controller';
-import { createSubscription, useManualRefresh, useSubscriber } from './subscriber';
-import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback } from './types';
-import { bindMethods, ensureReady } from './bootstrap';
-
-const {
-  getPrototypeOf: prototypeOf
-} = Object;
+import { createSubscription, useManualRefresh, useSubscriber, LIFECYCLE } from './subscriber';
+import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback, LifeCycle } from './types';
+import { ensureReady } from './bootstrap';
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
@@ -31,96 +27,64 @@ export function useOwnController(
   args: any[] = []
 ): ModelController {
 
-  const [ cache, setUpdate ] = useManualRefresh();
-  let instance = cache.current;
-  let endLifecycle: Callback | undefined;
+  const [ cache, onShouldUpdate ] = useManualRefresh();
+  let control = cache.current;
+  let event: LifeCycle = cache[LIFECYCLE];
 
-  const p: ModelController = model.prototype || {};
-
-  const {
-    willRender,
-    willUpdate,
-    willUnmount,
-    didMount,
-    willMount,
-    willExist
-  } = componentLifecycle(p);
-
-  if(!instance)
-    if(typeof model === "function"){
-      if(model.prototype){
-        instance = new (model as Class)(...args);
-        if(!model.prototype.cache)
-          model.prototype.cache = {}
-      }
-      else 
-        instance = (model as Function)(...args)
-    }
+  if(!control)
+    if(typeof model === "function")
+      control = model.prototype 
+        ? new (model as Class)(...args) 
+        : (model as Function)(...args)
     else 
-      instance = model;
+      control = model;
       
   const willDeallocate = ensureReady(control);
 
   if(!cache.current){
-    cache.current = bindMethods(instance, model.prototype);
-    
-    if(instance.didInit && !(instance instanceof Controller))
-      instance.didInit();
+    // cache.current = bindMethods(instance, model.prototype);
+    event = cache[LIFECYCLE] = componentLifecycle(control);
 
-    if(willMount)
-      willMount.apply(instance, args);
+    if(event.willMount)
+      event.willMount.apply(control, args);
 
-    if(willRender)
-      willRender.apply(instance, args);
-
-    instance = createSubscription(instance, setUpdate);
+    control = cache.current = createSubscription(control, onShouldUpdate);
   }
-  else {
-    // TODO: return Spycontroller always
-    instance = Object.create(instance);
+  else 
+    if(event.willUpdate)
+      event.willUpdate.apply(control, args);
 
-    if(willUpdate)
-      willUpdate.apply(instance, args);
-
-    if(willRender)
-      willRender.apply(instance, args);
-  }
-
-  Object.defineProperty(instance, "refresh", {
-    value: (...keys: string[]) => {
-      if(!keys[0]) setUpdate();
-      else return cache.current.refresh(...keys)
-    }
-  })
+  if(event.willRender)
+    event.willRender.apply(control, args);
 
   useEffect(() => {
-    const spyControl = instance as unknown as SpyController;
-    const state = prototypeOf(instance);
+    const spy = control as SpyController;
+    let endLifecycle: Callback | undefined;
     
-    spyControl[SUBSCRIBE]();
+    spy[SUBSCRIBE]();
 
-    if(willExist)
-      endLifecycle = willExist.apply(state, args);
+    if(event.willExist)
+      endLifecycle = event.willExist.apply(control, args);
 
-    if(didMount)
-      didMount.apply(state, args);
+    if(event.didMount)
+      event.didMount.apply(control, args);
 
     return () => {
-      if(endLifecycle)
-        endLifecycle()
-
-      if(willUnmount)
-        willUnmount.apply(state, args);
-
-      if("willDestroy" in instance)
-        instance.willDestroy();
-
       if(willDeallocate)
         willDeallocate();
 
-      spyControl[UNSUBSCRIBE]();
+      if(endLifecycle)
+        endLifecycle()
+
+      if(event.willUnmount)
+        event.willUnmount.apply(control, args);
+
+      spy[UNSUBSCRIBE]();
+
+      if(control.willDestroy)
+        control.willDestroy();
     }
   }, [])
 
-  return instance;
+  return control;
 }

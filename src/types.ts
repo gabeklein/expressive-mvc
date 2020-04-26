@@ -13,6 +13,16 @@ export const UNSUBSCRIBE = "__delete_subscription__";
 export const SUBSCRIBE = "__activate_subscription__";
 export const RENEW_CONSUMERS = "__renew_consumers__";
 
+export interface LifeCycle {
+  didMount?(...args: any[]): void;
+  willMount?(...args: any[]): void;
+  willRender?(...args: any[]): void;
+  willUnmount?(...args: any[]): void;
+  willUpdate?(...args: any[]): void;
+  willExist(...args: any[]): Callback;
+  isReady?(): void;
+}
+
 export interface LiveState<State = any> {
   refresh(): void;
   add(key: string, initial?: any): void;

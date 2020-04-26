@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { ensureBootstrap } from './bootstrap';
-import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
+import { ensureReady } from './bootstrap';
+import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, LifeCycle } from './types';
 import { componentLifecycle } from './use_hook';
 import { dedent, define, Set } from './util';
 
-const { create, defineProperty } = Object;
+const { create, defineProperty, getPrototypeOf } = Object;
 
 export type UpdateTrigger = Callback;
 
@@ -26,66 +26,52 @@ function subscriberLifecycle(control: ModelController){
   }
 }
 
+export const LIFECYCLE = Symbol("subscription_lifecycle");
+
 export function useSubscriber(
   control: ModelController, 
   args: any[], 
   main: boolean){
 
-  const [ cache, onDidUpdate ] = useManualRefresh();
-  let endLifecycle: undefined | Callback
+  const [ cache, onShouldUpdate ] = useManualRefresh();
+  let event: LifeCycle = cache[LIFECYCLE];
 
-  const {
-    willRender,
-    willUpdate,
-    willUnmount,
-    didMount,
-    willMount,
-    willExist
-  } = main ? 
-    componentLifecycle(control) : 
-    subscriberLifecycle(control);
-
-  const willDeallocate = ensureBootstrap(control);
+  const willDeallocate = ensureReady(control);
 
   if(!cache.current){
-    const spy = createSubscription(control, onDidUpdate);
+    event = cache[LIFECYCLE] = main ? 
+      componentLifecycle(control) : 
+      subscriberLifecycle(control);
 
-    if(willMount)
-      willMount.apply(control, args);
+    if(event.willMount)
+      event.willMount.apply(control, args);
 
-    cache.current = control;
-    control = spy as any;
+    control = cache.current = createSubscription(control, onShouldUpdate) as any;
   }
   else {
-    if(control !== cache.current)
-      controllerIsUnexpected(control, cache.current);
+    const current = getPrototypeOf(cache.current);
 
-    if(willUpdate)
-      willUpdate.apply(control, args);
+    if(control !== current)
+      instanceIsUnexpected(control, current);
 
-    control = Object.create(control);
+    if(event.willUpdate)
+      event.willUpdate.apply(control, args);
   }
 
-  if(willRender)
-    willRender.apply(control, args)
-
-  Object.defineProperty(control, "refresh", {
-    value: (...keys: string[]) => {
-      if(!keys[0]) onDidUpdate();
-      else return cache.current.refresh(...keys)
-    }
-  })
+  if(event.willRender)
+    event.willRender.apply(control, args)
 
   useEffect(() => {
     const spy = control as unknown as SpyController;
+    let endLifecycle: Callback | undefined;
 
     spy[SUBSCRIBE]();
 
-    if(willExist)
-      endLifecycle = willExist.apply(control, args);
+    if(event.willExist)
+      endLifecycle = event.willExist.apply(control, args);
 
-    if(didMount)
-      didMount.apply(control, args);
+    if(event.didMount)
+      event.didMount.apply(control, args);
 
     return () => {
       if(willDeallocate)
@@ -94,17 +80,17 @@ export function useSubscriber(
       if(endLifecycle)
         endLifecycle()
 
-      if(willUnmount)
-        willUnmount.apply(control, args);
+      if(event.willUnmount)
+        event.willUnmount.apply(control, args);
 
       spy[UNSUBSCRIBE]()
     };
   }, [])
 
-  return control;
+  return cache.current;
 }
 
-function controllerIsUnexpected(
+function instanceIsUnexpected(
   control: ModelController, cached: ModelController){
 
   const ControlType = cached.constructor;
@@ -132,14 +118,17 @@ export function createSubscription(
 ): SpyController {
 
   const Spy = create(source);
-  const { dispatch } = source;
-  const { current, refresh } = dispatch!;
-  const cleanup = new Set<Callback>();
+  const dispatch = source.dispatch!;
+  const { current, refresh } = dispatch;
   const watch = new Set<string>();
+
   let exclude: Set<string>;
+  let cleanup: Set<Callback>;
 
   for(const key in current)
     defineProperty(Spy, key, {
+      configurable: true,
+      enumerable: true,
       set: (value: any) => {
         current[key] = value;
         refresh(key);
@@ -150,49 +139,52 @@ export function createSubscription(
       }
     })
 
-  define(Spy, SUBSCRIBE, subscribe);
-  define(Spy, UNSUBSCRIBE, unsubscribe);
   define(Spy, {
-    on: alsoWatchValues,
-    only: onlySubscribeTo,
-    not: dontWatchValues
+    [SUBSCRIBE]: subscribe,
+    [UNSUBSCRIBE]: unsubscribe,
+    refresh: forceRefresh,
+    on: alsoWatch,
+    only: onlyWatch,
+    not: dontWatch
   })
 
   return Spy;
 
+  function forceRefresh(...keys: string[]){
+    if(!keys[0]) onUpdate();
+    else refresh(...keys)
+  }
+
+  function stopInference(){
+    for(const key in current)
+      delete Spy[key];
+  }
+
   function subscribe(){
+    stopInference();
+
     if(exclude)
       for(const k of exclude)
         watch.delete(k);
 
-    for(const key of watch)
-      cleanup.add(
-        dispatch!.addListener(key, onUpdate)
-      )
+    if(watch.size === 0)
+      return;
+
+    cleanup = new Set();
+    for(const key of watch){
+      const done = dispatch.addListener(key, onUpdate);
+      cleanup.add(done)
+    }
   }
 
   function unsubscribe(){
+    if(cleanup)
     for(const unsub of cleanup)
       unsub()
   }
 
-  function onlySubscribeTo(...keys: string[]){
-    const watch = new Set<string>();
-
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        watch.add(key);
-
-    for(const key of watch)
-      cleanup.add(
-        dispatch!.addListener(key, onUpdate)
-      )
-
-    return source;
-  }
-
-  function dontWatchValues(...keys: string[]){
-    exclude = new Set<string>();
+  function dontWatch(...keys: string[]){
+    exclude = new Set();
 
     for(let arg of keys)
       for(const key of arg.split(","))
@@ -201,10 +193,20 @@ export function createSubscription(
     return Spy;
   }
 
-  function alsoWatchValues(...keys: string[]){
+  function alsoWatch(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
         watch.add(key);
+
+    return Spy;
+  }
+
+  function onlyWatch(...keys: string[]){
+    for(let arg of keys)
+      for(const key of arg.split(","))
+        watch.add(key);
+
+    stopInference();
 
     return Spy;
   }
