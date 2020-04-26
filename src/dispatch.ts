@@ -43,19 +43,6 @@ export class Dispatch {
       control.isReady();
   }
 
-  public addListener(
-    key: string, callback: UpdateTrigger){
-
-    let register = this.subscribers[key];
-
-    if(!register)
-      register = this.subscribers[key] = new Set();
-
-    register.add(callback);
-
-    return () => register.delete(callback);
-  }
-
   toggle = (key: string) => {
     this.current[key] = !this.current[key];
     this.refresh(key)
@@ -120,6 +107,19 @@ export class Dispatch {
     }
 
     return unwatch;
+  }
+
+  public addListener(
+    key: string, callback: UpdateTrigger){
+
+    let register = this.subscribers[key];
+
+    if(!register)
+      register = this.subscribers[key] = new Set();
+
+    register.add(callback);
+
+    return () => register.delete(callback);
   }
   
   private get(keys?: string[]){

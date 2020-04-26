@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Controller } from './controller';
 import { createSubscription, useManualRefresh } from './subscriber';
 import { Callback, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE } from './types';
-import { ensureBootstrap } from './bootstrap';
+import { ensureReady } from './bootstrap';
 
 export function useWatcher(control: ModelController){
   const [ cache, onDidUpdate ] = useManualRefresh();
@@ -11,7 +11,7 @@ export function useWatcher(control: ModelController){
   let { current } = cache;
   
   if(!current){
-    ensureBootstrap(control);
+    ensureReady(control);
     current = cache.current = createSubscription(control, onDidUpdate);
   }
 
@@ -50,7 +50,7 @@ export function useWatchedProperty(
     const instance = value as ModelController;
 
     //TODO: Changing out instance breaks this.
-    flushUtilityHooks = ensureBootstrap(instance);
+    flushUtilityHooks = ensureReady(instance);
 
     if(!cache.current){
       const spy = createSubscription(instance, childDidUpdate);

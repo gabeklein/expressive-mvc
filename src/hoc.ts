@@ -37,12 +37,7 @@ export function ControlledInput(
     props = assign({}, props);
     delete props.to;
 
-    useEffect(() => {
-      const removeListener =
-        control.dispatch.addListener(key, onDidUpdate);
-
-      return removeListener;
-    })
+    useEffect(() => control.dispatch.addListener(key, onDidUpdate))
     
     props = Object.assign(props, {
       ref,

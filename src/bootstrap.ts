@@ -30,7 +30,7 @@ const RESERVED = [
   "componentWillHook"
 ];
 
-export function ensureBootstrap(instance: {}){
+export function ensureReady(instance: {}){
   if(!("dispatch" in instance))
     Dispatch.applyTo(instance as any);
 

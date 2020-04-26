@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Controller } from './controller';
 import { createSubscription, useManualRefresh, useSubscriber } from './subscriber';
 import { Class, ModelController, SpyController, SUBSCRIBE, UNSUBSCRIBE, Callback } from './types';
-import { ensureBootstrap, bindMethods, nuke } from './bootstrap';
+import { bindMethods, ensureReady, nuke } from './bootstrap';
 
 const {
   getPrototypeOf: prototypeOf
@@ -59,7 +59,7 @@ export function useOwnController(
     else 
       instance = model;
       
-  const willDeallocate = ensureBootstrap(instance);
+  const willDeallocate = ensureReady(control);
 
   if(!cache.current){
     cache.current = bindMethods(instance, model.prototype);
