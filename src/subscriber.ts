@@ -1,6 +1,7 @@
+import { Controller } from './controller';
+import { Dispatch } from './dispatch';
 import { useSubscription } from './hook';
-import { ModelController } from './types';
-import { componentLifecycle } from './use_hook';
+import { Class, ModelController } from './types';
 import { dedent } from './util';
 
 function subscriberLifecycle(control: ModelController){
@@ -14,6 +15,57 @@ function subscriberLifecycle(control: ModelController){
   }
 }
 
+export function componentLifecycle(control: ModelController){
+  return {
+    willCycle: control.componentWillCycle || control.willCycle,
+    willRender: control.componentWillRender || control.willRender,
+    willUpdate: control.componentWillUpdate || control.willUpdate,
+    willUnmount: control.componentWillUnmount || control.willUnmount,
+    willMount: control.componentWillMount || control.willMount,
+    didMount: control.componentDidMount || control.didMount
+  }
+}
+
+export function useModelController(init: any, ...args: any[]){
+  return init instanceof Controller
+    ? useSubscriber(init as ModelController, args, true)
+    : useOwnController(init, args);
+}
+
+export function useOwnController(
+  model: Class | Function,
+  args: any[] = []
+): ModelController {
+
+  let lifecycle: any;
+
+  return useSubscription(
+    () => {
+      const control = 
+        typeof model === "function" ?
+          model.prototype ?
+            new (model as Class)(...args) :
+            (model as Function)(...args) :
+          model;
+  
+      lifecycle = componentLifecycle(control);
+      Dispatch.readyFor(control);
+  
+      return control;
+    },
+    (name: string, on: ModelController) => {
+      const handler = lifecycle[name];
+  
+      if(name == "willUnmount")
+        if(on.willDestroy)
+          on.willDestroy(...args)
+  
+      if(handler)
+        return handler.apply(on, args);
+    }
+  );
+}
+
 export function useSubscriber(
   target: ModelController, 
   args: any[], 
@@ -21,31 +73,28 @@ export function useSubscriber(
 
   let lifecycle: any;
 
-  function usingController(){
-    lifecycle = main ? 
-      componentLifecycle(target) : 
-      subscriberLifecycle(target);
-
-    return target;
-  };
-
-  function onLifecycleEvent(name: string, on: ModelController){
-    if(!lifecycle)
-      debugger
-
-    const handler = lifecycle[name];
-
-    if(name == "willUpdate"){
-      const current = Object.getPrototypeOf(on);
-      if(target !== current)
-        instanceIsUnexpected(target, current);
+  return useSubscription(
+    () => {
+      lifecycle = main ? 
+        componentLifecycle(target) : 
+        subscriberLifecycle(target);
+  
+      return target;
+    },
+    (name: string, on: ModelController) => {
+      const handler = lifecycle[name];
+  
+      //TODO: callback caching breaks this!
+      if(name == "willUpdate"){
+        const current = Object.getPrototypeOf(on);
+        if(target !== current)
+          instanceIsUnexpected(target, current);
+      }
+  
+      if(handler)
+        return handler.apply(on, args);
     }
-
-    if(handler)
-      return handler.apply(on, args);
-  }
-
-  return useSubscription(usingController, onLifecycleEvent);
+  );
 }
 
 function instanceIsUnexpected(

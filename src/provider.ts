@@ -4,8 +4,8 @@ import { ensureAttachedControllers } from './bootstrap';
 import { ownContext } from './context';
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
+import { useOwnController } from './subscriber';
 import { BunchOf, Callback, ModelController } from './types';
-import { useOwnController } from './use_hook';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 

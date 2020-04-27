@@ -10,9 +10,8 @@ import { applyExternalValues } from './dispatch';
 import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
-import { useSubscriber } from './subscriber';
+import { useOwnController, useSubscriber } from './subscriber';
 import { ModelController } from './types';
-import { useOwnController } from './use_hook';
 import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
