@@ -1,8 +1,8 @@
 import { createElement, FC, forwardRef, useEffect } from 'react';
 
-import { useManualRefresh } from './subscriber';
-import { ModelController } from './types';
 import { DISPATCH } from './dispatch';
+import { useManualRefresh } from './hook';
+import { ModelController } from './types';
 
 const { assign } = Object;
 

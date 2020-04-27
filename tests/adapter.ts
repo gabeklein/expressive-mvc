@@ -1,7 +1,7 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
 import { use } from '../src';
-import { SUBSCRIBE } from '../src/subscriber';
+import { SUBSCRIBE } from '../src/subscription';
 
 type Class = new (...args: any[]) => any;
 type Initializer = () => any;

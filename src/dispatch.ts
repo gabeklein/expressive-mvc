@@ -1,4 +1,4 @@
-import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscriber';
+import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback, ModelController } from './types';
 import { collectGetters, define, entriesOf, Set } from './util';
 

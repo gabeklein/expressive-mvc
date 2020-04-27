@@ -2,7 +2,7 @@ import { FunctionComponentElement, ProviderProps } from 'react';
 
 import { RENEW_CONSUMERS } from './bootstrap';
 import { Dispatch, DISPATCH } from './dispatch';
-import { SUBSCRIBE, UNSUBSCRIBE } from './subscriber';
+import { SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 
 export type BunchOf<T> = { [key: string]: T }
 export type State = LiveState & BunchOf<any>

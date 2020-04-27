@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
 import { DISPATCH, Dispatch } from './dispatch';
-import { createSubscription, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh } from './subscriber';
+import { useManualRefresh } from './hook';
+import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Callback, ModelController } from './types';
 
 export function useWatcher(control: ModelController){

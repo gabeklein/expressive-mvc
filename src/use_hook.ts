@@ -1,11 +1,8 @@
-import { useEffect } from 'react';
-
-import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { createSubscription, LIFECYCLE, SUBSCRIBE, UNSUBSCRIBE, useManualRefresh, useSubscriber, MAIN } from './subscriber';
-import { Class, LifeCycle, ModelController, Callback } from './types';
-import { callIfExists as ifExists } from './util';
+import { useSubscription } from './hook';
+import { useSubscriber } from './subscriber';
+import { Class, ModelController } from './types';
 
 export function useModelController(init: any, ...args: any[]){
   return init instanceof Controller
@@ -24,58 +21,37 @@ export function componentLifecycle(control: ModelController){
   }
 }
 
-export function useOwnController( 
+export function useOwnController(
   model: Class | Function,
   args: any[] = []
 ): ModelController {
 
-  const [ cache, onShouldUpdate ] = useManualRefresh();
+  let lifecycle: any;
 
-  let control: ModelController = cache[MAIN];
-  let event: LifeCycle = cache[LIFECYCLE];
-  let releaseHooks: Callback | undefined;
-
-  if(!control){
-    control = 
+  function usingController(){
+    const control = 
       typeof model === "function" ?
         model.prototype ?
           new (model as Class)(...args) :
           (model as Function)(...args) :
         model;
 
+    lifecycle = componentLifecycle(control);
     Dispatch.readyFor(control);
+
+    return control;
+  };
+
+  function onLifecycleEvent(name: string, on: ModelController){
+    const handler = lifecycle[name];
+
+    if(name == "willUnmount")
+      if(on.willDestroy)
+        on.willDestroy(...args)
+
+    if(handler)
+      return handler.apply(on, args);
   }
 
-  releaseHooks = ensureAttachedControllers(control);
-
-  if(!cache[MAIN]){
-    event = cache[LIFECYCLE] = componentLifecycle(control);
-    control = cache[MAIN] = createSubscription(control, onShouldUpdate);
-
-    ifExists(event.willMount, control, args);
-  }
-  else 
-    ifExists(event.willUpdate, control, args);
-
-  ifExists(event.willRender, control, args);
-
-  useEffect(() => {
-    let endOfLife = ifExists(event.willCycle, control, args);
-
-    ifExists(event.didMount, control, args);
-    
-    control[SUBSCRIBE]!();
-
-    return () => {
-      ifExists(releaseHooks);
-      ifExists(event.willUnmount, control, args);
-      ifExists(endOfLife);
-
-      control[UNSUBSCRIBE]!();
-
-      ifExists(control.willDestroy, control);
-    }
-  }, [])
-
-  return control;
+  return useSubscription(usingController, onLifecycleEvent);
 }

@@ -1,23 +1,7 @@
-import { useEffect, useState } from 'react';
-
-import { ensureAttachedControllers } from './bootstrap';
-import { Callback, LifeCycle, ModelController } from './types';
+import { useSubscription } from './hook';
+import { ModelController } from './types';
 import { componentLifecycle } from './use_hook';
-import { dedent, define, Set, callIfExists as ifExists } from './util';
-import { DISPATCH, Dispatch } from './dispatch';
-
-export type UpdateTrigger = Callback;
-
-export const MAIN = Symbol("core_subscription");
-export const LIFECYCLE = Symbol("subscription_lifecycle");
-export const UNSUBSCRIBE = Symbol("add_subscription");
-export const SUBSCRIBE = Symbol("end_subscription");
-
-export const useManualRefresh = () => {
-  const [ state, update ] = useState({} as any);
-  const refresh = () => update(Object.assign({}, state));
-  return [ state, refresh ] as const;
-}
+import { dedent } from './util';
 
 function subscriberLifecycle(control: ModelController){
   return {
@@ -30,67 +14,38 @@ function subscriberLifecycle(control: ModelController){
   }
 }
 
-// export function useActiveSubscription(
-//   target: ModelController,
-//   event: (name: string) => void
-// ){
-  
-// }
-
 export function useSubscriber(
   target: ModelController, 
   args: any[], 
   main: boolean){
 
-  const [ cache, onShouldUpdate ] = useManualRefresh();
-  
-  let control: ModelController = cache[MAIN];
-  let event: LifeCycle = cache[LIFECYCLE];
-  let releaseHooks: Callback | undefined;
+  let lifecycle: any;
 
-  if(!control)
-    Dispatch.readyFor(target);
-
-  releaseHooks = ensureAttachedControllers(target);
-
-  if(!cache[MAIN]){
-    event = cache[LIFECYCLE] = main ? 
+  function usingController(){
+    lifecycle = main ? 
       componentLifecycle(target) : 
       subscriberLifecycle(target);
 
-    control = cache[MAIN] = 
-      createSubscription(target, onShouldUpdate) as any;
+    return target;
+  };
 
-    ifExists(event.willMount, control, args);
+  function onLifecycleEvent(name: string, on: ModelController){
+    if(!lifecycle)
+      debugger
+
+    const handler = lifecycle[name];
+
+    if(name == "willUpdate"){
+      const current = Object.getPrototypeOf(on);
+      if(target !== current)
+        instanceIsUnexpected(target, current);
+    }
+
+    if(handler)
+      return handler.apply(on, args);
   }
-  else {
-    const current = Object.getPrototypeOf(control);
 
-    if(target !== current)
-      instanceIsUnexpected(control, current);
-
-    ifExists(event.willUpdate, control, args);
-  }
-
-  ifExists(event.willRender, control, args);
-
-  useEffect(() => {
-    let endOfLife = ifExists(event.willCycle, control, args);
-
-    ifExists(event.didMount, control, args);
-
-    control[SUBSCRIBE]!();
-
-    return () => {
-      control[UNSUBSCRIBE]!();
-
-      ifExists(releaseHooks);
-      ifExists(event.willUnmount, control, args);
-      ifExists(endOfLife);
-    };
-  }, [])
-
-  return control;
+  return useSubscription(usingController, onLifecycleEvent);
 }
 
 function instanceIsUnexpected(
@@ -114,103 +69,3 @@ function instanceIsUnexpected(
     `)
 }
 
-//TODO: Turn this into a class like Dispatch
-export function createSubscription(
-  source: ModelController,
-  onUpdate: UpdateTrigger
-): ModelController {
-
-  const Spy = Object.create(source);
-  const dispatch = source[DISPATCH]!;
-  const { current, refresh } = dispatch;
-  const watch = new Set<string>();
-
-  let exclude: Set<string>;
-  let cleanup: Set<Callback>;
-
-  for(const key in current)
-    Object.defineProperty(Spy, key, {
-      configurable: true,
-      enumerable: true,
-      set: (value: any) => {
-        current[key] = value;
-        refresh(key);
-      },
-      get: () => {
-        watch.add(key);
-        return current[key];
-      }
-    })
-
-  define(Spy, SUBSCRIBE, subscribe)
-  define(Spy, UNSUBSCRIBE, unsubscribe)
-  define(Spy, {
-    refresh: forceRefresh,
-    on: alsoWatch,
-    only: onlyWatch,
-    not: dontWatch
-  })
-
-  return Spy;
-
-  function forceRefresh(...keys: string[]){
-    if(!keys[0]) onUpdate();
-    else refresh(...keys)
-  }
-
-  function stopInference(){
-    for(const key in current)
-      delete Spy[key];
-  }
-
-  function subscribe(){
-    stopInference();
-
-    if(exclude)
-      for(const k of exclude)
-        watch.delete(k);
-
-    if(watch.size === 0)
-      return;
-
-    cleanup = new Set();
-    for(const key of watch){
-      const done = dispatch.addListener(key, onUpdate);
-      cleanup.add(done)
-    }
-  }
-
-  function unsubscribe(){
-    if(cleanup)
-    for(const unsub of cleanup)
-      unsub()
-  }
-
-  function dontWatch(...keys: string[]){
-    exclude = new Set();
-
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        exclude.add(key);
-        
-    return Spy;
-  }
-
-  function alsoWatch(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        watch.add(key);
-
-    return Spy;
-  }
-
-  function onlyWatch(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        watch.add(key);
-
-    stopInference();
-
-    return Spy;
-  }
-}
