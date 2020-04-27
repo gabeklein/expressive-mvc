@@ -12,8 +12,7 @@ export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 const { assign, create, values: valuesIn, getPrototypeOf: proto } = Object;
 
 export function createWrappedComponent<T extends typeof ModelController>(
-  this: T,
-  fn: FunctionComponent<InstanceType<T>> ){
+  this: T, fn: FunctionComponent<InstanceType<T>> ){
 
   const { Provider } = ownContext(this as any);
   

@@ -35,33 +35,37 @@ export declare class ModelController {
 
   toggle(key: string): boolean;
 
+  isReady?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didInit?(): void;
   didMount?(...args: any[]): void;
-  willDestroy(callback?: Callback): void;
+  willDestroy?(callback?: Callback): void;
   willMount?(...args: any[]): void;
   willLoseFocus?(parent: ModelController, as: string): void;
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
-  isReady?(): void;
-  willCycle(...args: any[]): Callback;
+  willCycle?(...args: any[]): Callback;
 
   elementDidMount?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
-  elementWillCycle(...args: any[]): Callback;
+  elementWillCycle?(...args: any[]): Callback;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
-  componentWillCycle(...args: any[]): Callback;
+  componentWillCycle?(...args: any[]): Callback;
 
-  observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+  observe<P extends keyof this>(
+    key: P | P[], 
+    listener: HandleUpdatedValue<this, P>, 
+    once?: boolean
+  ): Callback;
 
   not(...args: string[]): this;
   on(...args: string[]): this;

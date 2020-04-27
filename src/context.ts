@@ -16,10 +16,13 @@ export function retrieveController(
   from: ModelController | typeof ModelController,
   ...args: any[]){
 
-  return from instanceof Controller ?
-    useSubscriber(from as ModelController, args, false) :
-    globalController(from as typeof ModelController, false) ||
-    ownContext(from as typeof ModelController);
+  if(from instanceof Controller)
+    return useSubscriber(from as ModelController, args, false)
+  else
+    return (
+      globalController(from as typeof ModelController, false) ||
+      ownContext(from as typeof ModelController)
+    );
 }
 
 export function ownContext(from: typeof ModelController){
@@ -113,8 +116,7 @@ function contextGetterFor(
       return instance;
 
     throw new Error(
-      `Can't subscribe to controller;` +
-      ` this accessor can only be used within a Provider keyed to \`${name}\``
+      `Can't subscribe to controller; this accessor can only be used within a Provider keyed to \`${name}\``
     );
   }
 
