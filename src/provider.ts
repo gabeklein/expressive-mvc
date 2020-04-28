@@ -4,15 +4,16 @@ import { ensureAttachedControllers } from './bootstrap';
 import { ownContext } from './context';
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
+import { BunchOf, Callback } from './types';
 import { useOwnController } from './subscriber';
-import { BunchOf, Callback, ModelController } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
 const { assign, create, values: valuesIn, getPrototypeOf: proto } = Object;
 
-export function createWrappedComponent<T extends typeof ModelController>(
-  this: T, fn: FunctionComponent<InstanceType<T>> ){
+export function createWrappedComponent<T extends typeof Controller>(
+  this: T,
+  fn: FunctionComponent<InstanceType<T>> ){
 
   const { Provider } = ownContext(this as any);
   
@@ -72,10 +73,10 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 
 function initGroupControllers(
   parent: any,
-  explicit: BunchOf<typeof ModelController>,
-  fromProps: BunchOf<typeof ModelController> 
+  explicit: BunchOf<typeof Controller>,
+  fromProps: BunchOf<typeof Controller> 
 ){
-  const map = create(parent) as BunchOf<ModelController>;
+  const map = create(parent) as BunchOf<Controller>;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){

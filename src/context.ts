@@ -4,28 +4,26 @@ import { Controller } from './controller';
 import { globalController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
-import { ModelController } from './types';
-import { constructorOf, define, Map } from './util';
-import { useWatchedProperty, useWatcher } from './watcher';
+import { constructorOf, Map } from './util';
 
-const CONTEXT_ALLOCATED = new Map<Function, Context<ModelController>>();
+const CONTEXT_ALLOCATED = new Map<Function, Context<Controller>>();
 
-const { assign, keys: keysIn, create: inheriting } = Object;
+const { assign, keys: keysIn } = Object;
 
 export function retrieveController(
-  from: ModelController | typeof ModelController,
+  from: Controller | typeof Controller,
   ...args: any[]){
 
   if(from instanceof Controller)
-    return useSubscriber(from as ModelController, args, false)
+    return useSubscriber(from as Controller, args, false)
   else
     return (
-      globalController(from as typeof ModelController, false) ||
-      ownContext(from as typeof ModelController)
+      globalController(from as typeof Controller, true) ||
+      ownContext(from as typeof Controller)
     );
 }
 
-export function ownContext(from: typeof ModelController){
+export function ownContext(from: typeof Controller){
   const constructor = constructorOf(from);
   let context = CONTEXT_ALLOCATED.get(constructor);
 
@@ -34,10 +32,10 @@ export function ownContext(from: typeof ModelController){
     CONTEXT_ALLOCATED.set(constructor, context);
   }
 
-  return context as Context<any>;
+  return context as Context<Controller>;
 }
 
-function getterFor(target: typeof ModelController){
+export function getterFor(target: typeof Controller){
   const controller = globalController(target);
 
   return controller 
@@ -45,71 +43,18 @@ function getterFor(target: typeof ModelController){
     : contextGetterFor(target)
 }
 
-export function getFromControllerOrFail(
-  this: typeof ModelController,
-  key: string){
-
-  const getInstance = getterFor(this)
-  const hook = (key: string) =>
-    useWatchedProperty(getInstance(), key, true);
-
-  define(this, "has", hook);
-  return hook(key) as unknown;
-}
-
-export function getFromController(
-  this: typeof ModelController, 
-  key?: string){
-
-  const getInstance = getterFor(this)
-  const hook = key === undefined
-    ? () => inheriting(getInstance())
-    : (key: string) => (getInstance() as any)[key];
-
-  define(this, "get", hook);
-  return hook(key!) as unknown;
-}
-
-export function tapFromController(
-  this: typeof ModelController, 
-  key: string,
-  main?: boolean){
-
-  const getInstance = getterFor(this);
-  //TODO: Implement better caching here
-
-  return key ?
-    useWatchedProperty(getInstance(), key, main) :
-    useWatcher(getInstance());
-}
-
-export function subscribeToController(
-  this: typeof ModelController, 
-  ...args: any[]){
-
-  const getInstance = getterFor(this);
-  const hook = (...args: any[]) => {
-    const controller = getInstance();
-    return useSubscriber(controller, args, false);
-  }
-  
-  define(this, "sub", hook);
-  return hook.apply(null, args);
-}
-
-export function ControlProvider(this: ModelController){
+export function ControlProvider(this: Controller){
   const { Provider } = ownContext(this.constructor as any);
   return ParentProviderFor(this, Provider);
 }
 
-function contextGetterFor(
-  target: typeof ModelController) {
+function contextGetterFor(target: typeof Controller) {
 
   const { name } = target;
   
   const context = ownContext(target);
 
-  function controllerFromContext(): ModelController {
+  function controllerFromContext(): Controller {
     const instance = useContext(context) || useContext(CONTEXT_MULTIPROVIDER)[name];
 
     if(instance)
@@ -124,7 +69,7 @@ function contextGetterFor(
 } 
 
 function ParentProviderFor(
-  controller: ModelController,
+  controller: Controller,
   Provider: ProviderExoticComponent<any>): any {
     
   return (props: PropsWithChildren<any>) => {

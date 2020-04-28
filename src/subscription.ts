@@ -1,6 +1,7 @@
 import { DISPATCH } from './dispatch';
-import { Callback, ModelController } from './types';
+import { Callback } from './types';
 import { define, Set } from './util';
+import { Controller } from './controller';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const UNSUBSCRIBE = Symbol("add_subscription");
@@ -10,9 +11,9 @@ export type UpdateTrigger = Callback;
 
 //TODO: Turn this into a class like Dispatch
 export function createSubscription(
-  source: ModelController,
+  source: Controller,
   onUpdate: UpdateTrigger
-): ModelController {
+): Controller {
 
   const Spy = Object.create(source);
   const dispatch = source[DISPATCH]!;

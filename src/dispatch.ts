@@ -1,6 +1,7 @@
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
-import { BunchOf, Callback, ModelController } from './types';
+import { BunchOf, Callback } from './types';
 import { collectGetters, define, entriesOf, Set } from './util';
+import { Controller } from './controller';
 
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
@@ -21,10 +22,10 @@ export class Dispatch {
   pendingRefresh = false;
 
   constructor(
-    public control: ModelController
+    public control: Controller
   ){}
 
-  static readyFor(control: ModelController){
+  static readyFor(control: Controller){
     if(DISPATCH in control)
       return;
 
@@ -32,14 +33,16 @@ export class Dispatch {
 
     dispatch.initObservable();
     define(control, DISPATCH, dispatch);
-    define(control, {
+    define(control, <Controller>{
       get: control,
       set: control,
-      assign: simpleIntegrateExternal,
       observe: dispatch.observe,
       export: dispatch.export,
       toggle: dispatch.toggle,
-      refresh: dispatch.refresh
+      refresh: dispatch.refresh,
+      assign(external: BunchOf<any>){
+        return Object.assign(control, external)
+      }
     })
     dispatch.initComputed();
 
@@ -291,16 +294,4 @@ export class Dispatch {
       })
     }
   }
-}
-
-export function applyExternalValues(
-  this: typeof ModelController, external: BunchOf<any>){
-    
-  return this.tap().assign(external);
-}
-
-export function simpleIntegrateExternal(
-  this: ModelController, external: BunchOf<any>){
-
-  return Object.assign(this, external);
 }

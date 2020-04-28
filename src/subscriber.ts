@@ -35,7 +35,7 @@ export function useModelController(init: any, ...args: any[]){
 export function useOwnController(
   model: Class | Function,
   args: any[] = []
-): ModelController {
+){
 
   let lifecycle: any;
 

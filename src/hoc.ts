@@ -1,13 +1,12 @@
 import { createElement, FC, forwardRef, useEffect } from 'react';
 
+import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
 import { useManualRefresh } from './hook';
-import { ModelController } from './types';
 
 const { assign } = Object;
 
-export function ControlledValue(
-  this: ModelController): FC<{ of: string }> {
+export function ControlledValue(this: Controller): FC<{ of: string }> {
     
   return (props) => {
     const onDidUpdate = useManualRefresh()[1];
@@ -26,8 +25,7 @@ export function ControlledValue(
   }
 }
 
-export function ControlledInput(
-  this: ModelController): FC<{ to: string }> {
+export function ControlledInput(this: Controller): FC<{ to: string }> {
 
   return forwardRef((props, ref) => {
     const onDidUpdate = useManualRefresh()[1];

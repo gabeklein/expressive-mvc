@@ -1,14 +1,14 @@
 import { Context, useContext } from 'react';
 
+import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { ModelController } from './types';
 import { define } from './util';
 
 const { defineProperty } = Object;
 
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
-export function ensureAttachedControllers(instance: ModelController){
+export function ensureAttachedControllers(instance: Controller){
   if(RENEW_CONSUMERS in instance){
     const hookMaintainance = instance[RENEW_CONSUMERS];
     

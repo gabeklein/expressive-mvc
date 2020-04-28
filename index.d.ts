@@ -33,15 +33,52 @@ type HandleUpdatedValues<T extends object, P extends keyof T> =
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void
 
-declare class Controller {
-    set: this;
-    get: this;
-    hold: boolean;
+interface ModelController {
+    isReady?(): void;
+    willRender?(...args: any[]): void;
+    willMount?(...args: any[]): void;
+    willUpdate?(...args: any[]): void;
+    didMount?(...args: any[]): void;
+    willUnmount?(...args: any[]): void;
+    didFocus?(parent: Controller, as: string): void;
+    willLoseFocus?(parent: Controller, as: string): void;
+    willCycle?(...args: any[]): void | (() => void);
+    willDestroy(callback?: () => void): void;
 
-    refresh(...keys: string[]): void;
-    add(key: string, initial?: any, bootup?: true): boolean;
+    elementWillRender?(...args: any[]): void;
+    elementWillMount?(...args: any[]): void;
+    elementWillUpdate?(...args: any[]): void;
+    elementDidMount?(...args: any[]): void;
+    elementWillUnmount?(...args: any[]): void;
+    elementWillCycle?(...args: any[]): void | (() => void);
+
+    componentWillRender?(...args: any[]): void;
+    componentWillMount?(...args: any[]): void;
+    componentWillUpdate?(...args: any[]): void;
+    componentDidMount?(...args: any[]): void;
+    componentWillUnmount?(...args: any[]): void;
+    componentWillCycle?(...args: any[]): void | (() => void);
+}
+
+interface InstanceController {
+    get: this;
+    set: this;
+
+    hold: boolean;
+  
+    Input: FunctionComponent<{ to: string }>;
+    Value: FunctionComponent<{ of: string }>;
+    Provider: FunctionComponent<ProviderProps<this>>;
+
+    tap(): this;
+    tap<K extends keyof this>(key?: K): this[K];
+
+    sub(...args: any[]): this & Subscriber<this>;
+
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
-    
+    assign(props: Partial<this>): this;
+    refresh(...keys: string[]): void;
+
     onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
@@ -51,47 +88,21 @@ declare class Controller {
     export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): () => void;
     export<P extends keyof this>(keys: P[]): Pick<this, P>;
     export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): () => void;
+}
 
-    protected didInit?(): void;
-    protected willDestroy(callback?: () => void): void;
-
-    protected isReady?(): void;
-    protected willRender?(...args: any[]): void;
-    protected willMount?(...args: any[]): void;
-    protected willUpdate?(...args: any[]): void;
-    protected didMount?(...args: any[]): void;
-    protected willUnmount?(...args: any[]): void;
-    protected didFocus?(parent: Controller, as: string): void;
-    protected willLoseFocus?(parent: Controller, as: string): void;
-    protected willCycle?(...args: any[]): void | (() => void);
-
-    protected elementWillRender?(...args: any[]): void;
-    protected elementWillMount?(...args: any[]): void;
-    protected elementWillUpdate?(...args: any[]): void;
-    protected elementDidMount?(...args: any[]): void;
-    protected elementWillUnmount?(...args: any[]): void;
-    protected elementWillCycle?(...args: any[]): void | (() => void);
-
-    protected componentWillRender?(...args: any[]): void;
-    protected componentWillMount?(...args: any[]): void;
-    protected componentWillUpdate?(...args: any[]): void;
-    protected componentDidMount?(...args: any[]): void;
-    protected componentWillUnmount?(...args: any[]): void;
-    protected componentWillCycle?(...args: any[]): void | (() => void);
-
+interface SlaveController {
+    refresh(...keys: string[]): void;
     on(): this;
     only(): this;
     not(): this;
+}
 
-    assign(props: Partial<this>): this;
+interface Controller 
+    extends ModelController, InstanceController, SlaveController {
+}
 
-    tap(): this;
-    tap<K extends keyof this>(key?: K): this[K];
-
-    sub(...args: any[]): this & Subscriber<this>;
-    
-    get Provider(): FunctionComponentElement<ProviderProps<this>>
-    get Value(): FunctionComponent<{ of: string }>
+declare class Controller {
+    static global: boolean;
 
     static assign <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & Subscriber<I>;
 
@@ -99,8 +110,6 @@ declare class Controller {
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
-    
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
 
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
@@ -110,14 +119,12 @@ declare class Controller {
     static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
 
-    /**
-     * Easy way to iterate over data to create live controllers.
-     * 
-     * Equivalent to: `array.map(x => new this(x))`
-     */
-    static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
+    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
+
+    static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
+
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
 }
 

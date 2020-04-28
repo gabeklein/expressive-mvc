@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { ensureAttachedControllers } from './bootstrap';
+import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Callback, ModelController } from './types';
@@ -13,16 +14,16 @@ export const useManualRefresh = () => {
 
 export function useSubscription(
   init: () => ModelController,
-  onEvent: (name: string, local: ModelController) => any
+  onEvent: (name: string, local: Controller) => any
 ){
   const [ cache, onShouldUpdate ] = useManualRefresh();
   
-  let control: ModelController = cache.current;
+  let control: Controller = cache.current;
   let trigger = cache.eventListener;
   let releaseHooks: Callback | undefined;
   
   if(!control){
-    control = init();
+    control = init() as Controller;
     trigger = cache.eventListener = onEvent;
     Dispatch.readyFor(control);
   }

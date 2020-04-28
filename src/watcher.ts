@@ -5,9 +5,9 @@ import { Controller } from './controller';
 import { DISPATCH, Dispatch } from './dispatch';
 import { useManualRefresh } from './hook';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
-import { Callback, ModelController } from './types';
+import { Callback } from './types';
 
-export function useWatcher(control: ModelController){
+export function useWatcher(control: Controller){
   const [ cache, onDidUpdate ] = useManualRefresh();
 
   let { current } = cache;
@@ -25,8 +25,8 @@ export function useWatcher(control: ModelController){
   return current;
 }
 
-export function useWatchedProperty(
-  parent: ModelController, key: string, required?: boolean){
+export function useWatchedProperty<T extends Controller>(
+  parent: T, key: string, required?: boolean){
 
   let value = (parent as any)[key];
   let releaseHooks: Callback | undefined;
@@ -37,18 +37,16 @@ export function useWatchedProperty(
   const [ cache, onDidUpdate ] = useManualRefresh();
 
   if(value instanceof Controller){
-    const instance = value as ModelController;
-
-    Dispatch.readyFor(instance);
+    Dispatch.readyFor(value);
     //TODO: Changing out instance breaks this.
-    releaseHooks = ensureAttachedControllers(instance);
+    releaseHooks = ensureAttachedControllers(value);
 
     if(!cache.current){
-      const spy = createSubscription(instance, childDidUpdate);
-      const { didFocus } = instance;
+      const spy = createSubscription(value, childDidUpdate);
+      const { didFocus } = value;
 
       if(didFocus)
-        didFocus.call(instance, parent, key);
+        didFocus.call(value, parent, key);
 
       cache.current = value = spy;
     } 
