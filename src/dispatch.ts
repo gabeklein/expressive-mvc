@@ -15,6 +15,11 @@ export const DISPATCH = Symbol("controller_dispatch");
 export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
+function simpleIntegrateExternal(
+  this: Controller, external: BunchOf<any>){
+  return Object.assign(this, external);
+}
+
 export class Dispatch {
   current: BunchOf<any> = {};
   subscribers: BunchOf<Set<UpdateTrigger>> = {};
@@ -36,13 +41,11 @@ export class Dispatch {
     define(control, <Controller>{
       get: control,
       set: control,
+      assign: simpleIntegrateExternal,
       observe: dispatch.observe,
       export: dispatch.export,
       toggle: dispatch.toggle,
-      refresh: dispatch.refresh,
-      assign(external: BunchOf<any>){
-        return Object.assign(control, external)
-      }
+      refresh: dispatch.refresh
     })
     dispatch.initComputed();
 
