@@ -15,10 +15,7 @@ import { ModelController } from './types';
 import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
-export function Controller(this: ModelController){
-  if(this.didInit)
-    setImmediate(() => this.didInit!())
-}
+export function Controller(this: ModelController){}
 
 export function Singleton(this: ModelController){
   Controller.apply(this);

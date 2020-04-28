@@ -37,7 +37,6 @@ export declare class ModelController {
 
   isReady?(): void;
   didFocus?(parent: ModelController, as: string): void;
-  didInit?(): void;
   didMount?(...args: any[]): void;
   willDestroy?(callback?: Callback): void;
   willMount?(...args: any[]): void;
