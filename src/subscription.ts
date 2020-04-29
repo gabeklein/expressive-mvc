@@ -9,7 +9,6 @@ export const SUBSCRIBE = Symbol("end_subscription");
 
 export type UpdateTrigger = Callback;
 
-//TODO: Turn this into a class like Dispatch
 export function createSubscription(
   source: Controller,
   onUpdate: UpdateTrigger
@@ -77,8 +76,8 @@ export function createSubscription(
 
   function unsubscribe(){
     if(cleanup)
-    for(const unsub of cleanup)
-      unsub()
+      for(const unsub of cleanup)
+        unsub()
   }
 
   function dontWatch(...keys: string[]){

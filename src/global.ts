@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { useSubscriber } from './subscriber';
-import { constructorOf, defineOnAccess, Map } from './util';
+import { constructorOf, lazilyDefine, Map } from './util';
 
 const GLOBAL_ALLOCATED = new Map<Function, Controller>();
 const { entries } = Object;
@@ -75,6 +75,6 @@ export function ensurePeersOnAccess(parent: Controller){
 
         return instance;
       }
-      defineOnAccess(parent, property, newSingleton)
+      lazilyDefine(parent, property, newSingleton)
     }
 }

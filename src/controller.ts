@@ -6,7 +6,7 @@ import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
 import { InstanceController, BunchOf, Class, SlaveController, ModelController } from './types';
-import { define, defineOnAccess } from './util';
+import { define, lazilyDefine } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
@@ -36,12 +36,12 @@ export class Controller {
   }
 
   static tap(key?: string, main?: boolean){
-    const getInstance = getterFor(this);
+    const instance = getterFor(this)();
     //TODO: Implement better caching here
   
     return key ?
-      useWatchedProperty(getInstance(), key, main) :
-      useWatcher(getInstance());
+      useWatchedProperty(instance, key, main) :
+      useWatcher(instance);
   }
 
   static has(key: string){
@@ -109,20 +109,20 @@ export class Controller {
     }
   }
 
-  sub(...args: any[]){
-    return useSubscriber(this, args, true) 
-  }
-
   tap(key?: string, main?: boolean){
     return key ? 
       useWatchedProperty(this, key, main) : 
       useWatcher(this);
   }
+
+  sub(...args: any[]){
+    return useSubscriber(this, args, true) 
+  }
 }
 
-defineOnAccess(Controller.prototype, "Provider", ControlProvider)
-defineOnAccess(Controller.prototype, "Value", ControlledValue)
-defineOnAccess(Controller.prototype, "Input", ControlledInput)
+lazilyDefine(Controller.prototype, "Provider", ControlProvider)
+lazilyDefine(Controller.prototype, "Value", ControlledValue)
+lazilyDefine(Controller.prototype, "Input", ControlledInput)
 
 export class Singleton extends Controller {
   static global = true;
