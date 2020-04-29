@@ -1,15 +1,15 @@
 {
     "compilerOptions": {
-        "baseUrl": "src",
-        "rootDir": "src",
-        "outDir": "lib",
+        "baseUrl": "src/",
+        "outDir": "lib/",
         "target": "ES6",
         "sourceMap": true,
         "moduleResolution": "node",
         "noUnusedLocals": true,
         "strict": true,
         "esModuleInterop": true,
-        "types": [ "node", "jest" ]
+        "types": [ "node", "jest" ],
+        "lib": ["ES2018"]
     },
     "exclude": [
         "index.d.ts",
