@@ -123,7 +123,3 @@ export class Controller {
 lazilyDefine(Controller.prototype, "Provider", ControlProvider)
 lazilyDefine(Controller.prototype, "Value", ControlledValue)
 lazilyDefine(Controller.prototype, "Input", ControlledInput)
-
-export class Singleton extends Controller {
-  static global = true;
-}
