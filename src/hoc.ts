@@ -7,7 +7,6 @@ import { useManualRefresh } from './hook';
 const { assign } = Object;
 
 export function ControlledValue(this: Controller): FC<{ of: string }> {
-    
   return (props) => {
     const onDidUpdate = useManualRefresh()[1];
     const key = props.of;
@@ -26,7 +25,6 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
 }
 
 export function ControlledInput(this: Controller): FC<{ to: string }> {
-
   return forwardRef((props, ref) => {
     const onDidUpdate = useManualRefresh()[1];
     const values = this as any;
