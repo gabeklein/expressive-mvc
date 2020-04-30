@@ -16,12 +16,12 @@ export function useGlobalController(
   let global = GLOBAL_ALLOCATED.get(type); 
 
   if(!global)
-    global = initGlobalController.call(type);
+    global = initGlobalController.apply(type, args);
     
   return useSubscriber(global!, args, true);
 }
 
-class DeferredPeerController {
+export class DeferredPeerController {
   constructor(
     public type: typeof Controller
   ){}
