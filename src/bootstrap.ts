@@ -18,9 +18,12 @@ export function ensureAttachedControllers(instance: Controller){
     return;
   }
 
-  const pending = Object.entries(instance).filter(([ k, v ]) =>
-    v && typeof v == "object" && "Consumer" in v && "Provider" in v
-  )
+  const pending = Object
+    .entries(Object.getOwnPropertyDescriptors(instance))
+    .map(entry => entry[1].value)
+    .filter(v => {
+      return v && typeof v == "object" && "Consumer" in v && "Provider" in v;
+    })
 
   const disableMaintaince = () => {
     defineProperty(instance, RENEW_CONSUMERS, { value: undefined });

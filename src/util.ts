@@ -111,8 +111,8 @@ export function collectGetters(
   do {
     source = getPrototypeOf(source);
     for(const [key, item] of entriesOf(source))
-      if("get" in item && !getters[key] && except.indexOf(key) < 0)
-        getters[key] = item.get!
+      if("get" in item && item.get && !getters[key] && except.indexOf(key) < 0)
+        getters[key] = item.get
   }
   while(source.constructor !== Controller
      && source.constructor !== Object);

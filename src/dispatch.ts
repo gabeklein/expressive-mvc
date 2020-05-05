@@ -73,9 +73,7 @@ export class Dispatch {
     if(typeof subset == "function"){
       initial = onChange as boolean;
       onChange = subset;
-      subset = Object
-        .keys(this.current)
-        .filter(x => !x.match(/^_/));
+      subset = Object.keys(this.subscribers);
     }
 
     if(typeof onChange == "function")
@@ -89,34 +87,16 @@ export class Dispatch {
     handler: UpdateEventHandler,
     once?: boolean) => {
 
-    const { control, current, subscribers} = this;
-    let cleanup: Function[] = [];
-    const unwatch = () => {
-      cleanup.forEach(x => x());
-      cleanup = [];
-    };
-
     if(typeof watch == "string")
       watch = [watch];
 
-    for(const key of watch){
-      const listeners = subscribers[key];
-  
-      if(!listeners)
-        throw new Error(
-          `Can't watch property ${key}, it's not tracked on this instance.`
-        )
-  
-      const trigger = () => { 
-        if(once) unwatch();
-        handler.call(control, current[key], key) 
-      };
-  
-      listeners.add(trigger);
-      cleanup.push(() => listeners.delete(trigger))
-    }
+    const onDone = 
+      this.addMultiListener(watch, (key) => {
+        if(once) onDone();
+        handler.apply(this.control, [this.current[key], key]) 
+      })
 
-    return unwatch;
+    return onDone;
   }
 
   public addListener(
@@ -163,47 +143,66 @@ export class Dispatch {
     return acc;
   }
 
-  private watch(
-    keys: string[], 
-    observer: UpdatesEventHandler,
-    fireInitial?: boolean){
+  private addMultiListener(
+    onProperyNames: string[], 
+    callback: (didUpdate: string) => void){
 
-    const { subscribers, current, control } = this;
-    const deallocate: Function[] = [];
-    const pending = new Set<string>();
+    let clear: Function[] = [];
 
-    function callback(){
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = current[k];
-
-      observer.call(control, acc, Array.from(pending))
-      pending.clear();
-    }
-
-    for(const key of keys){
-      const listeners = subscribers[key];
+    for(const key of onProperyNames){
+      const listeners = this.subscribers[key];
   
       if(!listeners)
         throw new Error(
           `Can't watch property ${key}, it's not tracked on this instance.`
         )
 
-      const trigger = () => {
+      const trigger = () => callback(key);
+      const getter = describe(this.control, key)?.get;
+
+      if(getter?.name == "initComputedValue"){
+        const initialize = getter as (early?: true) => unknown;
+        initialize(true);
+      }
+
+      listeners.add(trigger);
+      clear.push(() => listeners.delete(trigger))
+    }
+
+    return () => {
+      clear.forEach(x => x());
+      clear = [];
+    };
+  }
+
+  private watch(
+    keys: string[], 
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
+
+    const pending = new Set<string>();
+
+    const callback = () => {
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = this.current[k];
+
+      observer.apply(this.control, [acc, Array.from(pending)])
+      pending.clear();
+    }
+
+    const onDone = 
+      this.addMultiListener(keys, (key) => {
         if(!pending.length)
           setTimeout(callback, 0)
         pending.add(key);
-      };
-
-      listeners.add(trigger);
-      deallocate.push(() => listeners.delete(trigger))
-    }
+      })
 
     if(fireInitial)
       callback()
 
-    return () => deallocate.forEach(x => x());
+    return onDone;
   }
 
   private update(){
@@ -269,6 +268,12 @@ export class Dispatch {
 
     for(const [key, fn] of Object.entries(getters)){
       subscribers[key] = new Set();
+
+      const getValueLazy = () => current[key];
+
+      const setNotAllowed = () => {
+        throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
+      }
   
       const onValueDidChange = () => {
         const value = fn.call(control);
@@ -284,15 +289,40 @@ export class Dispatch {
           onDidUpdate();
       }
 
-      const spy = createSubscription(control, onValueDidChange);
-  
-      current[key] = fn.call(spy);
-      spy[SUBSCRIBE]!();
+      function initComputedValue(early?: true){
+        try {
+          const spy = createSubscription(control, onValueDidChange);
+          const value = current[key] = fn.call(spy);
+          spy[SUBSCRIBE]!();
+          return value;
+        }
+        catch(err){
+          const entity = control.constructor.name;
+          let warning = 
+            `There was an attempt to access computed property ${entity}.${key} for the first time; ` +
+            `however an exception was thrown. Expected data probably doesn't exist yet.`;
+
+          if(early)
+            warning +=
+              `\n Note: Computed are usually only calculated when first accessed, except when forced by "observe" or "export".` +
+              `This property's getter may have run earlier than intended because of that.`
+
+          console.warn(warning);
+          throw err;
+        }
+        finally {
+          defineProperty(control, key, {
+            set: setNotAllowed,
+            get: getValueLazy,
+            enumerable: true,
+            configurable: true
+          })
+        }
+      }
   
       defineProperty(control, key, {
-        set: () => { throw new Error(`Cannot set ${key} on this controller, it is computed.`) },
-        get: () => fn.call(control),
-        enumerable: true,
+        set: setNotAllowed,
+        get: initComputedValue,
         configurable: true
       })
     }

@@ -16,13 +16,13 @@ export function createSubscription(
 
   const Spy = Object.create(source);
   const dispatch = source[DISPATCH]!;
-  const { current, refresh } = dispatch;
+  const { current, refresh, subscribers } = dispatch;
   const watch = new Set<string>();
 
   let exclude: Set<string>;
   let cleanup: Set<Callback>;
 
-  for(const key in current)
+  for(const key in subscribers)
     Object.defineProperty(Spy, key, {
       configurable: true,
       enumerable: true,
