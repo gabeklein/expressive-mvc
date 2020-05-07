@@ -86,7 +86,7 @@ export function constructorOf(obj: any){
   }
 }
 
-export function lazilyDefine(
+export function defineOnAccess(
   object: any, property: string, init: () => any){
 
   Object.defineProperty(object, property, { 

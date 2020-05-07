@@ -6,7 +6,7 @@ import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
 import { InstanceController, BunchOf, Class, SlaveController, ModelController } from './types';
-import { define, lazilyDefine } from './util';
+import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
@@ -120,6 +120,6 @@ export class Controller {
   }
 }
 
-lazilyDefine(Controller.prototype, "Provider", ControlProvider)
-lazilyDefine(Controller.prototype, "Value", ControlledValue)
-lazilyDefine(Controller.prototype, "Input", ControlledInput)
+defineOnAccess(Controller.prototype, "Provider", ControlProvider)
+defineOnAccess(Controller.prototype, "Value", ControlledValue)
+defineOnAccess(Controller.prototype, "Input", ControlledInput)
