@@ -6,9 +6,14 @@ import {
     FunctionComponent,
 } from 'react';
 
+declare const MANAGED: Symbol;
+
+// type Managed<T> = T & { MANAGED: any };
+// type PartialAny<T> = { [X in keyof T]: any }
+// type AssignablePartials<T> = { [X in keyof T]: PartialAny<T[X]> }
+
 type Class = new (...args: any) => any;
 type Expects<A extends any[]> = new(...args: A) => any
-type BunchOf<T> = { [key: string]: T }
 type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
 type KeyOfBooleanValueIn<T> = keyof Pick<T, BooleanValuesOf<T>[keyof T]>;
 
@@ -19,6 +24,10 @@ declare function use<I> (init: I): Controller & I;
 
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
+
+declare function set<T extends Class> (type?: T): InstanceType<T> | undefined;
+declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): InstanceType<T>;
+declare function set<T extends {} = any> (type?: T): T;
 
 export interface Subscriber<T> {
     on(...properties: string[]): Subscriber<T> & T;
@@ -139,6 +148,7 @@ declare const MultiProvider: FunctionComponentElement<MultiProviderProps>
 export { 
     use,
     get,
+    set,
     Controller,
     Controller as Singleton,
     Controller as default,

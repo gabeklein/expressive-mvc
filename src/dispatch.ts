@@ -25,6 +25,14 @@ function simpleIntegrateExternal(
     return assignTo(this, a)
 }
 
+export class ManagedProperty {
+  constructor(public type: any){}
+}
+
+export function setControlledProperty(model: any){
+  return new ManagedProperty(model);
+}
+
 export class Dispatch {
   current: BunchOf<any> = {};
   subscribers: BunchOf<Set<UpdateTrigger>> = {};
@@ -233,12 +241,7 @@ export class Dispatch {
   }
 
   private initObservable(){
-    const { 
-      current, 
-      control, 
-      subscribers, 
-      pendingUpdates 
-    } = this;
+    const { current, control, subscribers } = this;
 
     for(const [key, desc] of entriesOf(control)){
       if("value" in desc === false)
@@ -247,23 +250,61 @@ export class Dispatch {
       if(typeof desc.value === "function")
         continue;
 
-      current[key] = desc.value;
+      const value = current[key] = desc.value;
       subscribers[key] = new Set();
 
       defineProperty(control, key, {
         enumerable: true,
         configurable: false,
-        get: () => this.current[key],
-        set: (value: any) => {
-          if(current[key] === value) 
-            return;
-            
-          current[key] = value;
-          pendingUpdates.add(key);
-    
-          this.update();
-        }
+        get: () => current[key],
+        set: value instanceof ManagedProperty 
+          ? this.monitorManagedValue(key, value)
+          : this.monitorValue(key)
       })
+    }
+  }
+
+  private monitorValue(key: string){
+    return (value: any) => {
+      if(this.current[key] === value) 
+        return;
+        
+      this.current[key] = value;
+      this.pendingUpdates.add(key);
+      this.update();
+    }
+  }
+  
+  private monitorManagedValue(key: string, managed: ManagedProperty){
+    const { current } = this;
+    const { type } = managed;
+    const create = () => {
+      if(typeof type == "function")
+        if("prototype" in type)
+          return new type()
+        else 
+          return assignTo({}, type);
+      else 
+        throw new Error()
+    }
+
+    return (value: unknown) => {
+      let saved = current[key];
+
+      if(value === undefined)
+        current[key] = undefined
+
+      else if(value === null || typeof value !== "object")
+        throw new Error("Cannot assign non-object to this property; it is managed.")
+
+      else {
+        saved = current[key] = create();
+        Dispatch.readyFor(saved);
+        assignTo(saved, value);
+      }
+      
+      this.pendingUpdates.add(key);
+      this.update();
     }
   }
 

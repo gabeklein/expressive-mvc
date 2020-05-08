@@ -36,20 +36,20 @@ export function useWatchedProperty<T extends Controller>(
 
   const [ cache, onDidUpdate ] = useManualRefresh();
 
-  if(value instanceof Controller){
-    Dispatch.readyFor(value);
-    //TODO: Changing out instance breaks this.
-    releaseHooks = ensureAttachedControllers(value);
+  if(typeof value == "object" && value !== null){
+    if(value instanceof Controller){
+      Dispatch.readyFor(value);
+      //TODO: Changing out instance breaks this.
+      releaseHooks = ensureAttachedControllers(value);
 
-    if(!cache.current){
-      const spy = createSubscription(value, childDidUpdate);
       const { didFocus } = value;
 
       if(didFocus)
         didFocus.call(value, parent, key);
-
-      cache.current = value = spy;
-    } 
+    }
+  
+    if(!cache.current && DISPATCH in value)
+      value = cache.current = createSubscription(value, childDidUpdate);
   }
 
   useEffect(() => {
