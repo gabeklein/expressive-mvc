@@ -70,13 +70,15 @@ interface InstanceController {
     Value: FunctionComponent<{ of: string }>;
     Provider: FunctionComponent<ProviderProps<this>>;
 
+    assign(props: Partial<this>): this;
+    assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
+
     tap(): this;
     tap<K extends keyof this>(key?: K): this[K];
 
     sub(...args: any[]): this & Subscriber<this>;
 
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
-    assign(props: Partial<this>): this;
     refresh(...keys: string[]): void;
 
     onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;

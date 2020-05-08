@@ -80,8 +80,8 @@ export class Controller {
     return from.map((item, index) => new this(item, index));
   }
 
-  static assign(external: BunchOf<any>){
-    return this.tap().assign(external);
+  static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
+    return this.tap().assign(a, b);
   }
 
   static makeGlobal(...args: any[]){

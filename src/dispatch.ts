@@ -6,6 +6,7 @@ import { Controller } from './controller';
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
 const { 
+  assign: assignTo,
   defineProperty,
   getOwnPropertyDescriptor: describe,
 } = Object;
@@ -16,8 +17,12 @@ export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 function simpleIntegrateExternal(
-  this: Controller, external: BunchOf<any>){
-  return Object.assign(this, external);
+  this: Controller, a: string | BunchOf<any>, b?: BunchOf<any>){
+
+  if(typeof a == "string")
+    return (this as any)[a] = b
+  else
+    return assignTo(this, a)
 }
 
 export class Dispatch {
