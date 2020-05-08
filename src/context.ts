@@ -1,38 +1,34 @@
-import { Context, createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
+import { createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
 
 import { Controller } from './controller';
-import { globalController } from './global';
+import { DeferredPeerController, GLOBAL_INSTANCE, globalController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
-import { constructorOf, Map } from './util';
-
-const CONTEXT_ALLOCATED = new Map<Function, Context<Controller>>();
 
 const { assign, keys: keysIn } = Object;
+
+export const ASSIGNED_CONTEXT = Symbol("react_context");
 
 export function retrieveController(
   from: Controller | typeof Controller,
   ...args: any[]){
 
   if(from instanceof Controller)
-    return useSubscriber(from as Controller, args, false)
-  else
-    return (
-      globalController(from as typeof Controller, true) ||
-      ownContext(from as typeof Controller)
-    );
+    return useSubscriber(from, args, false)
+  
+  return (
+    from[GLOBAL_INSTANCE] ||
+    new DeferredPeerController(from)
+  )
 }
 
 export function ownContext(from: typeof Controller){
-  const constructor = constructorOf(from);
-  let context = CONTEXT_ALLOCATED.get(constructor);
-
-  if(!context){
-    context = createContext(null as any);
-    CONTEXT_ALLOCATED.set(constructor, context);
-  }
-
-  return context as Context<Controller>;
+  let context = from[ASSIGNED_CONTEXT];
+  
+  if(!context)
+    context = from[ASSIGNED_CONTEXT] = createContext<Controller>(null as any);
+      
+  return context;
 }
 
 export function getterFor(target: typeof Controller){
@@ -49,7 +45,6 @@ export function ControlProvider(this: Controller){
 }
 
 function contextGetterFor(target: typeof Controller) {
-
   const { name } = target;
   
   const context = ownContext(target);

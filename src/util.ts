@@ -75,17 +75,6 @@ export function dedent(t: TemplateStringsArray, ...v: any[]): string {
   else return text;
 }
 
-export function constructorOf(obj: any){
-  if(obj.prototype)
-    return obj.prototype.constructor;
-
-  while(obj){
-    obj = getPrototypeOf(obj);
-    if(obj.constructor)
-      return obj.constructor;
-  }
-}
-
 export function defineOnAccess(
   object: any, property: string, init: () => any){
 

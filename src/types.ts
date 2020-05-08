@@ -45,7 +45,7 @@ export interface InstanceController {
   ): Callback;
 }
 
-export interface ModelController { 
+export interface ModelController {
   isReady?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didMount?(...args: any[]): void;

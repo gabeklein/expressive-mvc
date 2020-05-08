@@ -36,7 +36,6 @@ export function useOwnController(
   model: Class | Function,
   args: any[] = []
 ){
-
   let lifecycle: any;
 
   return useSubscription(

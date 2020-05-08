@@ -1,7 +1,8 @@
-import { FunctionComponent } from 'react';
+import { FunctionComponent, Context } from 'react';
 
-import { ControlProvider, getterFor, ownContext } from './context';
-import { controllerIsGlobalError, initGlobalController, useGlobalController } from './global';
+import { ControlProvider, getterFor, ownContext, ASSIGNED_CONTEXT } from './context';
+import { Singleton } from './control-global';
+import { controllerIsGlobalError, initGlobalController, useGlobalController, GLOBAL_INSTANCE } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
@@ -18,6 +19,8 @@ export interface Controller
 
 export class Controller {
   static global = false;
+  static [GLOBAL_INSTANCE]?: Singleton;
+  static [ASSIGNED_CONTEXT]?: Context<Controller>;
 
   static use(...args: any[]){
     return this.global ? 

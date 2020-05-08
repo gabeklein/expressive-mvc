@@ -1,9 +1,10 @@
 import { Controller } from './controller';
 import { useSubscriber } from './subscriber';
-import { constructorOf, defineOnAccess, Map } from './util';
+import { defineOnAccess } from './util';
 
-const GLOBAL_ALLOCATED = new Map<Function, Controller>();
 const { entries } = Object;
+
+export const GLOBAL_INSTANCE = Symbol("controller_singleton");
 
 export const controllerIsGlobalError = (name: string) => new Error(
   `Controller ${name} is tagged as global. Context API does not apply.`
@@ -13,7 +14,7 @@ export function useGlobalController(
   type: typeof Controller,
   args: any[]){
 
-  let global = GLOBAL_ALLOCATED.get(type); 
+  let global = type[GLOBAL_INSTANCE];
 
   if(!global)
     global = initGlobalController.apply(type, args);
@@ -30,30 +31,24 @@ export class DeferredPeerController {
 export function initGlobalController(
   this: typeof Controller, ...args: any[]){
 
-  let instance = GLOBAL_ALLOCATED.get(this);
+  let instance = this[GLOBAL_INSTANCE];
 
   if(!instance){
     this.global = true;
-    const constructor = constructorOf(this);
     instance = new (this as any)(...args);
+    this[GLOBAL_INSTANCE] = instance;
     
     ensurePeersOnAccess(instance!);
-  
-    GLOBAL_ALLOCATED.set(constructor, instance!);
   }
 
   return instance;
 }
 
-export function globalController(from: typeof Controller): Controller | null;
-export function globalController(from: typeof Controller, lazy: true): DeferredPeerController;
-export function globalController(from: typeof Controller, lazy?: boolean){
-  const global = GLOBAL_ALLOCATED.get(from);
+export function globalController(from: typeof Controller){
+  const global = from[GLOBAL_INSTANCE];
 
   if(global)
     return global;
-  else if(lazy === true)
-    return new DeferredPeerController(from);
   else if(from.global)
     return initGlobalController.call(from);
   else 
