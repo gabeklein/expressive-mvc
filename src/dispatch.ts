@@ -349,8 +349,8 @@ export class Dispatch {
             `however an exception was thrown. Expected data probably doesn't exist yet.`;
 
           if(early)
-            warning +=
-              `\n Note: Computed are usually only calculated when first accessed, except when forced by "observe" or "export".` +
+            warning += `\n` + 
+              `Note: Computed are usually only calculated when first accessed, except when forced by "observe" or "export".` +
               `This property's getter may have run earlier than intended because of that.`
 
           console.warn(warning);

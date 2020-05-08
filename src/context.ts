@@ -55,7 +55,8 @@ function contextGetterFor(target: typeof Controller) {
       return instance;
 
     throw new Error(
-      `Can't subscribe to controller; this accessor can only be used within a Provider keyed to \`${name}\``
+      `Can't subscribe to controller; this accessor ` + 
+      `can only be used within a Provider keyed to \`${name}\``
     );
   }
 
