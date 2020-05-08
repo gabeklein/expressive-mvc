@@ -1,6 +1,6 @@
-import { FunctionComponent, Context } from 'react';
+import { Context, FunctionComponent } from 'react';
 
-import { ControlProvider, getterFor, ownContext, ASSIGNED_CONTEXT } from './context';
+import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './context';
 import { Singleton } from './control-global';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';

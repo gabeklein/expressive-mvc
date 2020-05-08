@@ -1,7 +1,7 @@
+import { Controller } from './controller';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
 import { collectGetters, define, entriesOf, Set } from './util';
-import { Controller } from './controller';
 
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
