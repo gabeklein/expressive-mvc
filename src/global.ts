@@ -3,8 +3,6 @@ import { Controller } from './controller';
 import { useSubscriber } from './subscriber';
 import { defineOnAccess } from './util';
 
-const { entries } = Object;
-
 export const GLOBAL_INSTANCE = Symbol("controller_singleton");
 
 export const controllerIsGlobalError = (name: string) => new Error(
@@ -46,19 +44,18 @@ export function lazyGlobalController(from: typeof Singleton){
 }
 
 export function ensurePeersReadyToAccess(parent: Controller){
-  for(const [property, placeholder] of entries(parent))
-    if(placeholder instanceof DeferredPeerController){
-      const newSingleton = () => {
-        const { type } = placeholder;
-        if(type.global)
-          return globalController(type);
-        else    
-          throw new Error(
-            `Global controller '${parent.constructor.name}' attempted to spawn '${type.name}'. ` +
-            `This is not possible because '${type.name}' is not also global. ` + 
-            `Did you forget to extend 'Singleton'?`
-          )
-      }
-      defineOnAccess(parent, property, newSingleton)
-    }
+  function getInstance(type: typeof Controller){
+    if(type.global)
+      return globalController(type);
+    else
+      throw new Error(
+        `Global controller '${parent.constructor.name}' attempted to spawn '${type.name}'. ` +
+        `This is not possible because '${type.name}' is not also global. ` + 
+        `Did you forget to extend 'Singleton'?`
+      )
+  }
+
+  for(const [property, placeholder] of Object.entries(parent))
+    if(placeholder instanceof DeferredPeerController)
+      defineOnAccess(parent, property, () => getInstance(placeholder.type))
 }
