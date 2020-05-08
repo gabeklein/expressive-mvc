@@ -3,6 +3,7 @@ import { Dispatch } from './dispatch';
 import { useSubscription } from './hook';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
+import { useGlobalController } from './global';
 
 function subscriberLifecycle(control: ModelController){
   return {
@@ -27,9 +28,12 @@ export function componentLifecycle(control: ModelController){
 }
 
 export function useModelController(init: any, ...args: any[]){
-  return init instanceof Controller
-    ? useSubscriber(init as ModelController, args, true)
-    : useOwnController(init, args);
+  if(init instanceof Controller)
+    return useSubscriber(init as ModelController, args, true)
+  if(init.global)
+    return useGlobalController(init, args)
+  else
+    return useOwnController(init, args);
 }
 
 export function useOwnController(

@@ -2,11 +2,11 @@ import { FunctionComponent, Context } from 'react';
 
 import { ControlProvider, getterFor, ownContext, ASSIGNED_CONTEXT } from './context';
 import { Singleton } from './control-global';
-import { controllerIsGlobalError, initGlobalController, useGlobalController, GLOBAL_INSTANCE } from './global';
+import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
-import { InstanceController, BunchOf, Class, SlaveController, ModelController } from './types';
+import { BunchOf, Class, InstanceController, ModelController, SlaveController } from './types';
 import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
@@ -23,9 +23,12 @@ export class Controller {
   static [ASSIGNED_CONTEXT]?: Context<Controller>;
 
   static use(...args: any[]){
-    return this.global ? 
-      useGlobalController(this, args) : 
-      useOwnController(this, args); 
+    if(this.global){
+      const instance = globalController(this, args);
+      return useSubscriber(instance!, args, true);
+    }
+    else
+      return useOwnController(this, args);
   }
 
   static get(key?: string){
@@ -57,7 +60,7 @@ export class Controller {
   }
 
   static sub(...args: any[]){
-    const getInstance = getterFor(this);
+    const getInstance = getterFor(this, args);
     const hook = (...args: any[]) => {
       const controller = getInstance();
       return useSubscriber(controller, args, false);
@@ -82,7 +85,8 @@ export class Controller {
   }
 
   static makeGlobal(...args: any[]){
-    return initGlobalController.call(this, ...args)
+    this.global = true;
+    return globalController(this, args);
   }
 
   static context(){

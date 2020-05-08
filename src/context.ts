@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
 
 import { Controller } from './controller';
-import { DeferredPeerController, GLOBAL_INSTANCE, globalController } from './global';
+import { globalController, lazyGlobalController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 
@@ -15,11 +15,10 @@ export function retrieveController(
 
   if(from instanceof Controller)
     return useSubscriber(from, args, false)
-  
-  return (
-    from[GLOBAL_INSTANCE] ||
-    new DeferredPeerController(from)
-  )
+  if(from.global)
+    return lazyGlobalController(from)
+  else
+    return ownContext(from)
 }
 
 export function ownContext(from: typeof Controller){
@@ -31,12 +30,12 @@ export function ownContext(from: typeof Controller){
   return context;
 }
 
-export function getterFor(target: typeof Controller){
-  const controller = globalController(target);
+export function getterFor(target: typeof Controller, args: any[] = []){
+  if(!target.global)
+    return contextGetterFor(target);
 
-  return controller 
-    ? () => controller 
-    : contextGetterFor(target)
+  const controller = globalController(target, args);
+  return () => controller;
 }
 
 export function ControlProvider(this: Controller){

@@ -1,3 +1,4 @@
+import { Singleton } from './control-global';
 import { Controller } from './controller';
 import { useSubscriber } from './subscriber';
 import { defineOnAccess } from './util';
@@ -14,12 +15,8 @@ export function useGlobalController(
   type: typeof Controller,
   args: any[]){
 
-  let global = type[GLOBAL_INSTANCE];
-
-  if(!global)
-    global = initGlobalController.apply(type, args);
-    
-  return useSubscriber(global!, args, true);
+  let global = globalController(type, args);
+  return useSubscriber(global, args, true);
 }
 
 export class DeferredPeerController {
@@ -28,47 +25,39 @@ export class DeferredPeerController {
   ){}
 }
 
-export function initGlobalController(
-  this: typeof Controller, ...args: any[]){
+export function globalController(
+  type: typeof Controller, args: any[] = []){
 
-  let instance = this[GLOBAL_INSTANCE];
+  let instance = type[GLOBAL_INSTANCE];
 
-  if(!instance){
-    this.global = true;
-    instance = new (this as any)(...args);
-    this[GLOBAL_INSTANCE] = instance;
-    
-    ensurePeersOnAccess(instance!);
-  }
+  if(instance)
+    return instance;
+
+  instance = new (type as any)(...args) as Singleton;
+  
+  type[GLOBAL_INSTANCE] = instance;
+  ensurePeersReadyToAccess(instance!);
 
   return instance;
 }
 
-export function globalController(from: typeof Controller){
-  const global = from[GLOBAL_INSTANCE];
-
-  if(global)
-    return global;
-  else if(from.global)
-    return initGlobalController.call(from);
-  else 
-    return null;
+export function lazyGlobalController(from: typeof Singleton){
+  return from[GLOBAL_INSTANCE] || new DeferredPeerController(from);
 }
 
-export function ensurePeersOnAccess(parent: Controller){
+export function ensurePeersReadyToAccess(parent: Controller){
   for(const [property, placeholder] of entries(parent))
     if(placeholder instanceof DeferredPeerController){
       const newSingleton = () => {
-        const instance = globalController(placeholder.type);
-
-        if(!instance)
+        const { type } = placeholder;
+        if(type.global)
+          return globalController(type);
+        else    
           throw new Error(
-            `Global controller '${parent.constructor.name}' attempted to spawn '${placeholder.type.name}'. ` +
-            `This is not possible because '${placeholder.type.name}' is not also global. ` + 
+            `Global controller '${parent.constructor.name}' attempted to spawn '${type.name}'. ` +
+            `This is not possible because '${type.name}' is not also global. ` + 
             `Did you forget to extend 'Singleton'?`
           )
-
-        return instance;
       }
       defineOnAccess(parent, property, newSingleton)
     }
