@@ -37,6 +37,14 @@ export interface InstanceController {
   assign(props: BunchOf<any>): this;
   refresh(...keys: string[]): void;
 
+  tap(): this;
+  tap<K extends keyof this>(key?: K): this[K];
+
+  sub(...args: any[]): this;
+
+  onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
+  onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
+
   export(...args: any[]): any;
   observe<P extends keyof this>(
     key: P | P[], 

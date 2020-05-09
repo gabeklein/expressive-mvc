@@ -1,8 +1,11 @@
 import { Controller } from './controller';
 import { PeerController } from './global';
+import { ControlledInput, ControlledValue } from './hoc';
+import { useSubscriber } from './subscriber';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
-import { collectGetters, define, entriesOf, Set } from './util';
+import { collectGetters, define, defineOnAccess, entriesOf, Set } from './util';
+import { useWatchedProperty, useWatcher } from './watcher';
 
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
@@ -23,7 +26,19 @@ function simpleIntegrateExternal(
   if(typeof a == "string")
     return (this as any)[a] = b
   else
-    return assignTo(this, a)
+
+export function tapControlled(
+  this: Controller, key?: string, required?: boolean){
+
+  return key ? 
+    useWatchedProperty(this, key, required) : 
+    useWatcher(this);
+}
+
+export function subControlled(
+  this: Controller, ...args: any[]){
+
+  return useSubscriber(this, args, true) 
 }
 
 export class ManagedProperty {
@@ -62,7 +77,7 @@ export class Dispatch {
     public control: Controller
   ){}
 
-  static readyFor(control: Controller){
+  static readyFor(control: any){
     if(DISPATCH in control)
       return;
 
@@ -70,15 +85,21 @@ export class Dispatch {
 
     dispatch.initObservable();
     define(control, DISPATCH, dispatch);
-    define(control, <Controller>{
+    define(control, {
       get: control,
       set: control,
+      tap: tapControlled,
+      sub: subControlled,
       assign: simpleIntegrateExternal,
+      onChange: dispatch.onChange,
       observe: dispatch.observe,
       export: dispatch.export,
       toggle: dispatch.toggle,
       refresh: dispatch.refresh
     })
+    defineOnAccess(control, "Value", ControlledValue)
+    defineOnAccess(control, "Input", ControlledInput)
+
     dispatch.initComputed();
 
     if(control.isReady)
@@ -112,6 +133,19 @@ export class Dispatch {
       return this.watch(subset!, onChange, initial)
     else 
       return this.collect(subset)
+  }
+
+  onChange = (
+    key: string | string[], 
+    listener?: (changed: string[]) => void) => {
+  
+    if(listener)
+      this.observe(key as any, listener, true);
+    else {
+      return new Promise(resolve => {
+        this.observe(key as any, resolve, true);
+      })
+    }
   }
   
   observe = (

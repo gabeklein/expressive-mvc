@@ -2,7 +2,6 @@ import { Context, FunctionComponent } from 'react';
 
 import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './context';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
-import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
 import { BunchOf, Class, InstanceController, ModelController, SlaveController } from './types';
@@ -61,8 +60,7 @@ export class Controller {
   static sub(...args: any[]){
     const getInstance = getterFor(this, args);
     const hook = (...args: any[]) => {
-      const controller = getInstance();
-      return useSubscriber(controller, args, false);
+      return useSubscriber(getInstance(), args, false);
     }
     
     define(this, "sub", hook);
@@ -101,34 +99,9 @@ export class Controller {
     else 
       return useOwnController(this).Provider
   }
-
-  onChange(
-    key: string | string[], 
-    listener?: (changed: string[]) => void){
-  
-    if(listener)
-      this.observe(key as any, listener, true);
-    else {
-      return new Promise(resolve => {
-        this.observe(key as any, resolve, true);
-      })
-    }
-  }
-
-  tap(key?: string, main?: boolean){
-    return key ? 
-      useWatchedProperty(this, key, main) : 
-      useWatcher(this);
-  }
-
-  sub(...args: any[]){
-    return useSubscriber(this, args, true) 
-  }
 }
 
 defineOnAccess(Controller.prototype, "Provider", ControlProvider)
-defineOnAccess(Controller.prototype, "Value", ControlledValue)
-defineOnAccess(Controller.prototype, "Input", ControlledInput)
 
 export class Singleton extends Controller {
   static global = true;
