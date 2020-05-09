@@ -10,9 +10,9 @@ import { useWatchedProperty, useWatcher } from './watcher';
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
 const { 
-  assign: assignTo,
+  assign,
   defineProperty,
-  getOwnPropertyDescriptor: describe,
+  getOwnPropertyDescriptor,
 } = Object;
 
 export const DISPATCH = Symbol("controller_dispatch");
@@ -26,6 +26,8 @@ function simpleIntegrateExternal(
   if(typeof a == "string")
     return (this as any)[a] = b
   else
+    return assign(this, a)
+}
 
 export function tapControlled(
   this: Controller, key?: string, required?: boolean){
@@ -56,7 +58,7 @@ export function declareControlled(model: any, initial?: {}){
         () => new model() :
         () => model() :
     typeof model == "object" ?
-      () => assignTo({}, model) :
+      () => assign({}, model) :
       null;
 
   if(!create){
@@ -193,7 +195,7 @@ export class Dispatch {
         )
 
       const trigger = () => callback(key);
-      const getter = describe(this.control, key)?.get;
+      const getter = getOwnPropertyDescriptor(this.control, key)?.get;
 
       if(getter?.name == "initComputedValue"){
         const initialize = getter as (early?: true) => unknown;
@@ -216,7 +218,7 @@ export class Dispatch {
 
     if(keys){
       for(const key of keys){
-        let desc = describe(this, key);
+        let desc = getOwnPropertyDescriptor(this, key);
 
         acc[key] = desc && desc.value || current[key]
       }
@@ -225,7 +227,7 @@ export class Dispatch {
     }
 
     for(const key in this){
-      const desc = describe(this, key);
+      const desc = getOwnPropertyDescriptor(this, key);
 
       if(!desc) continue;
 
@@ -338,7 +340,7 @@ export class Dispatch {
 
     function generate(value: {}){
       const saved = current[key] = create();
-      assignTo(saved, value);
+      assign(saved, value);
       Dispatch.readyFor(saved);
     }
 
