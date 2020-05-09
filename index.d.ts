@@ -25,7 +25,7 @@ declare function use<I> (init: I): Controller & I;
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
 
-declare function set<T extends Class> (type?: T): InstanceType<T> | undefined;
+declare function set<T extends Class> (type: T): InstanceType<T> | undefined;
 declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): InstanceType<T>;
 declare function set<T extends {} = any> (type?: T): T;
 

@@ -29,11 +29,12 @@ function simpleIntegrateExternal(
 export class ManagedProperty {
   constructor(
     public type: {} | (new (...args: any[]) => any),
-    public init: () => {}
+    public create: () => {},
+    public initial?: {}
   ){}
 }
 
-export function declareControlled(model: any){
+export function declareControlled(model: any, initial?: {}){
   const create = 
     typeof model == "function" ?
       "prototype" in model ?
@@ -48,7 +49,7 @@ export function declareControlled(model: any){
     throw new Error(`Managing property ${model} is not possible as it can't be converted to an object.`)
   }
 
-  return new ManagedProperty(model, create);
+  return new ManagedProperty(model, create, initial);
 }
 
 export class Dispatch {
@@ -272,7 +273,6 @@ export class Dispatch {
         continue;
       }
 
-      current[key] = value;
       subscribers[key] = new Set();
 
       defineProperty(control, key, {
@@ -281,12 +281,14 @@ export class Dispatch {
         get: () => current[key],
         set: value instanceof ManagedProperty 
           ? this.monitorManagedValue(key, value)
-          : this.monitorValue(key)
+          : this.monitorValue(key, value)
       })
     }
   }
 
-  private monitorValue(key: string){
+  private monitorValue(key: string, initial: any){
+    this.current[key] = initial;
+
     return (value: any) => {
       if(this.current[key] === value) 
         return;
@@ -297,23 +299,27 @@ export class Dispatch {
     }
   }
   
-  private monitorManagedValue(key: string, { init }: ManagedProperty){
+  private monitorManagedValue(key: string, { create, initial }: ManagedProperty){
     const { current } = this;
 
-    return (value: unknown) => {
-      let saved = current[key];
+    function generate(value: {}){
+      const saved = current[key] = create();
+      assignTo(saved, value);
+      Dispatch.readyFor(saved);
+    }
 
-      if(value === undefined)
+    if(initial)
+      generate(initial)
+    else
+      current[key] = undefined;
+
+    return (value: any) => {
+      if(!value)
         current[key] = undefined
-
-      else if(value === null || typeof value !== "object")
+      else if(typeof value == "object")
+        generate(value)
+      else
         throw new Error("Cannot assign a non-object to this property; it is managed.")
-
-      else {
-        saved = current[key] = init();
-        Dispatch.readyFor(saved);
-        assignTo(saved, value);
-      }
       
       this.pendingUpdates.add(key);
       this.update();
