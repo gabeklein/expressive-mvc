@@ -27,11 +27,28 @@ function simpleIntegrateExternal(
 }
 
 export class ManagedProperty {
-  constructor(public type: any){}
+  constructor(
+    public type: {} | (new (...args: any[]) => any),
+    public init: () => {}
+  ){}
 }
 
-export function setControlledProperty(model: any){
-  return new ManagedProperty(model);
+export function declareControlled(model: any){
+  const create = 
+    typeof model == "function" ?
+      "prototype" in model ?
+        () => new model() :
+        () => model() :
+    typeof model == "object" ?
+      () => assignTo({}, model) :
+      null;
+
+  if(!create){
+    //todo: detect class attempted to init via stack trace.
+    throw new Error(`Managing property ${model} is not possible as it can't be converted to an object.`)
+  }
+
+  return new ManagedProperty(model, create);
 }
 
 export class Dispatch {
@@ -280,18 +297,8 @@ export class Dispatch {
     }
   }
   
-  private monitorManagedValue(key: string, managed: ManagedProperty){
+  private monitorManagedValue(key: string, { init }: ManagedProperty){
     const { current } = this;
-    const { type } = managed;
-    const create = () => {
-      if(typeof type == "function")
-        if("prototype" in type)
-          return new type()
-        else 
-          return assignTo({}, type);
-      else 
-        throw new Error()
-    }
 
     return (value: unknown) => {
       let saved = current[key];
@@ -300,10 +307,10 @@ export class Dispatch {
         current[key] = undefined
 
       else if(value === null || typeof value !== "object")
-        throw new Error("Cannot assign non-object to this property; it is managed.")
+        throw new Error("Cannot assign a non-object to this property; it is managed.")
 
       else {
-        saved = current[key] = create();
+        saved = current[key] = init();
         Dispatch.readyFor(saved);
         assignTo(saved, value);
       }
