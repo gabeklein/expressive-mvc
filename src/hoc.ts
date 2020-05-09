@@ -4,46 +4,56 @@ import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
 import { useManualRefresh } from './subscription';
 
-const { assign } = Object;
-
 export function ControlledValue(this: Controller): FC<{ of: string }> {
   return (props) => {
     const onDidUpdate = useManualRefresh()[1];
-    const key = props.of;
-    props = assign({}, props);
-    delete props.of;
+    
+    props = { ...props };
 
     useEffect(() => {
-      const removeListener = 
-        this[DISPATCH]!.addListener(key, onDidUpdate);
-
-      return removeListener;
+      return this[DISPATCH]!.addListener(props.of, onDidUpdate);
     })
 
-    return createElement("span", props, (this as any)[key])
+    delete props.of;
+    return createElement("span", props, (<any>this)[props.of])
   }
 }
 
-export function ControlledInput(this: Controller): FC<{ to: string }> {
+export function ControlledInput(this: Controller): FC<{ 
+  to: string, 
+  type?: string,
+  onChange?: (v: any, e: any) => any
+}> {
   return forwardRef((props, ref) => {
-    const onDidUpdate = useManualRefresh()[1];
-    const values = this as any;
+    const source: any = this;
+    const { to } = props;
 
-    const key = props.to;
-    props = assign({}, props);
-    delete props.to;
+    const [controlled, onDidUpdate] = useManualRefresh(() => {
+      const { onChange } = props;
 
-    useEffect(() => this[DISPATCH]!.addListener(key, onDidUpdate))
-    
-    props = Object.assign(props, {
-      ref,
-      type: "text",
-      value: values[key],
-      onChange: (e: any) => {
-        values[key] = e.target.value;
+      return {
+        type: "text",
+        onChange: 
+          onChange ?
+            (e: any) => { source[to] = onChange(e.target.value, e) } :
+          props.type !== "number" ? 
+            (e: any) => { source[to] = e.target.value } : 
+            (e: any) => { source[to] = Number(e.target.value) }
       }
-    })
+    });
 
+    props = <any>{
+      ref,
+      value: source[to],
+      ...controlled,
+      ...props
+    }
+
+    useEffect(() => {
+      return this[DISPATCH]!.addListener(to, onDidUpdate);
+    });
+
+    delete props.to;
     return createElement("input", props)
   })
 }

@@ -12,8 +12,8 @@ export const SUBSCRIBE = Symbol("end_subscription");
 
 export type UpdateTrigger = Callback;
 
-export const useManualRefresh = () => {
-  const [ state, update ] = useState({} as any);
+export const useManualRefresh = <T extends {}>(init?: () => T) => {
+  const [ state, update ] = useState<T>(init || {} as any);
   const refresh = () => update(Object.assign({}, state));
   return [ state, refresh ] as const;
 }
