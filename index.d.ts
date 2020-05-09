@@ -6,8 +6,7 @@ import {
     FunctionComponent,
 } from 'react';
 
-declare const MANAGED: Symbol;
-
+// declare const MANAGED: Symbol;
 // type Managed<T> = T & { MANAGED: any };
 // type PartialAny<T> = { [X in keyof T]: any }
 // type AssignablePartials<T> = { [X in keyof T]: PartialAny<T[X]> }
@@ -25,16 +24,9 @@ declare function use<I> (init: I): Controller & I;
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
 
-declare function set<T extends Class> (type: T): (InstanceType<T> & InstanceController) | undefined;
-declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): (InstanceType<T> & InstanceController);
-declare function set<T extends {} = any> (type?: T): (T & InstanceController);
-
-export interface Subscriber<T> {
-    on(...properties: string[]): Subscriber<T> & T;
-    not(...properties: string[]): Subscriber<T> & T;
-    only(...properties: string[]): T;
-    except: never;
-}
+declare function set<T extends Class> (type: T): (InstanceType<T> & IC) | undefined;
+declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): (InstanceType<T> & IC);
+declare function set<T extends {} = any> (type?: T): (T & IC);
 
 type HandleUpdatedValues<T extends object, P extends keyof T> = 
     (this: T, values: Pick<T, P>, changed: P[]) => void
@@ -42,7 +34,10 @@ type HandleUpdatedValues<T extends object, P extends keyof T> =
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void
 
-interface ModelController {
+/**
+ * Model Controller, represents available lifecycle callbacks.
+ */
+interface MC {
     isReady?(): void;
     willRender?(...args: any[]): void;
     willMount?(...args: any[]): void;
@@ -69,7 +64,10 @@ interface ModelController {
     componentWillCycle?(...args: any[]): void | (() => void);
 }
 
-export interface InstanceController {
+/**
+ * Instance Controller, methods and properties available to objects with a dispatch.
+ */
+interface IC {
     get: this;
     set: this;
   
@@ -79,10 +77,10 @@ export interface InstanceController {
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 
-    tap(): this;
+    tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];
 
-    sub(...args: any[]): this & Subscriber<this>;
+    sub(...args: any[]): this & SC;
 
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
     refresh(...keys: string[]): void;
@@ -98,36 +96,38 @@ export interface InstanceController {
     export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): () => void;
 }
 
-interface SlaveController {
+/**
+ * Subscription Controller, methods local to a controlled accessed through subscriptions.
+ */
+interface SC {
     refresh(...keys: string[]): void;
     on(): this;
     only(): this;
     not(): this;
+    except: never;
 }
 
-interface Controller 
-    extends ModelController, InstanceController, SlaveController {
-}
+interface Controller extends IC, IC, SC {}
 
 declare class Controller {
     static global: boolean;
 
-    static assign <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & Subscriber<I>;
+    static assign <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & SC;
 
     static get Provider(): FunctionComponentElement<any>;
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
     
-    static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & SC;
 
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
-    static tap <T extends Class> (this: T): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static tap <T extends Class> (this: T): InstanceType<T> & SC;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
 
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & Subscriber<InstanceType<T>>;
+    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
 
@@ -145,6 +145,7 @@ interface MultiProviderProps {
 declare const MultiProvider: FunctionComponentElement<MultiProviderProps>
 
 export { 
+    IC,
     use,
     get,
     set,
