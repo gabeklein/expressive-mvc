@@ -93,7 +93,7 @@ export class Dispatch {
     if(typeof onChange == "function")
       return this.watch(subset!, onChange, initial)
     else 
-      return this.get(subset)
+      return this.collect(subset)
   }
   
   observe = (
@@ -124,37 +124,6 @@ export class Dispatch {
     register.add(callback);
 
     return () => register.delete(callback);
-  }
-  
-  private get(keys?: string[]){
-    const acc = {} as BunchOf<any>;
-    const { current } = this;
-
-    if(keys){
-      for(const key of keys){
-        let desc = describe(this, key);
-
-        acc[key] = 
-          desc && 
-          desc.value || 
-          current[key]
-      }
-
-      return acc;
-    }
-
-    for(const key in this){
-      const desc = describe(this, key);
-
-      if(!desc) continue;
-
-      if(desc.value !== undefined)
-        acc[key] = desc.value;
-    }
-    for(const key in current)
-      acc[key] = current[key]
-
-    return acc;
   }
 
   private addMultiListener(
@@ -187,6 +156,34 @@ export class Dispatch {
       clear.forEach(x => x());
       clear = [];
     };
+  }
+  
+  private collect(keys?: string[]){
+    const acc = {} as BunchOf<any>;
+    const { current, subscribers } = this;
+
+    if(keys){
+      for(const key of keys){
+        let desc = describe(this, key);
+
+        acc[key] = desc && desc.value || current[key]
+      }
+
+      return acc;
+    }
+
+    for(const key in this){
+      const desc = describe(this, key);
+
+      if(!desc) continue;
+
+      if(desc.value !== undefined)
+        acc[key] = desc.value;
+    }
+    for(const key in subscribers)
+      acc[key] = current[key]
+
+    return acc;
   }
 
   private watch(
