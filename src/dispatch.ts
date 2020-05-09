@@ -214,14 +214,10 @@ export class Dispatch {
   
   private collect(keys?: string[]){
     const acc = {} as BunchOf<any>;
-    const { current, subscribers } = this;
 
     if(keys){
-      for(const key of keys){
-        let desc = getOwnPropertyDescriptor(this, key);
-
-        acc[key] = desc && desc.value || current[key]
-      }
+      for(const key of keys)
+        acc[key] = (this.control as any)[key]
 
       return acc;
     }
@@ -234,8 +230,8 @@ export class Dispatch {
       if(desc.value !== undefined)
         acc[key] = desc.value;
     }
-    for(const key in subscribers)
-      acc[key] = current[key]
+    for(const key in this.subscribers)
+      acc[key] = this.current[key]
 
     return acc;
   }
