@@ -1,5 +1,6 @@
-import { Singleton } from './control-global';
-import { Controller } from './controller';
+import { ownContext } from './context';
+import { Controller, Singleton } from './controller';
+import { Dispatch } from './dispatch';
 import { useSubscriber } from './subscriber';
 import { defineOnAccess } from './util';
 
@@ -9,18 +10,38 @@ export const controllerIsGlobalError = (name: string) => new Error(
   `Controller ${name} is tagged as global. Context API does not apply.`
 )
 
+export class PeerController {
+  constructor(
+    private type: typeof Controller
+  ){}
+
+  get context(){
+    return ownContext(this.type);
+  }
+
+  attachNowIfGlobal(parent: Controller, key: string){
+    const { type } = this;
+
+    if(type.global){
+      defineOnAccess(parent, key, () => globalController(type))
+      return
+    }
+      
+    if(parent instanceof Singleton)
+      throw new Error(
+        `Global controller '${parent.constructor.name}' attempted to attach '${type.name}'. ` +
+        `This is not possible because '${type.name}' is not also global. ` + 
+        `Did you forget to extend 'Singleton'?`
+      )
+  }
+}
+
 export function useGlobalController(
   type: typeof Controller,
   args: any[]){
 
   let global = globalController(type, args);
   return useSubscriber(global, args, true);
-}
-
-export class DeferredPeerController {
-  constructor(
-    public type: typeof Controller
-  ){}
 }
 
 export function globalController(
@@ -32,30 +53,9 @@ export function globalController(
     return instance;
 
   instance = new (type as any)(...args) as Singleton;
-  
   type[GLOBAL_INSTANCE] = instance;
-  ensurePeersReadyToAccess(instance!);
+
+  Dispatch.readyFor(instance);
 
   return instance;
-}
-
-export function lazyGlobalController(from: typeof Singleton){
-  return from[GLOBAL_INSTANCE] || new DeferredPeerController(from);
-}
-
-export function ensurePeersReadyToAccess(parent: Controller){
-  function getInstance(type: typeof Controller){
-    if(type.global)
-      return globalController(type);
-    else
-      throw new Error(
-        `Global controller '${parent.constructor.name}' attempted to spawn '${type.name}'. ` +
-        `This is not possible because '${type.name}' is not also global. ` + 
-        `Did you forget to extend 'Singleton'?`
-      )
-  }
-
-  for(const [property, placeholder] of Object.entries(parent))
-    if(placeholder instanceof DeferredPeerController)
-      defineOnAccess(parent, property, () => getInstance(placeholder.type))
 }

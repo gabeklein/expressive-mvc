@@ -3,8 +3,13 @@ import { Context, useContext } from 'react';
 import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { define } from './util';
+import { PeerController } from './global';
 
-const { defineProperty } = Object;
+const { 
+  defineProperty,
+  entries: entriesOf,
+  getOwnPropertyDescriptors: propsIn
+} = Object;
 
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
@@ -18,12 +23,11 @@ export function ensureAttachedControllers(instance: Controller){
     return;
   }
 
-  const pending = Object
-    .entries(Object.getOwnPropertyDescriptors(instance))
-    .map(entry => entry[1].value)
-    .filter(v => {
-      return v && typeof v == "object" && "Consumer" in v && "Provider" in v;
-    })
+  const pending = [];
+
+  for(const [key, { value }] of entriesOf(propsIn(instance)))
+    if(value instanceof PeerController)
+      pending.push([key, value.context] as const)
 
   const disableMaintaince = () => {
     defineProperty(instance, RENEW_CONSUMERS, { value: undefined });

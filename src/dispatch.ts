@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { PeerController } from './global';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
 import { collectGetters, define, entriesOf, Set } from './util';
@@ -247,10 +248,17 @@ export class Dispatch {
       if("value" in desc === false)
         continue;
 
-      if(typeof desc.value === "function")
-        continue;
+      const value = desc.value;
 
-      const value = current[key] = desc.value;
+      if(typeof value === "function")
+        continue;
+        
+      if(value instanceof PeerController){
+        value.attachNowIfGlobal(control, key);
+        continue;
+      }
+
+      current[key] = value;
       subscribers[key] = new Set();
 
       defineProperty(control, key, {

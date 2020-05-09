@@ -1,7 +1,6 @@
 import { Context, FunctionComponent } from 'react';
 
 import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './context';
-import { Singleton } from './control-global';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { createWrappedComponent } from './provider';
@@ -130,3 +129,7 @@ export class Controller {
 defineOnAccess(Controller.prototype, "Provider", ControlProvider)
 defineOnAccess(Controller.prototype, "Value", ControlledValue)
 defineOnAccess(Controller.prototype, "Input", ControlledInput)
+
+export class Singleton extends Controller {
+  static global = true;
+}

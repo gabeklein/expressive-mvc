@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
 
 import { Controller } from './controller';
-import { globalController, lazyGlobalController } from './global';
+import { globalController, PeerController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 
@@ -15,10 +15,8 @@ export function retrieveController(
 
   if(from instanceof Controller)
     return useSubscriber(from, args, false)
-  if(from.global)
-    return lazyGlobalController(from)
   else
-    return ownContext(from)
+    return new PeerController(from)
 }
 
 export function ownContext(from: typeof Controller){
