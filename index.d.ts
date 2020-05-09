@@ -25,9 +25,9 @@ declare function use<I> (init: I): Controller & I;
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
 
-declare function set<T extends Class> (type: T): InstanceType<T> | undefined;
-declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): InstanceType<T>;
-declare function set<T extends {} = any> (type?: T): T;
+declare function set<T extends Class> (type: T): (InstanceType<T> & InstanceController) | undefined;
+declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): (InstanceType<T> & InstanceController);
+declare function set<T extends {} = any> (type?: T): (T & InstanceController);
 
 export interface Subscriber<T> {
     on(...properties: string[]): Subscriber<T> & T;
@@ -69,15 +69,12 @@ interface ModelController {
     componentWillCycle?(...args: any[]): void | (() => void);
 }
 
-interface InstanceController {
+export interface InstanceController {
     get: this;
     set: this;
-
-    hold: boolean;
   
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
-    Provider: FunctionComponent<ProviderProps<this>>;
 
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
@@ -137,6 +134,8 @@ declare class Controller {
     static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
 
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
+
+    Provider: FunctionComponent<ProviderProps<this>>;
 }
 
 interface MultiProviderProps {
