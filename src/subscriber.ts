@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { useGlobalController } from './global';
-import { useSubscription } from './hook';
+import { useSubscription } from './subscription';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
 

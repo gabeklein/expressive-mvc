@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
 import { DISPATCH, Dispatch } from './dispatch';
-import { useManualRefresh } from './hook';
+import { useManualRefresh } from './subscription';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Callback } from './types';
 

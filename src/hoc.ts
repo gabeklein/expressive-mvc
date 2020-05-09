@@ -2,7 +2,7 @@ import { createElement, FC, forwardRef, useEffect } from 'react';
 
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
-import { useManualRefresh } from './hook';
+import { useManualRefresh } from './subscription';
 
 const { assign } = Object;
 
