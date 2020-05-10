@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { useGlobalController } from './global';
+import { globalController } from './global';
 import { useSubscription } from './subscription';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
@@ -30,8 +30,10 @@ export function componentLifecycle(control: ModelController){
 export function useModelController(init: any, ...args: any[]){
   if(init instanceof Controller)
     return useSubscriber(init as ModelController, args, true)
-  if(init.global)
-    return useGlobalController(init, args)
+  if(init.global){    
+    let instance = globalController(init, args);
+    return useSubscriber(instance, args, true);
+  }
   else
     return useOwnController(init, args);
 }

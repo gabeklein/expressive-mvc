@@ -1,7 +1,6 @@
 import { ownContext } from './context';
 import { Controller, Singleton } from './controller';
 import { Dispatch } from './dispatch';
-import { useSubscriber } from './subscriber';
 import { defineOnAccess } from './util';
 
 export const GLOBAL_INSTANCE = Symbol("controller_singleton");
@@ -34,14 +33,6 @@ export class PeerController {
         `Did you forget to extend 'Singleton'?`
       )
   }
-}
-
-export function useGlobalController(
-  type: typeof Controller,
-  args: any[]){
-
-  let global = globalController(type, args);
-  return useSubscriber(global, args, true);
 }
 
 export function globalController(
