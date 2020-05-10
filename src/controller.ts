@@ -4,12 +4,12 @@ import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './cont
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
-import { BunchOf, Class, InstanceController, ModelController, SlaveController } from './types';
+import { BunchOf, Class, InstanceController, ModelController, SubscribeController } from './types';
 import { define, defineOnAccess } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
-  extends ModelController, InstanceController, SlaveController {
+  extends ModelController, InstanceController, SubscribeController {
 
   // Extended classes represent the onion-layers of a given controller.
   // What is accessible depends on the context controller is accessed.

@@ -11,7 +11,7 @@ export type HandleUpdatedValue
   <T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
 
-export interface SlaveController {
+export interface SubscribeController {
   [UNSUBSCRIBE]?: Callback;
   [SUBSCRIBE]?: Callback;
 
