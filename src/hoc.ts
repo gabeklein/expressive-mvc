@@ -22,31 +22,58 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
 export function ControlledInput(this: Controller): FC<{ 
   to: string, 
   type?: string,
-  onChange?: (v: any, e: any) => any
+  onChange?: ((v: any, e: any) => any) | false,
+  onReturn?: (v: any, e: any) => any
 }> {
   return forwardRef((props, ref) => {
     const source: any = this;
     const { to } = props;
 
     const [controlled, onDidUpdate] = useManualRefresh(() => {
-      const { onChange } = props;
+      const { onChange, onReturn, type } = props;
+      const meta = {} as any;
 
-      return {
-        type: "text",
-        onChange: 
-          onChange ?
-            (e: any) => { source[to] = onChange(e.target.value, e) } :
-          props.type !== "number" ? 
-            (e: any) => { source[to] = e.target.value } : 
-            (e: any) => { source[to] = Number(e.target.value) }
+      if(typeof onChange == "function")
+        meta.onChange = (e: any) => {
+          let v = e.target.value;
+          if(type == "number")
+            v = Number(v);
+          const o = onChange(v, e);
+          if(o)
+            source[to] = o;
+        }
+      else if(onChange !== false) {
+        if(type == "number")
+          meta.onChange = (e: any) => { source[to] = Number(e.target.value) }
+        else
+          meta.onChange = (e: any) => { source[to] = e.target.value }
       }
+
+      if(typeof onReturn == "function"){
+        meta.onKeyPress = (e: any) => {
+          if(e.which !== 13)
+            return;
+
+          e.preventDefault();
+          let v = e.target.value;
+          if(type == "number")
+            v = Number(v);
+          const o = onReturn(v, e);
+          if(o)
+            source[to] = o;
+        }
+
+      }
+
+      return meta;
     });
 
     props = <any>{
       ref,
       value: source[to],
-      ...controlled,
-      ...props
+      type: "text",
+      ...props,
+      ...controlled
     }
 
     useEffect(() => {
@@ -54,6 +81,7 @@ export function ControlledInput(this: Controller): FC<{
     });
 
     delete props.to;
+    delete props.onReturn;
     return createElement("input", props)
   })
 }
