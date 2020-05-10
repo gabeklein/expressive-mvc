@@ -61,6 +61,9 @@ export function declareControlled(model: any, initial?: {}){
       () => assign({}, model) :
       null;
 
+  if(typeof model == "object")
+    initial = {};
+
   if(!create){
     //todo: detect class attempted to init via stack trace.
     throw new Error(`Managing property ${model} is not possible as it can't be converted to an object.`)
