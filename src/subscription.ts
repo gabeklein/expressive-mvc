@@ -77,25 +77,25 @@ export function createSubscription(
 
   const Spy = Object.create(source);
   const dispatch = source[DISPATCH]!;
-  const { current, refresh, subscribers } = dispatch;
+  const { refresh, subscribers } = dispatch;
   const watch = new Set<string>();
 
   let exclude: Set<string>;
   let cleanup: Set<Callback>;
 
-  for(const key in subscribers)
+  for(const key in subscribers){
     Object.defineProperty(Spy, key, {
       configurable: true,
       enumerable: true,
       set: (value: any) => {
-        current[key] = value;
-        refresh(key);
+        (source as any)[key] = value
       },
       get: () => {
         watch.add(key);
-        return current[key];
+        return (source as any)[key];
       }
     })
+  }
 
   define(Spy, SUBSCRIBE, subscribe)
   define(Spy, UNSUBSCRIBE, unsubscribe)
@@ -114,7 +114,7 @@ export function createSubscription(
   }
 
   function stopInference(){
-    for(const key in current)
+    for(const key in subscribers)
       delete Spy[key];
   }
 
