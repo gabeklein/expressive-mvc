@@ -107,6 +107,8 @@ interface SC {
     except: never;
 }
 
+type Similar<T> = { [X in keyof T]?: T[X] };
+
 interface Controller extends IC, IC, SC {}
 
 declare class Controller {
@@ -118,6 +120,8 @@ declare class Controller {
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & SC;
+
+    static using <T extends Class, D extends Similar<InstanceType<T>>> (this: T, data: D): InstanceType<T> & SC;
 
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
@@ -146,6 +150,8 @@ declare const MultiProvider: FunctionComponentElement<MultiProviderProps>
 
 export { 
     IC,
+    SC,
+    MC,
     use,
     get,
     set,

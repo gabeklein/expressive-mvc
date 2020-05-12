@@ -5,7 +5,7 @@ import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './gl
 import { createWrappedComponent } from './provider';
 import { useOwnController, useSubscriber } from './subscriber';
 import { BunchOf, Class, InstanceController, ModelController, SubscribeController } from './types';
-import { define, defineOnAccess } from './util';
+import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
@@ -79,6 +79,25 @@ export class Controller {
 
   static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
     return this.tap().assign(a, b);
+  }
+
+  static using(items: BunchOf<any>, only?: string[]){
+    function didCreate(instance: Controller){
+      return transferValues(instance, items, only)
+    }
+
+    let sub;
+
+    if(this.global){
+      const instance = globalController(this, [], didCreate);
+      sub = useSubscriber(instance!, [], true);
+    }
+    else
+      sub = useOwnController(this, [], didCreate);
+
+    didCreate(sub);
+        
+    return sub;
   }
 
   static makeGlobal(...args: any[]){

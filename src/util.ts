@@ -92,6 +92,28 @@ export function entriesOf(obj: {}){
   return entries(getOwnPropertyDescriptors(obj));
 }
 
+export function transferValues(
+  instance: Controller, 
+  items: BunchOf<any>, 
+  only?: string[]){
+
+  const pull = only || Object.keys(items);
+  const setters: string[] = [];
+
+  for(const key of pull){
+    const desc = Object.getOwnPropertyDescriptor(
+      instance.constructor.prototype, key
+    );
+    if(desc && desc.set)
+      setters.push(key)
+    else
+      (<any>instance)[key] = items[key];
+  }
+
+  for(const key of setters)
+    (<any>instance)[key] = items[key];
+}
+
 export function collectGetters(
   source: any, except: string[] = []){
 
