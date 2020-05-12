@@ -21,7 +21,9 @@ export type UpdateEventHandler = (value: any, key: string) => void;
 export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 function simpleIntegrateExternal(
-  this: Controller, a: string | BunchOf<any>, b?: BunchOf<any>){
+  this: Controller, 
+  a: string | BunchOf<any>, 
+  b?: BunchOf<any>){
 
   if(typeof a == "string")
     return (this as any)[a] = b

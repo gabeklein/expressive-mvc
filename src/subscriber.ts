@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { Dispatch } from './dispatch';
 import { globalController } from './global';
 import { useSubscription } from './subscription';
 import { Class, ModelController } from './types';
@@ -40,7 +39,8 @@ export function useModelController(init: any, ...args: any[]){
 
 export function useOwnController(
   model: Class | Function,
-  args: any[] = []
+  args: any[] = [],
+  callback?: (self: Controller) => void
 ){
   let lifecycle: any;
 
@@ -52,10 +52,12 @@ export function useOwnController(
             new (model as Class)(...args) :
             (model as Function)(...args) :
           model;
+
+      if(callback)
+        callback(control);
   
       lifecycle = componentLifecycle(control);
-      Dispatch.readyFor(control);
-  
+
       return control;
     },
     (name: string, on: ModelController) => {
@@ -74,8 +76,8 @@ export function useOwnController(
 export function useSubscriber(
   target: ModelController, 
   args: any[], 
-  main: boolean){
-
+  main: boolean
+){
   let lifecycle: any;
 
   return useSubscription(

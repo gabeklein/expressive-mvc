@@ -36,8 +36,10 @@ export class PeerController {
 }
 
 export function globalController(
-  type: typeof Controller, args: any[] = []){
-
+  type: typeof Controller, 
+  args: any[] = [],
+  callback?: (self: Controller) => void
+){
   let instance = type[GLOBAL_INSTANCE];
 
   if(instance)
@@ -46,6 +48,9 @@ export function globalController(
   instance = new (type as any)(...args) as Singleton;
   type[GLOBAL_INSTANCE] = instance;
 
+  if(callback)
+    callback(instance);
+    
   Dispatch.readyFor(instance);
 
   return instance;
