@@ -63,7 +63,9 @@ export function declareControlled(model: any, initial?: {}){
       () => assign({}, model) :
       null;
 
-  if(typeof model == "object")
+  if(typeof model == "object" || 
+     "prototype" in model && 
+     /^[A-Z]/.test(model.name) === false)
     initial = {};
 
   if(!create){
