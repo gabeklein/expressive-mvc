@@ -327,8 +327,9 @@ export class Dispatch {
     this.current[key] = initial;
 
     return (value: any) => {
-      if(this.current[key] === value) 
-        return;
+      if(this.current[key] === value)
+        if(!Array.isArray(value))
+          return;
         
       this.current[key] = value;
       this.pendingUpdates.add(key);
