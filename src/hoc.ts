@@ -19,26 +19,34 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
   }
 }
 
+export type onChangeCallback = (v: any, e: any) => any
+
 export function ControlledInput(this: Controller): FC<{ 
   to: string, 
   type?: string,
-  onChange?: ((v: any, e: any) => any) | false,
-  onReturn?: (v: any, e: any) => any
+  onChange?: onChangeCallback | false,
+  onReturn?: onChangeCallback
 }> {
   return forwardRef((props, ref) => {
     const source: any = this;
     const { to } = props;
 
     const [controlled, onDidUpdate] = useManualRefresh(() => {
-      const { onChange, onReturn, type } = props;
+      let { onChange, onReturn, type } = props;
       const meta = {} as any;
+
+      if(typeof onChange == "string")
+        onChange = this[onChange] as onChangeCallback;
+
+      if(typeof onReturn == "string")
+        onReturn = this[onReturn] as onChangeCallback;
 
       if(typeof onChange == "function")
         meta.onChange = (e: any) => {
           let v = e.target.value;
           if(type == "number")
             v = Number(v);
-          const o = onChange(v, e);
+          const o = (onChange as any)(v, e);
           if(o)
             source[to] = o;
         }
@@ -58,11 +66,10 @@ export function ControlledInput(this: Controller): FC<{
           let v = e.target.value;
           if(type == "number")
             v = Number(v);
-          const o = onReturn(v, e);
+          const o = (onReturn as any)(v, e);
           if(o)
             source[to] = o;
         }
-
       }
 
       return meta;
