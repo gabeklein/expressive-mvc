@@ -141,7 +141,7 @@ export class Dispatch {
     if(typeof onChange == "function")
       return this.watch(subset!, onChange, initial)
     else 
-      return this.collect(subset)
+      return this.pick(subset)
   }
 
   onChange = (
@@ -166,7 +166,7 @@ export class Dispatch {
       watch = [watch];
 
     const onDone = 
-      this.addMultiListener(watch, (key) => {
+      this.addMultipleListener(watch, (key) => {
         if(once) onDone();
         handler.apply(this.control, [this.current[key], key]) 
       })
@@ -187,13 +187,13 @@ export class Dispatch {
     return () => register.delete(callback);
   }
 
-  private addMultiListener(
-    onProperyNames: string[], 
+  private addMultipleListener(
+    keys: string[], 
     callback: (didUpdate: string) => void){
 
     let clear: Function[] = [];
 
-    for(const key of onProperyNames){
+    for(const key of keys){
       const listeners = this.subscribers[key];
   
       if(!listeners)
@@ -219,7 +219,7 @@ export class Dispatch {
     };
   }
   
-  private collect(keys?: string[]){
+  private pick(keys?: string[]){
     const acc = {} as BunchOf<any>;
 
     if(keys){
@@ -261,7 +261,7 @@ export class Dispatch {
     }
 
     const onDone = 
-      this.addMultiListener(keys, (key) => {
+      this.addMultipleListener(keys, (key) => {
         if(!pending.length)
           setTimeout(callback, 0)
         pending.add(key);
