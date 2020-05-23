@@ -1,46 +1,66 @@
-import { FunctionComponentElement, ProviderProps } from 'react';
+import { FunctionComponent, ProviderProps } from 'react';
 
 import { RENEW_CONSUMERS } from './bootstrap';
-import { Dispatch, DISPATCH } from './dispatch';
+import { DISPATCH, Dispatch } from './dispatch';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 
 export type BunchOf<T> = { [key: string]: T }
-export type State = LiveState & BunchOf<any>
 export type Class = new(...args: any[]) => any;
-export type HandleUpdatedValue<T extends object, P extends keyof T> = 
-  (this: T, value: T[P], changed: P) => void
 export type Callback = () => void;
+export type HandleUpdatedValue
+  <T extends object, P extends keyof T> = 
+  (this: T, value: T[P], changed: P) => void
 
-export interface LifeCycle {
-  didMount?(...args: any[]): void;
-  willMount?(...args: any[]): void;
-  willRender?(...args: any[]): void;
-  willUnmount?(...args: any[]): void;
-  willUpdate?(...args: any[]): void;
-  willCycle(...args: any[]): Callback;
-  isReady?(): void;
+export interface SubscribeController {
+  [UNSUBSCRIBE]?: Callback;
+  [SUBSCRIBE]?: Callback;
+
+  refresh(...keys: string[]): void;
+
+  not(...args: string[]): this;
+  on(...args: string[]): this;
+  only(...args: string[]): this;
 }
 
-export interface LiveState<State = any> {
-  refresh(): void;
-  add(key: string, initial?: any): void;
-  export(): State;
-}
+export interface InstanceController {
+  get: this;
+  set: this;
 
-export declare class ModelController { 
-  static global: boolean;
-  static tap(): ModelController;
+  Input: FunctionComponent<{ to: string }>;
+  Value: FunctionComponent<{ of: string }>;
+  Provider: FunctionComponent<ProviderProps<this>>;
 
-  local: BunchOf<any>
+  [DISPATCH]?: Dispatch;
+  [RENEW_CONSUMERS]?: Callback;
 
   toggle(key: string): boolean;
+  assign(props: BunchOf<any>): this;
+  refresh(...keys: string[]): void;
 
+  tap(): this;
+  tap<K extends keyof this>(key?: K): this[K];
+
+  sub(...args: any[]): this;
+
+  onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
+  onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
+
+  export(...args: any[]): any;
+  observe<P extends keyof this>(
+    key: P | P[], 
+    listener: HandleUpdatedValue<this, P>, 
+    once?: boolean
+  ): Callback;
+}
+
+export interface ModelController {
   isReady?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didMount?(...args: any[]): void;
+  
   willDestroy?(callback?: Callback): void;
-  willMount?(...args: any[]): void;
   willLoseFocus?(parent: ModelController, as: string): void;
+  willMount?(...args: any[]): void;
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
@@ -59,24 +79,4 @@ export declare class ModelController {
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
   componentWillCycle?(...args: any[]): Callback;
-
-  observe<P extends keyof this>(
-    key: P | P[], 
-    listener: HandleUpdatedValue<this, P>, 
-    once?: boolean
-  ): Callback;
-
-  not(...args: string[]): this;
-  on(...args: string[]): this;
-  only(...args: string[]): this;
-
-  assign(props: BunchOf<any>): this;
-  refresh(...keys: string[]): void;
-  
-  [RENEW_CONSUMERS]?: Callback;
-  [UNSUBSCRIBE]?: Callback;
-  [SUBSCRIBE]?: Callback;
-  [DISPATCH]?: Dispatch
-  
-  Provider: FunctionComponentElement<ProviderProps<this>>;
 }

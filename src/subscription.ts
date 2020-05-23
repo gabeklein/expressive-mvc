@@ -1,4 +1,8 @@
-import { DISPATCH } from './dispatch';
+import { useEffect, useState } from 'react';
+
+import { ensureAttachedControllers } from './bootstrap';
+import { Controller } from './controller';
+import { DISPATCH, Dispatch } from './dispatch';
 import { Callback, ModelController } from './types';
 import { define, Set } from './util';
 
@@ -8,33 +12,90 @@ export const SUBSCRIBE = Symbol("end_subscription");
 
 export type UpdateTrigger = Callback;
 
-//TODO: Turn this into a class like Dispatch
+export const useManualRefresh = <T extends {}>(init?: () => T) => {
+  const [ state, update ] = useState<T>(init || {} as any);
+  const refresh = () => update(Object.assign({}, state));
+  return [ state, refresh ] as const;
+}
+
+export function useSubscription(
+  init: () => ModelController,
+  onEvent: (name: string, local: Controller) => any
+){
+  const [ cache, onShouldUpdate ] = useManualRefresh();
+  
+  let control: Controller = cache.current;
+  let trigger = cache.eventListener;
+  let releaseHooks: Callback | undefined;
+  
+  if(!control){
+    control = init() as Controller;
+    trigger = cache.eventListener = onEvent;
+    Dispatch.readyFor(control);
+  }
+
+  releaseHooks = ensureAttachedControllers(control);
+
+  if(!cache.current){
+    control = cache.current = 
+      createSubscription(control, onShouldUpdate) as any;
+
+    trigger("willMount", control);
+  }
+  else
+    trigger("willUpdate", control);
+
+  trigger("willRender", control);
+
+  useEffect(() => {
+    let onEndOfLife = trigger("willCycle", control);
+
+    trigger("didMount", control);
+
+    control[SUBSCRIBE]!();
+
+    return () => {
+      control[UNSUBSCRIBE]!();
+
+      if(releaseHooks)
+        releaseHooks();
+
+      trigger("willUnmount", control);
+
+      if(typeof onEndOfLife === "function")
+        onEndOfLife();
+    };
+  }, [])
+
+  return control;
+}
+
 export function createSubscription(
-  source: ModelController,
+  source: Controller,
   onUpdate: UpdateTrigger
-): ModelController {
+): Controller {
 
   const Spy = Object.create(source);
   const dispatch = source[DISPATCH]!;
-  const { current, refresh } = dispatch;
+  const { refresh, subscribers } = dispatch;
   const watch = new Set<string>();
 
   let exclude: Set<string>;
   let cleanup: Set<Callback>;
 
-  for(const key in current)
+  for(const key in subscribers){
     Object.defineProperty(Spy, key, {
       configurable: true,
       enumerable: true,
       set: (value: any) => {
-        current[key] = value;
-        refresh(key);
+        (source as any)[key] = value
       },
       get: () => {
         watch.add(key);
-        return current[key];
+        return (source as any)[key];
       }
     })
+  }
 
   define(Spy, SUBSCRIBE, subscribe)
   define(Spy, UNSUBSCRIBE, unsubscribe)
@@ -53,7 +114,7 @@ export function createSubscription(
   }
 
   function stopInference(){
-    for(const key in current)
+    for(const key in subscribers)
       delete Spy[key];
   }
 
@@ -76,8 +137,8 @@ export function createSubscription(
 
   function unsubscribe(){
     if(cleanup)
-    for(const unsub of cleanup)
-      unsub()
+      for(const unsub of cleanup)
+        unsub()
   }
 
   function dontWatch(...keys: string[]){

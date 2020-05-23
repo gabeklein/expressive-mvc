@@ -75,17 +75,6 @@ export function dedent(t: TemplateStringsArray, ...v: any[]): string {
   else return text;
 }
 
-export function constructorOf(obj: any){
-  if(obj.prototype)
-    return obj.prototype.constructor;
-
-  while(obj){
-    obj = getPrototypeOf(obj);
-    if(obj.constructor)
-      return obj.constructor;
-  }
-}
-
 export function defineOnAccess(
   object: any, property: string, init: () => any){
 
@@ -103,6 +92,28 @@ export function entriesOf(obj: {}){
   return entries(getOwnPropertyDescriptors(obj));
 }
 
+export function transferValues(
+  instance: Controller, 
+  items: BunchOf<any>, 
+  only?: string[]){
+
+  const pull = only || Object.keys(items);
+  const setters: string[] = [];
+
+  for(const key of pull){
+    const desc = Object.getOwnPropertyDescriptor(
+      instance.constructor.prototype, key
+    );
+    if(desc && desc.set)
+      setters.push(key)
+    else
+      (<any>instance)[key] = items[key];
+  }
+
+  for(const key of setters)
+    (<any>instance)[key] = items[key];
+}
+
 export function collectGetters(
   source: any, except: string[] = []){
 
@@ -111,8 +122,8 @@ export function collectGetters(
   do {
     source = getPrototypeOf(source);
     for(const [key, item] of entriesOf(source))
-      if("get" in item && !getters[key] && except.indexOf(key) < 0)
-        getters[key] = item.get!
+      if("get" in item && item.get && !getters[key] && except.indexOf(key) < 0)
+        getters[key] = item.get
   }
   while(source.constructor !== Controller
      && source.constructor !== Object);

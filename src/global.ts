@@ -1,78 +1,57 @@
-import { useSubscriber } from './subscriber';
-import { ModelController } from './types';
-import { constructorOf, defineOnAccess, Map } from './util';
+import { ownContext } from './context';
+import { Controller, Singleton } from './controller';
+import { Dispatch } from './dispatch';
+import { defineOnAccess } from './util';
 
-const GLOBAL_ALLOCATED = new Map<Function, ModelController>();
-const { entries } = Object;
-
-const globalNotFoundError = (name: string) => new Error(
-  `Controller ${name} is tagged as global. Instance must exist before use.`
-)
+export const GLOBAL_INSTANCE = Symbol("controller_singleton");
 
 export const controllerIsGlobalError = (name: string) => new Error(
   `Controller ${name} is tagged as global. Context API does not apply.`
 )
 
-export function useGlobalController(
-  type: typeof ModelController,
-  args: any[]){
-
-  let global = GLOBAL_ALLOCATED.get(type); 
-
-  if(!global){
-    if(!type.global)
-      throw globalNotFoundError(type.name)
-
-    global = initGlobalController.call(type);
-  }
-    
-  return useSubscriber(global, args, true);
-}
-
-class DeferredPeerController {
+export class PeerController {
   constructor(
-    public type: typeof ModelController
+    private type: typeof Controller
   ){}
+
+  get context(){
+    return ownContext(this.type);
+  }
+
+  attachNowIfGlobal(parent: Controller, key: string){
+    const { type } = this;
+
+    if(type.global){
+      defineOnAccess(parent, key, () => globalController(type))
+      return
+    }
+      
+    if(parent instanceof Singleton)
+      throw new Error(
+        `Global controller '${parent.constructor.name}' attempted to attach '${type.name}'. ` +
+        `This is not possible because '${type.name}' is not also global. ` + 
+        `Did you forget to extend 'Singleton'?`
+      )
+  }
 }
 
-export function initGlobalController(this: typeof ModelController){
-  let instance = GLOBAL_ALLOCATED.get(this);
+export function globalController(
+  type: typeof Controller, 
+  args: any[] = [],
+  callback?: (self: Controller) => void
+){
+  let instance = type[GLOBAL_INSTANCE];
 
-  if(!instance){
-    this.global = true;
-    const constructor = constructorOf(this);
-    instance = new this();
+  if(instance)
+    return instance;
+
+  instance = new (type as any)(...args) as Singleton;
+  type[GLOBAL_INSTANCE] = instance;
+
+  if(callback)
+    callback(instance);
     
-    ensurePeersOnAccess(instance);
-  
-    GLOBAL_ALLOCATED.set(constructor, instance);
-  }
+  Dispatch.readyFor(instance);
 
   return instance;
-}
-
-export function globalController(from: typeof ModelController): ModelController | null;
-export function globalController(from: typeof ModelController, mustExist: false): DeferredPeerController;
-export function globalController(from: typeof ModelController, mustExist: true): ModelController | never;
-export function globalController(from: typeof ModelController, mustExist?: boolean){
-  const global = GLOBAL_ALLOCATED.get(from);
-
-  if(global)
-    return global;
-  else if(from.global)
-    return initGlobalController.call(from);
-  else if(mustExist)
-    throw globalNotFoundError(from.name);
-  else if(mustExist === false)
-    return new DeferredPeerController(from);
-  else 
-    return null;
-}
-
-export function ensurePeersOnAccess(instance: ModelController){
-  for(const [property, placeholder] of entries(instance))
-    if(placeholder instanceof DeferredPeerController){
-      const newSingleton = () => globalController(placeholder.type, true);
-      defineOnAccess(instance, property, newSingleton)
-    }
 }

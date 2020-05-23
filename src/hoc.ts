@@ -1,53 +1,94 @@
 import { createElement, FC, forwardRef, useEffect } from 'react';
 
+import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
-import { useManualRefresh } from './hook';
-import { ModelController } from './types';
+import { useManualRefresh } from './subscription';
 
-const { assign } = Object;
-
-export function ControlledValue(
-  this: ModelController): FC<{ of: string }> {
-    
+export function ControlledValue(this: Controller): FC<{ of: string }> {
   return (props) => {
     const onDidUpdate = useManualRefresh()[1];
-    const key = props.of;
-    props = assign({}, props);
-    delete props.of;
+    
+    props = { ...props };
 
     useEffect(() => {
-      const removeListener = 
-        this[DISPATCH]!.addListener(key, onDidUpdate);
-
-      return removeListener;
+      return this[DISPATCH]!.addListener(props.of, onDidUpdate);
     })
 
-    return createElement("span", props, (this as any)[key])
+    delete props.of;
+    return createElement("span", props, (<any>this)[props.of])
   }
 }
 
-export function ControlledInput(
-  this: ModelController): FC<{ to: string }> {
+export type onChangeCallback = (v: any, e: any) => any
 
+export function ControlledInput(this: Controller): FC<{ 
+  to: string, 
+  type?: string,
+  onChange?: onChangeCallback | false,
+  onReturn?: onChangeCallback
+}> {
   return forwardRef((props, ref) => {
-    const onDidUpdate = useManualRefresh()[1];
-    const values = this as any;
+    const source: any = this;
+    const { to } = props;
 
-    const key = props.to;
-    props = assign({}, props);
-    delete props.to;
+    const [controlled, onDidUpdate] = useManualRefresh(() => {
+      let { onChange, onReturn, type } = props;
+      const meta = {} as any;
 
-    useEffect(() => this[DISPATCH]!.addListener(key, onDidUpdate))
-    
-    props = Object.assign(props, {
-      ref,
-      type: "text",
-      value: values[key],
-      onChange: (e: any) => {
-        values[key] = e.target.value;
+      if(typeof onChange == "string")
+        onChange = this[onChange] as onChangeCallback;
+
+      if(typeof onReturn == "string")
+        onReturn = this[onReturn] as onChangeCallback;
+
+      if(typeof onChange == "function")
+        meta.onChange = (e: any) => {
+          let v = e.target.value;
+          if(type == "number")
+            v = Number(v);
+          const o = (onChange as any)(v, e);
+          if(o)
+            source[to] = o;
+        }
+      else if(onChange !== false) {
+        if(type == "number")
+          meta.onChange = (e: any) => { source[to] = Number(e.target.value) }
+        else
+          meta.onChange = (e: any) => { source[to] = e.target.value }
       }
-    })
 
+      if(typeof onReturn == "function"){
+        meta.onKeyPress = (e: any) => {
+          if(e.which !== 13)
+            return;
+
+          e.preventDefault();
+          let v = e.target.value;
+          if(type == "number")
+            v = Number(v);
+          const o = (onReturn as any)(v, e);
+          if(o)
+            source[to] = o;
+        }
+      }
+
+      return meta;
+    });
+
+    props = <any>{
+      ref,
+      value: source[to],
+      type: "text",
+      ...props,
+      ...controlled
+    }
+
+    useEffect(() => {
+      return this[DISPATCH]!.addListener(to, onDidUpdate);
+    });
+
+    delete props.to;
+    delete props.onReturn;
     return createElement("input", props)
   })
 }

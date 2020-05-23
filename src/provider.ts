@@ -5,20 +5,21 @@ import { ownContext } from './context';
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
 import { useOwnController } from './subscriber';
-import { BunchOf, Callback, ModelController } from './types';
+import { BunchOf, Callback } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
-const { assign, create, values: valuesIn, getPrototypeOf: proto } = Object;
+const { getPrototypeOf: proto } = Object;
 
-export function createWrappedComponent<T extends typeof ModelController>(
-  this: T, fn: FunctionComponent<InstanceType<T>> ){
+export function createWrappedComponent<T extends typeof Controller>(
+  this: T,
+  fn: FunctionComponent<InstanceType<T>> ){
 
   const { Provider } = ownContext(this as any);
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useOwnController(this).assign(forwardedProps);
-    const unwrapped = assign({}, controller[DISPATCH]!.current);
+    const unwrapped = Object.assign({}, controller[DISPATCH]!.current);
 
     const useProps: any = {
       ...unwrapped,
@@ -34,7 +35,7 @@ export function createWrappedComponent<T extends typeof ModelController>(
 export const MultiProvider = (props: PropsWithChildren<any>) => {
   let { children, className, style, of: controllers = {} } = props;
 
-  props = assign({}, props);
+  props = Object.assign({}, props);
   
   for(const k of ["children", "className", "style", "of"])
     delete props[k];
@@ -51,7 +52,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     () => initGroupControllers(parent, controllers, props), []
   ); 
 
-  valuesIn(provide).forEach(mc => {
+  Object.values(provide).forEach(mc => {
     const onDidUnmount = ensureAttachedControllers(mc);
     if(onDidUnmount)
       flushHooks.push(onDidUnmount);
@@ -60,7 +61,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   useEffect(() => {
     return () => {
       flushHooks.forEach(x => x());
-      valuesIn(provide).forEach(x => {
+      Object.values(provide).forEach(x => {
         if(x.willDestroy)
           x.willDestroy();
       });
@@ -72,10 +73,10 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 
 function initGroupControllers(
   parent: any,
-  explicit: BunchOf<typeof ModelController>,
-  fromProps: BunchOf<typeof ModelController> 
+  explicit: BunchOf<typeof Controller>,
+  fromProps: BunchOf<typeof Controller> 
 ){
-  const map = create(parent) as BunchOf<ModelController>;
+  const map = Object.create(parent) as BunchOf<Controller>;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
@@ -86,10 +87,10 @@ function initGroupControllers(
     }
 
   for(let layer = map; layer; layer = proto(layer))
-  for(const source in layer)
-  for(const target in map)
-  if(source !== target)
-    (map[target] as any)[source] = layer[source];
+    for(const source in layer)
+      for(const target in map)
+        if(source !== target)
+          (map[target] as any)[source] = layer[source];
 
   return map;
 }

@@ -1,14 +1,19 @@
 import { Context, useContext } from 'react';
 
+import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { ModelController } from './types';
 import { define } from './util';
+import { PeerController } from './global';
 
-const { defineProperty } = Object;
+const { 
+  defineProperty,
+  entries: entriesOf,
+  getOwnPropertyDescriptors: propsIn
+} = Object;
 
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
-export function ensureAttachedControllers(instance: ModelController){
+export function ensureAttachedControllers(instance: Controller){
   if(RENEW_CONSUMERS in instance){
     const hookMaintainance = instance[RENEW_CONSUMERS];
     
@@ -18,9 +23,11 @@ export function ensureAttachedControllers(instance: ModelController){
     return;
   }
 
-  const pending = Object.entries(instance).filter(([ k, v ]) =>
-    v && typeof v == "object" && "Consumer" in v && "Provider" in v
-  )
+  const pending = [];
+
+  for(const [key, { value }] of entriesOf(propsIn(instance)))
+    if(value instanceof PeerController)
+      pending.push([key, value.context] as const)
 
   const disableMaintaince = () => {
     defineProperty(instance, RENEW_CONSUMERS, { value: undefined });

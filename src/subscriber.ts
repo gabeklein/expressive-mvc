@@ -1,6 +1,6 @@
 import { Controller } from './controller';
-import { Dispatch } from './dispatch';
-import { useSubscription } from './hook';
+import { globalController } from './global';
+import { useSubscription } from './subscription';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
 
@@ -27,16 +27,21 @@ export function componentLifecycle(control: ModelController){
 }
 
 export function useModelController(init: any, ...args: any[]){
-  return init instanceof Controller
-    ? useSubscriber(init as ModelController, args, true)
-    : useOwnController(init, args);
+  if(init instanceof Controller)
+    return useSubscriber(init as ModelController, args, true)
+  if(init.global){    
+    let instance = globalController(init, args);
+    return useSubscriber(instance, args, true);
+  }
+  else
+    return useOwnController(init, args);
 }
 
 export function useOwnController(
   model: Class | Function,
-  args: any[] = []
-): ModelController {
-
+  args: any[] = [],
+  callback?: (self: Controller) => void
+){
   let lifecycle: any;
 
   return useSubscription(
@@ -47,10 +52,12 @@ export function useOwnController(
             new (model as Class)(...args) :
             (model as Function)(...args) :
           model;
+
+      if(callback)
+        callback(control);
   
       lifecycle = componentLifecycle(control);
-      Dispatch.readyFor(control);
-  
+
       return control;
     },
     (name: string, on: ModelController) => {
@@ -69,8 +76,8 @@ export function useOwnController(
 export function useSubscriber(
   target: ModelController, 
   args: any[], 
-  main: boolean){
-
+  main: boolean
+){
   let lifecycle: any;
 
   return useSubscription(

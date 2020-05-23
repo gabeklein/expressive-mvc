@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
 import { DISPATCH, Dispatch } from './dispatch';
-import { useManualRefresh } from './hook';
+import { useManualRefresh } from './subscription';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
-import { Callback, ModelController } from './types';
+import { Callback } from './types';
 
-export function useWatcher(control: ModelController){
+export function useWatcher(control: Controller){
   const [ cache, onDidUpdate ] = useManualRefresh();
 
   let { current } = cache;
@@ -25,8 +25,8 @@ export function useWatcher(control: ModelController){
   return current;
 }
 
-export function useWatchedProperty(
-  parent: ModelController, key: string, required?: boolean){
+export function useWatchedProperty<T extends Controller>(
+  parent: T, key: string, required?: boolean){
 
   let value = (parent as any)[key];
   let releaseHooks: Callback | undefined;
@@ -36,22 +36,20 @@ export function useWatchedProperty(
 
   const [ cache, onDidUpdate ] = useManualRefresh();
 
-  if(value instanceof Controller){
-    const instance = value as ModelController;
+  if(typeof value == "object" && value !== null){
+    if(value instanceof Controller){
+      Dispatch.readyFor(value);
+      //TODO: Changing out instance breaks this.
+      releaseHooks = ensureAttachedControllers(value);
 
-    Dispatch.readyFor(instance);
-    //TODO: Changing out instance breaks this.
-    releaseHooks = ensureAttachedControllers(instance);
-
-    if(!cache.current){
-      const spy = createSubscription(instance, childDidUpdate);
-      const { didFocus } = instance;
+      const { didFocus } = value;
 
       if(didFocus)
-        didFocus.call(instance, parent, key);
-
-      cache.current = value = spy;
-    } 
+        didFocus.call(value, parent, key);
+    }
+  
+    if(!cache.current && DISPATCH in value)
+      value = cache.current = createSubscription(value, childDidUpdate);
   }
 
   useEffect(() => {
