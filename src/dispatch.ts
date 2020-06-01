@@ -305,7 +305,7 @@ export class Dispatch {
 
       const value = desc.value;
 
-      if(typeof value === "function")
+      if(typeof value === "function" && /^[A-Z]/.test(key) == false)
         continue;
         
       if(value instanceof PeerController){
