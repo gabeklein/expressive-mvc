@@ -202,9 +202,10 @@ export class Dispatch {
         )
 
       const trigger = () => callback(key);
-      const getter = getOwnPropertyDescriptor(this.control, key)?.get;
+      const descriptor = getOwnPropertyDescriptor(this.control, key);
+      const getter = descriptor && descriptor.get;
 
-      if(getter?.name == "initComputedValue"){
+      if(getter && getter.name == "initComputedValue"){
         const initialize = getter as (early?: true) => unknown;
         initialize(true);
       }
