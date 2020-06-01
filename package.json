@@ -2,21 +2,22 @@
   "name": "react-use-controller",
   "version": "2.0.0-beta.19",
   "description": "Easy to use state controllers using classes and hooks",
-  "license": "MIT",
-  "keywords": [
-    "react",
-    "hooks"
-  ],
-  "repository": "https://github.com/gabeklein/use-controller",
   "author": {
     "name": "Gabe Klein",
     "email": "gabe@termtm.com",
     "url": "https://github.com/gabeklein"
   },
+  "license": "MIT",
+  "repository": "https://github.com/gabeklein/use-controller",
   "publishConfig": {
     "access": "public"
   },
-  "main": "lib/index.js",
+  "keywords": [
+    "react",
+    "hooks"
+  ],
+  "main": "lib/index.jss",
+  "module": "src/index.ts",
   "types": "index.d.ts",
   "files": [
     "lib/",
