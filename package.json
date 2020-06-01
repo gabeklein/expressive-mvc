@@ -16,7 +16,7 @@
     "react",
     "hooks"
   ],
-  "main": "lib/index.jss",
+  "main": "lib/index.js",
   "module": "src/index.ts",
   "types": "index.d.ts",
   "files": [
