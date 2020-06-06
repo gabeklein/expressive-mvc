@@ -27,10 +27,12 @@ export function componentLifecycle(control: ModelController){
 }
 
 export function useModelController(init: any, ...args: any[]){
-  if(init instanceof Controller)
-    return useSubscriber(init as ModelController, args, true)
+  if(init instanceof Controller){
+    const instance = init as ModelController;
+    return useSubscriber(instance, args, true)
+  }
   if(init.global){    
-    let instance = globalController(init, args);
+    const instance = globalController(init, args);
     return useSubscriber(instance, args, true);
   }
   else

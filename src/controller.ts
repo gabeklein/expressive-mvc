@@ -23,7 +23,7 @@ export class Controller {
   static use(...args: any[]){
     if(this.global){
       const instance = globalController(this, args);
-      return useSubscriber(instance!, args, true);
+      return useSubscriber(instance, args, true);
     }
     else
       return useOwnController(this, args);
@@ -86,18 +86,23 @@ export class Controller {
       return transferValues(instance, items, only)
     }
 
-    let sub;
+  static using(props: BunchOf<any>, only?: string[]){
+    let subscribed;
+
+    function assignTo(instance: Controller){
+      transferValues(instance, props, only);
+    }
 
     if(this.global){
-      const instance = globalController(this, [], didCreate);
-      sub = useSubscriber(instance!, [], true);
+      const instance = globalController(this, [], assignTo);
+      subscribed = useSubscriber(instance, [], true);
     }
     else
-      sub = useOwnController(this, [], didCreate);
+      subscribed = useOwnController(this, [], assignTo);
 
-    didCreate(sub);
+    assignTo(subscribed);
         
-    return sub;
+    return subscribed;
   }
 
   static makeGlobal(...args: any[]){
