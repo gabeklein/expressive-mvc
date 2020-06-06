@@ -11,6 +11,7 @@ export const UNSUBSCRIBE = Symbol("add_subscription");
 export const SUBSCRIBE = Symbol("end_subscription");
 
 export type UpdateTrigger = Callback;
+export type ModelEvent = keyof ModelController;
 
 export const useManualRefresh = <T extends {}>(init?: () => T) => {
   const [ state, update ] = useState<T>(init || {} as any);
@@ -20,7 +21,7 @@ export const useManualRefresh = <T extends {}>(init?: () => T) => {
 
 export function useSubscription(
   init: () => ModelController,
-  onEvent: (name: string, local: Controller) => any
+  onEvent: (name: ModelEvent, local: Controller) => any
 ){
   const [ cache, onShouldUpdate ] = useManualRefresh();
   

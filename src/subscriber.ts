@@ -1,29 +1,25 @@
 import { Controller } from './controller';
 import { globalController } from './global';
-import { useSubscription } from './subscription';
+import { useSubscription, ModelEvent } from './subscription';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
 
-function subscriberLifecycle(control: ModelController){
-  return {
-    willCycle: control.elementWillCycle || control.willCycle,
-    willRender: control.elementWillRender || control.willRender,
-    willUpdate: control.elementWillUpdate || control.willUpdate,
-    willUnmount: control.elementWillUnmount || control.willUnmount,
-    didMount: control.elementDidMount || control.didMount,
-    willMount: control.elementWillMount || control.willMount
-  }
+const subscriberLifecycle = {
+  willCycle: "elementWillCycle",
+  willRender: "elementWillRender",
+  willUpdate: "elementWillUpdate",
+  willUnmount: "elementWillUnmount",
+  didMount: "elementDidMount",
+  willMount: "elementWillMount"
 }
 
-export function componentLifecycle(control: ModelController){
-  return {
-    willCycle: control.componentWillCycle || control.willCycle,
-    willRender: control.componentWillRender || control.willRender,
-    willUpdate: control.componentWillUpdate || control.willUpdate,
-    willUnmount: control.componentWillUnmount || control.willUnmount,
-    willMount: control.componentWillMount || control.willMount,
-    didMount: control.componentDidMount || control.didMount
-  }
+const componentLifecycle = {
+  willCycle: "componentWillCycle",
+  willRender: "componentWillRender",
+  willUpdate: "componentWillUpdate",
+  willUnmount: "componentWillUnmount",
+  willMount: "componentWillMount",
+  didMount: "componentDidMount"
 }
 
 export function useModelController(init: any, ...args: any[]){
@@ -44,7 +40,7 @@ export function useOwnController(
   args: any[] = [],
   callback?: (self: Controller) => void
 ){
-  let lifecycle: any;
+  let lifecycle: any = componentLifecycle;
 
   return useSubscription(
     () => {
@@ -57,20 +53,19 @@ export function useOwnController(
 
       if(callback)
         callback(control);
-  
-      lifecycle = componentLifecycle(control);
 
       return control;
     },
-    (name: string, on: ModelController) => {
-      const handler = lifecycle[name];
+    (event, controller) => {
+      const specific: ModelEvent = lifecycle[event];
+      const handler = controller[event] || controller[specific];
   
-      if(name == "willUnmount")
-        if(on.willDestroy)
-          on.willDestroy(...args)
+      if(event == "willUnmount")
+        if(controller.willDestroy)
+          controller.willDestroy(...args)
   
       if(handler)
-        return handler.apply(on, args);
+        return handler.apply(controller, args);
     }
   );
 }
@@ -80,28 +75,25 @@ export function useSubscriber(
   args: any[], 
   main: boolean
 ){
-  let lifecycle: any;
+  let lifecycle: any = main ? 
+    componentLifecycle : 
+    subscriberLifecycle;
 
   return useSubscription(
-    () => {
-      lifecycle = main ? 
-        componentLifecycle(target) : 
-        subscriberLifecycle(target);
-  
-      return target;
-    },
-    (name: string, on: ModelController) => {
-      const handler = lifecycle[name];
-  
+    () => target,
+    (event, controller) => {
+      const specific: ModelEvent = lifecycle[event];
+      const handler = controller[event] || controller[specific];
+
       //TODO: callback caching breaks this!
-      if(name == "willUpdate"){
-        const current = Object.getPrototypeOf(on);
+      if(event == "willUpdate"){
+        const current = Object.getPrototypeOf(controller);
         if(target !== current)
           instanceIsUnexpected(target, current);
       }
-  
+
       if(handler)
-        return handler.apply(on, args);
+        return handler.apply(controller, args);
     }
   );
 }
