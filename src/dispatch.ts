@@ -42,7 +42,7 @@ export function tapControlled(
 export function subControlled(
   this: Controller, ...args: any[]){
 
-  return useSubscriber(this, args, true) 
+  return useSubscriber(this, args, false) 
 }
 
 export class ManagedProperty {
