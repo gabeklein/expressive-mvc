@@ -81,12 +81,18 @@ export class Controller {
     return this.tap().assign(a, b);
   }
 
-  static using(items: BunchOf<any>, only?: string[]){
-    function didCreate(instance: Controller){
-      return transferValues(instance, items, only)
-    }
+  static uses(
+    props: BunchOf<any>, 
+    only?: string[]){
+      
+    return this.using(props, only, true)
+  }
 
-  static using(props: BunchOf<any>, only?: string[]){
+  static using(
+    props: BunchOf<any>, 
+    only?: string[],
+    once?: boolean){
+
     let subscribed;
 
     function assignTo(instance: Controller){
@@ -100,7 +106,8 @@ export class Controller {
     else
       subscribed = useOwnController(this, [], assignTo);
 
-    assignTo(subscribed);
+    if(!once)
+      assignTo(subscribed);
         
     return subscribed;
   }

@@ -121,6 +121,7 @@ declare class Controller {
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & SC;
 
+    static uses <T extends Class, D extends Similar<InstanceType<T>>> (this: T, data: D): InstanceType<T> & SC;
     static using <T extends Class, D extends Similar<InstanceType<T>>> (this: T, data: D): InstanceType<T> & SC;
 
     static get <T extends Class> (this: T): InstanceType<T>;
