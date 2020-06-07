@@ -3,6 +3,7 @@ import { globalController } from './global';
 import { useSubscription, ModelEvent } from './subscription';
 import { Class, ModelController } from './types';
 import { dedent } from './util';
+import { DISPATCH } from './dispatch';
 
 const subscriberLifecycle = {
   willCycle: "elementWillCycle",
@@ -21,6 +22,12 @@ const componentLifecycle = {
   willMount: "componentWillMount",
   didMount: "componentDidMount"
 }
+
+export const lifecycleEvents = [
+  ...Object.keys(subscriberLifecycle),
+  ...Object.entries(subscriberLifecycle),
+  ...Object.entries(componentLifecycle)
+]
 
 export function useModelController(init: any, ...args: any[]){
   if(init instanceof Controller){
@@ -63,6 +70,8 @@ export function useOwnController(
       if(event == "willUnmount")
         if(controller.willDestroy)
           controller.willDestroy(...args)
+
+      controller[DISPATCH]!.refresh(event, specific);
   
       if(handler)
         return handler.apply(controller, args);
@@ -91,6 +100,8 @@ export function useSubscriber(
         if(target !== current)
           instanceIsUnexpected(target, current);
       }
+
+      controller[DISPATCH]!.refresh(event, specific);
 
       if(handler)
         return handler.apply(controller, args);

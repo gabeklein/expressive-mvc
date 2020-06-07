@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { PeerController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
-import { useSubscriber } from './subscriber';
+import { useSubscriber, lifecycleEvents } from './subscriber';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
 import { collectGetters, define, defineOnAccess, entriesOf, Set } from './util';
@@ -194,12 +194,16 @@ export class Dispatch {
     let clear: Function[] = [];
 
     for(const key of keys){
-      const listeners = this.subscribers[key];
+      let listeners = this.subscribers[key];
   
-      if(!listeners)
-        throw new Error(
-          `Can't watch property ${key}, it's not tracked on this instance.`
-        )
+      if(!listeners){
+        if(lifecycleEvents.indexOf(key) < 0)
+          throw new Error(
+            `Can't watch property ${key}, it's not tracked on this instance.`
+          )
+        else
+          listeners = this.subscribers[key] = new Set();
+      }
 
       const trigger = () => callback(key);
       const descriptor = getOwnPropertyDescriptor(this.control, key);
