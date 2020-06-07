@@ -42,6 +42,24 @@ export function useModelController(init: any, ...args: any[]){
     return useOwnController(init, args);
 }
 
+export function newController(
+  model: Class | Function,
+  args: any[] = [],
+  callback?: (self: Controller) => void
+){
+  const control = 
+    typeof model === "function" ?
+      model.prototype ?
+        new (model as Class)(...args) :
+        (model as Function)(...args) :
+      model;
+
+  if(callback)
+    callback(control);
+
+  return control
+}
+
 export function useOwnController(
   model: Class | Function,
   args: any[] = [],
@@ -50,19 +68,7 @@ export function useOwnController(
   let lifecycle: any = componentLifecycle;
 
   return useSubscription(
-    () => {
-      const control = 
-        typeof model === "function" ?
-          model.prototype ?
-            new (model as Class)(...args) :
-            (model as Function)(...args) :
-          model;
-
-      if(callback)
-        callback(control);
-
-      return control;
-    },
+    () => newController(model, args, callback),
     (controller, event) => {
       const specific: ModelEvent = lifecycle[event];
       const handler = controller[event] || controller[specific];
