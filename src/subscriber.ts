@@ -63,7 +63,7 @@ export function useOwnController(
 
       return control;
     },
-    (event, controller) => {
+    (controller, event) => {
       const specific: ModelEvent = lifecycle[event];
       const handler = controller[event] || controller[specific];
   
@@ -84,13 +84,13 @@ export function useSubscriber(
   args: any[], 
   main: boolean
 ){
-  let lifecycle: any = main ? 
-    componentLifecycle : 
-    subscriberLifecycle;
+  let lifecycle: any = main
+    ? componentLifecycle
+    : subscriberLifecycle;
 
   return useSubscription(
     () => target,
-    (event, controller) => {
+    (controller, event) => {
       const specific: ModelEvent = lifecycle[event];
       const handler = controller[event] || controller[specific];
 

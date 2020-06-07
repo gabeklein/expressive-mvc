@@ -21,7 +21,7 @@ export const useManualRefresh = <T extends {}>(init?: () => T) => {
 
 export function useSubscription(
   init: () => ModelController,
-  onEvent: (name: ModelEvent, local: Controller) => any
+  onEvent: (instance: Controller, name: ModelEvent) => any
 ){
   const [ cache, onShouldUpdate ] = useManualRefresh();
   
@@ -31,7 +31,8 @@ export function useSubscription(
   
   if(!control){
     control = init() as Controller;
-    trigger = cache.eventListener = onEvent;
+    trigger = (name: ModelEvent) => onEvent(control, name);
+    cache.eventListener = trigger;
     Dispatch.readyFor(control);
   }
 
@@ -41,17 +42,17 @@ export function useSubscription(
     control = cache.current = 
       createSubscription(control, onShouldUpdate) as any;
 
-    trigger("willMount", control);
+    trigger("willMount");
   }
   else
-    trigger("willUpdate", control);
+    trigger("willUpdate");
 
-  trigger("willRender", control);
+  trigger("willRender");
 
   useEffect(() => {
-    let onEndOfLife = trigger("willCycle", control);
+    let onEndOfLife = trigger("willCycle");
 
-    trigger("didMount", control);
+    trigger("didMount");
 
     control[SUBSCRIBE]!();
 
@@ -61,7 +62,7 @@ export function useSubscription(
       if(releaseHooks)
         releaseHooks();
 
-      trigger("willUnmount", control);
+      trigger("willUnmount");
 
       if(typeof onEndOfLife === "function")
         onEndOfLife();
