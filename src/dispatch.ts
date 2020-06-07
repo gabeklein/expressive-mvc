@@ -400,7 +400,8 @@ export class Dispatch {
 
       function initComputedValue(early?: true){
         try {
-          const spy = createSubscription(control, onValueDidChange);
+          const spy = Object.create(control);
+          createSubscription(spy, onValueDidChange);
           const value = current[key] = fn.call(spy);
           spy[SUBSCRIBE]!();
           return value;

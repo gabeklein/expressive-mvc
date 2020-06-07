@@ -27,7 +27,6 @@ export function useSubscription(
   
   let control: Controller = cache.current;
   let trigger = cache.eventListener;
-  let releaseHooks: Callback | undefined;
   
   if(!control){
     control = init() as Controller;
@@ -36,11 +35,11 @@ export function useSubscription(
     Dispatch.readyFor(control);
   }
 
-  releaseHooks = ensureAttachedControllers(control);
+  const releaseHooks = ensureAttachedControllers(control);
 
   if(!cache.current){
-    control = cache.current = 
-      createSubscription(control, onShouldUpdate) as any;
+    control = cache.current = Object.create(control);
+    createSubscription(control, onShouldUpdate);
 
     trigger("willMount");
   }
@@ -73,20 +72,18 @@ export function useSubscription(
 }
 
 export function createSubscription(
-  source: Controller,
+  local: Controller,
   onUpdate: UpdateTrigger
-): Controller {
-
-  const Spy = Object.create(source);
-  const dispatch = source[DISPATCH]!;
-  const { refresh, subscribers } = dispatch;
+){
+  const source = Object.getPrototypeOf(local);
+  const dispatch = local[DISPATCH]!;
   const watch = new Set<string>();
 
   let exclude: Set<string>;
   let cleanup: Set<Callback>;
 
-  for(const key in subscribers){
-    Object.defineProperty(Spy, key, {
+  for(const key in dispatch.subscribers)
+    Object.defineProperty(local, key, {
       configurable: true,
       enumerable: true,
       set: (value: any) => {
@@ -97,27 +94,24 @@ export function createSubscription(
         return (source as any)[key];
       }
     })
-  }
 
-  define(Spy, SUBSCRIBE, subscribe)
-  define(Spy, UNSUBSCRIBE, unsubscribe)
-  define(Spy, {
+  define(local, SUBSCRIBE, subscribe)
+  define(local, UNSUBSCRIBE, unsubscribe)
+  define(local, {
     refresh: forceRefresh,
     on: alsoWatch,
     only: onlyWatch,
     not: dontWatch
   })
 
-  return Spy;
-
   function forceRefresh(...keys: string[]){
     if(!keys[0]) onUpdate();
-    else refresh(...keys)
+    else dispatch.refresh(...keys)
   }
 
   function stopInference(){
-    for(const key in subscribers)
-      delete Spy[key];
+    for(const key in dispatch.subscribers)
+      delete (local as any)[key];
   }
 
   function subscribe(){
@@ -150,7 +144,7 @@ export function createSubscription(
       for(const key of arg.split(","))
         exclude.add(key);
         
-    return Spy;
+    return local;
   }
 
   function alsoWatch(...keys: string[]){
@@ -158,7 +152,7 @@ export function createSubscription(
       for(const key of arg.split(","))
         watch.add(key);
 
-    return Spy;
+    return local;
   }
 
   function onlyWatch(...keys: string[]){
@@ -168,6 +162,6 @@ export function createSubscription(
 
     stopInference();
 
-    return Spy;
+    return local;
   }
 }
