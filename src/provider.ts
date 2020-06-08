@@ -18,7 +18,8 @@ export function createWrappedComponent<T extends typeof Controller>(
   const { Provider } = ownContext(this as any);
   
   return (forwardedProps: PropsWithChildren<any>) => {
-    const controller = useOwnController(this).assign(forwardedProps);
+    const controller = useOwnController(this);
+    controller.assign(forwardedProps);
     const unwrapped = Object.assign({}, controller[DISPATCH]!.current);
 
     const useProps: any = {

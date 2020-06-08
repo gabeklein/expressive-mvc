@@ -14,8 +14,8 @@ export function useWatcher(control: Controller){
   
   if(!current){
     Dispatch.readyFor(control);
-    current = cache.current = Object.create(control);
-    createSubscription(current, onDidUpdate);
+    current = cache.current = 
+      createSubscription(control, onDidUpdate);
   }
 
   useEffect(() => {
@@ -49,10 +49,9 @@ export function useWatchedProperty<T extends Controller>(
         didFocus.call(value, parent, key);
     }
   
-    if(!cache.current && DISPATCH in value){
-      value = cache.current = Object.create(value);
-      createSubscription(value, childDidUpdate);
-    }
+    if(!cache.current && DISPATCH in value)
+      value = cache.current = 
+        createSubscription(value, childDidUpdate);
   }
 
   useEffect(() => {

@@ -38,8 +38,8 @@ export function useSubscription(
   const releaseHooks = ensureAttachedControllers(control);
 
   if(!cache.current){
-    control = cache.current = Object.create(control);
-    createSubscription(control, onShouldUpdate);
+    control = cache.current =
+      createSubscription(control, onShouldUpdate);
 
     trigger("willMount");
   }
@@ -72,10 +72,10 @@ export function useSubscription(
 }
 
 export function createSubscription(
-  local: Controller,
+  source: Controller,
   onUpdate: UpdateTrigger
 ){
-  const source = Object.getPrototypeOf(local);
+  const local = Object.create(source);
   const dispatch = local[DISPATCH]!;
   const watch = new Set<string>();
 
@@ -103,6 +103,8 @@ export function createSubscription(
     only: onlyWatch,
     not: dontWatch
   })
+
+  return local;
 
   function forceRefresh(...keys: string[]){
     if(!keys[0]) onUpdate();
