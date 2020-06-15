@@ -1,11 +1,13 @@
 import { Controller } from './controller';
+import { Dispatch } from './dispatch';
 import { globalController } from './global';
-import { useSubscription, ModelEvent } from './subscription';
-import { Class, ModelController } from './types';
-import { dedent } from './util';
-import { DISPATCH } from './dispatch';
+import { createSubscription } from './subscription';
+import { Class, LivecycleEvent, Callback } from './types';
+import { useEventDrivenController } from './hook';
+import { ensureAttachedControllers } from './bootstrap';
+// import { dedent } from 'util';
 
-const subscriberLifecycle = {
+const subscriberLifecycle: any = {
   willCycle: "elementWillCycle",
   willRender: "elementWillRender",
   willUpdate: "elementWillUpdate",
@@ -14,7 +16,7 @@ const subscriberLifecycle = {
   willMount: "elementWillMount"
 }
 
-const componentLifecycle = {
+const componentLifecycle: any = {
   willCycle: "componentWillCycle",
   willRender: "componentWillRender",
   willUpdate: "componentWillUpdate",
@@ -29,17 +31,88 @@ export const lifecycleEvents = [
   ...Object.entries(componentLifecycle)
 ]
 
-export function useModelController(init: any, ...args: any[]){
-  if(init instanceof Controller){
-    const instance = init as ModelController;
-    return useSubscriber(instance, args, true)
-  }
-  if(init.global){    
-    const instance = globalController(init, args);
-    return useSubscriber(instance, args, true);
-  }
-  else
-    return useOwnController(init, args);
+export function use(init: any, ...args: any[]){
+  return useModelController(init, args);
+}
+
+export function useModelController(
+  init: any, 
+  args: any[] = [], 
+  callback?: (instance: Controller) => void){
+
+  return useEventDrivenController((refresh) => {
+    let instance: Controller;
+    let lifecycle = componentLifecycle;
+    let release: Callback | undefined;
+
+    if(init instanceof Controller){
+      lifecycle = subscriberLifecycle;
+      instance = init;
+    }
+    else if(init.global)
+      instance = globalController(init, args);
+    else
+      instance = newController(init, args);
+
+    const dispatch = Dispatch.readyFor(instance);
+
+    if(callback)
+      callback(instance);
+
+    function onEvent(this: Controller, name: LivecycleEvent){
+      const specific = lifecycle[name] as LivecycleEvent;
+      const handler = instance[specific] || instance[name];
+      
+      if(handler)
+        handler.apply(this, args);
+        
+      dispatch.refresh(name, specific);
+
+      switch(name){
+        case "willRender":
+          release = ensureAttachedControllers(this);
+        break;
+
+        case "willUnmount": {
+          if(release)
+            release();
+
+          if(lifecycle == componentLifecycle)
+            if(instance.willDestroy)
+              instance.willDestroy(...args)
+        }
+        break;
+      }
+    }
+
+    return createSubscription(instance, refresh, onEvent);
+  })
+}
+
+export function useSubscriber(
+  target: Controller,
+  args: any[],
+  main: boolean){
+
+  return useEventDrivenController((refresh) => {
+    const lifecycle: any = main
+      ? componentLifecycle
+      : subscriberLifecycle;
+
+    const dispatch = Dispatch.readyFor(target);
+
+    function onEvent(this: Controller, name: LivecycleEvent){
+      const specific = lifecycle[name] as LivecycleEvent;
+      const handler = target[specific] || target[name];
+      
+      if(handler)
+        handler.apply(this, args);
+        
+      dispatch.refresh(name, specific);
+    }
+    
+    return createSubscription(target, refresh, onEvent)
+  })
 }
 
 export function newController(
@@ -60,79 +133,23 @@ export function newController(
   return control
 }
 
-export function useOwnController(
-  model: Class | Function,
-  args: any[] = [],
-  callback?: (self: Controller) => void
-){
-  let lifecycle: any = componentLifecycle;
+// function instanceIsUnexpected(
+//   control: ModelController, cached: ModelController){
 
-  return useSubscription(
-    () => newController(model, args, callback),
-    (controller, event) => {
-      const specific: ModelEvent = lifecycle[event];
-      const handler = controller[event] || controller[specific];
-  
-      if(event == "willUnmount")
-        if(controller.willDestroy)
-          controller.willDestroy(...args)
+//   const ControlType = cached.constructor;
 
-      controller[DISPATCH]!.refresh(event, specific);
-  
-      if(handler)
-        return handler.apply(controller, args);
-    }
-  );
-}
-
-export function useSubscriber(
-  target: ModelController, 
-  args: any[], 
-  main: boolean
-){
-  let lifecycle: any = main
-    ? componentLifecycle
-    : subscriberLifecycle;
-
-  return useSubscription(
-    () => target,
-    (controller, event) => {
-      const specific: ModelEvent = lifecycle[event];
-      const handler = controller[event] || controller[specific];
-
-      //TODO: callback caching breaks this!
-      if(event == "willUpdate"){
-        const current = Object.getPrototypeOf(controller);
-        if(target !== current)
-          instanceIsUnexpected(target, current);
-      }
-
-      controller[DISPATCH]!.refresh(event, specific);
-
-      if(handler)
-        return handler.apply(controller, args);
-    }
-  );
-}
-
-function instanceIsUnexpected(
-  control: ModelController, cached: ModelController){
-
-  const ControlType = cached.constructor;
-
-  if(control instanceof ControlType)
-    console.warn(dedent`
-      Unexpected Instance:
-      use() received unexpected instance of ${ControlType.name}!
-      This should not change between renders of the same component. 
-      Force a remount instead using key props.
-    `)
-  else
-    throw new Error(dedent`
-      Unexpected Controller:
-      use() received unexpected controller between renders!
-      Expected ${ControlType.name} and got ${control.constructor.name}!
-      This should never happen; force a remount where a passed controller may change.
-    `)
-}
-
+//   if(control instanceof ControlType)
+//     console.warn(dedent`
+//       Unexpected Instance:
+//       use() received unexpected instance of ${ControlType.name}!
+//       This should not change between renders of the same component. 
+//       Force a remount instead using key props.
+//     `)
+//   else
+//     throw new Error(dedent`
+//       Unexpected Controller:
+//       use() received unexpected controller between renders!
+//       Expected ${ControlType.name} and got ${control.constructor.name}!
+//       This should never happen; force a remount where a passed controller may change.
+//     `)
+// }

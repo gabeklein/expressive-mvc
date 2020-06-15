@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { PeerController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
-import { useSubscriber, lifecycleEvents } from './subscriber';
+import { lifecycleEvents, useSubscriber } from './subscriber';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
 import { collectGetters, define, defineOnAccess, entriesOf, Set } from './util';
@@ -86,11 +86,13 @@ export class Dispatch {
     public control: Controller
   ){}
 
-  static readyFor(control: any){
-    if(DISPATCH in control)
-      return;
+  static readyFor(control: any) {
+    let dispatch = (control as Controller)[DISPATCH];
 
-    const dispatch = new this(control);
+    if(dispatch)
+      return dispatch
+    else 
+      dispatch = new this(control);
 
     dispatch.initObservable();
     define(control, DISPATCH, dispatch);
@@ -113,6 +115,8 @@ export class Dispatch {
 
     if(control.isReady)
       control.isReady();
+
+    return dispatch;
   }
 
   toggle = (key: string) => {

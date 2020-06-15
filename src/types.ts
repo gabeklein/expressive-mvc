@@ -11,9 +11,28 @@ export type HandleUpdatedValue
   <T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
 
+export type LivecycleEvent =
+  | "willMount"
+  | "willUpdate"
+  | "willRender"
+  | "didMount"
+  | "willUnmount"
+  | "componentWillMount"
+  | "componentWillUpdate"
+  | "componentWillRender"
+  | "componentDidMount"
+  | "componentWillUnmount"
+  | "elementWillMount"
+  | "elementWillUpdate"
+  | "elementWillRender"
+  | "elementDidMount"
+  | "elementWillUnmount";
+
 export interface SubscribeController {
   [UNSUBSCRIBE]?: Callback;
   [SUBSCRIBE]?: Callback;
+
+  onEvent(name: LivecycleEvent, args?: any[]): void;
 
   refresh(...keys: string[]): void;
 

@@ -2,7 +2,7 @@ import { createElement, FC, forwardRef, useEffect } from 'react';
 
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
-import { useManualRefresh } from './subscription';
+import { useManualRefresh } from './hook';
 
 export function ControlledValue(this: Controller): FC<{ of: string }> {
   return (props) => {

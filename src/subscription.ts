@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
-
-import { ensureAttachedControllers } from './bootstrap';
 import { Controller } from './controller';
-import { DISPATCH, Dispatch } from './dispatch';
-import { Callback, ModelController } from './types';
+import { DISPATCH } from './dispatch';
+import { Callback, LivecycleEvent, ModelController } from './types';
 import { define, Set } from './util';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");
@@ -13,67 +10,10 @@ export const SUBSCRIBE = Symbol("end_subscription");
 export type UpdateTrigger = Callback;
 export type ModelEvent = keyof ModelController;
 
-export const useManualRefresh = <T extends {}>(init?: () => T) => {
-  const [ state, update ] = useState<T>(init || {} as any);
-  const refresh = () => update(Object.assign({}, state));
-  return [ state, refresh ] as const;
-}
-
-export function useSubscription(
-  init: () => ModelController,
-  onEvent: (instance: Controller, name: ModelEvent) => any
-){
-  const [ cache, onShouldUpdate ] = useManualRefresh();
-  
-  let control: Controller = cache.current;
-  let trigger = cache.eventListener;
-  
-  if(!control){
-    control = init() as Controller;
-    trigger = (name: ModelEvent) => onEvent(control, name);
-    cache.eventListener = trigger;
-    Dispatch.readyFor(control);
-  }
-
-  const releaseHooks = ensureAttachedControllers(control);
-
-  if(!cache.current){
-    control = cache.current =
-      createSubscription(control, onShouldUpdate);
-
-    trigger("willMount");
-  }
-  else
-    trigger("willUpdate");
-
-  trigger("willRender");
-
-  useEffect(() => {
-    let onEndOfLife = trigger("willCycle");
-
-    trigger("didMount");
-
-    control[SUBSCRIBE]!();
-
-    return () => {
-      control[UNSUBSCRIBE]!();
-
-      if(releaseHooks)
-        releaseHooks();
-
-      trigger("willUnmount");
-
-      if(typeof onEndOfLife === "function")
-        onEndOfLife();
-    };
-  }, [])
-
-  return control;
-}
-
 export function createSubscription(
   source: Controller,
-  onUpdate: UpdateTrigger
+  onUpdate: UpdateTrigger,
+  onEvent?: (name: LivecycleEvent) => void
 ){
   const local = Object.create(source);
   const dispatch = local[DISPATCH]!;
@@ -98,6 +38,7 @@ export function createSubscription(
   define(local, SUBSCRIBE, subscribe)
   define(local, UNSUBSCRIBE, unsubscribe)
   define(local, {
+    onEvent: handleEvent,
     refresh: forceRefresh,
     on: alsoWatch,
     only: onlyWatch,
@@ -105,6 +46,15 @@ export function createSubscription(
   })
 
   return local;
+
+  function handleEvent(name: LivecycleEvent){
+    if(name == "didMount")
+      subscribe();
+    if(name == "willUnmount")
+      unsubscribe();
+    if(onEvent)
+      onEvent.call(local, name);
+  }
 
   function forceRefresh(...keys: string[]){
     if(!keys[0]) onUpdate();

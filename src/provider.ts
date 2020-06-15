@@ -4,7 +4,7 @@ import { ensureAttachedControllers } from './bootstrap';
 import { ownContext } from './context';
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
-import { useOwnController } from './subscriber';
+import { useModelController } from './subscriber';
 import { BunchOf, Callback } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
@@ -18,7 +18,7 @@ export function createWrappedComponent<T extends typeof Controller>(
   const { Provider } = ownContext(this as any);
   
   return (forwardedProps: PropsWithChildren<any>) => {
-    const controller = useOwnController(this);
+    const controller = useModelController(this);
     controller.assign(forwardedProps);
     const unwrapped = Object.assign({}, controller[DISPATCH]!.current);
 

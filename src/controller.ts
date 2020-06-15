@@ -3,7 +3,7 @@ import { Context, FunctionComponent } from 'react';
 import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './context';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { createWrappedComponent } from './provider';
-import { useOwnController, useSubscriber } from './subscriber';
+import { useModelController, useSubscriber } from './subscriber';
 import { BunchOf, Class, InstanceController, ModelController, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
@@ -21,12 +21,7 @@ export class Controller {
   static [ASSIGNED_CONTEXT]?: Context<Controller>;
 
   static use(...args: any[]){
-    if(this.global){
-      const instance = globalController(this, args);
-      return useSubscriber(instance, args, true);
-    }
-    else
-      return useOwnController(this, args);
+    return useModelController(this, args);
   }
 
   static get(key?: string){
@@ -85,31 +80,24 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
       
-    return this.using(props, only, true)
+    return useModelController(this, [], (instance) => {
+      transferValues(instance, props, only)
+    })
   }
 
   static using(
     props: BunchOf<any>, 
-    only?: string[],
-    once?: boolean){
-
-    let subscribed;
+    only?: string[]){
 
     function assignTo(instance: Controller){
       transferValues(instance, props, only);
     }
 
-    if(this.global){
-      const instance = globalController(this, [], assignTo);
-      subscribed = useSubscriber(instance, [], true);
-    }
-    else
-      subscribed = useOwnController(this, [], assignTo);
+    const subscriber = useModelController(this, [], assignTo);
 
-    if(!once)
-      assignTo(subscribed);
+    assignTo(subscriber);
         
-    return subscribed;
+    return subscriber;
   }
 
   static makeGlobal(...args: any[]){
@@ -128,7 +116,7 @@ export class Controller {
     if(this.global)
       throw controllerIsGlobalError(this.name)
     else 
-      return useOwnController(this).Provider
+      return useModelController(this).Provider
   }
 }
 
