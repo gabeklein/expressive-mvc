@@ -8,7 +8,7 @@ import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Callback } from './types';
 
 export function useWatcher(control: Controller){
-  const [ cache, onDidUpdate ] = useManualRefresh();
+  const [ cache, onDidUpdate ] = useManualRefresh<any>();
 
   let { current } = cache;
   
@@ -35,7 +35,7 @@ export function useWatchedProperty<T extends Controller>(
   if(value === undefined && required)
     throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
-  const [ cache, onDidUpdate ] = useManualRefresh();
+  const [ cache, onDidUpdate ] = useManualRefresh<any>();
 
   if(typeof value == "object" && value !== null){
     if(value instanceof Controller){
