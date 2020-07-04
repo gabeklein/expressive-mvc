@@ -10,6 +10,8 @@ function ensureArray<T>(x: T | T[]){
   return ([] as T[]).concat(x);
 }
 
+const frame = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
+
 /**
  * Error with test-friendlier stack trace. 
  * 
@@ -19,8 +21,29 @@ function ensureArray<T>(x: T | T[]){
 class TraceableError extends Error {
   constructor(message: string){
     super(message);
-    const stack = (this.stack as string).split(/\n/);
-    this.stack = [ stack[0], stack[3] ].join("\n");
+
+    let [ error, ...stack ] = this.stack!.split(/\n/);
+
+    let trace = stack.map(line => {
+      const match = frame.exec(line) || [] as string[];
+      return {
+        frame: match[0],
+        callee: match[1],
+        file: match[2],
+        line: match[3],
+        column: match[4]
+      }
+    })
+
+    trace = trace.filter(x => x.file);
+    
+    const adaptor = trace[0].file;
+
+    trace = trace.filter(x => x.file !== adaptor);
+
+    this.stack = [
+      error, ...trace.map(l => l.frame)
+    ].join("\n");
   }
 }
 
