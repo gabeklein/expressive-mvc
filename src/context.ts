@@ -57,7 +57,7 @@ function contextGetterFor(target: typeof Controller) {
   }
 
   return controllerFromContext;
-} 
+}
 
 function ParentProviderFor(
   controller: Controller,

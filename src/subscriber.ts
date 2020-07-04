@@ -5,7 +5,6 @@ import { createSubscription } from './subscription';
 import { Class, LivecycleEvent, Callback } from './types';
 import { useEventDrivenController } from './hook';
 import { ensureAttachedControllers } from './bootstrap';
-// import { dedent } from 'util';
 
 const subscriberLifecycle: any = {
   willCycle: "elementWillCycle",

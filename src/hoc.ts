@@ -52,9 +52,13 @@ export function ControlledInput(this: Controller): FC<{
         }
       else if(onChange !== false) {
         if(type == "number")
-          meta.onChange = (e: any) => { source[to] = Number(e.target.value) }
+          meta.onChange = (e: any) => { 
+            source[to] = Number(e.target.value) 
+          }
         else
-          meta.onChange = (e: any) => { source[to] = e.target.value }
+          meta.onChange = (e: any) => { 
+            source[to] = e.target.value 
+          }
       }
 
       if(typeof onReturn == "function"){
