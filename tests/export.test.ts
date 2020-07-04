@@ -17,7 +17,7 @@ test('export with callback run every update', async () => {
 
   state.export(fn)
 
-  // should only call when a change occures
+  // should not call without change having occured
   expect(fn).not.toHaveBeenCalled()
 
   state.seconds = 90;
@@ -25,14 +25,14 @@ test('export with callback run every update', async () => {
   await assertDidNotUpdate()
 
   expect(fn).toBeCalledWith(
-    // contains all tracked values
+    // does contain all tracked values
     { minutes: 1, seconds: 90, foo: "bar" }, 
-    // lists updated values
+    // does list updated values
     expect.arrayContaining(["seconds", "minutes"])
   );
 })
 
-test('callback with [initial: true] fires immediately', async () => {
+test('callback with initial = true fires immediately', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe({ use: TestController });
@@ -62,9 +62,9 @@ test('subset export calls only with / or those values', async () => {
   await assertDidNotUpdate()
 
   expect(fn).toBeCalledWith(
-    // only has requested keys
+    // only contains values for keys requested
     { minutes: 0, seconds: 30 },
-    // only "seconds" had updated
+    // only contains "seconds" which had updated
     [ "seconds" ]                 
   );
 
@@ -72,6 +72,6 @@ test('subset export calls only with / or those values', async () => {
 
   await assertDidNotUpdate()
 
-  // not called again
+  // should not be called again as "baz" isn't tracked
   expect(fn).toHaveBeenCalledTimes(1);
 })

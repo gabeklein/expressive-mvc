@@ -19,7 +19,7 @@ test('loads values from class', () => {
   expect(state.value2).toBe(2);
 })
 
-test.skip('updates on value change', async () => {
+test('updates on value change', async () => {
   const { state, assertDidUpdate } = 
     trySubscribe({
       use: TestController,
