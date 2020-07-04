@@ -5,12 +5,6 @@ import { CONTEXT_MULTIPROVIDER } from './provider';
 import { define } from './util';
 import { PeerController } from './global';
 
-const { 
-  defineProperty,
-  entries: entriesOf,
-  getOwnPropertyDescriptors: propsIn
-} = Object;
-
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
 export function ensureAttachedControllers(instance: Controller){
@@ -25,12 +19,16 @@ export function ensureAttachedControllers(instance: Controller){
 
   const pending = [];
 
-  for(const [key, { value }] of entriesOf(propsIn(instance)))
+  const entries = Object.getOwnPropertyDescriptors(instance);
+
+  for(const key in entries){
+    const { value } = entries[key];
     if(value instanceof PeerController)
       pending.push([key, value.context] as const)
+  }
 
   const disableMaintaince = () => {
-    defineProperty(instance, RENEW_CONSUMERS, { value: undefined });
+    Object.defineProperty(instance, RENEW_CONSUMERS, { value: undefined });
   }
 
   if(pending.length){
@@ -45,7 +43,7 @@ export function ensureAttachedControllers(instance: Controller){
         define(instance, name, useContext(context))
       }
 
-    defineProperty(instance, RENEW_CONSUMERS, { 
+    Object.defineProperty(instance, RENEW_CONSUMERS, { 
       value: () => required.forEach(useContext), 
       configurable: true 
     });

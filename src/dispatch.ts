@@ -9,12 +9,6 @@ import { useWatchedProperty, useWatcher } from './watcher';
 
 declare const setTimeout: (callback: Callback, ms: number) => number;
 
-const { 
-  assign,
-  defineProperty,
-  getOwnPropertyDescriptor,
-} = Object;
-
 export const DISPATCH = Symbol("controller_dispatch");
 
 export type UpdateEventHandler = (value: any, key: string) => void;
@@ -28,7 +22,7 @@ function simpleIntegrateExternal(
   if(typeof a == "string")
     return (this as any)[a] = b
   else
-    return assign(this, a)
+    return Object.assign(this, a)
 }
 
 export function tapControlled(
@@ -60,7 +54,7 @@ export function declareControlled(model: any, initial?: {}){
         () => new model() :
         () => model() :
     typeof model == "object" ?
-      () => assign({}, model) :
+      () => Object.assign({}, model) :
       null;
 
   if(typeof model == "object" || 
@@ -210,7 +204,7 @@ export class Dispatch {
       }
 
       const trigger = () => callback(key);
-      const descriptor = getOwnPropertyDescriptor(this.control, key);
+      const descriptor = Object.getOwnPropertyDescriptor(this.control, key);
       const getter = descriptor && descriptor.get;
 
       if(getter && getter.name == "initComputedValue"){
@@ -239,7 +233,7 @@ export class Dispatch {
     }
 
     for(const key in this){
-      const desc = getOwnPropertyDescriptor(this, key);
+      const desc = Object.getOwnPropertyDescriptor(this, key);
 
       if(!desc) continue;
 
@@ -323,7 +317,7 @@ export class Dispatch {
 
       subscribers[key] = new Set();
 
-      defineProperty(control, key, {
+      Object.defineProperty(control, key, {
         enumerable: true,
         configurable: false,
         get: () => current[key],
@@ -353,7 +347,7 @@ export class Dispatch {
 
     function generate(value: {}){
       const saved = current[key] = create();
-      assign(saved, value);
+      Object.assign(saved, value);
       Dispatch.readyFor(saved);
     }
 
@@ -424,7 +418,7 @@ export class Dispatch {
           throw err;
         }
         finally {
-          defineProperty(control, key, {
+          Object.defineProperty(control, key, {
             set: setNotAllowed,
             get: getValueLazy,
             enumerable: true,
@@ -433,7 +427,7 @@ export class Dispatch {
         }
       }
   
-      defineProperty(control, key, {
+      Object.defineProperty(control, key, {
         set: setNotAllowed,
         get: initComputedValue,
         configurable: true

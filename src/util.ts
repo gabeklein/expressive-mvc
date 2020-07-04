@@ -1,13 +1,6 @@
 import { Controller } from './controller';
 import { BunchOf } from './types';
 
-const { 
-  entries,
-  defineProperty,
-  getOwnPropertyDescriptors,
-  getPrototypeOf
-} = Object;
-
 export class Set<T> extends Array<T> {
   add = (item: T) => {
     if(this.indexOf(item) < 0)
@@ -52,10 +45,10 @@ export function define(target: {}, values: {}): void;
 export function define(target: {}, key: string | symbol, value: any): void;
 export function define(target: {}, kv: {} | string | symbol, v?: {}){
   if(typeof kv == "string" || typeof kv == "symbol")
-    defineProperty(target, kv, { value: v })
+    Object.defineProperty(target, kv, { value: v })
   else
-    for(const [key, value] of entries(kv))
-      defineProperty(target, key, { value });
+    for(const [key, value] of Object.entries(kv))
+      Object.defineProperty(target, key, { value });
 }
 
 export function callIfExists<T, A extends any[]>(
@@ -89,7 +82,9 @@ export function defineOnAccess(
 }
 
 export function entriesOf(obj: {}){
-  return entries(getOwnPropertyDescriptors(obj));
+  return Object.entries(
+    Object.getOwnPropertyDescriptors(obj)
+  );
 }
 
 export function transferValues(
@@ -120,7 +115,7 @@ export function collectGetters(
   const getters = {} as BunchOf<() => any>;
 
   do {
-    source = getPrototypeOf(source);
+    source = Object.getPrototypeOf(source);
     for(const [key, item] of entriesOf(source))
       if("get" in item && item.get && !getters[key] && except.indexOf(key) < 0)
         getters[key] = item.get

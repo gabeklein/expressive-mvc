@@ -9,8 +9,6 @@ import { BunchOf, Callback } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
-const { getPrototypeOf: proto } = Object;
-
 export function createWrappedComponent<T extends typeof Controller>(
   this: T,
   fn: FunctionComponent<InstanceType<T>> ){
@@ -78,16 +76,17 @@ function initGroupControllers(
   fromProps: BunchOf<typeof Controller> 
 ){
   const map = Object.create(parent) as BunchOf<Controller>;
+  const pro = Object.getPrototypeOf;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
       let Super = group[key];
-      while(Super = proto(Super))
+      while(Super = pro(Super))
         if(Super === Controller as any)
           map[key] = new group[key]();
     }
 
-  for(let layer = map; layer; layer = proto(layer))
+  for(let layer = map; layer; layer = pro(layer))
     for(const source in layer)
       for(const target in map)
         if(source !== target)

@@ -5,8 +5,6 @@ import { globalController, PeerController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 
-const { assign, keys: keysIn } = Object;
-
 export const ASSIGNED_CONTEXT = Symbol("react_context");
 
 export function retrieveController(
@@ -68,11 +66,11 @@ function ParentProviderFor(
   return (props: PropsWithChildren<any>) => {
     let { children, className, style } = props;
 
-    props = assign({}, props);
+    props = Object.assign({}, props);
     for(const k of ["children", "className", "style"])
       delete props[k];
 
-    if(keysIn(props).length)
+    if(Object.keys(props).length)
       controller.assign(props);
 
     if(className || style)
