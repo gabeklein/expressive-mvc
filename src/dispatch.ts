@@ -1,6 +1,7 @@
 import { Controller } from './controller';
 import { PeerController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
+import { ManagedProperty } from './managed';
 import { lifecycleEvents, useSubscriber } from './subscriber';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';
@@ -37,37 +38,6 @@ function subscribeToController(
   this: Controller, ...args: any[]){
 
   return useSubscriber(this, args, false) 
-}
-
-export class ManagedProperty {
-  constructor(
-    public type: {} | (new (...args: any[]) => any),
-    public create: () => {},
-    public initial?: {}
-  ){}
-}
-
-export function declareControlled(model: any, initial?: {}){
-  const create = 
-    typeof model == "function" ?
-      "prototype" in model ?
-        () => new model() :
-        () => model() :
-    typeof model == "object" ?
-      () => Object.assign({}, model) :
-      null;
-
-  if(typeof model == "object" || 
-     "prototype" in model && 
-     /^[A-Z]/.test(model.name) === false)
-    initial = {};
-
-  if(!create){
-    //todo: detect class attempted to init via stack trace.
-    throw new Error(`Managing property ${model} is not possible as it can't be converted to an object.`)
-  }
-
-  return new ManagedProperty(model, create, initial);
 }
 
 export class Dispatch {
