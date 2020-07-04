@@ -1,7 +1,7 @@
 import { Controller } from './controller';
-import { PeerController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { ManagedProperty } from './managed';
+import { PeerController } from './peers';
 import { lifecycleEvents, useSubscriber } from './subscriber';
 import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
 import { BunchOf, Callback } from './types';

@@ -1,6 +1,6 @@
 import { FunctionComponent, ProviderProps } from 'react';
 
-import { RENEW_CONSUMERS } from './bootstrap';
+import { RENEW_CONSUMERS } from './peers';
 import { DISPATCH, Dispatch } from './dispatch';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 

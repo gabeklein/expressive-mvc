@@ -1,21 +1,9 @@
 import { createContext, createElement, PropsWithChildren, ProviderExoticComponent, useContext } from 'react';
 
 import { Controller } from './controller';
-import { globalController, PeerController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber } from './subscriber';
 
 export const ASSIGNED_CONTEXT = Symbol("react_context");
-
-export function retrieveController(
-  from: Controller | typeof Controller,
-  ...args: any[]){
-
-  if(from instanceof Controller)
-    return useSubscriber(from, args, false)
-  else
-    return new PeerController(from)
-}
 
 export function ownContext(from: typeof Controller){
   let context = from[ASSIGNED_CONTEXT];
@@ -26,20 +14,7 @@ export function ownContext(from: typeof Controller){
   return context;
 }
 
-export function getterFor(target: typeof Controller, args: any[] = []){
-  if(!target.global)
-    return contextGetterFor(target);
-
-  const controller = globalController(target, args);
-  return () => controller;
-}
-
-export function ControlProvider(this: Controller){
-  const { Provider } = ownContext(this.constructor as any);
-  return ParentProviderFor(this, Provider);
-}
-
-function contextGetterFor(target: typeof Controller) {
+export function contextGetterFor(target: typeof Controller) {
   const { name } = target;
   
   const context = ownContext(target);
@@ -57,6 +32,11 @@ function contextGetterFor(target: typeof Controller) {
   }
 
   return controllerFromContext;
+}
+
+export function ControlProvider(this: Controller){
+  const { Provider } = ownContext(this.constructor as any);
+  return ParentProviderFor(this, Provider);
 }
 
 function ParentProviderFor(

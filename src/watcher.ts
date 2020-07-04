@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { ensureAttachedControllers } from './bootstrap';
+import { ensurePeerControllers } from './peers';
 import { Controller } from './controller';
 import { DISPATCH, Dispatch } from './dispatch';
 import { useManualRefresh } from './hook';
@@ -41,7 +41,7 @@ export function useWatchedProperty<T extends Controller>(
     if(value instanceof Controller){
       Dispatch.readyFor(value);
       //TODO: Changing out instance breaks this.
-      releaseHooks = ensureAttachedControllers(value);
+      releaseHooks = ensurePeerControllers(value);
 
       const { didFocus } = value;
 

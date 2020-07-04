@@ -1,6 +1,6 @@
 import { createContext, createElement, FunctionComponent, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { ensureAttachedControllers } from './bootstrap';
+import { ensurePeerControllers } from './peers';
 import { ownContext } from './context';
 import { Controller } from './controller';
 import { DISPATCH } from './dispatch';
@@ -52,7 +52,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   ); 
 
   Object.values(provide).forEach(mc => {
-    const onDidUnmount = ensureAttachedControllers(mc);
+    const onDidUnmount = ensurePeerControllers(mc);
     if(onDidUnmount)
       flushHooks.push(onDidUnmount);
   })

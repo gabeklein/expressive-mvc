@@ -4,7 +4,7 @@ import { globalController } from './global';
 import { createSubscription } from './subscription';
 import { Class, LivecycleEvent, Callback } from './types';
 import { useEventDrivenController } from './hook';
-import { ensureAttachedControllers } from './bootstrap';
+import { ensurePeerControllers } from './peers';
 
 const subscriberLifecycle: any = {
   willCycle: "elementWillCycle",
@@ -69,7 +69,7 @@ export function useModelController(
 
       switch(name){
         case "willRender":
-          release = ensureAttachedControllers(this);
+          release = ensurePeerControllers(this);
         break;
 
         case "willUnmount": {

@@ -1,7 +1,8 @@
 import { Context, FunctionComponent } from 'react';
 
-import { ASSIGNED_CONTEXT, ControlProvider, getterFor, ownContext } from './context';
+import { ASSIGNED_CONTEXT, ControlProvider, ownContext } from './context';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
+import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
 import { BunchOf, Class, InstanceController, ModelController, SubscribeController } from './types';
