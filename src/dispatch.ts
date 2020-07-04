@@ -25,7 +25,7 @@ function simpleIntegrateExternal(
     return Object.assign(this, a)
 }
 
-export function tapControlled(
+function watchController(
   this: Controller, key?: string, required?: boolean){
 
   return key ? 
@@ -33,7 +33,7 @@ export function tapControlled(
     useWatcher(this);
 }
 
-export function subControlled(
+function subscribeToController(
   this: Controller, ...args: any[]){
 
   return useSubscriber(this, args, false) 
@@ -93,8 +93,8 @@ export class Dispatch {
     define(control, {
       get: control,
       set: control,
-      tap: tapControlled,
-      sub: subControlled,
+      tap: watchController,
+      sub: subscribeToController,
       assign: simpleIntegrateExternal,
       onChange: dispatch.onChange,
       observe: dispatch.observe,
