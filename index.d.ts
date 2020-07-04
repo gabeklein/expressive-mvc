@@ -38,7 +38,7 @@ type HandleUpdatedValue<T extends object, P extends keyof T> =
  * Model Controller, represents available lifecycle callbacks.
  */
 interface MC {
-    isReady?(): void;
+    didCreate?(): void;
     willRender?(...args: any[]): void;
     willMount?(...args: any[]): void;
     willUpdate?(...args: any[]): void;

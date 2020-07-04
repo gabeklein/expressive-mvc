@@ -113,8 +113,8 @@ export class Dispatch {
 
     dispatch.initComputed();
 
-    if(control.isReady)
-      control.isReady();
+    if(control.didCreate)
+      control.didCreate();
 
     return dispatch;
   }

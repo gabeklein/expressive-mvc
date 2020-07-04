@@ -73,7 +73,7 @@ export interface InstanceController {
 }
 
 export interface ModelController {
-  isReady?(): void;
+  didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didMount?(...args: any[]): void;
   
