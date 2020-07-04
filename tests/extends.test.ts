@@ -13,7 +13,9 @@ class TestController extends Controller {
   value = 1;
   value2 = 2;
 
-  setValueToThree = () => this.value = 3;
+  setValueToThree = () => {
+    this.value = 3;
+  }
 }
 
 test('initializes from extended Controller', () => {
