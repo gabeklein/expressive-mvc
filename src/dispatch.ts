@@ -53,9 +53,6 @@ export class ControllerDispatch
   private monitorValues(){
     const { state, subject, subscribers } = this;
     
-    if(!subject)
-      debugger
-
     for(const [key, desc] of entriesOf(subject)){
       if("value" in desc === false)
         continue;
