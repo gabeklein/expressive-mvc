@@ -2,6 +2,7 @@ import { lifecycleEvents } from './subscriber';
 import { UpdateTrigger } from './subscription';
 import { BunchOf } from './types';
 import { Set } from './util';
+import { isInitialCompute } from 'dispatch';
 
 type UpdateEventHandler = (value: any, key: string) => void;
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
@@ -163,10 +164,8 @@ export class Observer<T> {
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
       const getter = descriptor && descriptor.get;
 
-      if(getter && getter.name == "initComputedValue"){
-        const initialize = getter as (early?: true) => unknown;
-        initialize(true);
-      }
+      if(isInitialCompute(getter))
+        (getter as any)(true);
 
       listeners.add(trigger);
       clear.push(() => listeners.delete(trigger));

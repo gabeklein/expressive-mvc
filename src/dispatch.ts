@@ -162,7 +162,7 @@ export class ControllerDispatch
         onDidUpdate();
     }
 
-    return function initComputedValue(early = false){
+    function getStartingValue(early = false){
       try {
         const spy = createSubscription(subject, onValueDidChange);
         const value = state[key] = fn.call(spy);
@@ -182,7 +182,18 @@ export class ControllerDispatch
         })
       }
     }
+
+    isInitialCompute(getStartingValue, true);
+
+    return getStartingValue;
   }
+}
+
+export function isInitialCompute(fn: any, set?: true){
+  if(!set)
+    return fn["initial"];
+  else
+    fn["initial"] = true;
 }
 
 function throwNotAllowed(key: string){
