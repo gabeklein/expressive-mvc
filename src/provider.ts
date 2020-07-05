@@ -1,9 +1,9 @@
 import { createContext, createElement, FunctionComponent, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { ensurePeerControllers } from './peers';
 import { ownContext } from './context';
 import { Controller } from './controller';
-import { DISPATCH } from './dispatch';
+import { getDispatch } from './dispatch';
+import { ensurePeerControllers } from './peers';
 import { useModelController } from './subscriber';
 import { BunchOf, Callback } from './types';
 
@@ -18,15 +18,16 @@ export function createWrappedComponent<T extends typeof Controller>(
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useModelController(this);
     controller.assign(forwardedProps);
-    const unwrapped = Object.assign({}, controller[DISPATCH]!.current);
+    const { values } = getDispatch(controller);
 
-    const useProps: any = {
-      ...unwrapped,
-      use: controller
+    const useProps: any = { 
+      use: controller, ...values 
     }
     
     return createElement(
-      Provider, { value: controller }, createElement(fn, useProps)
+      Provider, 
+      { value: controller }, 
+      createElement(fn, useProps)
     )
   }
 }

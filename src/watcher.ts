@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 
-import { ensurePeerControllers } from './peers';
 import { Controller } from './controller';
-import { DISPATCH, Dispatch } from './dispatch';
+import { DISPATCH, ensureDispatch, getDispatch } from './dispatch';
 import { useManualRefresh } from './hook';
+import { ensurePeerControllers } from './peers';
 import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 import { Callback } from './types';
 
@@ -13,7 +13,7 @@ export function useWatcher(control: Controller){
   let { current } = cache;
   
   if(!current){
-    Dispatch.readyFor(control);
+    ensureDispatch(control);
     current = cache.current = 
       createSubscription(control, onDidUpdate);
   }
@@ -39,7 +39,7 @@ export function useWatchedProperty<T extends Controller>(
 
   if(typeof value == "object" && value !== null){
     if(value instanceof Controller){
-      Dispatch.readyFor(value);
+      ensureDispatch(value);
       //TODO: Changing out instance breaks this.
       releaseHooks = ensurePeerControllers(value);
 
@@ -49,14 +49,14 @@ export function useWatchedProperty<T extends Controller>(
         didFocus.call(value, parent, key);
     }
   
-    if(!cache.current && DISPATCH in value)
+    if(!cache.current && value[DISPATCH])
       value = cache.current = 
         createSubscription(value, childDidUpdate);
   }
 
   useEffect(() => {
     const removeListener = 
-      parent[DISPATCH]!.addListener(key, parentDidUpdate);
+      getDispatch(parent).addListener(key, parentDidUpdate);
 
     return () => {
       resetSubscription()

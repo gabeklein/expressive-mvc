@@ -1,11 +1,13 @@
 import { Context, FunctionComponent } from 'react';
 
 import { ASSIGNED_CONTEXT, ControlProvider, ownContext } from './context';
+import { getDispatch } from './dispatch';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
+import { ControlledInput, ControlledValue } from './hoc';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Class, InstanceController, ModelController, SubscribeController } from './types';
+import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
@@ -17,6 +19,59 @@ export interface Controller
 }
 
 export class Controller {
+  constructor(){
+    this.get = this;
+    this.set = this;
+  }
+
+  toggle = (key: string) => {
+    const self = this as any;
+    return self[key] = !self[key];
+  }
+
+  export = (
+    subset?: string[] | Callback, 
+    onChange?: Callback | boolean,
+    initial?: boolean) => {
+
+    const dispatch = getDispatch(this);
+
+    if(typeof subset == "function"){
+      initial = onChange as boolean;
+      onChange = subset;
+      subset = dispatch.managed;
+    }
+  
+    if(typeof onChange == "function")
+      return dispatch.watch(subset!, onChange, initial);
+    else 
+      return dispatch.pick(subset);
+  }
+
+  refresh = (...keys: string[]) => {
+    getDispatch(this).forceRefresh(...keys);
+  }
+
+  tap(key?: string, required?: boolean){
+    return key ? 
+      useWatchedProperty(this, key, required) : 
+      useWatcher(this);
+  }
+
+  sub(...args: any[]){
+    return useSubscriber(this, args, false) 
+  }
+  
+  assign(
+    a: string | BunchOf<any>, 
+    b?: BunchOf<any>){
+  
+    if(typeof a == "string")
+      return (this as any)[a] = b as any;
+    else
+      return Object.assign(this, a) as this;
+  }
+
   static global = false;
   static [GLOBAL_INSTANCE]?: Singleton;
   static [ASSIGNED_CONTEXT]?: Context<Controller>;
@@ -39,9 +94,8 @@ export class Controller {
     const instance = getterFor(this)();
     //TODO: Implement better caching here
   
-    return key ?
-      useWatchedProperty(instance, key, main) :
-      useWatcher(instance);
+    //TODO: is main on "required" argument correct?
+    return instance.tap(key, main);
   }
 
   static has(key: string){
@@ -122,6 +176,8 @@ export class Controller {
 }
 
 defineOnAccess(Controller.prototype, "Provider", ControlProvider)
+defineOnAccess(Controller.prototype, "Value", ControlledValue)
+defineOnAccess(Controller.prototype, "Input", ControlledInput)
 
 export class Singleton extends Controller {
   static global = true;

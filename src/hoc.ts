@@ -1,8 +1,10 @@
 import { createElement, FC, forwardRef, useEffect } from 'react';
 
 import { Controller } from './controller';
-import { DISPATCH } from './dispatch';
 import { useManualRefresh } from './hook';
+import { getDispatch } from './dispatch';
+
+type onChangeCallback = (v: any, e: any) => any
 
 export function ControlledValue(this: Controller): FC<{ of: string }> {
   return (props) => {
@@ -11,15 +13,13 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
     props = { ...props };
 
     useEffect(() => {
-      return this[DISPATCH]!.addListener(props.of, onDidUpdate);
-    })
+      return getDispatch(this).addListener(props.of, onDidUpdate);
+    }, [])
 
     delete props.of;
     return createElement("span", props, (<any>this)[props.of])
   }
 }
-
-export type onChangeCallback = (v: any, e: any) => any
 
 export function ControlledInput(this: Controller): FC<{ 
   to: string, 
@@ -88,8 +88,8 @@ export function ControlledInput(this: Controller): FC<{
     }
 
     useEffect(() => {
-      return this[DISPATCH]!.addListener(to, onDidUpdate);
-    });
+      return getDispatch(this).addListener(to, onDidUpdate);
+    }, []);
 
     delete props.to;
     delete props.onReturn;

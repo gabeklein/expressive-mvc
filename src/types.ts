@@ -1,7 +1,7 @@
 import { FunctionComponent, ProviderProps } from 'react';
 
+import { ControllerDispatch, DISPATCH } from './dispatch';
 import { RENEW_CONSUMERS } from './peers';
-import { DISPATCH, Dispatch } from './dispatch';
 import { SUBSCRIBE, UNSUBSCRIBE } from './subscription';
 
 export type BunchOf<T> = { [key: string]: T }
@@ -49,12 +49,14 @@ export interface InstanceController {
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
 
-  [DISPATCH]?: Dispatch;
+  [DISPATCH]?: ControllerDispatch;
   [RENEW_CONSUMERS]?: Callback;
 
   toggle(key: string): boolean;
-  assign(props: BunchOf<any>): this;
   refresh(...keys: string[]): void;
+
+  assign(props: BunchOf<any>): this;
+  assign(key: string, props?: BunchOf<any>): any;
 
   tap(): this;
   tap<K extends keyof this>(key?: K): this[K];

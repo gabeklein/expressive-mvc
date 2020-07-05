@@ -1,277 +1,62 @@
 import { Controller } from './controller';
-import { ControlledInput, ControlledValue } from './hoc';
 import { ManagedProperty } from './managed';
+import { Observer } from './observer';
 import { PeerController } from './peers';
-import { lifecycleEvents, useSubscriber } from './subscriber';
-import { createSubscription, SUBSCRIBE, UpdateTrigger } from './subscription';
-import { BunchOf, Callback } from './types';
-import { collectGetters, define, defineOnAccess, entriesOf, Set } from './util';
-import { useWatchedProperty, useWatcher } from './watcher';
-
-declare const setTimeout: (callback: Callback, ms: number) => number;
+import { createSubscription, SUBSCRIBE } from './subscription';
+import { collectGetters, define, entriesOf, Set } from './util';
 
 export const DISPATCH = Symbol("controller_dispatch");
 
-export type UpdateEventHandler = (value: any, key: string) => void;
-export type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
+export function getDispatch(from: Controller){
+  const dispatch = from[DISPATCH];
 
-function simpleIntegrateExternal(
-  this: Controller, 
-  a: string | BunchOf<any>, 
-  b?: BunchOf<any>){
+  if(!dispatch)
+    throw new Error("Dispatch has not yet been created on this instance!");
 
-  if(typeof a == "string")
-    return (this as any)[a] = b
-  else
-    return Object.assign(this, a)
+  return dispatch;
 }
 
-function watchController(
-  this: Controller, key?: string, required?: boolean){
+export function ensureDispatch(control: any){
+  const target = control as Controller;
 
-  return key ? 
-    useWatchedProperty(this, key, required) : 
-    useWatcher(this);
+  return target[DISPATCH] || new ControllerDispatch(control);
 }
 
-function subscribeToController(
-  this: Controller, ...args: any[]){
+export class ControllerDispatch 
+  extends Observer<Controller> {
+  
+  constructor(control: Controller){
+    super(control);
 
-  return useSubscriber(this, args, false) 
-}
-
-export class Dispatch {
-  current: BunchOf<any> = {};
-  subscribers: BunchOf<Set<UpdateTrigger>> = {};
-  pendingUpdates = new Set<string>();
-  pendingRefresh = false;
-
-  constructor(
-    public control: Controller
-  ){}
-
-  static readyFor(control: any) {
-    let dispatch = (control as Controller)[DISPATCH];
-
-    if(dispatch)
-      return dispatch
-    else 
-      dispatch = new this(control);
-
-    dispatch.initObservable();
-    define(control, DISPATCH, dispatch);
+    define(control, DISPATCH, this);
     define(control, {
       get: control,
       set: control,
-      tap: watchController,
-      sub: subscribeToController,
-      assign: simpleIntegrateExternal,
-      onChange: dispatch.onChange,
-      observe: dispatch.observe,
-      export: dispatch.export,
-      toggle: dispatch.toggle,
-      refresh: dispatch.refresh
+      onChange: this.onChange.bind(this),
+      observe: this.observe.bind(this)
     })
-    defineOnAccess(control, "Value", ControlledValue)
-    defineOnAccess(control, "Input", ControlledInput)
 
-    dispatch.initComputed();
+    this.monitorValues();
+    this.monitorComputed();
 
     if(control.didCreate)
       control.didCreate();
-
-    return dispatch;
   }
 
-  toggle = (key: string) => {
-    this.current[key] = !this.current[key];
-    this.refresh(key)
-  }
-  
-  refresh = (...watching: string[]) => {
+  public forceRefresh(...watching: string[]){
     for(const x of watching)
-      this.pendingUpdates.add(x)
+      this.pending.add(x)
       
     this.update();
   }
 
-  export = (
-    subset?: string[] | Callback, 
-    onChange?: Callback | boolean,
-    initial?: boolean) => {
+  private monitorValues(){
+    const { state, subject, subscribers } = this;
+    
+    if(!subject)
+      debugger
 
-    if(typeof subset == "function"){
-      initial = onChange as boolean;
-      onChange = subset;
-      subset = Object.keys(this.subscribers);
-    }
-
-    if(typeof onChange == "function")
-      return this.watch(subset!, onChange, initial)
-    else 
-      return this.pick(subset)
-  }
-
-  onChange = (
-    key: string | string[], 
-    listener?: (changed: string[]) => void) => {
-  
-    if(listener)
-      this.observe(key as any, listener, true);
-    else {
-      return new Promise(resolve => {
-        this.observe(key as any, resolve, true);
-      })
-    }
-  }
-  
-  observe = (
-    watch: string | string[], 
-    handler: UpdateEventHandler,
-    once?: boolean) => {
-
-    if(typeof watch == "string")
-      watch = [watch];
-
-    const onDone = 
-      this.addMultipleListener(watch, (key) => {
-        if(once) onDone();
-        handler.apply(this.control, [this.current[key], key]) 
-      })
-
-    return onDone;
-  }
-
-  public addListener(
-    key: string, callback: UpdateTrigger){
-
-    let register = this.subscribers[key];
-
-    if(!register)
-      register = this.subscribers[key] = new Set();
-
-    register.add(callback);
-
-    return () => register.delete(callback);
-  }
-
-  private addMultipleListener(
-    keys: string[], 
-    callback: (didUpdate: string) => void){
-
-    let clear: Function[] = [];
-
-    for(const key of keys){
-      let listeners = this.subscribers[key];
-  
-      if(!listeners){
-        if(lifecycleEvents.indexOf(key) < 0)
-          throw new Error(
-            `Can't watch property ${key}, it's not tracked on this instance.`
-          )
-        else
-          listeners = this.subscribers[key] = new Set();
-      }
-
-      const trigger = () => callback(key);
-      const descriptor = Object.getOwnPropertyDescriptor(this.control, key);
-      const getter = descriptor && descriptor.get;
-
-      if(getter && getter.name == "initComputedValue"){
-        const initialize = getter as (early?: true) => unknown;
-        initialize(true);
-      }
-
-      listeners.add(trigger);
-      clear.push(() => listeners.delete(trigger))
-    }
-
-    return () => {
-      clear.forEach(x => x());
-      clear = [];
-    };
-  }
-  
-  private pick(keys?: string[]){
-    const acc = {} as BunchOf<any>;
-
-    if(keys){
-      for(const key of keys)
-        acc[key] = (this.control as any)[key]
-
-      return acc;
-    }
-
-    for(const key in this){
-      const desc = Object.getOwnPropertyDescriptor(this, key);
-
-      if(!desc) continue;
-
-      if(desc.value !== undefined)
-        acc[key] = desc.value;
-    }
-    for(const key in this.subscribers)
-      acc[key] = this.current[key]
-
-    return acc;
-  }
-
-  private watch(
-    keys: string[], 
-    observer: UpdatesEventHandler,
-    fireInitial?: boolean){
-
-    const pending = new Set<string>();
-
-    const callback = () => {
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = this.current[k];
-
-      observer.apply(this.control, [acc, Array.from(pending)])
-      pending.clear();
-    }
-
-    const onDone = 
-      this.addMultipleListener(keys, (key) => {
-        if(!pending.length)
-          setTimeout(callback, 0)
-        pending.add(key);
-      })
-
-    if(fireInitial)
-      callback()
-
-    return onDone;
-  }
-
-  private update(){
-    if(this.pendingRefresh)
-      return;
-    else
-      this.pendingRefresh = true;
-
-    setTimeout(() => {
-      const queued = new Set<UpdateTrigger>();
-      const { pendingUpdates, subscribers } = this;
-
-      for(const key of pendingUpdates)
-        for(const sub of subscribers[key] || [])
-          queued.add(sub);
-
-      for(const onDidUpdate of queued)
-        onDidUpdate();
-
-      pendingUpdates.clear();
-      this.pendingRefresh = false;
-    }, 0)
-  }
-
-  private initObservable(){
-    const { current, control, subscribers } = this;
-
-    for(const [key, desc] of entriesOf(control)){
+    for(const [key, desc] of entriesOf(subject)){
       if("value" in desc === false)
         continue;
 
@@ -279,88 +64,91 @@ export class Dispatch {
 
       if(typeof value === "function" && /^[A-Z]/.test(key) == false)
         continue;
+
+      if(["get", "set"].indexOf(key) >= 0)
+        continue;
         
       if(value instanceof PeerController){
-        value.attachNowIfGlobal(control, key);
+        value.attachNowIfGlobal(subject, key);
         continue;
       }
 
       subscribers[key] = new Set();
 
-      Object.defineProperty(control, key, {
+      Object.defineProperty(subject, key, {
         enumerable: true,
         configurable: false,
-        get: () => current[key],
+        get: () => state[key],
         set: value instanceof ManagedProperty 
-          ? this.monitorManagedValue(key, value)
+          ? this.monitorRecursive(key, value)
           : this.monitorValue(key, value)
       })
     }
   }
 
   private monitorValue(key: string, initial: any){
-    this.current[key] = initial;
+    this.state[key] = initial;
 
     return (value: any) => {
-      if(this.current[key] === value)
+      if(this.state[key] === value)
         if(!Array.isArray(value))
           return;
         
-      this.current[key] = value;
-      this.pendingUpdates.add(key);
+      this.state[key] = value;
+      this.pending.add(key);
       this.update();
     }
   }
   
-  private monitorManagedValue(key: string, { create, initial }: ManagedProperty){
-    const { current } = this;
+  private monitorRecursive(key: string, { create, initial }: ManagedProperty){
+    const { state } = this;
 
     function generate(value: {}){
-      const saved = current[key] = create();
+      const saved = state[key] = create();
       Object.assign(saved, value);
-      Dispatch.readyFor(saved);
+      ensureDispatch(saved);
     }
 
     if(initial)
       generate(initial)
     else
-      current[key] = undefined;
+      state[key] = undefined;
 
     return (value: any) => {
       if(!value)
-        current[key] = undefined
+        state[key] = undefined
       else if(typeof value == "object")
         generate(value)
       else
         throw new Error("Cannot assign a non-object to this property; it is managed.")
       
-      this.pendingUpdates.add(key);
+      this.pending.add(key);
       this.update();
     }
   }
 
-  private initComputed(){
-    const { current, subscribers, control } = this;
-    const getters = collectGetters(control, ["Provider", "Input", "Value"]);
+  private monitorComputed(){
+    const { state, subscribers, subject } = this;
+    const getters = collectGetters(subject, ["Provider", "Input", "Value"]);
 
     for(const [key, fn] of Object.entries(getters)){
       subscribers[key] = new Set();
 
-      const getValueLazy = () => current[key];
+      const getValueLazy = () => state[key];
 
       const setNotAllowed = () => {
         throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
       }
   
       const onValueDidChange = () => {
-        const value = fn.call(control);
+        const value = fn.call(subject);
         const subscribed = subscribers[key] || [];
   
-        if(current[key] === value)
+        if(state[key] === value)
           return
   
-        current[key] = value;
-        this.pendingUpdates.add(key);
+        state[key] = value;
+        this.pending.add(key);
 
         for(const onDidUpdate of subscribed)
           onDidUpdate();
@@ -368,13 +156,13 @@ export class Dispatch {
 
       function initComputedValue(early?: true){
         try {
-          const spy = createSubscription(control, onValueDidChange);
-          const value = current[key] = fn.call(spy);
+          const spy = createSubscription(subject, onValueDidChange);
+          const value = state[key] = fn.call(spy);
           spy[SUBSCRIBE]!();
           return value;
         }
         catch(err){
-          const entity = control.constructor.name;
+          const entity = subject.constructor.name;
           let warning = 
             `There was an attempt to access computed property ${entity}.${key} for the first time; ` +
             `however an exception was thrown. Expected data probably doesn't exist yet.`;
@@ -388,7 +176,7 @@ export class Dispatch {
           throw err;
         }
         finally {
-          Object.defineProperty(control, key, {
+          Object.defineProperty(subject, key, {
             set: setNotAllowed,
             get: getValueLazy,
             enumerable: true,
@@ -397,7 +185,7 @@ export class Dispatch {
         }
       }
   
-      Object.defineProperty(control, key, {
+      Object.defineProperty(subject, key, {
         set: setNotAllowed,
         get: initComputedValue,
         configurable: true

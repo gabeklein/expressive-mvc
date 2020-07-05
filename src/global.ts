@@ -1,5 +1,5 @@
 import { Controller, Singleton } from './controller';
-import { Dispatch } from './dispatch';
+import { ensureDispatch } from './dispatch';
 
 export const GLOBAL_INSTANCE = Symbol("controller_singleton");
 
@@ -23,7 +23,7 @@ export function globalController(
   if(callback)
     callback(instance);
     
-  Dispatch.readyFor(instance);
+  ensureDispatch(instance);
 
   return instance;
 }

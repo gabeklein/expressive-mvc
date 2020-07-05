@@ -1,7 +1,7 @@
 import { Controller } from './controller';
-import { DISPATCH } from './dispatch';
 import { Callback, LivecycleEvent, ModelController } from './types';
 import { define, Set } from './util';
+import { getDispatch } from './dispatch';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const UNSUBSCRIBE = Symbol("add_subscription");
@@ -16,13 +16,13 @@ export function createSubscription(
   onEvent?: (name: LivecycleEvent) => void
 ){
   const local = Object.create(source);
-  const dispatch = local[DISPATCH]!;
+  const dispatch = getDispatch(local);
   const watch = new Set<string>();
 
   let exclude: Set<string>;
   let cleanup: Set<Callback>;
 
-  for(const key in dispatch.subscribers)
+  for(const key of dispatch.managed)
     Object.defineProperty(local, key, {
       configurable: true,
       enumerable: true,
@@ -58,11 +58,11 @@ export function createSubscription(
 
   function forceRefresh(...keys: string[]){
     if(!keys[0]) onUpdate();
-    else dispatch.refresh(...keys)
+    else dispatch.forceRefresh(...keys)
   }
 
   function stopInference(){
-    for(const key in dispatch.subscribers)
+    for(const key of dispatch.managed)
       delete (local as any)[key];
   }
 

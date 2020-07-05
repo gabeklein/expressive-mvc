@@ -1,10 +1,10 @@
 import { Controller } from './controller';
-import { Dispatch } from './dispatch';
+import { ensureDispatch } from './dispatch';
 import { globalController } from './global';
-import { createSubscription } from './subscription';
-import { Class, LivecycleEvent, Callback } from './types';
 import { useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
+import { createSubscription } from './subscription';
+import { Callback, Class, LivecycleEvent } from './types';
 
 const subscriberLifecycle: any = {
   willCycle: "elementWillCycle",
@@ -53,7 +53,7 @@ export function useModelController(
     else
       instance = newController(init, args);
 
-    const dispatch = Dispatch.readyFor(instance);
+    const dispatch = ensureDispatch(instance);
 
     if(callback)
       callback(instance);
@@ -65,7 +65,7 @@ export function useModelController(
       if(handler)
         handler.apply(this, args);
         
-      dispatch.refresh(name, specific);
+      dispatch.forceRefresh(name, specific);
 
       switch(name){
         case "willRender":
@@ -98,7 +98,7 @@ export function useSubscriber(
       ? componentLifecycle
       : subscriberLifecycle;
 
-    const dispatch = Dispatch.readyFor(target);
+    const dispatch = ensureDispatch(target);
 
     function onEvent(this: Controller, name: LivecycleEvent){
       const specific = lifecycle[name] as LivecycleEvent;
@@ -107,7 +107,7 @@ export function useSubscriber(
       if(handler)
         handler.apply(this, args);
         
-      dispatch.refresh(name, specific);
+      dispatch.forceRefresh(name, specific);
     }
     
     return createSubscription(target, refresh, onEvent)
