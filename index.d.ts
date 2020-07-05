@@ -6,11 +6,6 @@ import {
     FunctionComponent,
 } from 'react';
 
-// declare const MANAGED: Symbol;
-// type Managed<T> = T & { MANAGED: any };
-// type PartialAny<T> = { [X in keyof T]: any }
-// type AssignablePartials<T> = { [X in keyof T]: PartialAny<T[X]> }
-
 type Class = new (...args: any) => any;
 type Expects<A extends any[]> = new(...args: A) => any
 type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
