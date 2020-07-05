@@ -33,10 +33,6 @@ export interface SubscribeController {
 
   onEvent(name: LivecycleEvent, args?: any[]): void;
   refresh(...keys: string[]): void;
-
-  not(...args: string[]): this;
-  on(...args: string[]): this;
-  only(...args: string[]): this;
 }
 
 export interface InstanceController {

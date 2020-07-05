@@ -59,10 +59,7 @@ export class Subscription<T extends Controller>{
     define(local, SUBSCRIPTION, this)
     define(local, {
       onEvent: this.handleEvent,
-      refresh: this.forceRefresh,
-      on: this.alsoWatch,
-      only: this.onlyWatch,
-      not: this.dontWatch
+      refresh: this.forceRefresh
     })
   }
 

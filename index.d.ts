@@ -101,10 +101,6 @@ interface IC {
  */
 interface SC {
     refresh(...keys: string[]): void;
-    on(): this;
-    only(): this;
-    not(): this;
-    except: never;
 }
 
 type Similar<T> = { [X in keyof T]?: T[X] };
