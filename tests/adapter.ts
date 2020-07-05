@@ -1,7 +1,7 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
 import { use } from '../src';
-import { SUBSCRIBE } from '../src/subscription';
+import { getSubscriber, SUBSCRIPTION } from '../src/subscription';
 
 type Class = new (...args: any[]) => any;
 type Initializer = () => any;
@@ -130,7 +130,7 @@ function mockPropertyAccess(
     for(const key of ensureArray(vars))
       void ref[key]; 
 
-    ref[SUBSCRIBE]();
+    getSubscriber(ref).start();
     return Object.getPrototypeOf(ref);
   }
 }
@@ -174,7 +174,7 @@ function plusUpdateAssertions(
   const patched = result as RenderControllerResult<any>;
   const { current } = patched.result;
 
-  patched.state = SUBSCRIBE in current ? Object.getPrototypeOf(current) : current;
+  patched.state = SUBSCRIPTION in current ? Object.getPrototypeOf(current) : current;
 
   patched.assertDidUpdate = async () => {
     const error = new TraceableError("Assertion failed: hook did not update");

@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { DISPATCH, ensureDispatch, getDispatch } from './dispatch';
 import { useManualRefresh } from './hook';
 import { ensurePeerControllers } from './peers';
-import { createSubscription, SUBSCRIBE, UNSUBSCRIBE } from './subscription';
+import { createSubscription, getSubscriber } from './subscription';
 import { Callback } from './types';
 
 export function useWatcher(control: Controller){
@@ -19,8 +19,10 @@ export function useWatcher(control: Controller){
   }
 
   useEffect(() => {
-    current[SUBSCRIBE]();
-    return () => current[UNSUBSCRIBE]();
+    const subscription = getSubscriber(current);
+
+    subscription.start();
+    return () => subscription.stop();
   }, []);
 
   return current;
@@ -35,7 +37,7 @@ export function useWatchedProperty<T extends Controller>(
   if(value === undefined && required)
     throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
 
-  const [ cache, onDidUpdate ] = useManualRefresh<any>();
+  const [ cache, onDidUpdate ] = useManualRefresh<{ current: Controller | null }>();
 
   if(typeof value == "object" && value !== null){
     if(value instanceof Controller){
@@ -69,7 +71,7 @@ export function useWatchedProperty<T extends Controller>(
 
   useEffect(() => {
     if(cache.current)
-      cache.current[SUBSCRIBE]();
+      getSubscriber(cache.current).start();
   }, [value])
 
   return value;
@@ -86,17 +88,15 @@ export function useWatchedProperty<T extends Controller>(
   };
 
   function resetSubscription(){
-    const subscriber = cache.current;
+    const instance = cache.current;
 
-    if(!subscriber)
+    if(!instance)
       return;
 
-    const { willLoseFocus } = subscriber;
+    if(instance.willLoseFocus)
+      instance.willLoseFocus(parent, key);
 
-    if(willLoseFocus) 
-      willLoseFocus(parent, key);
-
-    subscriber[UNSUBSCRIBE]();
+    getSubscriber(instance).stop();
     cache.current = null;
   }
 }

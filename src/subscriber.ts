@@ -88,8 +88,8 @@ export function useModelController(
   })
 }
 
-export function useSubscriber(
-  target: Controller,
+export function useSubscriber<T extends Controller>(
+  target: T,
   args: any[],
   main: boolean){
 
@@ -110,7 +110,7 @@ export function useSubscriber(
       dispatch.forceRefresh(name, specific);
     }
     
-    return createSubscription(target, refresh, onEvent)
+    return createSubscription(target, refresh, onEvent);
   })
 }
 

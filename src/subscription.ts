@@ -1,73 +1,91 @@
 import { Controller } from './controller';
 import { Callback, LivecycleEvent, ModelController } from './types';
 import { define, Set } from './util';
-import { getDispatch } from './dispatch';
+import { getDispatch, ControllerDispatch } from './dispatch';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");
-export const UNSUBSCRIBE = Symbol("add_subscription");
-export const SUBSCRIBE = Symbol("end_subscription");
+export const SUBSCRIPTION = Symbol("controller_subscription");
 
 export type UpdateTrigger = Callback;
 export type ModelEvent = keyof ModelController;
 
-export function createSubscription(
-  source: Controller,
-  onUpdate: UpdateTrigger,
-  onEvent?: (name: LivecycleEvent) => void
+export function createSubscription<T extends Controller>(
+  source: T,
+  trigger: UpdateTrigger,
+  callback?: (name: LivecycleEvent) => void
 ){
-  const local = Object.create(source);
-  const dispatch = getDispatch(local);
-  const watch = new Set<string>();
+  return new Subscription(source, trigger, callback).proxy;
+}
 
-  let exclude: Set<string>;
-  let cleanup: Set<Callback>;
+export function getSubscriber(control: Controller){
+  const sub = control[SUBSCRIPTION];
 
-  for(const key of dispatch.managed)
-    Object.defineProperty(local, key, {
-      configurable: true,
-      enumerable: true,
-      set: (value: any) => {
-        (source as any)[key] = value
-      },
-      get: () => {
-        watch.add(key);
-        return (source as any)[key];
-      }
-    })
+  if(!sub)
+    throw new Error("Subscription does not exist on this object.")
 
-  define(local, SUBSCRIBE, subscribe)
-  define(local, UNSUBSCRIBE, unsubscribe)
-  define(local, {
-    onEvent: handleEvent,
-    refresh: forceRefresh,
-    on: alsoWatch,
-    only: onlyWatch,
-    not: dontWatch
-  })
+  return sub;
+}
 
-  return local;
+export class Subscription<T extends Controller>{
+  public proxy: T;
+  private master: ControllerDispatch;
 
-  function handleEvent(name: LivecycleEvent){
-    if(name == "didMount")
-      subscribe();
-    if(name == "willUnmount")
-      unsubscribe();
-    if(onEvent)
-      onEvent.call(local, name);
-  }
+  private watch: Set<string>;
+  private cleanup?: Set<Callback>;
+  private exclude?: Set<string>;
+  
+  constructor(
+    source: T,
+    private trigger: UpdateTrigger,
+    private callback?: (name: LivecycleEvent) => void
+  ){
+    const local = this.proxy = Object.create(source);
+    const dispatch = this.master = getDispatch(source);
+    const watch = this.watch = new Set();
 
-  function forceRefresh(...keys: string[]){
-    if(!keys[0]) onUpdate();
-    else dispatch.forceRefresh(...keys)
-  }
-
-  function stopInference(){
     for(const key of dispatch.managed)
-      delete (local as any)[key];
+      Object.defineProperty(local, key, {
+        configurable: true,
+        enumerable: true,
+        set(value: any){
+          (source as any)[key] = value
+        },
+        get(){
+          watch.add(key);
+          return (source as any)[key];
+        }
+      })
+
+    define(local, SUBSCRIPTION, this)
+    define(local, {
+      onEvent: this.handleEvent,
+      refresh: this.forceRefresh,
+      on: this.alsoWatch,
+      only: this.onlyWatch,
+      not: this.dontWatch
+    })
   }
 
-  function subscribe(){
-    stopInference();
+  protected forceRefresh = (...keys: string[]) => {
+    if(!keys[0]) 
+      this.trigger();
+    else
+      this.master.forceRefresh(...keys)
+  }
+
+  protected handleEvent = (name: LivecycleEvent) => {
+    if(name == "didMount")
+      this.start();
+    if(name == "willUnmount")
+      this.stop();
+    if(this.callback)
+      this.callback.call(this.proxy, name);
+  }
+
+  public start = () => {
+    const { exclude, watch, master, trigger } = this;
+
+    this.stopInference();
 
     if(exclude)
       for(const k of exclude)
@@ -76,44 +94,50 @@ export function createSubscription(
     if(watch.size === 0)
       return;
 
-    cleanup = new Set();
-    for(const key of watch){
-      const done = dispatch.addListener(key, onUpdate);
-      cleanup.add(done)
-    }
+    const cleanup = this.cleanup = new Set();
+
+    for(const key of watch)
+      cleanup.add(
+        master.addListener(key, trigger)
+      )
   }
 
-  function unsubscribe(){
-    if(cleanup)
-      for(const unsub of cleanup)
+  public stop = () => {
+    if(this.cleanup)
+      for(const unsub of this.cleanup)
         unsub()
   }
 
-  function dontWatch(...keys: string[]){
-    exclude = new Set();
+  private stopInference(){
+    for(const key of this.master.managed)
+      delete (this.proxy as any)[key];
+  }
+
+  public dontWatch(...keys: string[]){
+    this.exclude = new Set();
 
     for(let arg of keys)
       for(const key of arg.split(","))
-        exclude.add(key);
+        this.exclude.add(key);
         
-    return local;
+    return this.proxy;
   }
 
-  function alsoWatch(...keys: string[]){
+  public alsoWatch(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
-        watch.add(key);
+        this.watch.add(key);
 
-    return local;
+    return this.proxy;
   }
 
-  function onlyWatch(...keys: string[]){
+  public onlyWatch(...keys: string[]){
     for(let arg of keys)
       for(const key of arg.split(","))
-        watch.add(key);
+        this.watch.add(key);
 
-    stopInference();
+    this.stopInference();
 
-    return local;
+    return this.proxy;
   }
 }

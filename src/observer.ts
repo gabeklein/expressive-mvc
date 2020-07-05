@@ -47,7 +47,7 @@ export class Observer<T> {
       if(once)
         onDone();
         
-      handler.apply(this.subject, [this.state[key], key]);
+      handler.call(this.subject, this.state[key], key);
     });
 
     return onDone;

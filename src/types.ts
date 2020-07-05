@@ -2,7 +2,7 @@ import { FunctionComponent, ProviderProps } from 'react';
 
 import { ControllerDispatch, DISPATCH } from './dispatch';
 import { RENEW_CONSUMERS } from './peers';
-import { SUBSCRIBE, UNSUBSCRIBE } from './subscription';
+import { Subscription, SUBSCRIPTION } from './subscription';
 
 export type BunchOf<T> = { [key: string]: T }
 export type Class = new(...args: any[]) => any;
@@ -29,11 +29,9 @@ export type LivecycleEvent =
   | "elementWillUnmount";
 
 export interface SubscribeController {
-  [UNSUBSCRIBE]?: Callback;
-  [SUBSCRIBE]?: Callback;
+  [SUBSCRIPTION]?: Subscription<any>;
 
   onEvent(name: LivecycleEvent, args?: any[]): void;
-
   refresh(...keys: string[]): void;
 
   not(...args: string[]): this;
