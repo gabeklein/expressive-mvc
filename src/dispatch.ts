@@ -37,7 +37,7 @@ export class ControllerDispatch
     })
 
     this.monitorValues(["get", "set"]);
-    this.monitorComputed(["Provider", "Input", "Value"]);
+    this.monitorComputedValues(["Provider", "Input", "Value"]);
 
     if(control.didCreate)
       control.didCreate();
@@ -77,8 +77,24 @@ export class ControllerDispatch
         configurable: false,
         get: () => state[key],
         set: value instanceof ManagedProperty 
-          ? this.monitorRecursive(key, value)
+          ? this.monitorManaged(key, value)
           : this.monitorValue(key, value)
+      })
+    }
+  }
+
+  private monitorComputedValues(except: string[]){
+    const { subscribers, subject } = this;
+    const getters = collectGetters(subject, except);
+
+    for(const key in getters){
+      const compute = getters[key];
+      subscribers[key] = new Set();
+
+      Object.defineProperty(subject, key, {
+        configurable: true,
+        set: throwNotAllowed(key),
+        get: this.monitorComputedValue(key, compute)
       })
     }
   }
@@ -97,7 +113,8 @@ export class ControllerDispatch
     }
   }
   
-  private monitorRecursive(key: string, { create, initial }: ManagedProperty){
+  private monitorManaged(key: string, value: ManagedProperty){
+    const { create, initial } = value;
     const { state } = this;
 
     function generate(value: {}){
@@ -124,69 +141,71 @@ export class ControllerDispatch
     }
   }
 
-  private monitorComputed(except: string[]){
+  private monitorComputedValue(key: string, fn: () => any){
     const { state, subscribers, subject } = this;
-    const getters = collectGetters(subject, except);
 
-    for(const [key, fn] of Object.entries(getters)){
-      subscribers[key] = new Set();
+    subscribers[key] = new Set();
 
-      const getValueLazy = () => state[key];
+    const getValueLazy = () => state[key];
 
-      const setNotAllowed = () => {
-        throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
+    const onValueDidChange = () => {
+      const value = fn.call(subject);
+      const subscribed = subscribers[key] || [];
+
+      if(state[key] === value)
+        return
+
+      state[key] = value;
+      this.pending.add(key);
+
+      for(const onDidUpdate of subscribed)
+        onDidUpdate();
+    }
+
+    return function initComputedValue(early = false){
+      try {
+        const spy = createSubscription(subject, onValueDidChange);
+        const value = state[key] = fn.call(spy);
+        getSubscriber(spy).start();
+        return value;
       }
-  
-      const onValueDidChange = () => {
-        const value = fn.call(subject);
-        const subscribed = subscribers[key] || [];
-  
-        if(state[key] === value)
-          return
-  
-        state[key] = value;
-        this.pending.add(key);
-
-        for(const onDidUpdate of subscribed)
-          onDidUpdate();
+      catch(e){
+        failedComputeHint(subject.constructor.name, key, early);
+        throw e;
       }
-
-      function initComputedValue(early?: true){
-        try {
-          const spy = createSubscription(subject, onValueDidChange);
-          const value = state[key] = fn.call(spy);
-          getSubscriber(spy).start();
-          return value;
-        }
-        catch(err){
-          const entity = subject.constructor.name;
-          let warning = 
-            `There was an attempt to access computed property ${entity}.${key} for the first time; ` +
-            `however an exception was thrown. Expected data probably doesn't exist yet.`;
-
-          if(early)
-            warning += `\n` + 
-              `Note: Computed are usually only calculated when first accessed, except when forced by "observe" or "export".` +
-              `This property's getter may have run earlier than intended because of that.`
-
-          console.warn(warning);
-          throw err;
-        }
-        finally {
-          Object.defineProperty(subject, key, {
-            set: setNotAllowed,
-            get: getValueLazy,
-            enumerable: true,
-            configurable: true
-          })
-        }
+      finally {
+        Object.defineProperty(subject, key, {
+          set: throwNotAllowed(key),
+          get: getValueLazy,
+          enumerable: true,
+          configurable: true
+        })
       }
-  
-      Object.defineProperty(subject, key, {
-        set: setNotAllowed,
-        get: initComputedValue,
-        configurable: true
-      })
     }
   }
+}
+
+function throwNotAllowed(key: string){
+  return () => {
+    throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
+  }
+}
+
+function failedComputeHint(
+  parent: string, 
+  property: string, 
+  early: boolean){
+
+  let warning = 
+    `There was an attempt to access computed property ` + 
+    `${parent}.${property} for the first time; however an ` +
+    `exception was thrown. Dependant values probably don't exist yet.`;
+
+  if(early)
+    warning += `\n` + 
+      `Note: Computed values are usually only calculated after first ` +
+      `access, except where accessed implicitly by "on" or "export". Your ` + 
+      `'${property}' getter may have run earlier than intended because of that.`
+
+  console.warn(warning);
 }

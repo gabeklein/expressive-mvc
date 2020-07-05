@@ -63,14 +63,14 @@ export class Subscription<T extends Controller>{
     })
   }
 
-  protected forceRefresh = (...keys: string[]) => {
+  forceRefresh = (...keys: string[]) => {
     if(!keys[0]) 
       this.trigger();
     else
       this.master.forceRefresh(...keys)
   }
 
-  protected handleEvent = (name: LivecycleEvent) => {
+  handleEvent = (name: LivecycleEvent) => {
     if(name == "didMount")
       this.start();
     if(name == "willUnmount")
@@ -79,7 +79,7 @@ export class Subscription<T extends Controller>{
       this.callback.call(this.proxy, name);
   }
 
-  public start = () => {
+  public start(){
     const { exclude, watch, master, trigger } = this;
 
     this.stopInference();
@@ -99,15 +99,19 @@ export class Subscription<T extends Controller>{
       )
   }
 
-  public stop = () => {
+  public stop(){
     if(this.cleanup)
       for(const unsub of this.cleanup)
         unsub()
   }
 
   private stopInference(){
+    const proxy: any = this.proxy;
+
     for(const key of this.master.managed)
-      delete (this.proxy as any)[key];
+      delete proxy[key];
+
+    delete this.exclude;
   }
 
   public dontWatch(...keys: string[]){
