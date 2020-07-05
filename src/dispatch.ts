@@ -36,8 +36,8 @@ export class ControllerDispatch
       observe: this.observe.bind(this)
     })
 
-    this.monitorValues();
-    this.monitorComputed();
+    this.monitorValues(["get", "set"]);
+    this.monitorComputed(["Provider", "Input", "Value"]);
 
     if(control.didCreate)
       control.didCreate();
@@ -50,7 +50,7 @@ export class ControllerDispatch
     this.update();
   }
 
-  private monitorValues(){
+  private monitorValues(except: string[]){
     const { state, subject, subscribers } = this;
     
     for(const [key, desc] of entriesOf(subject)){
@@ -62,7 +62,7 @@ export class ControllerDispatch
       if(typeof value === "function" && /^[A-Z]/.test(key) == false)
         continue;
 
-      if(["get", "set"].indexOf(key) >= 0)
+      if(except.indexOf(key) >= 0)
         continue;
         
       if(value instanceof PeerController){
@@ -124,9 +124,9 @@ export class ControllerDispatch
     }
   }
 
-  private monitorComputed(){
+  private monitorComputed(except: string[]){
     const { state, subscribers, subject } = this;
-    const getters = collectGetters(subject, ["Provider", "Input", "Value"]);
+    const getters = collectGetters(subject, except);
 
     for(const [key, fn] of Object.entries(getters)){
       subscribers[key] = new Set();
