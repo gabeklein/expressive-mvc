@@ -106,7 +106,7 @@ export class Observer<T> {
       for(const k of keys)
         acc[k] = this.state[k];
 
-      observer.apply(this.subject, [acc, Array.from(pending)]);
+      observer.call(this.subject, acc, Array.from(pending));
       pending.clear();
     };
 

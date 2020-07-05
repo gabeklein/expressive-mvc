@@ -28,21 +28,20 @@ export function useEventDrivenController<T extends Controller>(
     trigger = state.trigger = (name) => control.onEvent(name);
   }
 
-  if(!state.current){
+  if(state.current)
+    trigger("willUpdate");
+  else {
     state.current = control;
     trigger("willMount");
   }
-  else
-    trigger("willUpdate");
 
   trigger("willRender");
 
   useEffect(() => {
     trigger("didMount");
 
-    return () => {
+    return () =>
       trigger("willUnmount");
-    }
   }, [])
 
   return control;
