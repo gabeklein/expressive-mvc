@@ -46,6 +46,11 @@ export interface InstanceController {
   [DISPATCH]?: ControllerDispatch;
   [RENEW_CONSUMERS]?: Callback;
 
+  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
+  
+  once(target: string, listener: HandleUpdatedValue<this, any>): void;
+  once(target: string): Promise<any> | undefined;
+
   toggle(key: string): boolean;
   refresh(...keys: string[]): void;
 

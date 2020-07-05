@@ -74,6 +74,11 @@ interface IC {
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 
+    on<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): () => void;
+  
+    once<T extends keyof this>(target: T, listener: HandleUpdatedValue<this, T>): void;
+    once<T extends keyof this>(target: T): Promise<this[T]>;
+
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 

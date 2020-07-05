@@ -7,7 +7,7 @@ import { ControlledInput, ControlledValue } from './hoc';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController } from './types';
+import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController, HandleUpdatedValue } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
@@ -22,6 +22,27 @@ export class Controller {
   constructor(){
     this.get = this;
     this.set = this;
+  }
+
+  on = (
+    target: string | string[],
+    listener: HandleUpdatedValue<this, any>) => {
+
+    return getDispatch(this).observe(target, listener);
+  }
+
+  once = (
+    target: string,
+    listener?: HandleUpdatedValue<this, any>) => {
+
+    const dispatch = getDispatch(this);
+
+    if(listener)
+      dispatch.observe(target, listener, true);
+    else
+      return new Promise(resolve => {
+        dispatch.observe(target, resolve, true);
+      });
   }
 
   toggle = (key: string) => {
