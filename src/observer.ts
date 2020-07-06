@@ -164,7 +164,7 @@ export class Observer<T> {
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
       const getter = descriptor && descriptor.get;
 
-      if(isInitialCompute(getter))
+      if(getter && isInitialCompute(getter))
         (getter as any)(true);
 
       listeners.add(trigger);
