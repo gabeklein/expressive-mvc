@@ -44,6 +44,7 @@ export class Observer<T> {
     if(typeof watch == "string")
       watch = [watch];
 
+    //TODO: dont use multi-listener by default
     const onDone = this.addListenerForMultiple(watch, (key) => {
       if(once)
         onDone();
@@ -52,20 +53,6 @@ export class Observer<T> {
     });
 
     return onDone;
-  }
-
-  public addListener(
-    key: string,
-    callback: UpdateTrigger){
-
-    let register = this.subscribers[key];
-
-    if(!register)
-      register = this.subscribers[key] = new Set();
-
-    register.add(callback);
-
-    return () => register.delete(callback);
   }
 
   public pick(keys?: string[]){
@@ -141,6 +128,21 @@ export class Observer<T> {
 
       pendingUpdate.clear();
     }, 0);
+  }
+
+  //TODO: does this even have parity with multi?
+  public addListener(
+    key: string,
+    callback: UpdateTrigger){
+
+    let register = this.subscribers[key];
+
+    if(!register)
+      register = this.subscribers[key] = new Set();
+
+    register.add(callback);
+
+    return () => register.delete(callback);
   }
 
   private addListenerForMultiple(
