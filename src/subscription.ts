@@ -9,14 +9,6 @@ export const SUBSCRIPTION = Symbol("controller_subscription");
 export type UpdateTrigger = Callback;
 export type ModelEvent = keyof ModelController;
 
-export function createSubscription<T extends Controller>(
-  source: T,
-  trigger: UpdateTrigger,
-  callback?: (name: LivecycleEvent) => void
-){
-  return new Subscription(source, trigger, callback).proxy;
-}
-
 export function getSubscriber(control: Controller){
   const sub = control[SUBSCRIPTION];
 

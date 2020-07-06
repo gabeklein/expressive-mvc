@@ -2,7 +2,7 @@ import { Controller } from './controller';
 import { ManagedProperty } from './managed';
 import { Observer } from './observer';
 import { PeerController } from './peers';
-import { createSubscription, getSubscriber } from './subscription';
+import { Subscription } from './subscription';
 import { collectGetters, define, entriesOf } from './util';
 
 export const DISPATCH = Symbol("controller_dispatch");
@@ -164,9 +164,9 @@ export class ControllerDispatch
 
     function getStartingValue(early = false){
       try {
-        const spy = createSubscription(subject, onValueDidChange);
-        const value = state[key] = fn.call(spy);
-        getSubscriber(spy).start();
+        const subscribe = new Subscription(subject, onValueDidChange);
+        const value = state[key] = fn.call(subscribe.proxy);
+        subscribe.start();
         return value;
       }
       catch(e){

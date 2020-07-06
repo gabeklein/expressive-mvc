@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { DISPATCH, ensureDispatch, getDispatch } from './dispatch';
 import { useManualRefresh } from './hook';
 import { ensurePeerControllers } from './peers';
-import { createSubscription, getSubscriber } from './subscription';
+import { getSubscriber, Subscription } from './subscription';
 import { Callback } from './types';
 
 export function useWatcher(control: Controller){
@@ -13,9 +13,8 @@ export function useWatcher(control: Controller){
   let { current } = cache;
   
   if(!current){
-    ensureDispatch(control);
-    current = cache.current = 
-      createSubscription(control, onDidUpdate);
+    const subscribe = new Subscription(control, onDidUpdate);
+    current = cache.current = subscribe.proxy;
   }
 
   useEffect(() => {
@@ -51,9 +50,10 @@ export function useWatchedProperty<T extends Controller>(
         didFocus.call(value, parent, key);
     }
   
-    if(!cache.current && value[DISPATCH])
-      value = cache.current = 
-        createSubscription(value, childDidUpdate);
+    if(!cache.current && value[DISPATCH]){
+      const subscribe = new Subscription(value, childDidUpdate);
+      value = cache.current = subscribe.proxy;
+    }
   }
 
   useEffect(() => {

@@ -3,8 +3,8 @@ import { ensureDispatch } from './dispatch';
 import { globalController } from './global';
 import { useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
-import { createSubscription } from './subscription';
-import { Callback, Class, LivecycleEvent, BunchOf } from './types';
+import { Subscription } from './subscription';
+import { BunchOf, Callback, Class, LivecycleEvent } from './types';
 
 export const lifecycleEvents = [
   "willReset",
@@ -86,7 +86,7 @@ export function useModelController(
       }
     }
 
-    return createSubscription(instance, refresh, onEvent);
+    return new Subscription(instance, refresh, onEvent).proxy;
   })
 }
 
@@ -112,7 +112,7 @@ export function useSubscriber<T extends Controller>(
       dispatch.forceRefresh(name, specific);
     }
     
-    return createSubscription(target, refresh, onEvent);
+    return new Subscription(target, refresh, onEvent).proxy;
   })
 }
 
