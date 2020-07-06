@@ -1,7 +1,7 @@
 import { Controller } from './controller';
+import { ControllerDispatch, ensureDispatch } from './dispatch';
 import { Callback, LivecycleEvent, ModelController } from './types';
 import { define } from './util';
-import { getDispatch, ControllerDispatch } from './dispatch';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const SUBSCRIPTION = Symbol("controller_subscription");
@@ -30,32 +30,26 @@ export class Subscription<T extends Controller = any>{
   public proxy: T;
   private master: ControllerDispatch;
 
-  private watch: Set<string>;
-  private cleanup?: Set<Callback>;
+  private cleanup = new Set<Callback>();
   
   constructor(
     source: T,
     private trigger: UpdateTrigger,
     private callback?: (name: LivecycleEvent) => void
   ){
+    const master = this.master = ensureDispatch(source);
     const local = this.proxy = Object.create(source);
-    const dispatch = this.master = getDispatch(source);
-    const watch = this.watch = new Set();
 
-    for(const key of dispatch.managed)
+    define(local, SUBSCRIPTION, this);
+
+    for(const key of master.managed)
       Object.defineProperty(local, key, {
         configurable: true,
         enumerable: true,
-        set(value: any){
-          (source as any)[key] = value
-        },
-        get(){
-          watch.add(key);
-          return (source as any)[key];
-        }
+        set: (value: any) => (master.state as any)[key] = value,
+        get: this.onAccess(key)
       })
 
-    define(local, SUBSCRIPTION, this)
     define(local, {
       onEvent: this.handleEvent,
       refresh: this.forceRefresh
@@ -72,42 +66,76 @@ export class Subscription<T extends Controller = any>{
   handleEvent = (name: LivecycleEvent) => {
     if(name == "didMount")
       this.start();
+
     if(name == "willUnmount")
       this.stop();
+
     if(this.callback)
       this.callback.call(this.proxy, name);
   }
 
   public start(){
-    const { exclude, watch, master, trigger } = this;
-
-    this.stopInference();
-
-    if(exclude)
-      for(const k of exclude)
-        watch.delete(k);
-
-    if(watch.size === 0)
-      return;
-
-    const cleanup = this.cleanup = new Set();
-
-    for(const key of watch)
-      cleanup.add(
-        master.addListener(key, trigger)
-      )
+    for(const key of this.master.managed)
+      delete (this.proxy as any)[key];
   }
 
   public stop(){
-    if(this.cleanup)
-      for(const unsub of this.cleanup)
-        unsub()
+    for(const done of this.cleanup)
+      done()
+  }
+  
+  private onAccess = (key: string) => {
+    const { master } = this;
+
+    return () => {
+      let value = (master.state as any)[key];
+      let handler: Callback;
+
+      if(value instanceof Controller){
+        const sub = this.monitorRecursive(key);
+        handler = sub.reset;
+        value = sub.proxy;
+      }
+      else
+        handler = this.trigger;
+        
+      this.cleanup.add(
+        master.addListener(key, handler)
+      );
+  
+      return value;
+    }
   }
 
-  private stopInference(){
-    const proxy: any = this.proxy;
+  private monitorRecursive(key: string){
+    const { master } = this;
+    let active!: Subscription;
 
-    for(const key of this.master.managed)
-      delete proxy[key];
+    master.once("willUnmount", () => active && active.stop())
+
+    const initSubscription = (value: Controller) => {
+      active = new Subscription(value, this.trigger);
+      Object.defineProperty(this.proxy, key, {
+        value: active.proxy,
+        configurable: true,
+        enumerable: true
+      })
+      master.once("didRender", () => {
+        delete (this.proxy as any)[key];
+        active.start()
+      });
+      return active.proxy
+    }
+
+    const resetSubscription = () => {
+      active.stop();
+      initSubscription(master.state[key]);
+      this.trigger();
+    }
+
+    return {
+      proxy: initSubscription(master.state[key]),
+      reset: resetSubscription
+    };
   }
 }

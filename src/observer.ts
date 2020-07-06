@@ -11,9 +11,10 @@ export class Observer<T> {
     public subject: T
   ){}
   
-  protected state = {} as BunchOf<any>;
   protected pending = new Set<string>();
   protected subscribers = {} as BunchOf<Set<() => void>>
+
+  public state = {} as BunchOf<any>;
 
   public get values(){
     return Object.assign({}, this.state);
