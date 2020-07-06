@@ -1,8 +1,8 @@
+import { isInitialCompute } from './dispatch';
 import { lifecycleEvents } from './subscriber';
 import { UpdateTrigger } from './subscription';
 import { BunchOf } from './types';
 import { Set } from './util';
-import { isInitialCompute } from 'dispatch';
 
 type UpdateEventHandler = (value: any, key: string) => void;
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
