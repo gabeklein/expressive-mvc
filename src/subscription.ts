@@ -26,7 +26,7 @@ export function getSubscriber(control: Controller){
   return sub;
 }
 
-export class Subscription<T extends Controller>{
+export class Subscription<T extends Controller = any>{
   public proxy: T;
   private master: ControllerDispatch;
 

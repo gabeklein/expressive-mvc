@@ -29,7 +29,7 @@ export type LivecycleEvent =
   | "elementWillUnmount";
 
 export interface SubscribeController {
-  [SUBSCRIPTION]?: Subscription<any>;
+  [SUBSCRIPTION]?: Subscription;
 
   onEvent(name: LivecycleEvent, args?: any[]): void;
   refresh(...keys: string[]): void;
