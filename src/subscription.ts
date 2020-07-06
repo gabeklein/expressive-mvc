@@ -38,7 +38,7 @@ export class Subscription<T extends Controller = any>{
       Object.defineProperty(local, key, {
         configurable: true,
         enumerable: true,
-        set: (value: any) => (master.state as any)[key] = value,
+        set: (value: any) => (master.subject as any)[key] = value,
         get: this.onAccess(key)
       })
 
@@ -80,7 +80,7 @@ export class Subscription<T extends Controller = any>{
     const { master } = this;
 
     return () => {
-      let value = (master.state as any)[key];
+      let value = (master.subject as any)[key];
       let handler: Callback;
 
       if(value instanceof Controller){
@@ -121,12 +121,12 @@ export class Subscription<T extends Controller = any>{
 
     const resetSubscription = () => {
       active.stop();
-      initSubscription(master.state[key]);
+      initSubscription((master.subject as any)[key]);
       this.trigger();
     }
 
     return {
-      proxy: initSubscription(master.state[key]),
+      proxy: initSubscription((master.subject as any)[key]),
       reset: resetSubscription
     };
   }

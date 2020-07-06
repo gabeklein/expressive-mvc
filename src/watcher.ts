@@ -18,15 +18,16 @@ export function useWatcher(control: Controller){
   }
 
   useEffect(() => {
-    const subscription = getSubscriber(current);
+    const subscribe = getSubscriber(current);
 
-    subscription.start();
-    return () => subscription.stop();
+    subscribe.start();
+    return () => subscribe.stop();
   }, []);
 
   return current;
 }
 
+//TODO: Reimplement
 export function useWatchedProperty<T extends Controller>(
   parent: T, key: string, required?: boolean){
 
