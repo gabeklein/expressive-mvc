@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Callback, LivecycleEvent, ModelController } from './types';
-import { define, Set } from './util';
+import { define } from './util';
 import { getDispatch, ControllerDispatch } from './dispatch';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");

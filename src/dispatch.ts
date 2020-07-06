@@ -3,7 +3,7 @@ import { ManagedProperty } from './managed';
 import { Observer } from './observer';
 import { PeerController } from './peers';
 import { createSubscription, getSubscriber } from './subscription';
-import { collectGetters, define, entriesOf, Set } from './util';
+import { collectGetters, define, entriesOf } from './util';
 
 export const DISPATCH = Symbol("controller_dispatch");
 

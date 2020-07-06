@@ -2,7 +2,6 @@ import { isInitialCompute } from './dispatch';
 import { lifecycleEvents } from './subscriber';
 import { UpdateTrigger } from './subscription';
 import { BunchOf, HandleUpdatedValue } from './types';
-import { Set } from './util';
 
 type UpdateEventHandler = (value: any, key: string) => void;
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
@@ -118,7 +117,7 @@ export class Observer<T> {
     };
 
     const onDone = this.addListenerForMultiple(keys, (key) => {
-      if(!pending.length)
+      if(!pending.size)
         setTimeout(callback, 0);
 
       pending.add(key);
