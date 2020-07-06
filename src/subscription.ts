@@ -32,7 +32,6 @@ export class Subscription<T extends Controller = any>{
 
   private watch: Set<string>;
   private cleanup?: Set<Callback>;
-  private exclude?: Set<string>;
   
   constructor(
     source: T,
@@ -110,35 +109,5 @@ export class Subscription<T extends Controller = any>{
 
     for(const key of this.master.managed)
       delete proxy[key];
-
-    delete this.exclude;
-  }
-
-  public dontWatch(...keys: string[]){
-    this.exclude = new Set();
-
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        this.exclude.add(key);
-        
-    return this.proxy;
-  }
-
-  public alsoWatch(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        this.watch.add(key);
-
-    return this.proxy;
-  }
-
-  public onlyWatch(...keys: string[]){
-    for(let arg of keys)
-      for(const key of arg.split(","))
-        this.watch.add(key);
-
-    this.stopInference();
-
-    return this.proxy;
   }
 }
