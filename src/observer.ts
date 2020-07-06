@@ -1,7 +1,7 @@
 import { isInitialCompute } from './dispatch';
 import { lifecycleEvents } from './subscriber';
 import { UpdateTrigger } from './subscription';
-import { BunchOf } from './types';
+import { BunchOf, HandleUpdatedValue } from './types';
 import { Set } from './util';
 
 type UpdateEventHandler = (value: any, key: string) => void;
@@ -33,6 +33,25 @@ export class Observer<T> {
     else
       return new Promise(resolve => {
         this.observe(key, resolve, true);
+      });
+  }
+
+  public on(
+    target: string | string[],
+    listener: HandleUpdatedValue<any, any>){
+
+    return this.observe(target, listener);
+  }
+
+  public once(
+    target: string,
+    listener?: HandleUpdatedValue<any, any>){
+      
+    if(listener)
+      this.observe(target, listener, true);
+    else
+      return new Promise(resolve => {
+        this.observe(target, resolve, true);
       });
   }
 

@@ -35,14 +35,7 @@ export class Controller {
     target: string,
     listener?: HandleUpdatedValue<this, any>) => {
 
-    const dispatch = getDispatch(this);
-
-    if(listener)
-      dispatch.observe(target, listener, true);
-    else
-      return new Promise(resolve => {
-        dispatch.observe(target, resolve, true);
-      });
+    return getDispatch(this).once(target, listener);
   }
 
   toggle = (key: string) => {
