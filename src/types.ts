@@ -15,6 +15,8 @@ export type LivecycleEvent =
   | "willMount"
   | "willUpdate"
   | "willRender"
+  | "didRender"
+  | "willReset"
   | "didMount"
   | "willUnmount"
   | "componentWillMount"
@@ -77,7 +79,9 @@ export interface ModelController {
   didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didMount?(...args: any[]): void;
-  
+  didRender?(...args: any[]): void;
+
+  willReset?(...args: any[]): void;
   willDestroy?(callback?: Callback): void;
   willLoseFocus?(parent: ModelController, as: string): void;
   willMount?(...args: any[]): void;

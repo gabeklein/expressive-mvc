@@ -38,6 +38,13 @@ export function useEventDrivenController<T extends Controller>(
   trigger("willRender");
 
   useEffect(() => {
+    trigger("didRender");
+
+    return () =>
+      trigger("willReset")
+  })
+
+  useEffect(() => {
     trigger("didMount");
 
     return () =>
