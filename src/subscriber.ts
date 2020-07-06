@@ -4,31 +4,33 @@ import { globalController } from './global';
 import { useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { createSubscription } from './subscription';
-import { Callback, Class, LivecycleEvent } from './types';
-
-const subscriberLifecycle: any = {
-  willCycle: "elementWillCycle",
-  willRender: "elementWillRender",
-  willUpdate: "elementWillUpdate",
-  willUnmount: "elementWillUnmount",
-  didMount: "elementDidMount",
-  willMount: "elementWillMount"
-}
-
-const componentLifecycle: any = {
-  willCycle: "componentWillCycle",
-  willRender: "componentWillRender",
-  willUpdate: "componentWillUpdate",
-  willUnmount: "componentWillUnmount",
-  willMount: "componentWillMount",
-  didMount: "componentDidMount"
-}
+import { Callback, Class, LivecycleEvent, BunchOf } from './types';
 
 export const lifecycleEvents = [
-  ...Object.keys(subscriberLifecycle),
-  ...Object.entries(subscriberLifecycle),
-  ...Object.entries(componentLifecycle)
-]
+  "willReset",
+  "willCycle",
+  "willRender",
+  "willUpdate",
+  "willMount",
+  "willUnmount",
+  "didRender",
+  "didMount"
+];
+
+const mapPrefix = (prefix: string) => {
+  const map = {} as BunchOf<string>;
+  for(const name of lifecycleEvents)
+    map[name] = prefix + name[0].toUpperCase() + name.slice(1);
+  return map;
+}
+
+export const subscriberLifecycle = mapPrefix("element");
+export const componentLifecycle = mapPrefix("component");
+
+lifecycleEvents.push(
+  ...Object.values(subscriberLifecycle),
+  ...Object.values(componentLifecycle)
+)
 
 export function use(init: any, ...args: any[]){
   return useModelController(init, args);
