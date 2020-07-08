@@ -7,12 +7,12 @@ import { ControlledInput, ControlledValue } from './hoc';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController, HandleUpdatedValue } from './types';
+import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController, EventController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
-  extends ModelController, InstanceController, SubscribeController {
+  extends ModelController, EventController, InstanceController, SubscribeController {
 
   // Extended classes represent the onion-layers of a given controller.
   // What is accessible depends on the context controller is accessed.

@@ -34,28 +34,39 @@ export interface SubscribeController {
   [SUBSCRIPTION]?: Subscription;
 
   use: this;
+  
   onEvent(name: LivecycleEvent, args?: any[]): void;
   refresh(...keys: string[]): void;
 }
 
-export interface InstanceController {
+export interface EventController {
+  [DISPATCH]?: ControllerDispatch;
+  
   get: this;
   set: this;
 
-  Input: FunctionComponent<{ to: string }>;
-  Value: FunctionComponent<{ of: string }>;
-  Provider: FunctionComponent<ProviderProps<this>>;
-
-  [DISPATCH]?: ControllerDispatch;
-  [RENEW_CONSUMERS]?: Callback;
+  refresh(...keys: string[]): void;
 
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
   
   once(target: string, listener: HandleUpdatedValue<this, any>): void;
   once(target: string): Promise<any> | undefined;
 
+  observe<P extends keyof this>(
+    key: P | P[], 
+    listener: HandleUpdatedValue<this, P>, 
+    once?: boolean
+  ): Callback;
+}
+
+export interface InstanceController {
+  Input: FunctionComponent<{ to: string }>;
+  Value: FunctionComponent<{ of: string }>;
+  Provider: FunctionComponent<ProviderProps<this>>;
+
+  [RENEW_CONSUMERS]?: Callback;
+
   toggle(key: string): boolean;
-  refresh(...keys: string[]): void;
 
   assign(props: BunchOf<any>): this;
   assign(key: string, props?: BunchOf<any>): any;
@@ -65,15 +76,7 @@ export interface InstanceController {
 
   sub(...args: any[]): this;
 
-  onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
-  onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
-
   export(...args: any[]): any;
-  observe<P extends keyof this>(
-    key: P | P[], 
-    listener: HandleUpdatedValue<this, P>, 
-    once?: boolean
-  ): Callback;
 }
 
 export interface ModelController {
