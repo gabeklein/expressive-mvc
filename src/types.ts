@@ -33,6 +33,7 @@ export type LivecycleEvent =
 export interface SubscribeController {
   [SUBSCRIPTION]?: Subscription;
 
+  use: this;
   onEvent(name: LivecycleEvent, args?: any[]): void;
   refresh(...keys: string[]): void;
 }

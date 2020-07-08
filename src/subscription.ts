@@ -43,6 +43,7 @@ export class Subscription<T extends Controller = any>{
       })
 
     define(local, {
+      use: local,
       onEvent: this.handleEvent,
       refresh: this.forceRefresh
     })
