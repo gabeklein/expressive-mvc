@@ -69,10 +69,13 @@ interface IC {
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 
-    on<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): () => void;
+    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
   
-    once<T extends keyof this>(target: T, listener: HandleUpdatedValue<this, T>): void;
-    once<T extends keyof this>(target: T): Promise<this[T]>;
+    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
+    once<T extends keyof this>(property: T): Promise<this[T]>;
+
+    observe<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    observe<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
@@ -88,8 +91,6 @@ interface IC {
     onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
-    observe<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-
     export(): { [P in keyof this]: this[P] };
     export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): () => void;
     export<P extends keyof this>(keys: P[]): Pick<this, P>;
@@ -100,6 +101,7 @@ interface IC {
  * Subscription Controller, methods local to a controlled accessed through subscriptions.
  */
 interface SC {
+    use: this;
     refresh(...keys: string[]): void;
 }
 

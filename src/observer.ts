@@ -24,7 +24,7 @@ export class Observer<T> {
   }
 
   public on(
-    target: string | string[],
+    target: string,
     listener: HandleUpdatedValue<any, any>){
 
     return this.observe(target, listener, false, false);
