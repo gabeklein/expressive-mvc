@@ -16,10 +16,19 @@ export function getDispatch(from: Controller){
   return dispatch;
 }
 
-export function ensureDispatch(control: any){
-  const target = control as Controller;
+export function ensureDispatch(control: Controller){
+  let dispatch = control[DISPATCH];
 
-  return target[DISPATCH] || new ControllerDispatch(control);
+  if(!dispatch){
+    dispatch = new ControllerDispatch(control);
+    dispatch.monitorValues(["get", "set"]);
+    dispatch.monitorComputedValues(["Provider", "Input", "Value"]);
+
+    if(control.didCreate)
+      control.didCreate();
+  }
+  
+  return dispatch;
 }
 
 export class ControllerDispatch 
@@ -37,12 +46,6 @@ export class ControllerDispatch
       observe: this.observe.bind(this),
       refresh: this.forceRefresh.bind(this)
     })
-
-    this.monitorValues(["get", "set"]);
-    this.monitorComputedValues(["Provider", "Input", "Value"]);
-
-    if(control.didCreate)
-      control.didCreate();
   }
 
   public forceRefresh(...watching: string[]){
@@ -52,7 +55,7 @@ export class ControllerDispatch
     this.update();
   }
 
-  private monitorValues(except: string[]){
+  public monitorValues(except: string[]){
     const { subject } = this;
     
     for(const [key, desc] of entriesOf(subject)){
@@ -85,7 +88,8 @@ export class ControllerDispatch
     const { state } = this;
 
     function generate(value: {}){
-      const saved = state[key] = create();
+      //TODO enforce type
+      const saved = state[key] = create() as Controller;
       Object.assign(saved, value);
       ensureDispatch(saved);
     }
@@ -108,7 +112,7 @@ export class ControllerDispatch
     }
   }
 
-  private monitorComputedValues(except: string[]){
+  public monitorComputedValues(except: string[]){
     const { subscribers, subject } = this;
     const getters = collectGetters(subject, except);
 
