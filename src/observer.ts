@@ -1,15 +1,37 @@
-import { isInitialCompute } from './dispatch';
 import { lifecycleEvents } from './subscriber';
-import { UpdateTrigger } from './subscription';
+import { Subscription, UpdateTrigger } from './subscription';
 import { BunchOf, HandleUpdatedValue } from './types';
+import { collectGetters, define, entriesOf } from './util';
 
 type UpdateEventHandler = (value: any, key: string) => void;
-type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
-export class Observer<T> {
+export const OBSERVER = Symbol("object_observer");
+
+export type Observable = { 
+  [OBSERVER]: Observer<any>
+}
+
+export function getObserver<T>(from: { [OBSERVER]: T }){
+  const dispatch = from[OBSERVER];
+
+  if(!dispatch)
+    throw new Error("Dispatch has not yet been created on this instance!");
+
+  return dispatch;
+}
+
+export class Observer<T extends Observable> {
   constructor(
     public subject: T
-  ){}
+  ){
+    define(subject, OBSERVER, this);
+    define(subject, {
+      on: this.on.bind(this),
+      once: this.once.bind(this),
+      observe: this.watch.bind(this),
+      refresh: this.trigger.bind(this)
+    })
+  }
   
   protected state = {} as BunchOf<any>;
   protected pending = new Set<string>();
@@ -27,7 +49,7 @@ export class Observer<T> {
     target: string,
     listener: HandleUpdatedValue<any, any>){
 
-    return this.observe(target, listener, false, false);
+    return this.watch(target, listener, false, false);
   }
 
   public once(
@@ -35,14 +57,14 @@ export class Observer<T> {
     listener?: HandleUpdatedValue<any, any>){
       
     if(listener)
-      this.observe(target, listener, true, false);
+      this.watch(target, listener, true, false);
     else
       return new Promise(resolve => {
-        this.observe(target, resolve, true, false);
+        this.watch(target, resolve, true, false);
       });
   }
 
-  public observe(
+  public watch(
     watch: string | string[],
     handler: UpdateEventHandler,
     once?: boolean,
@@ -59,91 +81,53 @@ export class Observer<T> {
     }
 
     //TODO: dont use multi-listener by default
-    const unsubscribe = this.addListenerForMultiple(watch, onUpdate, ignoreUndefined);
+    const unsubscribe = this.addMultipleListener(watch, onUpdate, ignoreUndefined);
 
     return unsubscribe;
   }
 
-  public pick(keys?: string[]){
-    const acc = {} as BunchOf<any>;
-
-    if(keys){
-      for(const key of keys)
-        acc[key] = (this.subject as any)[key];
-
-      return acc;
-    }
-
-    for(const key in this){
-      const desc = Object.getOwnPropertyDescriptor(this, key);
-
-      if(!desc)
-        continue;
-
-      if(desc.value !== undefined)
-        acc[key] = desc.value;
-    }
-
-    for(const key in this.subscribers)
-      acc[key] = this.state[key];
-
-    return acc;
+  public trigger(...keys: string[]){
+    for(const x of keys)
+      this.pending.add(x)
+      
+    this.update();
   }
 
-  public watch(
-    keys: string[],
-    observer: UpdatesEventHandler,
-    fireInitial?: boolean){
-
-    const pending = new Set<string>();
-
-    const callback = () => {
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = this.state[k];
-
-      observer.call(this.subject, acc, Array.from(pending));
-      pending.clear();
-    };
-
-    const onDone = this.addListenerForMultiple(keys, (key) => {
-      if(!pending.size)
-        setTimeout(callback, 0);
-
-      pending.add(key);
-    });
-
-    if(fireInitial)
-      callback();
-
-    return onDone;
-  }
-
-  protected observable(
+  protected observe(
     key: string,
-    handler?: false | ((value: any) => any)){
-
-    const { state, subject, subscribers } = this;
-    
-    if(handler === undefined)
-      handler = this.monitorValue(key, undefined);
+    handler?: ((value: any) => any)){
 
     if(handler)
-      Object.defineProperty(subject, key, {
+      Object.defineProperty(this.subject, key, {
         enumerable: true,
         configurable: false,
-        get: () => state[key],
+        get: () => this.state[key],
         set: handler 
       })
 
-    return subscribers[key] = new Set();
+    return this.subscribers[key] = new Set();
+  }
+
+  //TODO: implement specify argument or true for all
+  public monitorValues(except?: string[]){
+    for(const [key, desc] of entriesOf(this.subject)){
+      if(except && except.indexOf(key) >= 0)
+        continue;
+
+      if("value" in desc === false)
+        continue;
+
+      if(typeof desc.value === "function" && /^[A-Z]/.test(key) == false)
+        continue;
+
+      this.monitorValue(key, desc.value)
+    }
   }
 
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
 
-    return (value: any) => {
+    this.observe(key, (value: any) => {
       if(this.state[key] === value)
         if(!Array.isArray(value))
           return;
@@ -151,8 +135,74 @@ export class Observer<T> {
       this.state[key] = value;
       this.pending.add(key);
       this.update();
+    })
+  }
+
+  public monitorComputed(except?: string[]){
+    const { subscribers, subject } = this;
+    const getters = collectGetters(subject, except);
+
+    for(const key in getters){
+      const compute = getters[key];
+      subscribers[key] = new Set();
+
+      Object.defineProperty(subject, key, {
+        configurable: true,
+        set: throwNotAllowed(key),
+        get: this.monitorComputedValue(key, compute)
+      })
     }
   }
+
+  protected monitorComputedValue(key: string, fn: () => any){
+    const { state, subscribers, subject } = this;
+
+    subscribers[key] = new Set();
+
+    const getValueLazy = () => state[key];
+
+    const onValueDidChange = () => {
+      const value = fn.call(subject);
+      const subscribed = subscribers[key] || [];
+
+      if(state[key] === value)
+        return
+
+      state[key] = value;
+      this.pending.add(key);
+
+      for(const onDidUpdate of subscribed)
+        onDidUpdate();
+    }
+
+    const getStartingValue = (early = false) => {
+      try {
+        const subscribe = new Subscription(subject, onValueDidChange);
+        const value = state[key] = fn.call(subscribe.proxy);
+        subscribe.start();
+        return value;
+      }
+      catch(e){
+        if(this.computedDidFail)
+          this.computedDidFail(key, early);
+        throw e;
+      }
+      finally {
+        Object.defineProperty(subject, key, {
+          set: throwNotAllowed(key),
+          get: getValueLazy,
+          enumerable: true,
+          configurable: true
+        })
+      }
+    }
+
+    isInitialCompute(getStartingValue, true);
+
+    return getStartingValue;
+  }
+
+  protected computedDidFail?(key: string, early?: boolean): void;
 
   protected update(){
     if(!this.pending.size)
@@ -181,14 +231,14 @@ export class Observer<T> {
     let register = this.subscribers[key];
 
     if(!register)
-      register = this.subscribers[key] = new Set();
+      register = this.observe(key);
 
     register.add(callback);
 
     return () => { register.delete(callback) }
   }
 
-  private addListenerForMultiple(
+  public addMultipleListener(
     keys: string[],
     callback: (didUpdate: string) => void,
     ignoreUndefined = true){
@@ -200,9 +250,11 @@ export class Observer<T> {
 
       if(!listeners)
         if(lifecycleEvents.indexOf(key) >= 0)
-          listeners = this.observable(key, false)
-        else if(ignoreUndefined)
-          listeners = this.observable(key)
+          listeners = this.observe(key);
+        else if(ignoreUndefined){
+          this.monitorValue(key, undefined);
+          listeners = this.subscribers[key];
+        }
         else
           throw new Error(
             `Can't watch property ${key}, it's not tracked on this instance.`
@@ -223,5 +275,16 @@ export class Observer<T> {
       clear.forEach(x => x());
       clear = [];
     };
-  }
+  } 
+}
+
+const throwNotAllowed = (key: string) => () => {
+  throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
+}
+
+const isInitialCompute = (fn: any, set?: true) => {
+  if(set)
+    fn["initial"] = true;
+  else 
+    return fn["initial"];
 }

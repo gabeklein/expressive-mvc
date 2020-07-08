@@ -1,8 +1,5 @@
-import { FunctionComponent, ProviderProps } from 'react';
-
-import { ControllerDispatch, DISPATCH } from './dispatch';
-import { RENEW_CONSUMERS } from './peers';
-import { Subscription, SUBSCRIPTION } from './subscription';
+import { OBSERVER, Observer } from './observer';
+import { SUBSCRIPTION, Subscription } from './subscription';
 
 export type BunchOf<T> = { [key: string]: T }
 export type Class = new(...args: any[]) => any;
@@ -30,27 +27,15 @@ export type LivecycleEvent =
   | "elementDidMount"
   | "elementWillUnmount";
 
-export interface SubscribeController {
-  [SUBSCRIPTION]?: Subscription;
-
-  use: this;
-  
-  onEvent(name: LivecycleEvent, args?: any[]): void;
-  refresh(...keys: string[]): void;
-}
-
-export interface EventController {
-  [DISPATCH]?: ControllerDispatch;
-  
-  get: this;
-  set: this;
-
-  refresh(...keys: string[]): void;
+export interface Observable {
+  [OBSERVER]: Observer<any>;
 
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
   
   once(target: string, listener: HandleUpdatedValue<this, any>): void;
   once(target: string): Promise<any> | undefined;
+
+  refresh(...keys: string[]): void;
 
   observe<P extends keyof this>(
     key: P | P[], 
@@ -59,24 +44,13 @@ export interface EventController {
   ): Callback;
 }
 
-export interface InstanceController {
-  Input: FunctionComponent<{ to: string }>;
-  Value: FunctionComponent<{ of: string }>;
-  Provider: FunctionComponent<ProviderProps<this>>;
+export interface SubscribeController {
+  [SUBSCRIPTION]?: Subscription;
 
-  [RENEW_CONSUMERS]?: Callback;
-
-  toggle(key: string): boolean;
-
-  assign(props: BunchOf<any>): this;
-  assign(key: string, props?: BunchOf<any>): any;
-
-  tap(): this;
-  tap<K extends keyof this>(key?: K): this[K];
-
-  sub(...args: any[]): this;
-
-  export(...args: any[]): any;
+  use: this;
+  
+  refresh(...keys: string[]): void;
+  onEvent(name: LivecycleEvent, args?: any[]): void;
 }
 
 export interface ModelController {

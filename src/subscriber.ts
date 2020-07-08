@@ -67,7 +67,7 @@ export function useModelController(
       if(handler)
         handler.apply(this, args);
         
-      dispatch.forceRefresh(name, specific);
+      dispatch.trigger(name, specific);
 
       switch(name){
         case "willRender":
@@ -109,7 +109,7 @@ export function useSubscriber<T extends Controller>(
       if(handler)
         handler.apply(this, args);
         
-      dispatch.forceRefresh(name, specific);
+      dispatch.trigger(name, specific);
     }
     
     return new Subscription(target, refresh, onEvent).proxy;

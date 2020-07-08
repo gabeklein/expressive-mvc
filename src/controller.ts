@@ -1,21 +1,37 @@
-import { Context, FunctionComponent } from 'react';
+import { Context, FunctionComponent, ProviderProps } from 'react';
 
 import { ASSIGNED_CONTEXT, ControlProvider, ownContext } from './context';
-import { getDispatch } from './dispatch';
+import { ControllerDispatch } from './dispatch';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
+import { getObserver, OBSERVER } from './observer';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, Class, InstanceController, ModelController, SubscribeController, EventController } from './types';
+import { BunchOf, Callback, Class, ModelController, Observable, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
-  extends ModelController, EventController, InstanceController, SubscribeController {
+  extends ModelController, Observable, SubscribeController {
 
   // Extended classes represent the onion-layers of a given controller.
   // What is accessible depends on the context controller is accessed.
+
+  [OBSERVER]: ControllerDispatch;
+
+  Input: FunctionComponent<{ to: string }>;
+  Value: FunctionComponent<{ of: string }>;
+  Provider: FunctionComponent<ProviderProps<this>>;
+  
+  get: this;
+  set: this;
+
+  assign(props: BunchOf<any>): this;
+  assign(key: string, props?: BunchOf<any>): any;
+
+  tap(): this;
+  tap<K extends keyof this>(key?: K): this[K];
 }
 
 export class Controller {
@@ -34,7 +50,7 @@ export class Controller {
     onChange?: Callback | boolean,
     initial?: boolean) => {
 
-    const dispatch = getDispatch(this);
+    const dispatch = getObserver(this);
 
     if(typeof subset == "function"){
       initial = onChange as boolean;
@@ -43,7 +59,7 @@ export class Controller {
     }
   
     if(typeof onChange == "function")
-      return dispatch.watch(subset!, onChange, initial);
+      return dispatch.feed(subset!, onChange, initial);
     else 
       return dispatch.pick(subset);
   }
@@ -171,9 +187,9 @@ export class Controller {
   }
 }
 
-defineOnAccess(Controller.prototype, "Provider", ControlProvider)
-defineOnAccess(Controller.prototype, "Value", ControlledValue)
-defineOnAccess(Controller.prototype, "Input", ControlledInput)
+defineOnAccess(Controller.prototype, "Provider", ControlProvider);
+defineOnAccess(Controller.prototype, "Value", ControlledValue);
+defineOnAccess(Controller.prototype, "Input", ControlledInput);
 
 export class Singleton extends Controller {
   static global = true;

@@ -1,5 +1,6 @@
 import { Controller } from './controller';
-import { ControllerDispatch, ensureDispatch } from './dispatch';
+import { ensureDispatch } from './dispatch';
+import { getObserver, Observable, Observer } from './observer';
 import { Callback, LivecycleEvent, ModelController } from './types';
 import { define } from './util';
 
@@ -18,9 +19,9 @@ export function getSubscriber(control: Controller){
   return sub;
 }
 
-export class Subscription<T extends Controller = any>{
+export class Subscription<T extends Observable = any>{
   public proxy: T;
-  private master: ControllerDispatch;
+  private master: Observer<any>;
 
   private cleanup = new Set<Callback>();
   
@@ -29,7 +30,7 @@ export class Subscription<T extends Controller = any>{
     private trigger: UpdateTrigger,
     private callback?: (name: LivecycleEvent) => void
   ){
-    const master = this.master = ensureDispatch(source);
+    const master = this.master = getObserver(source);
     const local = this.proxy = Object.create(source);
 
     define(local, SUBSCRIPTION, this);
@@ -53,7 +54,7 @@ export class Subscription<T extends Controller = any>{
     if(!keys[0]) 
       this.trigger();
     else
-      this.master.forceRefresh(...keys)
+      this.master.trigger(...keys)
   }
 
   handleEvent = (name: LivecycleEvent) => {
@@ -107,6 +108,7 @@ export class Subscription<T extends Controller = any>{
     master.once("willUnmount", () => active && active.stop())
 
     const initSubscription = (value: Controller) => {
+      ensureDispatch(value);
       active = new Subscription(value, this.trigger);
       Object.defineProperty(this.proxy, key, {
         value: active.proxy,

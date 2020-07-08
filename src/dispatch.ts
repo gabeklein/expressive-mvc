@@ -1,28 +1,25 @@
 import { Controller } from './controller';
 import { ManagedProperty } from './managed';
-import { Observer } from './observer';
+import { OBSERVER, Observer } from './observer';
 import { PeerController } from './peers';
-import { Subscription } from './subscription';
-import { collectGetters, define, entriesOf } from './util';
+import { BunchOf } from './types';
+import { define } from './util';
 
-export const DISPATCH = Symbol("controller_dispatch");
-
-export function getDispatch(from: Controller){
-  const dispatch = from[DISPATCH];
-
-  if(!dispatch)
-    throw new Error("Dispatch has not yet been created on this instance!");
-
-  return dispatch;
-}
+type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 export function ensureDispatch(control: Controller){
-  let dispatch = control[DISPATCH];
+  let dispatch = control[OBSERVER];
 
   if(!dispatch){
     dispatch = new ControllerDispatch(control);
+
     dispatch.monitorValues(["get", "set"]);
-    dispatch.monitorComputedValues(["Provider", "Input", "Value"]);
+    dispatch.monitorComputed(["Provider", "Input", "Value"]);
+
+    define(control, {
+      get: control,
+      set: control
+    })
 
     if(control.didCreate)
       control.didCreate();
@@ -33,54 +30,15 @@ export function ensureDispatch(control: Controller){
 
 export class ControllerDispatch 
   extends Observer<Controller> {
-  
-  constructor(control: Controller){
-    super(control);
 
-    define(control, DISPATCH, this);
-    define(control, {
-      get: control,
-      set: control,
-      on: this.on.bind(this),
-      once: this.once.bind(this),
-      observe: this.observe.bind(this),
-      refresh: this.forceRefresh.bind(this)
-    })
-  }
-
-  public forceRefresh(...watching: string[]){
-    for(const x of watching)
-      this.pending.add(x)
-      
-    this.update();
-  }
-
-  public monitorValues(except: string[]){
-    const { subject } = this;
-    
-    for(const [key, desc] of entriesOf(subject)){
-      if("value" in desc === false)
-        continue;
-
-      const value = desc.value;
-
-      if(typeof value === "function" && /^[A-Z]/.test(key) == false)
-        continue;
-
-      if(except.indexOf(key) >= 0)
-        continue;
-        
-      if(value instanceof PeerController){
-        value.attachNowIfGlobal(subject, key);
-        continue;
-      }
-
-      this.observable(key, 
-        value instanceof ManagedProperty 
-          ? this.monitorManaged(key, value)
-          : this.monitorValue(key, value)  
-      )
-    }
+  protected monitorValue(key: string, value: any){
+    //TODO: should still be tracked after global?
+    if(value instanceof PeerController)
+      value.attachNowIfGlobal(this.subject, key);
+    else if(value instanceof ManagedProperty)
+      this.monitorManaged(key, value)
+    else
+      super.monitorValue(key, value)
   }
   
   private monitorManaged(key: string, value: ManagedProperty){
@@ -99,7 +57,7 @@ export class ControllerDispatch
     else
       state[key] = undefined;
 
-    return (value: any) => {
+    this.observe(key, (value: any) => {
       if(!value)
         state[key] = undefined
       else if(typeof value == "object")
@@ -109,101 +67,81 @@ export class ControllerDispatch
       
       this.pending.add(key);
       this.update();
-    }
+    })
   }
 
-  public monitorComputedValues(except: string[]){
-    const { subscribers, subject } = this;
-    const getters = collectGetters(subject, except);
+  //TODO: Combine pick and feed into one export method
 
-    for(const key in getters){
-      const compute = getters[key];
-      subscribers[key] = new Set();
+  public pick(keys?: string[]){
+    const acc = {} as BunchOf<any>;
 
-      Object.defineProperty(subject, key, {
-        configurable: true,
-        set: throwNotAllowed(key),
-        get: this.monitorComputedValue(key, compute)
-      })
-    }
-  }
+    if(keys){
+      for(const key of keys)
+        acc[key] = (this.subject as any)[key];
 
-  private monitorComputedValue(key: string, fn: () => any){
-    const { state, subscribers, subject } = this;
-
-    subscribers[key] = new Set();
-
-    const getValueLazy = () => state[key];
-
-    const onValueDidChange = () => {
-      const value = fn.call(subject);
-      const subscribed = subscribers[key] || [];
-
-      if(state[key] === value)
-        return
-
-      state[key] = value;
-      this.pending.add(key);
-
-      for(const onDidUpdate of subscribed)
-        onDidUpdate();
+      return acc;
     }
 
-    function getStartingValue(early = false){
-      try {
-        const subscribe = new Subscription(subject, onValueDidChange);
-        const value = state[key] = fn.call(subscribe.proxy);
-        subscribe.start();
-        return value;
-      }
-      catch(e){
-        failedComputeHint(subject.constructor.name, key, early);
-        throw e;
-      }
-      finally {
-        Object.defineProperty(subject, key, {
-          set: throwNotAllowed(key),
-          get: getValueLazy,
-          enumerable: true,
-          configurable: true
-        })
-      }
+    for(const key in this){
+      const desc = Object.getOwnPropertyDescriptor(this, key);
+
+      if(!desc)
+        continue;
+
+      if(desc.value !== undefined)
+        acc[key] = desc.value;
     }
 
-    isInitialCompute(getStartingValue, true);
+    for(const key in this.subscribers)
+      acc[key] = this.state[key];
 
-    return getStartingValue;
+    return acc;
   }
-}
 
-export function isInitialCompute(fn: any, set?: true){
-  if(!set)
-    return fn["initial"];
-  else
-    fn["initial"] = true;
-}
+  public feed(
+    keys: string[],
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
 
-function throwNotAllowed(key: string){
-  return () => {
-    throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
+    const pending = new Set<string>();
+
+    const callback = () => {
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = this.state[k];
+
+      observer.call(this.subject, acc, Array.from(pending));
+      pending.clear();
+    };
+
+    const onDone = this.addMultipleListener(keys, (key) => {
+      if(!pending.size)
+        setTimeout(callback, 0);
+
+      pending.add(key);
+    });
+
+    if(fireInitial)
+      callback();
+
+    return onDone;
   }
-}
 
-function failedComputeHint(
-  parent: string, 
-  property: string, 
-  early: boolean){
+  protected computedDidFail(property: string, early = false){
+    const parent = this.subject.constructor.name;
 
-  let warning = 
-    `There was an attempt to access computed property ` + 
-    `${parent}.${property} for the first time; however an ` +
-    `exception was thrown. Dependant values probably don't exist yet.`;
+    let warning = 
+      `There was an attempt to access computed property ` + 
+      `${parent}.${property} for the first time; however an ` +
+      `exception was thrown. Dependant values probably don't exist yet.`;
 
-  if(early)
-    warning += `\n` + 
-      `Note: Computed values are usually only calculated after first ` +
-      `access, except where accessed implicitly by "on" or "export". Your ` + 
-      `'${property}' getter may have run earlier than intended because of that.`
+    if(early)
+      warning += `\n` + 
+        `Note: Computed values are usually only calculated after first ` +
+        `access, except where accessed implicitly by "on" or "export". Your ` + 
+        `'${property}' getter may have run earlier than intended because of that.`
 
-  console.warn(warning);
+    console.warn(warning);
+  }
 }
