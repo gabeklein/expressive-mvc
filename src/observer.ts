@@ -23,18 +23,6 @@ export class Observer<T> {
     return Object.keys(this.subscribers);
   }
 
-  public onChange(
-    key: string | string[],
-    listener?: (changed: string[]) => void){
-
-    if(listener)
-      this.observe(key, listener, true);
-    else
-      return new Promise(resolve => {
-        this.observe(key, resolve, true);
-      });
-  }
-
   public on(
     target: string | string[],
     listener: HandleUpdatedValue<any, any>){

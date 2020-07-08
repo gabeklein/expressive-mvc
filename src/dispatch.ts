@@ -32,7 +32,6 @@ export class ControllerDispatch
     define(control, {
       get: control,
       set: control,
-      onChange: this.onChange.bind(this),
       observe: this.observe.bind(this)
     })
 
