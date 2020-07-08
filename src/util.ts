@@ -47,8 +47,10 @@ export function dedent(t: TemplateStringsArray, ...v: any[]): string {
   else return text;
 }
 
-export function defineOnAccess(
-  object: any, property: string, init: () => any){
+export function defineOnAccess<T>(
+  object: T, 
+  property: string, 
+  init: (this: T) => any){
 
   Object.defineProperty(object, property, { 
     configurable: true,
