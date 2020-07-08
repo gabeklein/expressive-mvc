@@ -24,20 +24,6 @@ export class Controller {
     this.set = this;
   }
 
-  on = (
-    target: string | string[],
-    listener: HandleUpdatedValue<this, any>) => {
-
-    return getDispatch(this).observe(target, listener);
-  }
-
-  once = (
-    target: string,
-    listener?: HandleUpdatedValue<this, any>) => {
-
-    return getDispatch(this).once(target, listener);
-  }
-
   toggle = (key: string) => {
     const self = this as any;
     return self[key] = !self[key];
@@ -60,10 +46,6 @@ export class Controller {
       return dispatch.watch(subset!, onChange, initial);
     else 
       return dispatch.pick(subset);
-  }
-
-  refresh = (...keys: string[]) => {
-    getDispatch(this).forceRefresh(...keys);
   }
 
   tap(key?: string, required?: boolean){

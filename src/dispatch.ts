@@ -32,7 +32,10 @@ export class ControllerDispatch
     define(control, {
       get: control,
       set: control,
-      observe: this.observe.bind(this)
+      on: this.on.bind(this),
+      once: this.once.bind(this),
+      observe: this.observe.bind(this),
+      refresh: this.forceRefresh.bind(this)
     })
 
     this.monitorValues(["get", "set"]);
