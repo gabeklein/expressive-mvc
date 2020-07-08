@@ -72,7 +72,7 @@ export class ControllerDispatch
         continue;
       }
 
-      this.makeObservable(key, 
+      this.observable(key, 
         value instanceof ManagedProperty 
           ? this.monitorManaged(key, value)
           : this.monitorValue(key, value)  

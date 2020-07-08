@@ -120,7 +120,7 @@ export class Observer<T> {
     return onDone;
   }
 
-  protected makeObservable(
+  protected observable(
     key: string,
     handler?: false | ((value: any) => any)){
 
@@ -200,9 +200,9 @@ export class Observer<T> {
 
       if(!listeners)
         if(lifecycleEvents.indexOf(key) >= 0)
-          listeners = this.makeObservable(key, false)
+          listeners = this.observable(key, false)
         else if(ignoreUndefined)
-          listeners = this.makeObservable(key)
+          listeners = this.observable(key)
         else
           throw new Error(
             `Can't watch property ${key}, it's not tracked on this instance.`
