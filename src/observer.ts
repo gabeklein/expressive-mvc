@@ -27,7 +27,7 @@ export class Observer<T> {
     target: string | string[],
     listener: HandleUpdatedValue<any, any>){
 
-    return this.observe(target, listener);
+    return this.observe(target, listener, false, false);
   }
 
   public once(
@@ -35,30 +35,33 @@ export class Observer<T> {
     listener?: HandleUpdatedValue<any, any>){
       
     if(listener)
-      this.observe(target, listener, true);
+      this.observe(target, listener, true, false);
     else
       return new Promise(resolve => {
-        this.observe(target, resolve, true);
+        this.observe(target, resolve, true, false);
       });
   }
 
   public observe(
     watch: string | string[],
     handler: UpdateEventHandler,
-    once?: boolean){
+    once?: boolean,
+    ignoreUndefined?: boolean){
 
     if(typeof watch == "string")
       watch = [watch];
 
-    //TODO: dont use multi-listener by default
-    const onDone = this.addListenerForMultiple(watch, (key) => {
+    const onUpdate = (key: string) => {
       if(once)
-        onDone();
+        unsubscribe();
         
       handler.call(this.subject, this.state[key], key);
-    });
+    }
 
-    return onDone;
+    //TODO: dont use multi-listener by default
+    const unsubscribe = this.addListenerForMultiple(watch, onUpdate, ignoreUndefined);
+
+    return unsubscribe;
   }
 
   public pick(keys?: string[]){
@@ -117,6 +120,40 @@ export class Observer<T> {
     return onDone;
   }
 
+  protected makeObservable(
+    key: string,
+    handler?: false | ((value: any) => any)){
+
+    const { state, subject, subscribers } = this;
+    
+    if(handler === undefined)
+      handler = this.monitorValue(key, undefined);
+
+    if(handler)
+      Object.defineProperty(subject, key, {
+        enumerable: true,
+        configurable: false,
+        get: () => state[key],
+        set: handler 
+      })
+
+    return subscribers[key] = new Set();
+  }
+
+  protected monitorValue(key: string, initial: any){
+    this.state[key] = initial;
+
+    return (value: any) => {
+      if(this.state[key] === value)
+        if(!Array.isArray(value))
+          return;
+        
+      this.state[key] = value;
+      this.pending.add(key);
+      this.update();
+    }
+  }
+
   protected update(){
     if(!this.pending.size)
       return;
@@ -153,7 +190,8 @@ export class Observer<T> {
 
   private addListenerForMultiple(
     keys: string[],
-    callback: (didUpdate: string) => void){
+    callback: (didUpdate: string) => void,
+    ignoreUndefined = true){
 
     let clear: Function[] = [];
 
@@ -161,12 +199,14 @@ export class Observer<T> {
       let listeners = this.subscribers[key];
 
       if(!listeners)
-        if(lifecycleEvents.indexOf(key) < 0)
+        if(lifecycleEvents.indexOf(key) >= 0)
+          listeners = this.makeObservable(key, false)
+        else if(ignoreUndefined)
+          listeners = this.makeObservable(key)
+        else
           throw new Error(
             `Can't watch property ${key}, it's not tracked on this instance.`
           );
-        else
-          listeners = this.subscribers[key] = new Set();
 
       const trigger = () => callback(key);
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);

@@ -50,7 +50,7 @@ export class ControllerDispatch
   }
 
   private monitorValues(except: string[]){
-    const { state, subject, subscribers } = this;
+    const { subject } = this;
     
     for(const [key, desc] of entriesOf(subject)){
       if("value" in desc === false)
@@ -69,46 +69,11 @@ export class ControllerDispatch
         continue;
       }
 
-      subscribers[key] = new Set();
-
-      Object.defineProperty(subject, key, {
-        enumerable: true,
-        configurable: false,
-        get: () => state[key],
-        set: value instanceof ManagedProperty 
+      this.makeObservable(key, 
+        value instanceof ManagedProperty 
           ? this.monitorManaged(key, value)
-          : this.monitorValue(key, value)
-      })
-    }
-  }
-
-  private monitorComputedValues(except: string[]){
-    const { subscribers, subject } = this;
-    const getters = collectGetters(subject, except);
-
-    for(const key in getters){
-      const compute = getters[key];
-      subscribers[key] = new Set();
-
-      Object.defineProperty(subject, key, {
-        configurable: true,
-        set: throwNotAllowed(key),
-        get: this.monitorComputedValue(key, compute)
-      })
-    }
-  }
-
-  private monitorValue(key: string, initial: any){
-    this.state[key] = initial;
-
-    return (value: any) => {
-      if(this.state[key] === value)
-        if(!Array.isArray(value))
-          return;
-        
-      this.state[key] = value;
-      this.pending.add(key);
-      this.update();
+          : this.monitorValue(key, value)  
+      )
     }
   }
   
@@ -137,6 +102,22 @@ export class ControllerDispatch
       
       this.pending.add(key);
       this.update();
+    }
+  }
+
+  private monitorComputedValues(except: string[]){
+    const { subscribers, subject } = this;
+    const getters = collectGetters(subject, except);
+
+    for(const key in getters){
+      const compute = getters[key];
+      subscribers[key] = new Set();
+
+      Object.defineProperty(subject, key, {
+        configurable: true,
+        set: throwNotAllowed(key),
+        get: this.monitorComputedValue(key, compute)
+      })
     }
   }
 
