@@ -2,7 +2,7 @@ import { createElement, FC, forwardRef, useEffect } from 'react';
 
 import { Controller } from './controller';
 import { useManualRefresh } from './hook';
-import { getDispatch } from './dispatch';
+import { getObserver } from './observer';
 
 type onChangeCallback = (v: any, e: any) => any
 
@@ -13,7 +13,7 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
     props = { ...props };
 
     useEffect(() => {
-      return getDispatch(this).addListener(props.of, onDidUpdate);
+      return getObserver(this).addListener(props.of, onDidUpdate);
     }, [])
 
     delete props.of;
@@ -88,7 +88,7 @@ export function ControlledInput(this: Controller): FC<{
     }
 
     useEffect(() => {
-      return getDispatch(this).addListener(to, onDidUpdate);
+      return getObserver(this).addListener(to, onDidUpdate);
     }, []);
 
     delete props.to;
