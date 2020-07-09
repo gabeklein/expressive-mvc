@@ -81,8 +81,8 @@ interface IC {
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 
-    assign(props: Partial<this>): this;
-    assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
+    watch(props: Partial<this>): this;
+    watch<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];
@@ -120,7 +120,7 @@ interface Controller extends Observable, IC, IC, SC {}
 declare class Controller {
     static global: boolean;
 
-    static assign <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & SC;
+    static watch <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & SC;
 
     static get Provider(): FunctionComponentElement<any>;
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;

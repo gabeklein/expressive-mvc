@@ -27,8 +27,8 @@ export interface Controller
   get: this;
   set: this;
 
-  assign(props: BunchOf<any>): this;
-  assign(key: string, props?: BunchOf<any>): any;
+  watch(props: BunchOf<any>): this;
+  watch(key: string, props?: BunchOf<any>): any;
 
   tap(): this;
   tap<K extends keyof this>(key?: K): this[K];
@@ -74,7 +74,7 @@ export class Controller {
     return useSubscriber(this, args, false) 
   }
   
-  assign(
+  watch(
     a: string | BunchOf<any>, 
     b?: BunchOf<any>){
   
@@ -141,8 +141,8 @@ export class Controller {
     return from.map((item, index) => new this(item, index));
   }
 
-  static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
-    return this.tap().assign(a, b);
+  static watch(a: string | BunchOf<any>, b?: BunchOf<any>){
+    return this.tap().watch(a, b);
   }
 
   static uses(

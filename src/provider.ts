@@ -17,7 +17,7 @@ export function createWrappedComponent<T extends typeof Controller>(
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useModelController(this);
-    controller.assign(forwardedProps);
+    controller.watch(forwardedProps);
     const { values } = getObserver(controller);
 
     const useProps: any = { 
