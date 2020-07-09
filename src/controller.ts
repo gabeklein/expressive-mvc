@@ -13,7 +13,7 @@ import { define, defineOnAccess, transferValues } from './util';
 import { useWatchedProperty, useWatcher } from './watcher';
 
 export interface Controller 
-  extends ModelController, Observable, SubscribeController {
+  extends Observable, ModelController, SubscribeController {
 
   // Extended classes represent the onion-layers of a given controller.
   // What is accessible depends on the context controller is accessed.
@@ -105,8 +105,8 @@ export class Controller {
   }
 
   static tap(key?: string, main?: boolean){
-    const instance = getterFor(this)();
     //TODO: Implement better caching here
+    const instance = getterFor(this)();
   
     //TODO: is main on "required" argument correct?
     return instance.tap(key, main);
@@ -189,27 +189,26 @@ export class Controller {
   }
 }
 
-defineOnAccess(Controller, "meta", 
-  function metaSubscriber(){
-    const self = this as unknown as Observable;
-    const observer = new Observer(self);
-
-    observer.monitorValues(["prototype", "length", "name"]);
-    observer.monitorComputed();
-
-    define(self, {
-      get: self,
-      set: self
-    });
-
-    return () => useWatcher(self);
-  }
-);
-
-defineOnAccess(Controller.prototype, "Provider", ControlProvider);
-defineOnAccess(Controller.prototype, "Value", ControlledValue);
-defineOnAccess(Controller.prototype, "Input", ControlledInput);
-
 export class Singleton extends Controller {
   static global = true;
 }
+
+function getMetaSubscriber(this: typeof Controller){
+  const self = this as unknown as Observable;
+  const observer = new Observer(self);
+
+  observer.monitorValues(["prototype", "length", "name"]);
+  observer.monitorComputed();
+
+  define(self, {
+    get: self,
+    set: self
+  });
+
+  return () => useWatcher(self);
+}
+
+defineOnAccess(Controller, "meta", getMetaSubscriber);
+defineOnAccess(Controller.prototype, "Provider", ControlProvider);
+defineOnAccess(Controller.prototype, "Value", ControlledValue);
+defineOnAccess(Controller.prototype, "Input", ControlledInput);
