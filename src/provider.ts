@@ -2,7 +2,7 @@ import { createContext, createElement, FunctionComponent, PropsWithChildren, use
 
 import { ownContext } from './context';
 import { Controller } from './controller';
-import { getDispatch } from './dispatch';
+import { getObserver } from './observer';
 import { ensurePeerControllers } from './peers';
 import { useModelController } from './subscriber';
 import { BunchOf, Callback } from './types';
@@ -18,15 +18,14 @@ export function createWrappedComponent<T extends typeof Controller>(
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useModelController(this);
     controller.assign(forwardedProps);
-    const { values } = getDispatch(controller);
+    const { values } = getObserver(controller);
 
     const useProps: any = { 
       use: controller, ...values 
     }
     
     return createElement(
-      Provider, 
-      { value: controller }, 
+      Provider, { value: controller }, 
       createElement(fn, useProps)
     )
   }
