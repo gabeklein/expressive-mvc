@@ -3,12 +3,12 @@ import { useEffect } from 'react';
 import { Controller } from './controller';
 import { ensureDispatch } from './dispatch';
 import { useManualRefresh } from './hook';
-import { getObserver, OBSERVER } from './observer';
+import { getObserver, OBSERVER, Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { getSubscriber, Subscription } from './subscription';
 import { Callback } from './types';
 
-export function useWatcher(control: Controller){
+export function useWatcher(control: Observable){
   const [ cache, onDidUpdate ] = useManualRefresh<any>();
 
   let { current } = cache;

@@ -4,7 +4,7 @@ import { ASSIGNED_CONTEXT, ControlProvider, ownContext } from './context';
 import { ControllerDispatch } from './dispatch';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
-import { getObserver, OBSERVER } from './observer';
+import { getObserver, OBSERVER, Observer } from './observer';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
@@ -87,6 +87,8 @@ export class Controller {
   static global = false;
   static [GLOBAL_INSTANCE]?: Singleton;
   static [ASSIGNED_CONTEXT]?: Context<Controller>;
+
+  static meta: <T>(this: T) => T & Observable;
 
   static use(...args: any[]){
     return useModelController(this, args);
@@ -186,6 +188,23 @@ export class Controller {
       return useModelController(this).Provider
   }
 }
+
+defineOnAccess(Controller, "meta", 
+  function metaSubscriber(){
+    const self = this as unknown as Observable;
+    const observer = new Observer(self);
+
+    observer.monitorValues(["prototype", "length", "name"]);
+    observer.monitorComputed();
+
+    define(self, {
+      get: self,
+      set: self
+    });
+
+    return () => useWatcher(self);
+  }
+);
 
 defineOnAccess(Controller.prototype, "Provider", ControlProvider);
 defineOnAccess(Controller.prototype, "Value", ControlledValue);

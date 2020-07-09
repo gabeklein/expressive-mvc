@@ -59,6 +59,18 @@ interface MC {
     componentWillCycle?(...args: any[]): void | (() => void);
 }
 
+interface Observable {
+    refresh(...keys: string[]): void;
+
+    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
+  
+    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
+    once<T extends keyof this>(property: T): Promise<this[T]>;
+
+    observe<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    observe<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+}
+
 /**
  * Instance Controller, methods and properties available to objects with a dispatch.
  */
@@ -69,14 +81,6 @@ interface IC {
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 
-    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
-  
-    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
-    once<T extends keyof this>(property: T): Promise<this[T]>;
-
-    observe<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-    observe<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 
@@ -86,7 +90,6 @@ interface IC {
     sub(...args: any[]): this & SC;
 
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
-    refresh(...keys: string[]): void;
 
     onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
@@ -105,9 +108,14 @@ interface SC {
     refresh(...keys: string[]): void;
 }
 
+export interface Meta extends Observable, SC {
+    get: this;
+    set: this;
+}
+
 type Similar<T> = { [X in keyof T]?: T[X] };
 
-interface Controller extends IC, IC, SC {}
+interface Controller extends Observable, IC, IC, SC {}
 
 declare class Controller {
     static global: boolean;
@@ -116,6 +124,8 @@ declare class Controller {
 
     static get Provider(): FunctionComponentElement<any>;
     static makeGlobal<T extends Class>(this: T): InstanceType<T>;
+
+    static meta <T extends Class>(this: T): T & Meta;
     
     static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & SC;
 
@@ -151,6 +161,7 @@ export {
     IC,
     SC,
     MC,
+    Observable,
     use,
     get,
     set,
