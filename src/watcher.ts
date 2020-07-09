@@ -30,13 +30,13 @@ export function useWatcher(control: Controller){
 
 //TODO: Reimplement
 export function useWatchedProperty<T extends Controller>(
-  parent: T, key: string, required?: boolean){
+  from: T, key: string, required?: boolean){
 
-  let value = (parent as any)[key];
+  let value = (from as any)[key];
   let releaseHooks: Callback | undefined;
 
   if(value === undefined && required)
-    throw new Error(`${parent.constructor.name}.${key} must be defined this render.`)
+    throw new Error(`${from.constructor.name}.${key} must be defined this render.`)
 
   const [ cache, onDidUpdate ] = useManualRefresh<{ current: Controller | null }>();
 
@@ -46,25 +46,24 @@ export function useWatchedProperty<T extends Controller>(
       //TODO: Changing out instance breaks this.
       releaseHooks = ensurePeerControllers(value);
 
-      const { didFocus } = value;
-
-      if(didFocus)
-        didFocus.call(value, parent, key);
+      if(value.didFocus)
+        value.didFocus.call(value, from, key);
     }
   
     if(!cache.current && value[OBSERVER]){
-      const subscribe = new Subscription(value, childDidUpdate);
+      const subscribe = new Subscription(value, onDidUpdate);
       value = cache.current = subscribe.proxy;
     }
   }
 
   useEffect(() => {
-    const removeListener = 
-      getObserver(parent).addListener(key, parentDidUpdate);
+    const remove = 
+      getObserver(from)
+        .addListener(key, parentDidUpdate);
 
     return () => {
       resetSubscription()
-      removeListener()
+      remove()
       
       if(releaseHooks)
         releaseHooks()
@@ -79,11 +78,7 @@ export function useWatchedProperty<T extends Controller>(
   return value;
 
   /* Subroutines */
-
-  function childDidUpdate(){
-    onDidUpdate();
-  }
-
+  
   function parentDidUpdate(){
     resetSubscription();
     onDidUpdate();
@@ -96,7 +91,7 @@ export function useWatchedProperty<T extends Controller>(
       return;
 
     if(instance.willLoseFocus)
-      instance.willLoseFocus(parent, key);
+      instance.willLoseFocus(from, key);
 
     getSubscriber(instance).stop();
     cache.current = null;
