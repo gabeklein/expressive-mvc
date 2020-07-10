@@ -67,8 +67,8 @@ interface Observable {
     once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
     once<T extends keyof this>(property: T): Promise<this[T]>;
 
-    observe<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-    observe<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 }
 
 /**

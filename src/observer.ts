@@ -28,7 +28,7 @@ export class Observer<T extends Observable> {
     define(subject, {
       on: this.on.bind(this),
       once: this.once.bind(this),
-      observe: this.watch.bind(this),
+      watch: this.watch.bind(this),
       refresh: this.trigger.bind(this)
     })
   }

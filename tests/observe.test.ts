@@ -15,7 +15,7 @@ test('dispatches changes to observer', async () => {
   const { state, assertDidNotUpdate } = 
     trySubscribe({ use: TestController })
 
-  state.observe("seconds", fn)
+  state.watch("seconds", fn)
   state.seconds = 30;
 
   await assertDidNotUpdate();
@@ -28,7 +28,7 @@ test('dispatches changes to computed value', async () => {
   const { state, assertDidNotUpdate } = 
     trySubscribe({ use: TestController })
 
-  state.observe("minutes", fn)
+  state.watch("minutes", fn)
   state.seconds = 60;
 
   await assertDidNotUpdate()
@@ -41,7 +41,7 @@ test('dispatches multiple values to observer', async () => {
   const { state, assertDidNotUpdate } = 
     trySubscribe({ use: TestController })
 
-  state.observe(["seconds", "minutes"], fn)
+  state.watch(["seconds", "minutes"], fn)
   state.seconds = 60;
 
   await assertDidNotUpdate()
