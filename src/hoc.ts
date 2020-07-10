@@ -1,10 +1,37 @@
-import { createElement, FC, forwardRef, useEffect } from 'react';
+import { createElement, FC, forwardRef, FunctionComponent, PropsWithChildren, useEffect } from 'react';
 
+import { ownContext } from './context';
 import { Controller } from './controller';
 import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
+import { useModelController } from './subscriber';
 
-type onChangeCallback = (v: any, e: any) => any
+type onChangeCallback = (v: any, e: any) => any;
+
+export function createWrappedComponent<T extends typeof Controller>(
+  this: T,
+  fn: FunctionComponent<InstanceType<T>> ){
+
+  const { Provider } = ownContext(this as any);
+  
+  return (forwardedProps: PropsWithChildren<any>) => {
+    const controller = useModelController(this);
+    controller.watch(forwardedProps);
+    // const { values } = getObserver(controller);
+
+    const useProps: any = { 
+      use: controller, 
+      // ...values 
+    }
+    
+    return createElement(
+      Provider, {
+        value: controller
+      }, 
+      createElement(fn, useProps)
+    )
+  }
+}
 
 export function ControlledValue(this: Controller): FC<{ of: string }> {
   return (props) => {

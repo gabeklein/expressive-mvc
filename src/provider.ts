@@ -1,35 +1,11 @@
-import { createContext, createElement, FunctionComponent, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { ownContext } from './context';
 import { Controller } from './controller';
-import { getObserver } from './observer';
 import { ensurePeerControllers } from './peers';
-import { useModelController } from './subscriber';
 import { BunchOf, Callback } from './types';
 
+// import { getObserver } from './observer';
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
-
-export function createWrappedComponent<T extends typeof Controller>(
-  this: T,
-  fn: FunctionComponent<InstanceType<T>> ){
-
-  const { Provider } = ownContext(this as any);
-  
-  return (forwardedProps: PropsWithChildren<any>) => {
-    const controller = useModelController(this);
-    controller.watch(forwardedProps);
-    const { values } = getObserver(controller);
-
-    const useProps: any = { 
-      use: controller, ...values 
-    }
-    
-    return createElement(
-      Provider, { value: controller }, 
-      createElement(fn, useProps)
-    )
-  }
-}
 
 export const MultiProvider = (props: PropsWithChildren<any>) => {
   let { children, className, style, of: controllers = {} } = props;

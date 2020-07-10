@@ -6,7 +6,7 @@ import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './gl
 import { ControlledInput, ControlledValue } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
 import { getterFor } from './peers';
-import { createWrappedComponent } from './provider';
+import { createWrappedComponent } from './hoc';
 import { useModelController, useSubscriber } from './subscriber';
 import { BunchOf, Callback, Class, ModelController, Observable, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
