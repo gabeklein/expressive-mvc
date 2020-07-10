@@ -81,8 +81,8 @@ interface IC {
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 
-    watch(props: Partial<this>): this;
-    watch<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
+    assign(props: Partial<this>): this;
+    assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];

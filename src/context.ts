@@ -51,7 +51,7 @@ function ParentProviderFor(
       delete props[k];
 
     if(Object.keys(props).length)
-      controller.watch(props);
+      controller.assign(props);
 
     if(className || style)
       children = createElement("div", { className, style }, children);
