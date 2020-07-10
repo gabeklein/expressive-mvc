@@ -57,7 +57,7 @@ export class ControllerDispatch
     else
       state[key] = undefined;
 
-    this.observe(key, (value: any) => {
+    this.manage(key, (value: any) => {
       if(!value)
         state[key] = undefined
       else if(typeof value == "object")

@@ -93,7 +93,7 @@ export class Observer<T extends Observable> {
     this.update();
   }
 
-  protected observe(
+  protected manage(
     key: string,
     handler?: ((value: any) => any)){
 
@@ -127,7 +127,7 @@ export class Observer<T extends Observable> {
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
 
-    this.observe(key, (value: any) => {
+    this.manage(key, (value: any) => {
       if(this.state[key] === value)
         if(!Array.isArray(value))
           return;
@@ -231,7 +231,7 @@ export class Observer<T extends Observable> {
     let register = this.subscribers[key];
 
     if(!register)
-      register = this.observe(key);
+      register = this.manage(key);
 
     register.add(callback);
 
@@ -250,7 +250,7 @@ export class Observer<T extends Observable> {
 
       if(!listeners)
         if(lifecycleEvents.indexOf(key) >= 0)
-          listeners = this.observe(key);
+          listeners = this.manage(key);
         else if(ignoreUndefined){
           this.monitorValue(key, undefined);
           listeners = this.subscribers[key];
