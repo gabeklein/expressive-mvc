@@ -79,39 +79,33 @@ export class Subscription<T extends Observable = any>{
   }
   
   private onAccess = (key: string) => {
-    const { master } = this;
-
     return () => {
-      let value = (master.subject as any)[key];
-      let handler: Callback;
+      let value = (this.master.subject as any)[key];
 
-      if(value instanceof Controller){
-        const sub = this.monitorRecursive(key);
-        handler = sub.reset;
-        value = sub.proxy;
+      if(value instanceof Controller)
+        return this.monitorRecursive(key);
+      else {
+        this.cleanup.add(
+          this.master.addListener(key, this.trigger)
+        );
+        return value;
       }
-      else
-        handler = this.trigger;
-        
-      this.cleanup.add(
-        master.addListener(key, handler)
-      );
-  
-      return value;
     }
   }
 
   private monitorRecursive(key: string){
     const { master } = this;
+    const dispatch: any = master.subject;
+
     let active!: Subscription;
 
-    master.once("willUnmount", () => active && active.stop())
-
-    const initSubscription = (value: Controller) => {
+    const startSubscription = () => {
+      const value = dispatch[key];
       ensureDispatch(value);
       active = new Subscription(value, this.trigger);
       Object.defineProperty(this.proxy, key, {
-        value: active.proxy,
+        get: () => active.proxy,
+        set: resetSubscription,
         configurable: true,
         enumerable: true
       })
@@ -119,18 +113,28 @@ export class Subscription<T extends Observable = any>{
         delete (this.proxy as any)[key];
         active.start()
       });
-      return active.proxy
     }
 
-    const resetSubscription = () => {
+    const resetSubscription = (value?: any) => {
+      if(dispatch[key] == value)
+        return
+      
+      if(value)
+        dispatch[key] = value;
+      
       active.stop();
-      initSubscription((master.subject as any)[key]);
+      startSubscription();
       this.trigger();
     }
 
-    return {
-      proxy: initSubscription((master.subject as any)[key]),
-      reset: resetSubscription
-    };
+    master.once("willUnmount", () => active && active.stop())
+
+    this.cleanup.add(
+      master.addListener(key, resetSubscription)
+    );
+    
+    startSubscription();
+
+    return active.proxy;
   }
 }
