@@ -1,5 +1,6 @@
 import { OBSERVER, Observer } from './observer';
 import { SUBSCRIPTION, Subscription } from './subscription';
+import { RENEW_CONSUMERS } from 'peers';
 
 export type BunchOf<T> = { [key: string]: T }
 export type Class = new(...args: any[]) => any;
@@ -54,6 +55,8 @@ export interface SubscribeController {
 }
 
 export interface ModelController {
+  [RENEW_CONSUMERS]: Callback;
+
   didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;
   didMount?(...args: any[]): void;
