@@ -105,7 +105,9 @@ export class Observer<T extends Observable> {
         set: handler 
       })
 
-    return this.subscribers[key] = new Set();
+    return this.subscribers[key] || (
+      this.subscribers[key] = new Set()
+    );
   }
 
   //TODO: implement specify argument or true for all
@@ -228,10 +230,7 @@ export class Observer<T extends Observable> {
     key: string,
     callback: UpdateTrigger){
 
-    let register = this.subscribers[key];
-
-    if(!register)
-      register = this.manage(key);
+    let register = this.manage(key);
 
     register.add(callback);
 
