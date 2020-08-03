@@ -10,7 +10,6 @@ import * as ts from "../src";
 import * as td from "../";
 
 export const get = ts.get as typeof td.get;
-export const use = ts.use as typeof td.use;
 export const Controller = ts.Controller as unknown as typeof td.Controller;
 export const Provider = ts.Provider as unknown as typeof td.Provider;
 export default Controller

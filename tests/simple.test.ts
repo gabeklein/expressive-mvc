@@ -1,4 +1,4 @@
-import Controller, { use } from './lib';
+import Controller from './lib';
 import { trySubscribe } from './adapter';
 
 class TestController extends Controller {
@@ -11,9 +11,10 @@ class TestController extends Controller {
 }
 
 test('loads values from class', () => {
-  const { state } = trySubscribe(
-    () => use(TestController)
-  );
+  const { state } = 
+    trySubscribe({
+      use: TestController
+    })
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);

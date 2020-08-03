@@ -1,6 +1,5 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
-import { use } from '../src';
 import { getSubscriber, SUBSCRIPTION } from '../src/subscription';
 
 type Class = new (...args: any[]) => any;
@@ -105,10 +104,12 @@ export function trySubscribe(config: TestSuite<any> | Initializer){
     init = config;
 
   else {
-    if(!config.use)
+    const Model = config.use;
+
+    if(!Model)
       throw new Error(`\`use: Controller\` not specified in test suite!`);
 
-    init = () => use(config.use);
+    init = () => Model.use();
     init = adjustSubscription(init, config);
 
     if(config.peek)
