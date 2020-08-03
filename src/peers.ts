@@ -36,11 +36,12 @@ export class PeerController {
 }
 
 export function getterFor(target: typeof Controller, args: any[] = []){
-  if(!target.global)
+  if(target.global){
+    const controller = globalController(target, args);
+    return () => controller;
+  }
+  else
     return contextGetterFor(target);
-
-  const controller = globalController(target, args);
-  return () => controller;
 }
 
 export function getPeerController(
