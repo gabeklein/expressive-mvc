@@ -1,7 +1,7 @@
-import Controller, { use } from './lib';
+import Controller from './lib';
 import { trySubscribe } from './adapter';
 
-class TestController extends Controller {
+class Subject extends Controller {
   value = 1;
   value2 = 2;
 
@@ -11,9 +11,10 @@ class TestController extends Controller {
 }
 
 test('loads values from class', () => {
-  const { state } = trySubscribe(
-    () => use(TestController)
-  );
+  const { state } = 
+    trySubscribe({
+      use: Subject
+    })
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);
@@ -22,7 +23,7 @@ test('loads values from class', () => {
 test('updates on value change', async () => {
   const { state, assertDidUpdate } = 
     trySubscribe({
-      use: TestController,
+      use: Subject,
       peek: "value" 
     })
   
@@ -33,10 +34,10 @@ test('updates on value change', async () => {
   expect(state.value).toBe(2);
 })
 
-test('allows methods to change state', async () => {
+test('methods may change state', async () => {
   const { state, assertDidUpdate } = 
     trySubscribe({
-      use: TestController,
+      use: Subject,
       peek: "value" 
     })
   
@@ -47,11 +48,10 @@ test('allows methods to change state', async () => {
   expect(state.value).toBe(3)
 })
 
-test('will not update on untracked value change', async () => {
+test('no update on untracked value change', async () => {
   const { state, assertDidNotUpdate } = 
     trySubscribe({
-      use: TestController,
-      // peek: "value"
+      use: Subject
     })
   
   state.value = 2
@@ -61,10 +61,10 @@ test('will not update on untracked value change', async () => {
   expect(state.value).toBe(2);
 })
 
-test('set/get reference full state', async () => {
+test('set & get are circular references', async () => {
   const { state, assertDidUpdate } = 
     trySubscribe({
-      use: TestController,
+      use: Subject,
       peek: "value" 
     })
   
@@ -74,5 +74,5 @@ test('set/get reference full state', async () => {
 
   await assertDidUpdate()
 
-  expect(state.value).toBe(2)
+  expect(state.get.value).toBe(2)
 })

@@ -1,7 +1,7 @@
 import Controller from "./lib";
 import { trySubscribe } from "./adapter";
 
-class TestController extends Controller {
+class Subject extends Controller {
 
   init?: string;
 
@@ -20,7 +20,7 @@ class TestController extends Controller {
 
 test('initializes from extended Controller', () => {
   const { state } = trySubscribe(
-    () => TestController.use()
+    () => Subject.use()
   )
 
   expect(state.value).toBe(1);
@@ -29,7 +29,7 @@ test('initializes from extended Controller', () => {
 
 test('passes arguments to constructor', () => {
   const { state } = trySubscribe(
-    () => TestController.use("Hello World!")
+    () => Subject.use("Hello World!")
   )
 
   expect(state.init).toBe("Hello World!");
@@ -37,7 +37,7 @@ test('passes arguments to constructor', () => {
 
 test('can initialize a Provider', () => {
   trySubscribe({
-    use: TestController,
+    use: Subject,
     peek: "Provider"
   })
 })

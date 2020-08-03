@@ -1,7 +1,7 @@
 import Controller from "./lib";
 import { trySubscribe } from "./adapter";
 
-class TestController extends Controller {
+class Subject extends Controller {
   seconds = 0;
   foo = "bar";
 
@@ -13,7 +13,9 @@ class TestController extends Controller {
 test('export with callback run every update', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ use: TestController });
+    trySubscribe({
+      use: Subject
+    });
 
   state.export(fn)
 
@@ -35,7 +37,9 @@ test('export with callback run every update', async () => {
 test('callback with initial = true fires immediately', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ use: TestController });
+    trySubscribe({
+      use: Subject
+    });
 
   state.export(fn, true);
 
@@ -51,7 +55,9 @@ test('callback with initial = true fires immediately', async () => {
 test('subset export calls only with / or those values', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ use: TestController });
+    trySubscribe({
+      use: Subject
+    });
 
   state.export(["seconds", "minutes"], fn)
 
