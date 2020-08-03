@@ -2,7 +2,7 @@ import { Context, FunctionComponent, ProviderProps } from 'react';
 
 import { OWN_CONTEXT, ControlProvider, ownContext } from './context';
 import { ControllerDispatch } from './dispatch';
-import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
+import { controllerIsGlobalError, OWN_SINGLETON, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
 import { getterFor } from './peers';
@@ -84,7 +84,7 @@ export class Controller {
   }
 
   static global = false;
-  static [GLOBAL_INSTANCE]?: Singleton;
+  static [OWN_SINGLETON]?: Singleton;
   static [OWN_CONTEXT]?: Context<Controller>;
 
   static meta: <T>(this: T) => T & Observable;
