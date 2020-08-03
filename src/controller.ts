@@ -1,6 +1,6 @@
 import { Context, FunctionComponent, ProviderProps } from 'react';
 
-import { ASSIGNED_CONTEXT, ControlProvider, ownContext } from './context';
+import { OWN_CONTEXT, ControlProvider, ownContext } from './context';
 import { ControllerDispatch } from './dispatch';
 import { controllerIsGlobalError, GLOBAL_INSTANCE, globalController } from './global';
 import { ControlledInput, ControlledValue } from './hoc';
@@ -86,7 +86,7 @@ export class Controller {
 
   static global = false;
   static [GLOBAL_INSTANCE]?: Singleton;
-  static [ASSIGNED_CONTEXT]?: Context<Controller>;
+  static [OWN_CONTEXT]?: Context<Controller>;
 
   static meta: <T>(this: T) => T & Observable;
 

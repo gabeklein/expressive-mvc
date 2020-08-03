@@ -3,13 +3,13 @@ import { createContext, createElement, PropsWithChildren, ProviderExoticComponen
 import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 
-export const ASSIGNED_CONTEXT = Symbol("react_context");
+export const OWN_CONTEXT = Symbol("react_context");
 
-export function ownContext(from: typeof Controller){
-  let context = from[ASSIGNED_CONTEXT];
+export function ownContext(model: typeof Controller){
+  let context = model[OWN_CONTEXT];
   
   if(!context)
-    context = from[ASSIGNED_CONTEXT] = createContext<Controller>(null as any);
+    context = model[OWN_CONTEXT] = createContext<Controller>(null as any);
       
   return context;
 }
