@@ -138,7 +138,7 @@ declare class Controller {
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     static tap <T extends Class> (this: T): InstanceType<T> & SC;
-    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
+    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 

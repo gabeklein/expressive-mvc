@@ -8,9 +8,9 @@ import { getObserver, OBSERVER, Observer } from './observer';
 import { getterFor } from './peers';
 import { createWrappedComponent } from './hoc';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, Class, ModelController, Observable, SubscribeController } from './types';
+import { BunchOf, Callback, ModelController, Observable, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
-import { useWatchedProperty, useWatcher } from './watcher';
+import { useWatcher } from './watcher';
 
 export interface Controller 
   extends Observable, ModelController, SubscribeController {
@@ -64,10 +64,9 @@ export class Controller {
       return dispatch.pick(subset);
   }
 
-  tap(key?: string, required?: boolean){
-    return key ? 
-      useWatchedProperty(this, key, required) : 
-      useWatcher(this);
+  tap(key?: string){
+    const self = useWatcher(this);
+    return key ? self[key] : key;
   }
 
   sub(...args: any[]){
@@ -104,18 +103,29 @@ export class Controller {
     return hook(key!) as unknown;
   }
 
-  static tap(key?: string, main?: boolean){
-    //TODO: Implement better caching here
-    const instance = getterFor(this)();
+  static tap(): Controller;
+  static tap(key?: string){
+    const getInstance = getterFor(this);
+
+    const hook = (key?: string) => 
+      getInstance().tap(key);
   
-    //TODO: is main on "required" argument correct?
-    return instance.tap(key, main);
+    define(this, "tap", hook);
+    return hook(key) as unknown;
   }
 
   static has(key: string){
     const getInstance = getterFor(this)
-    const hook = (key: string) =>
-      useWatchedProperty(getInstance(), key, true);
+
+    const hook = (key: string) => {
+      const target = getInstance();
+      const value = useWatcher(target)[key];
+
+      if(value === undefined)
+        throw new Error(`${this.constructor.name}.${key} must be defined this render.`)
+
+      return value;
+    }
   
     define(this, "has", hook);
     return hook(key) as unknown;
