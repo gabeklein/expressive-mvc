@@ -2,7 +2,7 @@ import Controller from "./lib";
 import { trySubscribe } from "./adapter";
 import { act } from "react-test-renderer";
 
-class TestController extends Controller {
+class Subject extends Controller {
   seconds = 0;
 
   get minutes(){
@@ -10,10 +10,10 @@ class TestController extends Controller {
   }
 }
 
-test('dispatches computed values when new', async () => {
+test('triggers computed value when input values change', async () => {
   const { state, assertDidNotUpdate, assertDidUpdate } = 
     trySubscribe({
-      use: TestController,
+      use: Subject,
       peek: [ "minutes" ]
     })
 
