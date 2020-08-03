@@ -32,10 +32,6 @@ lifecycleEvents.push(
   ...Object.values(componentLifecycle)
 )
 
-export function use(init: any, ...args: any[]){
-  return useModelController(init, args);
-}
-
 export function useModelController(
   init: any, 
   args: any[] = [], 
