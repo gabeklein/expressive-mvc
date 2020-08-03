@@ -7,30 +7,41 @@ import {
 } from 'react';
 
 type Class = new (...args: any) => any;
-type Expects<A extends any[]> = new(...args: A) => any
+type Expecting<A extends any[]> = new(...args: A) => any
 type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
 type KeyOfBooleanValueIn<T> = keyof Pick<T, BooleanValuesOf<T>[keyof T]>;
-
-declare function use<I, A extends any[]> (define: new (...args: A) => I, ...args: A): Controller & I;
-declare function use<I, A extends any[]> (init: (...args: A) => I, ...args: A): Controller & I;
-declare function use<I> (controller: Controller): Controller;
-declare function use<I> (init: I): Controller & I;
-
-declare function get<T extends Class> (type: T): InstanceType<T>;
-declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
-
-declare function set<T extends Class> (type: T): (InstanceType<T> & IC) | undefined;
-declare function set<T extends Class> (type: T, init: Partial<InstanceType<T>>): (InstanceType<T> & IC);
-declare function set<T extends {} = any> (type?: T): (T & IC);
-
-type HandleUpdatedValues<T extends object, P extends keyof T> = 
-    (this: T, values: Pick<T, P>, changed: P[]) => void
+type Similar<T> = { [X in keyof T]?: T[X] };
 
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void
 
+type HandleUpdatedValues<T extends object, P extends keyof T> = 
+    (this: T, values: Pick<T, P>, changed: P[]) => void
+
 /**
- * Model Controller, represents available lifecycle callbacks.
+ * Observable Instance
+ * 
+ * Implements internal value tracking. 
+ * Able to be subscribed to, on a per-value basis to know when properties are updated.
+ */
+interface Observable {
+    refresh(...keys: string[]): void;
+
+    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
+  
+    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
+    once<T extends keyof this>(property: T): Promise<this[T]>;
+
+    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+}
+
+/**
+ * Model Controller
+ * 
+ * This represents available lifecycle callbacks. 
+ * A controller, when subscribed to within a component, will run 
+ * these callbacks appropriately during that component's lifecycle.
  */
 interface MC {
     didCreate?(): void;
@@ -59,27 +70,25 @@ interface MC {
     componentWillCycle?(...args: any[]): void | (() => void);
 }
 
-interface Observable {
-    refresh(...keys: string[]): void;
-
-    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
-  
-    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
-    once<T extends keyof this>(property: T): Promise<this[T]>;
-
-    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+/**
+ * React Controller
+ * 
+ * Defines Higher-Order-Components (HOC's) which are bound to this controller.
+ */
+interface RC {
+    Provider: FunctionComponent<ProviderProps<this>>;
+    Input: FunctionComponent<{ to: string }>;
+    Value: FunctionComponent<{ of: string }>;
 }
 
 /**
- * Instance Controller, methods and properties available to objects with a dispatch.
+ * Instance Controller
+ * 
+ * Helper methods and properties available to an instance of this controller.
  */
 interface IC {
     get: this;
     set: this;
-  
-    Input: FunctionComponent<{ to: string }>;
-    Value: FunctionComponent<{ of: string }>;
 
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
@@ -101,72 +110,86 @@ interface IC {
 }
 
 /**
- * Subscription Controller, methods local to a controlled accessed through subscriptions.
+ * Subscription Controller
+ * 
+ * Methods local to this controller when accessed through a subscription.
  */
 interface SC {
     use: this;
     refresh(...keys: string[]): void;
 }
 
-export interface Meta extends Observable, SC {
+/**
+ * Meta Controller
+ * 
+ * A subscribe-ready controller which watches the ***static*** values of this class. 
+ * Allows for Singleton-like access to values "shared" by all instances.
+ */
+interface Meta extends Observable, SC {
     get: this;
     set: this;
 }
 
-type Similar<T> = { [X in keyof T]?: T[X] };
-
-interface Controller extends Observable, IC, IC, SC {}
+interface Controller extends Observable, IC, SC, RC {}
 
 declare class Controller {
     static global: boolean;
 
-    static watch <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I & SC;
+    static watch <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I;
 
-    static get Provider(): FunctionComponentElement<any>;
-    static makeGlobal<T extends Class>(this: T): InstanceType<T>;
+    static Provider: FunctionComponentElement<any>;
+    static makeGlobal <T extends Class>(this: T): InstanceType<T>;
 
     static meta <T extends Class>(this: T): T & Meta;
     
-    static use <A extends any[], T extends Expects<A>> (this: T, ...args: A): InstanceType<T> & SC;
+    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
-    static uses <T extends Class, D extends Similar<InstanceType<T>>> (this: T, data: D): InstanceType<T> & SC;
-    static using <T extends Class, D extends Similar<InstanceType<T>>> (this: T, data: D): InstanceType<T> & SC;
+    static uses <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
+    static using <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
 
     static get <T extends Class> (this: T): InstanceType<T>;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
-    static tap <T extends Class> (this: T): InstanceType<T> & SC;
+    static tap <T extends Class> (this: T): InstanceType<T>;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K, main?: boolean): I[K];
 
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
+    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T>;
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
 
     static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
 
     static context <T extends Class> (this: T): Context<InstanceType<T>>;
-
-    Provider: FunctionComponent<ProviderProps<this>>;
 }
 
-interface MultiProviderProps {
+declare class Singleton extends Controller {}
+
+declare function get<T extends Class> (type: T): InstanceType<T>;
+declare function get<T extends Controller> (type: T, ...args: any[]): T;
+
+declare function set<T extends Class> (type: T): (InstanceType<T>) | undefined;
+declare function set<T extends Class, I extends InstanceType<T>> (type: T, init: Partial<I>): I;
+declare function set<T extends {} = any> (type?: T): (T & IC);
+
+declare const Provider: FunctionComponentElement<{
     using: Controller[]
-}
+}>
 
-declare const MultiProvider: FunctionComponentElement<MultiProviderProps>
-
-export { 
+export {
     IC,
     SC,
     MC,
-    Observable,
-    use,
+    Meta,
+    Observable
+}
+
+export {
     get,
     set,
     Controller,
-    Controller as Singleton,
     Controller as default,
-    MultiProvider as Provider
+    Singleton,
+    Provider
 }
