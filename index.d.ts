@@ -11,11 +11,6 @@ type Expects<A extends any[]> = new(...args: A) => any
 type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
 type KeyOfBooleanValueIn<T> = keyof Pick<T, BooleanValuesOf<T>[keyof T]>;
 
-declare function use<I, A extends any[]> (define: new (...args: A) => I, ...args: A): Controller & I;
-declare function use<I, A extends any[]> (init: (...args: A) => I, ...args: A): Controller & I;
-declare function use<I> (controller: Controller): Controller;
-declare function use<I> (init: I): Controller & I;
-
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Class> (type: InstanceType<T>, ...args: any[]): InstanceType<T>;
 
@@ -162,7 +157,6 @@ export {
     SC,
     MC,
     Observable,
-    use,
     get,
     set,
     Controller,
