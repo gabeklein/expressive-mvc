@@ -133,24 +133,3 @@ export function newController(
 
   return control
 }
-
-// function instanceIsUnexpected(
-//   control: ModelController, cached: ModelController){
-
-//   const ControlType = cached.constructor;
-
-//   if(control instanceof ControlType)
-//     console.warn(dedent`
-//       Unexpected Instance:
-//       use() received unexpected instance of ${ControlType.name}!
-//       This should not change between renders of the same component. 
-//       Force a remount instead using key props.
-//     `)
-//   else
-//     throw new Error(dedent`
-//       Unexpected Controller:
-//       use() received unexpected controller between renders!
-//       Expected ${ControlType.name} and got ${control.constructor.name}!
-//       This should never happen; force a remount where a passed controller may change.
-//     `)
-// }
