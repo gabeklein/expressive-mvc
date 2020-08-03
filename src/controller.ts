@@ -131,11 +131,7 @@ export class Controller {
     return hook.apply(null, args);
   }
 
-  static hoc<T extends Class>(
-    this: T, fn: FunctionComponent<InstanceType<T>>){
-
-    return createWrappedComponent.call(this as any, fn as any)
-  }
+  static hoc = createWrappedComponent;
 
   static map(this: any, from: any[]){
     return from.map((item, index) => new this(item, index));
