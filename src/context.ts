@@ -5,7 +5,7 @@ import { CONTEXT_MULTIPROVIDER } from './provider';
 
 export const OWN_CONTEXT = Symbol("react_context");
 
-export function ownContext(model: typeof Controller){
+export function contextFor(model: typeof Controller){
   let context = model[OWN_CONTEXT];
   
   if(!context)
@@ -15,7 +15,7 @@ export function ownContext(model: typeof Controller){
 }
 
 export function getterForContext(this: typeof Controller) {
-  const context = ownContext(this);
+  const context = contextFor(this);
 
   return () => {
     const instance = 
@@ -33,7 +33,7 @@ export function getterForContext(this: typeof Controller) {
 }
 
 export function ControlProvider(this: Controller){
-  const { Provider } = ownContext(this.constructor as any);
+  const { Provider } = contextFor(this.constructor as any);
   return ParentProviderFor(this, Provider);
 }
 
