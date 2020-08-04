@@ -14,20 +14,20 @@ export function ownContext(model: typeof Controller){
   return context;
 }
 
-export function contextGetterFor(target: typeof Controller) {
-  const context = ownContext(target);
+export function getterForContext(this: typeof Controller) {
+  const context = ownContext(this);
 
   return () => {
     const instance = 
       useContext(context) || 
-      useContext(CONTEXT_MULTIPROVIDER)[target.name];
+      useContext(CONTEXT_MULTIPROVIDER)[this.name];
 
     if(instance)
       return instance;
 
     throw new Error(
       `Can't subscribe to controller; this accessor ` + 
-      `can only be used within a Provider keyed to \`${target.name}\``
+      `can only be used within a Provider keyed to \`${this.name}\``
     );
   }
 }

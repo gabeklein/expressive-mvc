@@ -1,11 +1,10 @@
 import { Context, FunctionComponent, ProviderProps } from 'react';
 
-import { OWN_CONTEXT, ControlProvider, ownContext } from './context';
+import { getterForContext, ControlProvider, OWN_CONTEXT } from './context';
 import { ControllerDispatch } from './dispatch';
 import { controllerIsGlobalError, OWN_SINGLETON, globalController } from './global';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
-import { getterFor } from './peers';
 import { useModelController, useSubscriber } from './subscriber';
 import { BunchOf, Callback, ModelController, Observable, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
@@ -86,6 +85,7 @@ export class Controller {
   static [OWN_SINGLETON]?: Singleton;
   static [OWN_CONTEXT]?: Context<Controller>;
 
+  static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
 
   static use(...args: any[]){
@@ -93,57 +93,37 @@ export class Controller {
   }
 
   static get(key?: string){
-    const getInstance = getterFor(this)
-    const hook = key === undefined ? 
-      () => Object.create(getInstance()) : 
-      (key: string) => (getInstance() as any)[key];
-  
-    define(this, "get", hook);
-    return hook(key!) as unknown;
+    const instance = this.find();
+    return key 
+      ? (instance as any)[key]
+      : instance;
   }
 
   static tap(): Controller;
   static tap(key?: string){
-    const getInstance = getterFor(this);
-
-    const hook = (key?: string) => 
-      getInstance().tap(key);
-  
-    define(this, "tap", hook);
-    return hook(key) as unknown;
+    return this.find().tap(key);
   }
 
   static has(key: string){
-    const getInstance = getterFor(this)
+    const value = this.find().tap(key);
 
-    const hook = (key: string) => {
-      const target = getInstance();
-      const value = useWatcher(target)[key];
+    if(value === undefined)
+      throw new Error(`${this.name}.${key} is marked as required for this render.`)
 
-      if(value === undefined)
-        throw new Error(`${this.constructor.name}.${key} must be defined this render.`)
-
-      return value;
-    }
-  
-    define(this, "has", hook);
-    return hook(key) as unknown;
+    return value;
   }
 
   static sub(...args: any[]){
-    const getInstance = getterFor(this, args);
-    const hook = (...args: any[]) => {
-      return useSubscriber(getInstance(), args, false);
-    }
-    
-    define(this, "sub", hook);
-    return hook.apply(null, args);
+    const instance = this.find();
+    return useSubscriber(instance, args, false);
   }
 
   static hoc = createWrappedComponent;
 
   static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
-    return this.tap().assign(a, b);
+    const instance = this.find();
+    instance.assign(a, b);
+    return instance.tap();
   }
 
   static uses(
@@ -209,6 +189,7 @@ function getterForMeta(this: typeof Controller){
   return () => useWatcher(self);
 }
 
+defineOnAccess(Controller, "find", getterForContext);
 defineOnAccess(Controller, "meta", getterForMeta);
 
 defineOnAccess(Controller.prototype, "Provider", ControlProvider);
