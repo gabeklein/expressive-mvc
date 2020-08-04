@@ -33,23 +33,18 @@ lifecycleEvents.push(
 )
 
 export function useModelController(
-  init: any, 
+  model: typeof Controller, 
   args: any[] = [], 
   callback?: (instance: Controller) => void){
 
   return useEventDrivenController((refresh) => {
     let instance: Controller;
-    let lifecycle = componentLifecycle;
     let release: Callback | undefined;
 
-    if(init instanceof Controller){
-      lifecycle = subscriberLifecycle;
-      instance = init;
-    }
-    else if(init.global)
-      instance = globalController(init, args);
+    if(model.global)
+      instance = globalController(model, args);
     else
-      instance = newController(init, args);
+      instance = newController(model, args);
 
     const dispatch = ensureDispatch(instance);
 
@@ -57,7 +52,7 @@ export function useModelController(
       callback(instance);
 
     function onEvent(this: Controller, name: LivecycleEvent){
-      const specific = lifecycle[name] as LivecycleEvent;
+      const specific = componentLifecycle[name] as LivecycleEvent;
       const handler = instance[specific] || instance[name];
       
       if(handler)
@@ -74,9 +69,8 @@ export function useModelController(
           if(release)
             release();
 
-          if(lifecycle == componentLifecycle)
-            if(instance.willDestroy)
-              instance.willDestroy(...args)
+          if(instance.willDestroy)
+            instance.willDestroy(...args)
         }
         break;
       }
