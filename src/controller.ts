@@ -96,10 +96,6 @@ export class Controller {
   static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
 
-  static use(...args: any[]){
-    return useModelController(this, args);
-  }
-
   static get(key?: string){
     const instance = this.find();
     return key 
@@ -132,6 +128,10 @@ export class Controller {
     const instance = this.find();
     instance.assign(a, b);
     return instance.tap();
+  }
+
+  static use(...args: any[]){
+    return useModelController(this, args);
   }
 
   static uses(
