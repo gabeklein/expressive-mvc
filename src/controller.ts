@@ -143,10 +143,6 @@ export class Controller {
 
   static hoc = createWrappedComponent;
 
-  static map(this: any, from: any[]){
-    return from.map((item, index) => new this(item, index));
-  }
-
   static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
     return this.tap().assign(a, b);
   }
