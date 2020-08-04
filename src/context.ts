@@ -22,13 +22,13 @@ export function getterForContext(this: typeof Controller) {
       useContext(context) || 
       useContext(CONTEXT_MULTIPROVIDER)[this.name];
 
-    if(instance)
-      return instance;
+    if(!instance)
+      throw new Error(
+        `Can't subscribe to controller; this accessor ` + 
+        `can only be used within a Provider keyed to \`${this.name}\``
+      );
 
-    throw new Error(
-      `Can't subscribe to controller; this accessor ` + 
-      `can only be used within a Provider keyed to \`${this.name}\``
-    );
+    return instance;
   }
 }
 
