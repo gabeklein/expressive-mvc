@@ -81,8 +81,16 @@ export class Controller {
       return dispatch.pick(subset);
   }
 
-  static global = false;
-  static [OWN_SINGLETON]?: Singleton;
+  destroy(){
+    const dispatch = this[OBSERVER];
+
+    if(dispatch)
+      dispatch.trigger("willDestroy");
+    
+    if(this.willDestroy)
+      this.willDestroy();
+  }
+
   static [OWN_CONTEXT]?: Context<Controller>;
 
   static find: () => Controller;

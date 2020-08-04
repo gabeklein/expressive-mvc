@@ -100,6 +100,8 @@ interface IC {
 
     toggle(key: KeyOfBooleanValueIn<this>): boolean;
 
+    destroy(): void;
+
     onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 

@@ -35,10 +35,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   useEffect(() => {
     return () => {
       flushHooks.forEach(x => x());
-      Object.values(provide).forEach(x => {
-        if(x.willDestroy)
-          x.willDestroy();
-      });
+      Object.values(provide).forEach(x => x.destroy());
     }
   }, []);
 

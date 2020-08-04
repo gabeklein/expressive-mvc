@@ -69,8 +69,7 @@ export function useModelController(
           if(release)
             release();
 
-          if(instance.willDestroy)
-            instance.willDestroy(...args)
+          instance.destroy();
         }
         break;
       }
