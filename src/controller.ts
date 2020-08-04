@@ -20,12 +20,12 @@ export interface Controller
 
   [OBSERVER]: ControllerDispatch;
 
+  get: this;
+  set: this;
+
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
-  
-  get: this;
-  set: this;
 
   assign(props: BunchOf<any>): this;
   assign(key: string, props?: BunchOf<any>): any;
@@ -38,6 +38,25 @@ export class Controller {
   constructor(){
     this.get = this;
     this.set = this;
+  }
+
+  tap(key?: string){
+    const self = useWatcher(this);
+    return key ? self[key] : key;
+  }
+
+  sub(...args: any[]){
+    return useSubscriber(this, args, false) 
+  }
+  
+  assign(
+    a: string | BunchOf<any>, 
+    b?: BunchOf<any>){
+  
+    if(typeof a == "string")
+      return (this as any)[a] = b as any;
+    else
+      return Object.assign(this, a) as this;
   }
 
   toggle = (key: string) => {
@@ -62,25 +81,6 @@ export class Controller {
       return dispatch.feed(subset!, onChange, initial);
     else 
       return dispatch.pick(subset);
-  }
-
-  tap(key?: string){
-    const self = useWatcher(this);
-    return key ? self[key] : key;
-  }
-
-  sub(...args: any[]){
-    return useSubscriber(this, args, false) 
-  }
-  
-  assign(
-    a: string | BunchOf<any>, 
-    b?: BunchOf<any>){
-  
-    if(typeof a == "string")
-      return (this as any)[a] = b as any;
-    else
-      return Object.assign(this, a) as this;
   }
 
   static global = false;
@@ -199,7 +199,7 @@ export class Singleton extends Controller {
   static global = true;
 }
 
-function getMetaSubscriber(this: typeof Controller){
+function getterForMeta(this: typeof Controller){
   const self = this as unknown as Observable;
   const observer = new Observer(self);
 
@@ -214,7 +214,8 @@ function getMetaSubscriber(this: typeof Controller){
   return () => useWatcher(self);
 }
 
-defineOnAccess(Controller, "meta", getMetaSubscriber);
+defineOnAccess(Controller, "meta", getterForMeta);
+
 defineOnAccess(Controller.prototype, "Provider", ControlProvider);
 defineOnAccess(Controller.prototype, "Value", ControlledValue);
 defineOnAccess(Controller.prototype, "Input", ControlledInput);

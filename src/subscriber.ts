@@ -17,15 +17,15 @@ export const lifecycleEvents = [
   "didMount"
 ];
 
-const mapPrefix = (prefix: string) => {
+const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;
   for(const name of lifecycleEvents)
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
   return map;
 }
 
-export const subscriberLifecycle = mapPrefix("element");
-export const componentLifecycle = mapPrefix("component");
+export const subscriberLifecycle = eventsFor("element");
+export const componentLifecycle = eventsFor("component");
 
 lifecycleEvents.push(
   ...Object.values(subscriberLifecycle),
@@ -92,11 +92,11 @@ export function useSubscriber<T extends Controller>(
   main: boolean){
 
   return useEventDrivenController((refresh) => {
+    const dispatch = ensureDispatch(target);
+    
     const lifecycle: any = main
       ? componentLifecycle
       : subscriberLifecycle;
-
-    const dispatch = ensureDispatch(target);
 
     function onEvent(this: Controller, name: LivecycleEvent){
       const specific = lifecycle[name] as LivecycleEvent;

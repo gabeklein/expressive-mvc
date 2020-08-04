@@ -16,16 +16,16 @@ export function useEventDrivenController<T extends Controller>(
 ){
   const [ state, update ] = useState({} as {
     current: T,
-    trigger: (name: LivecycleEvent) => void
+    onEvent: (name: LivecycleEvent) => void
   });
 
   let control = state.current;
-  let trigger = state.trigger;
+  let trigger = state.onEvent;
 
   if(!control){
     const refresh = () => update({ ...state });
     control = init(refresh);
-    trigger = state.trigger = (name) => control.onEvent(name);
+    trigger = state.onEvent = (name) => control.onEvent(name);
   }
 
   if(state.current)

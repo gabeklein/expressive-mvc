@@ -71,7 +71,7 @@ export function ensurePeerControllers(instance: Controller){
     if(value instanceof PeerController)
       pending.push([key, value.context] as const)
 
-  const disableMaintaince = () => {
+  const stopMaintaince = () => {
     Object.defineProperty(instance, RENEW_CONSUMERS, { value: undefined });
   }
 
@@ -92,10 +92,10 @@ export function ensurePeerControllers(instance: Controller){
       configurable: true 
     });
 
-    return disableMaintaince;
+    return stopMaintaince;
   }
   else
-    disableMaintaince();
+    stopMaintaince();
   
   return;
 }
