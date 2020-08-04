@@ -4,7 +4,7 @@ import { globalController } from './global';
 import { useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
-import { BunchOf, Callback, Class, LivecycleEvent } from './types';
+import { BunchOf, Callback, LivecycleEvent } from './types';
 
 export const lifecycleEvents = [
   "willReset",
@@ -44,7 +44,7 @@ export function useModelController(
     if(model.global)
       instance = globalController(model, args);
     else
-      instance = newController(model, args);
+      instance = new (model as any)(...args);
 
     const dispatch = ensureDispatch(instance);
 
@@ -104,22 +104,4 @@ export function useSubscriber<T extends Controller>(
     
     return new Subscription(target, refresh, onEvent).proxy;
   })
-}
-
-export function newController(
-  model: Class | Function,
-  args: any[] = [],
-  callback?: (self: Controller) => void
-){
-  const control = 
-    typeof model === "function" ?
-      model.prototype ?
-        new (model as Class)(...args) :
-        (model as Function)(...args) :
-      model;
-
-  if(callback)
-    callback(control);
-
-  return control
 }
