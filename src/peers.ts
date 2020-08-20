@@ -1,6 +1,5 @@
 import { Context, useContext } from 'react';
 
-import { contextFor } from './context';
 import { Controller, Singleton } from './controller';
 import { globalController } from './global';
 import { CONTEXT_MULTIPROVIDER } from './provider';
@@ -17,7 +16,7 @@ export class PeerController {
   ){}
 
   get context(){
-    return contextFor(this.type);
+    return this.type.context!;
   }
 
   attachNowIfGlobal(parent: Controller, key: string){

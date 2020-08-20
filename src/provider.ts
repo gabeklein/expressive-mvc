@@ -6,6 +6,27 @@ import { BunchOf, Callback } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
+export function ControlProvider(this: Controller){
+  const model = this.constructor as typeof Controller;
+  const { Provider } = model.context!;
+  
+  return (props: PropsWithChildren<any>) => {
+    let { children, className, style } = props;
+
+    props = Object.assign({}, props);
+    for(const k of ["children", "className", "style"])
+      delete props[k];
+
+    if(Object.keys(props).length)
+      this.assign(props);
+
+    if(className || style)
+      children = createElement("div", { className, style }, children);
+
+    return createElement(Provider, { value: this }, children);
+  }
+}
+
 export const MultiProvider = (props: PropsWithChildren<any>) => {
   let { children, className, style, of: controllers = {} } = props;
 

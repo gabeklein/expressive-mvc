@@ -1,6 +1,5 @@
 import { createElement, FC, forwardRef, FunctionComponent, PropsWithChildren, useEffect } from 'react';
 
-import { contextFor } from './context';
 import { Controller } from './controller';
 import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
@@ -12,7 +11,7 @@ export function createWrappedComponent<T extends typeof Controller>(
   this: T,
   fn: FunctionComponent<InstanceType<T>> ){
 
-  const { Provider } = contextFor(this as any);
+  const { Provider } = this.context!;
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const controller = useModelController(this);

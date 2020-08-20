@@ -1,10 +1,10 @@
-import { Context, FunctionComponent, ProviderProps } from 'react';
+import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
-import { getterForContext, ControlProvider, OWN_CONTEXT } from './context';
 import { ControllerDispatch, ensureDispatch } from './dispatch';
 import { controllerIsGlobalError, OWN_SINGLETON, globalController } from './global';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
+import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
 import { BunchOf, Callback, ModelController, Observable, SubscribeController } from './types';
 import { define, defineOnAccess, transferValues } from './util';
@@ -95,8 +95,7 @@ export class Controller {
       this.willDestroy();
   }
 
-  static [OWN_CONTEXT]?: Context<Controller>;
-
+  static context?: Context<Controller>;
   static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
 
@@ -173,13 +172,6 @@ export class Controller {
     return globalController(this, args);
   }
 
-  static context(){
-    if(this.global)
-      throw controllerIsGlobalError(this.name)
-    else
-      return ownContext(this)
-  }
-
   static get Provider(){
     if(this.global)
       throw controllerIsGlobalError(this.name)
@@ -192,7 +184,29 @@ export class Singleton extends Controller {
   static global = true;
 }
 
-defineOnAccess(Controller, "find", getterForContext);
+defineOnAccess(Controller, "context", 
+  () => createContext<any>(null)
+);
+
+defineOnAccess(Controller, "find", 
+  function getterForContext(this: typeof Controller) {
+    const { name, context } = this;
+
+    return function useInstanceInContext(){
+      const instance = 
+        useContext(context!) || 
+        useContext(CONTEXT_MULTIPROVIDER)[name];
+
+      if(!instance)
+        throw new Error(
+          `Can't subscribe to controller; this accessor ` + 
+          `can only be used within a Provider keyed to \`${name}\``
+        );
+
+      return instance;
+    }
+  }
+);
 
 defineOnAccess(Controller, "meta", 
   function getterForMeta(this: typeof Controller){
