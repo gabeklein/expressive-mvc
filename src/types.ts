@@ -1,5 +1,5 @@
 import { OBSERVER, Observer } from './observer';
-import { RENEW_CONTEXT } from './peers';
+import { ACTIVE_CONTEXT } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
 import { LivecycleEvent } from './hook';
 
@@ -37,7 +37,7 @@ export interface SubscribeController {
 }
 
 export interface ModelController {
-  [RENEW_CONTEXT]: Callback;
+  [ACTIVE_CONTEXT]: Callback;
 
   didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;
