@@ -9,6 +9,8 @@ import { define, defineOnAccess } from './util';
 
 export const RENEW_CONSUMERS = Symbol("maintain_hooks");
 
+type PeerContext = [string, Context<Controller>];
+
 export class PeerController {
   constructor(
     private type: typeof Controller
@@ -47,46 +49,45 @@ export function getPeerController(
 
 export function ensurePeerControllers(instance: Controller){
   if(RENEW_CONSUMERS in instance){
-    const hookMaintainance = instance[RENEW_CONSUMERS];
-    
-    if(hookMaintainance)
-      hookMaintainance();
-
+    if(typeof instance[RENEW_CONSUMERS] == "function")
+      instance[RENEW_CONSUMERS]();
     return;
   }
 
-  const pending = [];
+  const pending = [] as PeerContext[];
   const properties = Object.getOwnPropertyDescriptors(instance);
+  const entries = Object.entries(properties);
 
-  for(const [key, { value }] of Object.entries(properties))
+  for(const [key, { value }] of entries)
     if(value instanceof PeerController)
-      pending.push([key, value.context] as const)
+      pending.push([key, value.type.context!])
 
-  const stopMaintaince = () => {
-    Object.defineProperty(instance, RENEW_CONSUMERS, { value: undefined });
+  if(pending.length)
+    return attachPeersFromContext(instance, pending);
+  else 
+    instance[RENEW_CONSUMERS] = undefined as any;
+}
+
+function attachPeersFromContext(
+  subject: Controller,
+  peers: PeerContext[]){
+
+  const multi = useContext(CONTEXT_MULTIPROVIDER);
+  const expected = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
+
+  for(const [name, context] of peers)
+    if(multi && multi[name])
+      define(subject, name, multi[name])
+    else {
+      expected.push(context)
+      define(subject, name, useContext(context))
+    }
+
+  subject[RENEW_CONSUMERS] = () => {
+    expected.forEach(useContext);
   }
 
-  if(pending.length){
-    let multi = useContext(CONTEXT_MULTIPROVIDER);
-    const required = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
-
-    for(const [name, context] of pending)
-      if(multi && multi[name])
-        define(instance, name, multi[name])
-      else {
-        required.push(context)
-        define(instance, name, useContext(context))
-      }
-
-    Object.defineProperty(instance, RENEW_CONSUMERS, { 
-      value: () => required.forEach(useContext), 
-      configurable: true 
-    });
-
-    return stopMaintaince;
+  return function reset(){
+    subject[RENEW_CONSUMERS] = undefined as any;
   }
-  else
-    stopMaintaince();
-  
-  return;
 }
