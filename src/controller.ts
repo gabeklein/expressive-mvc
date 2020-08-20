@@ -192,23 +192,24 @@ export class Singleton extends Controller {
   static global = true;
 }
 
-function getterForMeta(this: typeof Controller){
-  const self = this as unknown as Observable;
-  const observer = new Observer(self);
-
-  observer.monitorValues(["prototype", "length", "name"]);
-  observer.monitorComputed();
-
-  define(self, {
-    get: self,
-    set: self
-  });
-
-  return () => useWatcher(self);
-}
-
 defineOnAccess(Controller, "find", getterForContext);
-defineOnAccess(Controller, "meta", getterForMeta);
+
+defineOnAccess(Controller, "meta", 
+  function getterForMeta(this: typeof Controller){
+    const self = this as unknown as Observable;
+    const observer = new Observer(self);
+
+    observer.monitorValues(["prototype", "length", "name"]);
+    observer.monitorComputed();
+
+    define(self, {
+      get: self,
+      set: self
+    });
+
+    return () => useWatcher(self);
+  }
+);
 
 defineOnAccess(Controller.prototype, "Provider", ControlProvider);
 defineOnAccess(Controller.prototype, "Value", ControlledValue);
