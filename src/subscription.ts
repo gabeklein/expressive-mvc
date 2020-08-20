@@ -40,7 +40,7 @@ export class Subscription<T extends Observable = any>{
         configurable: true,
         enumerable: true,
         set: (value: any) => (master.subject as any)[key] = value,
-        get: this.onAccess(key)
+        get: this.onAccessTrigger(key)
       })
 
     define(local, {
@@ -78,18 +78,16 @@ export class Subscription<T extends Observable = any>{
       done()
   }
   
-  private onAccess = (key: string) => {
+  private onAccessTrigger = (key: string) => {
     return () => {
-      let value = (this.master.subject as any)[key];
+      const value = (this.master.subject as any)[key];
 
       if(value instanceof Controller)
         return this.monitorRecursive(key);
-      else {
-        this.cleanup.add(
-          this.master.addListener(key, this.trigger)
-        );
-        return value;
-      }
+        
+      const done = this.master.addListener(key, this.trigger);
+      this.cleanup.add(done);
+      return value;
     }
   }
 
