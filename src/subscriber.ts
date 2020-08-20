@@ -1,10 +1,10 @@
 import { Controller } from './controller';
 import { ensureDispatch } from './dispatch';
 import { globalController } from './global';
-import { useEventDrivenController } from './hook';
+import { lifecycleEvents, LivecycleEvent, useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
-import { BunchOf, Callback, lifecycleEvents, LivecycleEvent } from './types';
+import { BunchOf, Callback } from './types';
 
 const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;

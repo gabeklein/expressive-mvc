@@ -1,6 +1,7 @@
 import { OBSERVER, Observer } from './observer';
 import { RENEW_CONTEXT } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
+import { LivecycleEvent } from './hook';
 
 export type BunchOf<T> = { [key: string]: T }
 export type Class = new(...args: any[]) => any;
@@ -8,36 +9,6 @@ export type Callback = () => void;
 export type HandleUpdatedValue
   <T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
-
-export type LivecycleEvent =
-  | "willMount"
-  | "willUpdate"
-  | "willRender"
-  | "didRender"
-  | "willReset"
-  | "didMount"
-  | "willUnmount"
-  | "componentWillMount"
-  | "componentWillUpdate"
-  | "componentWillRender"
-  | "componentDidMount"
-  | "componentWillUnmount"
-  | "elementWillMount"
-  | "elementWillUpdate"
-  | "elementWillRender"
-  | "elementDidMount"
-  | "elementWillUnmount";
-
-  export const lifecycleEvents = [
-    "willReset",
-    "willCycle",
-    "willRender",
-    "willUpdate",
-    "willMount",
-    "willUnmount",
-    "didRender",
-    "didMount"
-  ];
 
 export interface Observable {
   [OBSERVER]: Observer<any>;

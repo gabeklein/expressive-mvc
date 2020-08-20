@@ -1,7 +1,8 @@
 import { Controller } from './controller';
 import { ensureDispatch } from './dispatch';
+import { LivecycleEvent } from './hook';
 import { getObserver, Observable, Observer } from './observer';
-import { Callback, LivecycleEvent, ModelController } from './types';
+import { Callback, ModelController } from './types';
 import { define } from './util';
 
 export const LIFECYCLE = Symbol("subscription_lifecycle");

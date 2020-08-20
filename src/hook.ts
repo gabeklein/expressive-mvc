@@ -1,9 +1,39 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { Callback, LivecycleEvent } from './types';
+import { Callback } from './types';
 
 export type UpdateTrigger = Callback;
+
+export type LivecycleEvent =
+  | "willMount"
+  | "willUpdate"
+  | "willRender"
+  | "didRender"
+  | "willReset"
+  | "didMount"
+  | "willUnmount"
+  | "componentWillMount"
+  | "componentWillUpdate"
+  | "componentWillRender"
+  | "componentDidMount"
+  | "componentWillUnmount"
+  | "elementWillMount"
+  | "elementWillUpdate"
+  | "elementWillRender"
+  | "elementDidMount"
+  | "elementWillUnmount";
+
+export const lifecycleEvents = [
+  "willReset",
+  "willCycle",
+  "willRender",
+  "willUpdate",
+  "willMount",
+  "willUnmount",
+  "didRender",
+  "didMount"
+];
 
 export const useManualRefresh = <T extends {}>(init?: () => T) => {
   const [ state, update ] = useState<T>(init || {} as any);
