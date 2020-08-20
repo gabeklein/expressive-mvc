@@ -6,7 +6,7 @@ import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc'
 import { getObserver, OBSERVER, Observer } from './observer';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, ModelController, Observable, SubscribeController } from './types';
+import { BunchOf, Callback, ModelController, Observable, SubscribeController, Class } from './types';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatcher } from './watcher';
 
