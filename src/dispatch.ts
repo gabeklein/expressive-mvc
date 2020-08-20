@@ -32,15 +32,14 @@ export class ControllerDispatch
   extends Observer<Controller> {
 
   protected monitorValue(key: string, value: any){
-    //TODO: should still be tracked after global?
     if(value instanceof PeerController)
-      value.attachNowIfGlobal(this.subject, key);
+      this.subject.attach(key, value.type)
     else if(value instanceof ManagedProperty)
       this.monitorManaged(key, value)
     else
       super.monitorValue(key, value)
   }
-  
+
   private monitorManaged(key: string, value: ManagedProperty){
     const { create, initial } = value;
     const { state } = this;
@@ -69,9 +68,7 @@ export class ControllerDispatch
       this.update();
     })
   }
-
-  //TODO: Combine pick and feed into one export method
-
+  
   public pick(keys?: string[]){
     const acc = {} as BunchOf<any>;
 

@@ -1,7 +1,6 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControllerDispatch, ensureDispatch } from './dispatch';
-import { controllerIsGlobalError, OWN_SINGLETON, globalController } from './global';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
@@ -85,6 +84,11 @@ export class Controller {
       return dispatch.pick(subset);
   }
 
+  attach(key: string, type: typeof Controller){
+    if(!type.context)
+      defineOnAccess(this, key, () => type.find());
+  }
+
   destroy(){
     const dispatch = this[OBSERVER];
 
@@ -105,6 +109,7 @@ export class Controller {
     return new (this as any)(...args);
   }
 
+  static get(): Controller;
   static get(key?: string){
     const instance = this.find();
     return key 
@@ -167,21 +172,9 @@ export class Controller {
     return subscriber;
   }
 
-  static makeGlobal(...args: any[]){
-    this.global = true;
-    return globalController(this, args);
-  }
-
   static get Provider(){
-    if(this.global)
-      throw controllerIsGlobalError(this.name)
-    else 
-      return useModelController(this).Provider
+    return useModelController(this).Provider;
   }
-}
-
-export class Singleton extends Controller {
-  static global = true;
 }
 
 defineOnAccess(Controller, "context", 

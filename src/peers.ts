@@ -1,10 +1,9 @@
 import { Context, useContext } from 'react';
 
-import { Controller, Singleton } from './controller';
-import { globalController } from './global';
+import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
-import { define, defineOnAccess } from './util';
+import { define } from './util';
 
 export const ACTIVE_CONTEXT = Symbol("maintain_hooks");
 
@@ -12,28 +11,8 @@ type PeerContext = [string, Context<Controller>];
 
 export class PeerController {
   constructor(
-    private type: typeof Controller
+    public type: typeof Controller
   ){}
-
-  get context(){
-    return this.type.context!;
-  }
-
-  attachNowIfGlobal(parent: Controller, key: string){
-    const { type } = this;
-
-    if(type.global){
-      defineOnAccess(parent, key, () => globalController(type))
-      return
-    }
-      
-    if(parent instanceof Singleton)
-      throw new Error(
-        `Global controller '${parent.constructor.name}' attempted to attach '${type.name}'. ` +
-        `This is not possible because '${type.name}' is not also global. ` + 
-        `Did you forget to extend 'Singleton'?`
-      )
-  }
 }
 
 export function getPeerController(

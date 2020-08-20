@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { globalController } from './global';
 import { lifecycleEvents, LivecycleEvent, useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
@@ -28,11 +27,6 @@ export function useModelController(
   return useEventDrivenController((refresh) => {
     let instance = model.create(args);
     let release: Callback | undefined;
-
-    if(model.global)
-      instance = globalController(model, args);
-    else
-      instance = new (model as any)(...args);
 
     const dispatch = instance.initialize();
 
