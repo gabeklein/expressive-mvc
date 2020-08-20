@@ -4,18 +4,7 @@ import { globalController } from './global';
 import { useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
-import { BunchOf, Callback, LivecycleEvent } from './types';
-
-export const lifecycleEvents = [
-  "willReset",
-  "willCycle",
-  "willRender",
-  "willUpdate",
-  "willMount",
-  "willUnmount",
-  "didRender",
-  "didMount"
-];
+import { BunchOf, Callback, lifecycleEvents, LivecycleEvent } from './types';
 
 const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;

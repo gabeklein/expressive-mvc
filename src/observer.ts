@@ -1,6 +1,5 @@
-import { lifecycleEvents } from './subscriber';
 import { Subscription, UpdateTrigger } from './subscription';
-import { BunchOf, HandleUpdatedValue } from './types';
+import { BunchOf, HandleUpdatedValue, lifecycleEvents } from './types';
 import { collectGetters, define, entriesOf } from './util';
 
 type UpdateEventHandler = (value: any, key: string) => void;

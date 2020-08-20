@@ -1,6 +1,6 @@
 import { OBSERVER, Observer } from './observer';
+import { RENEW_CONTEXT } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
-import { RENEW_CONSUMERS } from 'peers';
 
 export type BunchOf<T> = { [key: string]: T }
 export type Class = new(...args: any[]) => any;
@@ -27,6 +27,17 @@ export type LivecycleEvent =
   | "elementWillRender"
   | "elementDidMount"
   | "elementWillUnmount";
+
+  export const lifecycleEvents = [
+    "willReset",
+    "willCycle",
+    "willRender",
+    "willUpdate",
+    "willMount",
+    "willUnmount",
+    "didRender",
+    "didMount"
+  ];
 
 export interface Observable {
   [OBSERVER]: Observer<any>;
@@ -55,7 +66,7 @@ export interface SubscribeController {
 }
 
 export interface ModelController {
-  [RENEW_CONSUMERS]: Callback;
+  [RENEW_CONTEXT]: Callback;
 
   didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;
