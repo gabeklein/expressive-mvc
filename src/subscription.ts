@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { ensureDispatch } from './dispatch';
 import { LivecycleEvent } from './hook';
 import { getObserver, Observable, Observer } from './observer';
 import { Callback, ModelController } from './types';
@@ -101,8 +100,8 @@ export class Subscription<T extends Observable = any>{
     let active!: Subscription;
 
     const startSubscription = () => {
-      const value = dispatch[key];
-      ensureDispatch(value);
+      const value = dispatch[key] as Controller;
+      value.initialize();
       active = new Subscription(value, this.trigger);
       Object.defineProperty(this.proxy, key, {
         get: () => active.proxy,

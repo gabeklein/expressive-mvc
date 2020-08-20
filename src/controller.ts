@@ -1,7 +1,7 @@
 import { Context, FunctionComponent, ProviderProps } from 'react';
 
 import { getterForContext, ControlProvider, OWN_CONTEXT } from './context';
-import { ControllerDispatch } from './dispatch';
+import { ControllerDispatch, ensureDispatch } from './dispatch';
 import { controllerIsGlobalError, OWN_SINGLETON, globalController } from './global';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { getObserver, OBSERVER, Observer } from './observer';
@@ -36,6 +36,10 @@ export class Controller {
   constructor(){
     this.get = this;
     this.set = this;
+  }
+
+  initialize(){
+    return ensureDispatch(this);
   }
 
   tap(key?: string){
@@ -95,6 +99,12 @@ export class Controller {
 
   static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
+
+  static create<T extends Class>(
+    this: T, args: any[]): InstanceType<T> {
+
+    return new (this as any)(...args);
+  }
 
   static get(key?: string){
     const instance = this.find();

@@ -1,5 +1,4 @@
 import { Controller, Singleton } from './controller';
-import { ensureDispatch } from './dispatch';
 
 export const OWN_SINGLETON = Symbol("controller_singleton");
 
@@ -12,18 +11,18 @@ export function globalController(
   args: any[] = [],
   callback?: (self: Controller) => void
 ){
-  let instance = type[OWN_SINGLETON];
+  let instance = type[OWN_SINGLETON] as Singleton;
 
   if(instance)
     return instance;
 
-  instance = new (type as any)(...args) as Singleton;
+  instance = new (type as any)(...args);
   type[OWN_SINGLETON] = instance;
 
   if(callback)
     callback(instance);
     
-  ensureDispatch(instance);
+  instance.initialize();
 
   return instance;
 }

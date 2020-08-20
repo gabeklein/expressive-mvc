@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { ensureDispatch } from './dispatch';
 import { globalController } from './global';
 import { lifecycleEvents, LivecycleEvent, useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
@@ -27,7 +26,7 @@ export function useModelController(
   callback?: (instance: Controller) => void){
 
   return useEventDrivenController((refresh) => {
-    let instance: Controller;
+    let instance = model.create(args);
     let release: Callback | undefined;
 
     if(model.global)
@@ -35,7 +34,7 @@ export function useModelController(
     else
       instance = new (model as any)(...args);
 
-    const dispatch = ensureDispatch(instance);
+    const dispatch = instance.initialize();
 
     if(callback)
       callback(instance);
@@ -74,7 +73,7 @@ export function useSubscriber<T extends Controller>(
   main: boolean){
 
   return useEventDrivenController((refresh) => {
-    const dispatch = ensureDispatch(target);
+    const dispatch = target.initialize();
     
     const lifecycle: any = main
       ? componentLifecycle
