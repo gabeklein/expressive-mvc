@@ -1,6 +1,6 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
-import { ControllerDispatch, ensureDispatch } from './dispatch';
+import { ControllerDispatch } from './dispatch';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { LivecycleEvent } from './hook';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
@@ -77,7 +77,7 @@ export class Controller {
   }
 
   initialize(){
-    return ensureDispatch(this);
+    return ControllerDispatch.applyTo(this);
   }
 
   tap(key?: string){

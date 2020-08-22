@@ -6,29 +6,29 @@ import { define } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
-export function ensureDispatch(control: Controller){
-  let dispatch = control[OBSERVER];
-
-  if(!dispatch){
-    dispatch = new ControllerDispatch(control);
-
-    dispatch.monitorValues(["get", "set"]);
-    dispatch.monitorComputed(["Provider", "Input", "Value"]);
-
-    define(control, {
-      get: control,
-      set: control
-    })
-
-    if(control.didCreate)
-      control.didCreate();
-  }
-  
-  return dispatch;
-}
-
 export class ControllerDispatch 
   extends Observer<Controller> {
+
+  static applyTo(control: Controller){
+    let dispatch = control[OBSERVER];
+  
+    if(!dispatch){
+      dispatch = new ControllerDispatch(control);
+  
+      dispatch.monitorValues(["get", "set"]);
+      dispatch.monitorComputed(["Provider", "Input", "Value"]);
+  
+      define(control, {
+        get: control,
+        set: control
+      })
+  
+      if(control.didCreate)
+        control.didCreate();
+    }
+    
+    return dispatch;
+  }
 
   protected monitorValue(key: string, value: any){
     if(value instanceof PeerController)
@@ -47,7 +47,7 @@ export class ControllerDispatch
       //TODO enforce type
       const saved = state[key] = create() as Controller;
       Object.assign(saved, value);
-      ensureDispatch(saved);
+      ControllerDispatch.applyTo(saved);
     }
 
     if(initial)
