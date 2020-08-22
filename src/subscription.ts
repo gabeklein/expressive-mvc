@@ -6,7 +6,6 @@ import { define } from './util';
 export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const SUBSCRIPTION = Symbol("controller_subscription");
 
-export type UpdateTrigger = Callback;
 export type ModelEvent = keyof ModelController;
 
 export function getSubscriber(control: Controller){
@@ -26,7 +25,7 @@ export class Subscription<T extends Observable = any>{
   
   constructor(
     source: T,
-    private trigger: UpdateTrigger,
+    private trigger: Callback,
     private callback?: (name: LivecycleEvent) => void
   ){
     const master = this.master = getObserver(source);

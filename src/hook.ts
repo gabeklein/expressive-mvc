@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
 
-export type UpdateTrigger = Callback;
-
 export type LivecycleEvent =
   | "willMount"
   | "willUpdate"
@@ -41,7 +39,7 @@ export const useManualRefresh = <T extends {}>(init?: () => T) => {
 }
 
 export function useEventDrivenController<T extends Controller>(
-  init: (requestUpdate: UpdateTrigger) => T
+  init: (requestUpdate: Callback) => T
 ){
   const [ state, update ] = useState({} as {
     current: T,

@@ -1,5 +1,5 @@
 import { lifecycleEvents } from './hook';
-import { Subscription, UpdateTrigger } from './subscription';
+import { Subscription } from './subscription';
 import { collectGetters, define, entriesOf } from './util';
 
 type UpdateEventHandler = 
@@ -231,7 +231,7 @@ export class Observer<T extends Observable> {
       return;
 
     setTimeout(() => {
-      const queued = new Set<UpdateTrigger>();
+      const queued = new Set<Callback>();
       const { pending: pendingUpdate, subscribers } = this;
 
       for(const key of pendingUpdate)
@@ -248,7 +248,7 @@ export class Observer<T extends Observable> {
   //TODO: does this even have parity with multi?
   public addListener(
     key: string,
-    callback: UpdateTrigger){
+    callback: Callback){
 
     let register = this.manage(key);
 
