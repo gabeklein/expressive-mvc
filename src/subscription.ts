@@ -7,15 +7,6 @@ export const SUBSCRIPTION = Symbol("controller_subscription");
 
 export type ModelEvent = keyof ModelController;
 
-export function getSubscriber(control: Controller){
-  const sub = control[SUBSCRIPTION];
-
-  if(!sub)
-    throw new Error("Subscription does not exist on this object.")
-
-  return sub;
-}
-
 export class Subscription<T extends Observable = any>{
   public proxy: T;
   private master: Observer<any>;

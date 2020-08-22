@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useEventDrivenController, useManualRefresh } from './hook';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
-import { getSubscriber, Subscription } from './subscription';
+import { Subscription, SUBSCRIPTION } from './subscription';
 
 export function useModelController(
   model: typeof Controller, 
@@ -59,7 +59,12 @@ export function useLazySubscriber(control: Observable){
   }
 
   useEffect(() => {
-    const subscribe = getSubscriber(current);
+    const subscribe = current[SUBSCRIPTION];
+  
+    if(!subscribe)
+      throw new Error("Subscription does not exist on this object.")
+  
+    return subscribe;
 
     subscribe.start();
     return () => subscribe.stop();
