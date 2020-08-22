@@ -3,7 +3,6 @@ import { LivecycleEvent } from './hook';
 import { getObserver, Observable, Observer } from './observer';
 import { define } from './util';
 
-export const LIFECYCLE = Symbol("subscription_lifecycle");
 export const SUBSCRIPTION = Symbol("controller_subscription");
 
 export type ModelEvent = keyof ModelController;
