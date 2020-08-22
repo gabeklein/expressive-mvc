@@ -4,7 +4,7 @@ import { ControllerDispatch, ensureDispatch } from './dispatch';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
 import { LivecycleEvent } from './hook';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
-import { ACTIVE_CONTEXT } from './peers';
+import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useLazySubscriber, useModelController, useSubscriber } from './subscriber';
 import { SUBSCRIPTION, Subscription } from './subscription';
@@ -20,7 +20,7 @@ export interface SubscribeController {
 }
 
 export interface ModelController {
-  [ACTIVE_CONTEXT]: Callback;
+  [TEMP_CONTEXT]: Callback;
 
   didCreate?(): void;
   didFocus?(parent: ModelController, as: string): void;

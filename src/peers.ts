@@ -5,7 +5,7 @@ import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useSubscriber } from './subscriber';
 import { define } from './util';
 
-export const ACTIVE_CONTEXT = Symbol("maintain_hooks");
+export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
 
 type PeerContext = [string, Context<Controller>];
 
@@ -26,9 +26,9 @@ export function getPeerController(
 }
 
 export function ensurePeerControllers(instance: Controller){
-  if(ACTIVE_CONTEXT in instance){
-    if(typeof instance[ACTIVE_CONTEXT] == "function")
-      instance[ACTIVE_CONTEXT]();
+  if(TEMP_CONTEXT in instance){
+    if(typeof instance[TEMP_CONTEXT] == "function")
+      instance[TEMP_CONTEXT]();
     return;
   }
 
@@ -43,7 +43,7 @@ export function ensurePeerControllers(instance: Controller){
   if(pending.length)
     return attachPeersFromContext(instance, pending);
   else 
-    instance[ACTIVE_CONTEXT] = undefined as any;
+    instance[TEMP_CONTEXT] = undefined as any;
 }
 
 function attachPeersFromContext(
@@ -61,11 +61,11 @@ function attachPeersFromContext(
       define(subject, name, useContext(context))
     }
 
-  subject[ACTIVE_CONTEXT] = () => {
+  subject[TEMP_CONTEXT] = () => {
     expected.forEach(useContext);
   }
 
   return function reset(){
-    subject[ACTIVE_CONTEXT] = undefined as any;
+    subject[TEMP_CONTEXT] = undefined as any;
   }
 }
