@@ -1,6 +1,6 @@
 import { createElement, FC, forwardRef, FunctionComponent, PropsWithChildren, useEffect } from 'react';
 
-import { Controller } from './controller';
+import { Controller, within } from './controller';
 import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
 import { useModelController } from './subscriber';
@@ -41,7 +41,7 @@ export function ControlledValue(this: Controller): FC<{ of: string }> {
     }, [])
 
     delete props.of;
-    return createElement("span", props, (<any>this)[props.of])
+    return createElement("span", props, within(this, props.of))
   }
 }
 
@@ -52,7 +52,7 @@ export function ControlledInput(this: Controller): FC<{
   onReturn?: onChangeCallback
 }> {
   return forwardRef((props, ref) => {
-    const source: any = this;
+    const source = within(this);
     const { to } = props;
 
     const [controlled, onDidUpdate] = useManualRefresh(() => {

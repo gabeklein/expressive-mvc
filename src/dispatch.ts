@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Controller, within } from './controller';
 import { ManagedProperty } from './managed';
 import { OBSERVER, Observer } from './observer';
 import { PeerController } from './peers';
@@ -73,7 +73,7 @@ export class ControllerDispatch
 
     if(keys){
       for(const key of keys)
-        acc[key] = (this.subject as any)[key];
+        acc[key] = within(this.subject, key);
 
       return acc;
     }

@@ -10,6 +10,30 @@ import { useLazySubscriber, useModelController, useSubscriber } from './subscrib
 import { SUBSCRIPTION, Subscription } from './subscription';
 import { define, defineOnAccess } from './util';
 
+/** 
+ * Helper generic, allows errors-free access 
+ * to arbitrary properties in an object. 
+ */
+type PropertiesOf<T extends Controller> = { [key: string]: any };
+
+/**
+ * Abstract "Type-Waiver" for controller.
+ * Prevent compiler from complaining about arbitary property access.
+ */
+export function within<T extends Controller>(controller: T): PropertiesOf<T>;
+export function within<T extends Controller>(controller: T, key: string): any;
+export function within<T extends Controller, V>(controller: T, key: string, value: V): V;
+
+export function within(controller: Controller, key?: string, value?: any){
+  const target = controller as any;
+  if(value)
+    return target[key!] = value;
+  if(key)
+    return target[key];
+  else
+    return target;
+}
+
 export interface SubscribeController {
   [SUBSCRIPTION]?: Subscription;
 
@@ -94,7 +118,7 @@ export class Controller {
     b?: BunchOf<any>){
   
     if(typeof a == "string")
-      return (this as any)[a] = b as any;
+      return within(this, a, b);
     else
       return Object.assign(this, a) as this;
   }
@@ -144,7 +168,7 @@ export class Controller {
 
     const pull = only || Object.keys(source);
     const setters: string[] = [];
-    const ownValues = this as any;
+    const values = within(this);
 
     for(const key of pull){
       const desc = Object.getOwnPropertyDescriptor(
@@ -153,11 +177,11 @@ export class Controller {
       if(desc && desc.set)
         setters.push(key)
       else
-        ownValues[key] = source[key];
+        values[key] = source[key];
     }
 
     for(const key of setters)
-      ownValues[key] = source[key];
+      values[key] = source[key];
   }
 
   static context?: Context<Controller>;
@@ -173,9 +197,7 @@ export class Controller {
   static get(): Controller;
   static get(key?: string){
     const instance = this.find();
-    return key 
-      ? (instance as any)[key]
-      : instance;
+    return key ? within(instance, key) : instance;
   }
 
   static tap(): Controller;

@@ -1,6 +1,6 @@
 import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { Controller } from './controller';
+import { Controller, within } from './controller';
 import { ensurePeerControllers } from './peers';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
@@ -82,7 +82,7 @@ function initGroupControllers(
     for(const source in layer)
       for(const target in map)
         if(source !== target)
-          (map[target] as any)[source] = layer[source];
+          within(map[target], source, layer[source]);
 
   return map;
 }

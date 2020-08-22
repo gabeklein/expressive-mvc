@@ -1,4 +1,4 @@
-import { Controller, ModelController } from './controller';
+import { Controller, ModelController, within } from './controller';
 import { LivecycleEvent } from './hook';
 import { getObserver, Observable, Observer } from './observer';
 import { define } from './util';
@@ -27,7 +27,7 @@ export class Subscription<T extends Observable = any>{
       Object.defineProperty(local, key, {
         configurable: true,
         enumerable: true,
-        set: (value: any) => (master.subject as any)[key] = value,
+        set: (value: any) => within(master.subject, key, value),
         get: this.onAccessTrigger(key)
       })
 
@@ -68,7 +68,7 @@ export class Subscription<T extends Observable = any>{
   
   private onAccessTrigger = (key: string) => {
     return () => {
-      const value = (this.master.subject as any)[key];
+      const value = within(this.master.subject, key);
 
       if(value instanceof Controller)
         return this.monitorRecursive(key);
