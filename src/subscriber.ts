@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
+
 import { Controller } from './controller';
-import { lifecycleEvents, LivecycleEvent, useEventDrivenController } from './hook';
+import { lifecycleEvents, LivecycleEvent, useEventDrivenController, useManualRefresh } from './hook';
+import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
-import { Subscription } from './subscription';
+import { getSubscriber, Subscription } from './subscription';
 
 const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;
@@ -58,6 +61,26 @@ export function useModelController(
 
     return new Subscription(instance, refresh, onEvent).proxy;
   })
+}
+
+export function useLazySubscriber(control: Observable){
+  const [ cache, onDidUpdate ] = useManualRefresh<any>();
+
+  let { current } = cache;
+  
+  if(!current){
+    const subscribe = new Subscription(control, onDidUpdate);
+    current = cache.current = subscribe.proxy;
+  }
+
+  useEffect(() => {
+    const subscribe = getSubscriber(current);
+
+    subscribe.start();
+    return () => subscribe.stop();
+  }, []);
+
+  return current;
 }
 
 export function useSubscriber<T extends Controller>(

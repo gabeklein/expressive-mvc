@@ -6,10 +6,9 @@ import { LivecycleEvent } from './hook';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { ACTIVE_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useModelController, useSubscriber } from './subscriber';
+import { useLazySubscriber, useModelController, useSubscriber } from './subscriber';
 import { SUBSCRIPTION, Subscription } from './subscription';
 import { define, defineOnAccess, transferValues } from './util';
-import { useWatcher } from './watcher';
 
 export interface SubscribeController {
   [SUBSCRIPTION]?: Subscription;
@@ -82,7 +81,7 @@ export class Controller {
   }
 
   tap(key?: string){
-    const self = useWatcher(this);
+    const self = useLazySubscriber(this);
     return key ? self[key] : key;
   }
 
@@ -254,7 +253,7 @@ defineOnAccess(Controller, "meta",
       set: self
     });
 
-    return () => useWatcher(self);
+    return () => useLazySubscriber(self);
   }
 );
 
