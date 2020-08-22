@@ -38,6 +38,21 @@ export const lifecycleEvents = [
   "didMount"
 ];
 
+const eventsFor = (prefix: string) => {
+  const map = {} as BunchOf<string>;
+  for(const name of lifecycleEvents)
+    map[name] = prefix + name[0].toUpperCase() + name.slice(1);
+  return map;
+}
+
+export const subscriberLifecycle = eventsFor("element");
+export const componentLifecycle = eventsFor("component");
+export const allLifecycleEvents = [
+  ...lifecycleEvents,
+  ...Object.values(subscriberLifecycle),
+  ...Object.values(componentLifecycle)
+];
+
 export function useEventDrivenController<T extends Controller>(
   init: (requestUpdate: Callback) => T
 ){

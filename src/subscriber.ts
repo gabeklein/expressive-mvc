@@ -1,25 +1,10 @@
 import { useEffect } from 'react';
 
 import { Controller } from './controller';
-import { lifecycleEvents, LivecycleEvent, useEventDrivenController, useManualRefresh } from './hook';
+import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useEventDrivenController, useManualRefresh } from './hook';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { getSubscriber, Subscription } from './subscription';
-
-const eventsFor = (prefix: string) => {
-  const map = {} as BunchOf<string>;
-  for(const name of lifecycleEvents)
-    map[name] = prefix + name[0].toUpperCase() + name.slice(1);
-  return map;
-}
-
-export const subscriberLifecycle = eventsFor("element");
-export const componentLifecycle = eventsFor("component");
-
-lifecycleEvents.push(
-  ...Object.values(subscriberLifecycle),
-  ...Object.values(componentLifecycle)
-)
 
 export function useModelController(
   model: typeof Controller, 
