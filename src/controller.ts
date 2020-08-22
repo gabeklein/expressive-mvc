@@ -2,18 +2,58 @@ import { Context, createContext, FunctionComponent, ProviderProps, useContext } 
 
 import { ControllerDispatch, ensureDispatch } from './dispatch';
 import { ControlledInput, ControlledValue, createWrappedComponent } from './hoc';
-import { getObserver, OBSERVER, Observer } from './observer';
+import { LivecycleEvent } from './hook';
+import { getObserver, Observable, OBSERVER, Observer } from './observer';
+import { ACTIVE_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useModelController, useSubscriber } from './subscriber';
-import { BunchOf, Callback, ModelController, Observable, SubscribeController, Class } from './types';
+import { SUBSCRIPTION, Subscription } from './subscription';
 import { define, defineOnAccess, transferValues } from './util';
 import { useWatcher } from './watcher';
 
+export interface SubscribeController {
+  [SUBSCRIPTION]?: Subscription;
+
+  use: this;
+  
+  refresh(...keys: string[]): void;
+  onEvent(name: LivecycleEvent, args?: any[]): void;
+}
+
+export interface ModelController {
+  [ACTIVE_CONTEXT]: Callback;
+
+  didCreate?(): void;
+  didFocus?(parent: ModelController, as: string): void;
+  didMount?(...args: any[]): void;
+  didRender?(...args: any[]): void;
+
+  willReset?(...args: any[]): void;
+  willDestroy?(callback?: Callback): void;
+  willLoseFocus?(parent: ModelController, as: string): void;
+  willMount?(...args: any[]): void;
+  willRender?(...args: any[]): void;
+  willUnmount?(...args: any[]): void;
+  willUpdate?(...args: any[]): void;
+  willCycle?(...args: any[]): Callback;
+
+  elementDidMount?(...args: any[]): void;
+  elementWillMount?(...args: any[]): void;
+  elementWillRender?(...args: any[]): void;
+  elementWillUnmount?(...args: any[]): void;
+  elementWillUpdate?(...args: any[]): void;
+  elementWillCycle?(...args: any[]): Callback;
+
+  componentDidMount?(...args: any[]): void;
+  componentWillMount?(...args: any[]): void;
+  componentWillRender?(...args: any[]): void;
+  componentWillUnmount?(...args: any[]): void;
+  componentWillUpdate?(...args: any[]): void;
+  componentWillCycle?(...args: any[]): Callback;
+}
+
 export interface Controller 
   extends Observable, ModelController, SubscribeController {
-
-  // Extended classes represent the onion-layers of a given controller.
-  // What is accessible depends on the context controller is accessed.
 
   [OBSERVER]: ControllerDispatch;
 

@@ -2,7 +2,6 @@ import { createContext, createElement, PropsWithChildren, useContext, useEffect,
 
 import { Controller } from './controller';
 import { ensurePeerControllers } from './peers';
-import { BunchOf, Callback } from './types';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 

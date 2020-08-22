@@ -1,14 +1,31 @@
-import { Subscription, UpdateTrigger } from './subscription';
-import { BunchOf, HandleUpdatedValue } from './types';
-import { collectGetters, define, entriesOf } from './util';
 import { lifecycleEvents } from './hook';
+import { Subscription, UpdateTrigger } from './subscription';
+import { collectGetters, define, entriesOf } from './util';
 
-type UpdateEventHandler = (value: any, key: string) => void;
+type UpdateEventHandler = 
+  (value: any, key: string) => void;
+
+type HandleUpdatedValue
+  <T extends object, P extends keyof T> = 
+  (this: T, value: T[P], changed: P) => void
 
 export const OBSERVER = Symbol("object_observer");
 
-export type Observable = { 
-  [OBSERVER]: Observer<any>
+export interface Observable {
+  [OBSERVER]: Observer<any>;
+
+  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
+  
+  once(target: string, listener: HandleUpdatedValue<this, any>): void;
+  once(target: string): Promise<any> | undefined;
+
+  refresh(...keys: string[]): void;
+
+  observe<P extends keyof this>(
+    key: P | P[], 
+    listener: HandleUpdatedValue<this, P>, 
+    once?: boolean
+  ): Callback;
 }
 
 export function getObserver<T>(from: { [OBSERVER]: T }){
@@ -204,7 +221,10 @@ export class Observer<T extends Observable> {
     return getStartingValue;
   }
 
-  protected computedDidFail?(key: string, early?: boolean): void;
+  protected computedDidFail?(
+    key: string, 
+    early?: boolean
+  ): void;
 
   protected update(){
     if(!this.pending.size)

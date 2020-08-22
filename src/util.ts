@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { BunchOf } from './types';
 
 export class Map<K, V> extends Array<[K, V]> {
   get = (key: K) => {

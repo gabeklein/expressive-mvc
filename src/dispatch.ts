@@ -2,7 +2,6 @@ import { Controller } from './controller';
 import { ManagedProperty } from './managed';
 import { OBSERVER, Observer } from './observer';
 import { PeerController } from './peers';
-import { BunchOf } from './types';
 import { define } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;

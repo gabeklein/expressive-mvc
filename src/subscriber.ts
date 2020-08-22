@@ -2,7 +2,6 @@ import { Controller } from './controller';
 import { lifecycleEvents, LivecycleEvent, useEventDrivenController } from './hook';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
-import { BunchOf, Callback } from './types';
 
 const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;

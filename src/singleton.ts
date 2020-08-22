@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { Class } from './types';
 import { defineOnAccess } from './util';
 
 const INSTANCE = Symbol("current_singleton");

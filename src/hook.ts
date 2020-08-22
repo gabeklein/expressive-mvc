@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { Callback } from './types';
 
 export type UpdateTrigger = Callback;
 
