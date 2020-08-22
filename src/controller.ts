@@ -138,7 +138,7 @@ export class Controller {
       this.willDestroy();
   }
 
-  private spreadProperties(
+  private integrate(
     source: BunchOf<any>, 
     only?: string[]){
 
@@ -214,7 +214,7 @@ export class Controller {
     only?: string[]){
       
     return useModelController(this, [], (instance) => {
-      instance.spreadProperties(props, only);
+      instance.integrate(props, only);
     })
   }
 
@@ -223,7 +223,7 @@ export class Controller {
     only?: string[]){
 
     function assignTo(instance: Controller){
-      instance.spreadProperties(props, only);
+      instance.integrate(props, only);
     }
 
     const subscriber = useModelController(this, [], assignTo);
