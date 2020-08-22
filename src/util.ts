@@ -25,12 +25,6 @@ export function defineOnAccess<T>(
   });
 }
 
-export function entriesOf(obj: {}){
-  return Object.entries(
-    Object.getOwnPropertyDescriptors(obj)
-  );
-}
-
 export function transferValues(
   instance: Controller, 
   items: BunchOf<any>, 
@@ -60,7 +54,10 @@ export function collectGetters(
 
   do {
     source = Object.getPrototypeOf(source);
-    for(const [key, item] of entriesOf(source))
+    const desc = Object.getOwnPropertyDescriptors(source);
+    const entries = Object.entries(desc);
+
+    for(const [key, item] of entries)
       if("get" in item && item.get && !getters[key] && except.indexOf(key) < 0)
         getters[key] = item.get
   }

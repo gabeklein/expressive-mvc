@@ -1,6 +1,6 @@
 import { lifecycleEvents } from './hook';
 import { Subscription } from './subscription';
-import { collectGetters, define, entriesOf } from './util';
+import { collectGetters, define } from './util';
 
 type UpdateEventHandler = 
   (value: any, key: string) => void;
@@ -129,7 +129,10 @@ export class Observer<T extends Observable> {
 
   //TODO: implement specify argument or true for all
   public monitorValues(except?: string[]){
-    for(const [key, desc] of entriesOf(this.subject)){
+    const desc = Object.getOwnPropertyDescriptors(this.subject);
+    const entries = Object.entries(desc);
+
+    for(const [key, desc] of entries){
       if(except && except.indexOf(key) >= 0)
         continue;
 
