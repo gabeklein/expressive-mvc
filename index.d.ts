@@ -25,8 +25,6 @@ type HandleUpdatedValues<T extends object, P extends keyof T> =
  * Able to be subscribed to, on a per-value basis to know when properties are updated.
  */
 interface Observable {
-    refresh(...keys: string[]): void;
-
     on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
   
     once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
@@ -34,6 +32,8 @@ interface Observable {
 
     watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
     watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+
+    refresh(...keys: string[]): void;
 }
 
 /**

@@ -98,7 +98,8 @@ export class Observer<T extends Observable> {
     }
 
     //TODO: dont use multi-listener by default
-    const unsubscribe = this.addMultipleListener(watch, onUpdate, ignoreUndefined);
+    const unsubscribe =
+      this.addMultipleListener(watch, onUpdate, ignoreUndefined);
 
     return unsubscribe;
   }
@@ -257,7 +258,9 @@ export class Observer<T extends Observable> {
 
     register.add(callback);
 
-    return () => { register.delete(callback) }
+    return () => {
+      register.delete(callback)
+    }
   }
 
   public addMultipleListener(
