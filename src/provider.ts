@@ -10,14 +10,10 @@ export function ControlProvider(this: Controller){
   const { Provider } = model.context!;
   
   return (props: PropsWithChildren<any>) => {
-    let { children, className, style } = props;
+    let { children, className, style, ...outsideProps } = props;
 
-    props = Object.assign({}, props);
-    for(const k of ["children", "className", "style"])
-      delete props[k];
-
-    if(Object.keys(props).length)
-      this.assign(props);
+    if(Object.keys(outsideProps).length)
+      this.assign(outsideProps);
 
     if(className || style)
       children = createElement("div", { className, style }, children);
@@ -27,12 +23,13 @@ export function ControlProvider(this: Controller){
 }
 
 export const MultiProvider = (props: PropsWithChildren<any>) => {
-  let { children, className, style, of: controllers = {} } = props;
-
-  props = Object.assign({}, props);
-  
-  for(const k of ["children", "className", "style", "of"])
-    delete props[k];
+  let {
+    children,
+    className,
+    style,
+    of: controllers = {},
+    ...outsideProps
+  } = props;
 
   const Multi = CONTEXT_MULTIPROVIDER;
 
@@ -43,7 +40,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 
   const parent = useContext(Multi);
   const provide = useMemo(
-    () => initGroupControllers(parent, controllers, props), []
+    () => initGroupControllers(parent, controllers, outsideProps), []
   ); 
 
   Object.values(provide).forEach(mc => {

@@ -31,17 +31,14 @@ export function createWrappedComponent<T extends typeof Controller>(
 }
 
 export function ControlledValue(this: Controller): FC<{ of: string }> {
-  return (props) => {
+  return ({ of: target, ...props }) => {
     const onDidUpdate = useManualRefresh()[1];
     
-    props = { ...props };
-
     useEffect(() => {
-      return getObserver(this).addListener(props.of, onDidUpdate);
+      return getObserver(this).addListener(target, onDidUpdate);
     }, [])
 
-    delete props.of;
-    return createElement("span", props, within(this, props.of))
+    return createElement("span", props, within(this, target))
   }
 }
 
