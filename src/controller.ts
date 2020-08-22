@@ -8,7 +8,7 @@ import { ACTIVE_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useLazySubscriber, useModelController, useSubscriber } from './subscriber';
 import { SUBSCRIPTION, Subscription } from './subscription';
-import { define, defineOnAccess, transferValues } from './util';
+import { define, defineOnAccess } from './util';
 
 export interface SubscribeController {
   [SUBSCRIPTION]?: Subscription;
@@ -138,6 +138,28 @@ export class Controller {
       this.willDestroy();
   }
 
+  private spreadProperties(
+    source: BunchOf<any>, 
+    only?: string[]){
+
+    const pull = only || Object.keys(source);
+    const setters: string[] = [];
+    const ownValues = this as any;
+
+    for(const key of pull){
+      const desc = Object.getOwnPropertyDescriptor(
+        this.constructor.prototype, key
+      );
+      if(desc && desc.set)
+        setters.push(key)
+      else
+        ownValues[key] = source[key];
+    }
+
+    for(const key of setters)
+      ownValues[key] = source[key];
+  }
+
   static context?: Context<Controller>;
   static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
@@ -192,7 +214,7 @@ export class Controller {
     only?: string[]){
       
     return useModelController(this, [], (instance) => {
-      transferValues(instance, props, only)
+      instance.spreadProperties(props, only);
     })
   }
 
@@ -201,7 +223,7 @@ export class Controller {
     only?: string[]){
 
     function assignTo(instance: Controller){
-      transferValues(instance, props, only);
+      instance.spreadProperties(props, only);
     }
 
     const subscriber = useModelController(this, [], assignTo);
