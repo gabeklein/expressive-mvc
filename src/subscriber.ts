@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useEventDrivenController } from './hook';
+import { useEventDrivenController } from './hook';
+import { componentLifecycle, LivecycleEvent, subscriberLifecycle } from "./lifecycle";
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';

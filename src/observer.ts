@@ -1,4 +1,4 @@
-import { lifecycleEvents } from './hook';
+import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
 import { collectGetters, define } from './util';
 

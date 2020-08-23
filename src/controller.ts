@@ -1,9 +1,9 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
+import { ControlledInput, ControlledValue } from './components';
 import { ControllerDispatch } from './dispatch';
 import { createWrappedComponent } from './hoc';
-import { LivecycleEvent } from './hook';
-import { ControlledValue, ControlledInput } from './components';
+import { LivecycleEvent } from './lifecycle';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';

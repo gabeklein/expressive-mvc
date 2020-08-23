@@ -1,5 +1,5 @@
 import { Controller, ModelController, within } from './controller';
-import { LivecycleEvent } from './hook';
+import { LivecycleEvent } from './lifecycle';
 import { getObserver, Observable, Observer } from './observer';
 import { define } from './util';
 
