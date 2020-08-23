@@ -1,20 +1,24 @@
 import { createElement, forwardRef, useEffect, useState, FC } from 'react';
 
 import { Controller, within } from './controller';
-import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
+
+function useTrackedValue(from: Controller, key: string){
+  const [ value, onUpdate ] = useState(() => within(from, key));
+
+  useEffect(() => {
+    return getObserver(from).watch(key, onUpdate);
+  }, []);
+
+  return value;
+}
 
 export function ControlledValue(
   this: Controller): FC<{ of: string }> {
-    
-  return ({ of: key, ...props }) => {
-    const [ value, onUpdate ] = useState(() => within(this, key));
-    
-    useEffect(() => {
-      return getObserver(this).watch(key, onUpdate);
-    }, [])
 
-    return createElement("span", props, value);
+  return ({ of: key, ...props }) => {
+    const current = useTrackedValue(this, key);
+    return createElement("span", props, current);
   }
 }
 
@@ -29,11 +33,15 @@ type ControlledInputProps = {
 
 export function ControlledInput(this: Controller){
   return forwardRef<unknown, ControlledInputProps>((props, ref) => {
-    const { to, onChange, onReturn, ...outsideProps } = props;
-    const controlledProps = useControlledInputProps.call(this, props.to, props)
+    const { to: key, onChange, onReturn, ...outsideProps } = props;
+
+    const value = useTrackedValue(this, key);
+    const controlledProps = useControlledInputProps.call(this, key, props)
     
     return createElement("input", {
       ref,
+      value,
+      type: "text",
       ...outsideProps,
       ...controlledProps
     })
@@ -45,7 +53,7 @@ function useControlledInputProps(
   key: string,
   props: Omit<ControlledInputProps, "to">){
 
-  const [controlProps, onDidUpdate] = useManualRefresh(() => {
+  const [ controlProps ] = useState(() => {
     let { onChange, onReturn, type } = props;
     const tracked = within(this);
     const controlProps = {} as any;
@@ -99,13 +107,5 @@ function useControlledInputProps(
     return controlProps;
   });
 
-  useEffect(() => {
-    return getObserver(this).addListener(key, onDidUpdate);
-  }, []);
-
-  return {
-    ...controlProps,
-    value: within(this, key),
-    type: "text"
-  }
+  return controlProps;
 }
