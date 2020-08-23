@@ -5,8 +5,6 @@ import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
 import { useModelController } from './subscriber';
 
-type onChangeCallback = (v: any, e: any) => any;
-
 export function createWrappedComponent(
   this: typeof Controller, fn: FC<any>){
 
