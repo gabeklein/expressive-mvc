@@ -49,30 +49,6 @@ export function useModelController(
   })
 }
 
-export function useLazySubscriber(control: Observable){
-  const [ cache, refresh ] = useState({} as any);
-  const onDidUpdate = () => refresh(Object.assign({}, cache));
-
-  let { current } = cache;
-  
-  if(!current){
-    const subscribe = new Subscription(control, onDidUpdate);
-    current = cache.current = subscribe.proxy;
-  }
-
-  useEffect(() => {
-    const subscribe = current[SUBSCRIPTION];
-  
-    if(!subscribe)
-      throw new Error("Subscription does not exist on this object.")
-
-    subscribe.start();
-    return () => subscribe.stop();
-  }, []);
-
-  return current;
-}
-
 export function useSubscriber<T extends Controller>(
   target: T,
   args: any[],
@@ -97,4 +73,28 @@ export function useSubscriber<T extends Controller>(
     
     return new Subscription(target, refresh, onEvent).proxy;
   })
+}
+
+export function useLazySubscriber(control: Observable){
+  const [ cache, refresh ] = useState({} as any);
+  const onDidUpdate = () => refresh(Object.assign({}, cache));
+
+  let { current } = cache;
+  
+  if(!current){
+    const subscribe = new Subscription(control, onDidUpdate);
+    current = cache.current = subscribe.proxy;
+  }
+
+  useEffect(() => {
+    const subscribe = current[SUBSCRIPTION];
+  
+    if(!subscribe)
+      throw new Error("Subscription does not exist on this object.")
+
+    subscribe.start();
+    return () => subscribe.stop();
+  }, []);
+
+  return current;
 }
