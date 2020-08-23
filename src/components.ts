@@ -1,4 +1,4 @@
-import { createElement, forwardRef, useEffect, useState, FC } from 'react';
+import { createElement, forwardRef, useEffect, useState, FC, HTMLProps } from 'react';
 
 import { Controller, within } from './controller';
 import { getObserver } from './observer';
@@ -23,13 +23,13 @@ export function ControlledValue(
 }
 
 type onChangeCallback = (v: any, e: any) => any;
-
-type ControlledInputProps = { 
-  to: string, 
-  type?: string,
-  onChange?: onChangeCallback | false,
-  onReturn?: onChangeCallback
-}
+type ControlledInputProps = 
+  HTMLProps<HTMLInputElement> & { 
+    to: string, 
+    type?: string,
+    onUpdate?: onChangeCallback | string | false,
+    onReturn?: onChangeCallback | string
+  }
 
 export function ControlledInput(this: Controller){
   return forwardRef<unknown, ControlledInputProps>((props, ref) => {

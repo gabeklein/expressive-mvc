@@ -9,7 +9,7 @@
         "strict": true,
         "esModuleInterop": true,
         "types": [ "node", "jest" ],
-        "lib": ["ES2018"]
+        "lib": ["ES2018", "DOM"]
     },
     "exclude": [
         "index.d.ts",
