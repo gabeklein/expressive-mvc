@@ -1,6 +1,6 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
-import { getSubscriber, SUBSCRIPTION } from '../src/subscription';
+import { SUBSCRIPTION } from '../src/subscription';
 
 type Class = new (...args: any[]) => any;
 type Initializer = () => any;
@@ -130,8 +130,9 @@ function mockPropertyAccess(
 
     for(const key of ensureArray(vars))
       void ref[key]; 
+    
+    ref[SUBSCRIPTION].start();
 
-    getSubscriber(ref).start();
     return Object.getPrototypeOf(ref);
   }
 }
