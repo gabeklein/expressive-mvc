@@ -64,8 +64,6 @@ export function useLazySubscriber(control: Observable){
   
     if(!subscribe)
       throw new Error("Subscription does not exist on this object.")
-  
-    return subscribe;
 
     subscribe.start();
     return () => subscribe.stop();
