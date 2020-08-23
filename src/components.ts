@@ -1,10 +1,20 @@
-import { createElement, forwardRef, useEffect, useState, FC, HTMLProps } from 'react';
+import {
+  ChangeEventHandler,
+  createElement,
+  FC,
+  forwardRef,
+  HTMLProps,
+  KeyboardEventHandler,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
-import { Controller, within } from './controller';
+import { Any, Controller } from './controller';
 import { getObserver } from './observer';
 
-function useTrackedValue(from: Controller, key: string){
-  const [ value, onUpdate ] = useState(() => within(from, key));
+function useValue(from: Controller, key: string){
+  const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
   useEffect(() => {
     return getObserver(from).watch(key, onUpdate);
@@ -17,7 +27,7 @@ export function ControlledValue(
   this: Controller): FC<{ of: string }> {
 
   return ({ of: key, ...props }) => {
-    const current = useTrackedValue(this, key);
+    const current = useValue(this, key);
     return createElement("span", props, current);
   }
 }
@@ -32,80 +42,79 @@ type ControlledInputProps =
   }
 
 export function ControlledInput(this: Controller){
-  return forwardRef<unknown, ControlledInputProps>((props, ref) => {
-    const { to: key, onChange, onReturn, ...outsideProps } = props;
+  return forwardRef((props: ControlledInputProps, ref) => {
+    const { to, onUpdate, onReturn, ...passProps } = props;
 
-    const value = useTrackedValue(this, key);
-    const controlledProps = useControlledInputProps.call(this, key, props)
+    const value = useValue(this, to);
+    const events = useMemo(
+      () => controlledEventProps(this, props), []
+    );
     
     return createElement("input", {
-      ref,
-      value,
-      type: "text",
-      ...outsideProps,
-      ...controlledProps
-    })
+      ...passProps, ...events, ref, value
+    });
   })
 }
 
-function useControlledInputProps(
-  this: Controller,
-  key: string,
-  props: Omit<ControlledInputProps, "to">){
+function controlledEventProps(
+  control: Controller & Any,
+  inputProps: ControlledInputProps){
 
-  const [ controlProps ] = useState(() => {
-    let { onChange, onReturn, type } = props;
-    const tracked = within(this);
-    const controlProps = {} as any;
+  let { to, type, onUpdate, onReturn } = inputProps;
 
-    if(typeof onChange == "string")
-      onChange = this[onChange] as onChangeCallback;
+  const handle = {} as {
+    onChange?: ChangeEventHandler<HTMLInputElement>,
+    onKeyPress?: KeyboardEventHandler<HTMLInputElement>
+  }
 
-    if(typeof onChange == "function")
-      controlProps.onChange = (e: any) => {
-        let { value } = e.target;
+  if(typeof onUpdate == "string")
+    onUpdate = control[onUpdate] as onChangeCallback;
 
-        if(type == "number")
-          value = Number(value);
+  if(typeof onReturn == "string")
+    onReturn = control[onReturn] as onChangeCallback;
 
-        const returned = (onChange as any)(value, e);
+  if(typeof onUpdate == "function"){
+    const custom = onUpdate;
 
-        if(returned !== undefined)
-          tracked[key] = returned;
-      }
-    else if(onChange !== false)
-      if(type == "number")
-        controlProps.onChange = (e: any) => { 
-          tracked[key] = Number(e.target.value) 
-        }
-      else
-        controlProps.onChange = (e: any) => { 
-          tracked[key] = e.target.value 
-        }
+    handle.onChange = function intercept(event){
+      const { value } = event.target;
 
-    if(typeof onReturn == "string")
-      onReturn = this[onReturn] as onChangeCallback;
+      const returned = custom(
+        type == "number" ? Number(value) : value,
+        event
+      );
 
-    if(typeof onReturn == "function"){
-      controlProps.onKeyPress = (e: any) => {
+      if(returned !== undefined)
+        control[to] = returned;
+    }
+  }
+  else if(onUpdate !== false)
+    handle.onChange = function updateValue(event){
+      const { value } = event.target;
+      control[to] = type == "number" ? Number(value) : value;
+    };
+
+  if(typeof onReturn == "function"){
+    const custom = onReturn;
+
+    handle.onKeyPress = 
+      function onMaybeEnterKeyPress(e){
         if(e.which !== 13)
           return;
 
+        const { value } = e.currentTarget;
+
         e.preventDefault();
-        let { value } = e.target;
 
-        if(type == "number")
-          value = Number(value);
-
-        const returned = (onReturn as any)(value, e);
+        const returned = custom(
+          type == "number" ? Number(value) : value,
+          event
+        );
 
         if(returned)
-          tracked[key] = returned;
+          control[to] = returned;
       }
     }
 
-    return controlProps;
-  });
-
-  return controlProps;
+  return handle;
 }

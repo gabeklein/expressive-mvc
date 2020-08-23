@@ -15,13 +15,13 @@ import { define, defineOnAccess } from './util';
  * Helper generic, allows errors-free access 
  * to arbitrary properties in an object. 
  */
-type PropertiesOf<T extends Controller> = { [key: string]: any };
+export type Any<T extends Controller = any> = { [key: string]: any };
 
 /**
  * Abstract "Type-Waiver" for controller.
  * Prevent compiler from complaining about arbitary property access.
  */
-export function within<T extends Controller>(controller: T): PropertiesOf<T>;
+export function within<T extends Controller>(controller: T): Any<T>;
 export function within<T extends Controller>(controller: T, key: string): any;
 export function within<T extends Controller, V>(controller: T, key: string, value: V): V;
 
