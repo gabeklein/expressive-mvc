@@ -1,4 +1,4 @@
-import { createElement, FC, forwardRef, FunctionComponent, PropsWithChildren, useEffect } from 'react';
+import { createElement, FC, PropsWithChildren, useEffect, useState } from 'react';
 
 import { Controller, within } from './controller';
 import { useManualRefresh } from './hook';
@@ -7,25 +7,19 @@ import { useModelController } from './subscriber';
 
 type onChangeCallback = (v: any, e: any) => any;
 
-export function createWrappedComponent<T extends typeof Controller>(
-  this: T,
-  fn: FunctionComponent<InstanceType<T>> ){
+export function createWrappedComponent(
+  this: typeof Controller, fn: FC<any>){
 
   const { Provider } = this.context!;
   
   return (forwardedProps: PropsWithChildren<any>) => {
-    const controller = useModelController(this);
-    controller.assign(forwardedProps);
-    const { values } = getObserver(controller);
+    const self = useModelController(this);
+    const current = getObserver(self);
 
-    const useProps: any = { 
-      use: controller, 
-      ...values 
-    }
+    self.assign(forwardedProps);
     
-    return createElement(
-      Provider, { value: controller }, 
-      createElement(fn, useProps)
+    return createElement(Provider, { value: self }, 
+      createElement(fn, { self, ...current.values })
     )
   }
 }
