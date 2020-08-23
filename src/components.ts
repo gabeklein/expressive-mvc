@@ -1,8 +1,22 @@
-import { createElement, forwardRef, useEffect } from 'react';
+import { createElement, forwardRef, useEffect, useState, FC } from 'react';
 
 import { Controller, within } from './controller';
 import { useManualRefresh } from './hook';
 import { getObserver } from './observer';
+
+export function ControlledValue(
+  this: Controller): FC<{ of: string }> {
+    
+  return ({ of: key, ...props }) => {
+    const [ value, onUpdate ] = useState(() => within(this, key));
+    
+    useEffect(() => {
+      return getObserver(this).watch(key, onUpdate);
+    }, [])
+
+    return createElement("span", props, value);
+  }
+}
 
 type onChangeCallback = (v: any, e: any) => any;
 
