@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
 
-export const useManualRefresh = <T extends {}>(init?: () => T) => {
-  const [ state, update ] = useState<T>(init || {} as any);
-  const refresh = () => update(Object.assign({}, state));
-  return [ state, refresh ] as const;
-}
-
 export type LivecycleEvent =
   | "willMount"
   | "willUpdate"

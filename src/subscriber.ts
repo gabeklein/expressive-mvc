@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useEventDrivenController, useManualRefresh } from './hook';
+import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useEventDrivenController } from './hook';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
-import { Subscription, SUBSCRIPTION } from './subscription';
+import { SUBSCRIPTION, Subscription } from './subscription';
 
 export function useModelController(
   model: typeof Controller, 
@@ -49,7 +49,8 @@ export function useModelController(
 }
 
 export function useLazySubscriber(control: Observable){
-  const [ cache, onDidUpdate ] = useManualRefresh<any>();
+  const [ cache, refresh ] = useState({} as any);
+  const onDidUpdate = () => refresh(Object.assign({}, cache));
 
   let { current } = cache;
   
