@@ -31,8 +31,6 @@ export class Subscription<T extends Observable = any>{
       })
 
     define(local, {
-      use: local,
-      onEvent: this.handleEvent,
       refresh: this.forceRefresh
     })
   }

@@ -3,7 +3,6 @@ import { Context, createContext, FunctionComponent, ProviderProps, useContext } 
 import { ControlledInput, ControlledValue } from './components';
 import { ControllerDispatch } from './dispatch';
 import { createWrappedComponent } from './hoc';
-import { LivecycleEvent } from './lifecycle';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
@@ -32,13 +31,6 @@ export function within(controller: Controller, key?: string, value?: any){
     return target[key];
   else
     return target;
-}
-
-export interface SubscribeController {
-  use: this;
-  
-  refresh(...keys: string[]): void;
-  onEvent(name: LivecycleEvent, args?: any[]): void;
 }
 
 export interface ModelController {
@@ -74,7 +66,7 @@ export interface ModelController {
 }
 
 export interface Controller 
-  extends Observable, ModelController, SubscribeController {
+  extends Observable, ModelController {
 
   [OBSERVER]: ControllerDispatch;
 
