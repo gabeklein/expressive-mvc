@@ -51,7 +51,7 @@ export const allLifecycleEvents = [
 export function hitLifecycle(
   control: Controller,
   name: LivecycleEvent,
-  args: any[],
+  args?: any[],
   main?: boolean
 ){
   const lifecycle: BunchOf<string> = 
@@ -61,7 +61,7 @@ export function hitLifecycle(
   const handler = control[specific] || control[name];
       
   if(handler)
-    handler.apply(control, args);
+    handler.apply(control, args || []);
     
   control.ensureDispatch().trigger(name, specific);
 }

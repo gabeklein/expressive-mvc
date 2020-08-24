@@ -16,10 +16,10 @@ function useManualRefresh(){
   return state[0];
 }
 
-export function useModelController(
-  model: typeof Controller, 
-  args: any[] = [], 
-  callback?: (instance: Controller) => void){
+export function useModelController<T extends typeof Controller>(
+  model: T,
+  args?: any[], 
+  callback?: (instance: InstanceType<T>) => void){
 
   let initial = false;
   let release: Callback | undefined;

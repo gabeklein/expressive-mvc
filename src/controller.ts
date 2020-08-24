@@ -180,10 +180,9 @@ export class Controller {
   static meta: <T>(this: T) => T & Observable;
 
   static create<T extends Class>(
-    this: T, args: any[]
+    this: T, args?: any[]
   ): InstanceType<T> {
-
-    return new (this as any)(...args);
+    return new (this as any)(...args || []);
   }
 
   static get(): Controller;
