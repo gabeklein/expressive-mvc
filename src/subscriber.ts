@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Controller } from './controller';
 import { hitLifecycle, useLifecycleEffect } from './lifecycle';
@@ -41,7 +41,7 @@ export function useModelController(
     return subscription.proxy;
   }, []);
 
-  const onLifecycleEvent = useCallback((name) => {
+  useLifecycleEffect((name) => {
     if(name == "willRender")
       release = ensurePeerControllers(instance);
 
@@ -54,10 +54,8 @@ export function useModelController(
 
       instance.destroy();
     }
-  }, []);
+  }, initial);
 
-  useLifecycleEffect(onLifecycleEvent, initial);
-  
   return instance;
 }
 
@@ -78,12 +76,10 @@ export function useSubscriber<T extends Controller>(
     return subscription.proxy;
   }, []);
 
-  const onLifecycleEvent = useCallback((name) => {
+  useLifecycleEffect((name) => {
     target[SUBSCRIPTION]!.handleEvent(name);
     hitLifecycle(target, name, args, main);
-  }, []);
-
-  useLifecycleEffect(onLifecycleEvent, initial);
+  }, initial);
   
   return target;
 }

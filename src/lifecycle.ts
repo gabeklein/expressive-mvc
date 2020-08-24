@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { Controller } from './controller';
 
@@ -69,6 +69,8 @@ export function hitLifecycle(
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void,
   initial: boolean | undefined){
+
+  onEvent = useCallback(onEvent, []);
 
   onEvent(initial ? "willMount" : "willUpdate");
   onEvent("willRender");
