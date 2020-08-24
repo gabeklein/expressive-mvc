@@ -2,11 +2,10 @@ import { Context, createContext, FunctionComponent, ProviderProps, useContext } 
 
 import { ControlledInput, ControlledValue } from './components';
 import { ControllerDispatch } from './dispatch';
-import { createWrappedComponent } from './hoc';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
-import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useNewController, usePassiveSubscriber, useActiveSubscriber } from './subscriber';
+import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
+import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
 import { define, defineOnAccess } from './util';
 
 /** 

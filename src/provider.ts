@@ -1,7 +1,9 @@
-import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import { Controller, within } from './controller';
+import { getObserver } from './observer';
 import { ensurePeerControllers } from './peers';
+import { useNewController } from './subscriber';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
@@ -19,6 +21,23 @@ export function ControlProvider(this: Controller){
       children = createElement("div", { className, style }, children);
 
     return createElement(Provider, { value: this }, children);
+  }
+}
+
+export function createWrappedComponent(
+  this: typeof Controller, fn: FC<any>){
+
+  const { Provider } = this.context!;
+  
+  return (forwardedProps: PropsWithChildren<any>) => {
+    const self = useNewController(this);
+    const current = getObserver(self);
+
+    self.assign(forwardedProps);
+    
+    return createElement(Provider, { value: self }, 
+      createElement(fn, { self, ...current.values })
+    )
   }
 }
 
