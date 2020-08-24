@@ -19,11 +19,11 @@ function useManualRefresh<T>(
 }
 
 export function usePassiveSubscriber<T extends Observable>
-  (control: T){
+  (target: T){
 
   const subscription =
     useManualRefresh(update => {
-      return new Subscription(control, update);
+      return new Subscription(target, update);
     });
 
   useEffect(() => {
@@ -42,7 +42,6 @@ export function useActiveSubscriber<T extends Controller>
   const subscription =
     useManualRefresh(update => {
       initialRender = true;
-      target.ensureDispatch();
 
       return new Subscription(target, update);
     });
@@ -56,7 +55,7 @@ export function useActiveSubscriber<T extends Controller>
 }
 
 export function useNewController<T extends typeof Controller>(
-  type: T,
+  Model: T,
   args?: any[], 
   callback?: (instance: InstanceType<T>) => void){
 
@@ -65,13 +64,9 @@ export function useNewController<T extends typeof Controller>(
 
   const subscription = 
     useManualRefresh(update => {
-      let instance = type.create(args);
-
       initialRender = true;
-      instance.ensureDispatch();
 
-      if(callback)
-        callback(instance);
+      let instance = Model.create(args, callback);
 
       return new Subscription(instance, update);
     });
