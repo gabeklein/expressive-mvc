@@ -55,8 +55,8 @@ export function useActiveSubscriber<T extends Controller>
   return subscription.proxy;
 }
 
-export function useModelController<T extends typeof Controller>(
-  model: T,
+export function useNewController<T extends typeof Controller>(
+  type: T,
   args?: any[], 
   callback?: (instance: InstanceType<T>) => void){
 
@@ -66,7 +66,7 @@ export function useModelController<T extends typeof Controller>(
   const onShouldUpdate = useManualRefresh();
 
   const subscription = useMemo(() => {
-    let instance = model.create(args);
+    let instance = type.create(args);
 
     initial = true;
     instance.ensureDispatch();

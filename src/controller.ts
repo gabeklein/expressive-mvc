@@ -6,7 +6,7 @@ import { createWrappedComponent } from './hoc';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useModelController, useSimpleSubscriber, useActiveSubscriber } from './subscriber';
+import { useNewController, useSimpleSubscriber, useActiveSubscriber } from './subscriber';
 import { define, defineOnAccess } from './util';
 
 /** 
@@ -219,14 +219,14 @@ export class Controller {
   }
 
   static use(...args: any[]){
-    return useModelController(this, args);
+    return useNewController(this, args);
   }
 
   static uses(
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useModelController(this, undefined, (instance) => {
+    return useNewController(this, undefined, (instance) => {
       instance.integrate(props, only);
     })
   }
@@ -239,7 +239,7 @@ export class Controller {
       instance.integrate(props, only);
     }
 
-    const subscriber = useModelController(this, undefined, assignTo);
+    const subscriber = useNewController(this, undefined, assignTo);
 
     assignTo(subscriber);
         
@@ -247,7 +247,7 @@ export class Controller {
   }
 
   static get Provider(){
-    return useModelController(this).Provider;
+    return useNewController(this).Provider;
   }
 }
 
