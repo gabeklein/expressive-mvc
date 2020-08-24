@@ -43,12 +43,6 @@ const eventsFor = (prefix: string) => {
 const subscriberLifecycle = eventsFor("element");
 const componentLifecycle = eventsFor("component");
 
-export const allLifecycleEvents = [
-  ...lifecycleEvents,
-  ...Object.values(subscriberLifecycle),
-  ...Object.values(componentLifecycle)
-];
-
 export function hitLifecycle(
   control: Controller,
   name: LivecycleEvent,
