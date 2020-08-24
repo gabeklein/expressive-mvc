@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
 import { hitLifecycle, useLifecycleEffect } from './lifecycle';
@@ -6,12 +6,14 @@ import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 
-function useManualRefresh(){
-  const [ state, update ] = useState([
-    // This is a noop, but will force an update.
-    // Simply juggles the same callback repeatedly.
-    () => { update(state.concat()) }
-  ])
+function useManualRefresh<T>(
+  init: (onRequestUpdate: Callback) => T){
+
+  const [ state, update ] = useState(() => [
+    init(function onRequestUpdate(){
+      update(state.concat());
+    })
+  ]);
 
   return state[0];
 }
@@ -19,11 +21,10 @@ function useManualRefresh(){
 export function usePassiveSubscriber<T extends Observable>
   (control: T){
 
-  const onShouldUpdate = useManualRefresh();
-
-  const subscription = useMemo(() => {
-    return new Subscription(control, onShouldUpdate);
-  }, []);
+  const subscription =
+    useManualRefresh(update => {
+      return new Subscription(control, update);
+    });
 
   useEffect(() => {
     subscription.start();
@@ -36,21 +37,20 @@ export function usePassiveSubscriber<T extends Observable>
 export function useActiveSubscriber<T extends Controller>
   (target: T, args: any[]){
 
-  let initial = false;
+  let initialRender = false;
 
-  const onShouldUpdate = useManualRefresh();
+  const subscription =
+    useManualRefresh(update => {
+      initialRender = true;
+      target.ensureDispatch();
 
-  const subscription = useMemo(() => {
-    initial = true;
-    target.ensureDispatch();
-
-    return new Subscription(target, onShouldUpdate);
-  }, []);
+      return new Subscription(target, update);
+    });
 
   useLifecycleEffect((name) => {
     subscription.handleEvent(name);
-    hitLifecycle(target, name, args, false);
-  }, initial);
+    hitLifecycle(target, name, false, args);
+  }, initialRender);
   
   return subscription.proxy;
 }
@@ -60,22 +60,21 @@ export function useNewController<T extends typeof Controller>(
   args?: any[], 
   callback?: (instance: InstanceType<T>) => void){
 
-  let initial = false;
+  let initialRender = false;
   let release: Callback | undefined;
 
-  const onShouldUpdate = useManualRefresh();
+  const subscription = 
+    useManualRefresh(update => {
+      let instance = type.create(args);
 
-  const subscription = useMemo(() => {
-    let instance = type.create(args);
+      initialRender = true;
+      instance.ensureDispatch();
 
-    initial = true;
-    instance.ensureDispatch();
+      if(callback)
+        callback(instance);
 
-    if(callback)
-      callback(instance);
-
-    return new Subscription(instance, onShouldUpdate);
-  }, []);
+      return new Subscription(instance, update);
+    });
 
   useLifecycleEffect((name) => {
     const instance = subscription.source;
@@ -84,7 +83,7 @@ export function useNewController<T extends typeof Controller>(
       release = ensurePeerControllers(instance);
 
     subscription.handleEvent(name);
-    hitLifecycle(instance, name, args, true);
+    hitLifecycle(instance, name, true, args);
 
     if(name == "willUnmount"){
       if(release)
@@ -92,7 +91,7 @@ export function useNewController<T extends typeof Controller>(
 
       instance.destroy();
     }
-  }, initial);
+  }, initialRender);
 
   return subscription.proxy;
 }

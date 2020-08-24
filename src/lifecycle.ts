@@ -52,8 +52,8 @@ export const allLifecycleEvents = [
 export function hitLifecycle(
   control: Controller,
   name: LivecycleEvent,
-  args?: any[],
-  main?: boolean
+  main: boolean,
+  args?: any[]
 ){
   const lifecycle: BunchOf<string> = 
     main ? componentLifecycle : subscriberLifecycle;
