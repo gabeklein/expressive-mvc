@@ -1,102 +1,102 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 import { Controller } from './controller';
-import { hitLifecycle, LivecycleEvent, useLifecycleEffect } from './lifecycle';
+import { hitLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
+
+function useManualRefresh(){
+  const [ state, update ] = useState([
+    // This is a noop, but will force an update.
+    // Simply juggles the same callback repeatedly.
+    () => { update(state.concat()) }
+  ])
+
+  return state[0];
+}
 
 export function useModelController(
   model: typeof Controller, 
   args: any[] = [], 
   callback?: (instance: Controller) => void){
 
-  const [ state, forceUpdate ] = useState({} as {
-    current: InstanceType<typeof model>,
-    onEvent: (name: LivecycleEvent) => void
-  });
-
   let initial = false;
+  let release: Callback | undefined;
 
-  if(!state.current){
+  const onShouldUpdate = useManualRefresh();
+
+  const instance = useMemo(() => {
     let instance = model.create(args);
-    let release: Callback | undefined;
 
-    const refresh = () => forceUpdate({ ...state });
+    initial = true;
     instance.ensureDispatch();
 
     if(callback)
       callback(instance);
 
-    const subscription = new Subscription(instance, refresh);
+    const subscription = 
+      new Subscription(instance, onShouldUpdate);
 
-    state.current = subscription.proxy;
-    state.onEvent = (name) => {
-      if(name == "willRender")
-        release = ensurePeerControllers(instance);
+    return subscription.proxy;
+  }, []);
 
-      subscription.handleEvent(name);
-      hitLifecycle(instance, name, args, true);
+  const onLifecycleEvent = useCallback((name) => {
+    if(name == "willRender")
+      release = ensurePeerControllers(instance);
 
-      if(name == "willUnmount"){
-        if(release)
-          release();
+    instance[SUBSCRIPTION]!.handleEvent(name);
+    hitLifecycle(instance, name, args, true);
 
-        instance.destroy();
-      }
-    };
+    if(name == "willUnmount"){
+      if(release)
+        release();
 
-    initial = true;
-  }
+      instance.destroy();
+    }
+  }, []);
 
-  useLifecycleEffect(state.onEvent, initial);
+  useLifecycleEffect(onLifecycleEvent, initial);
   
-  return state.current;
+  return instance;
 }
 
 export function useSubscriber<T extends Controller>(
   target: T, args: any[], main: boolean){
 
-  const [ state, forceUpdate ] = useState({} as {
-    current: T,
-    onEvent: (name: LivecycleEvent) => void
-  });
-
   let initial = false;
 
-  if(!state.current){
-    const refresh = () => forceUpdate({ ...state });
+  const onShouldUpdate = useManualRefresh();
+
+  target = useMemo(() => {
+    initial = true;
     target.ensureDispatch();
 
-    const subscription = new Subscription(target, refresh);
+    const subscription = 
+      new Subscription(target, onShouldUpdate);
 
-    state.current = subscription.proxy;
-    state.onEvent = (name) => {
-      subscription.handleEvent(name);
-      hitLifecycle(target, name, args, main);
-    };
+    return subscription.proxy;
+  }, []);
 
-    initial = true;
-  }
+  const onLifecycleEvent = useCallback((name) => {
+    target[SUBSCRIPTION]!.handleEvent(name);
+    hitLifecycle(target, name, args, main);
+  }, []);
 
-  useLifecycleEffect(state.onEvent, initial);
+  useLifecycleEffect(onLifecycleEvent, initial);
   
-  return state.current;
+  return target;
 }
 
 export function useLazySubscriber<T extends Observable>(control: T){
-  const [ cache, refresh ] = useState({} as any);
-  const onDidUpdate = () => refresh({ ...cache });
+  const onShouldUpdate = useManualRefresh();
 
-  let { current } = cache;
-  
-  if(!current){
-    const subscribe = new Subscription(control, onDidUpdate);
-    current = cache.current = subscribe.proxy;
-  }
+  control = useMemo(() => {
+    return new Subscription(control, onShouldUpdate).proxy;
+  }, []);
 
   useEffect(() => {
-    const subscription = current[SUBSCRIPTION];
+    const subscription = control[SUBSCRIPTION];
   
     if(!subscription)
       throw new Error("Subscription does not exist on this object.")
@@ -105,5 +105,5 @@ export function useLazySubscriber<T extends Observable>(control: T){
     return () => subscription.stop();
   }, []);
 
-  return current;
+  return control;
 }

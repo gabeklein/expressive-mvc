@@ -68,7 +68,7 @@ export function hitLifecycle(
 
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void,
-  initial?: boolean){
+  initial: boolean | undefined){
 
   onEvent(initial ? "willMount" : "willUpdate");
   onEvent("willRender");
