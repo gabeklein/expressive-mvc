@@ -16,7 +16,7 @@ function useManualRefresh(){
   return state[0];
 }
 
-export function useSimpleSubscriber<T extends Observable>
+export function usePassiveSubscriber<T extends Observable>
   (control: T){
 
   const onShouldUpdate = useManualRefresh();

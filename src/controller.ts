@@ -6,7 +6,7 @@ import { createWrappedComponent } from './hoc';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useNewController, useSimpleSubscriber, useActiveSubscriber } from './subscriber';
+import { useNewController, usePassiveSubscriber, useActiveSubscriber } from './subscriber';
 import { define, defineOnAccess } from './util';
 
 /** 
@@ -96,7 +96,7 @@ export class Controller {
   }
 
   tap(key?: string){
-    const self = useSimpleSubscriber(this);
+    const self = usePassiveSubscriber(this);
     return within(self, key);
   }
 
@@ -288,7 +288,7 @@ defineOnAccess(Controller, "meta",
       set: self
     });
 
-    return () => useSimpleSubscriber(self);
+    return () => usePassiveSubscriber(self);
   }
 );
 
