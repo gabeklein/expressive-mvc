@@ -39,9 +39,9 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
   let flushHooks = [] as Callback[];
 
   const parent = useContext(Multi);
-  const provide = useMemo(
-    () => initGroupControllers(parent, controllers, outsideProps), []
-  ); 
+  const provide = useMemo(() => {
+    return initGroupControllers(parent, controllers, outsideProps);
+  }, []); 
 
   Object.values(provide).forEach(mc => {
     const onDidUnmount = ensurePeerControllers(mc);

@@ -46,9 +46,9 @@ export function ControlledInput(this: Controller){
     const { to, onUpdate, onReturn, ...passProps } = props;
 
     const value = useValue(this, to);
-    const events = useMemo(
-      () => controlledEventProps(this, props), []
-    );
+    const events = useMemo(() => {
+      return controlledEventProps(this, props)
+    }, []);
     
     return createElement("input", {
       ...passProps, ...events, ref, value
