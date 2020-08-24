@@ -6,7 +6,7 @@ import { createWrappedComponent } from './hoc';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useLazySubscriber, useModelController, useSubscriber } from './subscriber';
+import { useModelController, useSimpleSubscriber, useSubscriber } from './subscriber';
 import { define, defineOnAccess } from './util';
 
 /** 
@@ -96,7 +96,7 @@ export class Controller {
   }
 
   tap(key?: string){
-    const self = useLazySubscriber(this);
+    const self = useSimpleSubscriber(this);
     return within(self, key);
   }
 
@@ -289,7 +289,7 @@ defineOnAccess(Controller, "meta",
       set: self
     });
 
-    return () => useLazySubscriber(self);
+    return () => useSimpleSubscriber(self);
   }
 );
 

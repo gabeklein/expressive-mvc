@@ -80,7 +80,7 @@ export function useSubscriber<T extends Controller>(
   return subscription.proxy;
 }
 
-export function useLazySubscriber<T extends Observable>(control: T){
+export function useSimpleSubscriber<T extends Observable>(control: T){
   const onShouldUpdate = useManualRefresh();
 
   const subscription = useMemo(() => {
