@@ -20,7 +20,8 @@ export type Any<T extends Controller = any> = { [key: string]: any };
  * Prevent compiler from complaining about arbitary property access.
  */
 export function within<T extends Controller>(controller: T): Any<T>;
-export function within<T extends Controller>(controller: T, key: string): any;
+export function within<T extends Controller>(controller: T, key: undefined): Any<T>;
+export function within<T extends Controller>(controller: T, key?: string): any;
 export function within<T extends Controller, V>(controller: T, key: string, value: V): V;
 
 export function within(controller: Controller, key?: string, value?: any){
@@ -96,7 +97,7 @@ export class Controller {
 
   tap(key?: string){
     const self = useLazySubscriber(this);
-    return key ? self[key] : key;
+    return within(self, key);
   }
 
   sub(...args: any[]){
@@ -179,7 +180,8 @@ export class Controller {
   static meta: <T>(this: T) => T & Observable;
 
   static create<T extends Class>(
-    this: T, args: any[]): InstanceType<T> {
+    this: T, args: any[]
+  ): InstanceType<T> {
 
     return new (this as any)(...args);
   }
