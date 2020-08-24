@@ -226,7 +226,7 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useModelController(this, [], (instance) => {
+    return useModelController(this, undefined, (instance) => {
       instance.integrate(props, only);
     })
   }
@@ -239,7 +239,7 @@ export class Controller {
       instance.integrate(props, only);
     }
 
-    const subscriber = useModelController(this, [], assignTo);
+    const subscriber = useModelController(this, undefined, assignTo);
 
     assignTo(subscriber);
         
