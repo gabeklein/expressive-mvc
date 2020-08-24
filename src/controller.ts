@@ -8,7 +8,6 @@ import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
 import { useLazySubscriber, useModelController, useSubscriber } from './subscriber';
-import { SUBSCRIPTION, Subscription } from './subscription';
 import { define, defineOnAccess } from './util';
 
 /** 
@@ -36,8 +35,6 @@ export function within(controller: Controller, key?: string, value?: any){
 }
 
 export interface SubscribeController {
-  [SUBSCRIPTION]?: Subscription;
-
   use: this;
   
   refresh(...keys: string[]): void;
