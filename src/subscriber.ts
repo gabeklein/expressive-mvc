@@ -28,11 +28,15 @@ export function useModelController(
     if(callback)
       callback(instance);
 
-    function onEvent(this: Controller, name: LivecycleEvent){
-      hitLifecycle(instance, name, args, true);
+    const subscription = new Subscription(instance, refresh);
 
+    state.current = subscription.proxy;
+    state.onEvent = (name) => {
       if(name == "willRender")
         release = ensurePeerControllers(instance);
+
+      subscription.handleEvent(name);
+      hitLifecycle(instance, name, args, true);
 
       if(name == "willUnmount"){
         if(release)
@@ -40,12 +44,7 @@ export function useModelController(
 
         instance.destroy();
       }
-    }
-
-    const subscription = new Subscription(instance, refresh, onEvent);
-    
-    state.current = subscription.proxy;
-    state.onEvent = (name) => subscription.handleEvent(name);
+    };
 
     initial = true;
   }
@@ -69,14 +68,13 @@ export function useSubscriber<T extends Controller>(
     const refresh = () => forceUpdate({ ...state });
     target.ensureDispatch();
 
-    function onEvent(this: Controller, name: LivecycleEvent){
-      hitLifecycle(target, name, args, main);
-    }
+    const subscription = new Subscription(target, refresh);
 
-    const subscription = new Subscription(target, refresh, onEvent);
-    
     state.current = subscription.proxy;
-    state.onEvent = (name) => subscription.handleEvent(name);
+    state.onEvent = (name) => {
+      subscription.handleEvent(name);
+      hitLifecycle(target, name, args, main);
+    };
 
     initial = true;
   }
@@ -88,7 +86,7 @@ export function useSubscriber<T extends Controller>(
 
 export function useLazySubscriber(control: Observable){
   const [ cache, refresh ] = useState({} as any);
-  const onDidUpdate = () => refresh(Object.assign({}, cache));
+  const onDidUpdate = () => refresh({ ...cache });
 
   let { current } = cache;
   

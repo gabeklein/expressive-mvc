@@ -15,8 +15,7 @@ export class Subscription<T extends Observable = any>{
   
   constructor(
     source: T,
-    private trigger: Callback,
-    private callback?: (name: LivecycleEvent) => void
+    private trigger: Callback
   ){
     const master = this.master = getObserver(source);
     const local = this.proxy = Object.create(source);
@@ -51,9 +50,6 @@ export class Subscription<T extends Observable = any>{
 
     if(name == "willUnmount")
       this.stop();
-
-    if(this.callback)
-      this.callback.call(this.proxy, name);
   }
 
   public start(){
