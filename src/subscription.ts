@@ -10,7 +10,6 @@ export type ModelEvent = keyof ModelController;
 export class Subscription<T extends Observable = any>{
   public proxy: T;
   private master: Observer<any>;
-
   private cleanup = new Set<Callback>();
   
   constructor(
@@ -82,13 +81,16 @@ export class Subscription<T extends Observable = any>{
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
       value.ensureDispatch();
+
       active = new Subscription(value, this.trigger);
+
       Object.defineProperty(this.proxy, key, {
         get: () => active.proxy,
         set: resetSubscription,
         configurable: true,
         enumerable: true
       })
+
       master.once("didRender", () => {
         delete (this.proxy as any)[key];
         active.start()
@@ -107,7 +109,10 @@ export class Subscription<T extends Observable = any>{
       this.trigger();
     }
 
-    master.once("willUnmount", () => active && active.stop())
+    master.once("willUnmount", () => {
+      if(active)
+        active.stop()
+    })
 
     this.cleanup.add(
       master.addListener(key, resetSubscription)
