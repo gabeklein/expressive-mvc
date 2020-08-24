@@ -6,7 +6,7 @@ import { createWrappedComponent } from './hoc';
 import { getObserver, Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider } from './provider';
-import { useModelController, useSimpleSubscriber, useSubscriber } from './subscriber';
+import { useModelController, useSimpleSubscriber, useActiveSubscriber } from './subscriber';
 import { define, defineOnAccess } from './util';
 
 /** 
@@ -101,7 +101,7 @@ export class Controller {
   }
 
   sub(...args: any[]){
-    return useSubscriber(this, args, false) 
+    return useActiveSubscriber(this, args, false) 
   }
   
   assign(
@@ -207,7 +207,7 @@ export class Controller {
 
   static sub(...args: any[]){
     const instance = this.find();
-    return useSubscriber(instance, args, false);
+    return useActiveSubscriber(instance, args, false);
   }
 
   static hoc = createWrappedComponent;

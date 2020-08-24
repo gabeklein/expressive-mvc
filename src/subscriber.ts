@@ -58,8 +58,8 @@ export function useModelController<T extends typeof Controller>(
   return subscription.proxy;
 }
 
-export function useSubscriber<T extends Controller>(
-  target: T, args: any[], main: boolean){
+export function useActiveSubscriber<T extends Controller>
+  (target: T, args: any[], main: boolean){
 
   let initial = false;
 
@@ -80,7 +80,9 @@ export function useSubscriber<T extends Controller>(
   return subscription.proxy;
 }
 
-export function useSimpleSubscriber<T extends Observable>(control: T){
+export function useSimpleSubscriber<T extends Observable>
+  (control: T){
+
   const onShouldUpdate = useManualRefresh();
 
   const subscription = useMemo(() => {

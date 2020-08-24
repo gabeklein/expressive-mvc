@@ -2,7 +2,7 @@ import { Context, useContext } from 'react';
 
 import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useSubscriber } from './subscriber';
+import { useActiveSubscriber } from './subscriber';
 import { define } from './util';
 
 export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
@@ -20,7 +20,7 @@ export function getPeerController(
   ...args: any[]){
 
   if(from instanceof Controller)
-    return useSubscriber(from, args, false)
+    return useActiveSubscriber(from, args, false)
   else
     return new PeerController(from)
 }
