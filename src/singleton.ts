@@ -71,7 +71,7 @@ export class Singleton extends Controller {
     if(prepare)
       prepare(instance);
       
-    instance.initialize();
+    instance.ensureDispatch();
     
     return type[INSTANCE] = instance;
   }

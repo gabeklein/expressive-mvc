@@ -23,7 +23,7 @@ export function useModelController(
     let release: Callback | undefined;
 
     const refresh = () => forceUpdate({ ...state });
-    const dispatch = instance.initialize();
+    const dispatch = instance.ensureDispatch();
 
     if(callback)
       callback(instance);
@@ -77,7 +77,7 @@ export function useSubscriber<T extends Controller>(
 
   if(!state.current){
     const refresh = () => forceUpdate({ ...state });
-    const dispatch = target.initialize();
+    const dispatch = target.ensureDispatch();
     const lifecycle: BunchOf<string> = 
       main ? componentLifecycle : subscriberLifecycle;
 

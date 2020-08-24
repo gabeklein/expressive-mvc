@@ -87,7 +87,7 @@ export class Subscription<T extends Observable = any>{
 
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
-      value.initialize();
+      value.ensureDispatch();
       active = new Subscription(value, this.trigger);
       Object.defineProperty(this.proxy, key, {
         get: () => active.proxy,

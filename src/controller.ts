@@ -101,7 +101,7 @@ export class Controller {
     this.set = this;
   }
 
-  initialize(){
+  ensureDispatch(){
     return ControllerDispatch.applyTo(this);
   }
 
