@@ -3,10 +3,6 @@ import { defineOnAccess } from './util';
 
 const INSTANCE = Symbol("current_singleton");
 
-const controllerIsGlobalError = (name: string) => new Error(
-  `Controller ${name} is tagged as global. Context API does not apply.`
-)
-
 export class Singleton extends Controller {
   destroy(){
     super.destroy();
@@ -16,7 +12,7 @@ export class Singleton extends Controller {
 
     if(this !== constructor[INSTANCE])
       console.warn(
-        `${constructor.name}.destory() was called on an instance which is not active.` +
+        `${constructor.name}.destory() was called on an instance which is not active. ` +
         `This is an antipattern and may caused unexpected behavior.`
       )
     else
@@ -41,10 +37,8 @@ export class Singleton extends Controller {
     if(!instance){
       const { name } = this;
       throw new Error(
-        `Tried to access singleton ${name} but one does not exist! ` + 
-        `Did you forget to initialize?\n\n` +
-        `Call ${name}.create() before attempting to access, ` + 
-        `or consider using ${name}.use() here instead.`
+        `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\n\n` +
+        `Call ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`
       )
     }
 
@@ -102,6 +96,8 @@ export class Singleton extends Controller {
   }
 
   static get Provider(): any {
-    throw controllerIsGlobalError(this.name);
+    throw new Error(
+      `Controller ${this.name} is tagged as global. Context API does not apply.`
+    )
   }
 }
