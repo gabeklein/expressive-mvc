@@ -51,11 +51,14 @@ export class Singleton extends Controller {
     return instance;
   }
 
-  static initialize(
+  static create<T extends Class>(
+    this: T,
     args: any[] = [], 
     prepare?: (self: Singleton) => void){
 
-    let instance = this[INSTANCE];
+    const type: any = this;
+
+    let instance = type[INSTANCE];
 
     if(instance)
       throw new Error(
@@ -63,14 +66,14 @@ export class Singleton extends Controller {
         `'${this.name}.use(...)' may only be mounted once at any one time.`
       )
 
-    instance = new (this as any)(...args) as Singleton;
+    instance = new type(...args) as Singleton;
   
     if(prepare)
       prepare(instance);
       
     instance.initialize();
     
-    return this[INSTANCE] = instance;
+    return type[INSTANCE] = instance;
   }
   
   static delete(instance?: Singleton){
