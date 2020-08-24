@@ -14,7 +14,7 @@ export class Subscription<T extends Observable = any>{
   private cleanup = new Set<Callback>();
   
   constructor(
-    source: T,
+    public source: T,
     private trigger: Callback
   ){
     const master = this.master = getObserver(source);

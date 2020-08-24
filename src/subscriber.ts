@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { hitLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
-import { SUBSCRIPTION, Subscription } from './subscription';
+import { Subscription } from './subscription';
 
 function useManualRefresh(){
   const [ state, update ] = useState([
@@ -26,7 +26,7 @@ export function useModelController(
 
   const onShouldUpdate = useManualRefresh();
 
-  const instance = useMemo(() => {
+  const subscription = useMemo(() => {
     let instance = model.create(args);
 
     initial = true;
@@ -35,17 +35,16 @@ export function useModelController(
     if(callback)
       callback(instance);
 
-    const subscription = 
-      new Subscription(instance, onShouldUpdate);
-
-    return subscription.proxy;
+    return new Subscription(instance, onShouldUpdate);
   }, []);
 
   useLifecycleEffect((name) => {
+    const instance = subscription.source;
+
     if(name == "willRender")
       release = ensurePeerControllers(instance);
 
-    instance[SUBSCRIPTION]!.handleEvent(name);
+    subscription.handleEvent(name);
     hitLifecycle(instance, name, args, true);
 
     if(name == "willUnmount"){
@@ -56,7 +55,7 @@ export function useModelController(
     }
   }, initial);
 
-  return instance;
+  return subscription.proxy;
 }
 
 export function useSubscriber<T extends Controller>(
@@ -66,40 +65,32 @@ export function useSubscriber<T extends Controller>(
 
   const onShouldUpdate = useManualRefresh();
 
-  target = useMemo(() => {
+  const subscription = useMemo(() => {
     initial = true;
     target.ensureDispatch();
 
-    const subscription = 
-      new Subscription(target, onShouldUpdate);
-
-    return subscription.proxy;
+    return new Subscription(target, onShouldUpdate);
   }, []);
 
   useLifecycleEffect((name) => {
-    target[SUBSCRIPTION]!.handleEvent(name);
+    subscription.handleEvent(name);
     hitLifecycle(target, name, args, main);
   }, initial);
   
-  return target;
+  return subscription.proxy;
 }
 
 export function useLazySubscriber<T extends Observable>(control: T){
   const onShouldUpdate = useManualRefresh();
 
-  control = useMemo(() => {
-    return new Subscription(control, onShouldUpdate).proxy;
+  const subscription = useMemo(() => {
+    return new Subscription(control, onShouldUpdate);
   }, []);
 
   useEffect(() => {
-    const subscription = control[SUBSCRIPTION];
-  
-    if(!subscription)
-      throw new Error("Subscription does not exist on this object.")
-
     subscription.start();
     return () => subscription.stop();
   }, []);
 
-  return control;
+  return subscription.proxy;
 }
