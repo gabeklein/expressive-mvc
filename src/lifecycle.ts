@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 
 import { Controller } from './controller';
+import { OBSERVER } from './observer';
 
 export type LivecycleEvent =
   | "willMount"
@@ -63,7 +64,7 @@ export function hitLifecycle(
   if(handler)
     handler.apply(control, args || []);
     
-  control.ensureDispatch().trigger(name, specific);
+  control[OBSERVER].trigger(name, specific);
 }
 
 export function useLifecycleEffect(
