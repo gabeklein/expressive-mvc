@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { Controller } from './controller';
+
 export type LivecycleEvent =
   | "willMount"
   | "willUpdate"
@@ -37,13 +39,32 @@ const eventsFor = (prefix: string) => {
   return map;
 }
 
-export const subscriberLifecycle = eventsFor("element");
-export const componentLifecycle = eventsFor("component");
+const subscriberLifecycle = eventsFor("element");
+const componentLifecycle = eventsFor("component");
+
 export const allLifecycleEvents = [
   ...lifecycleEvents,
   ...Object.values(subscriberLifecycle),
   ...Object.values(componentLifecycle)
 ];
+
+export function hitLifecycle(
+  control: Controller,
+  name: LivecycleEvent,
+  args: any[],
+  main?: boolean
+){
+  const lifecycle: BunchOf<string> = 
+    main ? componentLifecycle : subscriberLifecycle;
+    
+  const specific = lifecycle[name] as LivecycleEvent;
+  const handler = control[specific] || control[name];
+      
+  if(handler)
+    handler.apply(control, args);
+    
+  control.ensureDispatch().trigger(name, specific);
+}
 
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void,

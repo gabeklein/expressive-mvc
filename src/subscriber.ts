@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useLifecycleEffect } from "./lifecycle";
+import { LivecycleEvent, useLifecycleEffect, hitLifecycle } from "./lifecycle";
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
@@ -23,32 +23,22 @@ export function useModelController(
     let release: Callback | undefined;
 
     const refresh = () => forceUpdate({ ...state });
-    const dispatch = instance.ensureDispatch();
+    instance.ensureDispatch();
 
     if(callback)
       callback(instance);
 
     function onEvent(this: Controller, name: LivecycleEvent){
-      const specific = componentLifecycle[name] as LivecycleEvent;
-      const handler = instance[specific] || instance[name];
-      
-      if(handler)
-        handler.apply(this, args);
-        
-      dispatch.trigger(name, specific);
+      hitLifecycle(instance, name, args, true);
 
-      switch(name){
-        case "willRender":
-          release = ensurePeerControllers(this);
-        break;
+      if(name == "willRender")
+        release = ensurePeerControllers(instance);
 
-        case "willUnmount": {
-          if(release)
-            release();
+      if(name == "willUnmount"){
+        if(release)
+          release();
 
-          instance.destroy();
-        }
-        break;
+        instance.destroy();
       }
     }
 
@@ -77,18 +67,10 @@ export function useSubscriber<T extends Controller>(
 
   if(!state.current){
     const refresh = () => forceUpdate({ ...state });
-    const dispatch = target.ensureDispatch();
-    const lifecycle: BunchOf<string> = 
-      main ? componentLifecycle : subscriberLifecycle;
+    target.ensureDispatch();
 
     function onEvent(this: Controller, name: LivecycleEvent){
-      const specific = lifecycle[name] as LivecycleEvent;
-      const handler = target[specific] || target[name];
-      
-      if(handler)
-        handler.apply(this, args);
-        
-      dispatch.trigger(name, specific);
+      hitLifecycle(target, name, args, main);
     }
 
     const subscription = new Subscription(target, refresh, onEvent);
