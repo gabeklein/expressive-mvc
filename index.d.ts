@@ -171,10 +171,6 @@ declare class Singleton extends Controller {}
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Controller> (type: T, ...args: any[]): T;
 
-declare function set<T extends Class> (type: T): (InstanceType<T>) | undefined;
-declare function set<T extends Class, I extends InstanceType<T>> (type: T, init: Partial<I>): I;
-declare function set<T extends {} = any> (type?: T): (T & IC);
-
 declare const Provider: FunctionComponentElement<{
     using: Controller[]
 }>
@@ -189,7 +185,6 @@ export {
 
 export {
     get,
-    set,
     Controller,
     Controller as default,
     Singleton,

@@ -1,5 +1,4 @@
 import { Controller, within } from './controller';
-import { ManagedProperty } from './managed';
 import { OBSERVER, Observer } from './observer';
 import { PeerController } from './peers';
 import { define } from './util';
@@ -33,39 +32,8 @@ export class ControllerDispatch
   protected monitorValue(key: string, value: any){
     if(value instanceof PeerController)
       this.subject.attach(key, value.type)
-    else if(value instanceof ManagedProperty)
-      this.monitorManaged(key, value)
     else
       super.monitorValue(key, value)
-  }
-
-  private monitorManaged(key: string, value: ManagedProperty){
-    const { create, initial } = value;
-    const { state } = this;
-
-    function generate(value: {}){
-      //TODO enforce type
-      const saved = state[key] = create() as Controller;
-      Object.assign(saved, value);
-      ControllerDispatch.applyTo(saved);
-    }
-
-    if(initial)
-      generate(initial)
-    else
-      state[key] = undefined;
-
-    this.manage(key, (value: any) => {
-      if(!value)
-        state[key] = undefined
-      else if(typeof value == "object")
-        generate(value)
-      else
-        throw new Error("Cannot assign a non-object to this property; it is managed.")
-      
-      this.pending.add(key);
-      this.update();
-    })
   }
   
   public pick(keys?: string[]){
