@@ -20,7 +20,7 @@ export function getPeerController(
   ...args: any[]){
 
   if(from instanceof Controller)
-    return useActiveSubscriber(from, args, false)
+    return useActiveSubscriber(from, args)
   else
     return new PeerController(from)
 }

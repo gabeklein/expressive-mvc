@@ -34,7 +34,7 @@ export function usePassiveSubscriber<T extends Observable>
 }
 
 export function useActiveSubscriber<T extends Controller>
-  (target: T, args: any[], main: boolean){
+  (target: T, args: any[]){
 
   let initial = false;
 
@@ -49,7 +49,7 @@ export function useActiveSubscriber<T extends Controller>
 
   useLifecycleEffect((name) => {
     subscription.handleEvent(name);
-    hitLifecycle(target, name, args, main);
+    hitLifecycle(target, name, args, false);
   }, initial);
   
   return subscription.proxy;

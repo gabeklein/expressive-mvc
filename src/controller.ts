@@ -101,7 +101,7 @@ export class Controller {
   }
 
   sub(...args: any[]){
-    return useActiveSubscriber(this, args, false) 
+    return useActiveSubscriber(this, args);
   }
   
   assign(
@@ -207,7 +207,7 @@ export class Controller {
 
   static sub(...args: any[]){
     const instance = this.find();
-    return useActiveSubscriber(instance, args, false);
+    return useActiveSubscriber(instance, args);
   }
 
   static hoc = createWrappedComponent;
