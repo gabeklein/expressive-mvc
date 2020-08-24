@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { useEventDrivenController } from './hook';
-import { componentLifecycle, LivecycleEvent, subscriberLifecycle } from "./lifecycle";
+import { componentLifecycle, LivecycleEvent, subscriberLifecycle, useLifecycleEffect } from "./lifecycle";
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
@@ -12,10 +11,18 @@ export function useModelController(
   args: any[] = [], 
   callback?: (instance: Controller) => void){
 
-  return useEventDrivenController((refresh) => {
+  const [ state, forceUpdate ] = useState({} as {
+    current: InstanceType<typeof model>,
+    onEvent: (name: LivecycleEvent) => void
+  });
+
+  let initial = false;
+
+  if(!state.current){
     let instance = model.create(args);
     let release: Callback | undefined;
 
+    const refresh = () => forceUpdate({ ...state });
     const dispatch = instance.initialize();
 
     if(callback)
@@ -45,21 +52,34 @@ export function useModelController(
       }
     }
 
-    return new Subscription(instance, refresh, onEvent).proxy;
-  })
+    const subscription = new Subscription(instance, refresh, onEvent);
+    
+    state.current = subscription.proxy;
+    state.onEvent = (name) => subscription.handleEvent(name);
+
+    initial = true;
+  }
+
+  useLifecycleEffect(state.onEvent, initial);
+  
+  return state.current;
 }
 
 export function useSubscriber<T extends Controller>(
-  target: T,
-  args: any[],
-  main: boolean){
+  target: T, args: any[], main: boolean){
 
-  return useEventDrivenController((refresh) => {
+  const [ state, forceUpdate ] = useState({} as {
+    current: T,
+    onEvent: (name: LivecycleEvent) => void
+  });
+
+  let initial = false;
+
+  if(!state.current){
+    const refresh = () => forceUpdate({ ...state });
     const dispatch = target.initialize();
-    
-    const lifecycle: any = main
-      ? componentLifecycle
-      : subscriberLifecycle;
+    const lifecycle: BunchOf<string> = 
+      main ? componentLifecycle : subscriberLifecycle;
 
     function onEvent(this: Controller, name: LivecycleEvent){
       const specific = lifecycle[name] as LivecycleEvent;
@@ -70,9 +90,18 @@ export function useSubscriber<T extends Controller>(
         
       dispatch.trigger(name, specific);
     }
+
+    const subscription = new Subscription(target, refresh, onEvent);
     
-    return new Subscription(target, refresh, onEvent).proxy;
-  })
+    state.current = subscription.proxy;
+    state.onEvent = (name) => subscription.handleEvent(name);
+
+    initial = true;
+  }
+
+  useLifecycleEffect(state.onEvent, initial);
+  
+  return state.current;
 }
 
 export function useLazySubscriber(control: Observable){
