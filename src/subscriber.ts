@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { LivecycleEvent, useLifecycleEffect, hitLifecycle } from "./lifecycle";
+import { hitLifecycle, LivecycleEvent, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { SUBSCRIPTION, Subscription } from './subscription';
@@ -84,7 +84,7 @@ export function useSubscriber<T extends Controller>(
   return state.current;
 }
 
-export function useLazySubscriber(control: Observable){
+export function useLazySubscriber<T extends Observable>(control: T){
   const [ cache, refresh ] = useState({} as any);
   const onDidUpdate = () => refresh({ ...cache });
 
@@ -96,13 +96,13 @@ export function useLazySubscriber(control: Observable){
   }
 
   useEffect(() => {
-    const subscribe = current[SUBSCRIPTION];
+    const subscription = current[SUBSCRIPTION];
   
-    if(!subscribe)
+    if(!subscription)
       throw new Error("Subscription does not exist on this object.")
 
-    subscribe.start();
-    return () => subscribe.stop();
+    subscription.start();
+    return () => subscription.stop();
   }, []);
 
   return current;
