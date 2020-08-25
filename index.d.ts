@@ -143,6 +143,8 @@ declare class Controller {
     static makeGlobal <T extends Class>(this: T): InstanceType<T>;
 
     static meta <T extends Class>(this: T): T & Meta;
+
+    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
     
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
