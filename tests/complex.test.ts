@@ -1,5 +1,4 @@
-import Controller from "./lib";
-import { trySubscribe } from "./adapter";
+import Controller, { trySubscribe } from "./adapter";
 import { act } from "react-test-renderer";
 
 class Subject extends Controller {
