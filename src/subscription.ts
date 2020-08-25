@@ -26,7 +26,7 @@ export class Subscription<T extends Observable = any>{
         configurable: true,
         enumerable: true,
         set: (value: any) => within(master.subject, key, value),
-        get: this.onAccessTrigger(key)
+        get: this.beginWatchOnAccess(key)
       })
 
     define(local, {
@@ -59,7 +59,7 @@ export class Subscription<T extends Observable = any>{
       done()
   }
   
-  private onAccessTrigger = (key: string) => {
+  private beginWatchOnAccess = (key: string) => {
     return () => {
       const value = within(this.master.subject, key);
 
