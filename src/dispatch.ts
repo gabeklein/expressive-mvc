@@ -1,38 +1,33 @@
 import { Controller, within } from './controller';
-import { OBSERVER, Observer } from './observer';
+import { Observer } from './observer';
 import { PeerController } from './peers';
 import { define } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
+export function applyDispatch(this: Controller){
+  const dispatch = new ControllerDispatch(this);
+
+  dispatch.monitorValues(["get", "set"]);
+  dispatch.monitorComputed(["Provider", "Input", "Value"]);
+
+  define(this, {
+    get: this,
+    set: this,
+    on: dispatch.on.bind(dispatch),
+    once: dispatch.once.bind(dispatch),
+    watch: dispatch.watch.bind(dispatch),
+    refresh: dispatch.trigger.bind(dispatch)
+  })
+
+  if(this.didCreate)
+    this.didCreate();
+
+  return dispatch;
+}
+
 export class ControllerDispatch 
   extends Observer<Controller> {
-
-  static applyTo(control: Controller){
-    let dispatch = control[OBSERVER];
-  
-    if(!dispatch){
-      dispatch = new ControllerDispatch(control);
-  
-      dispatch.monitorValues(["get", "set"]);
-      dispatch.monitorComputed(["Provider", "Input", "Value"]);
-  
-      define(self, OBSERVER, dispatch);
-      define(control, {
-        get: control,
-        set: control,
-        on: dispatch.on.bind(dispatch),
-        once: dispatch.once.bind(dispatch),
-        watch: dispatch.watch.bind(dispatch),
-        refresh: dispatch.trigger.bind(dispatch)
-      })
-  
-      if(control.didCreate)
-        control.didCreate();
-    }
-    
-    return dispatch;
-  }
 
   protected monitorValue(key: string, value: any){
     if(value instanceof PeerController)

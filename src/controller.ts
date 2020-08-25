@@ -1,8 +1,8 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { ControllerDispatch } from './dispatch';
-import { getObserver, Observable, OBSERVER, Observer } from './observer';
+import { applyDispatch, ControllerDispatch } from './dispatch';
+import { Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
@@ -90,10 +90,6 @@ export class Controller {
     this.set = this;
   }
 
-  ensureDispatch(){
-    return ControllerDispatch.applyTo(this);
-  }
-
   tap(key?: string){
     const self = usePassiveSubscriber(this);
     return within(self, key);
@@ -123,7 +119,7 @@ export class Controller {
     onChange?: Callback | boolean,
     initial?: boolean) => {
 
-    const dispatch = getObserver(this);
+    const dispatch = this[OBSERVER];
 
     if(typeof subset == "function"){
       initial = onChange as boolean;
@@ -189,7 +185,7 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    ControllerDispatch.applyTo(instance);
+    instance[OBSERVER];
     
     return instance;
   }
@@ -302,6 +298,7 @@ defineOnAccess(Controller, "meta",
   }
 );
 
+defineOnAccess(Controller.prototype, OBSERVER, applyDispatch);
 defineOnAccess(Controller.prototype, "Provider", ControlProvider);
 defineOnAccess(Controller.prototype, "Value", ControlledValue);
 defineOnAccess(Controller.prototype, "Input", ControlledInput);

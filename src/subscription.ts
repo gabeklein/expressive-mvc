@@ -1,6 +1,6 @@
 import { Controller, ModelController, within } from './controller';
 import { LivecycleEvent } from './lifecycle';
-import { getObserver, Observable, Observer } from './observer';
+import { Observable, Observer, OBSERVER } from './observer';
 import { define } from './util';
 
 export const SUBSCRIPTION = Symbol("controller_subscription");
@@ -16,7 +16,7 @@ export class Subscription<T extends Observable = any>{
     public source: T,
     private trigger: Callback
   ){
-    const master = this.master = getObserver(source);
+    const master = this.master = source[OBSERVER];
     const local = this.proxy = Object.create(source);
 
     define(local, SUBSCRIPTION, this);
@@ -80,7 +80,6 @@ export class Subscription<T extends Observable = any>{
 
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
-      value.ensureDispatch();
 
       active = new Subscription(value, this.trigger);
 

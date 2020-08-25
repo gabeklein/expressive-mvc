@@ -1,6 +1,6 @@
 import { lifecycleEvents } from './lifecycle';
-import { Subscription, SUBSCRIPTION } from './subscription';
-import { collectGetters, define } from './util';
+import { SUBSCRIPTION, Subscription } from './subscription';
+import { collectGetters } from './util';
 
 type UpdateEventHandler = 
   (value: any, key: string) => void;
@@ -27,15 +27,6 @@ export interface Observable {
     listener: HandleUpdatedValue<this, P>, 
     once?: boolean
   ): Callback;
-}
-
-export function getObserver<T>(from: { [OBSERVER]: T }){
-  const dispatch = from[OBSERVER];
-
-  if(!dispatch)
-    throw new Error("Dispatch has not yet been created on this instance!");
-
-  return dispatch;
 }
 
 export class Observer<T extends Observable> {

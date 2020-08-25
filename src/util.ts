@@ -12,7 +12,7 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
 
 export function defineOnAccess<T>(
   object: T, 
-  property: string, 
+  property: string | symbol, 
   init: (this: T) => any){
 
   Object.defineProperty(object, property, { 
