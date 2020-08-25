@@ -10,42 +10,42 @@ class Child extends Controller {
 }
 
 class Parent extends Controller {
-  static foo = "bar";
-  static bar = new Child("meta");
+  static value = "foo";
+  static child = new Child("foo");
 }
 
 test('tracks static values on meta', async () => {
   const { state, assertDidUpdate } = trySubscribe(
-    () => Parent.meta(), ["foo"]
+    () => Parent.meta(), ["value"]
   );
 
-  expect(state.foo).toBe("bar");
+  expect(state.value).toBe("foo");
 
-  state.foo = "foo";
+  state.value = "bar";
 
   await assertDidUpdate();
-  expect(state.foo).toBe("foo");
+  expect(state.value).toBe("bar");
 })
 
 test('tracks nested values on meta', async () => {
   const { state, assertDidUpdate } = trySubscribe(
-    () => Parent.meta(), ["bar", "bar.value"]
+    () => Parent.meta(), ["child", "child.value"]
   );
 
-  expect(state.bar.value).toBe("meta");
+  expect(state.child.value).toBe("foo");
 
   // Will refresh on sub-value change.
-  state.bar.value = "bar";
+  state.child.value = "bar";
   await assertDidUpdate();
-  expect(state.bar.value).toBe("bar");
+  expect(state.child.value).toBe("bar");
 
   // Will refresh on repalcement.
-  state.bar = new Child("foo");
+  state.child = new Child("foo");
   await assertDidUpdate();
-  expect(state.bar.value).toBe("foo");
+  expect(state.child.value).toBe("foo");
 
   // Fresh subscription does still work.
-  state.bar.value = "bar";
+  state.child.value = "bar";
   await assertDidUpdate();
-  expect(state.bar.value).toBe("bar");
+  expect(state.child.value).toBe("bar");
 })
