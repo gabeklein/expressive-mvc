@@ -39,17 +39,7 @@ export function getObserver<T>(from: { [OBSERVER]: T }){
 }
 
 export class Observer<T extends Observable> {
-  constructor(
-    public subject: T
-  ){
-    define(subject, OBSERVER, this);
-    define(subject, {
-      on: this.on.bind(this),
-      once: this.once.bind(this),
-      watch: this.watch.bind(this),
-      refresh: this.trigger.bind(this)
-    })
-  }
+  constructor(public subject: T){}
   
   protected state = {} as BunchOf<any>;
   protected pending = new Set<string>();

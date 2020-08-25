@@ -17,9 +17,14 @@ export class ControllerDispatch
       dispatch.monitorValues(["get", "set"]);
       dispatch.monitorComputed(["Provider", "Input", "Value"]);
   
+      define(self, OBSERVER, dispatch);
       define(control, {
         get: control,
-        set: control
+        set: control,
+        on: dispatch.on.bind(dispatch),
+        once: dispatch.once.bind(dispatch),
+        watch: dispatch.watch.bind(dispatch),
+        refresh: dispatch.trigger.bind(dispatch)
       })
   
       if(control.didCreate)

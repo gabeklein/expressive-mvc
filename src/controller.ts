@@ -292,6 +292,7 @@ defineOnAccess(Controller, "meta",
     observer.monitorValues(["prototype", "length", "name"]);
     observer.monitorComputed();
 
+    define(self, OBSERVER, observer);
     define(self, {
       get: self,
       set: self
