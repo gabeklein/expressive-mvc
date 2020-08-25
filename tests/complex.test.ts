@@ -1,5 +1,4 @@
 import Controller, { trySubscribe } from "./adapter";
-import { act } from "react-test-renderer";
 
 class Subject extends Controller {
   seconds = 0;
@@ -17,9 +16,7 @@ test('triggers computed value when input values change', async () => {
       return instance;
     });
 
-  act(() => {
-    state.seconds = 30;
-  })
+  state.seconds = 30;
 
   await assertDidNotUpdate();
 
