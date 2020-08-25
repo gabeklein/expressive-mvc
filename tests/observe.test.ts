@@ -13,9 +13,7 @@ class Subject extends Controller {
 test('dispatches changes to observer', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ 
-      use: Subject
-    })
+    trySubscribe(() => Subject.use());
 
   state.watch("seconds", fn)
   state.seconds = 30;
@@ -28,9 +26,7 @@ test('dispatches changes to observer', async () => {
 test('dispatches changes to computed value', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ 
-      use: Subject
-    })
+    trySubscribe(() => Subject.use());
 
   state.watch("minutes", fn)
   state.seconds = 60;
@@ -43,9 +39,7 @@ test('dispatches changes to computed value', async () => {
 test('dispatches multiple values to observer', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ 
-      use: Subject
-    })
+    trySubscribe(() => Subject.use());
 
   state.watch(["seconds", "minutes"], fn)
   state.seconds = 60;
@@ -59,9 +53,7 @@ test('dispatches multiple values to observer', async () => {
 test('export with callback run every update', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({ 
-      use: Subject
-    });
+    trySubscribe(() => Subject.use());
 
   state.export(["seconds", "minutes"], fn)
   state.seconds = 90;

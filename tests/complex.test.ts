@@ -12,10 +12,11 @@ class Subject extends Controller {
 
 test('triggers computed value when input values change', async () => {
   const { state, assertDidNotUpdate, assertDidUpdate } = 
-    trySubscribe({
-      use: Subject,
-      peek: [ "minutes" ]
-    })
+    trySubscribe(() => {
+      const instance = Subject.use();
+      void instance.minutes;
+      return instance;
+    });
 
   act(() => {
     state.seconds = 30;

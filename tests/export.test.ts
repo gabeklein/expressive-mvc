@@ -13,9 +13,7 @@ class Subject extends Controller {
 test('export with callback run every update', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({
-      use: Subject
-    });
+    trySubscribe(() => Subject.use());
 
   state.export(fn)
 
@@ -37,9 +35,7 @@ test('export with callback run every update', async () => {
 test('callback with initial = true fires immediately', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({
-      use: Subject
-    });
+    trySubscribe(() => Subject.use());
 
   state.export(fn, true);
 
@@ -55,9 +51,7 @@ test('callback with initial = true fires immediately', async () => {
 test('subset export calls only with / or those values', async () => {
   const fn = jest.fn()
   const { state, assertDidNotUpdate } = 
-    trySubscribe({
-      use: Subject
-    });
+    trySubscribe(() => Subject.use());
 
   state.export(["seconds", "minutes"], fn)
 
