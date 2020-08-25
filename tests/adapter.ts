@@ -10,6 +10,8 @@ export const Controller = ts.Controller as unknown as typeof td.Controller;
 export const Provider = ts.Provider as unknown as typeof td.Provider;
 export default Controller;
 
+type Class = new(...args: any[]) => any;
+
 const frame = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
 
 /**
@@ -48,14 +50,50 @@ class TraceableError extends Error {
 }
 
 /**
- * Test a ModelController with this. Equivalent to `renderHook`, 
- * however for controller hooks.
+ * Test a ModelController with this. 
+ * Equivalent to `renderHook`, however for controllers.
  */
 export function trySubscribe<T>(
-  init: () => T): RenderControllerResult<T>{
+  init: () => T,
+  watchProperties?: string[]
+): RenderControllerResult<T>
 
-  const api = renderHook(init);
-  return plusUpdateAssertions(api);
+export function trySubscribe<T extends Class>(
+  type: T,
+  watchProperties?: string[]
+): RenderControllerResult<InstanceType<T>>
+
+export function trySubscribe(
+  init: (() => td.Controller) | typeof td.Controller,
+  watch?: string[]){
+
+  if("prototype" in init){
+    const Model = init as typeof td.Controller;
+    init = () => Model.use();
+  }
+
+  if(watch){
+    const createController = init;
+    init = () => {
+      const x = createController();
+      mockPropertyAccess(x, watch);
+      return x;
+    }
+  }
+
+  return plusUpdateAssertions(
+    renderHook(init)
+  );
+}
+
+function mockPropertyAccess(
+  on: any, properties: string[]){
+
+  for(const property of properties){
+    let x: any = on;
+    for(const key of property.split("."))
+      x = x[key];
+  }
 }
 
 interface RenderControllerResult<T> 

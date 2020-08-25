@@ -18,18 +18,16 @@ class Subject extends Controller {
 }
 
 test('initializes from extended Controller', () => {
-  const { state } = 
-    trySubscribe(() => Subject.use());
+  const { state } = trySubscribe(Subject);
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);
 })
 
 test('passes arguments to constructor', () => {
-  const { state } = 
-    trySubscribe(() => {
-      return Subject.use("Hello World!")
-    })
+  const { state } = trySubscribe(
+    () => Subject.use("Hello World!")
+  )
 
   expect(state.init).toBe("Hello World!");
 })

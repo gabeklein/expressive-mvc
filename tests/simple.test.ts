@@ -10,24 +10,15 @@ class Subject extends Controller {
 }
 
 test('loads values from class', () => {
-  const { state } = 
-    trySubscribe(() => Subject.use());
+  const { state } = trySubscribe(Subject);
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);
 })
 
 test('updates on value change', async () => {
-  const { state, assertDidUpdate } = 
-    trySubscribe(() => {
-      const instance = Subject.use();
-
-      // simulate access, indicating `value` 
-      // should be inferred as a watched value
-      void instance.value;
-
-      return instance;
-    });
+  const { state, assertDidUpdate } =
+    trySubscribe(Subject, ["value"]);
   
   state.value = 2
 
@@ -37,12 +28,8 @@ test('updates on value change', async () => {
 })
 
 test('methods may change state', async () => {
-  const { state, assertDidUpdate } = 
-    trySubscribe(() => {
-      const control = Subject.use();
-      void control.value;
-      return control;
-    });
+  const { state, assertDidUpdate } =
+    trySubscribe(Subject, ["value"]);
   
   state.setValueToThree();
 
@@ -53,7 +40,7 @@ test('methods may change state', async () => {
 
 test('no update on untracked value change', async () => {
   const { state, assertDidNotUpdate } = 
-    trySubscribe(() => Subject.use())
+    trySubscribe(Subject);
   
   state.value = 2
 
@@ -63,13 +50,8 @@ test('no update on untracked value change', async () => {
 })
 
 test('set & get are circular references', async () => {
-  const { state, assertDidUpdate } = 
-    trySubscribe(() => {
-      const instance = Subject.use();
-      void instance.value;
-
-      return instance;
-    });
+  const { state, assertDidUpdate } =
+    trySubscribe(Subject, ["value"]);
   
   expect(state.get.value).toBe(1);
 

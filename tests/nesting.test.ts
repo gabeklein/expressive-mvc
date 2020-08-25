@@ -5,28 +5,20 @@ class Child extends Controller {
 }
 
 class Parent extends Controller {
-  foo = "bar";
-  bar = new Child();
+  value = "foo";
+  child = new Child();
 }
 
 test('tracks values of nested controllers', async () => {
   const { state, assertDidUpdate } = 
-    trySubscribe(() => {
-      const instance = Parent.use();
+    trySubscribe(Parent, ["value", "child.value"])
 
-      //simulate destructure access
-      void instance.foo;
-      void instance.bar.value;
+  expect(state.value).toBe("foo");
+  expect(state.child.value).toBe("foo");
 
-      return instance;
-    });
-
-  expect(state.foo).toBe("bar");
-  expect(state.bar.value).toBe("foo");
-
-  state.foo = "foo";
+  state.value = "bar";
   await assertDidUpdate();
 
-  state.bar.value = "bar";
+  state.child.value = "bar";
   await assertDidUpdate();
 })

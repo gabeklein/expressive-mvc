@@ -15,15 +15,9 @@ class Parent extends Controller {
 }
 
 test('tracks static values on meta', async () => {
-  const { state, assertDidUpdate } =
-    trySubscribe(() => {
-      const instance = Parent.meta();
-
-      //simulate destructure access
-      void instance.foo;
-
-      return instance;
-    });
+  const { state, assertDidUpdate } = trySubscribe(
+    () => Parent.meta(), ["foo"]
+  );
 
   expect(state.foo).toBe("bar");
 
@@ -34,16 +28,9 @@ test('tracks static values on meta', async () => {
 })
 
 test('tracks nested values on meta', async () => {
-  const { state, assertDidUpdate } =
-    trySubscribe(() => {
-      const instance = Parent.meta();
-
-      //simulate destructure access
-      void instance.bar;
-      void instance.bar.value;
-
-      return instance;
-    });
+  const { state, assertDidUpdate } = trySubscribe(
+    () => Parent.meta(), ["bar", "bar.value"]
+  );
 
   expect(state.bar.value).toBe("meta");
 
