@@ -22,9 +22,9 @@ it('initializes from extended Controller', () => {
 })
 
 it('passes arguments to constructor', () => {
-  const { state } = test(
-    () => Subject.use("Hello World!")
-  )
+  const { state } = test(() => {
+    return Subject.use("Hello World!")
+  })
 
   expect(state.init).toBe("Hello World!");
 })
