@@ -12,8 +12,6 @@ export function applyDispatch(this: Controller){
   dispatch.monitorComputed(["Provider", "Input", "Value"]);
 
   define(this, {
-    get: this,
-    set: this,
     on: dispatch.on.bind(dispatch),
     once: dispatch.once.bind(dispatch),
     watch: dispatch.watch.bind(dispatch),

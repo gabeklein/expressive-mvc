@@ -86,8 +86,10 @@ export interface Controller
 
 export class Controller {
   constructor(){
-    this.get = this;
-    this.set = this;
+    define(this, {
+      get: this,
+      set: this
+    })
   }
 
   tap(key?: string){
