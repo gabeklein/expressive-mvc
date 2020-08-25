@@ -179,16 +179,17 @@ export class Controller {
   static meta: <T>(this: T) => T & Observable;
 
   static create<T extends Class>(
-    this: T, 
+    this: T,
     args?: any[],
-    prepare?: (self: InstanceType<T>) => void
-  ): InstanceType<T> {
-    const instance = new (this as any)(...args || []);
+    prepare?: (self: InstanceType<T>) => void){
+
+    const instance: InstanceType<T> = 
+      new (this as any)(...args || []);
 
     if(prepare)
       prepare(instance);
 
-    instance.ensureDispatch();
+    ControllerDispatch.applyTo(instance);
     
     return instance;
   }

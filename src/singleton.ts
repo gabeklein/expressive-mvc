@@ -48,12 +48,10 @@ export class Singleton extends Controller {
   static create<T extends Class>(
     this: T,
     args: any[], 
-    prepare?: (self: InstanceType<T>) => void
-  ): InstanceType<T> {
+    prepare?: (self: any) => void){
 
-    const type: any = this;
-
-    let instance = type[INSTANCE];
+    const Type = this as unknown as typeof Singleton;
+    let instance = Type[INSTANCE] as InstanceType<T>;
 
     if(instance)
       throw new Error(
@@ -61,14 +59,10 @@ export class Singleton extends Controller {
         `'${this.name}.use(...)' may only be mounted once at any one time.`
       )
 
-    instance = new type(...args || []) as Singleton;
-  
-    if(prepare)
-      prepare(instance);
-      
-    instance.ensureDispatch();
+    instance = super.create(args, prepare) as any;
+    Type[INSTANCE] = instance;
     
-    return type[INSTANCE] = instance;
+    return instance;
   }
   
   static delete(instance?: Singleton){
