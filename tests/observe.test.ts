@@ -2,7 +2,6 @@ import Controller, { test } from "./adapter";
 
 class Subject extends Controller {
   seconds = 0;
-  foo = 3;
 
   get minutes(){
     return Math.floor(this.seconds / 60)
