@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Child extends Controller {
   constructor(
@@ -13,8 +13,9 @@ class Parent extends Controller {
 }
 
 it('tracks static values on meta', async () => {
-  const { state, assertDidUpdate } = trySubscribe(
-    () => Parent.meta(), ["value"]
+  const { state, assertDidUpdate } = test(
+    () => Parent.meta(),
+    ["value"]
   );
 
   expect(state.value).toBe("foo");
@@ -26,8 +27,9 @@ it('tracks static values on meta', async () => {
 })
 
 it('tracks child controller values on meta', async () => {
-  const { state, assertDidUpdate } = trySubscribe(
-    () => Parent.meta(), ["child", "child.value"]
+  const { state, assertDidUpdate } = test(
+    () => Parent.meta(),
+    ["child", "child.value"]
   );
 
   expect(state.child.value).toBe("foo");

@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Subject extends Controller {
   seconds = 0;
@@ -10,7 +10,7 @@ class Subject extends Controller {
 }
 
 it('dispatches changes to observer', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.watch("seconds", mock)
@@ -22,7 +22,7 @@ it('dispatches changes to observer', async () => {
 })
 
 it('dispatches changes to computed value', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.watch("minutes", mock)
@@ -34,7 +34,7 @@ it('dispatches changes to computed value', async () => {
 })
 
 it('dispatches multiple values to observer', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.watch(["seconds", "minutes"], mock)
@@ -47,7 +47,7 @@ it('dispatches multiple values to observer', async () => {
 })
 
 it('runs export callback on every update', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.export(["seconds", "minutes"], mock)

@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Subject extends Controller {
   seconds = 0;
@@ -9,8 +9,11 @@ class Subject extends Controller {
 }
 
 it('triggers computed value when input values change', async () => {
-  const { state, assertDidNotUpdate, assertDidUpdate } = 
-    trySubscribe(Subject, ["minutes"]);
+  const {
+    state,
+    assertDidNotUpdate,
+    assertDidUpdate
+  } = test(Subject, ["minutes"]);
 
   state.seconds = 30;
 

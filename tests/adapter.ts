@@ -10,6 +10,8 @@ export const Controller = Source.Controller as unknown as typeof Public.Controll
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export default Controller;
 
+export { trySubscribe as test };
+
 type Class = new(...args: any[]) => any;
 
 const frame = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
@@ -53,17 +55,17 @@ class TraceableError extends Error {
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
  */
-export function trySubscribe<T>(
+function trySubscribe<T>(
   init: () => T,
   watchProperties?: string[]
 ): RenderControllerResult<T>
 
-export function trySubscribe<T extends Class>(
+function trySubscribe<T extends Class>(
   type: T,
   watchProperties?: string[]
 ): RenderControllerResult<InstanceType<T>>
 
-export function trySubscribe(
+function trySubscribe(
   init: (() => Public.Controller) | typeof Public.Controller,
   watch?: string[]){
 

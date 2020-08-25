@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Child extends Controller {
   value = "foo"
@@ -11,7 +11,7 @@ class Parent extends Controller {
 
 it('tracks values of nested controllers', async () => {
   const { state, assertDidUpdate } = 
-    trySubscribe(Parent, ["value", "child.value"])
+    test(Parent, ["value", "child.value"])
 
   expect(state.value).toBe("foo");
   expect(state.child.value).toBe("foo");

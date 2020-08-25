@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Subject extends Controller {
   seconds = 0;
@@ -10,7 +10,7 @@ class Subject extends Controller {
 }
 
 it('will export with callback run every update', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.export(mock)
@@ -31,7 +31,7 @@ it('will export with callback run every update', async () => {
 })
 
 it('fires callbacks with `initial = true` immediately', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.export(mock, true);
@@ -46,7 +46,7 @@ it('fires callbacks with `initial = true` immediately', async () => {
 })
 
 it('exports only subset values where requested', async () => {
-  const { state, assertDidNotUpdate } = trySubscribe(Subject);
+  const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn()
 
   state.export(["seconds", "minutes"], mock)

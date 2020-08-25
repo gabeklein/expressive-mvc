@@ -1,4 +1,4 @@
-import Controller, { trySubscribe } from "./adapter";
+import Controller, { test } from "./adapter";
 
 class Subject extends Controller {
   value = 1;
@@ -15,14 +15,14 @@ class Subject extends Controller {
 }
 
 it('initializes from extended Controller', () => {
-  const { state } = trySubscribe(Subject);
+  const { state } = test(Subject);
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);
 })
 
 it('passes arguments to constructor', () => {
-  const { state } = trySubscribe(
+  const { state } = test(
     () => Subject.use("Hello World!")
   )
 
@@ -30,7 +30,7 @@ it('passes arguments to constructor', () => {
 })
 
 it('can initialize a Provider', () => {
-  trySubscribe(() => {
+  test(() => {
     const control = Subject.use();
     void control.Provider;
     return control;
