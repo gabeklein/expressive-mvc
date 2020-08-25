@@ -1,8 +1,6 @@
 import { Controller } from './controller';
 import { defineOnAccess } from './util';
 
-const INSTANCE = Symbol("current_singleton");
-
 export class Singleton extends Controller {
   destroy(){
     super.destroy();
@@ -10,13 +8,13 @@ export class Singleton extends Controller {
     const constructor = 
       this.constructor as typeof Singleton;
 
-    if(this !== constructor[INSTANCE])
+    if(this !== constructor.current)
       console.warn(
         `${constructor.name}.destory() was called on an instance which is not active. ` +
         `This is an antipattern and may caused unexpected behavior.`
       )
     else
-      delete constructor[INSTANCE];
+      constructor.current = undefined;
   }
 
   attach(key: string, type: typeof Controller){
@@ -29,10 +27,10 @@ export class Singleton extends Controller {
     )
   }
 
-  static [INSTANCE]?: Singleton;
+  static current?: Singleton = undefined;
 
   static find(){
-    const instance = this[INSTANCE];
+    const instance = this.current;
 
     if(!instance){
       const { name } = this;
@@ -51,7 +49,7 @@ export class Singleton extends Controller {
     prepare?: (self: any) => void){
 
     const Type = this as unknown as typeof Singleton;
-    let instance = Type[INSTANCE] as InstanceType<T>;
+    let instance = Type.current as InstanceType<T>;
 
     if(instance)
       throw new Error(
@@ -60,7 +58,7 @@ export class Singleton extends Controller {
       )
 
     instance = super.create(args, prepare) as any;
-    Type[INSTANCE] = instance;
+    Type.current = instance;
     
     return instance;
   }
@@ -71,13 +69,13 @@ export class Singleton extends Controller {
       : this;
 
     if(!instance)
-      instance = this[INSTANCE];
+      instance = this.current;
     else 
       
     if(!instance)
       return;
 
-    delete constructor[INSTANCE];
+    delete constructor.current;
   }
 
   static extends<T extends Class>(
