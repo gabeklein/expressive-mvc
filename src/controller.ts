@@ -285,8 +285,13 @@ defineOnAccess(Controller, "meta",
     const self = this as unknown as Observable;
     const observer = new Observer(self);
 
-    observer.monitorValues(["prototype", "length", "name"]);
-    observer.monitorComputed();
+    observer.monitorValues([
+      "prototype", "length", "name"
+    ]);
+    observer.monitorComputed([
+      "context", "find", "meta",
+      "Provider", "caller", "arguments"
+    ]);
 
     define(self, OBSERVER, observer);
     define(self, {
