@@ -1,11 +1,9 @@
 import Controller, { trySubscribe } from "./adapter";
 
 class Child extends Controller {
-  value: string;
-
-  constructor(value: string){
+  constructor(
+    public value: string){
     super();
-    this.value = value;
   }
 }
 

@@ -1,16 +1,13 @@
 import Controller, { trySubscribe } from "./adapter";
 
 class Subject extends Controller {
-
-  init?: string;
-
-  constructor(init?: string){
-    super();
-    this.init = init;
-  }
-
   value = 1;
   value2 = 2;
+
+  constructor(
+    public init?: string){
+    super();
+  }
 
   setValueToThree = () => {
     this.value = 3;
