@@ -11,13 +11,13 @@ import {
 } from 'react';
 
 import { Any, Controller } from './controller';
-import { getObserver } from './observer';
+import { OBSERVER } from './observer';
 
 function useValue(from: Controller, key: string){
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
   useEffect(() => {
-    return getObserver(from).watch(key, onUpdate);
+    return from[OBSERVER].watch(key, onUpdate);
   }, []);
 
   return value;
