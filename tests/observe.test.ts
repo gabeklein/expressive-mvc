@@ -9,7 +9,7 @@ class Subject extends Controller {
   }
 }
 
-test('dispatches changes to observer', async () => {
+it('dispatches changes to observer', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(Subject);
   const mock = jest.fn()
 
@@ -21,7 +21,7 @@ test('dispatches changes to observer', async () => {
   expect(mock).toBeCalledWith(30, "seconds");
 })
 
-test('dispatches changes to computed value', async () => {
+it('dispatches changes to computed value', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(Subject);
   const mock = jest.fn()
 
@@ -33,7 +33,7 @@ test('dispatches changes to computed value', async () => {
   expect(mock).toBeCalledWith(1, "minutes");
 })
 
-test('dispatches multiple values to observer', async () => {
+it('dispatches multiple values to observer', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(Subject);
   const mock = jest.fn()
 
@@ -46,7 +46,7 @@ test('dispatches multiple values to observer', async () => {
   expect(mock).toBeCalledWith(60, "seconds");
 })
 
-test('export with callback run every update', async () => {
+it('runs export callback on every update', async () => {
   const { state, assertDidNotUpdate } = trySubscribe(Subject);
   const mock = jest.fn()
 

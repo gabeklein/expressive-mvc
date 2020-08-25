@@ -9,14 +9,14 @@ class Subject extends Controller {
   }
 }
 
-test('loads values from class', () => {
+it('loads values from class', () => {
   const { state } = trySubscribe(Subject);
 
   expect(state.value).toBe(1);
   expect(state.value2).toBe(2);
 })
 
-test('updates on value change', async () => {
+it('updates on value change', async () => {
   const { state, assertDidUpdate } =
     trySubscribe(Subject, ["value"]);
   
@@ -27,7 +27,7 @@ test('updates on value change', async () => {
   expect(state.value).toBe(2);
 })
 
-test('methods may change state', async () => {
+it('methods may change state', async () => {
   const { state, assertDidUpdate } =
     trySubscribe(Subject, ["value"]);
   
@@ -38,7 +38,7 @@ test('methods may change state', async () => {
   expect(state.value).toBe(3)
 })
 
-test('no update on untracked value change', async () => {
+it('no update on untracked value change', async () => {
   const { state, assertDidNotUpdate } = 
     trySubscribe(Subject);
   
@@ -49,7 +49,7 @@ test('no update on untracked value change', async () => {
   expect(state.value).toBe(2);
 })
 
-test('set & get are circular references', async () => {
+it('set & get are circular references', async () => {
   const { state, assertDidUpdate } =
     trySubscribe(Subject, ["value"]);
   

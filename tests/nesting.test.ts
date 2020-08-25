@@ -9,7 +9,7 @@ class Parent extends Controller {
   child = new Child();
 }
 
-test('tracks values of nested controllers', async () => {
+it('tracks values of nested controllers', async () => {
   const { state, assertDidUpdate } = 
     trySubscribe(Parent, ["value", "child.value"])
 

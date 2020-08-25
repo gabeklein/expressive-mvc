@@ -14,7 +14,7 @@ class Parent extends Controller {
   static child = new Child("foo");
 }
 
-test('tracks static values on meta', async () => {
+it('tracks static values on meta', async () => {
   const { state, assertDidUpdate } = trySubscribe(
     () => Parent.meta(), ["value"]
   );
@@ -27,7 +27,7 @@ test('tracks static values on meta', async () => {
   expect(state.value).toBe("bar");
 })
 
-test('tracks nested values on meta', async () => {
+it('tracks child controller values on meta', async () => {
   const { state, assertDidUpdate } = trySubscribe(
     () => Parent.meta(), ["child", "child.value"]
   );
