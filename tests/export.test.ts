@@ -10,20 +10,20 @@ class Subject extends Controller {
 }
 
 test('export with callback run every update', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.export(fn)
+  state.export(mock)
 
   // should not call without change having occured
-  expect(fn).not.toHaveBeenCalled()
+  expect(mock).not.toHaveBeenCalled()
 
   state.seconds = 90;
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(
+  expect(mock).toBeCalledWith(
     // does contain all tracked values
     { minutes: 1, seconds: 90, foo: "bar" }, 
     // does list updated values
@@ -32,35 +32,35 @@ test('export with callback run every update', async () => {
 })
 
 test('callback with initial = true fires immediately', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.export(fn, true);
+  state.export(mock, true);
 
-  expect(fn).toHaveBeenCalled();
+  expect(mock).toHaveBeenCalled();
 
   state.seconds = 90;
 
   await assertDidNotUpdate()
 
-  expect(fn).toHaveBeenCalledTimes(2);
+  expect(mock).toHaveBeenCalledTimes(2);
 })
 
 test('subset export calls only with / or those values', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.export(["seconds", "minutes"], fn)
+  state.export(["seconds", "minutes"], mock)
 
-  expect(fn).not.toHaveBeenCalled()
+  expect(mock).not.toHaveBeenCalled()
   
   state.seconds = 30;
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(
+  expect(mock).toBeCalledWith(
     // only contains values for keys requested
     { minutes: 0, seconds: 30 },
     // only contains "seconds" which had updated
@@ -72,5 +72,5 @@ test('subset export calls only with / or those values', async () => {
   await assertDidNotUpdate()
 
   // should not be called again as "baz" isn't tracked
-  expect(fn).toHaveBeenCalledTimes(1);
+  expect(mock).toHaveBeenCalledTimes(1);
 })

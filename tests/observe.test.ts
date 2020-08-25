@@ -10,58 +10,58 @@ class Subject extends Controller {
 }
 
 test('dispatches changes to observer', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.watch("seconds", fn)
+  state.watch("seconds", mock)
   state.seconds = 30;
 
   await assertDidNotUpdate();
 
-  expect(fn).toBeCalledWith(30, "seconds");
+  expect(mock).toBeCalledWith(30, "seconds");
 })
 
 test('dispatches changes to computed value', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.watch("minutes", fn)
+  state.watch("minutes", mock)
   state.seconds = 60;
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(1, "minutes");
+  expect(mock).toBeCalledWith(1, "minutes");
 })
 
 test('dispatches multiple values to observer', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.watch(["seconds", "minutes"], fn)
+  state.watch(["seconds", "minutes"], mock)
   state.seconds = 60;
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(1, "minutes");
-  expect(fn).toBeCalledWith(60, "seconds");
+  expect(mock).toBeCalledWith(1, "minutes");
+  expect(mock).toBeCalledWith(60, "seconds");
 })
 
 test('export with callback run every update', async () => {
-  const fn = jest.fn()
+  const mock = jest.fn()
   const { state, assertDidNotUpdate } = 
     trySubscribe(() => Subject.use());
 
-  state.export(["seconds", "minutes"], fn)
+  state.export(["seconds", "minutes"], mock)
   state.seconds = 90;
 
-  expect(fn).not.toHaveBeenCalled()
+  expect(mock).not.toHaveBeenCalled()
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(
+  expect(mock).toBeCalledWith(
     { minutes: 1, seconds: 90 }, 
     expect.arrayContaining(["seconds", "minutes"])
   );
@@ -70,7 +70,7 @@ test('export with callback run every update', async () => {
 
   await assertDidNotUpdate()
 
-  expect(fn).toBeCalledWith(
+  expect(mock).toBeCalledWith(
     { minutes: 1, seconds: 91 }, 
     expect.arrayContaining(["seconds"])
   );
