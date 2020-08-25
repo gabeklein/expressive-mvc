@@ -11,16 +11,16 @@ class Subject extends Controller {
 
 it('will export with callback run every update', async () => {
   const { state, assertDidNotUpdate } = test(Subject);
-  const mock = jest.fn()
+  const mock = jest.fn();
 
-  state.export(mock)
+  state.export(mock);
 
   // should not call without change having occured
-  expect(mock).not.toHaveBeenCalled()
+  expect(mock).not.toHaveBeenCalled();
 
   state.seconds = 90;
 
-  await assertDidNotUpdate()
+  await assertDidNotUpdate();
 
   expect(mock).toBeCalledWith(
     // does contain all tracked values
@@ -32,30 +32,25 @@ it('will export with callback run every update', async () => {
 
 it('fires callbacks with `initial = true` immediately', async () => {
   const { state, assertDidNotUpdate } = test(Subject);
-  const mock = jest.fn()
+  const mock = jest.fn();
 
   state.export(mock, true);
 
   expect(mock).toHaveBeenCalled();
-
   state.seconds = 90;
-
-  await assertDidNotUpdate()
-
+  await assertDidNotUpdate();
   expect(mock).toHaveBeenCalledTimes(2);
 })
 
 it('exports only subset values where requested', async () => {
   const { state, assertDidNotUpdate } = test(Subject);
-  const mock = jest.fn()
+  const mock = jest.fn();
 
-  state.export(["seconds", "minutes"], mock)
+  state.export(["seconds", "minutes"], mock);
 
-  expect(mock).not.toHaveBeenCalled()
-  
+  expect(mock).not.toHaveBeenCalled();
   state.seconds = 30;
-
-  await assertDidNotUpdate()
+  await assertDidNotUpdate();
 
   expect(mock).toBeCalledWith(
     // only contains values for keys requested
@@ -64,10 +59,8 @@ it('exports only subset values where requested', async () => {
     [ "seconds" ]                 
   );
 
-  state.foo = "baz"
-
-  await assertDidNotUpdate()
-
+  state.foo = "baz";
+  await assertDidNotUpdate();
   // should not be called again as "baz" isn't tracked
   expect(mock).toHaveBeenCalledTimes(1);
 })
