@@ -3,8 +3,6 @@ import { LivecycleEvent } from './lifecycle';
 import { Observable, Observer, OBSERVER } from './observer';
 import { define } from './util';
 
-export const SUBSCRIPTION = Symbol("controller_subscription");
-
 export type ModelEvent = keyof ModelController;
 
 export class Subscription<T extends Observable = any>{
@@ -18,8 +16,6 @@ export class Subscription<T extends Observable = any>{
   ){
     const master = this.master = source[OBSERVER];
     const local = this.proxy = Object.create(source);
-
-    define(local, SUBSCRIPTION, this);
 
     for(const key of master.managed)
       Object.defineProperty(local, key, {

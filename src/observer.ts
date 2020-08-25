@@ -1,5 +1,5 @@
 import { lifecycleEvents } from './lifecycle';
-import { SUBSCRIPTION, Subscription } from './subscription';
+import { Subscription } from './subscription';
 import { collectGetters } from './util';
 
 type UpdateEventHandler = 
@@ -13,7 +13,6 @@ export const OBSERVER = Symbol("object_observer");
 
 export interface Observable {
   [OBSERVER]: Observer<any>;
-  [SUBSCRIPTION]?: Subscription;
 
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
   

@@ -1,8 +1,5 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
-//TODO: removable?
-import { SUBSCRIPTION } from '../src/subscription';
-
 const frame = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
 
 /**
@@ -68,9 +65,12 @@ function plusUpdateAssertions(
   result: RenderHookResult<any, any>){
 
   const patched = result as RenderControllerResult<any>;
-  const { current } = patched.result;
+  let { current } = patched.result;
+  
+  if(current.get !== current)
+    current = Object.getPrototypeOf(current);
 
-  patched.state = SUBSCRIPTION in current ? Object.getPrototypeOf(current) : current;
+  patched.state = current;
 
   patched.assertDidUpdate = async () => {
     const error = new TraceableError("Assertion failed: hook did not update");
