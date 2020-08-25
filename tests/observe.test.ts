@@ -35,7 +35,11 @@ it('dispatches multiple values to observer', async () => {
   const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn();
 
-  state.watch(["seconds", "minutes"], mock);
+  state.watch([
+    "seconds",
+    "minutes"
+  ], mock);
+  
   state.seconds = 60;
   await assertDidNotUpdate();
 
@@ -47,7 +51,11 @@ it('runs export callback on every update', async () => {
   const { state, assertDidNotUpdate } = test(Subject);
   const mock = jest.fn();
 
-  state.export(["seconds", "minutes"], mock);
+  state.export([
+    "seconds",
+    "minutes"
+  ], mock);
+  
   state.seconds = 90;
 
   expect(mock).not.toHaveBeenCalled();
@@ -56,7 +64,10 @@ it('runs export callback on every update', async () => {
 
   expect(mock).toBeCalledWith(
     { minutes: 1, seconds: 90 }, 
-    expect.arrayContaining(["seconds", "minutes"])
+    expect.arrayContaining([
+      "seconds",
+      "minutes"
+    ])
   );
 
   state.seconds = 91;
@@ -65,6 +76,8 @@ it('runs export callback on every update', async () => {
 
   expect(mock).toBeCalledWith(
     { minutes: 1, seconds: 91 }, 
-    expect.arrayContaining(["seconds"])
+    expect.arrayContaining([
+      "seconds"
+    ])
   );
 })
