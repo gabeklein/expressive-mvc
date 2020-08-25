@@ -1,13 +1,13 @@
 import { renderHook, RenderHookResult } from '@testing-library/react-hooks';
 
 // source code
-import * as ts from "../src";
+import * as Source from "../src";
 // public type definitions
-import * as td from "../";
+import * as Public from "../";
 
-export const get = ts.get as typeof td.get;
-export const Controller = ts.Controller as unknown as typeof td.Controller;
-export const Provider = ts.Provider as unknown as typeof td.Provider;
+export const get = Source.get as typeof Public.get;
+export const Controller = Source.Controller as unknown as typeof Public.Controller;
+export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export default Controller;
 
 type Class = new(...args: any[]) => any;
@@ -64,11 +64,11 @@ export function trySubscribe<T extends Class>(
 ): RenderControllerResult<InstanceType<T>>
 
 export function trySubscribe(
-  init: (() => td.Controller) | typeof td.Controller,
+  init: (() => Public.Controller) | typeof Public.Controller,
   watch?: string[]){
 
   if("prototype" in init){
-    const Model = init as typeof td.Controller;
+    const Model = init as typeof Public.Controller;
     init = () => Model.use();
   }
 
