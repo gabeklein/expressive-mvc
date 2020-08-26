@@ -1,28 +1,9 @@
 import { Controller } from './controller';
 import { Observer } from './observer';
 import { PeerController } from './peers';
-import { define, within } from './util';
+import { within } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
-
-export function applyDispatch(this: Controller){
-  const dispatch = new ControllerDispatch(this);
-
-  dispatch.monitorValues(["get", "set"]);
-  dispatch.monitorComputed(["Provider", "Input", "Value"]);
-
-  define(this, {
-    on: dispatch.on.bind(dispatch),
-    once: dispatch.once.bind(dispatch),
-    watch: dispatch.watch.bind(dispatch),
-    refresh: dispatch.trigger.bind(dispatch)
-  })
-
-  if(this.didCreate)
-    this.didCreate();
-
-  return dispatch;
-}
 
 export class ControllerDispatch 
   extends Observer<Controller> {

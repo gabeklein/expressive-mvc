@@ -1,7 +1,7 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { applyDispatch, ControllerDispatch } from './dispatch';
+import { ControllerDispatch } from './dispatch';
 import { Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
@@ -242,51 +242,66 @@ export class Controller {
   }
 }
 
-defineAtNeed(Controller, "context", 
-  () => createContext<any>(null)
-);
+defineAtNeed(Controller, "context", () => {
+  return createContext<any>(null);
+});
 
-defineAtNeed(Controller, "find", 
-  function getterForContext(this: typeof Controller) {
-    const { name, context } = this;
+defineAtNeed(Controller, "find", function(){
+  const { name, context } = this;
 
-    return function useInstanceInContext(){
-      const instance = 
-        useContext(context!) || 
-        useContext(CONTEXT_MULTIPROVIDER)[name];
+  return function useWithinContext(){
+    const instance = 
+      useContext(context!) || 
+      useContext(CONTEXT_MULTIPROVIDER)[name];
 
-      if(!instance)
-        throw Oops.ContextNotFound(name);
+    if(!instance)
+      throw Oops.ContextNotFound(name);
 
-      return instance;
-    }
+    return instance;
   }
-);
+});
 
-defineAtNeed(Controller, "meta", 
-  function initializeMeta(this: typeof Controller){
-    const self = this as unknown as Observable;
-    const observer = new Observer(self);
+defineAtNeed(Controller, "meta", function(){
+  const self = this as unknown as Observable;
+  const observer = new Observer(self);
 
-    observer.monitorValues([
-      "prototype", "length", "name"
-    ]);
-    observer.monitorComputed([
-      "context", "find", "meta",
-      "Provider", "caller", "arguments"
-    ]);
+  observer.monitorValues([
+    "prototype", "length", "name"
+  ]);
+  observer.monitorComputed([
+    "context", "find", "meta",
+    "Provider", "caller", "arguments"
+  ]);
 
-    define(self, OBSERVER, observer);
-    define(self, {
-      get: self,
-      set: self
-    });
+  define(self, OBSERVER, observer);
+  define(self, {
+    get: self,
+    set: self
+  });
 
-    return () => usePassiveSubscriber(self);
-  }
-);
+  return function(){
+    return usePassiveSubscriber(self);
+  };
+});
 
-defineAtNeed(Controller.prototype, OBSERVER, applyDispatch);
 defineAtNeed(Controller.prototype, "Provider", ControlProvider);
 defineAtNeed(Controller.prototype, "Value", ControlledValue);
 defineAtNeed(Controller.prototype, "Input", ControlledInput);
+defineAtNeed(Controller.prototype, OBSERVER, function(){
+  const dispatch = new ControllerDispatch(this);
+
+  dispatch.monitorValues(["get", "set"]);
+  dispatch.monitorComputed(["Provider", "Input", "Value"]);
+
+  define(this, {
+    on: dispatch.on.bind(dispatch),
+    once: dispatch.once.bind(dispatch),
+    watch: dispatch.watch.bind(dispatch),
+    refresh: dispatch.trigger.bind(dispatch)
+  })
+
+  if(this.didCreate)
+    this.didCreate();
+
+  return dispatch;
+});
