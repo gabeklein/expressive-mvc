@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { defineOnAccess, Issues } from './util';
+import { defineAtNeed, Issues } from './util';
 
 const Oops = Issues({
   ContextNotAllowed: (name) =>
@@ -37,7 +37,7 @@ export class Singleton extends Controller {
 
   attach(key: string, type: typeof Controller){
     if(!type.context)
-      defineOnAccess(this, key, () => type.find());
+      defineAtNeed(this, key, () => type.find());
     else 
       throw Oops.CantAttach(this.constructor.name, type.name)
   }

@@ -6,7 +6,7 @@ import { Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
-import { define, defineOnAccess, Issues, within } from './util';
+import { define, defineAtNeed, Issues, within } from './util';
 
 const Oops = Issues({
   ContextNotFound: (name) =>
@@ -121,7 +121,7 @@ export class Controller {
 
   attach(key: string, type: typeof Controller){
     if(!type.context)
-      defineOnAccess(this, key, () => type.find());
+      defineAtNeed(this, key, () => type.find());
   }
 
   destroy(){
@@ -242,11 +242,11 @@ export class Controller {
   }
 }
 
-defineOnAccess(Controller, "context", 
+defineAtNeed(Controller, "context", 
   () => createContext<any>(null)
 );
 
-defineOnAccess(Controller, "find", 
+defineAtNeed(Controller, "find", 
   function getterForContext(this: typeof Controller) {
     const { name, context } = this;
 
@@ -263,7 +263,7 @@ defineOnAccess(Controller, "find",
   }
 );
 
-defineOnAccess(Controller, "meta", 
+defineAtNeed(Controller, "meta", 
   function initializeMeta(this: typeof Controller){
     const self = this as unknown as Observable;
     const observer = new Observer(self);
@@ -286,7 +286,7 @@ defineOnAccess(Controller, "meta",
   }
 );
 
-defineOnAccess(Controller.prototype, OBSERVER, applyDispatch);
-defineOnAccess(Controller.prototype, "Provider", ControlProvider);
-defineOnAccess(Controller.prototype, "Value", ControlledValue);
-defineOnAccess(Controller.prototype, "Input", ControlledInput);
+defineAtNeed(Controller.prototype, OBSERVER, applyDispatch);
+defineAtNeed(Controller.prototype, "Provider", ControlProvider);
+defineAtNeed(Controller.prototype, "Value", ControlledValue);
+defineAtNeed(Controller.prototype, "Input", ControlledInput);

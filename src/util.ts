@@ -10,7 +10,7 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
       Object.defineProperty(target, key, { value });
 }
 
-export function defineOnAccess<T>(
+export function defineAtNeed<T>(
   object: T, 
   property: string | symbol, 
   init: (this: T) => any){
