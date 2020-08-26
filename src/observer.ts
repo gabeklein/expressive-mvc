@@ -1,6 +1,14 @@
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
-import { collectGetters } from './util';
+import { collectGetters, Issues } from './util';
+
+const Oops = Issues({
+  NotTracked: (name) => 
+    `Can't watch property ${name}, it's not tracked on this instance.`,
+
+  IsComputed: (name) => 
+    `Cannot set ${name} on this controller, it is computed.`
+})
 
 type UpdateEventHandler = 
   (value: any, key: string) => void;
@@ -152,7 +160,7 @@ export class Observer<T extends Observable> {
 
       Object.defineProperty(subject, key, {
         configurable: true,
-        set: throwNotAllowed(key),
+        set: Oops.NotTracked(key).throw,
         get: this.monitorComputedValue(key, compute)
       })
     }
@@ -193,7 +201,7 @@ export class Observer<T extends Observable> {
       }
       finally {
         Object.defineProperty(subject, key, {
-          set: throwNotAllowed(key),
+          set: Oops.NotTracked(key).throw,
           get: getValueLazy,
           enumerable: true,
           configurable: true
@@ -262,9 +270,7 @@ export class Observer<T extends Observable> {
           listeners = this.subscribers[key];
         }
         else
-          throw new Error(
-            `Can't watch property ${key}, it's not tracked on this instance.`
-          );
+          throw Oops.NotTracked(key);
 
       const trigger = () => callback(key);
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
@@ -282,10 +288,6 @@ export class Observer<T extends Observable> {
       clear = [];
     };
   } 
-}
-
-const throwNotAllowed = (key: string) => () => {
-  throw new Error(`Cannot set ${key} on this controller, it is computed.`) 
 }
 
 const isInitialCompute = (fn: any, set?: true) => {

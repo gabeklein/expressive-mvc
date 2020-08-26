@@ -6,7 +6,16 @@ import { Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
-import { define, defineOnAccess } from './util';
+import { define, defineOnAccess, Issues } from './util';
+
+const Oops = Issues({
+  ContextNotFound: (name) =>
+    `Can't subscribe to controller; this accessor can` +
+    `only be used within a Provider keyed to ${name}.`,
+
+  HasPropertyUndefined: (control, property) =>
+    `${control}.${property} is marked as required for this render.`
+})
 
 /** 
  * Helper generic, allows errors-free access 
@@ -207,7 +216,7 @@ export class Controller {
     const value = this.find().tap(key);
 
     if(value === undefined)
-      throw new Error(`${this.name}.${key} is marked as required for this render.`)
+      throw Oops.HasPropertyUndefined(this.name, key);
 
     return value;
   }
@@ -272,10 +281,7 @@ defineOnAccess(Controller, "find",
         useContext(CONTEXT_MULTIPROVIDER)[name];
 
       if(!instance)
-        throw new Error(
-          `Can't subscribe to controller; this accessor ` + 
-          `can only be used within a Provider keyed to \`${name}\``
-        );
+        throw Oops.ContextNotFound(name);
 
       return instance;
     }
