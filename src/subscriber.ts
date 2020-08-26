@@ -6,13 +6,11 @@ import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 
-function useManualRefresh<T>(
+function useMemoWithRefresh<T>(
   init: (onRequestUpdate: Callback) => T){
 
   const [ state, update ] = useState(() => [
-    init(function onRequestUpdate(){
-      update(state.concat());
-    })
+    init(() => { update(state.concat()) })
   ]);
 
   return state[0];
@@ -22,8 +20,8 @@ export function usePassiveSubscriber<T extends Observable>
   (target: T){
 
   const subscription =
-    useManualRefresh(update => {
-      return new Subscription(target, update);
+    useMemoWithRefresh(refresh => {
+      return new Subscription(target, refresh);
     });
 
   useEffect(() => {
@@ -40,10 +38,10 @@ export function useActiveSubscriber<T extends Controller>
   let initialRender = false;
 
   const subscription =
-    useManualRefresh(update => {
+    useMemoWithRefresh(refresh => {
       initialRender = true;
 
-      return new Subscription(target, update);
+      return new Subscription(target, refresh);
     });
 
   useLifecycleEffect((name) => {
@@ -63,12 +61,12 @@ export function useNewController<T extends typeof Controller>(
   let release: Callback | undefined;
 
   const subscription = 
-    useManualRefresh(update => {
+    useMemoWithRefresh(refresh => {
       initialRender = true;
 
       let instance = Model.create(args, callback);
 
-      return new Subscription(instance, update);
+      return new Subscription(instance, refresh);
     });
 
   useLifecycleEffect((name) => {
