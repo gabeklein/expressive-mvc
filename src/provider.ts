@@ -1,9 +1,10 @@
 import { createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import { Controller, within } from './controller';
+import { Controller } from './controller';
 import { OBSERVER } from './observer';
 import { ensurePeerControllers } from './peers';
 import { useNewController } from './subscriber';
+import { within } from './util';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 

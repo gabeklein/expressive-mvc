@@ -3,6 +3,12 @@
  */
 type BunchOf<T> = { [key: string]: T };
 
+/** 
+ * Helper generic, allows errors-free access 
+ * to arbitrary properties in an object. 
+ */
+type Any<T extends {} = any> = { [key: string]: any };
+
 /**
  * Any function to fire off some expected action.
  */

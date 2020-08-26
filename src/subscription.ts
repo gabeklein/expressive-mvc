@@ -1,7 +1,7 @@
-import { Controller, ModelController, within } from './controller';
+import { Controller, ModelController } from './controller';
 import { LivecycleEvent } from './lifecycle';
 import { Observable, Observer, OBSERVER } from './observer';
-import { define } from './util';
+import { define, within } from './util';
 
 export type ModelEvent = keyof ModelController;
 

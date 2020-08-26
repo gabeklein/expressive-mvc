@@ -25,6 +25,24 @@ export function defineOnAccess<T>(
   });
 }
 
+/**
+ * Abstract "Type-Waiver" for controller.
+ * Prevent compiler from complaining about arbitary property access.
+ */
+export function within<T>(controller: T): Any<T>;
+export function within<T>(controller: T, key: undefined): Any<T>;
+export function within<T>(controller: T, key?: string): any;
+export function within<T, V>(controller: T, key: string, value: V): V;
+
+export function within(source: any, key?: string, value?: any){
+  if(value)
+    return source[key!] = value;
+  if(key)
+    return source[key];
+  else
+    return source;
+}
+
 export function collectGetters(
   source: any, except: string[] = []){
 

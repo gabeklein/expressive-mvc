@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 
-import { Any, Controller } from './controller';
+import { Controller } from './controller';
 import { OBSERVER } from './observer';
 
 function useValue(from: Controller, key: string){

@@ -6,7 +6,7 @@ import { Observable, OBSERVER, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
-import { define, defineOnAccess, Issues } from './util';
+import { define, defineOnAccess, Issues, within } from './util';
 
 const Oops = Issues({
   ContextNotFound: (name) =>
@@ -16,31 +16,6 @@ const Oops = Issues({
   HasPropertyUndefined: (control, property) =>
     `${control}.${property} is marked as required for this render.`
 })
-
-/** 
- * Helper generic, allows errors-free access 
- * to arbitrary properties in an object. 
- */
-export type Any<T extends Controller = any> = { [key: string]: any };
-
-/**
- * Abstract "Type-Waiver" for controller.
- * Prevent compiler from complaining about arbitary property access.
- */
-export function within<T extends Controller>(controller: T): Any<T>;
-export function within<T extends Controller>(controller: T, key: undefined): Any<T>;
-export function within<T extends Controller>(controller: T, key?: string): any;
-export function within<T extends Controller, V>(controller: T, key: string, value: V): V;
-
-export function within(controller: Controller, key?: string, value?: any){
-  const target = controller as any;
-  if(value)
-    return target[key!] = value;
-  if(key)
-    return target[key];
-  else
-    return target;
-}
 
 export interface ModelController {
   [TEMP_CONTEXT]: Callback;
@@ -289,7 +264,7 @@ defineOnAccess(Controller, "find",
 );
 
 defineOnAccess(Controller, "meta", 
-  function getterForMeta(this: typeof Controller){
+  function initializeMeta(this: typeof Controller){
     const self = this as unknown as Observable;
     const observer = new Observer(self);
 

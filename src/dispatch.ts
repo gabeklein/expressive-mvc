@@ -1,7 +1,7 @@
-import { Controller, within } from './controller';
+import { Controller } from './controller';
 import { Observer } from './observer';
 import { PeerController } from './peers';
-import { define } from './util';
+import { define, within } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
