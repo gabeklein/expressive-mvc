@@ -27,13 +27,10 @@ export interface Observable {
   once(target: string, listener: HandleUpdatedValue<this, any>): void;
   once(target: string): Promise<any> | undefined;
 
-  refresh(...keys: string[]): void;
+  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 
-  observe<P extends keyof this>(
-    key: P | P[], 
-    listener: HandleUpdatedValue<this, P>, 
-    once?: boolean
-  ): Callback;
+  refresh(...keys: string[]): void;
 }
 
 export class Observer<T extends Observable> {
