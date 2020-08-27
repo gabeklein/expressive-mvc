@@ -85,12 +85,6 @@ export class Singleton extends Controller {
     delete constructor.current;
   }
 
-  static extends<T extends Class>(
-    this: T, type: Class): type is T {
-
-    return type.prototype instanceof this;
-  }
-
   static get context(): any {
     return undefined;
   }
