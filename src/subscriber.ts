@@ -35,12 +35,8 @@ export function usePassiveSubscriber<T extends Observable>
 export function useActiveSubscriber<T extends Controller>
   (target: T, args: any[]){
 
-  let initialRender = false;
-
   const subscription =
     useMemoWithRefresh(refresh => {
-      initialRender = true;
-
       return new Subscription(target, refresh);
     });
 
@@ -52,7 +48,7 @@ export function useActiveSubscriber<T extends Controller>
       subscription.stop();
 
     triggerLifecycle(target, name, false, args);
-  }, initialRender);
+  });
   
   return subscription.proxy;
 }
@@ -62,13 +58,10 @@ export function useNewController<T extends typeof Controller>(
   args?: any[], 
   callback?: (instance: InstanceType<T>) => void){
 
-  let initialRender = false;
   let release: Callback | undefined;
 
   const subscription = 
     useMemoWithRefresh(refresh => {
-      initialRender = true;
-
       let instance = Model.create(args, callback);
 
       return new Subscription(instance, refresh);

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { OBSERVER } from './observer';
@@ -62,12 +62,13 @@ export function triggerLifecycle(
 }
 
 export function useLifecycleEffect(
-  onEvent: (name: LivecycleEvent) => void,
-  initial: boolean | undefined){
+  onEvent: (name: LivecycleEvent) => void){
 
-  onEvent = useCallback(onEvent, []);
+  let isFirstRender;
 
-  onEvent(initial ? "willMount" : "willUpdate");
+  onEvent = useMemo(() => isFirstRender = onEvent, []);
+
+  onEvent(isFirstRender ? "willMount" : "willUpdate");
   onEvent("willRender");
 
   useEffect(() => {
