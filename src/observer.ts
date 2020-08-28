@@ -126,8 +126,9 @@ export class Observer<T extends Observable> {
       if("value" in desc === false)
         continue;
 
-      if(typeof desc.value === "function" && /^[A-Z]/.test(key) == false)
-        continue;
+      if(typeof desc.value === "function")
+        if(/^[A-Z]/.test(key) === false)
+            continue;
 
       this.monitorValue(key, desc.value)
     }

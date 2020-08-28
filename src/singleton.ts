@@ -26,20 +26,19 @@ export class Singleton extends Controller {
   destroy(){
     super.destroy();
 
-    const constructor = 
-      this.constructor as typeof Singleton;
+    const meta = this.constructor as typeof Singleton;
 
-    if(this !== constructor.current)
-      Oops.DestroyNotActive(constructor.name).warn();
+    if(this === meta.current)
+      meta.current = undefined;
     else
-      constructor.current = undefined;
+      Oops.DestroyNotActive(meta.name).warn();
   }
 
   attach(key: string, type: typeof Controller){
-    if(!type.context)
-      defineAtNeed(this, key, () => type.find());
-    else 
+    if(type.context)
       throw Oops.CantAttach(this.constructor.name, type.name)
+    else 
+      defineAtNeed(this, key, () => type.find());
   }
 
   static current?: Singleton = undefined;
@@ -50,7 +49,7 @@ export class Singleton extends Controller {
     if(!instance)
       throw Oops.DoesNotExist(this.name);
 
-    return instance;
+    return instance as Controller;
   }
 
   static create<T extends Class>(
@@ -85,11 +84,11 @@ export class Singleton extends Controller {
     delete constructor.current;
   }
 
-  static get context(): any {
+  static get context(){
     return undefined;
   }
 
-  static get Provider(): any {
+  static get Provider(): never {
     throw Oops.ContextNotAllowed(this.name);
   }
 }

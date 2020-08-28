@@ -12,32 +12,42 @@ export class Subscription<T extends Observable = any>{
   
   constructor(
     public source: T,
-    private trigger: Callback
+    private refresh: Callback
   ){
     const master = this.master = source[OBSERVER];
-    const local = this.proxy = Object.create(source);
+    const proxy = this.proxy = Object.create(source);
 
     for(const key of master.managed)
-      Object.defineProperty(local, key, {
+      Object.defineProperty(proxy, key, {
         configurable: true,
         enumerable: true,
-        set: (value: any) => within(master.subject, key, value),
-        get: this.beginWatchOnAccess(key)
+        set: (value) => {
+          within(master.subject, key, value);
+        },
+        get: () => {
+          const value = within(source, key);
+
+          if(value instanceof Controller)
+            return this.monitorRecursive(key);
+          else {
+            const done = master.addListener(key, refresh);
+            this.cleanup.add(done);
+            return value;
+          }
+        }
       })
 
-    define(local, {
-      refresh: this.forceRefresh
+    define(proxy, {
+      refresh: (...keys: string[]) => {
+        if(0 in keys)
+          master.trigger(...keys)
+        else
+          refresh();
+      }
     })
   }
 
-  forceRefresh = (...keys: string[]) => {
-    if(!keys[0]) 
-      this.trigger();
-    else
-      this.master.trigger(...keys)
-  }
-
-  handleEvent = (name: LivecycleEvent) => {
+  public handleEvent(name: LivecycleEvent){
     if(name == "didMount")
       this.start();
 
@@ -54,19 +64,6 @@ export class Subscription<T extends Observable = any>{
     for(const done of this.cleanup)
       done()
   }
-  
-  private beginWatchOnAccess = (key: string) => {
-    return () => {
-      const value = within(this.master.subject, key);
-
-      if(value instanceof Controller)
-        return this.monitorRecursive(key);
-        
-      const done = this.master.addListener(key, this.trigger);
-      this.cleanup.add(done);
-      return value;
-    }
-  }
 
   private monitorRecursive(key: string){
     const { master } = this;
@@ -77,7 +74,7 @@ export class Subscription<T extends Observable = any>{
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
 
-      active = new Subscription(value, this.trigger);
+      active = new Subscription(value, this.refresh);
 
       Object.defineProperty(this.proxy, key, {
         get: () => active.proxy,
@@ -101,7 +98,7 @@ export class Subscription<T extends Observable = any>{
       
       active.stop();
       startSubscription();
-      this.trigger();
+      this.refresh();
     }
 
     master.once("willUnmount", () => {
