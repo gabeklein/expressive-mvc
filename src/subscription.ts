@@ -30,19 +30,19 @@ export class Subscription<T extends Observable = any>{
           if(value instanceof Controller)
             return this.monitorRecursive(key);
           else {
-            const done = master.addListener(key, refresh);
-            this.cleanup.add(done);
+            const release = master.addListener(key, refresh);
+            this.cleanup.add(release);
             return value;
           }
         }
       })
 
     define(proxy, {
-      refresh: (...keys: string[]) => {
+      refresh(...keys: string[]){
         if(0 in keys)
           master.trigger(...keys)
         else
-          refresh();
+          refresh()
       }
     })
   }
@@ -53,8 +53,8 @@ export class Subscription<T extends Observable = any>{
   }
 
   public stop(){
-    for(const done of this.cleanup)
-      done()
+    for(const cb of this.cleanup)
+      cb()
   }
 
   public handleEvent(name: LivecycleEvent){

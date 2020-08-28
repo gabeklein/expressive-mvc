@@ -78,16 +78,16 @@ export class Observer<T extends Observable> {
 
     const onUpdate = (key: string) => {
       if(once)
-        unsubscribe();
+        release();
         
       handler.call(this.subject, this.state[key], key);
     }
 
     //TODO: dont use multi-listener by default
-    const unsubscribe =
+    const release =
       this.addMultipleListener(watch, onUpdate, ignoreUndefined);
 
-    return unsubscribe;
+    return release;
   }
 
   public trigger(...keys: string[]){
