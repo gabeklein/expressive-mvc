@@ -176,6 +176,34 @@ export class Controller {
     return instance;
   }
 
+  static use(...args: any[]){
+    return useNewController(this, args);
+  }
+
+  static uses(
+    props: BunchOf<any>, 
+    only?: string[]){
+      
+    return useNewController(this, undefined, (instance) => {
+      instance.integrate(props, only);
+    })
+  }
+
+  static using(
+    props: BunchOf<any>, 
+    only?: string[]){
+
+    function assignTo(instance: Controller){
+      instance.integrate(props, only);
+    }
+
+    const subscriber = useNewController(this, undefined, assignTo);
+
+    assignTo(subscriber);
+        
+    return subscriber;
+  }
+
   static get(): Controller;
   static get(key?: string){
     const instance = this.find();
@@ -207,34 +235,6 @@ export class Controller {
     const instance = this.find();
     instance.assign(a, b);
     return instance.tap();
-  }
-
-  static use(...args: any[]){
-    return useNewController(this, args);
-  }
-
-  static uses(
-    props: BunchOf<any>, 
-    only?: string[]){
-      
-    return useNewController(this, undefined, (instance) => {
-      instance.integrate(props, only);
-    })
-  }
-
-  static using(
-    props: BunchOf<any>, 
-    only?: string[]){
-
-    function assignTo(instance: Controller){
-      instance.integrate(props, only);
-    }
-
-    const subscriber = useNewController(this, undefined, assignTo);
-
-    assignTo(subscriber);
-        
-    return subscriber;
   }
 
   static get Provider(){
