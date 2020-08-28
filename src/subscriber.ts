@@ -45,7 +45,7 @@ export function useActiveSubscriber<T extends Controller>
     });
 
   useLifecycleEffect((name) => {
-    subscription.handleEvent(name);
+    subscription.event(name);
     triggerLifecycle(target, name, false, args);
   }, initialRender);
   
@@ -75,7 +75,7 @@ export function useNewController<T extends typeof Controller>(
     if(name == "willRender")
       release = ensurePeerControllers(instance);
 
-    subscription.handleEvent(name);
+    subscription.event(name);
     triggerLifecycle(instance, name, true, args);
 
     if(name == "willUnmount"){

@@ -57,7 +57,7 @@ export class Subscription<T extends Observable = any>{
       cb()
   }
 
-  public handleEvent(name: LivecycleEvent){
+  public event(name: LivecycleEvent){
     if(name == "didMount")
       this.start();
 
