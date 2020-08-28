@@ -206,8 +206,7 @@ export class Controller {
 
   static get(): Controller;
   static get(key?: string){
-    const instance = this.find();
-    return key ? within(instance, key) : instance;
+    return within(this.find(), key);
   }
 
   static tap(): Controller;
