@@ -78,9 +78,8 @@ export function useNewController<T extends typeof Controller>(
     subscription.event(name);
     triggerLifecycle(instance, name, true, args);
 
-    if(name == "willUnmount"){
-      if(release)
-        release();
+    if(name == "willUnmount" && release){
+      release();
 
       instance.destroy();
     }
