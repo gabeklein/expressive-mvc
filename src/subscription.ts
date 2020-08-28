@@ -1,6 +1,5 @@
 import { Controller, ModelController } from './controller';
-import { LivecycleEvent } from './lifecycle';
-import { Observable, Observer, OBSERVER } from './observer';
+import { Observable, OBSERVER, Observer } from './observer';
 import { define, within } from './util';
 
 export type ModelEvent = keyof ModelController;
@@ -55,14 +54,6 @@ export class Subscription<T extends Observable = any>{
   public stop(){
     for(const cb of this.cleanup)
       cb()
-  }
-
-  public event(name: LivecycleEvent){
-    if(name == "didMount")
-      this.start();
-
-    if(name == "willUnmount")
-      this.stop();
   }
 
   private monitorRecursive(key: string){
