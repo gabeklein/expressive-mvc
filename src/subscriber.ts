@@ -25,7 +25,7 @@ export function usePassiveSubscriber<T extends Observable>
     });
 
   useEffect(() => {
-    subscription.start();
+    subscription.commit();
     return () => subscription.stop();
   }, []);
 
@@ -42,7 +42,7 @@ export function useActiveSubscriber<T extends Controller>
 
   useLifecycleEffect((name) => {
     if(name == "didMount")
-      subscription.start();
+      subscription.commit();
 
     if(name == "willUnmount")
       subscription.stop();
@@ -74,7 +74,7 @@ export function useNewController<T extends typeof Controller>(
       release = ensurePeerControllers(instance);
 
     if(name == "didMount")
-      subscription.start();
+      subscription.commit();
 
     triggerLifecycle(instance, name, true, args);
 

@@ -187,7 +187,7 @@ export class Observer<T extends Observable> {
       try {
         const subscribe = new Subscription(subject, onValueDidChange);
         const value = state[key] = fn.call(subscribe.proxy);
-        subscribe.start();
+        subscribe.commit();
         return value;
       }
       catch(e){

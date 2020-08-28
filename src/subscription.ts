@@ -6,22 +6,22 @@ export type ModelEvent = keyof ModelController;
 
 export class Subscription<T extends Observable = any>{
   public proxy: T;
-  private master: Observer<any>;
+  private parent: Observer<any>;
   private cleanup = new Set<Callback>();
   
   constructor(
     public source: T,
     private refresh: Callback
   ){
-    const master = this.master = source[OBSERVER];
     const proxy = this.proxy = Object.create(source);
+    const parent = this.parent = source[OBSERVER];
 
-    for(const key of master.managed)
+    for(const key of parent.managed)
       Object.defineProperty(proxy, key, {
         configurable: true,
         enumerable: true,
         set: (value) => {
-          within(master.subject, key, value);
+          within(parent.subject, key, value);
         },
         get: () => {
           const value = within(source, key);
@@ -29,7 +29,7 @@ export class Subscription<T extends Observable = any>{
           if(value instanceof Controller)
             return this.monitorRecursive(key);
           else {
-            const release = master.addListener(key, refresh);
+            const release = parent.addListener(key, refresh);
             this.cleanup.add(release);
             return value;
           }
@@ -39,15 +39,15 @@ export class Subscription<T extends Observable = any>{
     define(proxy, {
       refresh(...keys: string[]){
         if(0 in keys)
-          master.trigger(...keys)
+          parent.trigger(...keys)
         else
           refresh()
       }
     })
   }
 
-  public start(){
-    for(const key of this.master.managed)
+  public commit(...keys: string[]){
+    for(const key of keys || this.parent.managed)
       delete (this.proxy as any)[key];
   }
 
@@ -57,26 +57,26 @@ export class Subscription<T extends Observable = any>{
   }
 
   private monitorRecursive(key: string){
-    const { master } = this;
-    const dispatch: any = master.subject;
+    const { parent } = this;
+    const dispatch: any = parent.subject;
 
-    let active!: Subscription;
+    let focus!: Subscription;
 
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
 
-      active = new Subscription(value, this.refresh);
+      focus = new Subscription(value, this.refresh);
 
       Object.defineProperty(this.proxy, key, {
-        get: () => active.proxy,
+        get: () => focus.proxy,
         set: resetSubscription,
         configurable: true,
         enumerable: true
       })
 
-      master.once("didRender", () => {
-        delete (this.proxy as any)[key];
-        active.start()
+      parent.once("didRender", () => {
+        this.commit(key);
+        focus.commit();
       });
     }
 
@@ -87,22 +87,22 @@ export class Subscription<T extends Observable = any>{
       if(value)
         dispatch[key] = value;
       
-      active.stop();
+      focus.stop();
       startSubscription();
       this.refresh();
     }
 
-    master.once("willUnmount", () => {
-      if(active)
-        active.stop()
+    parent.once("willUnmount", () => {
+      if(focus)
+        focus.stop()
     })
 
     this.cleanup.add(
-      master.addListener(key, resetSubscription)
+      parent.addListener(key, resetSubscription)
     );
     
     startSubscription();
 
-    return active.proxy;
+    return focus.proxy;
   }
 }
