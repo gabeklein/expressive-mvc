@@ -43,7 +43,7 @@ const eventsFor = (prefix: string) => {
 const subscriberLifecycle = eventsFor("element");
 const componentLifecycle = eventsFor("component");
 
-export function hitLifecycle(
+export function triggerLifecycle(
   control: Controller,
   name: LivecycleEvent,
   main: boolean,

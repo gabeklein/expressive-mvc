@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { hitLifecycle, useLifecycleEffect } from './lifecycle';
+import { triggerLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
@@ -46,7 +46,7 @@ export function useActiveSubscriber<T extends Controller>
 
   useLifecycleEffect((name) => {
     subscription.handleEvent(name);
-    hitLifecycle(target, name, false, args);
+    triggerLifecycle(target, name, false, args);
   }, initialRender);
   
   return subscription.proxy;
@@ -76,7 +76,7 @@ export function useNewController<T extends typeof Controller>(
       release = ensurePeerControllers(instance);
 
     subscription.handleEvent(name);
-    hitLifecycle(instance, name, true, args);
+    triggerLifecycle(instance, name, true, args);
 
     if(name == "willUnmount"){
       if(release)
