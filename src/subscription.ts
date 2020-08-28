@@ -47,14 +47,6 @@ export class Subscription<T extends Observable = any>{
     })
   }
 
-  public handleEvent(name: LivecycleEvent){
-    if(name == "didMount")
-      this.start();
-
-    if(name == "willUnmount")
-      this.stop();
-  }
-
   public start(){
     for(const key of this.master.managed)
       delete (this.proxy as any)[key];
@@ -63,6 +55,14 @@ export class Subscription<T extends Observable = any>{
   public stop(){
     for(const done of this.cleanup)
       done()
+  }
+
+  public handleEvent(name: LivecycleEvent){
+    if(name == "didMount")
+      this.start();
+
+    if(name == "willUnmount")
+      this.stop();
   }
 
   private monitorRecursive(key: string){
