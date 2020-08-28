@@ -83,7 +83,6 @@ export class Observer<T extends Observable> {
       handler.call(this.subject, this.state[key], key);
     }
 
-    //TODO: dont use multi-listener by default
     const release =
       this.addMultipleListener(watch, onUpdate, ignoreUndefined);
 
@@ -114,7 +113,6 @@ export class Observer<T extends Observable> {
     );
   }
 
-  //TODO: implement specify argument or true for all
   public monitorValues(except?: string[]){
     const desc = Object.getOwnPropertyDescriptors(this.subject);
     const entries = Object.entries(desc);
@@ -236,7 +234,6 @@ export class Observer<T extends Observable> {
     }, 0);
   }
 
-  //TODO: does this even have parity with multi?
   public addListener(
     key: string,
     callback: Callback){
