@@ -1,8 +1,5 @@
 import { useEffect, useMemo } from 'react';
 
-import { Controller } from './controller';
-import { OBSERVER } from './observer';
-
 export type LivecycleEvent =
   | "willMount"
   | "willUpdate"
@@ -35,31 +32,15 @@ export const lifecycleEvents = [
 
 const eventsFor = (prefix: string) => {
   const map = {} as BunchOf<string>;
+
   for(const name of lifecycleEvents)
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
-  return map;
+
+  return (name: string) => map[name] as LivecycleEvent;
 }
 
-const subscriberLifecycle = eventsFor("element");
-const componentLifecycle = eventsFor("component");
-
-export function triggerLifecycle(
-  control: Controller,
-  name: LivecycleEvent,
-  main: boolean,
-  args?: any[]
-){
-  const lifecycle: BunchOf<string> = 
-    main ? componentLifecycle : subscriberLifecycle;
-    
-  const specific = lifecycle[name] as LivecycleEvent;
-  const handler = control[specific] || control[name];
-      
-  if(handler)
-    handler.apply(control, args || []);
-    
-  control[OBSERVER].trigger(name, specific);
-}
+export const subscriberLifecycle = eventsFor("element");
+export const componentLifecycle = eventsFor("component");
 
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void){

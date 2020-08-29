@@ -6,7 +6,7 @@ export type ModelEvent = keyof ModelController;
 
 export class Subscription<T extends Observable = any>{
   public proxy: T;
-  private parent: Observer<any>;
+  public parent: Observer<any>;
   private cleanup = new Set<Callback>();
   
   constructor(
