@@ -44,12 +44,10 @@ export class Singleton extends Controller {
   static current?: Singleton = undefined;
 
   static find(){
-    const instance = this.current;
-
-    if(!instance)
+    if(!this.current)
       throw Oops.DoesNotExist(this.name);
 
-    return instance as Controller;
+    return this.current as Controller;
   }
 
   static create<T extends Class>(
