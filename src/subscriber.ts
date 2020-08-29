@@ -9,11 +9,11 @@ import { Subscription } from './subscription';
 function useMemoWithRefresh<T>(
   init: (onRequestUpdate: Callback) => T){
 
-  const [ state, update ] = useState(() => [
-    init(() => {
-      update(state.concat())
-    })
-  ]);
+  const [ state, update ] = useState(() => {
+    return [
+      init(() => update(state.concat()))
+    ]
+  });
 
   return state[0];
 }
@@ -22,9 +22,9 @@ export function usePassiveSubscriber<T extends Observable>
   (target: T){
 
   const subscription =
-    useMemoWithRefresh(refresh => {
-      return new Subscription(target, refresh);
-    });
+    useMemoWithRefresh(refresh => 
+      new Subscription(target, refresh)
+    );
 
   useEffect(() => {
     subscription.commit();
@@ -38,9 +38,9 @@ export function useActiveSubscriber<T extends Controller>
   (target: T, args: any[]){
 
   const subscription =
-    useMemoWithRefresh(refresh => {
-      return new Subscription(target, refresh);
-    });
+    useMemoWithRefresh(refresh => 
+      new Subscription(target, refresh)
+    );
 
   useLifecycleEffect((name) => {
     const alias = subscriberLifecycle(name);
@@ -69,11 +69,12 @@ export function useNewController<T extends typeof Controller>(
   let release: Callback | undefined;
 
   const subscription = 
-    useMemoWithRefresh(refresh => {
-      let instance = Model.create(args, callback);
-
-      return new Subscription(instance, refresh);
-    });
+    useMemoWithRefresh(refresh => 
+      new Subscription(
+        Model.create(args, callback),
+        refresh
+      )
+    );
 
   useLifecycleEffect((name) => {
     const instance = subscription.source;
