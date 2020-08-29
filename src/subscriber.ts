@@ -86,7 +86,7 @@ export function useNewController<T extends typeof Controller>(
 
       instance.destroy();
     }
-  }, initialRender);
+  });
 
   return subscription.proxy;
 }
