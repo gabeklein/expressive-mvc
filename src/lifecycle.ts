@@ -30,7 +30,7 @@ export const lifecycleEvents = [
   "didMount"
 ];
 
-const eventsFor = (prefix: string) => {
+const aliasFor = (prefix: string) => {
   const map = {} as BunchOf<string>;
 
   for(const name of lifecycleEvents)
@@ -39,8 +39,8 @@ const eventsFor = (prefix: string) => {
   return (name: string) => map[name] as LivecycleEvent;
 }
 
-export const subscriberLifecycle = eventsFor("element");
-export const componentLifecycle = eventsFor("component");
+export const subscriberLifecycle = aliasFor("element");
+export const componentLifecycle = aliasFor("component");
 
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void){
