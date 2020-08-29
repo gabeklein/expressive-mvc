@@ -81,7 +81,7 @@ export class Subscription<T extends Observable = any>{
     }
 
     const resetSubscription = (value?: any) => {
-      if(dispatch[key] == value)
+      if(dispatch[key] === value)
         return;
       
       if(value)
