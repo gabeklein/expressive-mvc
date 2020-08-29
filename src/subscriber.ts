@@ -10,7 +10,9 @@ function useMemoWithRefresh<T>(
   init: (onRequestUpdate: Callback) => T){
 
   const [ state, update ] = useState(() => [
-    init(() => { update(state.concat()) })
+    init(() => {
+      update(state.concat())
+    })
   ]);
 
   return state[0];

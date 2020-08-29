@@ -205,17 +205,19 @@ export class Controller {
   }
 
   static get(): Controller;
+  static get(key: string): any;
   static get(key?: string){
     return within(this.find(), key);
   }
 
   static tap(): Controller;
+  static tap(key: string): any;
   static tap(key?: string){
     return this.find().tap(key);
   }
 
   static has(key: string){
-    const value = this.find().tap(key);
+    const value = this.tap(key);
 
     if(value === undefined)
       throw Oops.HasPropertyUndefined(this.name, key);

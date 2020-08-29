@@ -16,6 +16,15 @@ export class Subscription<T extends Observable = any>{
     const proxy = this.proxy = Object.create(source);
     const parent = this.parent = source[OBSERVER];
 
+    define(proxy, {
+      refresh(...keys: string[]){
+        if(0 in keys)
+          parent.trigger(...keys)
+        else
+          refresh()
+      }
+    })
+
     for(const key of parent.managed)
       Object.defineProperty(proxy, key, {
         configurable: true,
@@ -35,15 +44,6 @@ export class Subscription<T extends Observable = any>{
           }
         }
       })
-
-    define(proxy, {
-      refresh(...keys: string[]){
-        if(0 in keys)
-          parent.trigger(...keys)
-        else
-          refresh()
-      }
-    })
   }
 
   public commit(...keys: string[]){
@@ -82,7 +82,7 @@ export class Subscription<T extends Observable = any>{
 
     const resetSubscription = (value?: any) => {
       if(dispatch[key] == value)
-        return
+        return;
       
       if(value)
         dispatch[key] = value;
