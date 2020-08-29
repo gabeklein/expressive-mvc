@@ -19,7 +19,7 @@ export class Subscription<T extends Observable = any>{
     define(proxy, {
       refresh(...keys: string[]){
         if(0 in keys)
-          parent.trigger(...keys)
+          parent.event(...keys)
         else
           refresh()
       }

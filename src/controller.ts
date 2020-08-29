@@ -128,7 +128,7 @@ export class Controller {
     const dispatch = this[OBSERVER];
 
     if(dispatch)
-      dispatch.trigger("willDestroy");
+      dispatch.event("willDestroy");
     
     if(this.willDestroy)
       this.willDestroy();
@@ -298,7 +298,7 @@ defineAtNeed(Controller.prototype, OBSERVER, function(){
     on: dispatch.on.bind(dispatch),
     once: dispatch.once.bind(dispatch),
     watch: dispatch.watch.bind(dispatch),
-    refresh: dispatch.trigger.bind(dispatch)
+    refresh: dispatch.event.bind(dispatch)
   })
 
   if(this.didCreate)

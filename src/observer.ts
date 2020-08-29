@@ -89,7 +89,7 @@ export class Observer<T extends Observable> {
     return release;
   }
 
-  public trigger(...keys: string[]){
+  public event(...keys: string[]){
     for(const x of keys)
       this.pending.add(x)
       
