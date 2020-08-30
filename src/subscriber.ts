@@ -9,13 +9,11 @@ import { Subscription } from './subscription';
 function useMemoWithRefresh<T>(
   init: (onRequestUpdate: Callback) => T){
 
-  const [ state, update ] = useState(() => {
-    return [
-      init(() => update(state.concat()))
-    ]
-  });
+  const [ state, update ] = useState<any>(() => [
+    init(() => update(state.concat()))
+  ]);
 
-  return state[0];
+  return state[0] as T;
 }
 
 export function usePassiveSubscriber<T extends Observable>
