@@ -105,7 +105,7 @@ export class Controller {
     onChange?: Callback | boolean,
     initial?: boolean) => {
 
-    const dispatch = this[OBSERVER];
+    const dispatch = this.getDispatch();
 
     if(typeof subset == "function"){
       initial = onChange as boolean;
@@ -132,6 +132,30 @@ export class Controller {
     
     if(this.willDestroy)
       this.willDestroy();
+  }
+
+  getDispatch(){
+    let dispatch = this[OBSERVER];
+
+    if(!dispatch){
+      dispatch = new ControllerDispatch(this);
+    
+      dispatch.monitorValues(["get", "set"]);
+      dispatch.monitorComputed(["Provider", "Input", "Value"]);
+    
+      define(this, OBSERVER, dispatch);
+      define(this, {
+        on: dispatch.on.bind(dispatch),
+        once: dispatch.once.bind(dispatch),
+        watch: dispatch.watch.bind(dispatch),
+        refresh: dispatch.event.bind(dispatch)
+      })
+    
+      if(this.didCreate)
+        this.didCreate();
+    }
+  
+    return dispatch;
   }
 
   private integrate(
@@ -181,7 +205,7 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    instance[OBSERVER];
+    instance.getDispatch();
     
     return instance;
   }
@@ -240,6 +264,28 @@ export class Controller {
     return useActiveSubscriber(instance, args);
   }
 
+  static [OBSERVER]: Observer<any>;
+
+  static getDispatch(){
+    let observer = this[OBSERVER];
+
+    if(!observer){
+      observer = new Observer(this)
+
+      observer.monitorValues([
+        "prototype", "length", "name"
+      ]);
+      observer.monitorComputed([
+        "context", "find", "meta",
+        "Provider", "caller", "arguments"
+      ]);
+    
+      define(this, OBSERVER, observer);
+    }
+
+    return observer;
+  };
+
   static hoc = createWrappedComponent;
 
   static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
@@ -258,46 +304,13 @@ defineAtNeed(Controller, "context", () => {
 });
 
 defineAtNeed(Controller, "meta", function(){
-  const self = this as unknown as Observable;
-  const observer = new Observer(self);
-
-  observer.monitorValues([
-    "prototype", "length", "name"
-  ]);
-  observer.monitorComputed([
-    "context", "find", "meta",
-    "Provider", "caller", "arguments"
-  ]);
-
-  define(self, OBSERVER, observer);
-  define(self, {
-    get: self,
-    set: self
-  });
-
-  return function(){
-    return usePassiveSubscriber(self);
-  };
+  this.getDispatch();
+  return () => usePassiveSubscriber(this);
 });
 
 defineAtNeed(Controller.prototype, "Provider", ControlProvider);
 defineAtNeed(Controller.prototype, "Value", ControlledValue);
 defineAtNeed(Controller.prototype, "Input", ControlledInput);
 defineAtNeed(Controller.prototype, OBSERVER, function(){
-  const dispatch = new ControllerDispatch(this);
-
-  dispatch.monitorValues(["get", "set"]);
-  dispatch.monitorComputed(["Provider", "Input", "Value"]);
-
-  define(this, {
-    on: dispatch.on.bind(dispatch),
-    once: dispatch.once.bind(dispatch),
-    watch: dispatch.watch.bind(dispatch),
-    refresh: dispatch.event.bind(dispatch)
-  })
-
-  if(this.didCreate)
-    this.didCreate();
-
-  return dispatch;
+  return this.getDispatch();
 });
