@@ -6,15 +6,15 @@ const Oops = Issues({
     `Controller ${name} is tagged as global. Context API does not apply.`,
 
   DestroyNotActive: (name) =>
-    `${name}.destory() was called on an instance which is not active.` +
+    `${name}.destory() was called on an instance which is not active. ` +
     `This is an antipattern and may caused unexpected behavior.`,
 
   CantAttach: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}'.` +
+    `Singleton '${parent}' attempted to attach '${child}'. ` +
     `This is not possible because '${child}' is not also a singleton.`,
 
   AlreadyExists: (type) =>
-    `Shared instance of ${type} already exists!` +
+    `Shared instance of ${type} already exists! ` +
     `'${type}.use(...)' may only be mounted once at any one time.`,
 
   DoesNotExist: (name) =>
