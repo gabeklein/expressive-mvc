@@ -45,9 +45,11 @@ export const componentLifecycle = aliasFor("component");
 export function useLifecycleEffect(
   onEvent: (name: LivecycleEvent) => void){
 
-  let isFirstRender;
+  let isFirstRender: true | undefined;
 
-  onEvent = useMemo(() => isFirstRender = onEvent, []);
+  onEvent = useMemo(() => (
+    isFirstRender = true, onEvent
+  ), []);
 
   onEvent(isFirstRender ? "willMount" : "willUpdate");
   onEvent("willRender");
