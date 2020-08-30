@@ -92,14 +92,13 @@ export class Subscription<T extends Observable = any>{
       this.refresh();
     }
 
-    parent.once("willUnmount", () => {
-      if(focus)
-        focus.stop()
-    })
-
     this.cleanup.add(
       parent.addListener(key, resetSubscription)
     );
+
+    this.cleanup.add(() => 
+      focus && focus.stop()
+    )
     
     startSubscription();
 
