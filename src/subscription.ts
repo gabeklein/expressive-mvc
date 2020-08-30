@@ -57,9 +57,7 @@ export class Subscription<T extends Observable = any>{
   }
 
   private monitorRecursive(key: string){
-    const { parent } = this;
-    const dispatch: any = parent.subject;
-
+    const dispatch = this.parent.subject;
     let focus!: Subscription;
 
     const startSubscription = () => {
@@ -74,7 +72,7 @@ export class Subscription<T extends Observable = any>{
         enumerable: true
       })
 
-      parent.once("didRender", () => {
+      this.parent.once("didRender", () => {
         this.commit(key);
         focus.commit();
       });
@@ -93,7 +91,7 @@ export class Subscription<T extends Observable = any>{
     }
 
     this.cleanup.add(
-      parent.addListener(key, resetSubscription)
+      this.parent.addListener(key, resetSubscription)
     );
 
     this.cleanup.add(() => 

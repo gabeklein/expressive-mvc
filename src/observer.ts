@@ -48,6 +48,13 @@ export class Observer<T extends Observable> {
     return Object.keys(this.subscribers);
   }
 
+  public event(...keys: string[]){
+    for(const x of keys)
+      this.pending.add(x);
+      
+    this.update();
+  }
+
   public on(
     target: string,
     listener: HandleUpdatedValue<any, any>){
@@ -87,13 +94,6 @@ export class Observer<T extends Observable> {
       this.addMultipleListener(watch, onUpdate, ignoreUndefined);
 
     return release;
-  }
-
-  public event(...keys: string[]){
-    for(const x of keys)
-      this.pending.add(x)
-      
-    this.update();
   }
 
   protected manage(

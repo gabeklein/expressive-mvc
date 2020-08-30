@@ -58,7 +58,7 @@ export class ControllerDispatch
       pending.clear();
     };
 
-    const onDone = this.addMultipleListener(keys, (key) => {
+    const release = this.addMultipleListener(keys, (key) => {
       if(!pending.size)
         setTimeout(callback, 0);
 
@@ -68,7 +68,7 @@ export class ControllerDispatch
     if(fireInitial)
       callback();
 
-    return onDone;
+    return release;
   }
 
   protected computedDidFail(property: string, early = false){
