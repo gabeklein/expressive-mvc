@@ -157,8 +157,18 @@ export class Controller {
   }
 
   static context?: Context<Controller>;
-  static find: () => Controller;
   static meta: <T>(this: T) => T & Observable;
+
+  static find(){
+    const instance = 
+      useContext(this.context!) || 
+      useContext(CONTEXT_MULTIPROVIDER)[this.name];
+
+    if(!instance)
+      throw Oops.ContextNotFound(this.name);
+
+    return instance;
+  }
 
   static create<T extends Class>(
     this: T,
@@ -245,21 +255,6 @@ export class Controller {
 
 defineAtNeed(Controller, "context", () => {
   return createContext<any>(null);
-});
-
-defineAtNeed(Controller, "find", function(){
-  const { name, context } = this;
-
-  return function useWithinContext(){
-    const instance = 
-      useContext(context!) || 
-      useContext(CONTEXT_MULTIPROVIDER)[name];
-
-    if(!instance)
-      throw Oops.ContextNotFound(name);
-
-    return instance;
-  }
 });
 
 defineAtNeed(Controller, "meta", function(){
