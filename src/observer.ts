@@ -1,3 +1,4 @@
+import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
 import { collectGetters, Issues } from './util';
@@ -130,12 +131,23 @@ export class Observer {
       if("value" in desc === false)
         continue;
 
-      if(typeof desc.value === "function")
+      const { value } = desc;
+
+      if(typeof value === "function")
         if(/^[A-Z]/.test(key) === false)
             continue;
 
-      this.monitorValue(key, desc.value)
+      if(Controller.extends(value))
+        this.monitorPeer(key, value);
+      else
+        this.monitorValue(key, value)
     }
+  }
+
+  protected monitorPeer(
+    key: string, type: typeof Controller){
+
+    this.subject.attach(key, type);
   }
 
   protected monitorValue(key: string, initial: any){

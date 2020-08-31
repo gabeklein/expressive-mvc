@@ -1,18 +1,9 @@
 import { Observer } from './observer';
-import { PeerController } from './peers';
 import { within } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
 export class ControllerDispatch extends Observer {
-
-  protected monitorValue(key: string, value: any){
-    if(value instanceof PeerController)
-      this.subject.attach(key, value.type)
-    else
-      super.monitorValue(key, value)
-  }
-  
   public pick(keys?: string[]){
     const acc = {} as BunchOf<any>;
 

@@ -9,12 +9,6 @@ export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
 
 type PeerContext = [string, Context<Controller>];
 
-export class PeerController {
-  constructor(
-    public type: typeof Controller
-  ){}
-}
-
 export function getPeerController(
   from: Controller | typeof Controller,
   ...args: any[]){
@@ -22,7 +16,7 @@ export function getPeerController(
   if(from instanceof Controller)
     return useActiveSubscriber(from, args)
   else
-    return new PeerController(from)
+    return from;
 }
 
 export function ensurePeerControllers(instance: Controller){
@@ -37,8 +31,8 @@ export function ensurePeerControllers(instance: Controller){
   const entries = Object.entries(properties);
 
   for(const [key, { value }] of entries)
-    if(value instanceof PeerController)
-      pending.push([key, value.type.context!])
+    if(Controller.extends(value))
+      pending.push([key, value.context!])
 
   if(pending.length)
     return attachPeersFromContext(instance, pending);

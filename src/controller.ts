@@ -177,6 +177,14 @@ export class Controller {
       values[key] = source[key];
   }
 
+  static extends(maybe: any): maybe is typeof Controller {
+    return (
+      !!maybe && 
+      typeof maybe == "object" && 
+      maybe.prototype instanceof Controller
+    )
+  }
+
   static context?: Context<Controller>;
   static meta: <T>(this: T) => T & Observable;
 
