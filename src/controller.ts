@@ -1,7 +1,6 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { ControllerDispatch } from './dispatch';
 import { Observable, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
@@ -54,7 +53,7 @@ export interface ModelController {
 export interface Controller 
   extends Observable, ModelController {
 
-  [OBSERVER]: ControllerDispatch;
+  [OBSERVER]: Observer;
 
   readonly get: this;
   readonly set: this;
@@ -135,7 +134,7 @@ export class Controller {
     let dispatch = this[OBSERVER];
 
     if(!dispatch){
-      dispatch = new ControllerDispatch(this);
+      dispatch = new Observer(this);
     
       dispatch.monitorValues(["get", "set"]);
       dispatch.monitorComputed(["Provider", "Input", "Value"]);

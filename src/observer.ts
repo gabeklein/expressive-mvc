@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
-import { collectGetters, Issues } from './util';
+import { collectGetters, Issues, within } from './util';
 
 const Oops = Issues({
   NotTracked: (name) => 
@@ -27,6 +27,9 @@ type UpdateEventHandler =
 type HandleUpdatedValue
   <T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
+
+type UpdatesEventHandler =
+  (observed: {}, updated: string[]) => void;
 
 export interface Observable {
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
@@ -79,6 +82,62 @@ export class Observer {
       return new Promise(resolve => {
         this.watch(target, resolve, true, false);
       });
+  }
+
+  public pick(keys?: string[]){
+    const acc = {} as BunchOf<any>;
+
+    if(keys){
+      for(const key of keys)
+        acc[key] = within(this.subject, key);
+
+      return acc;
+    }
+
+    for(const key in this){
+      const desc = Object.getOwnPropertyDescriptor(this, key);
+
+      if(!desc)
+        continue;
+
+      if(desc.value !== undefined)
+        acc[key] = desc.value;
+    }
+
+    for(const key in this.subscribers)
+      acc[key] = this.state[key];
+
+    return acc;
+  }
+
+  public feed(
+    keys: string[],
+    observer: UpdatesEventHandler,
+    fireInitial?: boolean){
+
+    const pending = new Set<string>();
+
+    const callback = () => {
+      const acc = {} as any;
+
+      for(const k of keys)
+        acc[k] = this.state[k];
+
+      observer.call(this.subject, acc, Array.from(pending));
+      pending.clear();
+    };
+
+    const release = this.addMultipleListener(keys, (key) => {
+      if(!pending.size)
+        setTimeout(callback, 0);
+
+      pending.add(key);
+    });
+
+    if(fireInitial)
+      callback();
+
+    return release;
   }
 
   public watch(
