@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { subscriberLifecycle, useLifecycleEffect, componentLifecycle } from './lifecycle';
-import { Observable } from './observer';
+import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
+import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 
@@ -16,12 +16,13 @@ function useMemoWithRefresh<T>(
   return state[0] as T;
 }
 
-export function usePassiveSubscriber<T extends Observable>
+export function usePassiveSubscriber
+  <T extends { getDispatch(): Observer }>
   (target: T){
 
   const subscription =
     useMemoWithRefresh(refresh => 
-      new Subscription(target, refresh)
+      new Subscription(target.getDispatch(), refresh)
     );
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function useActiveSubscriber<T extends Controller>
 
   const subscription =
     useMemoWithRefresh(refresh => 
-      new Subscription(target, refresh)
+      new Subscription(target.getDispatch(), refresh)
     );
 
   useLifecycleEffect((name) => {
@@ -69,7 +70,7 @@ export function useNewController<T extends typeof Controller>(
   const subscription = 
     useMemoWithRefresh(refresh => 
       new Subscription(
-        Model.create(args, callback),
+        Model.create(args, callback).getDispatch(),
         refresh
       )
     );

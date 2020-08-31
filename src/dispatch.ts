@@ -1,12 +1,10 @@
-import { Controller } from './controller';
 import { Observer } from './observer';
 import { PeerController } from './peers';
 import { within } from './util';
 
 type UpdatesEventHandler = (observed: {}, updated: string[]) => void;
 
-export class ControllerDispatch 
-  extends Observer<Controller> {
+export class ControllerDispatch extends Observer {
 
   protected monitorValue(key: string, value: any){
     if(value instanceof PeerController)

@@ -1,20 +1,20 @@
 import { Controller, ModelController } from './controller';
-import { Observable, Observer } from './observer';
+import { Observer } from './observer';
 import { define, within } from './util';
 
 export type ModelEvent = keyof ModelController;
 
-export class Subscription<T extends Observable = any>{
+export class Subscription<T extends {} = any>{
   public proxy: T;
-  public parent: Observer<any>;
+  public source: T;
   private cleanup = new Set<Callback>();
   
   constructor(
-    public source: T,
+    public parent: Observer,
     private refresh: Callback
   ){
+    const source = this.source = parent.subject;
     const proxy = this.proxy = Object.create(source);
-    const parent = this.parent = source.getDispatch();
 
     define(proxy, {
       refresh(...keys: string[]){
@@ -30,7 +30,7 @@ export class Subscription<T extends Observable = any>{
         configurable: true,
         enumerable: true,
         set: (value) => {
-          within(parent.subject, key, value);
+          within(source, key, value);
         },
         get: () => {
           const value = within(source, key);
@@ -63,7 +63,7 @@ export class Subscription<T extends Observable = any>{
     const startSubscription = () => {
       const value = dispatch[key] as Controller;
 
-      focus = new Subscription(value, this.refresh);
+      focus = new Subscription(value.getDispatch(), this.refresh);
 
       Object.defineProperty(this.proxy, key, {
         get: () => focus.proxy,

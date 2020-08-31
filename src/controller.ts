@@ -261,7 +261,7 @@ export class Controller {
     return useActiveSubscriber(instance, args);
   }
 
-  static [OBSERVER]: Observer<any>;
+  static [OBSERVER]: Observer;
 
   static getDispatch(){
     let observer = this[OBSERVER];

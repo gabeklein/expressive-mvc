@@ -18,8 +18,6 @@ type HandleUpdatedValue
   (this: T, value: T[P], changed: P) => void
 
 export interface Observable {
-  getDispatch(): Observer<any>;
-
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
   
   once(target: string, listener: HandleUpdatedValue<this, any>): void;
@@ -31,8 +29,8 @@ export interface Observable {
   refresh(...keys: string[]): void;
 }
 
-export class Observer<T extends Observable> {
-  constructor(public subject: T){}
+export class Observer {
+  constructor(public subject: any){}
   
   protected state = {} as BunchOf<any>;
   protected pending = new Set<string>();
@@ -183,7 +181,7 @@ export class Observer<T extends Observable> {
 
     const getStartingValue = (early = false) => {
       try {
-        const subscribe = new Subscription(subject, onValueDidChange);
+        const subscribe = new Subscription(this, onValueDidChange);
         const value = state[key] = fn.call(subscribe.proxy);
         subscribe.commit();
         return value;
