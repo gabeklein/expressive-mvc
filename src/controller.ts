@@ -97,11 +97,6 @@ export class Controller {
       return Object.assign(this, a) as this;
   }
 
-  toggle = (key: string) => {
-    const self = this as any;
-    return self[key] = !self[key];
-  }
-
   export = (
     subset?: string[] | Callback, 
     onChange?: Callback | boolean,
