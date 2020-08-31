@@ -7,7 +7,17 @@ const Oops = Issues({
     `Can't watch property ${name}, it's not tracked on this instance.`,
 
   IsComputed: (name) => 
-    `Cannot set ${name} on this controller, it is computed.`
+    `Cannot set ${name} on this controller, it is computed.`,
+
+  ComputeFailed: (parent, property) =>
+    `There was an attempt to access computed property ` + 
+    `${parent}.${property} for the first time; however an ` +
+    `exception was thrown. Dependant values probably don't exist yet.`,
+
+  ComputedEarly: (property) => 
+    `Note: Computed values are usually only calculated after first ` +
+    `access, except where accessed implicitly by "on" or "export". Your ` + 
+    `'${property}' getter may have run earlier than intended because of that.`
 })
 
 type UpdateEventHandler = 
@@ -206,10 +216,16 @@ export class Observer {
     return getStartingValue;
   }
 
-  protected computedDidFail?(
-    key: string, 
-    early?: boolean
-  ): void;
+  protected computedDidFail(
+    key: string, early?: boolean){
+
+    const parent = this.subject.constructor.name;
+
+    Oops.ComputeFailed(parent, key).warn();
+
+    if(early)
+      Oops.ComputedEarly(key).warn();
+  };
 
   protected update(){
     if(!this.pending.size)

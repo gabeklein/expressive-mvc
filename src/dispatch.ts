@@ -68,21 +68,4 @@ export class ControllerDispatch extends Observer {
 
     return release;
   }
-
-  protected computedDidFail(property: string, early = false){
-    const parent = this.subject.constructor.name;
-
-    let warning = 
-      `There was an attempt to access computed property ` + 
-      `${parent}.${property} for the first time; however an ` +
-      `exception was thrown. Dependant values probably don't exist yet.`;
-
-    if(early)
-      warning += `\n` + 
-        `Note: Computed values are usually only calculated after first ` +
-        `access, except where accessed implicitly by "on" or "export". Your ` + 
-        `'${property}' getter may have run earlier than intended because of that.`
-
-    console.warn(warning);
-  }
 }
