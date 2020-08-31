@@ -167,6 +167,16 @@ export class Controller {
       values[key] = source[key];
   }
 
+  static [OBSERVER]: Observer;
+  static context?: Context<Controller>;
+  static meta: <T>(this: T) => T & Observable;
+
+  static hoc = createWrappedComponent;
+
+  static get Provider(){
+    return useNewController(this).Provider;
+  }
+
   static extends(maybe: any): maybe is typeof Controller {
     return (
       !!maybe && 
@@ -174,9 +184,6 @@ export class Controller {
       maybe.prototype instanceof Controller
     )
   }
-
-  static context?: Context<Controller>;
-  static meta: <T>(this: T) => T & Observable;
 
   static find(){
     const instance = 
@@ -203,6 +210,12 @@ export class Controller {
     instance.getDispatch();
     
     return instance;
+  }
+
+  static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
+    const instance = this.find();
+    instance.assign(a, b);
+    return instance.tap();
   }
 
   static use(...args: any[]){
@@ -259,8 +272,6 @@ export class Controller {
     return useActiveSubscriber(instance, args);
   }
 
-  static [OBSERVER]: Observer;
-
   static getDispatch(){
     let observer = this[OBSERVER];
 
@@ -280,18 +291,6 @@ export class Controller {
 
     return observer;
   };
-
-  static hoc = createWrappedComponent;
-
-  static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
-    const instance = this.find();
-    instance.assign(a, b);
-    return instance.tap();
-  }
-
-  static get Provider(){
-    return useNewController(this).Provider;
-  }
 }
 
 defineAtNeed(Controller, {
