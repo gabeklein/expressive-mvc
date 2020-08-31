@@ -4,7 +4,7 @@ import { define, within } from './util';
 
 export type ModelEvent = keyof ModelController;
 
-export class Subscription<T extends {} = any>{
+export class Subscription<T extends Any = Any>{
   public proxy: T;
   public source: T;
   private cleanup = new Set<Callback>();

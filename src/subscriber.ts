@@ -69,7 +69,7 @@ export function useNewController<T extends typeof Controller>(
 
   const subscription = 
     useMemoWithRefresh(refresh => 
-      new Subscription(
+      new Subscription<Controller>(
         Model.create(args, callback).getDispatch(),
         refresh
       )
