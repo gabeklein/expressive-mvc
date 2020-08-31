@@ -17,10 +17,8 @@ type HandleUpdatedValue
   <T extends object, P extends keyof T> = 
   (this: T, value: T[P], changed: P) => void
 
-export const OBSERVER = Symbol("object_observer");
-
 export interface Observable {
-  [OBSERVER]: Observer<any>;
+  getDispatch(): Observer<any>;
 
   on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
   

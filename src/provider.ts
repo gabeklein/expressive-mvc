@@ -1,7 +1,6 @@
 import { createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
-import { OBSERVER } from './observer';
 import { ensurePeerControllers } from './peers';
 import { useNewController } from './subscriber';
 import { within } from './util';
@@ -32,7 +31,7 @@ export function createWrappedComponent(
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const self = useNewController(this);
-    const current = self[OBSERVER];
+    const current = self.getDispatch();
 
     self.assign(forwardedProps);
     

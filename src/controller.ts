@@ -2,11 +2,13 @@ import { Context, createContext, FunctionComponent, ProviderProps, useContext } 
 
 import { ControlledInput, ControlledValue } from './components';
 import { ControllerDispatch } from './dispatch';
-import { Observable, OBSERVER, Observer } from './observer';
+import { Observable, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
 import { define, defineAtNeed, Issues, within } from './util';
+
+export const OBSERVER = Symbol("object_observer");
 
 const Oops = Issues({
   ContextNotFound: (name) =>
@@ -125,7 +127,7 @@ export class Controller {
   }
 
   destroy(){
-    const dispatch = this[OBSERVER];
+    const dispatch = this.getDispatch();
 
     if(dispatch)
       dispatch.event("willDestroy");

@@ -1,5 +1,5 @@
 import { Controller, ModelController } from './controller';
-import { Observable, OBSERVER, Observer } from './observer';
+import { Observable, Observer } from './observer';
 import { define, within } from './util';
 
 export type ModelEvent = keyof ModelController;
@@ -14,7 +14,7 @@ export class Subscription<T extends Observable = any>{
     private refresh: Callback
   ){
     const proxy = this.proxy = Object.create(source);
-    const parent = this.parent = source[OBSERVER];
+    const parent = this.parent = source.getDispatch();
 
     define(proxy, {
       refresh(...keys: string[]){
