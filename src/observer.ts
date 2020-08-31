@@ -81,9 +81,9 @@ export class Observer {
     if(listener)
       this.watch(target, listener, true, false);
     else
-      return new Promise(resolve => {
-        this.watch(target, resolve, true, false);
-      });
+      return new Promise(resolve =>
+        this.watch(target, resolve, true, false)
+      );
   }
 
   public pick(keys?: string[]){
@@ -326,9 +326,8 @@ export class Observer {
 
     register.add(callback);
 
-    return () => {
-      register.delete(callback)
-    }
+    return () =>
+      register.delete(callback);
   }
 
   public addMultipleListener(
