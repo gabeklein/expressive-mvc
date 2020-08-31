@@ -10,19 +10,38 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
       Object.defineProperty(target, key, { value });
 }
 
+type DefineMultiple<T> = {
+  [key: string]: (this: T) => any;
+}
+
 export function defineAtNeed<T>(
   object: T, 
-  property: string | symbol, 
-  init: (this: T) => any){
+  property: string | symbol,
+  init: (this: T) => any
+): void;
 
-  Object.defineProperty(object, property, { 
-    configurable: true,
-    get: function(){
-      const value = init.call(this);
-      Object.defineProperty(this, property, { value });
-      return value;
-    }
-  });
+export function defineAtNeed<T>(
+  object: T, 
+  property: DefineMultiple<T>
+): void;
+
+export function defineAtNeed<T>(
+  object: T, 
+  property: string | symbol | DefineMultiple<T>, 
+  init?: (this: T) => any){
+
+  if(typeof property === "object")
+    for(const k in property)
+      defineAtNeed(object, k, property[k]);
+  else
+    Object.defineProperty(object, property, { 
+      configurable: true,
+      get: function(){
+        const value = init!.call(this);
+        Object.defineProperty(this, property, { value });
+        return value;
+      }
+    });
 }
 
 /**

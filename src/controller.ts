@@ -296,18 +296,21 @@ export class Controller {
   }
 }
 
-defineAtNeed(Controller, "context", () => {
-  return createContext<any>(null);
+defineAtNeed(Controller, {
+  context: () => createContext<any>(null),
+
+  meta(){
+    this.getDispatch();
+    return () => usePassiveSubscriber(this);
+  }
 });
 
-defineAtNeed(Controller, "meta", function(){
-  this.getDispatch();
-  return () => usePassiveSubscriber(this);
+defineAtNeed(Controller.prototype, {
+  Provider: ControlProvider,
+  Value: ControlledValue,
+  Input: ControlledInput
 });
 
-defineAtNeed(Controller.prototype, "Provider", ControlProvider);
-defineAtNeed(Controller.prototype, "Value", ControlledValue);
-defineAtNeed(Controller.prototype, "Input", ControlledInput);
 defineAtNeed(Controller.prototype, OBSERVER, function(){
   return this.getDispatch();
 });
