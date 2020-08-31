@@ -57,13 +57,13 @@ export class Subscription<T extends Any = Any>{
   }
 
   private monitorRecursive(key: string){
-    const dispatch = this.parent.subject;
+    const { cleanup, source, parent, refresh } = this;
     let focus!: Subscription;
 
     const startSubscription = () => {
-      const value = dispatch[key] as Controller;
+      const value = source[key] as Controller;
 
-      focus = new Subscription(value.getDispatch(), this.refresh);
+      focus = new Subscription(value.getDispatch(), refresh);
 
       Object.defineProperty(this.proxy, key, {
         get: () => focus.proxy,
@@ -72,29 +72,27 @@ export class Subscription<T extends Any = Any>{
         enumerable: true
       })
 
-      this.parent.once("didRender", () => {
+      parent.once("didRender", () => {
         this.commit(key);
         focus.commit();
       });
     }
 
     const resetSubscription = (value?: any) => {
-      if(dispatch[key] === value)
+      if(source[key] === value)
         return;
-      
-      if(value)
-        dispatch[key] = value;
+
       
       focus.stop();
       startSubscription();
-      this.refresh();
+      refresh();
     }
 
-    this.cleanup.add(
-      this.parent.addListener(key, resetSubscription)
+    cleanup.add(
+      parent.addListener(key, resetSubscription)
     );
 
-    this.cleanup.add(() => 
+    cleanup.add(() => 
       focus && focus.stop()
     )
     
