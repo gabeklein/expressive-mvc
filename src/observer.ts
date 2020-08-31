@@ -3,6 +3,8 @@ import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
 import { collectGetters, Issues, within } from './util';
 
+const INIT_COMPUTE = Symbol("initial");
+
 const Oops = Issues({
   NotTracked: (name) => 
     `Can't watch property ${name}, it's not tracked on this instance.`,
@@ -281,7 +283,7 @@ export class Observer {
       }
     }
 
-    isInitialCompute(getStartingValue, true);
+    within(getStartingValue, INIT_COMPUTE, true);
 
     return getStartingValue;
   }
@@ -353,8 +355,8 @@ export class Observer {
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
       const getter = descriptor && descriptor.get;
 
-      if(getter && isInitialCompute(getter))
-        (getter as any)(true);
+      if(getter && INIT_COMPUTE in getter)
+        (<any>getter)(true);
 
       listeners.add(trigger);
       clear.push(() => listeners.delete(trigger));
@@ -365,11 +367,4 @@ export class Observer {
       clear = [];
     };
   } 
-}
-
-const isInitialCompute = (fn: any, set?: true) => {
-  if(set)
-    fn["initial"] = true;
-  else 
-    return fn["initial"];
 }

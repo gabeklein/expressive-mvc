@@ -50,10 +50,14 @@ export function defineAtNeed<T>(
  */
 export function within<T>(controller: T): Any;
 export function within<T>(controller: T, key: undefined): Any;
-export function within<T>(controller: T, key?: string): any;
-export function within<T, V>(controller: T, key: string, value: V): V;
+export function within<T>(controller: T, key?: string | symbol): any;
+export function within<T, V>(controller: T, key: string | symbol, value: V): V;
 
-export function within(source: any, key?: string, value?: any){
+export function within(
+  source: any,
+  key?: string | symbol,
+  value?: any){
+
   if(value)
     return source[key!] = value;
   if(key)
