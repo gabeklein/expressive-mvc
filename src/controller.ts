@@ -215,9 +215,9 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useNewController(this, undefined, (instance) => {
-      instance.integrate(props, only);
-    })
+    return useNewController(this, undefined, 
+      (instance) => instance.integrate(props, only)
+    )
   }
 
   static using(
