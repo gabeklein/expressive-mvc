@@ -311,7 +311,3 @@ defineAtNeed(Controller.prototype, {
   Value: ControlledValue,
   Input: ControlledInput
 });
-
-defineAtNeed(Controller.prototype, OBSERVER, function(){
-  return this.getDispatch();
-});
