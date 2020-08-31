@@ -56,8 +56,8 @@ export interface Controller
 
   [OBSERVER]: ControllerDispatch;
 
-  get: this;
-  set: this;
+  readonly get: this;
+  readonly set: this;
 
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
@@ -269,13 +269,13 @@ export class Controller {
     if(!observer){
       observer = new Observer(this)
 
-      observer.monitorValues([
-        "prototype", "length", "name"
-      ]);
-      observer.monitorComputed([
-        "context", "find", "meta",
-        "Provider", "caller", "arguments"
-      ]);
+      observer.monitorValues(["prototype", "length", "name"]);
+      observer.monitorComputed(["arguments", "caller", "context", "meta", "Provider"]);
+
+      define(this, {
+        get: this,
+        set: this
+      })
     
       define(this, OBSERVER, observer);
     }
