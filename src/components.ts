@@ -15,9 +15,7 @@ import { Controller } from './controller';
 function useValue(from: Controller, key: string){
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
-  useEffect(() => {
-    return from.getDispatch().watch(key, onUpdate);
-  }, []);
+  useEffect(() => from.getDispatch().watch(key, onUpdate), []);
 
   return value;
 }
@@ -25,15 +23,14 @@ function useValue(from: Controller, key: string){
 export function ControlledValue(
   this: Controller): FC<{ of: string }> {
 
-  return ({ of: key, ...props }) => {
-    const current = useValue(this, key);
-    return createElement("span", props, current);
-  }
+  return ({ of: key, ...props }) =>
+    createElement("span", props, useValue(this, key));
 }
 
 type onChangeCallback = (v: any, e: any) => any;
 type ControlledInputProps = 
-  HTMLProps<HTMLInputElement> & { 
+  HTMLProps<HTMLInputElement>
+  & { 
     to: string, 
     type?: string,
     onUpdate?: onChangeCallback | string | false,
@@ -45,9 +42,9 @@ export function ControlledInput(this: Controller){
     const { to, onUpdate, onReturn, ...passProps } = props;
 
     const value = useValue(this, to);
-    const events = useMemo(() => {
-      return controlledEventProps(this, props)
-    }, []);
+    const events = useMemo(() =>
+      controlledEventProps(this, props), 
+    []);
     
     return createElement("input", {
       ...passProps, ...events, ref, value

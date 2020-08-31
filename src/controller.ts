@@ -78,25 +78,6 @@ export class Controller {
     })
   }
 
-  tap(key?: string){
-    const self = usePassiveSubscriber(this);
-    return within(self, key);
-  }
-
-  sub(...args: any[]){
-    return useActiveSubscriber(this, args);
-  }
-  
-  assign(
-    a: string | BunchOf<any>, 
-    b?: BunchOf<any>){
-  
-    if(typeof a == "string")
-      return within(this, a, b);
-    else
-      return Object.assign(this, a) as this;
-  }
-
   export = (
     subset?: string[] | Callback, 
     onChange?: Callback | boolean,
@@ -114,6 +95,25 @@ export class Controller {
       return dispatch.feed(subset!, onChange, initial);
     else 
       return dispatch.pick(subset);
+  }
+
+  tap(key?: string){
+    const self = usePassiveSubscriber(this);
+    return within(self, key);
+  }
+
+  sub(...args: any[]){
+    return useActiveSubscriber(this, args);
+  }
+  
+  assign(
+    a: string | BunchOf<any>, 
+    b?: BunchOf<any>){
+  
+    if(typeof a == "string")
+      return within(this, a, b);
+    else
+      return Object.assign(this, a) as this;
   }
 
   attach(key: string, type: typeof Controller){
@@ -297,8 +297,9 @@ export class Controller {
 }
 
 defineAtNeed(Controller, {
-  context: () => createContext<any>(null),
-
+  context(){
+    return createContext<any>(null);
+  },
   meta(){
     this.getDispatch();
     return () => usePassiveSubscriber(this);
