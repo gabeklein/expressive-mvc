@@ -61,12 +61,6 @@ export interface Controller
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
-
-  assign(props: BunchOf<any>): this;
-  assign(key: string, props?: BunchOf<any>): any;
-
-  tap(): this;
-  tap<K extends keyof this>(key?: K): this[K];
 }
 
 export class Controller {
@@ -105,10 +99,7 @@ export class Controller {
     return useActiveSubscriber(this, args);
   }
   
-  assign(
-    a: string | BunchOf<any>, 
-    b?: BunchOf<any>){
-  
+  assign(a: string | BunchOf<any>, b?: BunchOf<any>){
     if(typeof a == "string")
       return within(this, a, b);
     else
