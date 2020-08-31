@@ -209,8 +209,7 @@ export class Observer {
         return value;
       }
       catch(e){
-        if(this.computedDidFail)
-          this.computedDidFail(key, early);
+        this.computedDidFail(key, early);
         throw e;
       }
       finally {
