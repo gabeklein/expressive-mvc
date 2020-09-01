@@ -3,7 +3,7 @@ import { Context, useContext } from 'react';
 import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
 import { useActiveSubscriber } from './subscriber';
-import { define } from './util';
+import { define, entriesIn } from './util';
 
 export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
 
@@ -27,8 +27,7 @@ export function ensurePeerControllers(instance: Controller){
   }
 
   const pending = [] as PeerContext[];
-  const properties = Object.getOwnPropertyDescriptors(instance);
-  const entries = Object.entries(properties);
+  const entries = entriesIn(instance);
 
   for(const [key, { value }] of entries)
     if(Controller.extends(value))

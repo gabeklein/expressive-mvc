@@ -12,6 +12,12 @@ type DefineMultiple<T> = {
   [key: string]: (this: T) => any;
 }
 
+export function entriesIn<T>(object: T){
+  return Object.entries(
+    Object.getOwnPropertyDescriptors(object)
+  )
+}
+
 export function defineAtNeed<T>(
   object: T, 
   property: string | symbol,

@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
-import { Issues, within } from './util';
+import { entriesIn, Issues, within } from './util';
 
 const INIT_COMPUTE = Symbol("initial");
 
@@ -89,25 +89,17 @@ export class Observer {
   public pick(keys?: string[]){
     const acc = {} as BunchOf<any>;
 
-    if(keys){
+    if(keys)
       for(const key of keys)
         acc[key] = within(this.subject, key);
 
-      return acc;
+    else {
+      for(const [key, { value }] of entriesIn(this))
+        if(value !== undefined)
+          acc[key] = value;
+      
+      Object.assign(acc, this.values);
     }
-
-    for(const key in this){
-      const desc = Object.getOwnPropertyDescriptor(this, key);
-
-      if(!desc)
-        continue;
-
-      if(desc.value !== undefined)
-        acc[key] = desc.value;
-    }
-
-    for(const key in this.subscribers)
-      acc[key] = this.state[key];
 
     return acc;
   }
@@ -182,8 +174,7 @@ export class Observer {
   }
 
   public monitorValues(Ignore: any = {}){
-    const desc = Object.getOwnPropertyDescriptors(this.subject);
-    const entries = Object.entries(desc);
+    const entries = entriesIn(this.subject);
 
     for(const [key, desc] of entries){
       if(key in Ignore)
@@ -235,8 +226,7 @@ export class Observer {
       search !== Ignore &&
       search.constructor !== Ignore
     ){
-      const desc = Object.getOwnPropertyDescriptors(search);
-      const entries = Object.entries(desc);
+      const entries = entriesIn(search);
 
       for(const [key, item] of entries)
         if(key == "constructor" || key in this.state || key in getters)
