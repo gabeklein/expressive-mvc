@@ -47,7 +47,7 @@ export class Singleton extends Controller {
     if(!this.current)
       throw Oops.DoesNotExist(this.name);
 
-    return this.current as Controller;
+    return this.current as unknown as Controller;
   }
 
   static create<T extends Class>(
