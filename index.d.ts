@@ -87,9 +87,6 @@ interface RC {
  * Helper methods and properties available to an instance of this controller.
  */
 interface IC {
-    get: this;
-    set: this;
-
     assign(props: Partial<this>): this;
     assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
 
@@ -117,7 +114,8 @@ interface IC {
  * Methods local to this controller when accessed through a subscription.
  */
 interface SC {
-    use: this;
+    get: this;
+    set: this;
     refresh(...keys: string[]): void;
 }
 
@@ -127,10 +125,7 @@ interface SC {
  * A subscribe-ready controller which watches the ***static*** values of this class. 
  * Allows for Singleton-like access to values "shared" by all instances.
  */
-interface Meta extends Observable, SC {
-    get: this;
-    set: this;
-}
+interface Meta extends Observable, SC {}
 
 interface Controller extends Observable, IC, SC, RC {}
 
@@ -151,7 +146,7 @@ declare class Controller {
     static uses <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
     static using <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
 
-    static get <T extends Class> (this: T): InstanceType<T>;
+    static get <T extends Class> (this: T): InstanceType<T> & SC;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
@@ -159,7 +154,7 @@ declare class Controller {
     static tap <T extends Class> (this: T): InstanceType<T> & SC;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
 
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T>;
+    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 
     static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
 

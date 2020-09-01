@@ -17,6 +17,8 @@ export class Subscription<T extends Any = Any>{
     const proxy = this.proxy = Object.create(source);
 
     define(proxy, {
+      get: source,
+      set: source,
       refresh(...keys: string[]){
         if(0 in keys)
           parent.event(...keys)

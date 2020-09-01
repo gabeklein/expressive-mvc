@@ -1,4 +1,4 @@
-import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
+import { Context, createContext, FunctionComponent, ProviderProps, useContext, useMemo } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
 import { Observable, Observer } from './observer';
@@ -55,22 +55,12 @@ export interface Controller
 
   [OBSERVER]: Observer;
 
-  readonly get: this;
-  readonly set: this;
-
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
 }
 
 export class Controller {
-  constructor(){
-    define(this, {
-      get: this,
-      set: this
-    })
-  }
-
   tap(key?: string){
     const self = usePassiveSubscriber(this);
     return within(self, key);
@@ -126,7 +116,7 @@ export class Controller {
 
     if(!dispatch){
       dispatch = new Observer(this);
-      dispatch.monitorValues({ get: 0, set: 0 });
+      dispatch.monitorValues();
       dispatch.monitorComputed(Controller);
     
       define(this, OBSERVER, dispatch);
@@ -248,7 +238,18 @@ export class Controller {
   static get(): Controller;
   static get(key: string): any;
   static get(key?: string){
-    return within(this.find(), key);
+    return useMemo(() => {
+      const instance = this.find();
+
+      if(key)
+        return within(instance, key);
+      else
+        return {
+          get: instance,
+          set: instance,
+          ...instance
+        }
+    }, [])
   }
 
   static tap(): Controller;
@@ -278,11 +279,6 @@ export class Controller {
       observer = new Observer(this)
       observer.monitorValues(Function);
       observer.monitorComputed(Controller);
-
-      define(this, {
-        get: this,
-        set: this
-      })
     
       define(this, OBSERVER, observer);
     }
