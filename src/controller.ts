@@ -126,9 +126,8 @@ export class Controller {
 
     if(!dispatch){
       dispatch = new Observer(this);
-    
-      dispatch.monitorValues(["get", "set"]);
-      dispatch.monitorComputed(["Provider", "Input", "Value"]);
+      dispatch.monitorValues({ get: 0, set: 0 });
+      dispatch.monitorComputed(Controller);
     
       define(this, OBSERVER, dispatch);
       define(this, {
@@ -277,9 +276,8 @@ export class Controller {
 
     if(!observer){
       observer = new Observer(this)
-
-      observer.monitorValues(["prototype", "length", "name"]);
-      observer.monitorComputed(["arguments", "caller", "context", "meta", "Provider"]);
+      observer.monitorValues(Function);
+      observer.monitorComputed(Controller);
 
       define(this, {
         get: this,

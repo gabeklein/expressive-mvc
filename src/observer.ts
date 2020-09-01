@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
-import { collectGetters, Issues, within } from './util';
+import { Issues, within } from './util';
 
 const INIT_COMPUTE = Symbol("initial");
 
@@ -181,12 +181,12 @@ export class Observer {
     );
   }
 
-  public monitorValues(except?: string[]){
+  public monitorValues(Ignore: any = {}){
     const desc = Object.getOwnPropertyDescriptors(this.subject);
     const entries = Object.entries(desc);
 
     for(const [key, desc] of entries){
-      if(except && except.indexOf(key) >= 0)
+      if(key in Ignore)
         continue;
 
       if("value" in desc === false)
@@ -225,9 +225,27 @@ export class Observer {
     })
   }
 
-  public monitorComputed(except?: string[]){
+  public monitorComputed(Ignore?: Class){
     const { subscribers, subject } = this;
-    const getters = collectGetters(subject, except);
+    
+    const getters = {} as BunchOf<() => any>;
+    let search = subject;
+
+    while(
+      search !== Ignore &&
+      search.constructor !== Ignore
+    ){
+      const desc = Object.getOwnPropertyDescriptors(search);
+      const entries = Object.entries(desc);
+
+      for(const [key, item] of entries)
+        if(key == "constructor" || key in this.state || key in getters)
+          continue;
+        else if(item.get)
+          getters[key] = item.get;
+
+      search = Object.getPrototypeOf(search)
+    }
 
     for(const key in getters){
       const compute = getters[key];

@@ -1,5 +1,3 @@
-import { Controller } from './controller';
-
 export function define(target: {}, values: {}): void;
 export function define(target: {}, key: string | symbol, value: any): void;
 export function define(target: {}, kv: {} | string | symbol, v?: {}){
@@ -64,26 +62,6 @@ export function within(
     return source[key];
   else
     return source;
-}
-
-export function collectGetters(
-  source: any, except: string[] = []){
-
-  const getters = {} as BunchOf<() => any>;
-
-  do {
-    source = Object.getPrototypeOf(source);
-    const desc = Object.getOwnPropertyDescriptors(source);
-    const entries = Object.entries(desc);
-
-    for(const [key, item] of entries)
-      if("get" in item && item.get && !getters[key] && except.indexOf(key) < 0)
-        getters[key] = item.get
-  }
-  while(source.constructor !== Controller
-     && source.constructor !== Object);
-
-  return getters;
 }
 
 type Params<T> = T extends (... args: infer T) => any ? T : never;
