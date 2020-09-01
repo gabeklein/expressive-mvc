@@ -71,10 +71,10 @@ export class Controller {
     })
   }
 
-  export = (
+  export(
     subset?: string[] | Callback, 
     onChange?: Callback | boolean,
-    initial?: boolean) => {
+    initial?: boolean){
 
     const dispatch = this.getDispatch();
 
