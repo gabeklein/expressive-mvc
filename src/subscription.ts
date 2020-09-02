@@ -67,7 +67,7 @@ export class Subscription<T extends Any = Any>{
 
       Object.defineProperty(this.proxy, key, {
         get: () => focus.proxy,
-        set: resetSubscription,
+        set: next => within(source, key, next),
         configurable: true,
         enumerable: true
       })
@@ -78,11 +78,7 @@ export class Subscription<T extends Any = Any>{
       });
     }
 
-    const resetSubscription = (value?: any) => {
-      if(source[key] === value)
-        return;
-
-      
+    const resetSubscription = () => {
       focus.release();
       startSubscription();
       refresh();
