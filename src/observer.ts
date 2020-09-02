@@ -23,27 +23,12 @@ const Oops = Issues({
     `'${property}' getter may have run earlier than intended because of that.`
 })
 
-type UpdateEventHandler = 
-  (value: any, key: string) => void;
-
-type HandleUpdatedValue
-  <T extends object, P extends keyof T> = 
-  (this: T, value: T[P], changed: P) => void
-
 type UpdatesEventHandler =
   (observed: {}, updated: string[]) => void;
 
-export interface Observable {
-  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
-  
-  once(target: string, listener: HandleUpdatedValue<this, any>): void;
-  once(target: string): Promise<any> | undefined;
-
-  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-
-  refresh(...keys: string[]): void;
-}
+export type HandleUpdatedValue
+  <T extends object = any, P extends keyof T = any> = 
+  (this: T, value: T[P], changed: P) => void
 
 export class Observer {
   constructor(public subject: any){}
@@ -69,21 +54,21 @@ export class Observer {
 
   public on(
     target: string,
-    listener: HandleUpdatedValue<any, any>){
+    listener: HandleUpdatedValue){
 
     return this.watch(target, listener, false, false);
   }
 
   public once(
     target: string,
-    listener?: HandleUpdatedValue<any, any>){
-      
+    listener?: HandleUpdatedValue){
+
     if(listener)
       this.watch(target, listener, true, false);
     else
-      return new Promise(resolve =>
+      return new Promise(resolve => {
         this.watch(target, resolve, true, false)
-      );
+      });
   }
 
   public pick(keys?: string[]){
@@ -136,7 +121,7 @@ export class Observer {
 
   public watch(
     watch: string | string[],
-    handler: UpdateEventHandler,
+    handler: (value: any, key: string) => void,
     once?: boolean,
     ignoreUndefined?: boolean){
 

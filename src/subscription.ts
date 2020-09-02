@@ -1,8 +1,6 @@
-import { Controller, ModelController } from './controller';
+import { Controller } from './controller';
 import { Observer } from './observer';
 import { define, within } from './util';
-
-export type ModelEvent = keyof ModelController;
 
 export class Subscription<T extends Any = Any>{
   public proxy: T;

@@ -1,7 +1,7 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext, useMemo } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { Observable, Observer } from './observer';
+import { HandleUpdatedValue, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
@@ -16,19 +16,17 @@ const Oops = Issues({
 
   HasPropertyUndefined: (control, property) =>
     `${control}.${property} is marked as required for this render.`
-})
+});
 
-export interface ModelController {
-  [TEMP_CONTEXT]: Callback;
-
+export interface Events {
   didCreate?(): void;
-  didFocus?(parent: ModelController, as: string): void;
+  didFocus?(parent: Controller, as: string): void;
   didMount?(...args: any[]): void;
   didRender?(...args: any[]): void;
 
   willReset?(...args: any[]): void;
   willDestroy?(callback?: Callback): void;
-  willLoseFocus?(parent: ModelController, as: string): void;
+  willLoseFocus?(parent: Controller, as: string): void;
   willMount?(...args: any[]): void;
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
@@ -50,10 +48,21 @@ export interface ModelController {
   componentWillCycle?(...args: any[]): Callback;
 }
 
-export interface Controller 
-  extends Observable, ModelController {
+export interface Controller
+  extends Events {
 
   [OBSERVER]: Observer;
+  [TEMP_CONTEXT]: Callback;
+
+  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
+  
+  once(target: string, listener: HandleUpdatedValue<this, any>): void;
+  once(target: string): Promise<any> | undefined;
+
+  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+
+  refresh(...keys: string[]): void;
 
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
@@ -158,7 +167,7 @@ export class Controller {
 
   static [OBSERVER]: Observer;
   static context?: Context<Controller>;
-  static meta: <T>(this: T) => T & Observable;
+  static meta: <T extends Class>(this: T) => InstanceType<T>;
 
   static hoc = createWrappedComponent;
 
@@ -235,8 +244,6 @@ export class Controller {
     return subscriber;
   }
 
-  static get(): Controller;
-  static get(key: string): any;
   static get(key?: string){
     return useMemo(() => {
       const instance = this.find();
@@ -252,8 +259,6 @@ export class Controller {
     }, [])
   }
 
-  static tap(): Controller;
-  static tap(key: string): any;
   static tap(key?: string){
     return this.find().tap(key);
   }
