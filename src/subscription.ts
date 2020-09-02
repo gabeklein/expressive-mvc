@@ -5,7 +5,7 @@ import { define, within } from './util';
 export class Subscription<T extends Any = Any>{
   public proxy: T;
   public source: T;
-  private cleanup = new Set<Callback>();
+  private cleanup = [] as Callback[];
   
   constructor(
     public parent: Observer,
@@ -39,7 +39,7 @@ export class Subscription<T extends Any = Any>{
             return this.monitorRecursive(key);
           else {
             const release = parent.addListener(key, refresh);
-            this.cleanup.add(release);
+            this.cleanup.push(release);
             return value;
           }
         }
@@ -51,9 +51,9 @@ export class Subscription<T extends Any = Any>{
       delete (this.proxy as any)[key];
   }
 
-  public stop(){
-    for(const cb of this.cleanup)
-      cb()
+  public release(){
+    for(const callback of this.cleanup)
+      callback()
   }
 
   private monitorRecursive(key: string){
@@ -83,19 +83,16 @@ export class Subscription<T extends Any = Any>{
         return;
 
       
-      focus.stop();
+      focus.release();
       startSubscription();
       refresh();
     }
 
-    cleanup.add(
-      parent.addListener(key, resetSubscription)
+    cleanup.push(
+      parent.addListener(key, resetSubscription),
+      () => focus && focus.release()
     );
 
-    cleanup.add(() => 
-      focus && focus.stop()
-    )
-    
     startSubscription();
 
     return focus.proxy;

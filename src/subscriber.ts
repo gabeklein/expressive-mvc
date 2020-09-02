@@ -27,7 +27,7 @@ export function usePassiveSubscriber
 
   useEffect(() => {
     subscription.commit();
-    return () => subscription.stop();
+    return () => subscription.release();
   }, []);
 
   return subscription.proxy;
@@ -54,7 +54,7 @@ export function useActiveSubscriber<T extends Controller>
     subscription.parent.event(name, alias);
 
     if(name == "willUnmount")
-      subscription.stop();
+      subscription.release();
   });
   
   return subscription.proxy;
@@ -92,7 +92,7 @@ export function useNewController<T extends typeof Controller>(
     subscription.parent.event(name, alias);
 
     if(name == "willUnmount"){
-      subscription.stop();
+      subscription.release();
 
       if(release)
         release();
