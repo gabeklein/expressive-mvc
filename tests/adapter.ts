@@ -117,9 +117,6 @@ function plusUpdateAssertions(
   const patched = result as RenderControllerResult<any>;
   let { current } = patched.result;
   
-  if(current.get !== current)
-    current = Object.getPrototypeOf(current);
-
   patched.state = current;
 
   patched.assertDidUpdate = async () => {
