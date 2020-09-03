@@ -1,7 +1,7 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext, useMemo } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { HandleUpdatedValue, Observer } from './observer';
+import { Emitter, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
@@ -48,19 +48,9 @@ export interface Events {
   componentWillCycle?(...args: any[]): Callback;
 }
 
-export interface Controller
-  extends Events {
-
+export interface Controller extends Events, Emitter {
   [OBSERVER]: Observer;
   [TEMP_CONTEXT]: Callback;
-
-  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
-  
-  once(target: string, listener: HandleUpdatedValue<this, any>): void;
-  once(target: string): Promise<any> | undefined;
-
-  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
 
   refresh(...keys: string[]): void;
 
@@ -114,7 +104,7 @@ export class Controller {
     const dispatch = this.getDispatch();
 
     if(dispatch)
-      dispatch.event("willDestroy");
+      dispatch.emit("willDestroy");
     
     if(this.willDestroy)
       this.willDestroy();
@@ -133,7 +123,7 @@ export class Controller {
         on: dispatch.on.bind(dispatch),
         once: dispatch.once.bind(dispatch),
         watch: dispatch.watch.bind(dispatch),
-        refresh: dispatch.event.bind(dispatch)
+        refresh: dispatch.emit.bind(dispatch)
       })
     
       if(this.didCreate)

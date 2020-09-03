@@ -23,14 +23,24 @@ const Oops = Issues({
     `'${property}' getter may have run earlier than intended because of that.`
 })
 
-type UpdatesEventHandler =
+type HandleUpdatedValues =
   (observed: {}, updated: string[]) => void;
 
-export type HandleUpdatedValue
+type HandleUpdatedValue
   <T extends object = any, P extends keyof T = any> = 
-  (this: T, value: T[P], changed: P) => void
+  (this: T, value: T[P], changed: P) => void;
 
-export class Observer {
+export interface Emitter {
+  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
+  
+  once(target: string, listener: HandleUpdatedValue<this, any>): void;
+  once(target: string): Promise<any> | undefined;
+
+  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+}
+
+export class Observer implements Emitter {
   constructor(public subject: any){}
   
   protected state = {} as BunchOf<any>;
@@ -45,7 +55,7 @@ export class Observer {
     return Object.keys(this.subscribers);
   }
 
-  public event(...keys: string[]){
+  public emit(...keys: string[]){
     for(const x of keys)
       this.pending.add(x);
       
@@ -91,7 +101,7 @@ export class Observer {
 
   public feed(
     keys: string[],
-    observer: UpdatesEventHandler,
+    observer: HandleUpdatedValues,
     fireInitial?: boolean){
 
     const pending = new Set<string>();

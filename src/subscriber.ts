@@ -51,7 +51,7 @@ export function useActiveSubscriber<T extends Controller>
     if(handler)
       handler.apply(handler, args || []);
 
-    subscription.parent.event(name, alias);
+    subscription.parent.emit(name, alias);
 
     if(name == "willUnmount")
       subscription.release();
@@ -89,7 +89,7 @@ export function useNewController<T extends typeof Controller>(
     if(handler)
       handler.apply(handler, args || []);
 
-    subscription.parent.event(name, alias);
+    subscription.parent.emit(name, alias);
 
     if(name == "willUnmount"){
       subscription.release();

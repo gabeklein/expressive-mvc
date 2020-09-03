@@ -19,7 +19,7 @@ export class Subscription<T extends Any = Any>{
       set: source,
       refresh(...keys: string[]){
         if(0 in keys)
-          parent.event(...keys)
+          parent.emit(...keys)
         else
           refresh()
       }
