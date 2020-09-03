@@ -68,12 +68,11 @@ export function useNewController<T extends typeof Controller>(
   let release: Callback | undefined;
 
   const subscription = 
-    useMemoWithRefresh(refresh => 
-      new Subscription<Controller>(
-        Model.create(args, callback).getDispatch(),
-        refresh
-      )
-    );
+    useMemoWithRefresh(refresh => {
+      const instance = Model.create(args, callback);
+      const dispatch = instance.getDispatch();
+      return new Subscription<Controller>(dispatch, refresh);
+    });
 
   useLifecycleEffect((name) => {
     const instance = subscription.source;
