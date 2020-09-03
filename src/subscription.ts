@@ -9,7 +9,8 @@ export class Subscription<T extends Any = Any>{
   
   constructor(
     public parent: Observer,
-    private refresh: Callback
+    private refresh: Callback,
+    snapshot = true
   ){
     const source = this.source = parent.subject;
     const proxy = this.proxy = Object.create(source);
@@ -24,6 +25,13 @@ export class Subscription<T extends Any = Any>{
           refresh()
       }
     })
+
+    if(snapshot)
+      this.capture();
+  }
+
+  private capture(){
+    const { parent, proxy, source, refresh } = this;
 
     for(const key of parent.managed)
       Object.defineProperty(proxy, key, {
