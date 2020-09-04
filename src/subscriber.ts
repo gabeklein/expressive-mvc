@@ -18,12 +18,13 @@ function useMemoWithRefresh<T>(
 
 export function usePassiveSubscriber
   <T extends { getDispatch(): Observer }>
-  (target: T){
+  (target: T, focus?: string){
 
   const subscription =
-    useMemoWithRefresh(refresh => 
-      new Subscription(target.getDispatch(), refresh)
-    );
+    useMemoWithRefresh(refresh => {
+      const parent = target.getDispatch()
+      return new Subscription(parent, refresh, focus);
+    });
 
   useEffect(() => {
     subscription.commit();

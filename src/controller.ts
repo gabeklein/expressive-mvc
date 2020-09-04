@@ -61,8 +61,7 @@ export interface Controller extends Events, Emitter {
 
 export class Controller {
   tap(key?: string){
-    const self = usePassiveSubscriber(this);
-    return within(self, key);
+    return usePassiveSubscriber(this, key);
   }
 
   sub(...args: any[]){

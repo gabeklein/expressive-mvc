@@ -10,7 +10,7 @@ export class Subscription<T extends Any = Any>{
   constructor(
     public parent: Observer,
     private refresh: Callback,
-    snapshot = true
+    focus?: string
   ){
     const source = this.source = parent.subject;
     const proxy = this.proxy = Object.create(source);
@@ -26,7 +26,9 @@ export class Subscription<T extends Any = Any>{
       }
     })
 
-    if(snapshot)
+    if(focus)
+      this.monitorProperty(focus, true);
+    else
       this.capture();
   }
 
@@ -44,7 +46,7 @@ export class Subscription<T extends Any = Any>{
           const value = within(source, key);
 
           if(value instanceof Controller)
-            return this.monitorRecursive(key);
+            return this.monitorProperty(key);
           else {
             const release = parent.addListener(key, refresh);
             this.cleanup.push(release);
@@ -64,41 +66,68 @@ export class Subscription<T extends Any = Any>{
       callback()
   }
 
-  private monitorRecursive(key: string){
-    const { cleanup, source, parent, refresh } = this;
-    let focus!: Subscription;
+  public monitorProperty(
+    key: string, focus?: boolean){
 
-    const startSubscription = () => {
-      const value = source[key] as Controller;
+    let sub: Subscription | undefined;
 
-      focus = new Subscription(value.getDispatch(), refresh);
+    const applyChild = () => {
+      sub = this.monitorRecursive(key, this.source[key], focus);
+    }
 
+    const onUpdate = () => {
+      sub?.release();
+      applyChild();
+      this.refresh();
+    }
+
+    const stopSubscribe =
+      this.parent.addListener(key, onUpdate);
+    
+    this.cleanup.push(
+      () => sub?.release(),
+      stopSubscribe
+    );
+
+    applyChild();
+
+    return sub ? sub.proxy : this.source[key];
+  }
+
+  private monitorRecursive(
+    key: string,
+    child: any,
+    focus?: boolean){
+
+    let sub: Subscription | undefined;
+    let value: any;
+
+    if(child instanceof Controller){
+      sub = new Subscription(child.getDispatch(), this.refresh);
+      value = sub.proxy;
+
+      this.parent.once("didRender", () => {
+        sub!.commit();
+        if(!focus)
+          this.commit(key);
+      });
+    }
+    else if(child)
+      value = child;
+
+    if(focus)
+      Object.defineProperty(this, "proxy", {
+        value: value,
+        configurable: true
+      })
+    else
       Object.defineProperty(this.proxy, key, {
-        get: () => focus.proxy,
-        set: next => within(source, key, next),
+        get: () => value,
+        set: val => within(this.source, key, val),
         configurable: true,
         enumerable: true
       })
 
-      parent.once("didRender", () => {
-        this.commit(key);
-        focus.commit();
-      });
-    }
-
-    const resetSubscription = () => {
-      focus.release();
-      startSubscription();
-      refresh();
-    }
-
-    cleanup.push(
-      parent.addListener(key, resetSubscription),
-      () => focus && focus.release()
-    );
-
-    startSubscription();
-
-    return focus.proxy;
+    return sub;
   }
 }
