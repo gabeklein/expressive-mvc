@@ -286,7 +286,6 @@ defineAtNeed(Controller, {
     return createContext<any>(null);
   },
   meta(){
-    this.getDispatch();
     return () => usePassiveSubscriber(this);
   }
 });
