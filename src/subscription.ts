@@ -71,14 +71,41 @@ export class Subscription<T extends Any = Any>{
 
     let sub: Subscription | undefined;
 
-    const applyChild = () => {
-      sub = this.monitorRecursive(key, this.source[key], focus);
-    }
-
     const onUpdate = () => {
       sub?.release();
       applyChild();
       this.refresh();
+    }
+
+    const applyChild = () => {
+      let value = this.source[key];
+
+      if(value instanceof Controller){
+        sub = new Subscription(value.getDispatch(), this.refresh);
+        value = sub.proxy;
+  
+        this.parent.once("didRender", () => {
+          if(sub)
+            sub.commit();
+          if(!focus)
+            this.commit(key);
+        });
+      }
+  
+      if(focus)
+        Object.defineProperty(this, "proxy", {
+          value: value,
+          configurable: true
+        })
+      else
+        Object.defineProperty(this.proxy, key, {
+          get: () => value,
+          set: val => within(this.source, key, val),
+          configurable: true,
+          enumerable: true
+        })
+
+      return value;
     }
 
     const stopSubscribe =
@@ -91,43 +118,6 @@ export class Subscription<T extends Any = Any>{
 
     applyChild();
 
-    return sub ? sub.proxy : this.source[key];
-  }
-
-  private monitorRecursive(
-    key: string,
-    child: any,
-    focus?: boolean){
-
-    let sub: Subscription | undefined;
-    let value: any;
-
-    if(child instanceof Controller){
-      sub = new Subscription(child.getDispatch(), this.refresh);
-      value = sub.proxy;
-
-      this.parent.once("didRender", () => {
-        sub!.commit();
-        if(!focus)
-          this.commit(key);
-      });
-    }
-    else if(child)
-      value = child;
-
-    if(focus)
-      Object.defineProperty(this, "proxy", {
-        value: value,
-        configurable: true
-      })
-    else
-      Object.defineProperty(this.proxy, key, {
-        get: () => value,
-        set: val => within(this.source, key, val),
-        configurable: true,
-        enumerable: true
-      })
-
-    return sub;
+    return applyChild();
   }
 }
