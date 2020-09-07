@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Observer } from './observer';
-import { define, within } from './util';
+import { define } from './util';
 
 export class Subscription<T extends Any = Any>{
   public proxy: T;
@@ -71,6 +71,7 @@ export class Subscription<T extends Any = Any>{
   protected monitorRecursive(
     key: string, focus?: boolean){
 
+    const source: any = this.source;
     let sub: Subscription | undefined;
 
     const onUpdate = () => {
@@ -80,7 +81,7 @@ export class Subscription<T extends Any = Any>{
     }
 
     const applyChild = () => {
-      let value = this.source[key];
+      let value = source[key];
 
       if(value instanceof Controller){
         sub = new Subscription(value.getDispatch(), this.refresh);
@@ -102,7 +103,7 @@ export class Subscription<T extends Any = Any>{
       else
         Object.defineProperty(this.proxy, key, {
           get: () => value,
-          set: val => within(this.source, key, val),
+          set: val => source[key] = val,
           configurable: true,
           enumerable: true
         })
