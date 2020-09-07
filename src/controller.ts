@@ -4,7 +4,7 @@ import { ControlledInput, ControlledValue } from './components';
 import { Emitter, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
-import { useActiveSubscriber, useNewController, usePassiveSubscriber } from './subscriber';
+import { useActiveSubscriber, useOwnController, usePassiveSubscriber } from './subscriber';
 import { define, defineAtNeed, Issues, within } from './util';
 
 export const OBSERVER = Symbol("object_observer");
@@ -161,7 +161,7 @@ export class Controller {
   static hoc = createWrappedComponent;
 
   static get Provider(){
-    return useNewController(this).Provider;
+    return useOwnController(this).Provider;
   }
 
   static extends(maybe: any): maybe is typeof Controller {
@@ -206,14 +206,14 @@ export class Controller {
   }
 
   static use(...args: any[]){
-    return useNewController(this, args);
+    return useOwnController(this, args);
   }
 
   static uses(
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useNewController(this, undefined, 
+    return useOwnController(this, undefined, 
       (instance) => instance.integrate(props, only)
     )
   }
@@ -226,7 +226,7 @@ export class Controller {
       instance.integrate(props, only);
     }
 
-    const subscriber = useNewController(this, undefined, assignTo);
+    const subscriber = useOwnController(this, undefined, assignTo);
 
     assignTo(subscriber);
         

@@ -61,7 +61,7 @@ export function useActiveSubscriber<T extends Controller>
   return subscription.proxy;
 }
 
-export function useNewController<T extends typeof Controller>(
+export function useOwnController<T extends typeof Controller>(
   Model: T,
   args?: any[], 
   callback?: (instance: InstanceType<T>) => void){

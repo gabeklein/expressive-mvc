@@ -2,7 +2,7 @@ import { createContext, createElement, FC, PropsWithChildren, useContext, useEff
 
 import { Controller } from './controller';
 import { ensurePeerControllers } from './peers';
-import { useNewController } from './subscriber';
+import { useOwnController } from './subscriber';
 import { within } from './util';
 
 export const CONTEXT_MULTIPROVIDER = createContext(null as any);
@@ -30,7 +30,7 @@ export function createWrappedComponent(
   const { Provider } = this.context!;
   
   return (forwardedProps: PropsWithChildren<any>) => {
-    const self = useNewController(this);
+    const self = useOwnController(this);
     const current = self.getDispatch();
 
     self.assign(forwardedProps);
