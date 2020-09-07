@@ -267,9 +267,9 @@ export class Observer implements Emitter {
 
     const getStartingValue = (early = false) => {
       try {
-        const subscribe = new Subscription(this, onValueDidChange);
-        const value = state[key] = fn.call(subscribe.proxy);
-        subscribe.commit();
+        const sub = new Subscription(this, onValueDidChange);
+        const value = state[key] = fn.call(sub.proxy);
+        sub.commit();
         return value;
       }
       catch(e){

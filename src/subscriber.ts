@@ -6,8 +6,10 @@ import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 
-function useMemoWithRefresh<T>(
-  init: (onRequestUpdate: Callback) => T){
+type Observable = { getDispatch(): Observer };
+
+function useActiveMemo<T>
+  (init: (refresh: Callback) => T){
 
   const [ state, update ] = useState<any>(() => [
     init(() => update(state.concat()))
@@ -16,12 +18,11 @@ function useMemoWithRefresh<T>(
   return state[0] as T;
 }
 
-export function usePassiveSubscriber
-  <T extends { getDispatch(): Observer }>
+export function usePassiveSubscriber<T extends Observable>
   (target: T, focus?: string){
 
   const subscription =
-    useMemoWithRefresh(refresh => {
+    useActiveMemo(refresh => {
       const parent = target.getDispatch()
       return new Subscription(parent, refresh, focus);
     });
@@ -38,7 +39,7 @@ export function useActiveSubscriber<T extends Controller>
   (target: T, args: any[]){
 
   const subscription =
-    useMemoWithRefresh(refresh => 
+    useActiveMemo(refresh => 
       new Subscription(target.getDispatch(), refresh)
     );
 
@@ -69,9 +70,8 @@ export function useOwnController<T extends typeof Controller>(
   let release: Callback | undefined;
 
   const subscription = 
-    useMemoWithRefresh(refresh => {
-      const instance = Model.create(args, callback);
-      const dispatch = instance.getDispatch();
+    useActiveMemo(refresh => {
+      const dispatch = Model.create(args, callback).getDispatch();
       return new Subscription<Controller>(dispatch, refresh);
     });
 

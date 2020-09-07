@@ -27,33 +27,15 @@ export class Subscription<T extends Any = Any>{
     })
 
     if(focus)
-      this.monitorProperty(focus, true);
+      this.monitorRecursive(focus, true);
     else
-      this.capture();
+      this.monitorAutomatic();
   }
 
-  private capture(){
-    const { parent, proxy, source, refresh } = this;
-
-    for(const key of parent.watched)
-      Object.defineProperty(proxy, key, {
-        configurable: true,
-        enumerable: true,
-        set: (value) => {
-          within(source, key, value);
-        },
-        get: () => {
-          const value = within(source, key);
-
-          if(value instanceof Controller)
-            return this.monitorProperty(key);
-          else {
-            const release = parent.addListener(key, refresh);
-            this.cleanup.push(release);
-            return value;
-          }
-        }
-      })
+  public follow(key: string){
+    this.cleanup.push(
+      this.parent.addListener(key, this.refresh)
+    )
   }
 
   public commit(...keys: string[]){
@@ -66,7 +48,27 @@ export class Subscription<T extends Any = Any>{
       callback()
   }
 
-  public monitorProperty(
+  private monitorAutomatic(){
+    const source = this.source as Any;
+
+    for(const key of this.parent.watched)
+      Object.defineProperty(this.proxy, key, {
+        configurable: true,
+        set: (value) => source[key] = value,
+        get: () => {
+          let value = source[key];
+
+          if(value instanceof Controller)
+            value = this.monitorRecursive(key);
+          else
+            this.follow(key);
+
+          return value;
+        }
+      })
+  }
+
+  protected monitorRecursive(
     key: string, focus?: boolean){
 
     let sub: Subscription | undefined;
@@ -108,15 +110,14 @@ export class Subscription<T extends Any = Any>{
       return value;
     }
 
-    const stopSubscribe =
+    const release =
       this.parent.addListener(key, onUpdate);
     
-    this.cleanup.push(
-      () => sub?.release(),
-      stopSubscribe
-    );
-
-    applyChild();
+    this.cleanup.push(() => {
+      release();
+      if(sub)
+        sub.release();
+    });
 
     return applyChild();
   }
