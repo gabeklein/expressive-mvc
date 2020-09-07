@@ -51,7 +51,7 @@ export class Observer implements Emitter {
     return Object.assign({}, this.state);
   }
 
-  public get managed(){
+  public get watched(){
     return Object.keys(this.subscribers);
   }
 

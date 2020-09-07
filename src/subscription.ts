@@ -35,7 +35,7 @@ export class Subscription<T extends Any = Any>{
   private capture(){
     const { parent, proxy, source, refresh } = this;
 
-    for(const key of parent.managed)
+    for(const key of parent.watched)
       Object.defineProperty(proxy, key, {
         configurable: true,
         enumerable: true,
@@ -57,7 +57,7 @@ export class Subscription<T extends Any = Any>{
   }
 
   public commit(...keys: string[]){
-    for(const key of keys || this.parent.managed)
+    for(const key of keys || this.parent.watched)
       delete (this.proxy as any)[key];
   }
 

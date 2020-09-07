@@ -85,7 +85,7 @@ export class Controller {
     if(typeof subset == "function"){
       initial = onChange as boolean;
       onChange = subset;
-      subset = dispatch.managed;
+      subset = dispatch.watched;
     }
   
     if(typeof onChange == "function")
