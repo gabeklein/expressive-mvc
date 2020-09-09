@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
-import { Subscription } from './subscription';
+import { Subscriber } from './subscription';
 
 type Observable = { getDispatch(): Observer };
 
@@ -24,7 +24,7 @@ export function usePassiveSubscriber<T extends Observable>
   const subscription =
     useActiveMemo(refresh => {
       const parent = target.getDispatch()
-      return new Subscription(parent, refresh, focus);
+      return new Subscriber(parent, refresh, focus);
     });
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function useActiveSubscriber<T extends Controller>
 
   const subscription =
     useActiveMemo(refresh => 
-      new Subscription(target.getDispatch(), refresh)
+      new Subscriber(target.getDispatch(), refresh)
     );
 
   useLifecycleEffect((name) => {
@@ -72,12 +72,12 @@ export function useOwnController<T extends typeof Controller>(
   const subscription = 
     useActiveMemo(refresh => {
       const dispatch = Model.create(args, callback).getDispatch();
-      return new Subscription<Controller>(dispatch, refresh);
+      return new Subscriber(dispatch, refresh);
     });
 
   useLifecycleEffect((name) => {
-    const instance = subscription.source;
     const alias = componentLifecycle(name);
+    const instance = subscription.parent.subject as InstanceType<T>;
     const handler = instance[alias] || instance[name];
 
     if(name == "willRender")

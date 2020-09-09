@@ -2,9 +2,9 @@ import { Controller } from './controller';
 import { Observer } from './observer';
 import { define } from './util';
 
-export class Subscription<T extends Any = Any>{
-  public proxy: T;
-  public source: T;
+export class Subscriber {
+  public proxy: Any;
+  public source: Any;
   private cleanup = [] as Callback[];
   
   constructor(
@@ -72,7 +72,7 @@ export class Subscription<T extends Any = Any>{
     key: string, focus?: boolean){
 
     const source: any = this.source;
-    let sub: Subscription | undefined;
+    let sub: Subscriber | undefined;
 
     const onUpdate = () => {
       sub?.release();
@@ -84,7 +84,7 @@ export class Subscription<T extends Any = Any>{
       let value = source[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.getDispatch(), this.refresh);
+        sub = new Subscriber(value.getDispatch(), this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {
