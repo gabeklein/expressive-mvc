@@ -18,13 +18,13 @@ function useActiveMemo<T>
   return state[0] as T;
 }
 
-export function usePassiveSubscriber<T extends Observable>
-  (target: T, focus?: string){
+export function usePassiveSubscriber(
+  target: Observable, ...path: string[]){
 
   const subscription =
     useActiveMemo(refresh => {
-      const parent = target.getDispatch()
-      return new Subscriber(parent, refresh, focus);
+      const parent = target.getDispatch();
+      return new Subscriber(parent, refresh).focus(path);
     });
 
   useEffect(() => {
