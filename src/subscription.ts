@@ -7,7 +7,7 @@ const Oops = Issues({
     `Can't do that boss`
 })
 
-export class Subscriber {
+export class Subscription {
   private onRelease = [] as Callback[];
   
   constructor(
@@ -65,7 +65,7 @@ export class Subscriber {
 
   public focus(keys: string[]){
     const [ key, ...rest ] = keys.filter(x => x);
-    let sub: Subscriber | undefined;
+    let sub: Subscription | undefined;
 
     if(!key)
       return this;
@@ -76,7 +76,7 @@ export class Subscriber {
       let value = this.parent.subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscriber(value.getDispatch(), this.refresh);
+        sub = new Subscription(value.getDispatch(), this.refresh);
         value = sub.focus(rest).proxy;
 
         this.parent.once("didRender", () => {
@@ -112,7 +112,7 @@ export class Subscriber {
 
   protected followRecursive(key: string){
     const { subject } = this.parent;
-    let sub: Subscriber | undefined;
+    let sub: Subscription | undefined;
 
     const reset = () => sub && sub.release();
 
@@ -120,7 +120,7 @@ export class Subscriber {
       let value = subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscriber(value.getDispatch(), this.refresh);
+        sub = new Subscription(value.getDispatch(), this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {

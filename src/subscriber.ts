@@ -4,7 +4,7 @@ import { Controller } from './controller';
 import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
-import { Subscriber } from './subscription';
+import { Subscription } from './subscription';
 
 type Observable = { getDispatch(): Observer };
 
@@ -24,7 +24,7 @@ export function usePassiveSubscriber(
   const subscription =
     useActiveMemo(refresh => {
       const parent = target.getDispatch();
-      return new Subscriber(parent, refresh).focus(path);
+      return new Subscription(parent, refresh).focus(path);
     });
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function useActiveSubscriber<T extends Controller>
 
   const subscription =
     useActiveMemo(refresh => 
-      new Subscriber(target.getDispatch(), refresh)
+      new Subscription(target.getDispatch(), refresh)
     );
 
   useLifecycleEffect((name) => {
@@ -72,7 +72,7 @@ export function useOwnController<T extends typeof Controller>(
   const subscription = 
     useActiveMemo(refresh => {
       const dispatch = Model.create(args, callback).getDispatch();
-      return new Subscriber(dispatch, refresh);
+      return new Subscription(dispatch, refresh);
     });
 
   useLifecycleEffect((name) => {

@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
-import { Subscriber } from './subscription';
+import { Subscription } from './subscription';
 import { entriesIn, Issues, within } from './util';
 
 const INIT_COMPUTE = Symbol("initial");
@@ -267,7 +267,7 @@ export class Observer implements Emitter {
 
     const getStartingValue = (early = false) => {
       try {
-        const sub = new Subscriber(this, onValueDidChange);
+        const sub = new Subscription(this, onValueDidChange);
         const value = state[key] = fn.call(sub.proxy);
         sub.commit();
         return value;
