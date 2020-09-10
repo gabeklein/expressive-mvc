@@ -66,21 +66,6 @@ export class Singleton extends Controller {
     
     return instance;
   }
-  
-  static delete(instance?: Singleton){
-    const constructor = instance 
-      ? instance.constructor as typeof Singleton
-      : this;
-
-    if(!instance)
-      instance = this.current;
-    else 
-      
-    if(!instance)
-      return;
-
-    delete constructor.current;
-  }
 
   static get context(){
     return undefined;
