@@ -124,7 +124,7 @@ export class Subscription {
         value = sub.proxy;
   
         this.parent.once("didRender", () => {
-          sub && sub.commit();
+          sub!.commit();
           this.commit(key);
         });
       }
