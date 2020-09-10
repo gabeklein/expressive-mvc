@@ -31,21 +31,18 @@ export interface Events {
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
-  willCycle?(...args: any[]): Callback;
 
   elementDidMount?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
   elementWillUnmount?(...args: any[]): void;
   elementWillUpdate?(...args: any[]): void;
-  elementWillCycle?(...args: any[]): Callback;
 
   componentDidMount?(...args: any[]): void;
   componentWillMount?(...args: any[]): void;
   componentWillRender?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
   componentWillUpdate?(...args: any[]): void;
-  componentWillCycle?(...args: any[]): Callback;
 }
 
 export interface Controller extends Events, Emitter {

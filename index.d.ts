@@ -52,7 +52,6 @@ interface MC {
     willUnmount?(...args: any[]): void;
     didFocus?(parent: Controller, as: string): void;
     willLoseFocus?(parent: Controller, as: string): void;
-    willCycle?(...args: any[]): void | (() => void);
     willDestroy(callback?: () => void): void;
 
     elementWillRender?(...args: any[]): void;
@@ -60,14 +59,12 @@ interface MC {
     elementWillUpdate?(...args: any[]): void;
     elementDidMount?(...args: any[]): void;
     elementWillUnmount?(...args: any[]): void;
-    elementWillCycle?(...args: any[]): void | (() => void);
 
     componentWillRender?(...args: any[]): void;
     componentWillMount?(...args: any[]): void;
     componentWillUpdate?(...args: any[]): void;
     componentDidMount?(...args: any[]): void;
     componentWillUnmount?(...args: any[]): void;
-    componentWillCycle?(...args: any[]): void | (() => void);
 }
 
 /**

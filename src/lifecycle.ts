@@ -21,7 +21,6 @@ export type LivecycleEvent =
 
 export const lifecycleEvents = [
   "willReset",
-  "willCycle",
   "willRender",
   "willUpdate",
   "willMount",
