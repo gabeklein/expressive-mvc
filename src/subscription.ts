@@ -77,7 +77,7 @@ export class Subscription {
 
       if(value instanceof Controller){
         sub = new Subscription(value.getDispatch(), this.refresh);
-        value = sub.focus(rest).proxy;
+        sub.focus(rest);
 
         this.parent.once("didRender", () => sub!.commit());
       }
@@ -85,7 +85,7 @@ export class Subscription {
         throw Oops.FocusIsDetatched();
   
       Object.defineProperty(this, "proxy", {
-        get: () => value,
+        get: () => sub ? sub.proxy : value,
         configurable: true
       })
     }
