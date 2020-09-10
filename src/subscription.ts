@@ -92,12 +92,14 @@ export class Subscription {
       })
     }
 
-    this.onRelease.push(reset);
-    this.follow(key, () => {
+    const onUpdate = () => {
       reset();
       monitorChild();
       this.refresh();
-    });
+    }
+
+    this.follow(key, onUpdate);
+    this.onRelease.push(reset);
 
     monitorChild();
 
@@ -139,12 +141,14 @@ export class Subscription {
       return value;
     }
 
-    this.onRelease.push(reset);
-    this.follow(key, () => {
+    const onUpdate = () => {
       reset();
       applyChild();
       this.refresh();
-    });
+    }
+
+    this.follow(key, onUpdate);
+    this.onRelease.push(reset);
 
     return applyChild();
   }
