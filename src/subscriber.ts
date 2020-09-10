@@ -8,8 +8,8 @@ import { Subscription } from './subscription';
 
 type Observable = { getDispatch(): Observer };
 
-function useActiveMemo<T>
-  (init: (refresh: Callback) => T){
+function useActiveMemo<T>(
+  init: (refresh: Callback) => T){
 
   const [ state, update ] = useState<any>(() => [
     init(() => update(state.concat()))
@@ -19,13 +19,13 @@ function useActiveMemo<T>
 }
 
 export function usePassiveSubscriber(
-  target: Observable, ...path: string[]){
+  target: Observable,
+  ...path: (string | undefined)[]){
 
-  const subscription =
-    useActiveMemo(refresh => {
-      const parent = target.getDispatch();
-      return new Subscription(parent, refresh).focus(path);
-    });
+  const subscription = useActiveMemo(refresh => {
+    const parent = target.getDispatch();
+    return new Subscription(parent, refresh).focus(path);
+  });
 
   useEffect(() => {
     subscription.commit();
@@ -35,13 +35,13 @@ export function usePassiveSubscriber(
   return subscription.proxy;
 }
 
-export function useActiveSubscriber<T extends Controller>
-  (target: T, args: any[]){
+export function useActiveSubscriber(
+  target: Controller, 
+  args: any[]){
 
-  const subscription =
-    useActiveMemo(refresh => 
-      new Subscription(target.getDispatch(), refresh)
-    );
+  const subscription = useActiveMemo(refresh => 
+    new Subscription(target.getDispatch(), refresh)
+  );
 
   useLifecycleEffect((name) => {
     const alias = subscriberLifecycle(name);
@@ -62,22 +62,21 @@ export function useActiveSubscriber<T extends Controller>
   return subscription.proxy;
 }
 
-export function useOwnController<T extends typeof Controller>(
-  Model: T,
+export function useOwnController(
+  Model: typeof Controller,
   args?: any[], 
-  callback?: (instance: InstanceType<T>) => void){
+  callback?: (instance: Controller) => void){
 
   let release: Callback | undefined;
 
-  const subscription = 
-    useActiveMemo(refresh => {
-      const dispatch = Model.create(args, callback).getDispatch();
-      return new Subscription(dispatch, refresh);
-    });
+  const subscription = useActiveMemo(refresh => {
+    const dispatch = Model.create(args, callback).getDispatch();
+    return new Subscription(dispatch, refresh);
+  });
 
   useLifecycleEffect((name) => {
     const alias = componentLifecycle(name);
-    const instance = subscription.parent.subject as InstanceType<T>;
+    const instance = subscription.parent.subject as Controller;
     const handler = instance[alias] || instance[name];
 
     if(name == "willRender")
