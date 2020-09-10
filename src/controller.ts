@@ -60,8 +60,8 @@ export interface Controller extends Events, Emitter {
 }
 
 export class Controller {
-  tap(key?: string){
-    return usePassiveSubscriber(this, key!);
+  tap(...path: maybeStrings){
+    return usePassiveSubscriber(this, ...path);
   }
 
   sub(...args: any[]){
@@ -248,8 +248,8 @@ export class Controller {
     }, [])
   }
 
-  static tap(key?: string){
-    return this.find().tap(key);
+  static tap(...keys: maybeStrings){
+    return this.find().tap(...keys);
   }
 
   static has(key: string){
@@ -286,7 +286,8 @@ defineAtNeed(Controller, {
     return createContext<any>(null);
   },
   meta(){
-    return () => usePassiveSubscriber(this);
+    return (...path: maybeStrings) => 
+      usePassiveSubscriber(this, ...path);
   }
 });
 

@@ -19,3 +19,5 @@ type Callback = () => void;
  * in static methods using generics.
  */
 type Class = new(...args: any[]) => any;
+
+type maybeStrings = Array<string | undefined>;

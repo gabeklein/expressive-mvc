@@ -92,6 +92,7 @@ interface IC {
 
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];
+    tap(...keys: string[]): any;
 
     sub(...args: any[]): this & SC;
 
@@ -138,6 +139,7 @@ declare class Controller {
     static makeGlobal <T extends Class>(this: T): InstanceType<T>;
 
     static meta <T extends Class>(this: T): T & Meta;
+    static meta (...keys: string[]): any;
 
     static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
     
@@ -153,6 +155,7 @@ declare class Controller {
 
     static tap <T extends Class> (this: T): InstanceType<T> & SC;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    static tap (...keys: string[]): any;
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 

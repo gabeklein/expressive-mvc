@@ -53,9 +53,9 @@ export class Subscription {
     return proxy;
   }
 
-  public commit(...keys: string[]){
+  public commit(...keys: maybeStrings){
     for(const key of keys || this.parent.watched)
-      delete (this.proxy as any)[key];
+      delete (this.proxy as any)[key!];
   }
 
   public release(){
@@ -63,7 +63,7 @@ export class Subscription {
       callback()
   }
 
-  public focus(keys: string[]){
+  public focus(keys: maybeStrings){
     const [ key, ...rest ] = keys.filter(x => x);
     let sub: Subscription | undefined;
 
