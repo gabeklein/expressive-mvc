@@ -184,19 +184,13 @@ export class Observer implements Emitter {
         if(/^[A-Z]/.test(key) === false)
             continue;
 
-      if(Controller.extends(value))
-        this.monitorPeer(key, value);
+      if(Controller.isTypeof(value))
+        this.subject.attach(key, value);
       else
         this.monitorValue(key, value)
     }
   }
-
-  protected monitorPeer(
-    key: string, type: typeof Controller){
-
-    this.subject.attach(key, type);
-  }
-
+  
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
 

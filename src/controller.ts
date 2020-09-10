@@ -161,7 +161,7 @@ export class Controller {
     return useOwnController(this).Provider;
   }
 
-  static extends(maybe: any): maybe is typeof Controller {
+  static isTypeof(maybe: any): maybe is typeof Controller {
     return (
       !!maybe && 
       typeof maybe == "object" && 

@@ -30,7 +30,7 @@ export function ensurePeerControllers(instance: Controller){
   const entries = entriesIn(instance);
 
   for(const [key, { value }] of entries)
-    if(Controller.extends(value))
+    if(Controller.isTypeof(value))
       pending.push([key, value.context!])
 
   if(pending.length)
