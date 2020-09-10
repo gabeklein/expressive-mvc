@@ -15,7 +15,7 @@ export class Subscription {
     private refresh: Callback
   ){}
 
-  get proxy(){
+  public get proxy(){
     const { parent } = this;
     const { subject } = parent;
     const proxy = Object.create(subject);
@@ -79,9 +79,7 @@ export class Subscription {
         sub = new Subscription(value.getDispatch(), this.refresh);
         value = sub.focus(rest).proxy;
 
-        this.parent.once("didRender", () => {
-          sub!.commit()
-        });
+        this.parent.once("didRender", () => sub!.commit());
       }
       else if(rest.length)
         throw Oops.FocusIsDetatched();

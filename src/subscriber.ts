@@ -70,8 +70,8 @@ export function useOwnController(
   let release: Callback | undefined;
 
   const subscription = useActiveMemo(refresh => {
-    const dispatch = Model.create(args, callback).getDispatch();
-    return new Subscription(dispatch, refresh);
+    const parent = Model.create(args, callback).getDispatch();
+    return new Subscription(parent, refresh);
   });
 
   useLifecycleEffect((name) => {
