@@ -4,7 +4,7 @@
 </h1>
 
 <h4 align="center">
-  Accessible control for anywhere and everywhere in your React apps
+  Accessible control for anywhere and everywhere in your (p)React apps
 </h4>
  
 <p align="center">
@@ -14,10 +14,10 @@
 <br/>
 
 <p align="center">
-  <code>use()</code> simple classes as a "ViewController"
+  With this, <code>use()</code> simple classes as a <i>ViewController</i>
   for your UIs. <br/>
   Special hooks manage renders, as needed, for any data.<br/>
-  When properties update, your components will too.<br/>
+  When properties update, your components will too!<br/>
 </p>
 
 <br/>
@@ -27,13 +27,17 @@
 &emsp; • **[Overview](#overview-section)** <br/>
 &emsp; • **[Install and Import](#install-section)**
 
-**Getting Started**
-
+**Getting Started** <br/>
   &ensp; • [Basics](#concept-simple) <br/>
-  &ensp; • [Methods](#concept-method) <br/>
   &ensp; • [Destructuring](#concept-destruct) <br/>
-  &ensp; • [Lifecycle](#concept-lifecycle) <br/>
+  &ensp; • [Methods](#concept-method) <br/>
+  &ensp; • [Getters](#concept-getters) <br/>
   &ensp; • [Constructor](#concept-constructor) <br/>
+  &ensp; • [Passing Props](#method-uses) <br/>
+  &ensp; • [Watching Props](#concept-constructor) <br/>
+
+**Managing state** <br/>
+  &ensp; • [Lifecycle](#concept-lifecycle) <br/>
   &ensp; • [Async & Events](#concept-async) <br/>
   &ensp; • [TypeScript](#concept-typescript) <br/>
   &ensp; • [Context](#concept-context) <br/>
@@ -53,11 +57,11 @@
 
 <h2 id="overview-section">Overview</h2>
 
-With this, you can create and use javascript classes as controllers within (via hooks) any, or many, React components.
+With deep-state, you can create and use javascript classes as controllers (via hooks) within any, or many, React components.
 
-When built-in hooks are used, returned is an instance of the given class, found or created, specially for the given component *(your View)*. By noting what is accessed at render, the hook *(a Controller)* can keep values up-to-date with the properties defined by your class *(your Model)*.
+When built-in methods on a `Controller` class are used, an instance is either found or created, specially for a mounted component *(your View)*. By noting what's accessed at render, the hook *(a Controller)* can keep values up-to-date with properties defined by your class *(your Model)*.
 
-This behavior combines with actions, computed properties, even lifecycle events, and the component itself to allow for a true **M**odel-**V**iew-**C**ontroller development pattern.
+This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller development pattern.
 
 <br/>
 
@@ -74,21 +78,20 @@ Import and use in your react apps.
 import VC from "deep-state";
 ```
 
-> **Note:** `VC` is short for (View) `Controller`, which is the default export. Name it whatever you like though!
+> **Note:** `VC` here is short for (View) `Controller`, which is the default export.
 
 <br/>
 
 <h1 id="started-section">Getting Started</h1>
 
-The basic workflow is pretty simple. If you know [MobX](https://mobx.js.org/README.html) this will look pretty familiar, but also a lot more straight-forward.
+The basic workflow is pretty simple. If you know [MobX](https://mobx.js.org/README.html) this will look pretty familiar, but also *way* more straight-forward.
 
-1. Create a class and fill it with values, getters, and methods you'll want to access within a component.
+1. Create a class and fill it with whatever values, getters, and methods you'd like.
 2. Extend `Controller` (or any derivative, for that matter) to make it "observable".
-3. Within a component, use one of the built-in methods, as you would any [React hook](https://reactjs.org/docs/hooks-intro.html).
-4. Destructure the values you need, for internal hooks to detect and subscribe to.
-5. Update those values as needed, your component will always stay synced!
-
-<br/>
+3. Within a component, use any  of the built-in methods, as you would a [React hook](https://reactjs.org/docs/hooks-intro.html).
+4. Destructure out values you need, for internal hooks to detect and subscribe to.
+5. Update those values as needed. Your component will keep sync automagically. ✨
+<br/><br/>
 
 <h2 id="concept-simple">Simplest use-case</h2>
 
@@ -120,33 +123,69 @@ const KitchenCounter = () => {
   )
 }
 ```
-<a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a>
+<!-- <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a> -->
 
-First, make a class with properties we wish track. Values defined in the constructor (or as class properties) serve as initial/default state. 
+First, make a class with properties we wish track. Values defined in the constructor (or as class properties) serve as an initial/default state. 
  
-Attached to your class is the static-method `use`. This is a hook, which will create a new instance and bind it up to your component; it will also destroy on unmount. 
+Attached to your class is the static-method `use`. This is a hook, which will create a new instance and bind it to your component; naturally, it will also destroy on unmount. 
 
-Now, as values on this instance change, our hook will automatically trigger new renders, and keep itself fully synced!
+Now, as values on this instance change, our hook will automatically trigger new renders; you may recognize this as "one-way binding".
+
+<br/>
+
+<h2 id="concept-destruct">Destructuring</h2>
+
+Because of how [subscriptions](#concept-subscription) work, it's a good idea to destructure values you intend to use in a given component. 
+
+The usual downside here though, is needing the original reference in order to update values. This is why two reserved keys `get` and `set` are added automatically; with them we can still access the full object.
+
+> Not to be confused with keywords. Just named properties, they are both are the same, a circular reference to the full state. Use whichever in-practice makes the most sense.
+
+```jsx
+const KitchenCounter = () => {
+  const { number, set } = CountControl.use();
+
+  return (
+    <div>
+      <span
+        onClick={() => set.number -= 1}>
+        {"−"}
+      </span>
+      <pre>{ number }</pre>
+      <span 
+        onClick={() => set.number += 1}>
+        {"+"}
+      </span>
+    </div>
+  )
+}
+```
+<!-- <sup><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sup> -->
+
+> `set.number` See what we did there? 🤔
 
 <br/>
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a view-controller without some methods? Add some *actions* [(similar to that in MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to your state.
+What's a controller without some methods? Add some *actions* [(similar to that of MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to our state.
 
 ```jsx
 class CountControl extends VC {
   number = 1
 
   // Note that we're using arrow functions here.
-  // We need bound `this`.
+  // We'll need a bound `this`.
   increment = () => { this.number++ };
   decrement = () => { this.number-- };
 }
 ```
+
+
+> You may notice this approach is also more efficient, similar to `useCallback`, the callbacks aren't closured every render like before. 😬
+
 ```jsx
 const KitchenCounter = () => {
-  /* With that, we can destructure! */
   const { number, decrement, increment } = CountControl.use();
 
   return (
@@ -158,65 +197,160 @@ const KitchenCounter = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup> -->
 
-> With this you can write even the most complex components, all while maintaining the key benefits of a functional-component (being much easier on the eyes).
+> With this you can write even the most complex components, all while maintaining key benefits of a functional-component (being much easier on the eyes).
 
 <br/>
 
-<h2 id="concept-destruct">Enhanced Destructuring</h2>
+<h2 id="concept-getters">What about getters?</h2>
 
-While destructuring, you have two reserved keys `get` and `set`, with them we can still access the full object.
+Got you fam. Deep-state has a strong equivalent to `@computed` [(ala MobX again)](https://mobx.js.org/refguide/computed-decorator.html)
 
-> Not to be confused with keywords. Just named properties, they are both are the same, a circular reference to `state`. Use whatever in-practice makes the most sense.
+Define any getters you want and they will be managed automatically by the controller. They will compute the first time they are accessed, and stay synced in both directions.
 
+> Similar to hooks, getters will know when properties they access are updated. Whenever that happens, they rerun. If a new value is returned, it will pass the change forward to own listeners.
+
+```ts
+const { floor } = Math;
+
+class Timer extends VC {
+  seconds = 0;
+ 
+  constructor(){
+    super();
+    setInterval(() => this.seconds++, 1000);
+  }
+
+  get minutes(){
+    return floor(this.seconds / 60);
+  }
+
+  get hours(){
+    return floor(this.minutes / 60);
+  }
+
+  get format(){
+    const { seconds } = this;
+    const hr = floor(seconds / 3600);
+    const min = floor(seconds / 60) % 60;
+    const sec = seconds % 60;
+
+    return `${hr}:${min}:${sec}`;
+  }
+}
+```
+
+> Notice `hours` getter is recursive with `minutes`.<br/> Yep, getters can even subscribe to other getters.
+
+<br/>
+
+<h2 id="concept-constructor">Using outside values</h2>
+
+The method `use(...)`, as it creates the control instance, will also pass its own arguments to the constructor. This makes it easy to customize the initial state of a component.
+
+> Typescript 
+```ts
+class Greetings extends VC {
+  firstName: string;
+ 
+  constructor(name: string){
+    super();
+
+    this.firstName = 
+      this.name.split(" ")[0];
+  }
+}
+```
 ```jsx
-class AboutYou extends VC {
-  name = "John Doe"
+const MyComponent = ({ name }) => {
+  const { firstName } = Greetings.use(name);
+
+  return <b>Hello {firstName}!</b>;
+}
+```
+<!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
+
+<br/>
+
+<h2 id="concept-passing-props">Passing props to your controller</h2>
+
+Besides `use`, there are similar methods able to assign props after creating a controller. This is a great alternative to manually distributing values, as we had done in the example above.
+
+<h3 id="method-uses"><code>.uses({ ... })</code></h3>
+
+After constructing state, an analog to `Object.assign(this, props)` is run.<br/> Enumerable properties of `props` will be set (and made observable, if not already) within the controller.
+
+> Typescript
+```ts
+class Greetings extends VC {
+  name: string;
+  birthday: string;
+
+  get firstName(){
+    return this.name.split(" ")[0];
+  }
+
+  get isBirthday(){
+    const td = new Date();
+    const bd = new Date(this.birthday);
+
+    return (
+      td.getMonth() === bd.getMonth() &&
+      td.getDate() === bd.getDate()
+    )
+  }
 }
 ```
 
 ```jsx
-const AboutMe = () => {
-  const {
-    set, /* ⬅ a reference to `state` */
-    name
-  } = AboutYou.use();
+const HappyBirthday = (props) => {
+  const { firstName, isBirthday } = Greetings.uses(props);
 
   return (
-    <div>
-      <div>My name is { name }!</div>
-      <u 
-        onClick = {() => {
-          set.name = 
-            window.prompt("What is your name?");
-        }}>
-        ...or is it?...
-      </u>
-    </div>
-  )
+    <big>
+      <span>Hi {firstName}<\span>
+      {isBirthday &&
+        <b> happy birthday!</b>
+      }!
+    </big>
+  );
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-event-vsmib">View in CodeSandbox</a></sup>
 
-> `set.name` See what we did there? 🤔
+```jsx
+const SayHello = () => (
+  <HappyBirthday
+    name="John Doe"
+    birthday="September 19"
+  />
+)
+```
+<!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
 <br/>
+<br/>
+
+<h1 id="managing-section">Managing your state</h1>
+
+So far, all of our example controllers have been passive. Let's spice things up by controlling state from within the controller itself.<br/><br/>
 
 <h2 id="concept-lifecycle">Lifecycle methods</h2>
 
-The `use()` hook will automatically call certain [lifecycle hooks](#lifecycle-list) you may define on your models.
+The `use()` hook can automatically call certain [lifecycle events](#lifecycle-list) which may be defined on your class as methods.
+
+> Deja-vu, this looks kinda familar to something...
 ```jsx
 class TimerControl extends VC {
   elapsed = 1;
 
-  didMount(){
+  componentDidMount(){
     this.timer = 
       setInterval(() => this.elapsed++, 1000)
   }
 
-  willUnmount(){
-    /* remember to cleanup too! ♻ */
+  /** remember to cleanup too! ♻ */
+  componentWillUnmount(){
     clearInterval(this.timer);
   }
 }
@@ -228,40 +362,13 @@ const MyTimer = () => {
   return <pre>{ elapsed }</pre>;
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup> -->
 
 <br />
 
-<h2 id="concept-constructor">Passing arguments to your constructor</h2>
+<h2 id="concept-async">Working with callbacks, and async</h2>
 
-Method `use(...)` will pass its own arguments to the constructor as it creates a new instance. 
-
-```ts
-/* typescript */
-
-class Greetings extends VC {
-  person: string;
-
-  constructor(name: string){
-    super();
-    this.person = name;
-  }
-}
-```
-```jsx
-const MyComponent = ({ name }) => {
-  const { person } = Greetings.use(name);
-
-  return <b>Hello {person}!</b>;
-}
-```
-<sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup>
-
-<br/>
-
-<h2 id="concept-async">Working with events, callbacks, and async</h2>
-
-Let's get fancy and add a bunch of moving parts. You'll notice this setup can do quite a lot, while still remaining modular.
+Let's get fancy and add a few more moving parts. You'll notice this setup can do a lot, all while remaining pretty modular! 💪
 
 ```ts
 class StickySituation extends VC {
@@ -269,11 +376,11 @@ class StickySituation extends VC {
   surname = "bond";
   remaining = 60;
 
-  didMount(){
+  componentDidMount(){
     this.timer = setInterval(this.tickTock, 1000);
   }
 
-  willUnmount(){
+  componentWillUnmount(){
     this.cutTheDrama()
   }
 
@@ -296,6 +403,9 @@ class StickySituation extends VC {
   }
 }
 ```
+
+> Like this, our component remains completely independant from the controller. <br/> If say, we wanted to change or even duplicate our `ActionSequence`, in a different language or new aestetic, we won't need to copy-paste any of the actual behavior. 🤯
+
 ```jsx
 const ActionSequence = () => {
   const {
@@ -325,13 +435,13 @@ const ActionSequence = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup> -->
 
 <br/>
 
-<h2 id="concept-typescript">Using in typescript</h2>
+<h2 id="concept-typescript">Using with typescript</h2>
 
-With controllers you can enjoy full type safety and inference, even within components themselves.
+Code responsibly. With controllers you can enjoy full type safety and inference, even within components themselves.
 
 > Typescript
 
@@ -362,7 +472,7 @@ class FunActivity extends VC {
 ```
 ```jsx
 const PaintDrying = ({ alreadyMinutes }) => {
-  /* Your IDE should know secondsSofar is supposed to be a number 👌 */
+  /* Your IDE will know `alreadyMinutes` is supposed to be a number */
   const { secondsSofar } = FunActivity.use(alreadyMinutes);
 
   return (
@@ -373,7 +483,7 @@ const PaintDrying = ({ alreadyMinutes }) => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-typescript-n21uj">View in CodeSandbox</a></sup> -->
 
 <br/>
 
@@ -435,7 +545,7 @@ const InnerBar = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup> 
+<!-- <sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup>  -->
 
 <br/>
 <br/>
@@ -513,7 +623,7 @@ const WhatsUp = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-mulitple-values-dg6w0">View in CodeSandbox</a></sup> -->
 
 > With a controller, we can do a lot better on scope. Here we've separated out our model (state) from the view (component) which is pretty nice.
 
@@ -552,7 +662,7 @@ There is nothing preventing you from calling `use` more than once, or making use
     )
   }
 ```
-<sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup> -->
 
 > There may be better ways to do it, but calling multiple controllers still can be a great way to separate concerns. 
 
@@ -581,7 +691,7 @@ const LazyComponent = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-explict-watch-zyo5v">View in CodeSandbox</a></sup> -->
 
 ### Automatic inference 
 
@@ -632,7 +742,7 @@ const MusicalChairs = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup>
+<!-- <sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup> -->
 
 > Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
 
