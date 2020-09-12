@@ -243,8 +243,6 @@ export class Observer implements Emitter {
 
     subscribers[key] = new Set();
 
-    const getValueLazy = () => state[key];
-
     const onValueDidChange = () => {
       const value = fn.call(subject);
       const subscribed = subscribers[key] || [];
@@ -273,7 +271,7 @@ export class Observer implements Emitter {
       finally {
         Object.defineProperty(subject, key, {
           set: Oops.NotTracked(key).throw,
-          get: getValueLazy,
+          get: () => state[key],
           enumerable: true,
           configurable: true
         })
