@@ -8,8 +8,8 @@
 </h4>
  
 <p align="center">
-  <a href="https://www.npmjs.com/package/react-use-controller"><img alt="NPM" src="https://badge.fury.io/js/react-use-controller.svg"></a>
-  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/react-use-controller.svg"></a>
+  <a href="https://www.npmjs.com/package/deep-state"><img alt="NPM" src="https://badge.fury.io/js/deep-state.svg"></a>
+  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/deep-state.svg"></a>
 </p>
 <br/>
 
@@ -49,8 +49,8 @@
   &ensp;&ensp;&ensp; ◦&nbsp; [MultiProvider](#concept-provider-multi) <br/>
   &ensp; •&nbsp; [Singletons](#concept-singleton) <br/>
 
-**Acessing state** <br/>
-  &ensp; •&nbsp; [Accessors](#concept-hooks) <br/>
+**Accessing state** <br/>
+  &ensp; •&nbsp; [Hooks](#concept-hooks) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`get` (unbound)](#method-get) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (one-way)](#method-tap) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (two-way)](#method-sub) <br/>
@@ -172,7 +172,7 @@ const KitchenCounter = () => {
   )
 }
 ```
-<!-- <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a> -->
+<a href="https://codesandbox.io/s/deep-state-simple-e3xcf"><sup>View in CodeSandbox</sup></a>
 
 Make a class with properties we wish track. Values defined in the constructor (or as class properties) serve as initial/default state. 
  
@@ -184,7 +184,7 @@ Now, as values on this instance change, our hook will trigger new renders! You m
 
 <h2 id="concept-destruct">Destructuring</h2>
 
-Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for the component. To cover normal pitfalls, you'll see a **`set`** and **`get`** added to the state for you.
+Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for a component. To cover normal pitfalls, you'll see a **`set`** and **`get`** added to the state for you.
 
 > Not to be confused with the keywords. Just properties, they are both a circular reference to state.
 
@@ -535,9 +535,9 @@ const ActionSequence = () => {
 
 <h1 id="sharing-section">Sharing state</h1>
 
-One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or other controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
+One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or peer controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
 
-In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we will cover how to access them.
+In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we'll see how to access them.
 
 <br/>
 
@@ -546,7 +546,7 @@ In this chapter we will cover how to create and cast state for use by components
 By default, a `Controller` is biased towards context as it's sharing mechanism. You probably guessed this, but through a managed [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) can we create and consume a single state inside a component hierarchy.
 
 
-Let's go over the ways to create a controller and insert it in context, for more than one component. There is nothing you need to do on the model to make this work.
+Let's go over the ways to create a controller and insert it into context, for more than one component. There is nothing you need to do, on the model, to make this work.
 
 ```ts
 export class Central extends VC {
@@ -565,7 +565,7 @@ export class Central extends VC {
 
 <h3 id="managing-section"><code>Provider</code> (instance property)</h3>
 
-Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state down-stream.
+Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state for down-stream.
 
 ```jsx
 export const App = () => {
@@ -595,7 +595,6 @@ export const App = () => {
 ```
 
 <h3 id="managing-section"><code>MultiProvider</code></h3>
-<h3 id="managing-section"><code>HOC's</code></h3>
 
 <br/>
 
@@ -666,7 +665,7 @@ Remember to code responsibly. This goes without saying, but typescript is your f
 > Typescript
 
 ```ts
-import Controller from "react-use-controller";
+import Controller from "deep-state";
 
 class FunActivity extends VC {
   /** Interval identifier for cleaning up */
