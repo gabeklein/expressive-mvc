@@ -86,7 +86,7 @@
 
 With deep-state, you can create and use javascript classes as controllers (via hooks) within any, or many, React components. 
 
-When built-in methods on a `Controller` class are used, an instance is either found or created, specially for a mounted component *(your View)*. By noting what's accessed at render, the hook *(a Controller)* can keep values up-to-date with properties defined by your class *(your Model)*.
+When built-in methods on a `Controller` class are used, an instance is either found or created, specially for the mounted component *(your View)*. By noting what's accessed at render, the hook *(a Controller)* can keep values up-to-date with properties defined by your class *(the Model)*.
 
 This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller development pattern.
 
@@ -99,7 +99,7 @@ Install with your preferred package manager
 npm install --save deep-state
 ```
 
-Import and use in your react apps.
+Import and use in your react ([or preact!](https://preactjs.com)) apps.
 
 ```js
 import VC from "deep-state";
@@ -164,9 +164,12 @@ Now, as values on this instance change, our hook will trigger new renders! You m
 
 Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for use in a given component. 
 
-The usual downside here though, is needing an original reference to update values. This is why two reserved keys `get` and `set` are defined for you; with them we can still access the full instance.
+The usual downside here though, is needing an original reference to update values.
+This is why two reserved keys **`get`** and **`set`** are defined for you; with them we can still access the full instance.
 
 > Not to be confused with the keywords. Just properties, they are both a circular reference to full state. Use what makes the most sense semantically.
+
+### `set`
 
 ```jsx
 const KitchenCounter = () => {
@@ -191,13 +194,13 @@ const KitchenCounter = () => {
 
 > `set.number` See what we did there? 🤔
 
-### Note: the intention behind `get`
+### `get`
 
-Besides making bracket-notation possible (i.e. `get["property"]`), there is a good reason to expose `get`.
+Besides making bracket-notation possible (i.e. `get["property"]`), there is a good reason to have `get`.
 
 Usually, when you read an observable value directly, a controller will assume you want to refresh anytime that property changes. In a lot of situations, this isn't the case, and so `get` acts as a bypass.
 
-Comes in handy when using values from inside a closure, such as a callback or event-handler, for instance.
+It comes in handy mostly when using values from inside a closure, such as a callback or event-handler.
 
 <br/>
 
@@ -242,7 +245,7 @@ const KitchenCounter = () => {
 
 Deep-state does have a strong equivalent to *computed* properties [(ala MobX again)](https://mobx.js.org/refguide/computed-decorator.html).
 
-Simply define getters you want and they will be managed by the controller. They will be computed when first accessed, and actively keep sync in both directions.
+Simply define getters you'll need and they will be managed by the controller. They will be computed when first accessed, and actively kept in-sync in both directions.
 
 Through the same mechanism as hooks, getters will know when properties they access are updated. Whenever that happens, they rerun. If a new value is returned, it will be passed forward to own listeners.
 
@@ -284,13 +287,13 @@ class Timer extends VC {
 Getters run whenever the controller thinks they *could* change, so design them with three guiding principles:
 - Getters should be *deterministic*. Only expect a change where inputs have changed.
 - Avoid computing from values which change a lot, but don't impact result as often.
-- [GWS](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are a major anti-pattern**, and can cause infinite loops.
+- [GWS](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are a major anti-pattern**, potentially causing a compute-loop.
 
 <br/>
 
 <h2 id="concept-constructor">Custom arguments</h2>
 
-The method `use(...)`, as it creates the control instance, will also pass its own arguments to the constructor. This makes it easy to customize the initial state of a component.
+The method `use(...)`, as it creates the control instance, will pass its own arguments to the constructor. This makes it easy to customize the initial state of a component.
 
 > Typescript 
 ```ts
@@ -300,8 +303,7 @@ class Greetings extends VC {
   constructor(name: string){
     super();
 
-    this.firstName = 
-      this.name.split(" ")[0];
+    this.firstName = name.split(" ")[0];
   }
 }
 ```
@@ -318,17 +320,17 @@ const MyComponent = ({ name }) => {
 
 <h2 id="concept-passing-props">Passing props to your controller</h2>
 
-Besides `use`, there are similar methods able to assign props after creating a controller. This is a great alternative to manually distributing values, as we do in the example above.
+Besides `use`, there are similar methods able to assign props after creating a controller. This is a great alternative to manually distributing values, as we did in the example above.
 
-<h3 id="method-uses"><code>.uses(props, greedy)</code></h3>
+<h3 id="method-uses"><code>.uses({ ... })</code></h3>
 
 After constructing state, something similar to `Object.assign(this, props)` is run.<br/>
 
 > Typescript
 ```ts
 class Greetings extends VC {
-  name: string;
-  birthday: string;
+  name?: string = undefined;
+  birthday?: string = undefined;
 
   get firstName(){
     return this.name.split(" ")[0];
@@ -346,9 +348,11 @@ class Greetings extends VC {
 }
 ```
 
+> By default, the controller will only capture values already in the controller (as either `undefined` or some default value). 
+
 ```jsx
 const HappyBirthday = (props) => {
-  const { firstName, isBirthday } = Greetings.uses(props, true);
+  const { firstName, isBirthday } = Greetings.uses(props);
 
   return (
     <big>
@@ -369,25 +373,6 @@ const SayHello = () => (
   />
 )
 ```
-
-### What's the `true` about?
-
-The `uses` method has a signature of: 
-```ts
-uses<S extends {}>(source: S, greedy?: boolean): Controller
-```
-"Greedy" means **all** enumerable properties of `source` will be set (and made observable, if not already) within the controller.<br/><br/>
-By default, the controller will only capture values already `in` the controller (as `undefined` or some default value). That said, your controller would actually need to look like this:
-
-```ts
-class Greetings extends VC {
- name?: string = undefined;
- birthday?: string = undefined;
-}
-```
-
-> Unless you're sure the input wont pollute state, default behavior is recommended, especially for use with props.
-
 
 <!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
