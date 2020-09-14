@@ -19,11 +19,6 @@ const Oops = Issues({
 });
 
 export interface Events {
-  didCreate?(): void;
-  didFocus?(parent: Controller, as: string): void;
-  didMount?(...args: any[]): void;
-  didRender?(...args: any[]): void;
-
   willReset?(...args: any[]): void;
   willDestroy?(callback?: Callback): void;
   willLoseFocus?(parent: Controller, as: string): void;
@@ -31,6 +26,11 @@ export interface Events {
   willRender?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
+
+  didCreate?(): void;
+  didFocus?(parent: Controller, as: string): void;
+  didMount?(...args: any[]): void;
+  didRender?(...args: any[]): void;
 
   elementDidMount?(...args: any[]): void;
   elementWillMount?(...args: any[]): void;
