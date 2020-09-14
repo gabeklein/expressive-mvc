@@ -47,17 +47,20 @@
   &ensp; •&nbsp; [Context](#concept-context) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [Provider](#concept-provider) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [MultiProvider](#concept-provider-multi) <br/>
-  &ensp;&ensp;&ensp; ◦&nbsp; [HOC's](#concept-hoc) <br/>
   &ensp; •&nbsp; [Singletons](#concept-singleton) <br/>
 
-**Accessing state** <br/>
-  &ensp; •&nbsp; [Hooks](#concept-hooks) <br/>
-  &ensp;&ensp;&ensp; ◦&nbsp; [`get` (passive access)](#method-get) <br/>
-  &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (passive binding)](#method-tap) <br/>
-  &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (active binding)](#method-sub) <br/>
-&ensp; •&nbsp; [Managed Elements](#concept-managed) <br/>
+**Acessing state** <br/>
+  &ensp; •&nbsp; [Accessors](#concept-hooks) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [`get` (unbound)](#method-get) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (one-way)](#method-tap) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (two-way)](#method-sub) <br/>
+  &ensp; •&nbsp; [Consumer](#property-consumer) <br/>
+
+**Elements with state** <br/>
+  &ensp; •&nbsp; [Managed Elements](#concept-managed) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Value`](#component-value) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Input`](#component-input) <br/>
+  &ensp; •&nbsp; [HOC's](#concept-hoc) <br/>
   
 **Structuring state** <br/>
   &ensp; •&nbsp; [Applied Typescript](#concept-typescript) <br/>
@@ -77,7 +80,7 @@
   &ensp; •&nbsp; [Lifecycle](#api-lifecycle) <br/>
 
 ### Internal Concepts
-  &ensp; •&nbsp; [Lazy Updating](#concept-lazy) <br/>
+  &ensp; •&nbsp; [Subscriptions](#concept-lazy) <br/>
   &ensp; •&nbsp; [Auto Debounce](#concept-debounce) <br/>
 
 <br/>
@@ -119,6 +122,25 @@ The basic workflow is pretty simple. If you know [MobX](https://mobx.js.org/READ
 4. Destructure out values you need, for internal controller to detect and subscribe to.
 5. Update those values on demand. Your component will keep sync automagically. ✨
 <br/><br/>
+
+### Some Definitions
+
+> The following is a guided crash-course to help get you up to speed (hopefully) pretty quick.<br/>
+Here are some library-specific terms which are good to know.
+
+<details>
+  <summary><ins>Tutorial Glossary</ins></summary><br/>
+
+  - **`VC`**: Alias for `Controller`, the core class powering most of deep-state.
+  - **Model**: Any class you'll write extending `VC`; the definition for a type of controller.
+  - **State**: An instance of your model, exposed in a live component.
+  - **Controller**: The logic (inherited from `VC`) in an instance of state, pushing its behavior.
+  - **View**: A defined function-component which maybe mounted and can accept hooks.
+  - **Element**: Instance of a component/view, actively mounted with a state and lifecycle.
+  - **Subscription**: An open channel to deep-state's communication engine, managing events.
+  
+</details>
+<br/>
 
 <h2 id="concept-simple">Simplest use-case</h2>
 
@@ -162,14 +184,13 @@ Now, as values on this instance change, our hook will trigger new renders! You m
 
 <h2 id="concept-destruct">Destructuring</h2>
 
-Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for use in a given component. 
+Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for the component. To cover normal pitfalls, you'll see a **`set`** and **`get`** added to the state for you.
 
-The usual downside here though, is needing an original reference to update values.
-This is why two reserved keys **`get`** and **`set`** are defined for you; with them we can still access the full instance.
-
-> Not to be confused with the keywords. Just properties, they are both a circular reference to full state. Use what makes the most sense semantically.
+> Not to be confused with the keywords. Just properties, they are both a circular reference to state.
 
 ### `set`
+
+The usual downside to destructuring is you can't use it for assignments. To solve this, we have `set` for updating values on the full state.
 
 ```jsx
 const KitchenCounter = () => {
@@ -196,17 +217,19 @@ const KitchenCounter = () => {
 
 ### `get`
 
-Besides making bracket-notation possible (i.e. `get["property"]`), there is a good reason to have `get`.
+Good for bracket-notation (i.e. `get["property"]`), and avoiding clutter where necessary. 
 
-Usually, when you read an observable value directly, a controller will assume you want to refresh anytime that property changes. In a lot of situations, this isn't the case, and so `get` acts as a bypass.
+Also, the main way to ignore updates. <br/>
 
-It comes in handy mostly when using values from inside a closure, such as a callback or event-handler.
+Usually, when you read an observable value directly, a controller will assume you want to refresh anytime that property changes. In a lot of situations, this isn't the case, and so `get` serves as a bypass.
+
+It comes in handy the most, when using values from inside a closure, such as callbacks and event-handlers.
 
 <br/>
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a controller without some methods? Add some *actions* [(similar to that of MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to our state.
+What's a controller without some methods? Let's add some *actions* [(similar to that of MobX)](https://mobx.js.org/refguide/action.html) to easily abstract changes to our state.
 
 ```jsx
 class CountControl extends VC {
@@ -220,7 +243,7 @@ class CountControl extends VC {
 ```
 
 
-> You may notice this approach is also more efficient, similar to `useCallback`, the callbacks aren't being re-closured every render. 😬
+> You may notice this approach is also more efficient. These handlers won't make new closures every time we render now. 😬
 
 ```jsx
 const KitchenCounter = () => {
@@ -237,7 +260,7 @@ const KitchenCounter = () => {
 ```
 <!-- <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup> -->
 
-> With this you can write even the most complex components, all while maintaining key benefits of a functional-component (being much easier on the eyes).
+With this you can write even the most complex components, all while maintaining key benefits of a functional-component, being much easier on the eyeballs.
 
 <br/>
 
@@ -245,12 +268,12 @@ const KitchenCounter = () => {
 
 Deep-state does have a strong equivalent to *computed* properties [(ala MobX again)](https://mobx.js.org/refguide/computed-decorator.html).
 
-Simply define getters you'll need and they will be managed by the controller. They will be computed when first accessed, and actively kept in-sync in both directions.
+Simply define the getters you need and they will be automatically managed by the controller. Computed when first accessed, they will be actively kept in-sync thereafter.
 
-Through the same mechanism as hooks, getters will know when properties they access are updated. Whenever that happens, they rerun. If a new value is returned, it will be passed forward to own listeners.
+Through the same mechanism as hooks, getters know when properties they access are updated. Whenever that happens, they rerun. If a new value is returned, it will be passed forward to own listeners.
 
 ```ts
-const { floor } = Math;
+const round = Math.floor;
 
 class Timer extends VC {
   seconds = 0;
@@ -261,18 +284,18 @@ class Timer extends VC {
   }
 
   get minutes(){
-    return floor(this.seconds / 60);
+    return round(this.seconds / 60);
   }
 
   get hours(){
-    // getters can subscribe other getters; no problem
-    return floor(this.minutes / 60);
+    // getters can also subscribe other getters 👌
+    return round(this.minutes / 60);
   }
 
   get format(){
     const { seconds } = this;
-    const hr = floor(seconds / 3600);
-    const min = floor(seconds / 60) % 60;
+    const hr = round(seconds / 3600);
+    const min = round(seconds / 60) % 60;
     const sec = seconds % 60;
 
     return `${hr}:${min}:${sec}`;
@@ -286,14 +309,14 @@ class Timer extends VC {
 
 Getters run whenever the controller thinks they *could* change, so design them with three guiding principles:
 - Getters should be *deterministic*. Only expect a change where inputs have changed.
-- Avoid computing from values which change a lot, but don't impact result as often.
-- [GWS](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are a major anti-pattern**, potentially causing a compute-loop.
+- Avoid computing from values which change a lot, but don't affect output as often.
+- [GWS](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are a major anti-pattern**, and could cause infinite loops.
 
 <br/>
 
 <h2 id="concept-constructor">Custom arguments</h2>
 
-The method `use(...)`, as it creates the control instance, will pass its own arguments to the constructor. This makes it easy to customize the initial state of a component.
+The method `use(...)`, as it creates the control instance, will pass its own arguments to the class's constructor. This makes it easy to customize the initial state of a component.
 
 > Typescript 
 ```ts
@@ -320,17 +343,16 @@ const MyComponent = ({ name }) => {
 
 <h2 id="concept-passing-props">Passing props to your controller</h2>
 
-Besides `use`, there are similar methods able to assign props after creating a controller. This is a great alternative to manually distributing values, as we did in the example above.
+Besides `use`, there are similar methods able to assign props after a controller is created. This is a great alternative to manually distributing values, as we did in the example above.
 
 <h3 id="method-uses"><code>.uses({ ... })</code></h3>
 
-After constructing state, something similar to `Object.assign(this, props)` is run.<br/>
+> After constructing state, something similar to `Object.assign(this, input)` is run.<br/>
 
-> Typescript
-```ts
+```js
 class Greetings extends VC {
-  name?: string = undefined;
-  birthday?: string = undefined;
+  name = undefined;
+  birthday = undefined;
 
   get firstName(){
     return this.name.split(" ")[0];
@@ -348,7 +370,7 @@ class Greetings extends VC {
 }
 ```
 
-> By default, the controller will only capture values already in the controller (as either `undefined` or some default value). 
+> By default, the controller will only capture values already defined (as either `undefined` or some default value). 
 
 ```jsx
 const HappyBirthday = (props) => {
@@ -377,15 +399,18 @@ const SayHello = () => (
 <!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
 <br/>
+
+### ✅ Level 1 Clear!
+
 <br/>
 
 <h1 id="managing-section">Managing your state</h1>
 
-So far, all of our example controllers have been passive. Let's spice things up by controlling state from within the controller itself.
+So far, all of our example controllers have been passive. Let's give our controller a bigger roll by pushing updates without user interaction.
 
-Because state is just a fancy class, we can do whatever we want to values, whenever. We handle logic and `Controller` handles the rest.
+Because state is just a fancy class, we can do whatever we want to values, whenever. We handle the logic and `Controller` handles the rest.
 
-However, here are a few of the concrete ways to smarten up your controllers.<br/><br/>
+Here are a few concrete ways to smarten up your controllers:<br/><br/>
 
 
 <h2 id="concept-lifecycle">Lifecycle methods</h2>
@@ -407,7 +432,7 @@ class TimerControl extends VC {
   }
 }
 ```
-> De ja vu... could swear that looks familiar... 🤨👆
+> De ja vu... could swear that looks familiar... 😏👆
 ```jsx
 const MyTimer = () => {
   const { elapsed } = TimerControl.use();
@@ -416,7 +441,7 @@ const MyTimer = () => {
 }
 ```
 
-[View the full lifecycle API here](#lifecycle-api)
+You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <!-- <sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup> -->
 
@@ -432,7 +457,7 @@ const MyTimer = () => {
 
 <h2 id="concept-async">Working with async and callbacks</h2>
 
-Because dispatch is taken care of, all we need to do is edit values. This makes the asynchronous stuff like timeouts, promises, and fetching a piece of cake.
+Because dispatch is taken care of, all we need to do is edit values as needed. This makes the asynchronous stuff like timeouts, promises, and fetching a piece of cake.
 
 ```ts
 class StickySituation extends VC {
@@ -468,8 +493,6 @@ class StickySituation extends VC {
 }
 ```
 
-> Note that our component remains completely independent from the logic here; this is a pretty big deal. <br/><br/> If we wanted to modify or even duplicate our `ActionSequence`, say, in a different language or with a new aesthetic, we don't need to copy, or even edit, *any* of the actual behavior. 🤯
-
 ```jsx
 const ActionSequence = () => {
   const {
@@ -503,50 +526,47 @@ const ActionSequence = () => {
 
 <br/>
 
-<h1 id="sharing-section">Sharing state</h1>
+### 👾 Level 2 Clear!
+
+
+> Sidebar, notice how our component remains completely independent from the logic sofar; it's a pretty big deal. <br/>If we wanted to modify or even duplicate our `ActionSequence`, says in a different language or with a new aesthetic, we don't need to copy, or even edit, *any* of these actual behaviors. 🤯
 
 <br/>
 
-<h2 id="managing-section">Context</h2>
+<h1 id="sharing-section">Sharing state</h1>
 
-One of the best features of `Controller` is the use of managed [Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/), to create and consume a single state within a hierarchy. 
+One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or other controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
 
-Of the available static properties, `.Provider` will return just-that to wrap child components with, which may access the parent via same easy hooks. Components within can call the static-method `.get()` on the same class to use the nearest instance of that class.
+In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we will cover how to access them.
 
-> Thanks to [lazy-updating](#lazy-concept), only properties used by a consumer will trigger a render in that particular component. 
+<br/>
 
-Another benefit of this, is that actions are made available anywhere in your hierarchy, letting distant components cleanly affect each other, via a shared controller.
+<h2 id="managing-section">Sharing with Context</h2>
+
+By default, a `Controller` is biased towards context as it's sharing mechanism. You probably guessed this, but through a managed [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) can we create and consume a single state inside a component hierarchy.
+
+
+Let's go over the ways to create a controller and insert it in context, for more than one component. There is nothing you need to do on the model to make this work.
 
 ```ts
 export class Central extends VC {
   foo = 0;
   bar = 0;
 
-  incrementFoo = () => this.foo++ 
+  incrementFoo = () => this.foo++;
 };
 ```
+
+> We start with a sample controller class, nothing too special. We'll be reusing it for the following examples.
 
 <!-- <sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup>  -->
 
 <br/>
 
-<h3 id="managing-section"><code>Provider</code> (static)</h3>
+<h3 id="managing-section"><code>Provider</code> (instance property)</h3>
 
-> With the `Provider` property, we can easily create both its a state and context in one go!
-```jsx
-export const App = () => {
-  return (
-    <Control.Provider>
-      <InnerFoo/>
-      <InnerBar/>
-    </Control.Provider>
-  )
-}
-```
+Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state down-stream.
 
-<h3 id="managing-section"><code>Provider</code> (property)</h3>
-
-> With the `Provider` property, we can easily create both its a state and context in one go!
 ```jsx
 export const App = () => {
   const { Provider } = Control.use();
@@ -556,6 +576,20 @@ export const App = () => {
       <InnerFoo/>
       <InnerBar/>
     </Provider>
+  )
+}
+```
+
+<h3 id="managing-section"><code>Provider</code> (class property)</h3>
+
+Assume we don't need special construction, or any other values in the parent component. <br/> With the `Provider` class-property, we can create both new a state and its context provider in one go!
+```jsx
+export const App = () => {
+  return (
+    <Control.Provider>
+      <InnerFoo/>
+      <InnerBar/>
+    </Control.Provider>
   )
 }
 ```
