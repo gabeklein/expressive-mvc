@@ -231,9 +231,9 @@ export class Controller {
   }
 
   static get(key?: string){
-    return useMemo(() => {
-      const instance = this.find();
+    const instance = this.find();
 
+    return useMemo(() => {
       if(key)
         return within(instance, key);
       else
