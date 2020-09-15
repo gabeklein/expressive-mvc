@@ -223,7 +223,7 @@ Also, the main way to ignore updates. <br/>
 
 Usually, when you read an observable value directly, a controller will assume you want to refresh anytime that property changes. In a lot of situations, this isn't the case, and so `get` serves as a bypass.
 
-It comes in handy the most, when using values from inside a closure, such as callbacks and event-handlers.
+It comes in handy the most when handling values from inside a callback or event-handler.
 
 <br/>
 
@@ -401,6 +401,7 @@ const SayHello = () => (
 <br/>
 
 ### ✅ Level 1 Clear!
+> In this chapter we learned the basics of how to create and utilize a state! For most people, who simply want smart, extensible components, this could even be enough! However, let's dive into how to make our controllers more than just fancy hooks.
 
 <br/>
 
@@ -408,7 +409,7 @@ const SayHello = () => (
 
 So far, all of our example controllers have been passive. Let's give our controller a bigger roll by pushing updates without user interaction.
 
-Because state is just a fancy class, we can do whatever we want to values, whenever. We handle the logic and `Controller` handles the rest.
+Because state is just a fancy class, we can do whatever we want to values, whenever. This makes asynchronous coding pretty low maintenance. We handle the logic of what we want and `Controller` handles the rest.
 
 Here are a few concrete ways to smarten up your controllers:<br/><br/>
 
@@ -447,7 +448,74 @@ You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <br />
 
-<h2 id="concept-async">Event Listeners</h2>
+<h2 id="concept-async">Events Handling</h2>
+
+Beyond watching for changes to state, what controllers really care about is events. Updates are simply a *type* of event. Whenever a property on your state gets a new value, an event is fired with the name of your property, to any listeners interested.
+
+While usually it will be a view-controller waiting to refresh its component, anything can subscribe to an event with a simple callback. If an event is caused by a property, the new value serves as `argument`; if synthetic, that will be up to the dispatcher.
+
+<br/>
+
+```js
+const callback = (value, name) => {
+  console.log(`${name} was updated with ${value}!`)
+}
+```
+
+
+#### `.on(name, callback) => onDone`
+
+Instances of controller have an `on` method, which will register a new listener to a given key. `callback` will be fired if a managed-property `name` is updated, or a synthetic event is sent. The method returns a callback to end your listener.
+
+#### `.once(name, callback) => onCancel`
+
+Also defined is a `once` method. Naturally, it will delete itself after being invoked. You can cancel it though with a returned callback.
+
+#### `.once(name) => Promise<value>`
+
+If `callback` is not provided, a promise will be returned instead, which resolves to the next value (or argument) `name` receives.
+
+#### `.watch(names, callback, once) => onStop`
+
+A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
+
+<br />
+
+```js
+class Counter extends VC {
+  seconds = 0;
+
+  logSeconds = (seconds) => {
+    console.log(`${seconds} seconds sofar!`);
+
+    if(seconds % 60 === 0){
+      const howMany = Math.floor(seconds / 60);
+
+      // send 'minutes' event (optionally, with a value)
+      this.update("minutes", howMany);
+    }
+  }
+
+  alertMinutes = (minutes) => {
+    alert(`${minutes} minutes have gone by!`)
+  }
+
+  componentDidMount(){
+    const timer = setInterval(() => this.seconds++, 1000);
+    const timerDone = () => clearInterval(timer);
+
+    // run callback every time 'seconds' changes
+    this.on("seconds", this.logSeconds);
+
+    // run callback when 'minutes' event is sent
+    this.on("minutes", this.alertMinutes);
+
+    // run callback when unmount is sent by controller
+    this.once("willUnmount", timerDone);
+  }
+}
+```
+> All these instance methods can be called from outside your controller as well!
 
 <br />
 
