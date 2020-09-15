@@ -70,7 +70,7 @@ interface MC {
 /**
  * React Controller
  * 
- * Defines Higher-Order-Components (HOC's) which are bound to this controller.
+ * Defines special components which are bound to the controller.
  */
 interface RC {
     Provider: FunctionComponent<ProviderProps<this>>;
@@ -147,12 +147,12 @@ declare class Controller {
 
     static get <T extends Class> (this: T): InstanceType<T> & SC;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
-
-    static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
-
+    
     static tap <T extends Class> (this: T): InstanceType<T> & SC;
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
     static tap (...keys: string[]): any;
+
+    static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 
@@ -183,7 +183,9 @@ export {
 export {
     get,
     Controller,
+    Controller as VC,
     Controller as default,
     Singleton,
+    Singleton as GC,
     Provider
 }
