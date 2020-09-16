@@ -37,7 +37,7 @@
   &ensp; •&nbsp; [Constructor](#concept-constructor) <br/>
   &ensp; •&nbsp; [Applied Props](#method-uses) <br/>
 
-**Managing state** <br/>
+**Dynamics** <br/>
   &ensp; •&nbsp; [Lifecycle](#concept-lifecycle) <br/>
   &ensp; •&nbsp; [Events](#concept-events) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [Listening](#concept-listen-event) <br/>
@@ -45,30 +45,30 @@
   &ensp; •&nbsp; [Monitored Externals](#method-using) <br/>
   &ensp; •&nbsp; [Async and callbacks](#concept-async) <br/>
 
-**Sharing state** <br/>
+**Sharing** <br/>
   &ensp; •&nbsp; [Context](#concept-context) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [Provider](#concept-provider) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [MultiProvider](#concept-provider-multi) <br/>
   &ensp; •&nbsp; [Singletons](#concept-singleton) <br/>
 
-**Accessing state** <br/>
+**Accessing** <br/>
   &ensp; •&nbsp; [Hooks](#concept-hooks) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`get` (unbound)](#method-get) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (one-way)](#method-tap) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (two-way)](#method-sub) <br/>
 
-**Applied state** <br/>
+**Applied State** <br/>
   &ensp; •&nbsp; [Managed Elements](#concept-managed) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Value`](#component-value) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Input`](#component-input) <br/>
   
-**Structuring state** <br/>
+**Structuring** <br/>
   &ensp; •&nbsp; [Applied Typescript](#concept-typescript) <br/>
   &ensp; •&nbsp; [Simple Composition](#concept-compose) <br/>
   &ensp; •&nbsp; [Child Controllers](#concept-children) <br/>
   &ensp; •&nbsp; [Peer Controllers](#concept-peers) <br/>
 
-**Extending state** <br/>
+**Extension** <br/>
   &ensp; •&nbsp; [Super-Controllers](#concept-super) <br/>
   &ensp; •&nbsp; [Using Meta](#concept-meta) <br/>
 
