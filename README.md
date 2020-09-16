@@ -55,7 +55,7 @@
   &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (one-way)](#method-tap) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (two-way)](#method-sub) <br/>
 
-**Elements with state** <br/>
+**Applied state** <br/>
   &ensp; •&nbsp; [Managed Elements](#concept-managed) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Value`](#component-value) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Input`](#component-input) <br/>
@@ -343,9 +343,18 @@ const MyComponent = ({ name }) => {
 
 Besides `use`, there are similar methods able to assign props after a controller is created. This is a great alternative to manually distributing values, as we did in the example above.
 
-<h3 id="method-uses"><code>.uses({ ... })</code></h3>
+<h3 id="method-uses"><code>.uses({ ... }, greedy?)</code></h3>
 
-> After constructing state, something similar to `Object.assign(this, input)` is run.<br/>
+After constructing state, something similar to `Object.assign(this, input)` is run. However based on value of `greedy`, this will have one of three biases.
+
+- Default: greedy is **undefined**
+  - only properties already `in` state (as explicitly `undefined` or some default value) will be captured 
+- If greedy is **true**
+  - all properties of `input` will be added, and made observable if not already.
+- If greedy is **false**
+  - only properties explicitly `undefined` on state (just after construction) will be overridden.
+
+
 
 ```js
 class Greetings extends VC {
@@ -367,8 +376,6 @@ class Greetings extends VC {
   }
 }
 ```
-
-> By default, the controller will only capture values already defined (as either `undefined` or some default value). 
 
 ```jsx
 const HappyBirthday = (props) => {
@@ -399,20 +406,20 @@ const SayHello = () => (
 <br/>
 
 ### ✅ Level 1 Clear!
-> In this chapter we learned the basics of how to create and utilize a state! For most people, who simply want smart, extensible components, this could even be enough! However, let's dive into how to make our controllers more than just fancy hooks.
+> In this chapter we learned the basics of how to create and utilize a custom state. For most people, who simply want smart components, this could even be enough! However, we can make our controllers into much more than just some fancy hooks.
 
 <br/>
 
 <h1 id="managing-section">Managing your state</h1>
 
-So far, all of our example controllers have been passive. Let's give our controller a bigger roll by pushing updates without user interaction.
+So far, all of our example controllers have been passive. Here we'll give our controller a bigger roll, by pushing updates without direct user interaction.
 
-Because state is just a fancy class, we can do whatever we want to values, whenever. This makes asynchronous coding pretty low maintenance. We handle the logic of what we want and `Controller` handles the rest.
+Because state is just a class-instance, we can do whatever we want to values, and more-crucially, whenever. This makes asynchronous coding pretty low maintenance. We handle the logic of what we want and `Controller` will handle the rest.
 
-Here are a few concrete ways to smarten up your controllers:<br/><br/>
+Here are a few concrete ways though, to smarten up your controllers:<br/><br/>
 
 
-<h2 id="concept-lifecycle">Lifecycle methods</h2>
+<h2 id="concept-lifecycle">Lifecycle</h2>
 
 Deep-state hooks can automatically call a number of "special methods" you'll define on your class, to handle certain "events" within components.
 
@@ -431,7 +438,7 @@ class TimerControl extends VC {
   }
 }
 ```
-> De ja vu... could swear that looks familiar... 😏👆
+> De ja vu... could swear that looks awfully familiar... 😏👆
 ```jsx
 const MyTimer = () => {
   const { elapsed } = TimerControl.use();
@@ -448,11 +455,11 @@ You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <h2 id="concept-async">Events Handling</h2>
 
-Beyond watching for changes to state, what controllers really care about is events. Updates are simply a *type* of event. Whenever a property on your state gets a new value, an event is fired with the name of your property, to any listeners interested.
+Beyond just watching for state-change, what a subscriber really cares about is events. *Updates are just one cause for an event.* Whenever a property on your state gains a new value, subscribers simply are notified.
 
-While usually it will be a view-controller waiting to refresh its component, anything can subscribe to an event with a simple callback. If an event is caused by a property, the new value serves as `argument`; if synthetic, that will be up to the dispatcher.
+While usually it will be a view-controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as `argument`; if synthetic, that will be up to the dispatcher.
 
-<br/>
+### Listening for events
 
 ```js
 const callback = (value, name) => {
@@ -460,42 +467,71 @@ const callback = (value, name) => {
 }
 ```
 
-
 #### `.on(name, callback) => onDone`
 
-Instances of controller have an `on` method, which will register a new listener to a given key. `callback` will be fired if a managed-property `name` is updated, or a synthetic event is sent. The method returns a callback to end your listener.
+Instances of `Controller` have an `on` method, which will register a new listener to a given key. `callback` will be fired when the managed-property `name` is updated, or when a synthetic event is sent.
+
+The method also returns a callback, with which you can kill the messenger. 👀
 
 #### `.once(name, callback) => onCancel`
 
-Also defined is a `once` method. Naturally, it will delete itself after being invoked. You can cancel it though with a returned callback.
+There is also a `once` method. Naturally, it will delete itself after being invoked. You can cancel it though, with the returned callback.
 
 #### `.once(name) => Promise<value>`
 
-If `callback` is not provided, a promise will be returned instead, which resolves to the next value (or argument) `name` receives.
+If `callback` is not provided, `once` will return a Promise instead, which resolves the next value (or argument) `name` receives.
 
-#### `.watch(names, callback, once) => onStop`
+#### `.watch(arrayOfNames, callback, once?) => onStop`
 
 A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
 
+
+### Listening for built-in events
+
+Controllers will also dispatch lifecycle events for both themselves and that of bound components.
+
+All events share names with their respective methods, [listed here](#lifecycle-api).
+
+### Pushing your own events
+
+#### `.update(name, argument?)`
+
+Fire a synthetic event; it will be sent to all listeners of `name`, be them subscribed controllers or one of the listener above.
+This can have slightly tweaked behavior depending on the occupied-status of a given key.
+
+- no property exists: 
+  * Explicit subscribers will receive the event; controllers cannot.
+- Property exists:
+  - **no argument:** Subscribers will force-refresh, listeners will get current value.
+  - **has argument:** Property will be overwritten, listeners get new value.
+- property is a getter:
+  - **no argument:** Getter will force-compute, listeners get output regardless if new.
+  - **has argument:** Cache will be overwritten (compute skipped), listeners get said value.
+
 <br />
+
+Events make it easier to design around closures, keeping as few things on your base-state as possible. Event methods can also be used externally, for other code to interact with!
+
+### Event handling in-pracice:
 
 ```js
 class Counter extends VC {
   seconds = 0;
 
-  logSeconds = (seconds) => {
-    console.log(`${seconds} seconds sofar!`);
-
-    if(seconds % 60 === 0){
-      const howMany = Math.floor(seconds / 60);
-
-      // send 'minutes' event (optionally, with a value)
-      this.update("minutes", howMany);
-    }
-  }
-
   alertMinutes = (minutes) => {
     alert(`${minutes} minutes have gone by!`)
+  }
+
+  tickTock = () => {
+    if(seconds % 2 == 1)
+      console.log("tick")
+    else
+      console.log("tock")
+
+    if(seconds % 60 === 0){
+      // send 'minutes' event (optionally, with an argument)
+      this.update("minutes", Math.floor(seconds / 60));
+    }
   }
 
   componentDidMount(){
@@ -503,7 +539,7 @@ class Counter extends VC {
     const timerDone = () => clearInterval(timer);
 
     // run callback every time 'seconds' changes
-    this.on("seconds", this.logSeconds);
+    this.on("seconds", this.tickTock);
 
     // run callback when 'minutes' event is sent
     this.on("minutes", this.alertMinutes);
@@ -513,11 +549,20 @@ class Counter extends VC {
   }
 }
 ```
-> All these instance methods can be called from outside your controller as well!
 
 <br />
 
 <h2 id="concept-async">Monitoring external values</h2>
+
+Sometimes you may want a to react to changes in some outside-info, usually props. Watching outside values does require you integrate them, as part of your state, however we do have a handy helper for this.
+
+<h3 id="method-using"><code>.using({ ... }, greedy?)</code></h3>
+
+> If you remember [`uses`](#concept-passing-props), this is almost the exact same behavior.
+
+This method helps integrate outside values by repeatedly assigning `input` properties **every render**. Because the observer will only react to new values, this makes for a fairly efficient way to observe for updates.
+
+Like `uses`, this method is naturally picky and will only capture values which are 
 
 <br />
 
