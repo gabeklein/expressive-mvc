@@ -412,7 +412,7 @@ const SayHello = () => (
 
 <br/>
 
-<h1 id="managing-section">Managing your state</h1>
+<h1 id="managing-section">Managing a dynamic state</h1>
 
 So far, all of our example controllers have been passive. Here we'll give our controller a bigger roll, by pushing updates without direct user interaction.
 
@@ -423,7 +423,7 @@ Here are a few concrete ways though, to smarten up your controllers:<br/><br/>
 
 <h2 id="concept-lifecycle">Lifecycle</h2>
 
-Deep-state hooks can automatically call a number of "special methods" you'll define on your class, to handle certain "events" within components.
+Deep-state hooks can automatically call a number of "special methods" you'll define on your model, to handle certain "events" within components.
 
 ```jsx
 class TimerControl extends VC {
@@ -440,12 +440,12 @@ class TimerControl extends VC {
   }
 }
 ```
-> De ja vu... could swear that looks awfully familiar... 😏👆
+> De ja vu... could swear that looks awfully familiar... 🤔
 ```jsx
 const MyTimer = () => {
   const { elapsed } = TimerControl.use();
 
-  return <pre>{ elapsed }</pre>;
+  return <pre>{ elapsed } seconds sofar</pre>;
 }
 ```
 
@@ -457,12 +457,14 @@ You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <h2 id="concept-events">Events Handling</h2>
 
-Beyond watching for state-change, what a subscriber really cares about is events. *Updates are just one cause for an event.* Whenever a property on your state gains a new value, subscribers are simply being notified.
+Beyond watching for state-change, what a subscriber really cares about is events. *Updates are just a cause for an event.* Whenever a property on your state gains a new value, subscribers simply are notified and act accordingly.
 
-While usually it will be a view-controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as an `argument`; if synthetic, that will be up to the dispatcher.
+While usually it'll be a controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as an `argument`; if synthetic, that will be up to the dispatcher.
 <br /><br />
 
 <h3 id="concept-listen-event">Listening for events</h3>
+
+> Assumes the following callback
 
 ```js
 const callback = (value, name) => {
@@ -470,28 +472,32 @@ const callback = (value, name) => {
 }
 ```
 
+Instances of `Controller` have the following methods added in for event handling:
+
 #### `.on(name, callback) => onDone`
 
-Instances of `Controller` have an `on` method, which will register a new listener to a given key. `callback` will be fired when the managed-property `name` is updated, or when a synthetic event is sent.
+This will register a new listener on a given key. `callback` will be fired when the managed-property `name` is updated, or when a synthetic event is sent.
 
-The method also returns a callback, with which you can kill the messenger. &nbsp; 👀 Worth noting however, you will not need to at (target) `willDestroy` or `componentWillUnmount` events, as listener will be stopped naturally.
+The method also returns a callback, by which you can stop subscribing. 
+
+> **Note:**  you will not need to cleanup events at `willDestroy` or `componentWillUnmount`, as listeners will be stopped naturally.
 
 #### `.once(name, callback) => onCancel`
 
-There is also a `once` method. Naturally, it will delete itself after being invoked. You can cancel it though, with the returned callback.
+Same as `on`, however will delete itself after being invoked. You can cancel it with the returned callback.
 
 #### `.once(name) => Promise<value>`
 
 If `callback` is not provided, `once` will return a Promise instead, which resolves the next value (or argument) `name` receives.
 
-#### `.watch(arrayOfNames, callback, once?) => onStop`
+#### `.watch(arrayOfNames, callback, once?) => onDone`
 
-A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
+A more versatile method used to monitor one or multiple keys with the same callback.
 <br /><br />
 
 <h3 id="concept-builtin-event">Listening for built-in events</h3>
 
-Controllers will also dispatch lifecycle events for both themselves and that of bound components.
+Controllers will also dispatch lifecycle events for themselves and that of their bound components.
 
 All events share names with their respective methods, [listed here](#lifecycle-api).
 <br /><br />
@@ -500,8 +506,9 @@ All events share names with their respective methods, [listed here](#lifecycle-a
 
 #### `.update(name, argument?)`
 
-Fire a synthetic event; it will be sent to all listeners of `name`, be them subscribed controllers or one of the listener above.
-This can have slightly tweaked behavior depending on the occupied-status of a given key.
+Fires a synthetic event; it will be sent to all listeners of `name`, be them subscribed controllers or one of the listeners above.
+
+This can have slightly different behavior, depending on the occupied-status of a given key.
 
 - no property exists: 
   * Explicit subscribers will receive the event; controllers cannot.
@@ -512,9 +519,8 @@ This can have slightly tweaked behavior depending on the occupied-status of a gi
   - **no argument:** Getter will force-compute, listeners get output regardless if new.
   - **has argument:** Cache will be overwritten (compute skipped), listeners get said value.
 
-<br />
 
-Events make it easier to design around closures, keeping as few things on your base-state as possible. Event methods can also be used externally, for other code to interact with!
+Events make it easier to design around closures, keeping as few things on your model as possible. Event methods can also be used externally, for other code to interact with as well.
 <br /><br />
 
 ### Event handling in-practice:
@@ -527,15 +533,15 @@ class Counter extends VC {
     alert(`${minutes} minutes have gone by!`)
   }
 
-  tickTock = () => {
+  tickTock = (seconds) => {
     if(seconds % 2 == 1)
       console.log("tick")
     else
       console.log("tock")
 
     if(seconds % 60 === 0){
-      // send 'minutes' event (optionally, with an argument)
-      this.update("minutes", Math.floor(seconds / 60));
+      // send minute event (with optional argument)
+      this.update("isMinute", Math.floor(seconds / 60));
     }
   }
 
@@ -546,11 +552,11 @@ class Counter extends VC {
     // run callback every time 'seconds' changes
     this.on("seconds", this.tickTock);
 
-    // run callback when 'minutes' event is sent
-    this.on("minutes", this.alertMinutes);
+    // run callback when minute event is sent out
+    this.on("isMinute", this.alertMinutes);
 
     // run callback when unmount is sent by controller
-    // using events, we avoid needing a separate method
+    // using events, we avoid needing another method, for just this
     this.once("componentWillUnmount", timerDone);
   }
 }
@@ -560,15 +566,15 @@ class Counter extends VC {
 
 <h2 id="concept-async">Monitoring external values</h2>
 
-Sometimes you'll want to detect changes in some outside-info, usually props. Watching outside values does require you integrate them as part of your state, however we do have a handy helper for this.
+Sometimes, you may want to detect changes in some outside-info, usually props. Watching values outside a controller does require you integrate them, as part of your state; however we do have a handy helper for this.
 
 <h3 id="method-using"><code>.using({ ... }, greedy?)</code></h3>
 
-> If you remember [`uses`](#concept-passing-props), this has almost the exact same behavior.
+> If you remember [`uses`](#concept-passing-props), this is somewhat equivalent.
 
-This method helps integrate outside values by repeatedly assigning `input` properties **every render**. Because the observer will only react to *new* values, this makes for a fairly efficient way to observe props. We can combine this with getters and event-listeners, to do all sorts of things when inputs change.
+This method helps integrate outside values by repeatedly assigning `input` properties **every render**. Because the observer will only react to *new* values, this makes for a fairly clean way to watch props. We can combine this with getters and event-listeners, to do all sorts of things when inputs change.
 
-Like `uses`, this method is naturally picky and will only capture values which are predefined. We do have the `greedy` flag though, which behaves exactly [the same](#concept-passing-props).
+Like `uses`, this method is naturally picky and will only capture values which exist on our state at launch. We do have a `greedy` flag though, which works [the same](#concept-passing-props).
 
 <br />
 
@@ -576,43 +582,69 @@ Like `uses`, this method is naturally picky and will only capture values which a
 class ActivityTracker {
   active = undefined;
 
+  get status(){
+    return this.active ? "active" : "inactive";
+  }
+
   componentDidMount(){
-    this.on("active", is => {
-      if(is === true)
+    this.on("active", (yes) => {
+      if(yes)
         alert("Tracker prop became active!")
     })
   }
 }
 ```
+```jsx
+const DetectActivity = (props) => {
+  const { status } = ActivityTracker.using(props);
+
+  return (
+    <big>
+      This element is currently {status}.
+    </big>
+  );
+}
+```
+
+```jsx
+const Activate = () => {
+  const [isActive, setActive] = useState(false);
+
+  return (
+    <div onClick={() => setActive(!isActive)}>
+      <DetectActivity active={isActive} />
+    </div>
+  )
+}
+```
+> Like this, we can freely interact different sources of state.
 
 <br />
 
 <h2 id="concept-async">Working with async and callbacks</h2>
 
-Because dispatch is taken care of, all we need to do is edit values as needed. This makes the asynchronous stuff like timeouts, promises, and fetching a piece of cake.
+Because dispatch is taken care of, all we need to do is edit values. This makes the asynchronous stuff like timeouts, promises, and fetching a piece of cake.
 
 ```ts
 class StickySituation extends VC {
-
-  surname = "bond";
   remaining = 60;
+  agent = "Bond";
 
   componentDidMount(){
-    this.timer = setInterval(this.tickTock, 1000);
-  }
+    const timer = 
+      setInterval(this.tickTock, 1000);
 
-  componentWillUnmount(){
-    this.cutTheDrama()
+    // here's how-to use watch!
+    this.watch(
+      ["stop", "componentWillUnmount"],
+      () => clearInterval(timer)
+    );
   }
 
   tickTock = () => {
     const timeLeft = --this.remaining;
     if(timeLeft === 0)
-      this.cutTheDrama();
-  }
-
-  cutTheDrama(){
-    clearInterval(this.timer);
+      this.update("stop");
   }
 
   getSomebodyElse = async () => {
@@ -620,7 +652,7 @@ class StickySituation extends VC {
     const data = await res.json();
     const [ recruit ] = data.results;
 
-    this.surname = recruit.name.last;
+    this.agent = recruit.name.last;
   }
 }
 ```
@@ -630,7 +662,7 @@ const ActionSequence = () => {
   const {
     getSomebodyElse,
     remaining,
-    surname
+    agent
   } = StickySituation.use();
 
   if(remaining === 0)
@@ -639,16 +671,16 @@ const ActionSequence = () => {
   return (
     <div>
       <div>
-        Agent <b>{surname}</b> we need you to diffuse the bomb!
+        <b>Agent {agent}</b>, we need you to diffuse the bomb!
       </div>
       <div>
         If you can't diffuse it in {remaining} seconds, 
-        the cat may or may not die!
+        Schrodinger's cat may or may not die!
       </div>
       <div>
-        <span>But there is time! </span>
+        But there is time! 
         <u onClick={getSomebodyElse}>Tap another agent</u> 
-        <span> if you think they can do it.</span>
+        if you think they can do it.
       </div>
     </div>
   )
@@ -661,13 +693,15 @@ const ActionSequence = () => {
 ### 👾 Level 2 Clear!
 
 
-> Sidebar, notice how our component remains completely independent from the logic sofar; it's a pretty big deal. <br/>If we wanted to modify or even duplicate our `ActionSequence`, says in a different language or with a new aesthetic, we don't need to copy, or even edit, *any* of these actual behaviors. 🤯
+> Sidebar, notice how our component remains completely independent from the logic sofar; it's a pretty big deal. 
+>
+> If we want to modify or even duplicate our `ActionSequence`, says in a different language or with a new aesthetic, we don't need to copy, or even edit, any of these actual behaviors. 🤯
 
 <br/>
 
 <h1 id="sharing-section">Sharing state</h1>
 
-One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or peer controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
+One of the most important features of deep-state is an ability to share state with any number of subscribers, be them components or peer-controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
 
 In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we'll see how to access them.
 
@@ -675,17 +709,16 @@ In this chapter we will cover how to create and cast state for use by components
 
 <h2 id="managing-section">Sharing with Context</h2>
 
-By default, a `Controller` is biased towards context as it's sharing mechanism. You probably guessed this, but through a managed [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) can we create and consume a single state inside a component hierarchy.
+By default, a `Controller` is biased towards context as it's sharing mechanism. You probably guessed this, but through a managed [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) can we create and consume a single state throughout a component hierarchy.
 
-
-Let's go over the ways to create a controller and insert it into context, for more than one component. There is nothing you need to do, on the model, to make this work.
+Let's go over the ways to create a controller and insert it into context, for more than one component. There is nothing you need to do on the model to make this work.
 
 ```ts
 export class Central extends VC {
   foo = 0;
   bar = 0;
 
-  incrementFoo = () => this.foo++;
+  fooUp = () => this.foo++;
 };
 ```
 
@@ -697,7 +730,7 @@ export class Central extends VC {
 
 <h3 id="managing-section"><code>Provider</code> (instance property)</h3>
 
-Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state for down-stream.
+Another reserved property on a controller instance is `Property`. Within a component, this will be visible. Wrap this around elements returned by your component, to declare your instance of state for down-stream.
 
 ```jsx
 export const App = () => {
@@ -714,7 +747,7 @@ export const App = () => {
 
 <h3 id="managing-section"><code>Provider</code> (class property)</h3>
 
-Assume we don't need special construction, or any other values in the parent component. <br/> With the `Provider` class-property, we can create both new a state and its context provider in one go!
+We'll assume you don't need special construction, or any of the values within parent component. <br/> With the `Provider` class-property, you can create both new a state and its context provider in one sitting.
 ```jsx
 export const App = () => {
   return (
@@ -726,19 +759,100 @@ export const App = () => {
 }
 ```
 
-<h3 id="managing-section"><code>MultiProvider</code></h3>
+<!-- <h3 id="managing-section"><code>MultiProvider</code></h3> -->
 
 <br/>
 
-<h2 id="managing-section">Singleton Controller</h2>
+<h2 id="managing-section">Global Controllers</h2>
+
+While context is recommended ensure reusability, very often we'll want to assign just one controller to a particular domain. Think concepts like Login, Settings, and interacting with outside APIs.
+
+Introducing new class of controller called a `Singleton` (or `GC` for short) we can create state without caring where it might exist in our hierarchy! Access hooks work exactly the same as their `Controller` counterparts, except under the hood they use a single promoted instance.
+
+### Creating a Global Instance
+
+Singletons will not be useable until state is initialized in one of three ways.
+
+> Assuming following definition
+
+```js
+import { GC } from "deep-state";
+
+class Login extends GC {
+  thinking = false;
+  loggedIn = false;
+  userName = undefined;
+  allowances = [];
+
+  async tryResume(){
+    this.thinking = true;
+    // try to create a session from cookies.
+    const session = {
+      userName = "John Doe";
+      allowances = ["admin"]
+    }
+
+    if(true){
+      this.loggedIn = true;
+      this.assign(session);
+    }
+    this.thinking =  false;
+  }
+}
+```
+
+> **Note**: Example makes use of `state.assign({})` which is [defined here](api-assign).
+
+<br/>
+
+We can make this class usable in the following ways.
+
+- Use a `.create()` method built-in to `Singleton`. This can be done anywhere as long as it's before a dependant (component or peer-controller) tries to access values from it.
+  ```js
+  window.addEventListener("load", () => {
+    const userLogin = Login.create();
+    // Login singleton now exists and is usable anywhere.
+    userLogin.tryResume();
+    // Good time to fire off a background task or two.
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  });
+  ```
+
+- Create an instance with any one of the normal `use` methods.
+
+  ```jsx
+  const LoginPrompt = () => {
+    const { loggedIn, get } = Login.use();
+
+    return loggedIn
+      ? <LoginPrompt onClick={() => get.tryResume()} />
+      : <Welcome name={get.userName} />
+  }
+  ```
+  > Login instance will be freely accessible after this `use()` invokes. <br/> 
+  > Note that instance **will become unavailable** if `LoginPrompt` does unmount. <br/>
+  > Likewise, if `LoginPrompt` mounts *again*, any newly rendered dependents get the latest instance.
+
+- Mount the Provider
+  ```jsx
+  export const App = () => {
+    return (
+      <Login.Provider>
+        <UserInterface />
+      </Login.Provider>
+    )
+  }
+  ```
+  > This has no bearing on context, it will simply be "provided" to everyone!
 
 <br/>
 
 <h1 id="access-section">Accessing state</h1>
 <br/>
 
-<h2 id="managing-section">Hooks</h2>
-<h3 id="managing-section"><code>get()</code></h3>
+<h2 id="managing-section">Via Hooks</h2>
+<!-- <h3 id="managing-section"><code>get()</code></h3> -->
 
 
 <h3 id="managing-section"><code>tap()</code></h3>
@@ -746,10 +860,10 @@ export const App = () => {
 > With the method `.tap`, rather than making a new `Central` controller, will obtain the nearest one
 ```jsx
 const InnerFoo = () => {
-  const { incrementFoo, bar } = Central.tap();
+  const { fooUp, bar } = Central.tap();
 
   return (
-    <div onClick={incrementFoo}>
+    <div onClick={fooUp}>
       <pre>Foo</pre>
       <small>Bar was clicked {bar} times!</small>
     </div>
@@ -770,13 +884,16 @@ const InnerBar = () => {
 }
 ```
 
-<h3 id="managing-section"><code>sub()</code></h3>
+<!-- <h3 id="managing-section"><code>sub()</code></h3>
+
+<h2 id="managing-section">Peer Controllers</h2>
+
 
 <br/>
 
 <h2 id="managing-section">Managed Elements</h2>
 <h3 id="managing-section"><code>&lt;Value/&gt;</code></h3>
-<h3 id="managing-section"><code>&lt;Input/&gt;</code></h3>
+<h3 id="managing-section"><code>&lt;Input/&gt;</code></h3> -->
 
 <br/>
 
@@ -843,7 +960,7 @@ const PaintDrying = ({ alreadyMinutes }) => {
 
 <h2 id="concept-compose">Simple composition <small>(and separation of concerns)</small></h2>
 
-There is nothing preventing you from use more than one controller in a component! Take advantage of this to create cooperating smaller state, rather than big, monolithic state.
+There is nothing preventing you from use more than one controller in a component! Take advantage of this to create smaller, cooperating state, rather than big, monolithic state.
 
 ```js
   class PingController extends VC {
@@ -875,17 +992,16 @@ There is nothing preventing you from use more than one controller in a component
 <!-- <sup><a href="https://codesandbox.io/s/example-simple-compose-dew5p">View in CodeSandbox</a></sup> -->
 
 
-<h2 id="managing-section">Child Controllers</h2>
-<h2 id="managing-section">Peer Controllers</h2>
+<!-- <h2 id="managing-section">Child Controllers</h2> -->
 
 <br/>
 
-<h1 id="sharing-section">Extending state</h1>
+<!-- <h1 id="sharing-section">Extending state</h1>
 
 <h2 id="managing-section">Super Controllers</h2>
 <h2 id="managing-section">Using Meta</h2>
 
-<br/>
+<br/> -->
 
 <h1>Concepts</h1>
 
@@ -935,7 +1051,7 @@ Check them out in [Subscription API](#subscription-api) section. -->
 Rest assured. Changes made synchronously are batched as a single new render.
 
 ```jsx
-class ZeroStakesGame {
+class ZeroStakesGame extends VC {
   foo = "bar"
   bar = "baz"
   baz = "foo"
@@ -953,7 +1069,7 @@ class ZeroStakesGame {
 ```
 ```jsx
 const MusicalChairs = () => {
-  const { foo, bar, baz, shuffle } = use(ZeroStakesGame);
+  const { foo, bar, baz, shuffle } = ZeroStakesGame.use();
 
   return (
     <div>
@@ -968,7 +1084,7 @@ const MusicalChairs = () => {
 ```
 <!-- <sup><a href="https://codesandbox.io/s/example-debouncing-sn1mq">View in CodeSandbox</a></sup> -->
 
-> Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same tick), resets when finished, and again wakes for `foo` when settled all in.
+> Even though we're ultimately making four updates, `use()` only needs to re-render twice. It does so once for everybody (being on the same [event-loop](https://blog.sessionstack.com/how-javascript-works-event-loop-and-the-rise-of-async-programming-5-ways-to-better-coding-with-2f077c4438b5)), resets when finished, and again wakes for `foo` when it decides settle in.
 
 <br/>
 <br/>
