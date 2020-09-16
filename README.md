@@ -170,7 +170,7 @@ const KitchenCounter = () => {
   )
 }
 ```
-<!-- <a href="https://codesandbox.io/s/example-simple-wf52i">View in CodeSandbox</a> -->
+<a href="https://codesandbox.io/s/deep-state-simple-e3xcf"><sup>View in CodeSandbox</sup></a>
 
 Make a class with properties we wish track. Values defined in the constructor (or as class properties) serve as initial/default state. 
  
@@ -399,6 +399,7 @@ const SayHello = () => (
 <br/>
 
 ### ✅ Level 1 Clear!
+> In this chapter we learned the basics of how to create and utilize a state! For most people, who simply want smart, extensible components, this could even be enough! However, let's dive into how to make our controllers more than just fancy hooks.
 
 <br/>
 
@@ -406,7 +407,7 @@ const SayHello = () => (
 
 So far, all of our example controllers have been passive. Let's give our controller a bigger roll by pushing updates without user interaction.
 
-Because state is just a fancy class, we can do whatever we want to values, whenever. We handle the logic and `Controller` handles the rest.
+Because state is just a fancy class, we can do whatever we want to values, whenever. This makes asynchronous coding pretty low maintenance. We handle the logic of what we want and `Controller` handles the rest.
 
 Here are a few concrete ways to smarten up your controllers:<br/><br/>
 
@@ -445,7 +446,74 @@ You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <br />
 
-<h2 id="concept-async">Event Listeners</h2>
+<h2 id="concept-async">Events Handling</h2>
+
+Beyond watching for changes to state, what controllers really care about is events. Updates are simply a *type* of event. Whenever a property on your state gets a new value, an event is fired with the name of your property, to any listeners interested.
+
+While usually it will be a view-controller waiting to refresh its component, anything can subscribe to an event with a simple callback. If an event is caused by a property, the new value serves as `argument`; if synthetic, that will be up to the dispatcher.
+
+<br/>
+
+```js
+const callback = (value, name) => {
+  console.log(`${name} was updated with ${value}!`)
+}
+```
+
+
+#### `.on(name, callback) => onDone`
+
+Instances of controller have an `on` method, which will register a new listener to a given key. `callback` will be fired if a managed-property `name` is updated, or a synthetic event is sent. The method returns a callback to end your listener.
+
+#### `.once(name, callback) => onCancel`
+
+Also defined is a `once` method. Naturally, it will delete itself after being invoked. You can cancel it though with a returned callback.
+
+#### `.once(name) => Promise<value>`
+
+If `callback` is not provided, a promise will be returned instead, which resolves to the next value (or argument) `name` receives.
+
+#### `.watch(names, callback, once) => onStop`
+
+A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
+
+<br />
+
+```js
+class Counter extends VC {
+  seconds = 0;
+
+  logSeconds = (seconds) => {
+    console.log(`${seconds} seconds sofar!`);
+
+    if(seconds % 60 === 0){
+      const howMany = Math.floor(seconds / 60);
+
+      // send 'minutes' event (optionally, with a value)
+      this.update("minutes", howMany);
+    }
+  }
+
+  alertMinutes = (minutes) => {
+    alert(`${minutes} minutes have gone by!`)
+  }
+
+  componentDidMount(){
+    const timer = setInterval(() => this.seconds++, 1000);
+    const timerDone = () => clearInterval(timer);
+
+    // run callback every time 'seconds' changes
+    this.on("seconds", this.logSeconds);
+
+    // run callback when 'minutes' event is sent
+    this.on("minutes", this.alertMinutes);
+
+    // run callback when unmount is sent by controller
+    this.once("willUnmount", timerDone);
+  }
+}
+```
+> All these instance methods can be called from outside your controller as well!
 
 <br />
 
@@ -533,9 +601,9 @@ const ActionSequence = () => {
 
 <h1 id="sharing-section">Sharing state</h1>
 
-One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or other controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
+One of the most significant features of deep-state is an ability to share state with any number of subscribers, be them components or peer controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
 
-In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we will cover how to access them.
+In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we'll see how to access them.
 
 <br/>
 
@@ -544,7 +612,7 @@ In this chapter we will cover how to create and cast state for use by components
 By default, a `Controller` is biased towards context as it's sharing mechanism. You probably guessed this, but through a managed [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) can we create and consume a single state inside a component hierarchy.
 
 
-Let's go over the ways to create a controller and insert it in context, for more than one component. There is nothing you need to do on the model to make this work.
+Let's go over the ways to create a controller and insert it into context, for more than one component. There is nothing you need to do, on the model, to make this work.
 
 ```ts
 export class Central extends VC {
@@ -563,7 +631,7 @@ export class Central extends VC {
 
 <h3 id="managing-section"><code>Provider</code> (instance property)</h3>
 
-Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state down-stream.
+Another reserved property on a controller instance is `Property`. Within the context of a component, this should be visible. Wrap it around elements making up the component, to declare your state for down-stream.
 
 ```jsx
 export const App = () => {
@@ -593,7 +661,6 @@ export const App = () => {
 ```
 
 <h3 id="managing-section"><code>MultiProvider</code></h3>
-<h3 id="managing-section"><code>HOC's</code></h3>
 
 <br/>
 
