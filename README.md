@@ -35,12 +35,14 @@
   &ensp; •&nbsp; [Methods](#concept-method) <br/>
   &ensp; •&nbsp; [Getters](#concept-getters) <br/>
   &ensp; •&nbsp; [Constructor](#concept-constructor) <br/>
-  &ensp; •&nbsp; [Assign Props](#method-uses) <br/>
+  &ensp; •&nbsp; [Applied Props](#method-uses) <br/>
 
 **Managing state** <br/>
   &ensp; •&nbsp; [Lifecycle](#concept-lifecycle) <br/>
-  &ensp; •&nbsp; [Events](#concept-on) <br/>
-  &ensp; •&nbsp; [Monitored External](#method-using) <br/>
+  &ensp; •&nbsp; [Events](#concept-events) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [Listening](#concept-listen-event) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [Dispatching](#concept-push-event) <br/>
+  &ensp; •&nbsp; [Monitored Externals](#method-using) <br/>
   &ensp; •&nbsp; [Async and callbacks](#concept-async) <br/>
 
 **Sharing state** <br/>
@@ -453,13 +455,13 @@ You can see all the available lifecycle methods **[here](#lifecycle-api)**.
 
 <br />
 
-<h2 id="concept-async">Events Handling</h2>
+<h2 id="concept-events">Events Handling</h2>
 
-Beyond just watching for state-change, what a subscriber really cares about is events. *Updates are just one cause for an event.* Whenever a property on your state gains a new value, subscribers simply are notified.
+Beyond watching for state-change, what a subscriber really cares about is events. *Updates are just one cause for an event.* Whenever a property on your state gains a new value, subscribers are simply being notified.
 
-While usually it will be a view-controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as `argument`; if synthetic, that will be up to the dispatcher.
+While usually it will be a view-controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as an `argument`; if synthetic, that will be up to the dispatcher.
 
-### Listening for events
+<h3 id="concept-listen-event">Listening for events</h3>
 
 ```js
 const callback = (value, name) => {
@@ -471,7 +473,7 @@ const callback = (value, name) => {
 
 Instances of `Controller` have an `on` method, which will register a new listener to a given key. `callback` will be fired when the managed-property `name` is updated, or when a synthetic event is sent.
 
-The method also returns a callback, with which you can kill the messenger. 👀
+The method also returns a callback, with which you can kill the messenger. &nbsp; 👀 Worth noting however, you will not need to at (target) `willDestroy` or `componentWillUnmount` events, as listener will be stopped naturally.
 
 #### `.once(name, callback) => onCancel`
 
@@ -485,14 +487,13 @@ If `callback` is not provided, `once` will return a Promise instead, which resol
 
 A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
 
-
-### Listening for built-in events
+<h3 id="concept-builtin-event">Listening for built-in events</h3>
 
 Controllers will also dispatch lifecycle events for both themselves and that of bound components.
 
 All events share names with their respective methods, [listed here](#lifecycle-api).
 
-### Pushing your own events
+<h3 id="concept-push-event">Pushing your own events</h3>
 
 #### `.update(name, argument?)`
 
@@ -512,7 +513,7 @@ This can have slightly tweaked behavior depending on the occupied-status of a gi
 
 Events make it easier to design around closures, keeping as few things on your base-state as possible. Event methods can also be used externally, for other code to interact with!
 
-### Event handling in-pracice:
+### Event handling in-practice:
 
 ```js
 class Counter extends VC {
@@ -545,7 +546,8 @@ class Counter extends VC {
     this.on("minutes", this.alertMinutes);
 
     // run callback when unmount is sent by controller
-    this.once("willUnmount", timerDone);
+    // using events, we avoid needing a separate method
+    this.once("componentWillUnmount", timerDone);
   }
 }
 ```
@@ -554,15 +556,30 @@ class Counter extends VC {
 
 <h2 id="concept-async">Monitoring external values</h2>
 
-Sometimes you may want a to react to changes in some outside-info, usually props. Watching outside values does require you integrate them, as part of your state, however we do have a handy helper for this.
+Sometimes you'll want to detect changes in some outside-info, usually props. Watching outside values does require you integrate them as part of your state, however we do have a handy helper for this.
 
 <h3 id="method-using"><code>.using({ ... }, greedy?)</code></h3>
 
-> If you remember [`uses`](#concept-passing-props), this is almost the exact same behavior.
+> If you remember [`uses`](#concept-passing-props), this has almost the exact same behavior.
 
-This method helps integrate outside values by repeatedly assigning `input` properties **every render**. Because the observer will only react to new values, this makes for a fairly efficient way to observe for updates.
+This method helps integrate outside values by repeatedly assigning `input` properties **every render**. Because the observer will only react to *new* values, this makes for a fairly efficient way to observe props. We can combine this with getters and event-listeners, to do all sorts of things when inputs change.
 
-Like `uses`, this method is naturally picky and will only capture values which are 
+Like `uses`, this method is naturally picky and will only capture values which are predefined. We do have the `greedy` flag though, which behaves exactly [the same](#concept-passing-props).
+
+<br />
+
+```ts
+class ActivityTracker {
+  active = undefined;
+
+  componentDidMount(){
+    this.on("active", is => {
+      if(is === true)
+        alert("Tracker prop became active!")
+    })
+  }
+}
+```
 
 <br />
 
