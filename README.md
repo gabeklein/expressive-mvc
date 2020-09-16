@@ -461,6 +461,7 @@ Beyond watching for state-change, what a subscriber really cares about is events
 
 While usually it will be a view-controller waiting to refresh a component, anything can subscribe to an event via callbacks. If this event *is* caused by a property update, its new value will serve as an `argument`; if synthetic, that will be up to the dispatcher.
 
+<br />
 <h3 id="concept-listen-event">Listening for events</h3>
 
 ```js
@@ -487,12 +488,14 @@ If `callback` is not provided, `once` will return a Promise instead, which resol
 
 A more versatile method `watch` can be used to monitor one or multiple keys with the same callback.
 
+<br />
 <h3 id="concept-builtin-event">Listening for built-in events</h3>
 
 Controllers will also dispatch lifecycle events for both themselves and that of bound components.
 
 All events share names with their respective methods, [listed here](#lifecycle-api).
 
+<br />
 <h3 id="concept-push-event">Pushing your own events</h3>
 
 #### `.update(name, argument?)`
@@ -512,6 +515,8 @@ This can have slightly tweaked behavior depending on the occupied-status of a gi
 <br />
 
 Events make it easier to design around closures, keeping as few things on your base-state as possible. Event methods can also be used externally, for other code to interact with!
+
+<br />
 
 ### Event handling in-practice:
 
