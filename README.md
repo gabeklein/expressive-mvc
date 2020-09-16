@@ -49,18 +49,16 @@
   &ensp;&ensp;&ensp; ◦&nbsp; [MultiProvider](#concept-provider-multi) <br/>
   &ensp; •&nbsp; [Singletons](#concept-singleton) <br/>
 
-**Acessing state** <br/>
-  &ensp; •&nbsp; [Accessors](#concept-hooks) <br/>
+**Accessing state** <br/>
+  &ensp; •&nbsp; [Hooks](#concept-hooks) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`get` (unbound)](#method-get) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`tap` (one-way)](#method-tap) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`sub` (two-way)](#method-sub) <br/>
-  &ensp; •&nbsp; [Consumer](#property-consumer) <br/>
 
 **Elements with state** <br/>
   &ensp; •&nbsp; [Managed Elements](#concept-managed) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Value`](#component-value) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [`Input`](#component-input) <br/>
-  &ensp; •&nbsp; [HOC's](#concept-hoc) <br/>
   
 **Structuring state** <br/>
   &ensp; •&nbsp; [Applied Typescript](#concept-typescript) <br/>
@@ -89,7 +87,7 @@
 
 With deep-state, you can create and use javascript classes as controllers (via hooks) within any, or many, React components. 
 
-When built-in methods on a `Controller` class are used, an instance is either found or created, specially for the mounted component *(your View)*. By noting what's accessed at render, the hook *(a Controller)* can keep values up-to-date with properties defined by your class *(the Model)*.
+When built-in methods on a `Controller` class are used, an instance is either found or created, specially for the mounted component *(your View)*. By noting what's used at render, the hook *(a Controller)* can keep values up-to-date, following properties defined by your class *(the Model)*.
 
 This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller development pattern.
 
@@ -116,27 +114,27 @@ import VC from "deep-state";
 
 The basic workflow is pretty simple. If you know [MobX](https://mobx.js.org/README.html) this will look pretty familiar, but also *a lot* more straight-forward.
 
-1. Create a class and fill it with values, getters, and methods you'd like.
+1. Create a class and fill it with the values, getters, and methods you'll need.
 2. Extend `Controller` (or any derivative, for that matter) to make it "observable".
 3. Within a component, call one of the built-in methods, as you would any [React hook](https://reactjs.org/docs/hooks-intro.html).
-4. Destructure out values you need, for internal controller to detect and subscribe to.
+4. Destructure out values, in a component, for controller to detect and subscribe to.
 5. Update those values on demand. Your component will keep sync automagically. ✨
 <br/><br/>
 
 ### Some Definitions
 
 > The following is a guided crash-course to help get you up to speed (hopefully) pretty quick.<br/>
-Here are some library-specific terms which are good to know.
+Here are some library-specific terms which will be good to know.
 
 <details>
   <summary><ins>Tutorial Glossary</ins></summary><br/>
 
   - **`VC`**: Alias for `Controller`, the core class powering most of deep-state.
   - **Model**: Any class you'll write extending `VC`; the definition for a type of controller.
-  - **State**: An instance of your model, exposed in a live component.
-  - **Controller**: The logic (inherited from `VC`) in an instance of state, pushing its behavior.
-  - **View**: A defined function-component which maybe mounted and can accept hooks.
-  - **Element**: Instance of a component/view, actively mounted with a state and lifecycle.
+  - **State**: An instance of your model, usable to a live component.
+  - **Controller**: The logic (inherited from `VC`) in an instance of state, managing its behavior.
+  - **View**: A defined function-component which may be mounted and can accept hooks.
+  - **Element**: Invocation of a component/view, actively mounted with a state and lifecycle.
   - **Subscription**: An open channel to deep-state's communication engine, managing events.
   
 </details>
@@ -176,7 +174,7 @@ const KitchenCounter = () => {
 
 Make a class with properties we wish track. Values defined in the constructor (or as class properties) serve as initial/default state. 
  
-Attached to your class is the static method `use`. This is a hook; it will create a new instance of your state and bind it to the component.
+Attached to your class is the static method `use`. This is a hook; it will create a new instance of your state and bind it to a component.
 
 Now, as values on this instance change, our hook will trigger new renders! You may recognize this as "one-way binding".
 
@@ -184,7 +182,7 @@ Now, as values on this instance change, our hook will trigger new renders! You m
 
 <h2 id="concept-destruct">Destructuring</h2>
 
-Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for the component. To cover normal pitfalls, you'll see a **`set`** and **`get`** added to the state for you.
+Because of how [subscriptions](#concept-subscription) work, a good idea is to destructure values intended for the component. To cover normal pitfalls, you'll see a **`set`** and **`get`** added to the returned state.
 
 > Not to be confused with the keywords. Just properties, they are both a circular reference to state.
 
@@ -194,7 +192,7 @@ The usual downside to destructuring is you can't use it for assignments. To solv
 
 ```jsx
 const KitchenCounter = () => {
-  const { number, set } = CountControl.use();
+  const { number, set } = Counter.use();
 
   return (
     <div>
@@ -223,7 +221,7 @@ Also, the main way to ignore updates. <br/>
 
 Usually, when you read an observable value directly, a controller will assume you want to refresh anytime that property changes. In a lot of situations, this isn't the case, and so `get` serves as a bypass.
 
-It comes in handy the most, when using values from inside a closure, such as callbacks and event-handlers.
+Use this when using values from inside a closure, such as callbacks and event-handlers.
 
 <br/>
 
@@ -288,7 +286,7 @@ class Timer extends VC {
   }
 
   get hours(){
-    // getters can also subscribe other getters 👌
+    // getters can also subscribe to other getters 🤙
     return round(this.minutes / 60);
   }
 
