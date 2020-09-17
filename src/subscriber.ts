@@ -51,7 +51,7 @@ export function useActiveSubscriber(
       subscription.commit();
 
     if(handler)
-      handler.apply(handler, args || []);
+      handler.apply(target, args || []);
 
     subscription.parent.emit(name, alias);
 
@@ -86,7 +86,7 @@ export function useOwnController(
       subscription.commit();
 
     if(handler)
-      handler.apply(handler, args || []);
+      handler.apply(instance, args || []);
 
     subscription.parent.emit(name, alias);
 
