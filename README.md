@@ -767,13 +767,13 @@ export const App = () => {
 
 While context is recommended ensure reusability, very often we'll want to assign just one controller to a particular domain. Think concepts like Login, Settings, and interacting with outside APIs.
 
-Introducing new class of controller called a `Singleton` (or `GC` for short) we can create state without caring where it might exist in our hierarchy! Access hooks work exactly the same as their `Controller` counterparts, except under the hood they use a single promoted instance.
+Here we introduce a new class of controller called a `Singleton` (or `GC` for short). With it we can create shared state without caring about hierarchy! Access hooks work exactly the same as their `Controller` counterparts, except under the hood they use a single promoted instance.
 
 ### Creating a Global Instance
 
 Singletons will not be useable until state is initialized in one of three ways.
 
-> Assuming following definition
+> Consider the following model
 
 ```js
 import { GC } from "deep-state";
@@ -784,17 +784,14 @@ class Login extends GC {
   userName = undefined;
   allowances = [];
 
+  /** try to recall a session from cookies. */
   async tryResume(){
     this.thinking = true;
-    // try to create a session from cookies.
-    const session = {
-      userName = "John Doe";
-      allowances = ["admin"]
-    }
 
     if(true){
       this.loggedIn = true;
-      this.assign(session);
+      userName = "John Doe";
+      allowances = ["admin"];
     }
     this.thinking =  false;
   }
@@ -805,9 +802,9 @@ class Login extends GC {
 
 <br/>
 
-We can make this class usable in the following ways.
+We can make this class available in the following ways.
 
-- Use a `.create()` method built-in to `Singleton`. This can be done anywhere as long as it's before a dependant (component or peer-controller) tries to access values from it.
+- Use a `.create()` method built-in to `Singleton`. This can be done anywhere as long as it's before a dependant (component or peer) tries to access from it.
   ```js
   window.addEventListener("load", () => {
     const userLogin = Login.create();
@@ -819,7 +816,7 @@ We can make this class usable in the following ways.
   });
   ```
 
-- Create an instance with any one of the normal `use` methods.
+- Create an instance with any one of our normal `use` methods.
 
   ```jsx
   const LoginPrompt = () => {
@@ -830,11 +827,11 @@ We can make this class usable in the following ways.
       : <Welcome name={get.userName} />
   }
   ```
-  > Login instance will be freely accessible after this `use()` invokes. <br/> 
+  > Login instance will be freely accessible after `use()` invokes. <br/> 
   > Note that instance **will become unavailable** if `LoginPrompt` does unmount. <br/>
   > Likewise, if `LoginPrompt` mounts *again*, any newly rendered dependents get the latest instance.
 
-- Mount the Provider
+- Mount its Provider
   ```jsx
   export const App = () => {
     return (
@@ -848,12 +845,25 @@ We can make this class usable in the following ways.
 
 <br/>
 
-<h1 id="access-section">Accessing state</h1>
-<br/>
+<h1 id="access-section">Accessing shared state</h1>
+
+Let's recall our example controller we defined up above.
+
+```ts
+export class Central extends VC {
+  foo = 0;
+  bar = 0;
+
+  fooUp = () => this.foo++;
+};
+```
+
+Whether our model is that of a Controller or Singleton will not matter for this exercise. <br/>
+They both present the same, to you the user!
+<br/><br/>
 
 <h2 id="managing-section">Via Hooks</h2>
 <!-- <h3 id="managing-section"><code>get()</code></h3> -->
-
 
 <h3 id="managing-section"><code>tap()</code></h3>
 
@@ -927,10 +937,7 @@ class FunActivity extends VC {
     super();
 
     this.secondsSofar = alreadyMinutes * 60;
-    this.interval = setInterval(
-      () => this.secondsSofar++,
-      1000
-    )
+    this.interval = setInterval(() => this.secondsSofar++, 1000)
   }
 
   /** JSDocs too can help provide description beyond simple 
