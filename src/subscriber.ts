@@ -5,6 +5,7 @@ import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './l
 import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
+import { isFn } from './util';
 
 type Observable = { getDispatch(): Observer };
 
@@ -50,7 +51,7 @@ export function useActiveSubscriber(
     if(name == "didMount")
       subscription.commit();
 
-    if(handler)
+    if(isFn(handler))
       handler.apply(target, args || []);
 
     subscription.parent.emit(name, alias);
@@ -85,7 +86,7 @@ export function useOwnController(
     if(name == "didMount")
       subscription.commit();
 
-    if(handler)
+    if(isFn(handler))
       handler.apply(instance, args || []);
 
     subscription.parent.emit(name, alias);

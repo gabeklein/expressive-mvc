@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
-import { entriesIn, Issues, within } from './util';
+import { entriesIn, isFn, Issues, within } from './util';
 
 const INIT_COMPUTE = Symbol("initial");
 
@@ -180,7 +180,7 @@ export class Observer implements Emitter {
 
       const { value } = desc;
 
-      if(typeof value === "function")
+      if(isFn(value))
         if(/^[A-Z]/.test(key) === false)
             continue;
 

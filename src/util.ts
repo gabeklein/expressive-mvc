@@ -12,6 +12,8 @@ type DefineMultiple<T> = {
   [key: string]: (this: T) => any;
 }
 
+export const isFn = (x: any): x is Function => typeof x == "function";
+
 export function entriesIn<T>(object: T){
   return Object.entries(
     Object.getOwnPropertyDescriptors(object)
