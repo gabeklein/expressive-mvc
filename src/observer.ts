@@ -197,16 +197,21 @@ export class Observer implements Emitter {
   protected monitorRef(
     key: string, ref: ReferenceProperty){
       
+    const { subject } = this;
     const { handler } = ref;
     let current: any = null;
+    let unSet: Callback | undefined;
 
     this.subscribers[key] = new Set();
-    define(this.subject, key, {
+    define(subject, key, {
       value: define({}, "current", {
         get: () => current,
         set: (value) => {
+          if(isFn(unSet))
+            unSet();
           if(isFn(handler))
-            handler.call(this.subject, value);
+            unSet = handler.call(subject, value);
+            
           this.state[key] = current = value;
           this.pending.add(key);
           this.update();

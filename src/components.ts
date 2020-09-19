@@ -27,13 +27,14 @@ export function ControlledValue(
     createElement("span", props, useValue(this, key));
 }
 
-export function setRefProperty<T = any>(onNewValue?: (val: T) => void){
+export function setRefProperty<T = any>(
+  onNewValue?: (val: T) => Callback | undefined){
   return new ReferenceProperty(onNewValue) as { current: T };
 }
 
 export class ReferenceProperty {
   constructor(
-    public handler?: (value: any) => void
+    public handler?: (value: any) => Callback | undefined
   ){}
 }
 

@@ -1,16 +1,22 @@
 import Controller, { test, ref } from "./adapter";
 
 class Subject extends Controller {
-  ref2InvokedWith?: symbol = undefined;
+  checkValue?: any = undefined;
 
   // set generic explicitly as string for test.
   ref1 = ref<string>();
 
-  ref2 = ref<symbol>((value) => {
+  ref2 = ref<symbol>(value => {
     // this callback is syncronous and prior actual update
     // value is a new value, ref2 should still be old
     if(value !== this.ref2.current)
-      this.ref2InvokedWith = value;
+      this.checkValue = value;
+  })
+
+  ref3 = ref<number>(value => {
+    return () => {
+      this.checkValue = true;
+    }
   })
 }
 
@@ -29,10 +35,21 @@ it('invokes callback of ref property', async () => {
   const targetValue = Symbol("inserted object");
   const callback = jest.fn();
 
-  expect(state.ref2InvokedWith).toBe(undefined);
+  expect(state.checkValue).toBe(undefined);
   state.once("ref2", callback);
   state.ref2.current = targetValue;
-  expect(state.ref2InvokedWith).toBe(targetValue);
+  expect(state.checkValue).toBe(targetValue);
   await assertDidUpdate();
   expect(callback).toBeCalledWith(targetValue, "ref2");
+})
+
+it('invokes cleanup callback on reset', async () => {
+  const { state, assertDidUpdate } = test(Subject, ["ref3"]);
+
+  state.ref3.current = 1;
+  await assertDidUpdate();
+  expect(state.checkValue).toBe(undefined);
+  state.ref3.current = 2;
+  await assertDidUpdate();
+  expect(state.checkValue).toBe(true);
 })
