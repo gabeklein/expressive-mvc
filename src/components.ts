@@ -27,6 +27,16 @@ export function ControlledValue(
     createElement("span", props, useValue(this, key));
 }
 
+export function setRefProperty<T = any>(onNewValue?: (val: T) => void){
+  return new ReferenceProperty(onNewValue) as { current: T };
+}
+
+export class ReferenceProperty {
+  constructor(
+    public handler?: (value: any) => void
+  ){}
+}
+
 type onChangeCallback = (v: any, e: any) => any;
 type ControlledInputProps = 
   HTMLProps<HTMLInputElement>

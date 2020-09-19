@@ -6,6 +6,7 @@ import * as Source from "../src";
 import * as Public from "../";
 
 export const get = Source.get as typeof Public.get;
+export const ref = Source.ref as typeof Public.ref;
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;

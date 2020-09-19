@@ -168,6 +168,8 @@ declare class Singleton extends Controller {}
 declare function get<T extends Class> (type: T): InstanceType<T>;
 declare function get<T extends Controller> (type: T, ...args: any[]): T;
 
+declare function ref<T = HTMLElement> (onValue?: (current: T) => void): { current?: T };
+
 declare const Provider: FunctionComponentElement<{
     using: Controller[]
 }>
@@ -182,6 +184,7 @@ export {
 
 export {
     get,
+    ref,
     Controller,
     Controller as VC,
     Controller as default,

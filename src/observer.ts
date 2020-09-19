@@ -1,3 +1,4 @@
+import { ReferenceProperty } from './components';
 import { Controller } from './controller';
 import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
@@ -184,11 +185,34 @@ export class Observer implements Emitter {
       if(isFn(val) && !/^[A-Z]/.test(key))
         continue;
 
-      if(Controller.isTypeof(value))
-        this.subject.attach(key, value);
+      if(val instanceof ReferenceProperty)
+        this.monitorRef(key, val);
+      else if(Controller.isTypeof(val))
+        this.subject.attach(key, val);
       else
-        this.monitorValue(key, value)
+        this.monitorValue(key, val)
     }
+  }
+
+  protected monitorRef(
+    key: string, ref: ReferenceProperty){
+      
+    const { handler } = ref;
+    let current: any = null;
+
+    this.subscribers[key] = new Set();
+    define(this.subject, key, {
+      value: define({}, "current", {
+        get: () => current,
+        set: (value) => {
+          if(isFn(handler))
+            handler.call(this.subject, value);
+          this.state[key] = current = value;
+          this.pending.add(key);
+          this.update();
+        }
+      })
+    })
   }
   
   protected monitorValue(key: string, initial: any){
