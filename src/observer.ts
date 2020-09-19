@@ -4,6 +4,7 @@ import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, within } from './util';
 
 const FLAG_FIRST_COMPUTE = Symbol("is_initial");
+const define = Object.defineProperty;
 
 const Oops = Issues({
   NotTracked: (name) => 
@@ -156,7 +157,7 @@ export class Observer implements Emitter {
     handler?: ((value: any) => any)){
 
     if(handler)
-      Object.defineProperty(this.subject, key, {
+      define(this.subject, key, {
         enumerable: true,
         configurable: false,
         get: () => this.state[key],
@@ -168,21 +169,20 @@ export class Observer implements Emitter {
     );
   }
 
-  public monitorValues(Ignore: any = {}){
+  public monitorValues(ignore: any = {}){
     const entries = entriesIn(this.subject);
 
     for(const [key, desc] of entries){
-      if(key in Ignore)
+      if(key in ignore)
         continue;
 
       if("value" in desc === false)
         continue;
 
-      const { value } = desc;
+      const val = desc.value;
 
-      if(isFn(value))
-        if(/^[A-Z]/.test(key) === false)
-            continue;
+      if(isFn(val) && !/^[A-Z]/.test(key))
+        continue;
 
       if(Controller.isTypeof(value))
         this.subject.attach(key, value);
@@ -230,7 +230,7 @@ export class Observer implements Emitter {
       const compute = getters[key];
       subscribers[key] = new Set();
 
-      Object.defineProperty(subject, key, {
+      define(subject, key, {
         configurable: true,
         set: Oops.NotTracked(key).throw,
         get: this.monitorComputedValue(key, compute)
@@ -269,7 +269,7 @@ export class Observer implements Emitter {
         throw e;
       }
       finally {
-        Object.defineProperty(subject, key, {
+        define(subject, key, {
           set: Oops.NotTracked(key).throw,
           get: () => state[key],
           enumerable: true,
