@@ -3,7 +3,7 @@ import { lifecycleEvents } from './lifecycle';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, within } from './util';
 
-const INIT_COMPUTE = Symbol("initial");
+const FLAG_FIRST_COMPUTE = Symbol("is_initial");
 
 const Oops = Issues({
   NotTracked: (name) => 
@@ -278,7 +278,7 @@ export class Observer implements Emitter {
       }
     }
 
-    within(getStartingValue, INIT_COMPUTE, true);
+    within(getStartingValue, FLAG_FIRST_COMPUTE, true);
 
     return getStartingValue;
   }
@@ -349,7 +349,7 @@ export class Observer implements Emitter {
       const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
       const getter = descriptor && descriptor.get;
 
-      if(getter && INIT_COMPUTE in getter)
+      if(getter && FLAG_FIRST_COMPUTE in getter)
         (<any>getter)(true);
 
       listeners.add(trigger);
