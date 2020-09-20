@@ -13,7 +13,7 @@ class Subject extends Controller {
       this.checkValue = value;
   })
 
-  ref3 = ref<number>(value => {
+  ref3 = ref<number>(() => {
     return () => {
       this.checkValue = true;
     }
@@ -43,7 +43,7 @@ it('invokes callback of ref property', async () => {
   expect(callback).toBeCalledWith(targetValue, "ref2");
 })
 
-it('invokes cleanup callback on reset', async () => {
+it('invokes callback on ref overwrite', async () => {
   const { state, assertDidUpdate } = test(Subject, ["ref3"]);
 
   state.ref3.current = 1;
