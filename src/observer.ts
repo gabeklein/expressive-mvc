@@ -46,8 +46,8 @@ export class Observer implements Emitter {
   constructor(public subject: any){}
   
   protected state = {} as BunchOf<any>;
-  protected pending = new Set<string>();
   protected subscribers = {} as BunchOf<Set<() => void>>
+  protected pending?: Set<string>;
 
   public get values(){
     return Object.assign({}, this.state);
@@ -55,13 +55,6 @@ export class Observer implements Emitter {
 
   public get watched(){
     return Object.keys(this.subscribers);
-  }
-
-  public emit(...keys: string[]){
-    for(const x of keys)
-      this.pending.add(x);
-      
-    this.update();
   }
 
   public on(
@@ -194,6 +187,30 @@ export class Observer implements Emitter {
     }
   }
 
+  public emit(...keys: string[]){
+    if(this.pending)
+      for(const x of keys)
+        this.pending.add(x);
+    else {
+      const batch = this.pending = new Set(keys);
+      setTimeout(() => {
+        this.pending = undefined;
+        this.emitSync(...batch);
+      }, 0);
+    }
+  }
+
+  protected emitSync(...keys: string[]){
+    const queued = new Set<Callback>();
+
+    for(const k of keys)
+      for(const sub of this.subscribers[k] || [])
+        queued.add(sub);
+
+    for(const trigger of queued)
+      trigger();
+  }
+
   protected monitorRef(
     key: string, ref: ReferenceProperty){
       
@@ -213,8 +230,7 @@ export class Observer implements Emitter {
             unSet = handler.call(subject, value);
             
           this.state[key] = current = value;
-          this.pending.add(key);
-          this.update();
+          this.emit(key);
         }
       })
     })
@@ -229,8 +245,7 @@ export class Observer implements Emitter {
           return;
         
       this.state[key] = value;
-      this.pending.add(key);
-      this.update();
+      this.emit(key);
     })
   }
 
@@ -274,16 +289,11 @@ export class Observer implements Emitter {
 
     const onValueDidChange = () => {
       const value = fn.call(subject);
-      const subscribed = subscribers[key] || [];
 
-      if(state[key] === value)
-        return
-
-      state[key] = value;
-      this.pending.add(key);
-
-      for(const onDidUpdate of subscribed)
-        onDidUpdate();
+      if(state[key] !== value){
+        state[key] = value;
+        this.emitSync(key);
+      }
     }
 
     const getStartingValue = (early?: boolean) => {
@@ -323,25 +333,6 @@ export class Observer implements Emitter {
     if(early)
       Oops.ComputedEarly(key).warn();
   };
-
-  protected update(){
-    if(!this.pending.size)
-      return;
-
-    setTimeout(() => {
-      const queued = new Set<Callback>();
-      const { pending: pendingUpdate, subscribers } = this;
-
-      for(const key of pendingUpdate)
-        for(const sub of subscribers[key] || [])
-          queued.add(sub);
-
-      for(const onDidUpdate of queued)
-        onDidUpdate();
-
-      pendingUpdate.clear();
-    }, 0);
-  }
 
   public addListener(
     key: string,
