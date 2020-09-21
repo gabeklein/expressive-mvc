@@ -286,7 +286,7 @@ export class Observer implements Emitter {
         onDidUpdate();
     }
 
-    const getStartingValue = (early = false) => {
+    const getStartingValue = (early?: boolean) => {
       try {
         const sub = new Subscription(this, onValueDidChange);
         const value = state[key] = fn.call(sub.proxy);
@@ -313,7 +313,8 @@ export class Observer implements Emitter {
   }
 
   protected computedDidFail(
-    key: string, early?: boolean){
+    key: string,
+    early?: boolean){
 
     const parent = this.subject.constructor.name;
 
