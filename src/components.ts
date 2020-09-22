@@ -29,6 +29,7 @@ export function ControlledValue(
 
 export function setRefProperty<T = any>(
   onNewValue?: (val: T) => Callback | undefined){
+    
   return new ReferenceProperty(onNewValue) as { current: T };
 }
 

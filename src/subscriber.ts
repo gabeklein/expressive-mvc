@@ -24,8 +24,7 @@ export function usePassiveSubscriber(
   ...path: (string | undefined)[]){
 
   const subscription = useActiveMemo(refresh => {
-    const parent = target.getDispatch();
-    return new Subscription(parent, refresh).focus(path);
+    return new Subscription(target.getDispatch(), refresh).focus(path);
   });
 
   useEffect(() => {
@@ -71,8 +70,10 @@ export function useOwnController(
   let release: Callback | undefined;
 
   const subscription = useActiveMemo(refresh => {
-    const parent = Model.create(args, callback).getDispatch();
-    return new Subscription(parent, refresh);
+    return new Subscription(
+      Model.create(args, callback).getDispatch(),
+      refresh
+    );
   });
 
   useLifecycleEffect((name) => {
