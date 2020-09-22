@@ -1,6 +1,6 @@
 import { ReferenceProperty } from './components';
 import { Controller } from './controller';
-import { lifecycleEvents } from './lifecycle';
+import { lifecycle } from './lifecycle';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, within } from './util';
 
@@ -357,7 +357,7 @@ export class Observer implements Emitter {
       let listeners = this.subscribers[key];
 
       if(!listeners)
-        if(lifecycleEvents.indexOf(key) >= 0)
+        if(Object.values(lifecycle).indexOf(key as any) >= 0)
           listeners = this.manage(key);
         else if(ignoreUndefined){
           this.monitorValue(key, undefined);
