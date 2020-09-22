@@ -146,18 +146,7 @@ export class Observer implements Emitter {
     return release;
   }
 
-  protected manage(
-    key: string,
-    handler?: ((value: any) => any)){
-
-    if(handler)
-      define(this.subject, key, {
-        enumerable: true,
-        configurable: false,
-        get: () => this.state[key],
-        set: handler 
-      })
-
+  protected getManaged(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
@@ -239,14 +228,19 @@ export class Observer implements Emitter {
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
 
-    this.manage(key, (value: any) => {
-      if(this.state[key] === value)
-        if(!Array.isArray(value))
-          return;
-        
-      this.state[key] = value;
-      this.emit(key);
-    })
+    define(this.subject, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => this.state[key],
+      set: (value: any) => {
+        if(this.state[key] === value)
+          if(!Array.isArray(value))
+            return;
+
+        this.state[key] = value;
+        this.emit(key);
+      } 
+    });
   }
 
   public monitorComputed(Ignore?: Class){
@@ -338,12 +332,9 @@ export class Observer implements Emitter {
     key: string,
     callback: Callback){
 
-    let register = this.manage(key);
-
+    let register = this.getManaged(key);
     register.add(callback);
-
-    return () =>
-      register.delete(callback);
+    return () => register.delete(callback);
   }
 
   public addMultipleListener(
@@ -351,14 +342,14 @@ export class Observer implements Emitter {
     callback: (didUpdate: string) => void,
     ignoreUndefined = true){
 
-    let clear: Function[] = [];
+    let onDone: Function[] = [];
 
     for(const key of keys){
       let listeners = this.subscribers[key];
 
       if(!listeners)
         if(Object.values(lifecycle).indexOf(key as any) >= 0)
-          listeners = this.manage(key);
+          listeners = this.getManaged(key);
         else if(ignoreUndefined){
           this.monitorValue(key, undefined);
           listeners = this.subscribers[key];
@@ -371,15 +362,15 @@ export class Observer implements Emitter {
       const getter = descriptor && descriptor.get;
 
       if(getter && FLAG_FIRST_COMPUTE in getter)
-        (<any>getter)(true);
+        (getter as any)(true);
 
       listeners.add(trigger);
-      clear.push(() => listeners.delete(trigger));
+      onDone.push(() => listeners.delete(trigger));
     }
 
     return () => {
-      clear.forEach(x => x());
-      clear = [];
+      onDone.forEach(x => x());
+      onDone = [];
     };
   } 
 }
