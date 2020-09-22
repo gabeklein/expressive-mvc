@@ -341,9 +341,7 @@ export class Observer implements Emitter {
     let register = this.manage(key);
 
     register.add(callback);
-
-    return () =>
-      register.delete(callback);
+    return () => register.delete(callback);
   }
 
   public addMultipleListener(
@@ -351,7 +349,7 @@ export class Observer implements Emitter {
     callback: (didUpdate: string) => void,
     ignoreUndefined = true){
 
-    let clear: Function[] = [];
+    let onDone: Function[] = [];
 
     for(const key of keys){
       let listeners = this.subscribers[key];
@@ -371,15 +369,15 @@ export class Observer implements Emitter {
       const getter = descriptor && descriptor.get;
 
       if(getter && FLAG_FIRST_COMPUTE in getter)
-        (<any>getter)(true);
+        (getter as any)(true);
 
       listeners.add(trigger);
-      clear.push(() => listeners.delete(trigger));
+      onDone.push(() => listeners.delete(trigger));
     }
 
     return () => {
-      clear.forEach(x => x());
-      clear = [];
+      onDone.forEach(x => x());
+      onDone = [];
     };
   } 
 }

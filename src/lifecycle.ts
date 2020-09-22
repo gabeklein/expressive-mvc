@@ -29,7 +29,7 @@ export const lifecycleEvents = [
   "didMount"
 ];
 
-const aliasFor = (prefix: string) => {
+function aliasFor(prefix: string){
   const map = {} as BunchOf<string>;
 
   for(const name of lifecycleEvents)
@@ -46,9 +46,7 @@ export function useLifecycleEffect(
 
   let isFirstRender: true | undefined;
 
-  onEvent = useMemo(() => (
-    isFirstRender = true, onEvent
-  ), []);
+  onEvent = useMemo(() => (isFirstRender = true, onEvent), []);
 
   onEvent(isFirstRender ? "willMount" : "willUpdate");
   onEvent("willRender");
