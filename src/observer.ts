@@ -146,18 +146,7 @@ export class Observer implements Emitter {
     return release;
   }
 
-  protected manage(
-    key: string,
-    handler?: ((value: any) => any)){
-
-    if(handler)
-      define(this.subject, key, {
-        enumerable: true,
-        configurable: false,
-        get: () => this.state[key],
-        set: handler 
-      })
-
+  protected manage(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
@@ -238,14 +227,13 @@ export class Observer implements Emitter {
   
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
+    this.manage(key);
 
-    this.manage(key, (value: any) => {
-      if(this.state[key] === value)
-        if(!Array.isArray(value))
-          return;
-        
-      this.state[key] = value;
-      this.emit(key);
+    define(this.subject, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => this.state[key],
+      set: (value: any) => this.update(key, value)
     })
   }
 
