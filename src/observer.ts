@@ -22,7 +22,10 @@ const Oops = Issues({
   ComputedEarly: (property) => 
     `Note: Computed values are usually only calculated after first ` +
     `access, except where accessed implicitly by "on" or "export". Your ` + 
-    `'${property}' getter may have run earlier than intended because of that.`
+    `'${property}' getter may have run earlier than intended because of that.`,
+
+  BadReturn: () =>
+    `Callback for property-update may only return a function.`
 })
 
 type HandleUpdatedValues =
@@ -225,13 +228,17 @@ export class Observer implements Emitter {
       value: define({}, "current", {
         get: () => current,
         set: (value) => {
-          if(isFn(unSet))
+          if(this.update(key, value))
+            return;
+
+          if(unSet)
             unSet();
+
           if(isFn(handler))
             unSet = handler.call(subject, value);
-            
-          this.state[key] = current = value;
-          this.emit(key);
+
+          if(unSet && !isFn(unSet))
+            throw Oops.BadReturn()
         }
       })
     })
