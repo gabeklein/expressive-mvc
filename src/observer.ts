@@ -57,6 +57,18 @@ export class Observer implements Emitter {
     return Object.keys(this.subscribers);
   }
 
+  public update(k: string | BunchOf<any>, value?: any){
+    if(typeof k == "object")
+      for(const key in k)
+        this.update(key, k[key]);
+    else if(this.state[k] !== value){
+      this.state[k] = value;
+      this.emit(k);
+    }
+    else
+      return true;
+  }
+
   public on(
     target: string,
     listener: HandleUpdatedValue){
