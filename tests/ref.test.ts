@@ -7,10 +7,7 @@ class Subject extends Controller {
   ref1 = ref<string>();
 
   ref2 = ref<symbol>(value => {
-    // this callback is syncronous and prior actual update
-    // value is a new value, ref2 should still be old
-    if(value !== this.ref2.current)
-      this.checkValue = value;
+    this.checkValue = value;
   })
 
   ref3 = ref<number>(() => {

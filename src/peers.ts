@@ -2,22 +2,11 @@ import { Context, useContext } from 'react';
 
 import { Controller } from './controller';
 import { CONTEXT_MULTIPROVIDER } from './provider';
-import { useActiveSubscriber } from './subscriber';
 import { define, entriesIn } from './util';
 
 export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
 
 type PeerContext = [string, Context<Controller>];
-
-export function getPeerController(
-  from: Controller | typeof Controller,
-  ...args: any[]){
-
-  if(from instanceof Controller)
-    return useActiveSubscriber(from, args)
-  else
-    return from;
-}
 
 export function ensurePeerControllers(instance: Controller){
   if(TEMP_CONTEXT in instance){

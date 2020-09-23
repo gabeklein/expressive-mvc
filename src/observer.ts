@@ -1,5 +1,4 @@
-import { ReferenceProperty } from './components';
-import { Controller } from './controller';
+import { Placeholder } from './directives';
 import { lifecycle } from './lifecycle';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, within } from './util';
@@ -161,6 +160,37 @@ export class Observer implements Emitter {
     return release;
   }
 
+  public accessor(
+    key: string,
+    callback?: EffectCallback){
+      
+    this.manage(key);
+    return {
+      get: () => this.state[key],
+      set: callback
+        ? this.setIntercept(key, callback)
+        : (value: any) => this.update(key, value)
+    }
+  }
+
+  protected setIntercept(
+    key: string,
+    handler: EffectCallback){
+
+    let unSet: Callback | undefined;
+
+    return (value: any) => {
+      if(this.update(key, value))
+        return;
+
+      unSet && unSet();
+      unSet = handler.call(this.subject, value);
+
+      if(unSet && !isFn(unSet))
+        throw Oops.BadReturn()
+    }
+  }
+
   protected manage(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
@@ -178,10 +208,8 @@ export class Observer implements Emitter {
       || isFn(value) && !/^[A-Z]/.test(key))
         continue;
 
-      if(val instanceof ReferenceProperty)
-        this.monitorRef(key, value);
-      else if(Controller.isTypeof(value))
-        this.subject.attach(key, value);
+      if(value instanceof Placeholder)
+        value.applyTo(this, key);
       else
         this.monitorValue(key, value);
     }
@@ -211,35 +239,6 @@ export class Observer implements Emitter {
       trigger();
   }
 
-  protected monitorRef(
-    key: string, ref: ReferenceProperty){
-      
-    const { subject } = this;
-    const { handler } = ref;
-    let current: any = null;
-    let unSet: Callback | undefined;
-
-    this.subscribers[key] = new Set();
-    define(subject, key, {
-      value: define({}, "current", {
-        get: () => current,
-        set: (value) => {
-          if(this.update(key, value))
-            return;
-
-          if(unSet)
-            unSet();
-
-          if(isFn(handler))
-            unSet = handler.call(subject, value);
-
-          if(unSet && !isFn(unSet))
-            throw Oops.BadReturn()
-        }
-      })
-    })
-  }
-  
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
     this.manage(key);
@@ -358,6 +357,7 @@ export class Observer implements Emitter {
       let listeners = this.subscribers[key];
 
       if(!listeners)
+        // this doesn't cover aliases
         if(Object.values(lifecycle).indexOf(key as any) >= 0)
           listeners = this.manage(key);
         else if(ignoreUndefined){

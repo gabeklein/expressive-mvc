@@ -166,7 +166,10 @@ declare class Controller {
 declare class Singleton extends Controller {}
 
 declare function get<T extends Class> (type: T): InstanceType<T>;
-declare function get<T extends Controller> (type: T, ...args: any[]): T;
+
+declare function set<T = any> (
+    onValue: (current: T) => (() => void) | void
+): T | undefined;
 
 declare function ref<T = HTMLElement> (
     onValue?: (current: T) => (() => void) | void
@@ -186,6 +189,7 @@ export {
 
 export {
     get,
+    set,
     ref,
     Controller,
     Controller as VC,
