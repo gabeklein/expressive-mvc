@@ -264,7 +264,7 @@ export class Observer implements Emitter {
       const entries = entriesIn(search);
 
       for(const [key, item] of entries)
-        if(key == "constructor" || key in this.state || key in getters)
+        if(key == "constructor" || key in this.subscribers || key in getters)
           continue;
         else if(item.get)
           getters[key] = item.get;
