@@ -171,23 +171,19 @@ export class Observer implements Emitter {
     const entries = entriesIn(this.subject);
 
     for(const [key, desc] of entries){
-      if(key in ignore)
-        continue;
+      const { value } = desc;
 
-      if("value" in desc === false)
-        continue;
-
-      const val = desc.value;
-
-      if(isFn(val) && !/^[A-Z]/.test(key))
+      if(key in ignore
+      || "value" in desc == false
+      || isFn(value) && !/^[A-Z]/.test(key))
         continue;
 
       if(val instanceof ReferenceProperty)
-        this.monitorRef(key, val);
-      else if(Controller.isTypeof(val))
-        this.subject.attach(key, val);
+        this.monitorRef(key, value);
+      else if(Controller.isTypeof(value))
+        this.subject.attach(key, value);
       else
-        this.monitorValue(key, val)
+        this.monitorValue(key, value);
     }
   }
 
