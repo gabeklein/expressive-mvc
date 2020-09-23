@@ -3,7 +3,7 @@ import Controller, { test, ref } from "./adapter";
 class Subject extends Controller {
   checkValue?: any = undefined;
 
-  // set generic explicitly as string for test.
+  // set explicitly as a string for this test.
   ref1 = ref<string>();
 
   ref2 = ref<symbol>(value => {
