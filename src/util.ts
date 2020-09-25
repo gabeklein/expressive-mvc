@@ -76,6 +76,11 @@ type Params<T> = T extends (... args: infer T) => any ? T : never;
 type MessageVariable = string | number | boolean | null;
 
 class Issue extends Error {
+  constructor(message: string){
+    super(message);
+    this.stack = this.stack!.replace(/\n.+/, "");
+  }
+
   warn = () => { console.warn(this.message) }
   throw = (): never => { throw this }
 }

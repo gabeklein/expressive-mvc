@@ -3,14 +3,11 @@ import Controller, { test, ref } from "./adapter";
 class Subject extends Controller {
   checkValue?: any = undefined;
 
-  // set generic explicitly as string for test.
+  // set explicitly as a string for this test.
   ref1 = ref<string>();
 
   ref2 = ref<symbol>(value => {
-    // this callback is syncronous and prior actual update
-    // value is a new value, ref2 should still be old
-    if(value !== this.ref2.current)
-      this.checkValue = value;
+    this.checkValue = value;
   })
 
   ref3 = ref<number>(() => {

@@ -15,7 +15,7 @@ it('will export with callback run every update', async () => {
 
   state.export(callback);
 
-  // should not call without change having occured
+  // should not call without change having occurred
   expect(callback).not.toHaveBeenCalled();
 
   state.seconds = 90;

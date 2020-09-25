@@ -14,6 +14,10 @@ type Any = { [key: string]: any };
  */
 type Callback = () => void;
 
+
+type EffectCallback =
+  (val: any) => Callback | undefined;
+
 /**
  * Workaround to retreive `typeof this`
  * in static methods using generics.

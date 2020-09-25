@@ -1,5 +1,4 @@
-import { ReferenceProperty } from './components';
-import { Controller } from './controller';
+import { Placeholder } from './directives';
 import { lifecycle } from './lifecycle';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, within } from './util';
@@ -22,7 +21,10 @@ const Oops = Issues({
   ComputedEarly: (property) => 
     `Note: Computed values are usually only calculated after first ` +
     `access, except where accessed implicitly by "on" or "export". Your ` + 
-    `'${property}' getter may have run earlier than intended because of that.`
+    `'${property}' getter may have run earlier than intended because of that.`,
+
+  BadReturn: () =>
+    `Callback for property-update may only return a function.`
 })
 
 type HandleUpdatedValues =
@@ -55,6 +57,18 @@ export class Observer implements Emitter {
 
   public get watched(){
     return Object.keys(this.subscribers);
+  }
+
+  public update(k: string | BunchOf<any>, value?: any){
+    if(typeof k == "object")
+      for(const key in k)
+        this.update(key, k[key]);
+    else if(this.state[k] !== value){
+      this.state[k] = value;
+      this.emit(k);
+    }
+    else
+      return true;
   }
 
   public on(
@@ -146,7 +160,38 @@ export class Observer implements Emitter {
     return release;
   }
 
-  protected getManaged(key: string){
+  public accessor(
+    key: string,
+    callback?: EffectCallback){
+      
+    this.manage(key);
+    return {
+      get: () => this.state[key],
+      set: callback
+        ? this.setIntercept(key, callback)
+        : (value: any) => this.update(key, value)
+    }
+  }
+
+  protected setIntercept(
+    key: string,
+    handler: EffectCallback){
+
+    let unSet: Callback | undefined;
+
+    return (value: any) => {
+      if(this.update(key, value))
+        return;
+
+      unSet && unSet();
+      unSet = handler.call(this.subject, value);
+
+      if(unSet && !isFn(unSet))
+        throw Oops.BadReturn()
+    }
+  }
+
+  protected manage(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
@@ -156,23 +201,17 @@ export class Observer implements Emitter {
     const entries = entriesIn(this.subject);
 
     for(const [key, desc] of entries){
-      if(key in ignore)
+      const { value } = desc;
+
+      if(key in ignore
+      || "value" in desc == false
+      || isFn(value) && !/^[A-Z]/.test(key))
         continue;
 
-      if("value" in desc === false)
-        continue;
-
-      const val = desc.value;
-
-      if(isFn(val) && !/^[A-Z]/.test(key))
-        continue;
-
-      if(val instanceof ReferenceProperty)
-        this.monitorRef(key, val);
-      else if(Controller.isTypeof(val))
-        this.subject.attach(key, val);
+      if(value instanceof Placeholder)
+        value.applyTo(this, key);
       else
-        this.monitorValue(key, val)
+        this.monitorValue(key, value);
     }
   }
 
@@ -200,47 +239,16 @@ export class Observer implements Emitter {
       trigger();
   }
 
-  protected monitorRef(
-    key: string, ref: ReferenceProperty){
-      
-    const { subject } = this;
-    const { handler } = ref;
-    let current: any = null;
-    let unSet: Callback | undefined;
-
-    this.subscribers[key] = new Set();
-    define(subject, key, {
-      value: define({}, "current", {
-        get: () => current,
-        set: (value) => {
-          if(isFn(unSet))
-            unSet();
-          if(isFn(handler))
-            unSet = handler.call(subject, value);
-            
-          this.state[key] = current = value;
-          this.emit(key);
-        }
-      })
-    })
-  }
-  
   protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
+    this.manage(key);
 
     define(this.subject, key, {
       enumerable: true,
       configurable: false,
       get: () => this.state[key],
-      set: (value: any) => {
-        if(this.state[key] === value)
-          if(!Array.isArray(value))
-            return;
-
-        this.state[key] = value;
-        this.emit(key);
-      } 
-    });
+      set: (value: any) => this.update(key, value)
+    })
   }
 
   public monitorComputed(Ignore?: Class){
@@ -256,7 +264,7 @@ export class Observer implements Emitter {
       const entries = entriesIn(search);
 
       for(const [key, item] of entries)
-        if(key == "constructor" || key in this.state || key in getters)
+        if(key == "constructor" || key in this.subscribers || key in getters)
           continue;
         else if(item.get)
           getters[key] = item.get;
@@ -332,7 +340,7 @@ export class Observer implements Emitter {
     key: string,
     callback: Callback){
 
-    let register = this.getManaged(key);
+    let register = this.manage(key);
     register.add(callback);
     return () => register.delete(callback);
   }
@@ -348,8 +356,9 @@ export class Observer implements Emitter {
       let listeners = this.subscribers[key];
 
       if(!listeners)
+        // this doesn't cover aliases
         if(Object.values(lifecycle).indexOf(key as any) >= 0)
-          listeners = this.getManaged(key);
+          listeners = this.manage(key);
         else if(ignoreUndefined){
           this.monitorValue(key, undefined);
           listeners = this.subscribers[key];

@@ -1,6 +1,6 @@
 {
   "name": "deep-state",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "Easy to use state controllers using classes and hooks",
   "author": {
     "name": "Gabe Klein",
@@ -29,6 +29,7 @@
     "start": "npm run --prefix examples start",
     "prepare": "npm install --prefix examples",
     "prebuild": "rm -rf lib/",
+    "publish:beta": "npm version prerelease --preid=beta",
     "preversion": "npm run build; jest",
     "postversion": "npm publish",
     "postpublish": "git push; git push --tags; rm -rf lib",
