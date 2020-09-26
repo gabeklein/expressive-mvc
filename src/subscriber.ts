@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Controller } from './controller';
-import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
+import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
@@ -47,7 +47,7 @@ export function useActiveSubscriber(
     const alias = subscriberLifecycle(name);
     const handler = target[alias] || target[name];
 
-    if(name == "didMount")
+    if(name == lifecycle.DID_MOUNT)
       subscription.commit();
 
     if(isFn(handler))
@@ -55,7 +55,7 @@ export function useActiveSubscriber(
 
     subscription.parent.emit(name, alias);
 
-    if(name == "willUnmount")
+    if(name == lifecycle.WILL_UNMOUNT)
       subscription.release();
   });
   
@@ -81,10 +81,10 @@ export function useOwnController(
     const instance = subscription.parent.subject as Controller;
     const handler = instance[alias] || instance[name];
 
-    if(name == "willRender")
+    if(name == lifecycle.WILL_RENDER)
       release = ensurePeerControllers(instance);
 
-    if(name == "didMount")
+    if(name == lifecycle.DID_MOUNT)
       subscription.commit();
 
     if(isFn(handler))
@@ -92,7 +92,7 @@ export function useOwnController(
 
     subscription.parent.emit(name, alias);
 
-    if(name == "willUnmount"){
+    if(name == lifecycle.WILL_UNMOUNT){
       subscription.release();
 
       if(release)
