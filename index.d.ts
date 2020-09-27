@@ -6,6 +6,7 @@ import {
     FunctionComponent,
 } from 'react';
 
+type Callback = () => void;
 type Class = new (...args: any) => any;
 type Expecting<A extends any[]> = new(...args: A) => any
 type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
@@ -25,13 +26,13 @@ type HandleUpdatedValues<T extends object, P extends keyof T> =
  * Able to be subscribed to, on a per-value basis to know when properties are updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): () => void;
+    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): Callback;
   
     once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
     once<T extends keyof this>(property: T): Promise<this[T]>;
 
-    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
 
     refresh(...keys: string[]): void;
 }
@@ -52,7 +53,7 @@ interface MC {
     willUnmount?(...args: any[]): void;
     didFocus?(parent: Controller, as: string): void;
     willLoseFocus?(parent: Controller, as: string): void;
-    willDestroy(callback?: () => void): void;
+    willDestroy(callback?: Callback): void;
 
     elementWillRender?(...args: any[]): void;
     elementWillMount?(...args: any[]): void;
@@ -101,9 +102,9 @@ interface IC {
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
     export(): { [P in keyof this]: this[P] };
-    export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): () => void;
+    export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): Callback;
     export<P extends keyof this>(keys: P[]): Pick<this, P>;
-    export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): () => void;
+    export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): Callback;
 }
 
 /**
@@ -168,11 +169,11 @@ declare class Singleton extends Controller {}
 declare function get<T extends Class> (type: T): InstanceType<T>;
 
 declare function set<T = any> (
-    onValue: (current: T) => (() => void) | void
+    onValue: (current: T) => Callback | void
 ): T | undefined;
 
 declare function ref<T = HTMLElement> (
-    onValue?: (current: T) => (() => void) | void
+    onValue?: (current: T) => Callback | void
 ): { current?: T };
 
 declare const Provider: FunctionComponentElement<{
