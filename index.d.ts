@@ -19,6 +19,9 @@ type HandleUpdatedValue<T extends object, P extends keyof T> =
 type HandleUpdatedValues<T extends object, P extends keyof T> = 
     (this: T, values: Pick<T, P>, changed: P[]) => void
 
+type Recursive<T> = { [P in keyof T]: Recursive<T> };
+type Selector<T> = (select: Recursive<T>) => void;
+
 /**
  * Observable Instance
  * 
@@ -26,13 +29,14 @@ type HandleUpdatedValues<T extends object, P extends keyof T> =
  * Able to be subscribed to, on a per-value basis to know when properties are updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>): Callback;
+    on<P extends keyof this>(property: P | P[] | Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
   
-    once<T extends keyof this>(property: T, listener: HandleUpdatedValue<this, T>): void;
-    once<T extends keyof this>(property: T): Promise<this[T]>;
+    once<P extends keyof this>(property: P | P[] | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
+    once<P extends keyof this>(property: P | P[] | Selector<this>): Promise<this[P]>;
 
-    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+    watch<P extends keyof this>(select: Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
     watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
 
     refresh(...keys: string[]): void;
 }

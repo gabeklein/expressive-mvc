@@ -1,11 +1,13 @@
+const { defineProperty } = Object;
+
 export function define(target: {}, values: {}): void;
 export function define(target: {}, key: string | symbol, value: any): void;
 export function define(target: {}, kv: {} | string | symbol, v?: {}){
   if(typeof kv == "string" || typeof kv == "symbol")
-    Object.defineProperty(target, kv, { value: v })
+    defineProperty(target, kv, { value: v })
   else
     for(const [key, value] of Object.entries(kv))
-      Object.defineProperty(target, key, { value });
+      defineProperty(target, key, { value });
 }
 
 type DefineMultiple<T> = {
@@ -18,6 +20,23 @@ export function entriesIn<T>(object: T){
   return Object.entries(
     Object.getOwnPropertyDescriptors(object)
   )
+}
+
+export function listAccess(
+  available: string[],
+  processor: (x: Recursive) => void){
+
+  const found = new Set<string>();
+  const spy = {} as Recursive;
+
+  for(const key of available)
+    defineProperty(spy, key, {
+      get: () => (found.add(key), spy)
+    });
+
+  processor(spy);
+
+  return Array.from(found);
 }
 
 export function defineAtNeed<T>(
@@ -40,11 +59,11 @@ export function defineAtNeed<T>(
     for(const k in property)
       defineAtNeed(object, k, property[k]);
   else
-    Object.defineProperty(object, property, { 
+    defineProperty(object, property, { 
       configurable: true,
       get: function(){
         const value = init!.call(this);
-        Object.defineProperty(this, property, { value });
+        defineProperty(this, property, { value });
         return value;
       }
     });

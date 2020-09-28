@@ -25,3 +25,7 @@ type EffectCallback =
 type Class = new(...args: any[]) => any;
 
 type maybeStrings = Array<string | undefined>;
+
+type Recursive<T = any> = { [P in keyof T]: Recursive<T> };
+
+type Selector<T = any>= (list: Recursive<T>) => void;

@@ -1,7 +1,7 @@
 import { Placeholder } from './directives';
 import { lifecycle } from './lifecycle';
 import { Subscription } from './subscription';
-import { entriesIn, isFn, Issues, within } from './util';
+import { entriesIn, isFn, Issues, listAccess, within } from './util';
 
 const FLAG_FIRST_COMPUTE = Symbol("is_initial");
 const define = Object.defineProperty;
@@ -35,13 +35,9 @@ type HandleUpdatedValue
   (this: T, value: T[P], changed: P) => void;
 
 export interface Emitter {
-  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
-  
-  once(target: string, listener: HandleUpdatedValue<this, any>): void;
-  once(target: string): Promise<any> | undefined;
-
-  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+  on(select: string | Selector, listener: HandleUpdatedValue): Callback;
+  once(select: string | string[] | Selector, listener: HandleUpdatedValue): Promise<any> | Callback;
+  watch(select: string | string[] | Selector, listener: HandleUpdatedValue, once?: boolean): () => void;
 }
 
 export class Observer implements Emitter {
@@ -59,42 +55,60 @@ export class Observer implements Emitter {
     return Object.keys(this.subscribers);
   }
 
-  public update(k: string | BunchOf<any>, value?: any){
-    if(typeof k == "object")
-      for(const key in k)
-        this.update(key, k[key]);
-    else if(this.state[k] !== value){
-      this.state[k] = value;
-      this.emit(k);
+  public update(
+    select: string | string[] | Selector | BunchOf<any>,
+    value?: any){
+
+    switch(typeof select){
+      case "string": {
+        if(arguments.length > 1)
+          if(this.state[select] === value)
+            return true;
+          else
+            this.state[select] = value;
+        this.emit(select);
+        break;
+      }
+
+      case "function":
+        select = this.select(select as any);
+
+      case "object":
+        if(Array.isArray(select))
+          select.forEach(k => this.emit(k))
+        else
+          for(const key in select)
+            this.update(key, select[key]);
     }
-    else
-      return true;
   }
 
   public on(
-    target: string,
+    select: string | string[] | Selector,
     listener: HandleUpdatedValue){
 
-    return this.watch(target, listener, false, false);
+    return this.watch(select, listener, false, false);
   }
 
   public once(
-    target: string,
+    select: string | string[] | Selector,
     listener?: HandleUpdatedValue){
 
     if(listener)
-      this.watch(target, listener, true, false);
+      return this.watch(select, listener, true, false);
     else
       return new Promise(resolve => {
-        this.watch(target, resolve, true, false)
+        this.watch(select, resolve, true, false)
       });
   }
 
-  public pick(keys?: string[]){
+  public pick(select?: string[] | Selector){
     const acc = {} as BunchOf<any>;
 
-    if(keys)
-      for(const key of keys)
+    if(isFn(select))
+      select = this.select(select);
+
+    if(select)
+      for(const key of select)
         acc[key] = within(this.subject, key);
 
     else {
@@ -109,10 +123,11 @@ export class Observer implements Emitter {
   }
 
   public feed(
-    keys: string[],
+    select: string[] | Selector,
     observer: HandleUpdatedValues,
     fireInitial?: boolean){
 
+    const keys = isFn(select) ? this.select(select) : select;
     const pending = new Set<string>();
 
     const callback = () => {
@@ -139,23 +154,23 @@ export class Observer implements Emitter {
   }
 
   public watch(
-    watch: string | string[],
+    watch: string | string[] | Selector,
     handler: (value: any, key: string) => void,
     once?: boolean,
     ignoreUndefined?: boolean){
 
+    if(isFn(watch))
+      watch = this.select(watch);
     if(typeof watch == "string")
       watch = [watch];
 
-    const onUpdate = (key: string) => {
-      if(once)
-        release();
-        
+    const callback = (key: string) => {
+      if(once) release();
       handler.call(this.subject, this.state[key], key);
     }
 
     const release =
-      this.addMultipleListener(watch, onUpdate, ignoreUndefined);
+      this.addMultipleListener(watch, callback, ignoreUndefined);
 
     return release;
   }
@@ -171,6 +186,10 @@ export class Observer implements Emitter {
         ? this.setIntercept(key, callback)
         : (value: any) => this.update(key, value)
     }
+  }
+
+  protected select(fn: Selector){
+    return listAccess(this.watched, fn);
   }
 
   protected setIntercept(
