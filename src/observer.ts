@@ -270,44 +270,37 @@ export class Observer implements Emitter {
 
   public monitorComputed(Ignore?: Class){
     const { subscribers, subject } = this;
-    
     const getters = {} as BunchOf<() => any>;
-    let search = subject;
 
-    while(
-      search !== Ignore &&
-      search.constructor !== Ignore
-    ){
-      const entries = entriesIn(search);
-
-      for(const [key, item] of entries)
-        if(key == "constructor" || key in this.subscribers || key in getters)
+    for(
+      let sub = subject; 
+      sub !== Ignore && sub.constructor !== Ignore;
+      sub = Object.getPrototypeOf(sub)
+    )
+      for(const [key, item] of entriesIn(sub))
+        if(!item.get
+        || key == "constructor"
+        || key in subscribers 
+        || key in getters)
           continue;
-        else if(item.get)
+        else 
           getters[key] = item.get;
 
-      search = Object.getPrototypeOf(search)
-    }
-
-    for(const key in getters){
-      const compute = getters[key];
-      subscribers[key] = new Set();
-
+    for(const key in getters)
       define(subject, key, {
         configurable: true,
         set: Oops.NotTracked(key).throw,
-        get: this.monitorComputedValue(key, compute)
+        get: this.monitorComputedValue(key, getters[key])
       })
-    }
   }
 
-  protected monitorComputedValue(key: string, fn: () => any){
-    const { state, subscribers, subject } = this;
+  protected monitorComputedValue(key: string, compute: () => any){
+    const { state, subject } = this;
 
-    subscribers[key] = new Set();
+    this.manage(key);
 
     const onValueDidChange = () => {
-      const value = fn.call(subject);
+      const value = compute.call(subject);
 
       if(state[key] !== value){
         state[key] = value;
@@ -318,7 +311,7 @@ export class Observer implements Emitter {
     const getStartingValue = (early?: boolean) => {
       try {
         const sub = new Subscription(this, onValueDidChange);
-        const value = state[key] = fn.call(sub.proxy);
+        const value = state[key] = compute.call(sub.proxy);
         sub.commit();
         return value;
       }
