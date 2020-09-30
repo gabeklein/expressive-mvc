@@ -205,7 +205,7 @@ export class Observer implements Emitter {
       unSet && unSet();
       unSet = handler.call(this.subject, value);
 
-      if(unSet && !isFn(unSet))
+      if(!isFn(unSet) && unSet)
         throw Oops.BadReturn()
     }
   }
