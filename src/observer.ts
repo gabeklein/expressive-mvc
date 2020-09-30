@@ -1,9 +1,8 @@
 import { Placeholder } from './directives';
-import { lifecycle } from './lifecycle';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, Issues, listAccess, within } from './util';
 
-const FLAG_FIRST_COMPUTE = Symbol("is_initial");
+const FIRST_COMPUTE = Symbol("is_initial");
 const define = Object.defineProperty;
 
 const Oops = Issues({
@@ -86,7 +85,7 @@ export class Observer implements Emitter {
     select: string | string[] | Selector,
     listener: HandleUpdatedValue){
 
-    return this.watch(select, listener, false, false);
+    return this.watch(select, listener, false);
   }
 
   public once(
@@ -94,10 +93,10 @@ export class Observer implements Emitter {
     listener?: HandleUpdatedValue){
 
     if(listener)
-      return this.watch(select, listener, true, false);
+      return this.watch(select, listener, true);
     else
       return new Promise(resolve => {
-        this.watch(select, resolve, true, false)
+        this.watch(select, resolve, true)
       });
   }
 
@@ -156,8 +155,7 @@ export class Observer implements Emitter {
   public watch(
     watch: string | string[] | Selector,
     handler: (value: any, key: string) => void,
-    once?: boolean,
-    ignoreUndefined?: boolean){
+    once?: boolean){
 
     if(isFn(watch))
       watch = this.select(watch);
@@ -170,7 +168,7 @@ export class Observer implements Emitter {
     }
 
     const release =
-      this.addMultipleListener(watch, callback, ignoreUndefined);
+      this.addMultipleListener(watch, callback);
 
     return release;
   }
@@ -338,7 +336,7 @@ export class Observer implements Emitter {
       }
     }
 
-    within(getStartingValue, FLAG_FIRST_COMPUTE, true);
+    within(getStartingValue, FIRST_COMPUTE, true);
 
     return getStartingValue;
   }
@@ -359,46 +357,28 @@ export class Observer implements Emitter {
     key: string,
     callback: Callback){
 
-    let register = this.manage(key);
-    register.add(callback);
-    return () => register.delete(callback);
+    const listeners = this.manage(key);
+    forceIfComputed(this.subject, key);
+
+    listeners.add(callback);
+    return () => listeners.delete(callback);
   }
 
   public addMultipleListener(
     keys: string[],
-    callback: (didUpdate: string) => void,
-    ignoreUndefined = true){
+    callback: (didUpdate: string) => void){
 
-    let onDone: Function[] = [];
+    const onDone = keys.map(k => 
+      this.addListener(k, () => callback(k))
+    )
 
-    for(const key of keys){
-      let listeners = this.subscribers[key];
+    return () => onDone.forEach(gc => gc());
+  }
+}
 
-      if(!listeners)
-        // this doesn't cover aliases
-        if(Object.values(lifecycle).indexOf(key as any) >= 0)
-          listeners = this.manage(key);
-        else if(ignoreUndefined){
-          this.monitorValue(key, undefined);
-          listeners = this.subscribers[key];
-        }
-        else
-          throw Oops.NotTracked(key);
-
-      const trigger = () => callback(key);
-      const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
-      const getter = descriptor && descriptor.get;
-
-      if(getter && FLAG_FIRST_COMPUTE in getter)
-        (getter as any)(true);
-
-      listeners.add(trigger);
-      onDone.push(() => listeners.delete(trigger));
-    }
-
-    return () => {
-      onDone.forEach(x => x());
-      onDone = [];
-    };
-  } 
+function forceIfComputed(source: {}, key: string){
+  const descriptor = Object.getOwnPropertyDescriptor(source, key);
+  const getter = descriptor && descriptor.get;
+  if(getter && FIRST_COMPUTE in getter)
+    (getter as Function)(true);
 }
