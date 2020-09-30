@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Controller } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observer } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
-import { isFn } from './util';
+import { isFn, within } from './util';
 
 type Observable = { getDispatch(): Observer };
 
@@ -17,6 +17,22 @@ function useActiveMemo<T>(
   ]);
 
   return state[0] as T;
+}
+
+export function usePassiveGetter(
+  target: Controller,
+  key?: string
+){
+  return useMemo(() => {
+    if(key)
+      return within(target, key);
+    else
+      return {
+        get: target,
+        set: target,
+        ...target
+      }
+  }, [])
 }
 
 export function usePassiveSubscriber(

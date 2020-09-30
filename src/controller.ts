@@ -1,10 +1,10 @@
-import { Context, createContext, FunctionComponent, ProviderProps, useContext, useMemo } from 'react';
+import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
 import { Emitter, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
-import { useActiveSubscriber, useOwnController, usePassiveSubscriber } from './subscriber';
+import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
 import { define, defineAtNeed, Issues, within } from './util';
 
 export const OBSERVER = Symbol("object_observer");
@@ -214,18 +214,7 @@ export class Controller {
   }
 
   static get(key?: string){
-    const instance = this.find();
-
-    return useMemo(() => {
-      if(key)
-        return within(instance, key);
-      else
-        return {
-          get: instance,
-          set: instance,
-          ...instance
-        }
-    }, [])
+    return usePassiveGetter(this.find(), key);
   }
 
   static tap(...keys: maybeStrings){
