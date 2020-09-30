@@ -56,11 +56,16 @@ export class Observer implements Emitter {
     value?: any){
 
     if(typeof select == "string"){
+      let set = this.state;
+
       if(arguments.length > 1)
-        if(this.state[select] === value)
+        if(select in set == false)
+          set = this.subject;
+
+        if(set[select] === value)
           return true;
         else
-          this.state[select] = value;
+          set[select] = value;
 
       this.emit(select);
       return;
