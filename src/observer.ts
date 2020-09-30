@@ -26,9 +26,6 @@ const Oops = Issues({
     `Callback for property-update may only return a function.`
 })
 
-type HandleUpdatedValues =
-  (observed: {}, updated: string[]) => void;
-
 type HandleUpdatedValue
   <T extends object = any, P extends keyof T = any> = 
   (this: T, value: T[P], changed: P) => void;
@@ -100,56 +97,19 @@ export class Observer implements Emitter {
       });
   }
 
-  public pick(select?: string[] | Selector){
+  public export(select?: string[] | Selector){
+    if(!select)
+      return { ...this.values };
+
     const acc = {} as BunchOf<any>;
 
     if(isFn(select))
       select = this.select(select);
-
-    if(select)
-      for(const key of select)
-        acc[key] = within(this.subject, key);
-
-    else {
-      for(const [key, { value }] of entriesIn(this))
-        if(value !== undefined)
-          acc[key] = value;
-      
-      Object.assign(acc, this.values);
-    }
+    
+    for(const key of select)
+      acc[key] = within(this.subject, key);
 
     return acc;
-  }
-
-  public feed(
-    select: string[] | Selector,
-    observer: HandleUpdatedValues,
-    fireInitial?: boolean){
-
-    const keys = isFn(select) ? this.select(select) : select;
-    const pending = new Set<string>();
-
-    const callback = () => {
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = this.state[k];
-
-      observer.call(this.subject, acc, Array.from(pending));
-      pending.clear();
-    };
-
-    const release = this.addMultipleListener(keys, (key) => {
-      if(!pending.size)
-        setTimeout(callback, 0);
-
-      pending.add(key);
-    });
-
-    if(fireInitial)
-      callback();
-
-    return release;
   }
 
   public effect(

@@ -72,25 +72,6 @@ export class Controller {
       return Object.assign(this, a) as this;
   }
 
-  export(
-    subset?: string[] | Callback, 
-    onChange?: Callback | boolean,
-    initial?: boolean){
-
-    const dispatch = this.getDispatch();
-
-    if(typeof subset == "function"){
-      initial = onChange as boolean;
-      onChange = subset;
-      subset = dispatch.watched;
-    }
-  
-    if(typeof onChange == "function")
-      return dispatch.feed(subset!, onChange, initial);
-    else 
-      return dispatch.pick(subset);
-  }
-
   attach(key: string, type: typeof Controller){
     if(!type.context)
       defineAtNeed(this, key, () => type.find());
@@ -120,6 +101,7 @@ export class Controller {
         once: dispatch.once.bind(dispatch),
         watch: dispatch.watch.bind(dispatch),
         effect: dispatch.effect.bind(dispatch),
+        export: dispatch.export.bind(dispatch),
         refresh: dispatch.emit.bind(dispatch)
       })
     

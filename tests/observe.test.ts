@@ -46,38 +46,3 @@ it('dispatches multiple values to observer', async () => {
   expect(callback).toBeCalledWith(1, "minutes");
   expect(callback).toBeCalledWith(60, "seconds");
 })
-
-it('runs export callback on every update', async () => {
-  const { state, assertDidNotUpdate } = test(Subject);
-  const callback = jest.fn();
-
-  state.export([
-    "seconds",
-    "minutes"
-  ], callback);
-  
-  state.seconds = 90;
-
-  expect(callback).not.toHaveBeenCalled();
-
-  await assertDidNotUpdate();
-
-  expect(callback).toBeCalledWith(
-    { minutes: 1, seconds: 90 }, 
-    expect.arrayContaining([
-      "seconds",
-      "minutes"
-    ])
-  );
-
-  state.seconds = 91;
-
-  await assertDidNotUpdate();
-
-  expect(callback).toBeCalledWith(
-    { minutes: 1, seconds: 91 }, 
-    expect.arrayContaining([
-      "seconds"
-    ])
-  );
-})

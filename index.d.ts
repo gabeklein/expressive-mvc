@@ -16,9 +16,6 @@ type Similar<T> = { [X in keyof T]?: T[X] };
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void
 
-type HandleUpdatedValues<T extends object, P extends keyof T> = 
-    (this: T, values: Pick<T, P>, changed: P[]) => void
-
 type EffectCallback = () => (() => void) | undefined
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
@@ -109,9 +106,7 @@ interface IC {
     onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
     export(): { [P in keyof this]: this[P] };
-    export(onValue: HandleUpdatedValues<this, keyof this>, initial?: boolean): Callback;
-    export<P extends keyof this>(keys: P[]): Pick<this, P>;
-    export<P extends keyof this>(keys: P[], onChange: HandleUpdatedValues<this, P>, initial?: boolean): Callback;
+    export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
 }
 
 /**
