@@ -119,6 +119,7 @@ export class Controller {
         on: dispatch.on.bind(dispatch),
         once: dispatch.once.bind(dispatch),
         watch: dispatch.watch.bind(dispatch),
+        effect: dispatch.effect.bind(dispatch),
         refresh: dispatch.emit.bind(dispatch)
       })
     

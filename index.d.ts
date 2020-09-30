@@ -19,6 +19,7 @@ type HandleUpdatedValue<T extends object, P extends keyof T> =
 type HandleUpdatedValues<T extends object, P extends keyof T> = 
     (this: T, values: Pick<T, P>, changed: P[]) => void
 
+type EffectCallback = () => (() => void) | undefined
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
 
@@ -37,6 +38,8 @@ interface Observable {
     watch<P extends keyof this>(select: Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
     watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
     watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+
+    effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
 
     refresh(...keys: string[]): void;
 }

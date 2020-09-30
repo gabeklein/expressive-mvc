@@ -152,6 +152,24 @@ export class Observer implements Emitter {
     return release;
   }
 
+  public effect(
+    callback: EffectCallback,
+    select: string[] | Selector){
+      
+    let unSet: Callback | undefined;
+
+    if(isFn(select))
+      select = this.select(select);
+
+    return this.addMultipleListener(select, () => {
+      unSet && unSet();
+      unSet = callback.call(this.subject);
+
+      if(!isFn(unSet) && unSet)
+        throw Oops.BadReturn()
+    })
+  }
+
   public watch(
     watch: string | string[] | Selector,
     handler: (value: any, key: string) => void,

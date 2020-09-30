@@ -14,12 +14,14 @@ it('will watch values selected via function', async () => {
   const instance = TestValues.create();
   const mock = jest.fn();
 
-  instance.watch(x => x
+  instance.effect( 
+    mock,
+    x => x
     .value1
     .value2
     .value3
     .value4
-  , mock);
+  );
 
   const update = instance.once("value1");
 

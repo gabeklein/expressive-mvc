@@ -15,8 +15,7 @@ type Any = { [key: string]: any };
 type Callback = () => void;
 
 
-type EffectCallback =
-  (val: any) => Callback | undefined;
+type EffectCallback = (...args: any[]) => (Callback | undefined);
 
 /**
  * Workaround to retreive `typeof this`
