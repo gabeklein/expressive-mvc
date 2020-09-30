@@ -55,27 +55,26 @@ export class Observer implements Emitter {
     select: string | string[] | Selector | BunchOf<any>,
     value?: any){
 
-    switch(typeof select){
-      case "string": {
-        if(arguments.length > 1)
-          if(this.state[select] === value)
-            return true;
-          else
-            this.state[select] = value;
-        this.emit(select);
-        break;
-      }
-
-      case "function":
-        select = this.select(select as any);
-
-      case "object":
-        if(Array.isArray(select))
-          select.forEach(k => this.emit(k))
+    if(typeof select == "string"){
+      if(arguments.length > 1)
+        if(this.state[select] === value)
+          return true;
         else
-          for(const key in select)
-            this.update(key, select[key]);
+          this.state[select] = value;
+
+      this.emit(select);
+      return;
     }
+
+    if(isFn(select))
+      select = this.select(select as any);
+
+    if(Array.isArray(select))
+      select.forEach(k => this.emit(k))
+
+    else
+      for(const key in select)
+        this.update(key, select[key]);
   }
 
   public on(
