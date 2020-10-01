@@ -29,9 +29,9 @@ const Oops = Issues({
 export class Observer {
   constructor(public subject: any){}
   
-  protected state = {} as BunchOf<any>;
-  protected subscribers = {} as BunchOf<Set<() => void>>
   protected pending?: Set<string>;
+  protected state = {} as BunchOf<any>;
+  protected subscribers = {} as BunchOf<Set<() => void>>;
 
   public get values(){
     return Object.assign({}, this.state);
@@ -39,24 +39,6 @@ export class Observer {
 
   public get watched(){
     return Object.keys(this.subscribers);
-  }
-
-  public update = (
-    select: string | string[] | Selector | BunchOf<any>,
-    ...rest: string[]) => {
-
-    if(typeof select == "string")
-      select = [select].concat(rest);
-
-    else if(isFn(select))
-      select = listAccess(this.watched, select as any);
-
-    if(Array.isArray(select))
-      select.forEach(k => this.emit(k))
-
-    else
-      for(const key in select)
-        this.set(key, select[key]);
   }
 
   public on = (
@@ -78,23 +60,6 @@ export class Observer {
       });
   }
 
-  public export = (
-    select?: string[] | Selector) => {
-
-    if(!select)
-      return { ...this.values };
-
-    const acc = {} as BunchOf<any>;
-
-    if(isFn(select))
-      select = listAccess(this.watched, select);
-    
-    for(const key of select)
-      acc[key] = within(this.subject, key);
-
-    return acc;
-  }
-
   public effect = (
     callback: EffectCallback,
     select: string[] | Selector) => {
@@ -113,7 +78,42 @@ export class Observer {
     })
   }
 
-  protected set(key: string, value: any){
+  public export = (
+    select?: string[] | Selector) => {
+
+    if(!select)
+      return { ...this.values };
+
+    const acc = {} as BunchOf<any>;
+
+    if(isFn(select))
+      select = listAccess(this.watched, select);
+    
+    for(const key of select)
+      acc[key] = within(this.subject, key);
+
+    return acc;
+  }
+
+  public update = (
+    select: string | string[] | Selector | BunchOf<any>,
+    ...rest: string[]) => {
+
+    if(typeof select == "string")
+      select = [select].concat(rest);
+
+    else if(isFn(select))
+      select = listAccess(this.watched, select as any);
+
+    if(Array.isArray(select))
+      select.forEach(k => this.emit(k))
+
+    else
+      for(const key in select)
+        this.set(key, select[key]);
+  }
+
+  public set(key: string, value: any){
     let set = this.state;
 
     if(!(key in this.subscribers))
@@ -128,7 +128,62 @@ export class Observer {
     return true;
   }
 
-  protected watch(
+  public addListener(
+    key: string,
+    callback: Callback,
+    once?: boolean){
+
+    const listen = this.manage(key);
+    const cancel = () => { listen.delete(callback) };
+    const update = once
+      ? () => { cancel(); callback() }
+      : callback;
+
+    const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
+    const getter = descriptor && descriptor.get;
+    if(getter && FIRST_COMPUTE in getter)
+      (getter as Function)(true);
+
+    listen.add(update);
+    return cancel;
+  }
+
+  public addMultipleListener(
+    keys: string[],
+    callback: (didUpdate: string) => void){
+
+    const cleanup = keys.map(k => 
+      this.addListener(k, () => callback(k))
+    )
+
+    return () => cleanup.forEach(x => x());
+  }
+
+  public emit(...keys: string[]){
+    if(this.pending)
+      for(const x of keys)
+        this.pending.add(x);
+    else {
+      const batch = this.pending = new Set(keys);
+      setTimeout(() => {
+        this.pending = undefined;
+        this.emitSync(...batch);
+      }, 0);
+    }
+  }
+
+  public emitSync(...keys: string[]){
+    const queued = new Set<Callback>();
+
+    for(const k of keys)
+      for(const sub of this.subscribers[k] || [])
+        queued.add(sub);
+
+    for(const trigger of queued)
+      trigger();
+  }
+
+  public watch(
     key: string | Selector,
     handler: (value: any, key: string) => void,
     once?: boolean){
@@ -144,34 +199,6 @@ export class Observer {
       );
 
     return this.addListener(key, callback, once);
-  }
-
-  public addListener(
-    key: string,
-    callback: Callback,
-    once?: boolean){
-
-    const listen = this.manage(key);
-    const cancel = () => { listen.delete(callback) };
-    const update = once
-      ? () => { cancel(); callback() }
-      : callback;
-
-    forceComputed(this.subject, key);
-
-    listen.add(update);
-    return cancel;
-  }
-
-  public addMultipleListener(
-    keys: string[],
-    callback: (didUpdate: string) => void){
-
-    const onDone = keys.map(k => 
-      this.addListener(k, () => callback(k))
-    )
-
-    return () => onDone.forEach(gc => gc());
   }
 
   public accessor(
@@ -229,31 +256,10 @@ export class Observer {
     }
   }
 
-  public emit(...keys: string[]){
-    if(this.pending)
-      for(const x of keys)
-        this.pending.add(x);
-    else {
-      const batch = this.pending = new Set(keys);
-      setTimeout(() => {
-        this.pending = undefined;
-        this.emitSync(...batch);
-      }, 0);
-    }
-  }
+  protected monitorValue(
+    key: string,
+    initial: any){
 
-  protected emitSync(...keys: string[]){
-    const queued = new Set<Callback>();
-
-    for(const k of keys)
-      for(const sub of this.subscribers[k] || [])
-        queued.add(sub);
-
-    for(const trigger of queued)
-      trigger();
-  }
-
-  protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
     this.manage(key);
 
@@ -291,12 +297,15 @@ export class Observer {
       })
   }
 
-  protected monitorComputedValue(key: string, compute: () => any){
+  protected monitorComputedValue(
+    key: string,
+    compute: () => any){
+
     const { state, subject } = this;
 
     this.manage(key);
 
-    const onValueDidChange = () => {
+    const recalculate = () => {
       const value = compute.call(subject);
 
       if(state[key] !== value){
@@ -307,7 +316,7 @@ export class Observer {
 
     const getStartingValue = (early?: boolean) => {
       try {
-        const sub = new Subscription(this, onValueDidChange);
+        const sub = new Subscription(this, recalculate);
         const value = state[key] = compute.call(sub.proxy);
         sub.commit();
         return value;
@@ -342,11 +351,4 @@ export class Observer {
     if(early)
       Oops.ComputedEarly(key).warn();
   };
-}
-
-function forceComputed(source: {}, key: string){
-  const descriptor = Object.getOwnPropertyDescriptor(source, key);
-  const getter = descriptor && descriptor.get;
-  if(getter && FIRST_COMPUTE in getter)
-    (getter as Function)(true);
 }
