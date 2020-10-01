@@ -33,7 +33,6 @@ type HandleUpdatedValue
 export interface Emitter {
   on(select: string | Selector, listener: HandleUpdatedValue): Callback;
   once(select: string | string[] | Selector, listener: HandleUpdatedValue): Promise<any> | Callback;
-  watch(select: string | string[] | Selector, listener: HandleUpdatedValue, once?: boolean): () => void;
 }
 
 export class Observer implements Emitter {
@@ -83,21 +82,21 @@ export class Observer implements Emitter {
   }
 
   public on(
-    select: string | string[] | Selector,
+    key: string | Selector,
     listener: HandleUpdatedValue){
 
-    return this.watch(select, listener, false);
+    return this.watch(key, listener, false);
   }
 
   public once(
-    select: string | string[] | Selector,
+    key: string | Selector,
     listener?: HandleUpdatedValue){
 
     if(listener)
-      return this.watch(select, listener, true);
+      return this.watch(key, listener, true);
     else
       return new Promise(resolve => {
-        this.watch(select, resolve, true)
+        this.watch(key, resolve, true)
       });
   }
 
@@ -134,25 +133,22 @@ export class Observer implements Emitter {
     })
   }
 
-  public watch(
-    watch: string | string[] | Selector,
+  protected watch(
+    key: string | Selector,
     handler: (value: any, key: string) => void,
     once?: boolean){
 
-    if(isFn(watch))
-      watch = listAccess(this.watched, watch)[0];
-    if(typeof watch == "string")
-      watch = [watch];
+    if(isFn(key))
+      key = listAccess(this.watched, key)[0];
 
-    const callback = (key: string) => {
-      if(once) release();
-      handler.call(this.subject, this.state[key], key);
-    }
+    const callback = () =>
+      handler.call(
+        this.subject, 
+        this.state[key as string],
+        key as string
+      );
 
-    const release =
-      this.addMultipleListener(watch, callback);
-
-    return release;
+    return this.addListener(key, callback, once);
   }
 
   public accessor(
@@ -326,13 +322,19 @@ export class Observer implements Emitter {
 
   public addListener(
     key: string,
-    callback: Callback){
+    callback: Callback,
+    once?: boolean){
 
-    const listeners = this.manage(key);
-    forceIfComputed(this.subject, key);
+    const listen = this.manage(key);
+    const cancel = () => listen.delete(callback);
+    const update = once
+      ? () => { cancel(); callback() }
+      : callback;
 
-    listeners.add(callback);
-    return () => listeners.delete(callback);
+    forceComputed(this.subject, key);
+
+    listen.add(update);
+    return cancel;
   }
 
   public addMultipleListener(
@@ -347,7 +349,7 @@ export class Observer implements Emitter {
   }
 }
 
-function forceIfComputed(source: {}, key: string){
+function forceComputed(source: {}, key: string){
   const descriptor = Object.getOwnPropertyDescriptor(source, key);
   const getter = descriptor && descriptor.get;
   if(getter && FIRST_COMPUTE in getter)

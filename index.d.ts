@@ -27,14 +27,10 @@ type Selector<T> = (select: Recursive<T>) => void;
  * Able to be subscribed to, on a per-value basis to know when properties are updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P | P[] | Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
+    on<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
   
-    once<P extends keyof this>(property: P | P[] | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
-    once<P extends keyof this>(property: P | P[] | Selector<this>): Promise<this[P]>;
-
-    watch<P extends keyof this>(select: Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
-    watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
-    watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): Callback;
+    once<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
+    once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
     effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
 
@@ -127,8 +123,6 @@ interface Controller extends Observable, IC, SC, RC {}
 
 declare class Controller {
     static global: boolean;
-
-    static watch <T extends Class, I extends InstanceType<T>> (this: T, values: Partial<I>): I;
 
     static Provider: FunctionComponentElement<any>;
     static makeGlobal <T extends Class>(this: T): InstanceType<T>;
