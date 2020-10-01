@@ -26,16 +26,7 @@ const Oops = Issues({
     `Callback for property-update may only return a function.`
 })
 
-type HandleUpdatedValue
-  <T extends object = any, P extends keyof T = any> = 
-  (this: T, value: T[P], changed: P) => void;
-
-export interface Emitter {
-  on(select: string | Selector, listener: HandleUpdatedValue): Callback;
-  once(select: string | string[] | Selector, listener: HandleUpdatedValue): Promise<any> | Callback;
-}
-
-export class Observer implements Emitter {
+export class Observer {
   constructor(public subject: any){}
   
   protected state = {} as BunchOf<any>;

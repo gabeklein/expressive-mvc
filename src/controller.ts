@@ -1,7 +1,8 @@
 import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { Emitter, Observer } from './observer';
+import { LifecycleMethods } from './lifecycle';
+import { Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
@@ -18,34 +19,9 @@ const Oops = Issues({
     `${control}.${property} is marked as required for this render.`
 });
 
-export interface Events {
-  willReset?(...args: any[]): void;
-  willDestroy?(callback?: Callback): void;
-  willLoseFocus?(parent: Controller, as: string): void;
-  willMount?(...args: any[]): void;
-  willRender?(...args: any[]): void;
-  willUnmount?(...args: any[]): void;
-  willUpdate?(...args: any[]): void;
+export interface Controller 
+  extends LifecycleMethods {
 
-  didCreate?(): void;
-  didFocus?(parent: Controller, as: string): void;
-  didMount?(...args: any[]): void;
-  didRender?(...args: any[]): void;
-
-  elementDidMount?(...args: any[]): void;
-  elementWillMount?(...args: any[]): void;
-  elementWillRender?(...args: any[]): void;
-  elementWillUnmount?(...args: any[]): void;
-  elementWillUpdate?(...args: any[]): void;
-
-  componentDidMount?(...args: any[]): void;
-  componentWillMount?(...args: any[]): void;
-  componentWillRender?(...args: any[]): void;
-  componentWillUnmount?(...args: any[]): void;
-  componentWillUpdate?(...args: any[]): void;
-}
-
-export interface Controller extends Events, Emitter {
   [OBSERVER]: Observer;
   [TEMP_CONTEXT]: Callback;
 
