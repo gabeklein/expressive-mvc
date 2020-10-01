@@ -98,12 +98,7 @@ interface IC {
 
     sub(...args: any[]): this & SC;
 
-    toggle(key: KeyOfBooleanValueIn<this>): boolean;
-
     destroy(): void;
-
-    onChange<P extends keyof this>(key: P | P[]): Promise<P[]>;
-    onChange<P extends keyof this>(key: P | P[], listener: HandleUpdatedValue<this, P>): void;
 
     export(): { [P in keyof this]: this[P] };
     export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
