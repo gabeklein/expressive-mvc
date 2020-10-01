@@ -204,31 +204,22 @@ export class Observer {
   public accessor(
     key: string,
     callback?: EffectCallback){
+
+    let unSet: Callback | undefined;
       
     this.manage(key);
     return {
       get: () => this.state[key],
-      set: callback
-        ? this.setIntercept(key, callback)
-        : (value: any) => this.set(key, value)
-    }
-  }
-
-  protected setIntercept(
-    key: string,
-    handler: EffectCallback){
-
-    let unSet: Callback | undefined;
-
-    return (value: any) => {
-      if(!this.set(key, value))
-        return;
-
-      unSet && unSet();
-      unSet = handler.call(this.subject, value);
-
-      if(!isFn(unSet) && unSet)
-        throw Oops.BadReturn()
+      set: (value: any) => {
+        if(!this.set(key, value) || !callback)
+          return;
+  
+        unSet && unSet();
+        unSet = callback.call(this.subject, value);
+  
+        if(!isFn(unSet) && unSet)
+          throw Oops.BadReturn()
+      }
     }
   }
 
