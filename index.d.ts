@@ -83,11 +83,10 @@ interface RC {
  * Helper methods and properties available to an instance of this controller.
  */
 interface IC {
-    update(key: keyof this): undefined;
-    update(keys: (keyof this)[]): undefined;
-    update<P extends keyof this>(key: P, value: this[P]): true | undefined;
+    update(entries: Partial<this>): void;
     update(keys: Selector<this>): void;
-    update(props: Partial<this>): void;
+    update<K extends keyof this>(keys: K[]): void;
+    update<K extends keyof this>(...keys: K[]): void;
 
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];

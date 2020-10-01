@@ -52,25 +52,12 @@ export class Observer implements Emitter {
 
   public update(
     select: string | string[] | Selector | BunchOf<any>,
-    value?: any){
+    ...rest: string[]){
 
-    if(typeof select == "string"){
-      let set = this.state;
+    if(typeof select == "string")
+      select = [select].concat(rest);
 
-      if(arguments.length > 1)
-        if(select in set == false)
-          set = this.subject;
-
-        if(set[select] === value)
-          return true;
-        else
-          set[select] = value;
-
-      this.emit(select);
-      return;
-    }
-
-    if(isFn(select))
+    else if(isFn(select))
       select = listAccess(this.watched, select as any);
 
     if(Array.isArray(select))
@@ -78,7 +65,7 @@ export class Observer implements Emitter {
 
     else
       for(const key in select)
-        this.update(key, select[key]);
+        this.set(key, select[key]);
   }
 
   public on(
@@ -133,6 +120,22 @@ export class Observer implements Emitter {
     })
   }
 
+  protected set(key: string, value: any){
+    let set = this.state;
+
+    if(arguments.length > 1)
+      if(key in set == false)
+        set = this.subject;
+
+      if(set[key] === value)
+        return false;
+      else
+        set[key] = value;
+
+    this.emit(key);
+    return true;
+  }
+
   protected watch(
     key: string | Selector,
     handler: (value: any, key: string) => void,
@@ -160,7 +163,7 @@ export class Observer implements Emitter {
       get: () => this.state[key],
       set: callback
         ? this.setIntercept(key, callback)
-        : (value: any) => this.update(key, value)
+        : (value: any) => this.set(key, value)
     }
   }
 
@@ -171,7 +174,7 @@ export class Observer implements Emitter {
     let unSet: Callback | undefined;
 
     return (value: any) => {
-      if(this.update(key, value))
+      if(!this.set(key, value))
         return;
 
       unSet && unSet();
@@ -238,7 +241,7 @@ export class Observer implements Emitter {
       enumerable: true,
       configurable: false,
       get: () => this.state[key],
-      set: (value: any) => this.update(key, value)
+      set: (value: any) => this.set(key, value)
     })
   }
 
