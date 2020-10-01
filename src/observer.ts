@@ -147,6 +147,34 @@ export class Observer {
     return this.addListener(key, callback, once);
   }
 
+  public addListener(
+    key: string,
+    callback: Callback,
+    once?: boolean){
+
+    const listen = this.manage(key);
+    const cancel = () => listen.delete(callback);
+    const update = once
+      ? () => { cancel(); callback() }
+      : callback;
+
+    forceComputed(this.subject, key);
+
+    listen.add(update);
+    return cancel;
+  }
+
+  public addMultipleListener(
+    keys: string[],
+    callback: (didUpdate: string) => void){
+
+    const onDone = keys.map(k => 
+      this.addListener(k, () => callback(k))
+    )
+
+    return () => onDone.forEach(gc => gc());
+  }
+
   public accessor(
     key: string,
     callback?: EffectCallback){
@@ -315,34 +343,6 @@ export class Observer {
     if(early)
       Oops.ComputedEarly(key).warn();
   };
-
-  public addListener(
-    key: string,
-    callback: Callback,
-    once?: boolean){
-
-    const listen = this.manage(key);
-    const cancel = () => listen.delete(callback);
-    const update = once
-      ? () => { cancel(); callback() }
-      : callback;
-
-    forceComputed(this.subject, key);
-
-    listen.add(update);
-    return cancel;
-  }
-
-  public addMultipleListener(
-    keys: string[],
-    callback: (didUpdate: string) => void){
-
-    const onDone = keys.map(k => 
-      this.addListener(k, () => callback(k))
-    )
-
-    return () => onDone.forEach(gc => gc());
-  }
 }
 
 function forceComputed(source: {}, key: string){
