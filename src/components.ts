@@ -15,7 +15,7 @@ import { Controller } from './controller';
 function useValue(from: Controller, key: string){
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
-  useEffect(() => from.getDispatch().watch(key, onUpdate), []);
+  useEffect(() => from.on(key, onUpdate), []);
 
   return value;
 }

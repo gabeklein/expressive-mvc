@@ -25,6 +25,9 @@ export interface Controller
   [OBSERVER]: Observer;
   [TEMP_CONTEXT]: Callback;
 
+  on(key: string, value: any): Callback;
+  once(key: string, value: any): Callback;
+
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
