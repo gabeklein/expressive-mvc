@@ -88,11 +88,11 @@ export class Controller {
     
       define(this, OBSERVER, dispatch);
       define(this, {
-        on: dispatch.on.bind(dispatch),
-        once: dispatch.once.bind(dispatch),
-        update: dispatch.update.bind(dispatch),
-        effect: dispatch.effect.bind(dispatch),
-        export: dispatch.export.bind(dispatch)
+        on: dispatch.on,
+        once: dispatch.once,
+        update: dispatch.update,
+        effect: dispatch.effect,
+        export: dispatch.export
       })
     
       if(this.didCreate)

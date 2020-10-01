@@ -50,9 +50,9 @@ export class Observer implements Emitter {
     return Object.keys(this.subscribers);
   }
 
-  public update(
+  public update = (
     select: string | string[] | Selector | BunchOf<any>,
-    ...rest: string[]){
+    ...rest: string[]) => {
 
     if(typeof select == "string")
       select = [select].concat(rest);
@@ -68,16 +68,16 @@ export class Observer implements Emitter {
         this.set(key, select[key]);
   }
 
-  public on(
+  public on = (
     key: string | Selector,
-    listener: HandleUpdatedValue){
+    listener: HandleUpdatedValue) => {
 
     return this.watch(key, listener, false);
   }
 
-  public once(
+  public once = (
     key: string | Selector,
-    listener?: HandleUpdatedValue){
+    listener?: HandleUpdatedValue) => {
 
     if(listener)
       return this.watch(key, listener, true);
@@ -87,7 +87,9 @@ export class Observer implements Emitter {
       });
   }
 
-  public export(select?: string[] | Selector){
+  public export = (
+    select?: string[] | Selector) => {
+
     if(!select)
       return { ...this.values };
 
@@ -102,9 +104,9 @@ export class Observer implements Emitter {
     return acc;
   }
 
-  public effect(
+  public effect = (
     callback: EffectCallback,
-    select: string[] | Selector){
+    select: string[] | Selector) => {
       
     let unSet: Callback | undefined;
 
