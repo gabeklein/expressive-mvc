@@ -72,7 +72,7 @@ export class Observer implements Emitter {
     }
 
     if(isFn(select))
-      select = this.select(select as any);
+      select = listAccess(this.watched, select as any);
 
     if(Array.isArray(select))
       select.forEach(k => this.emit(k))
@@ -108,7 +108,7 @@ export class Observer implements Emitter {
     const acc = {} as BunchOf<any>;
 
     if(isFn(select))
-      select = this.select(select);
+      select = listAccess(this.watched, select);
     
     for(const key of select)
       acc[key] = within(this.subject, key);
@@ -123,7 +123,7 @@ export class Observer implements Emitter {
     let unSet: Callback | undefined;
 
     if(isFn(select))
-      select = this.select(select);
+      select = listAccess(this.watched, select);
 
     return this.addMultipleListener(select, () => {
       unSet && unSet();
@@ -140,7 +140,7 @@ export class Observer implements Emitter {
     once?: boolean){
 
     if(isFn(watch))
-      watch = this.select(watch);
+      watch = listAccess(this.watched, watch)[0];
     if(typeof watch == "string")
       watch = [watch];
 
@@ -166,10 +166,6 @@ export class Observer implements Emitter {
         ? this.setIntercept(key, callback)
         : (value: any) => this.update(key, value)
     }
-  }
-
-  protected select(fn: Selector){
-    return listAccess(this.watched, fn);
   }
 
   protected setIntercept(
