@@ -49,8 +49,6 @@ export interface Controller extends Events, Emitter {
   [OBSERVER]: Observer;
   [TEMP_CONTEXT]: Callback;
 
-  refresh(...keys: string[]): void;
-
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
@@ -63,13 +61,6 @@ export class Controller {
 
   sub(...args: any[]){
     return useActiveSubscriber(this, args);
-  }
-  
-  assign(a: string | BunchOf<any>, b?: BunchOf<any>){
-    if(typeof a == "string")
-      return within(this, a, b);
-    else
-      return Object.assign(this, a) as this;
   }
 
   attach(key: string, type: typeof Controller){
@@ -99,9 +90,9 @@ export class Controller {
       define(this, {
         on: dispatch.on.bind(dispatch),
         once: dispatch.once.bind(dispatch),
+        update: dispatch.update.bind(dispatch),
         effect: dispatch.effect.bind(dispatch),
-        export: dispatch.export.bind(dispatch),
-        refresh: dispatch.emit.bind(dispatch)
+        export: dispatch.export.bind(dispatch)
       })
     
       if(this.didCreate)
@@ -176,12 +167,6 @@ export class Controller {
     instance.getDispatch();
     
     return instance;
-  }
-
-  static assign(a: string | BunchOf<any>, b?: BunchOf<any>){
-    const instance = this.find();
-    instance.assign(a, b);
-    return instance.tap();
   }
 
   static use(...args: any[]){

@@ -22,13 +22,7 @@ export class Subscription {
 
     define(proxy, {
       get: subject,
-      set: subject,
-      refresh: (...keys: string[]) => {
-        if(0 in keys)
-          parent.emit(...keys)
-        else
-          this.refresh()
-      }
+      set: subject
     });
 
     for(const key of parent.watched)

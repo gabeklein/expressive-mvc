@@ -33,8 +33,6 @@ interface Observable {
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
     effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
-
-    refresh(...keys: string[]): void;
 }
 
 /**
@@ -85,8 +83,11 @@ interface RC {
  * Helper methods and properties available to an instance of this controller.
  */
 interface IC {
-    assign(props: Partial<this>): this;
-    assign<K extends keyof this, P extends keyof this[K]>(key: K, value: { [X in P]?: this[K][X] }): this[K];
+    update(key: keyof this): undefined;
+    update(keys: (keyof this)[]): undefined;
+    update<P extends keyof this>(key: P, value: this[P]): true | undefined;
+    update(keys: Selector<this>): void;
+    update(props: Partial<this>): void;
 
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];
@@ -108,7 +109,6 @@ interface IC {
 interface SC {
     get: this;
     set: this;
-    refresh(...keys: string[]): void;
 }
 
 /**
