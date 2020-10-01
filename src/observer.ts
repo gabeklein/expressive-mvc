@@ -116,14 +116,13 @@ export class Observer {
   protected set(key: string, value: any){
     let set = this.state;
 
-    if(arguments.length > 1)
-      if(key in set == false)
-        set = this.subject;
+    if(!(key in this.subscribers))
+      set = this.subject;
 
-      if(set[key] === value)
-        return false;
-      else
-        set[key] = value;
+    if(set[key] === value)
+      return false;
+    else
+      set[key] = value;
 
     this.emit(key);
     return true;
@@ -153,7 +152,7 @@ export class Observer {
     once?: boolean){
 
     const listen = this.manage(key);
-    const cancel = () => listen.delete(callback);
+    const cancel = () => { listen.delete(callback) };
     const update = once
       ? () => { cancel(); callback() }
       : callback;
