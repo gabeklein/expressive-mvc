@@ -8,8 +8,6 @@ import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from '
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
 import { assignSpecific, defineAtNeed, Issues } from './util';
 
-export const OBSERVER = Symbol("object_observer");
-
 const Oops = Issues({
   ContextNotFound: (name) =>
     `Can't subscribe to controller; this accessor can` +
