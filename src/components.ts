@@ -5,12 +5,11 @@ import {
   forwardRef,
   HTMLProps,
   KeyboardEventHandler,
-  useEffect,
   useMemo,
-  useState,
 } from 'react';
 
 import { Controller } from './controller';
+import { useValue } from './subscriber';
 
 type onChangeCallback = (v: any, e: any) => any;
 type ControlledInputProps = HTMLProps<HTMLInputElement> & ControlledProps;
@@ -19,14 +18,6 @@ type ControlledProps = {
   type?: string,
   onUpdate?: onChangeCallback | string | false,
   onReturn?: onChangeCallback | string
-}
-
-function useValue(from: Controller, key: string){
-  const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
-
-  useEffect(() => from.on(key, onUpdate), []);
-
-  return value;
 }
 
 export function ControlledValue(

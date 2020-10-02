@@ -19,6 +19,14 @@ function useActiveMemo<T>(
   return state[0] as T;
 }
 
+export function useValue(from: Controller, key: string){
+  const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
+
+  useEffect(() => from.on(key, onUpdate), []);
+
+  return value;
+}
+
 export function usePassiveGetter(
   target: Controller,
   key?: string
