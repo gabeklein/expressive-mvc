@@ -1,9 +1,9 @@
 import { Placeholder } from './directives';
 import { Subscription } from './subscription';
-import { entriesIn, isFn, Issues, listAccess, within } from './util';
+import { entriesIn, isFn, Issues, listAccess, within, define } from './util';
 
 const FIRST_COMPUTE = Symbol("is_initial");
-const define = Object.defineProperty;
+const { defineProperty } = Object;
 
 const Oops = Issues({
   NotTracked: (name) => 
@@ -39,6 +39,16 @@ export class Observer {
 
   public get watched(){
     return Object.keys(this.subscribers);
+  }
+
+  public mixin(){
+    define(this.subject, {
+      on: this.on,
+      once: this.once,
+      update: this.update,
+      effect: this.effect,
+      export: this.export
+    })
   }
 
   public on = (
@@ -254,7 +264,7 @@ export class Observer {
     this.state[key] = initial;
     this.manage(key);
 
-    define(this.subject, key, {
+    defineProperty(this.subject, key, {
       enumerable: true,
       configurable: false,
       get: () => this.state[key],
@@ -281,7 +291,7 @@ export class Observer {
           getters[key] = item.get;
 
     for(const key in getters)
-      define(subject, key, {
+      defineProperty(subject, key, {
         configurable: true,
         set: Oops.NotTracked(key).throw,
         get: this.monitorComputedValue(key, getters[key])
@@ -317,7 +327,7 @@ export class Observer {
         throw e;
       }
       finally {
-        define(subject, key, {
+        defineProperty(subject, key, {
           set: Oops.NotTracked(key).throw,
           get: () => state[key],
           enumerable: true,

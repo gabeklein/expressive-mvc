@@ -66,15 +66,9 @@ export class Controller {
       dispatch = new Observer(this);
       dispatch.monitorValues();
       dispatch.monitorComputed(Controller);
+      observer.mixin();
     
       define(this, OBSERVER, dispatch);
-      define(this, {
-        on: dispatch.on,
-        once: dispatch.once,
-        update: dispatch.update,
-        effect: dispatch.effect,
-        export: dispatch.export
-      })
     
       if(this.didCreate)
         this.didCreate();
@@ -210,6 +204,7 @@ export class Controller {
       observer = new Observer(this)
       observer.monitorValues(Function);
       observer.monitorComputed(Controller);
+      observer.mixin();
     
       define(this, OBSERVER, observer);
     }
