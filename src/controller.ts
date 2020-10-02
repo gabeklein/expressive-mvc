@@ -1,18 +1,14 @@
-import { Context, createContext, FunctionComponent, ProviderProps, useContext } from 'react';
+import { FunctionComponent, ProviderProps } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
 import { LifecycleMethods } from './lifecycle';
 import { Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
-import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
+import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
 import { assignSpecific, defineAtNeed, Issues } from './util';
 
 const Oops = Issues({
-  ContextNotFound: (name) =>
-    `Can't subscribe to controller; this accessor can` +
-    `only be used within a Provider keyed to ${name}.`,
-
   HasPropertyUndefined: (control, property) =>
     `${control}.${property} is marked as required for this render.`
 });
@@ -25,7 +21,6 @@ export interface Controller
 
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
-
   update(entries: Partial<this>): void;
 
   Input: FunctionComponent<{ to: string }>;
@@ -53,7 +48,6 @@ export class Controller {
   }
 
   static __dispatch__: Observer;
-  static __context__?: Context<Controller>;
 
   static hoc = createWrappedComponent;
 
@@ -70,14 +64,7 @@ export class Controller {
   }
 
   static find(){
-    const instance = 
-      useContext(this.__context__!) || 
-      useContext(CONTEXT_MULTIPROVIDER)[this.name];
-
-    if(!instance)
-      throw Oops.ContextNotFound(this.name);
-
-    return instance;
+    return getFromContext(this);
   }
 
   static meta(...path: maybeStrings): any {
@@ -152,9 +139,6 @@ export class Controller {
 }
 
 defineAtNeed(Controller, {
-  __context__(){
-    return createContext<any>(null);
-  },
   __dispatch__(){
     const observer = new Observer(this)
   

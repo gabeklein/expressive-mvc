@@ -1,15 +1,50 @@
-import { createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { Context, createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { ensurePeerControllers } from './peers';
 import { useOwnController } from './subscriber';
-import { within } from './util';
+import { Issues, within } from './util';
 
-export const CONTEXT_MULTIPROVIDER = createContext(null as any);
+const { getPrototypeOf } = Object;
+
+const Oops = Issues({
+  ContextNotFound: (name) =>
+    `Can't subscribe to controller; this accessor can` +
+    `only be used within a Provider keyed to ${name}.`
+});
+
+export const CONTEXT = new Map<typeof Controller, Context<Controller>>()
+export const CONTEXT_MULTIPLEX = createContext(null as any);
+
+export function getContext(
+  Type: typeof Controller,
+  create?: boolean){
+
+  let context = CONTEXT.get(Type);
+  if(!context && create){
+    context = createContext(null as any);
+    CONTEXT.set(Type, context);
+  }
+  return context!;
+}
+
+export function getFromContext(
+  Type: typeof Controller){
+
+  const context = getContext(Type);
+  const instance = context
+    && useContext(context)
+    || useContext(CONTEXT_MULTIPLEX)[Type.name];
+
+  if(!instance)
+    throw Oops.ContextNotFound(Type.name);
+
+  return instance;
+}
 
 export function ControlProvider(this: Controller){
-  const model = this.constructor as typeof Controller;
-  const { Provider } = model.__context__!;
+  const Model = this.constructor as typeof Controller;
+  const Context = getContext(Model, true);
   
   return (props: PropsWithChildren<any>) => {
     let { children, className, style, ...outsideProps } = props;
@@ -18,16 +53,16 @@ export function ControlProvider(this: Controller){
       this.update(outsideProps);
 
     if(className || style)
-      children = createElement("div", { className, style }, children);
+      children = createElement("div", { className, style, children });
 
-    return createElement(Provider, { value: this }, children);
+    return createElement(Context.Provider, { value: this, children });
   }
 }
 
 export function createWrappedComponent(
   this: typeof Controller, fn: FC<any>){
 
-  const { Provider } = this.__context__!;
+  const { Provider } = getContext(this, true);
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const self = useOwnController(this);
@@ -50,14 +85,12 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     ...outsideProps
   } = props;
 
-  const Multi = CONTEXT_MULTIPROVIDER;
-
   if(className || style)
-    children = createElement("div", { className, style }, children);
+    children = createElement("div", { className, style, children });
 
   let flushHooks = [] as Callback[];
 
-  const parent = useContext(Multi);
+  const parent = useContext(CONTEXT_MULTIPLEX);
   const provide = useMemo(() =>
     initGroupControllers(parent, controllers, outsideProps),
   []); 
@@ -73,7 +106,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     Object.values(provide).forEach(x => x.destroy());
   }, []);
 
-  return createElement(Multi.Provider, { value: provide }, children);
+  return createElement(CONTEXT_MULTIPLEX.Provider, { value: provide, children });
 }
 
 function initGroupControllers(
@@ -82,17 +115,16 @@ function initGroupControllers(
   fromProps: BunchOf<typeof Controller> 
 ){
   const map = Object.create(parent) as BunchOf<Controller>;
-  const pro = Object.getPrototypeOf;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){
       let Super = group[key];
-      while(Super = pro(Super))
+      while(Super = getPrototypeOf(Super))
         if(Super === Controller as any)
           map[key] = new group[key]();
     }
 
-  for(let layer = map; layer; layer = pro(layer))
+  for(let layer = map; layer; layer = getPrototypeOf(layer))
     for(const source in layer)
       for(const target in map)
         if(source !== target)

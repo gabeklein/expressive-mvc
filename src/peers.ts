@@ -1,7 +1,7 @@
 import { Context, useContext } from 'react';
 
 import { Controller } from './controller';
-import { CONTEXT_MULTIPROVIDER } from './provider';
+import { getContext, CONTEXT_MULTIPLEX } from './provider';
 import { define, entriesIn } from './util';
 
 export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
@@ -20,7 +20,7 @@ export function ensurePeerControllers(instance: Controller){
 
   for(const [key, { value }] of entries)
     if(Controller.isTypeof(value))
-      pending.push([key, value.__context__!])
+      pending.push([key, getContext(value)])
 
   if(pending.length)
     return attachPeersFromContext(instance, pending);
@@ -29,11 +29,10 @@ export function ensurePeerControllers(instance: Controller){
 }
 
 function attachPeersFromContext(
-  subject: Controller,
-  peers: PeerContext[]){
+  subject: Controller, peers: PeerContext[]){
 
-  const multi = useContext(CONTEXT_MULTIPROVIDER);
-  const expected = [ CONTEXT_MULTIPROVIDER ] as Context<any>[];
+  const multi = useContext(CONTEXT_MULTIPLEX);
+  const expected = [ CONTEXT_MULTIPLEX ] as Context<any>[];
 
   for(const [name, context] of peers)
     if(multi && multi[name])
