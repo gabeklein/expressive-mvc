@@ -26,11 +26,11 @@ export function setRefHelper<T = any>
 
   return new Placeholder(
     function manageRef(parent: Observer, key: string){
-      const desc = parent.accessor(key, onNewValue);
+      const descriptor = parent.access(key, onNewValue);
   
       define(parent.subject, key, {
         enumerable: true,
-        value: define({}, "current", desc)
+        value: define({}, "current", descriptor)
       });
     }
   ) as any;
@@ -41,11 +41,11 @@ export function setPropertyHelper<T = any>
 
   return new Placeholder(
     function manageValue(parent: Observer, key: string){
-      const desc = parent.accessor(key, onNewValue);
+      const descriptor = parent.access(key, onNewValue);
   
       define(parent.subject, key, {
         enumerable: true,
-        ...desc
+        ...descriptor
       });
     }
   ) as any;
