@@ -175,10 +175,10 @@ export class Observer {
         this.willEmit.add(x);
     else {
       const batch = this.willEmit = new Set(keys);
-      setTimeout(() => {
+      setImmediate(() => {
         this.willEmit = undefined;
         this.emitSync(...batch);
-      }, 0);
+      });
     }
   }
 
