@@ -48,7 +48,10 @@ export class Subscription {
   }
 
   public commit(...keys: maybeStrings){
-    for(const key of keys || this.parent.watched)
+    if(keys.length == 0)
+      keys.push(...this.parent.watched)
+
+    for(const key of keys)
       delete (this.proxy as any)[key!];
   }
 

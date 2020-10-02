@@ -44,7 +44,8 @@ export function usePassiveSubscriber(
   });
 
   useEffect(() => {
-    subscription.commit();
+    if(!path[0])
+      subscription.commit();
     return () => subscription.release();
   }, []);
 
