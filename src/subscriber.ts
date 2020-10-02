@@ -47,9 +47,9 @@ export function usePassiveSubscriber(
   target: Observable,
   ...path: (string | undefined)[]){
 
-  const subscription = useActiveMemo(refresh => {
-    return new Subscription(target.__dispatch__, refresh).focus(path);
-  });
+  const subscription = useActiveMemo(refresh =>
+    new Subscription(target.__dispatch__, refresh).focus(path)
+  );
 
   useEffect(() => {
     if(!path[0])
@@ -95,10 +95,8 @@ export function useOwnController(
   let release: Callback | undefined;
 
   const subscription = useActiveMemo(refresh => {
-    return new Subscription(
-      Model.create(args, callback).__dispatch__,
-      refresh
-    );
+    const instance = Model.create(args, callback);
+    return new Subscription(instance.__dispatch__, refresh);
   });
 
   useLifecycleEffect((name) => {
