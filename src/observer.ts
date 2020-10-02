@@ -29,9 +29,9 @@ const Oops = Issues({
 export class Observer {
   constructor(public subject: any){}
   
-  protected pending?: Set<string>;
   protected state = {} as BunchOf<any>;
   protected subscribers = {} as BunchOf<Set<() => void>>;
+  protected willEmit?: Set<string>;
 
   public get values(){
     return Object.assign({}, this.state);
@@ -170,13 +170,13 @@ export class Observer {
   }
 
   public emit(...keys: string[]){
-    if(this.pending)
+    if(this.willEmit)
       for(const x of keys)
-        this.pending.add(x);
+        this.willEmit.add(x);
     else {
-      const batch = this.pending = new Set(keys);
+      const batch = this.willEmit = new Set(keys);
       setTimeout(() => {
-        this.pending = undefined;
+        this.willEmit = undefined;
         this.emitSync(...batch);
       }, 0);
     }
