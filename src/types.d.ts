@@ -17,6 +17,8 @@ type Callback = () => void;
 
 type EffectCallback = (...args: any[]) => (Callback | undefined);
 
+type RefObject<T = any> = { current: T };
+
 /**
  * Workaround to retreive `typeof this`
  * in static methods using generics.

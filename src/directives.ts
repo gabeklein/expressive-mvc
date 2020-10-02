@@ -9,8 +9,6 @@ const Oops = Issues({
     `This is not possible because '${child}' is not also a singleton.`,
 })
 
-type RefObject<T = any> = { current: T };
-
 export class Placeholder {
   constructor(
     public applyTo: (recipient: Observer, as: string) => void
