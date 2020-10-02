@@ -6,7 +6,7 @@ import { Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
-import { defineAtNeed, Issues, within } from './util';
+import { assignSpecific, defineAtNeed, Issues } from './util';
 
 export const OBSERVER = Symbol("object_observer");
 
@@ -57,28 +57,6 @@ export class Controller {
     
     if(this.willDestroy)
       this.willDestroy();
-  }
-
-  private integrate(
-    source: BunchOf<any>, 
-    only?: string[]){
-
-    const pull = only || Object.keys(source);
-    const setters: string[] = [];
-    const values = within(this);
-
-    for(const key of pull){
-      const desc = Object.getOwnPropertyDescriptor(
-        this.constructor.prototype, key
-      );
-      if(desc && desc.set)
-        setters.push(key)
-      else
-        values[key] = source[key];
-    }
-
-    for(const key of setters)
-      values[key] = source[key];
   }
 
   static __dispatch__: Observer;
@@ -137,9 +115,9 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useOwnController(this, undefined, 
-      (instance) => instance.integrate(props, only)
-    )
+    return useOwnController(this, undefined, instance => {
+      assignSpecific(instance, props, only);
+    })
   }
 
   static using(
@@ -147,7 +125,7 @@ export class Controller {
     only?: string[]){
 
     function assignTo(instance: Controller){
-      instance.integrate(props, only);
+      assignSpecific(instance, props, only);
     }
 
     const subscriber = useOwnController(this, undefined, assignTo);

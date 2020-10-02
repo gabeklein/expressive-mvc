@@ -39,6 +39,30 @@ export function listAccess(
   return Array.from(found);
 }
 
+export function assignSpecific(
+  target: InstanceType<Class>,
+  source: BunchOf<any>, 
+  only?: string[]){
+
+  const values = within(target);
+  const proto = target.constructor.prototype;
+  const select = only || Object.keys(source);
+  const defer: string[] = [];
+
+  for(const key of select){
+    const descriptor = 
+      Object.getOwnPropertyDescriptor(proto, key);
+
+    if(descriptor && descriptor.set)
+      defer.push(key)
+    else
+      values[key] = source[key];
+  }
+
+  for(const key of defer)
+    values[key] = source[key];
+}
+
 export function defineAtNeed<T>(
   object: T, 
   property: string | symbol,
