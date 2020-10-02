@@ -16,50 +16,48 @@ export class Placeholder {
   constructor(
     public applyTo: (recipient: Observer, as: string) => void
   ){}
+
+  static is(fn: (on: Observer, key: string) => void){
+    return new this(fn) as any;
+  }
 }
 
 export function getPeerHelper<T extends typeof Controller>
   (Peer: T): InstanceType<T> {
 
-  return new Placeholder(
-    function findNearest(on: Observer, key: string){
-      const subject = on.subject as Controller;
-  
-      if(Singleton.isTypeof(Peer))
-        defineAtNeed(subject, key, () => Peer.find());
-      else
-      if(subject instanceof Singleton)
-        throw Oops.CantAttach(subject.constructor.name, Peer.name);
-    }
-  ) as any;
+  return Placeholder.is((on: Observer, as: string) => {
+    const subject = on.subject as Controller;
+
+    if(Singleton.isTypeof(Peer))
+      defineAtNeed(subject, as, () => Peer.find());
+    else
+    if(subject instanceof Singleton)
+      throw Oops.CantAttach(subject.constructor.name, Peer.name);
+  })
 }
 
 export function setRefHelper<T = any>
-  (onNewValue?: EffectCallback): RefObject<T> {
+  (effect?: EffectCallback): RefObject<T> {
 
-  return new Placeholder(
-    function manageRef(parent: Observer, key: string){
-      const descriptor = parent.access(key, onNewValue);
-  
-      define(parent.subject, key, {
-        enumerable: true,
-        value: define({}, "current", descriptor)
-      });
-    }
-  ) as any;
+  return Placeholder.is((on: Observer, as: string) => {
+    const descriptor = on.access(as, effect);
+
+    define(on.subject, as, {
+      enumerable: true,
+      value: define({}, "current", descriptor)
+    });
+  })
 }
 
 export function setPropertyHelper<T = any>
-  (onNewValue: EffectCallback): T {
+  (effect: EffectCallback): T {
 
-  return new Placeholder(
-    function manageValue(parent: Observer, key: string){
-      const descriptor = parent.access(key, onNewValue);
-  
-      define(parent.subject, key, {
-        enumerable: true,
-        ...descriptor
-      });
-    }
-  ) as any;
+  return Placeholder.is((on: Observer, as: string) => {
+    const descriptor = on.access(as, effect);
+
+    define(on.subject, as, {
+      enumerable: true,
+      ...descriptor
+    });
+  })
 }
