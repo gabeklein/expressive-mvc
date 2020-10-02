@@ -14,16 +14,15 @@ type Any = { [key: string]: any };
  */
 type Callback = () => void;
 
-
-type EffectCallback = (...args: any[]) => (Callback | undefined);
-
-type RefObject<T = any> = { current: T };
-
 /**
  * Workaround to retreive `typeof this`
  * in static methods using generics.
  */
 type Class = new(...args: any[]) => any;
+
+type EffectCallback = (...args: any[]) => (Callback | undefined);
+
+type RefObject<T = any> = { current: T };
 
 type maybeStrings = Array<string | undefined>;
 

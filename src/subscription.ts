@@ -1,6 +1,6 @@
 import { Controller } from './controller';
-import { Observer } from './observer';
-import { create, define, defineProperty, Issues } from './util';
+import { Observable, observe, Observer } from './observer';
+import { create, define, defineProperty, Issues, within } from './util';
 
 const Oops = Issues({
   FocusIsDetatched: () => 
@@ -9,30 +9,32 @@ const Oops = Issues({
 
 export class Subscription {
   private onRelease = [] as Callback[];
+  public parent: Observer;
   
   constructor(
-    public parent: Observer,
+    private subject: Observable,
     private refresh: Callback
-  ){}
+  ){
+    this.parent = observe(subject);
+  }
 
   public get proxy(){
-    const { parent } = this;
-    const { subject } = parent;
-    const proxy = create(subject);
+    const master = within(this.subject);
+    const proxy = create(master);
 
     define(proxy, {
-      get: subject,
-      set: subject
+      get: master,
+      set: master
     });
 
-    for(const key of parent.watched)
+    for(const key of this.parent.watched)
       defineProperty(proxy, key, {
         configurable: true,
         set: (value) => {
-          subject[key] = value;
+          master[key] = value;
         },
         get: () => {
-          let value = subject[key];
+          let value = master[key];
 
           if(value instanceof Controller)
             value = this.followRecursive(key);
@@ -73,7 +75,7 @@ export class Subscription {
       let value = this.parent.subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.__dispatch__, this.refresh);
+        sub = new Subscription(value, this.refresh);
         sub.focus(rest);
 
         this.parent.once("didRender", () => sub!.commit());
@@ -117,7 +119,7 @@ export class Subscription {
       let value = subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.__dispatch__, this.refresh);
+        sub = new Subscription(value, this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {

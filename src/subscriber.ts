@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Controller } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observer } from './observer';
+import { Observable } from './observer';
 import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 import { isFn, within } from './util';
-
-type Observable = { __dispatch__: Observer };
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -48,7 +46,7 @@ export function usePassiveSubscriber(
   ...path: (string | undefined)[]){
 
   const subscription = useActiveMemo(refresh =>
-    new Subscription(target.__dispatch__, refresh).focus(path)
+    new Subscription(target, refresh).focus(path)
   );
 
   useEffect(() => {
@@ -65,7 +63,7 @@ export function useActiveSubscriber(
   args: any[]){
 
   const subscription = useActiveMemo(refresh => 
-    new Subscription(target.__dispatch__, refresh)
+    new Subscription(target, refresh)
   );
 
   useLifecycleEffect((name) => {
@@ -96,7 +94,7 @@ export function useOwnController(
 
   const subscription = useActiveMemo(refresh => {
     const instance = Model.create(args, callback);
-    return new Subscription(instance.__dispatch__, refresh);
+    return new Subscription(instance, refresh);
   });
 
   useLifecycleEffect((name) => {

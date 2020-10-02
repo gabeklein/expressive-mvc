@@ -14,6 +14,11 @@ import {
   within,
 } from './util';
 
+export interface Observable {
+  applyDispatch(observer: Observer): void
+};
+
+const DISPATCH = new WeakMap<Observable, Observer>();
 const FIRST_COMPUTE = Symbol("is_initial");
 
 const Oops = Issues({
@@ -36,6 +41,16 @@ const Oops = Issues({
   BadReturn: () =>
     `Callback for property-update may only return a function.`
 })
+
+export function observe(x: Observable){
+  let observer = DISPATCH.get(x);
+  if(!observer){
+    observer = new Observer(x);
+    x.applyDispatch(observer);
+    DISPATCH.set(x, observer);
+  }
+  return observer;
+}
 
 export class Observer {
   constructor(public subject: any){}
@@ -328,7 +343,7 @@ export class Observer {
 
     const getStartingValue = (early?: boolean) => {
       try {
-        const sub = new Subscription(this, recalculate);
+        const sub = new Subscription(subject, recalculate);
         const value = state[key] = compute.call(sub.proxy);
         sub.commit();
         return value;

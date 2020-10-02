@@ -2,7 +2,7 @@ import { FunctionComponent, ProviderProps } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
 import { LifecycleMethods } from './lifecycle';
-import { Observer } from './observer';
+import { observe, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
@@ -16,7 +16,6 @@ const Oops = Issues({
 export interface Controller 
   extends LifecycleMethods {
 
-  __dispatch__: Observer;
   [TEMP_CONTEXT]: Callback;
 
   on(key: string, value: any): Callback;
@@ -38,7 +37,7 @@ export class Controller {
   }
 
   destroy(){
-    const dispatch = this.__dispatch__;
+    const dispatch = observe(this);
 
     if(dispatch)
       dispatch.emit("willDestroy");
@@ -47,7 +46,14 @@ export class Controller {
       this.willDestroy();
   }
 
-  static __dispatch__: Observer;
+  applyDispatch(observer: Observer){
+    observer.monitorValues();
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  
+    if(this.didCreate)
+      this.didCreate();
+  }
 
   static hoc = createWrappedComponent;
 
@@ -82,9 +88,15 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    instance.__dispatch__;
+    observe(instance);
     
     return instance;
+  }
+
+  static applyDispatch(observer: Observer){
+    observer.monitorValues(Function);
+    observer.monitorComputed(Controller);
+    observer.mixin();
   }
 
   static use(...args: any[]){
@@ -138,32 +150,8 @@ export class Controller {
   }
 }
 
-defineLazy(Controller, {
-  __dispatch__(){
-    const observer = new Observer(this)
-  
-    observer.monitorValues(Function);
-    observer.monitorComputed(Controller);
-    observer.mixin();
-  
-    return observer;
-  }
-});
-
 defineLazy(Controller.prototype, {
   Provider: ControlProvider,
   Value: ControlledValue,
-  Input: ControlledInput,
-  __dispatch__(){
-    const observer = new Observer(this);
-  
-    observer.monitorValues();
-    observer.monitorComputed(Controller);
-    observer.mixin();
-  
-    if(this.didCreate)
-      this.didCreate();
-  
-    return observer;
-  }
+  Input: ControlledInput
 });
