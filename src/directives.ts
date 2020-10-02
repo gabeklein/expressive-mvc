@@ -11,43 +11,42 @@ export class Placeholder {
   ){}
 }
 
-export function getPeerHelper
-  <T extends typeof Controller>
+export function getPeerHelper<T extends typeof Controller>
   (Model: T): InstanceType<T> {
 
-  function findNearest(on: Observer, key: string){
-    (on.subject as Controller).attach(key, Model);
-  }
-
-  return new Placeholder(findNearest) as any;
+  return new Placeholder(
+    function findNearest(on: Observer, key: string){
+      (on.subject as Controller).attach(key, Model);
+    }
+  ) as any;
 }
 
 export function setRefHelper<T = any>
   (onNewValue?: EffectCallback): RefObject<T> {
 
-  function manageRef(parent: Observer, key: string){
-    const desc = parent.accessor(key, onNewValue);
-
-    define(parent.subject, key, {
-      enumerable: true,
-      value: define({}, "current", desc)
-    });
-  }
-
-  return new Placeholder(manageRef) as any;
+  return new Placeholder(
+    function manageRef(parent: Observer, key: string){
+      const desc = parent.accessor(key, onNewValue);
+  
+      define(parent.subject, key, {
+        enumerable: true,
+        value: define({}, "current", desc)
+      });
+    }
+  ) as any;
 }
 
 export function setPropertyHelper<T = any>
   (onNewValue: EffectCallback): T {
 
-  function manageValue(parent: Observer, key: string){
-    const desc = parent.accessor(key, onNewValue);
-
-    define(parent.subject, key, {
-      enumerable: true,
-      ...desc
-    });
-  }
-
-  return new Placeholder(manageValue) as any;
+  return new Placeholder(
+    function manageValue(parent: Observer, key: string){
+      const desc = parent.accessor(key, onNewValue);
+  
+      define(parent.subject, key, {
+        enumerable: true,
+        ...desc
+      });
+    }
+  ) as any;
 }
