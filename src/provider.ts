@@ -15,7 +15,7 @@ export function ControlProvider(this: Controller){
     let { children, className, style, ...outsideProps } = props;
 
     if(Object.keys(outsideProps).length)
-      this.assign(outsideProps);
+      this.update(outsideProps);
 
     if(className || style)
       children = createElement("div", { className, style }, children);

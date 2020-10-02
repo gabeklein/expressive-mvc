@@ -28,6 +28,8 @@ export interface Controller
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
 
+  update(entries: Partial<this>): void;
+
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
