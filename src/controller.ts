@@ -107,7 +107,6 @@ export class Controller {
 
   static [OBSERVER]: Observer;
   static context?: Context<Controller>;
-  static meta: <T extends Class>(this: T) => InstanceType<T>;
 
   static hoc = createWrappedComponent;
 
@@ -132,6 +131,10 @@ export class Controller {
       throw Oops.ContextNotFound(this.name);
 
     return instance;
+  }
+
+  static meta(...path: maybeStrings): any {
+    return usePassiveSubscriber(this, ...path);
   }
 
   static create<T extends Class>(
@@ -218,10 +221,6 @@ export class Controller {
 defineAtNeed(Controller, {
   context(){
     return createContext<any>(null);
-  },
-  meta(){
-    return (...path: maybeStrings) => 
-      usePassiveSubscriber(this, ...path);
   }
 });
 
