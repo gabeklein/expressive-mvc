@@ -6,7 +6,7 @@ import { Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { CONTEXT_MULTIPROVIDER, ControlProvider, createWrappedComponent } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
-import { define, defineAtNeed, Issues, within } from './util';
+import { defineAtNeed, Issues, within } from './util';
 
 export const OBSERVER = Symbol("object_observer");
 
@@ -22,7 +22,7 @@ const Oops = Issues({
 export interface Controller 
   extends LifecycleMethods {
 
-  [OBSERVER]: Observer;
+  __dispatch__: Observer;
   [TEMP_CONTEXT]: Callback;
 
   on(key: string, value: any): Callback;
@@ -50,31 +50,13 @@ export class Controller {
   }
 
   destroy(){
-    const dispatch = this.getDispatch();
+    const dispatch = this.__dispatch__;
 
     if(dispatch)
       dispatch.emit("willDestroy");
     
     if(this.willDestroy)
       this.willDestroy();
-  }
-
-  getDispatch(){
-    let dispatch = this[OBSERVER];
-
-    if(!dispatch){
-      dispatch = new Observer(this);
-      dispatch.monitorValues();
-      dispatch.monitorComputed(Controller);
-      observer.mixin();
-    
-      define(this, OBSERVER, dispatch);
-    
-      if(this.didCreate)
-        this.didCreate();
-    }
-  
-    return dispatch;
   }
 
   private integrate(
@@ -99,7 +81,7 @@ export class Controller {
       values[key] = source[key];
   }
 
-  static [OBSERVER]: Observer;
+  static __dispatch__: Observer;
   static __context__?: Context<Controller>;
 
   static hoc = createWrappedComponent;
@@ -142,7 +124,7 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    instance.getDispatch();
+    instance.__dispatch__;
     
     return instance;
   }
@@ -196,31 +178,37 @@ export class Controller {
     const instance = this.find();
     return useActiveSubscriber(instance, args);
   }
-
-  static getDispatch(){
-    let observer = this[OBSERVER];
-
-    if(!observer){
-      observer = new Observer(this)
-      observer.monitorValues(Function);
-      observer.monitorComputed(Controller);
-      observer.mixin();
-    
-      define(this, OBSERVER, observer);
-    }
-
-    return observer;
-  };
 }
 
 defineAtNeed(Controller, {
   __context__(){
     return createContext<any>(null);
+  },
+  __dispatch__(){
+    const observer = new Observer(this)
+  
+    observer.monitorValues(Function);
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  
+    return observer;
   }
 });
 
 defineAtNeed(Controller.prototype, {
   Provider: ControlProvider,
   Value: ControlledValue,
-  Input: ControlledInput
+  Input: ControlledInput,
+  __dispatch__(){
+    const observer = new Observer(this);
+  
+    observer.monitorValues();
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  
+    if(this.didCreate)
+      this.didCreate();
+  
+    return observer;
+  }
 });

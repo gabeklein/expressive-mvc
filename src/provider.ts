@@ -31,7 +31,7 @@ export function createWrappedComponent(
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const self = useOwnController(this);
-    const current = self.getDispatch();
+    const current = self.__dispatch__;
 
     self.assign(forwardedProps);
     

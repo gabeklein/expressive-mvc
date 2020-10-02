@@ -73,7 +73,7 @@ export class Subscription {
       let value = this.parent.subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.getDispatch(), this.refresh);
+        sub = new Subscription(value.__dispatch__, this.refresh);
         sub.focus(rest);
 
         this.parent.once("didRender", () => sub!.commit());
@@ -117,7 +117,7 @@ export class Subscription {
       let value = subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.getDispatch(), this.refresh);
+        sub = new Subscription(value.__dispatch__, this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {

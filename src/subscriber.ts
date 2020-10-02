@@ -7,7 +7,7 @@ import { ensurePeerControllers } from './peers';
 import { Subscription } from './subscription';
 import { isFn, within } from './util';
 
-type Observable = { getDispatch(): Observer };
+type Observable = { __dispatch__: Observer };
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -48,7 +48,7 @@ export function usePassiveSubscriber(
   ...path: (string | undefined)[]){
 
   const subscription = useActiveMemo(refresh => {
-    return new Subscription(target.getDispatch(), refresh).focus(path);
+    return new Subscription(target.__dispatch__, refresh).focus(path);
   });
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export function useActiveSubscriber(
   args: any[]){
 
   const subscription = useActiveMemo(refresh => 
-    new Subscription(target.getDispatch(), refresh)
+    new Subscription(target.__dispatch__, refresh)
   );
 
   useLifecycleEffect((name) => {
@@ -96,7 +96,7 @@ export function useOwnController(
 
   const subscription = useActiveMemo(refresh => {
     return new Subscription(
-      Model.create(args, callback).getDispatch(),
+      Model.create(args, callback).__dispatch__,
       refresh
     );
   });
