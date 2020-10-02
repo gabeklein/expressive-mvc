@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from 'react';
 
+import { values } from './util';
+
 export type LivecycleEvent =
   | "willMount"
   | "willUpdate"
@@ -59,7 +61,7 @@ export const lifecycle = {
 function aliasFor(prefix: string){
   const map = {} as BunchOf<string>;
 
-  for(const name of Object.values(lifecycle))
+  for(const name of values(lifecycle))
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
 
   return (name: string) => map[name] as LivecycleEvent;

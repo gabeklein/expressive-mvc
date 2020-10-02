@@ -3,9 +3,7 @@ import { Context, createContext, createElement, FC, PropsWithChildren, useContex
 import { Controller } from './controller';
 import { ensurePeerControllers } from './peers';
 import { useOwnController } from './subscriber';
-import { Issues, within } from './util';
-
-const { getPrototypeOf } = Object;
+import { create, getPrototypeOf, Issues, keys, values, within } from './util';
 
 const Oops = Issues({
   ContextNotFound: (name) =>
@@ -49,7 +47,7 @@ export function ControlProvider(this: Controller){
   return (props: PropsWithChildren<any>) => {
     let { children, className, style, ...outsideProps } = props;
 
-    if(Object.keys(outsideProps).length)
+    if(keys(outsideProps).length)
       this.update(outsideProps);
 
     if(className || style)
@@ -95,7 +93,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
     initGroupControllers(parent, controllers, outsideProps),
   []); 
 
-  Object.values(provide).forEach(mc => {
+  values(provide).forEach(mc => {
     const onDidUnmount = ensurePeerControllers(mc);
     if(onDidUnmount)
       flushHooks.push(onDidUnmount);
@@ -103,7 +101,7 @@ export const MultiProvider = (props: PropsWithChildren<any>) => {
 
   useEffect(() => () => {
     flushHooks.forEach(x => x());
-    Object.values(provide).forEach(x => x.destroy());
+    values(provide).forEach(x => x.destroy());
   }, []);
 
   return createElement(CONTEXT_MULTIPLEX.Provider, { value: provide, children });
@@ -114,7 +112,7 @@ function initGroupControllers(
   explicit: BunchOf<typeof Controller>,
   fromProps: BunchOf<typeof Controller> 
 ){
-  const map = Object.create(parent) as BunchOf<Controller>;
+  const map = create(parent) as BunchOf<Controller>;
 
   for(const group of [ fromProps, explicit ])
     for(const key in group){

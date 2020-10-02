@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Observer } from './observer';
-import { define, Issues } from './util';
+import { create, define, defineProperty, Issues } from './util';
 
 const Oops = Issues({
   FocusIsDetatched: () => 
@@ -18,7 +18,7 @@ export class Subscription {
   public get proxy(){
     const { parent } = this;
     const { subject } = parent;
-    const proxy = Object.create(subject);
+    const proxy = create(subject);
 
     define(proxy, {
       get: subject,
@@ -26,7 +26,7 @@ export class Subscription {
     });
 
     for(const key of parent.watched)
-      Object.defineProperty(proxy, key, {
+      defineProperty(proxy, key, {
         configurable: true,
         set: (value) => {
           subject[key] = value;
@@ -81,7 +81,7 @@ export class Subscription {
       else if(rest.length)
         throw Oops.FocusIsDetatched();
   
-      Object.defineProperty(this, "proxy", {
+      defineProperty(this, "proxy", {
         get: () => sub ? sub.proxy : value,
         configurable: true
       })
@@ -126,7 +126,7 @@ export class Subscription {
         });
       }
 
-      Object.defineProperty(this.proxy, key, {
+      defineProperty(this.proxy, key, {
         get: () => value,
         set: val => subject[key] = val,
         configurable: true,

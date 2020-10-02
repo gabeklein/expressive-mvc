@@ -1,9 +1,20 @@
 import { Placeholder } from './directives';
 import { Subscription } from './subscription';
-import { entriesIn, isFn, Issues, listAccess, within, define } from './util';
+import {
+  assign,
+  define,
+  defineProperty,
+  entriesIn,
+  getOwnPropertyDescriptor,
+  getPrototypeOf,
+  isFn,
+  Issues,
+  keys,
+  listAccess,
+  within,
+} from './util';
 
 const FIRST_COMPUTE = Symbol("is_initial");
-const { defineProperty } = Object;
 
 const Oops = Issues({
   NotTracked: (name) => 
@@ -34,11 +45,11 @@ export class Observer {
   protected willEmit?: Set<string>;
 
   public get values(){
-    return Object.assign({}, this.state);
+    return assign({}, this.state);
   }
 
   public get watched(){
-    return Object.keys(this.subscribers);
+    return keys(this.subscribers);
   }
 
   public mixin(){
@@ -149,7 +160,7 @@ export class Observer {
       ? () => { stop(); callback() }
       : callback;
 
-    const desc = Object.getOwnPropertyDescriptor(this.subject, key);
+    const desc = getOwnPropertyDescriptor(this.subject, key);
     const getter = desc && desc.get;
     if(getter && FIRST_COMPUTE in getter)
       (getter as Function)(true);
@@ -279,7 +290,7 @@ export class Observer {
     for(
       let sub = subject; 
       sub !== Ignore && sub.constructor !== Ignore;
-      sub = Object.getPrototypeOf(sub)
+      sub = getPrototypeOf(sub)
     )
       for(const [key, item] of entriesIn(sub))
         if(!item.get

@@ -1,4 +1,26 @@
-const { defineProperty } = Object;
+const {
+  assign,
+  create,
+  defineProperty,
+  entries,
+  getPrototypeOf,
+  getOwnPropertyDescriptor,
+  getOwnPropertyDescriptors,
+  keys,
+  values
+} = Object;
+
+export {
+  assign,
+  create,
+  defineProperty,
+  entries,
+  getPrototypeOf,
+  getOwnPropertyDescriptor,
+  getOwnPropertyDescriptors,
+  keys,
+  values
+}
 
 export function define(target: {}, values: {}): void;
 export function define(target: {}, key: string | symbol, value: any): void;
@@ -6,7 +28,7 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
   if(typeof kv == "string" || typeof kv == "symbol")
     defineProperty(target, kv, { value: v })
   else
-    for(const [key, value] of Object.entries(kv))
+    for(const [key, value] of entries(kv))
       defineProperty(target, key, { value });
 }
 
@@ -17,9 +39,7 @@ type DefineMultiple<T> = {
 export const isFn = (x: any): x is Function => typeof x == "function";
 
 export function entriesIn<T>(object: T){
-  return Object.entries(
-    Object.getOwnPropertyDescriptors(object)
-  )
+  return entries(getOwnPropertyDescriptors(object))
 }
 
 export function listAccess(
@@ -46,12 +66,11 @@ export function assignSpecific(
 
   const values = within(target);
   const proto = target.constructor.prototype;
-  const select = only || Object.keys(source);
+  const select = only || keys(source);
   const defer: string[] = [];
 
   for(const key of select){
-    const descriptor = 
-      Object.getOwnPropertyDescriptor(proto, key);
+    const descriptor = getOwnPropertyDescriptor(proto, key);
 
     if(descriptor && descriptor.set)
       defer.push(key)

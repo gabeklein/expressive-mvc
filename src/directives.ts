@@ -1,9 +1,8 @@
-import { Controller } from "./controller";
-import { Observer } from "./observer";
-import { Singleton } from "./singleton";
-import { defineAtNeed, Issues } from "./util";
+import { Controller } from './controller';
+import { Observer } from './observer';
+import { Singleton } from './singleton';
+import { defineAtNeed, defineProperty, Issues } from './util';
 
-const define = Object.defineProperty;
 const Oops = Issues({
   CantAttach: (parent, child) =>
     `Singleton '${parent}' attempted to attach '${child}'. ` +
@@ -42,9 +41,9 @@ export function setRefHelper<T = any>
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);
 
-    define(on.subject, as, {
+    defineProperty(on.subject, as, {
       enumerable: true,
-      value: define({}, "current", descriptor)
+      value: defineProperty({}, "current", descriptor)
     });
   })
 }
@@ -55,7 +54,7 @@ export function setPropertyHelper<T = any>
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);
 
-    define(on.subject, as, {
+    defineProperty(on.subject, as, {
       enumerable: true,
       ...descriptor
     });
