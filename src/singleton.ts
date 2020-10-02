@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { defineAtNeed, Issues } from './util';
+import { Issues } from './util';
 
 const Oops = Issues({
   ContextNotAllowed: (name) =>
@@ -8,10 +8,6 @@ const Oops = Issues({
   DestroyNotActive: (name) =>
     `${name}.destory() was called on an instance which is not active. ` +
     `This is an antipattern and may caused unexpected behavior.`,
-
-  CantAttach: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}'. ` +
-    `This is not possible because '${child}' is not also a singleton.`,
 
   AlreadyExists: (type) =>
     `Shared instance of ${type} already exists! ` +
@@ -32,13 +28,6 @@ export class Singleton extends Controller {
       meta.current = undefined;
     else
       Oops.DestroyNotActive(meta.name).warn();
-  }
-
-  attach(key: string, type: typeof Controller){
-    if(type.__context__)
-      throw Oops.CantAttach(this.constructor.name, type.name)
-    else 
-      defineAtNeed(this, key, () => type.find());
   }
 
   static current?: Singleton = undefined;

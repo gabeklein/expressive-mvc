@@ -44,11 +44,6 @@ export class Controller {
     return useActiveSubscriber(this, args);
   }
 
-  attach(key: string, type: typeof Controller){
-    if(!type.__context__)
-      defineAtNeed(this, key, () => type.find());
-  }
-
   destroy(){
     const dispatch = this.__dispatch__;
 
@@ -68,11 +63,11 @@ export class Controller {
     return useOwnController(this).Provider;
   }
 
-  static isTypeof(maybe: any): maybe is typeof Controller {
+  static isTypeof<T extends Class>(this: T, maybe: any): maybe is T {
     return (
       !!maybe && 
       typeof maybe == "object" && 
-      maybe.prototype instanceof Controller
+      maybe.prototype instanceof this
     )
   }
 

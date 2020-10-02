@@ -1,7 +1,14 @@
 import { Controller } from "./controller";
 import { Observer } from "./observer";
+import { Singleton } from "./singleton";
+import { defineAtNeed, Issues } from "./util";
 
 const define = Object.defineProperty;
+const Oops = Issues({
+  CantAttach: (parent, child) =>
+    `Singleton '${parent}' attempted to attach '${child}'. ` +
+    `This is not possible because '${child}' is not also a singleton.`,
+})
 
 type RefObject<T = any> = { current: T };
 
@@ -12,11 +19,17 @@ export class Placeholder {
 }
 
 export function getPeerHelper<T extends typeof Controller>
-  (Model: T): InstanceType<T> {
+  (Peer: T): InstanceType<T> {
 
   return new Placeholder(
     function findNearest(on: Observer, key: string){
-      (on.subject as Controller).attach(key, Model);
+      const subject = on.subject as Controller;
+  
+      if(Singleton.isTypeof(Peer))
+        defineAtNeed(subject, key, () => Peer.find());
+      else
+      if(subject instanceof Singleton)
+        throw Oops.CantAttach(subject.constructor.name, Peer.name);
     }
   ) as any;
 }
