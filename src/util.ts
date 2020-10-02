@@ -82,25 +82,25 @@ export function assignSpecific(
     values[key] = source[key];
 }
 
-export function defineAtNeed<T>(
+export function defineLazy<T>(
   object: T, 
   property: string | symbol,
   init: (this: T) => any
 ): void;
 
-export function defineAtNeed<T>(
+export function defineLazy<T>(
   object: T, 
   property: DefineMultiple<T>
 ): void;
 
-export function defineAtNeed<T>(
+export function defineLazy<T>(
   object: T, 
   property: string | symbol | DefineMultiple<T>, 
   init?: (this: T) => any){
 
   if(typeof property === "object")
     for(const k in property)
-      defineAtNeed(object, k, property[k]);
+      defineLazy(object, k, property[k]);
   else
     defineProperty(object, property, { 
       configurable: true,

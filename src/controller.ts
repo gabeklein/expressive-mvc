@@ -6,7 +6,7 @@ import { Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
-import { assignSpecific, defineAtNeed, Issues } from './util';
+import { assignSpecific, defineLazy, Issues } from './util';
 
 const Oops = Issues({
   HasPropertyUndefined: (control, property) =>
@@ -138,7 +138,7 @@ export class Controller {
   }
 }
 
-defineAtNeed(Controller, {
+defineLazy(Controller, {
   __dispatch__(){
     const observer = new Observer(this)
   
@@ -150,7 +150,7 @@ defineAtNeed(Controller, {
   }
 });
 
-defineAtNeed(Controller.prototype, {
+defineLazy(Controller.prototype, {
   Provider: ControlProvider,
   Value: ControlledValue,
   Input: ControlledInput,

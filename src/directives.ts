@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
-import { defineAtNeed, defineProperty, Issues } from './util';
+import { defineLazy, defineProperty, Issues } from './util';
 
 const Oops = Issues({
   CantAttach: (parent, child) =>
@@ -26,7 +26,7 @@ export function getPeerHelper<T extends typeof Controller>
     const subject = on.subject as Controller;
 
     if(Singleton.isTypeof(Peer))
-      defineAtNeed(subject, as, () => Peer.find());
+      defineLazy(subject, as, () => Peer.find());
     else
     if(subject instanceof Singleton)
       throw Oops.CantAttach(subject.constructor.name, Peer.name);
