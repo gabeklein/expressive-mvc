@@ -45,7 +45,7 @@ export class Controller {
   }
 
   attach(key: string, type: typeof Controller){
-    if(!type.context)
+    if(!type.__context__)
       defineAtNeed(this, key, () => type.find());
   }
 
@@ -106,7 +106,7 @@ export class Controller {
   }
 
   static [OBSERVER]: Observer;
-  static context?: Context<Controller>;
+  static __context__?: Context<Controller>;
 
   static hoc = createWrappedComponent;
 
@@ -124,7 +124,7 @@ export class Controller {
 
   static find(){
     const instance = 
-      useContext(this.context!) || 
+      useContext(this.__context__!) || 
       useContext(CONTEXT_MULTIPROVIDER)[this.name];
 
     if(!instance)
@@ -219,7 +219,7 @@ export class Controller {
 }
 
 defineAtNeed(Controller, {
-  context(){
+  __context__(){
     return createContext<any>(null);
   }
 });

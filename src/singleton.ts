@@ -35,7 +35,7 @@ export class Singleton extends Controller {
   }
 
   attach(key: string, type: typeof Controller){
-    if(type.context)
+    if(type.__context__)
       throw Oops.CantAttach(this.constructor.name, type.name)
     else 
       defineAtNeed(this, key, () => type.find());

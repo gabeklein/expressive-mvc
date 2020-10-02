@@ -9,7 +9,7 @@ export const CONTEXT_MULTIPROVIDER = createContext(null as any);
 
 export function ControlProvider(this: Controller){
   const model = this.constructor as typeof Controller;
-  const { Provider } = model.context!;
+  const { Provider } = model.__context__!;
   
   return (props: PropsWithChildren<any>) => {
     let { children, className, style, ...outsideProps } = props;
@@ -27,7 +27,7 @@ export function ControlProvider(this: Controller){
 export function createWrappedComponent(
   this: typeof Controller, fn: FC<any>){
 
-  const { Provider } = this.context!;
+  const { Provider } = this.__context__!;
   
   return (forwardedProps: PropsWithChildren<any>) => {
     const self = useOwnController(this);

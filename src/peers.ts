@@ -20,7 +20,7 @@ export function ensurePeerControllers(instance: Controller){
 
   for(const [key, { value }] of entries)
     if(Controller.isTypeof(value))
-      pending.push([key, value.context!])
+      pending.push([key, value.__context__!])
 
   if(pending.length)
     return attachPeersFromContext(instance, pending);
