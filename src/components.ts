@@ -12,6 +12,15 @@ import {
 
 import { Controller } from './controller';
 
+type onChangeCallback = (v: any, e: any) => any;
+type ControlledInputProps = HTMLProps<HTMLInputElement> & ControlledProps;
+type ControlledProps = {
+  to: string, 
+  type?: string,
+  onUpdate?: onChangeCallback | string | false,
+  onReturn?: onChangeCallback | string
+}
+
 function useValue(from: Controller, key: string){
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
@@ -27,24 +36,12 @@ export function ControlledValue(
     createElement("span", props, useValue(this, key));
 }
 
-type onChangeCallback = (v: any, e: any) => any;
-type ControlledInputProps = 
-  HTMLProps<HTMLInputElement>
-  & { 
-    to: string, 
-    type?: string,
-    onUpdate?: onChangeCallback | string | false,
-    onReturn?: onChangeCallback | string
-  }
-
 export function ControlledInput(this: Controller){
   return forwardRef((props: ControlledInputProps, ref) => {
     const { to, onUpdate, onReturn, ...passProps } = props;
 
     const value = useValue(this, to);
-    const events = useMemo(() =>
-      controlledEventProps(this, props), 
-    []);
+    const events = useMemo(() => controlledEventProps(this, props), []);
     
     return createElement("input", {
       ...passProps, ...events, ref, value

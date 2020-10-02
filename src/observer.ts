@@ -55,9 +55,9 @@ export class Observer {
     if(listener)
       return this.watch(key, listener, true);
     else
-      return new Promise(resolve => {
+      return new Promise(resolve =>
         this.watch(key, resolve, true)
-      });
+      );
   }
 
   public effect = (
@@ -133,19 +133,19 @@ export class Observer {
     callback: Callback,
     once?: boolean){
 
-    const listen = this.manage(key);
-    const cancel = () => { listen.delete(callback) };
-    const update = once
-      ? () => { cancel(); callback() }
+    const listeners = this.manage(key);
+    const stop = () => { listeners.delete(callback) };
+    const onUpdate = once
+      ? () => { stop(); callback() }
       : callback;
 
-    const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
-    const getter = descriptor && descriptor.get;
+    const desc = Object.getOwnPropertyDescriptor(this.subject, key);
+    const getter = desc && desc.get;
     if(getter && FIRST_COMPUTE in getter)
       (getter as Function)(true);
 
-    listen.add(update);
-    return cancel;
+    listeners.add(onUpdate);
+    return stop;
   }
 
   public addMultipleListener(
