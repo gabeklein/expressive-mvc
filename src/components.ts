@@ -40,9 +40,7 @@ export function ControlledInput(this: Controller){
     const value = useValue(this, to);
     const events = useMemo(() => controlledEventProps(this, props), []);
     
-    return createElement("input", {
-      ...passProps, ...events, ref, value
-    });
+    return createElement("input", { ...passProps, ...events, ref, value });
   })
 }
 

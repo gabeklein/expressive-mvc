@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Controller } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
-import { ensurePeerControllers } from './peers';
+import { attachFromContext } from './provider';
 import { Subscription } from './subscription';
 import { isFn, within } from './util';
 
@@ -103,7 +103,7 @@ export function useOwnController(
     const handler = instance[alias] || instance[name];
 
     if(name == lifecycle.WILL_RENDER)
-      release = ensurePeerControllers(instance);
+      release = attachFromContext(instance);
 
     if(name == lifecycle.DID_MOUNT)
       subscription.commit();
