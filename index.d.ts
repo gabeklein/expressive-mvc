@@ -8,16 +8,12 @@ import {
 type Callback = () => void;
 type Class = new (...args: any) => any;
 type Expecting<A extends any[]> = new(...args: A) => any
-type BooleanValuesOf<T> = { [K in keyof T]: T[K] extends boolean | undefined ? K : never }
-type KeyOfBooleanValueIn<T> = keyof Pick<T, BooleanValuesOf<T>[keyof T]>;
 type Similar<T> = { [X in keyof T]?: T[X] };
-
-type HandleUpdatedValue<T extends object, P extends keyof T> = 
-    (this: T, value: T[P], changed: P) => void
-
 type EffectCallback = () => (() => void) | undefined
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
+type HandleUpdatedValue<T extends object, P extends keyof T> = 
+    (this: T, value: T[P], changed: P) => void
 
 /**
  * Observable Instance
@@ -32,6 +28,14 @@ interface Observable {
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
     effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
+
+    export(): { [P in keyof this]: this[P] };
+    export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
+
+    update(entries: Partial<this>): void;
+    update(keys: Selector<this>): void;
+    update<K extends keyof this>(keys: K[]): void;
+    update<K extends keyof this>(...keys: K[]): void;
 }
 
 /**
@@ -43,25 +47,26 @@ interface Observable {
  */
 interface MC {
     didCreate?(): void;
-    willRender?(...args: any[]): void;
-    willMount?(...args: any[]): void;
-    willUpdate?(...args: any[]): void;
     didMount?(...args: any[]): void;
+    didRender?(...args: any[]): void;
+
+    willRender?(...args: any[]): void;
+    willReset?(...args: any[]): void;
+    willUpdate?(...args: any[]): void;
+    willMount?(...args: any[]): void;
     willUnmount?(...args: any[]): void;
-    didFocus?(parent: Controller, as: string): void;
-    willLoseFocus?(parent: Controller, as: string): void;
     willDestroy(callback?: Callback): void;
 
-    elementWillRender?(...args: any[]): void;
-    elementWillMount?(...args: any[]): void;
-    elementWillUpdate?(...args: any[]): void;
     elementDidMount?(...args: any[]): void;
+    elementWillRender?(...args: any[]): void;
+    elementWillUpdate?(...args: any[]): void;
+    elementWillMount?(...args: any[]): void;
     elementWillUnmount?(...args: any[]): void;
 
-    componentWillRender?(...args: any[]): void;
-    componentWillMount?(...args: any[]): void;
-    componentWillUpdate?(...args: any[]): void;
     componentDidMount?(...args: any[]): void;
+    componentWillRender?(...args: any[]): void;
+    componentWillUpdate?(...args: any[]): void;
+    componentWillMount?(...args: any[]): void;
     componentWillUnmount?(...args: any[]): void;
 }
 
@@ -82,11 +87,6 @@ interface RC {
  * Helper methods and properties available to an instance of this controller.
  */
 interface IC {
-    update(entries: Partial<this>): void;
-    update(keys: Selector<this>): void;
-    update<K extends keyof this>(keys: K[]): void;
-    update<K extends keyof this>(...keys: K[]): void;
-
     tap(): this & SC;
     tap<K extends keyof this>(key?: K): this[K];
     tap(...keys: string[]): any;
@@ -94,9 +94,6 @@ interface IC {
     sub(...args: any[]): this & SC;
 
     destroy(): void;
-
-    export(): { [P in keyof this]: this[P] };
-    export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
 }
 
 /**
@@ -120,16 +117,6 @@ interface Meta extends Observable, SC {}
 interface Controller extends Observable, IC, SC, RC {}
 
 declare class Controller {
-    static global: boolean;
-
-    static Provider: FunctionComponentElement<any>;
-    static makeGlobal <T extends Class>(this: T): InstanceType<T>;
-
-    static meta <T extends Class>(this: T): T & Meta;
-    static meta (...keys: string[]): any;
-
-    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
-    
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
     static uses <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
@@ -138,34 +125,43 @@ declare class Controller {
     static get <T extends Class> (this: T): InstanceType<T> & SC;
     static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
     
+    public tap (): this & SC;
     static tap <T extends Class> (this: T): InstanceType<T> & SC;
+
+    public tap <K extends keyof this> (key: K): this[K];
     static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+
+    public tap (...keys: string[]): any;
     static tap (...keys: string[]): any;
 
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
+    public sub (...args: any[]): this & SC;
     static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
 
-    static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
+    static meta <T extends Class>(this: T): T & Meta;
+    static meta (...keys: string[]): any;
 
-    static context <T extends Class> (this: T): Context<InstanceType<T>>;
+    static find <T extends Class>(this: T): InstanceType<T>;
+
+    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
+
+    public destroy(): void;
+
+    static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
+
+    static Provider: FunctionComponentElement<any>;
 }
 
-declare class Singleton extends Controller {}
+declare class Singleton extends Controller {
+    static current?: Singleton;
+}
 
-declare function get<T extends Class> (type: T): InstanceType<T>;
+declare function get <T extends Class> (type: T): InstanceType<T>;
+declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
+declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
 
-declare function set<T = any> (
-    onValue: (current: T) => Callback | void
-): T | undefined;
-
-declare function ref<T = HTMLElement> (
-    onValue?: (current: T) => Callback | void
-): { current?: T };
-
-declare const Provider: FunctionComponentElement<{
-    using: Controller[]
-}>
+declare const Provider: FunctionComponentElement<{ using: Controller[] }>
 
 export {
     IC,

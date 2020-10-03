@@ -54,10 +54,6 @@ export class Controller {
     return subscriber;
   }
 
-  static find(){
-    return getFromContext(this);
-  }
-
   static get(key?: string){
     return usePassiveGetter(this.find(), key);
   }
@@ -91,19 +87,8 @@ export class Controller {
     return usePassiveSubscriber(this, ...path);
   }
 
-  public applyDispatch(observer: Observer){
-    observer.monitorValues();
-    observer.monitorComputed(Controller);
-    observer.mixin();
-  
-    if(this.didCreate)
-      this.didCreate();
-  }
-
-  static applyDispatch(observer: Observer){
-    observer.monitorValues(Function);
-    observer.monitorComputed(Controller);
-    observer.mixin();
+  static find(){
+    return getFromContext(this);
   }
 
   static create<T extends Class>(
@@ -132,16 +117,33 @@ export class Controller {
       this.willDestroy();
   }
 
-  static get Provider(){
-    return this.use().Provider;
+  public applyDispatch(observer: Observer){
+    observer.monitorValues();
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  
+    if(this.didCreate)
+      this.didCreate();
   }
 
-  static isTypeof<T extends Class>(this: T, maybe: any): maybe is T {
+  static applyDispatch(observer: Observer){
+    observer.monitorValues(Function);
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  }
+
+  static isTypeof<T extends Class>(
+    this: T, maybe: any): maybe is T {
+
     return (
       !!maybe && 
       typeof maybe == "object" && 
       maybe.prototype instanceof this
     )
+  }
+
+  static get Provider(){
+    return this.use().Provider;
   }
 }
 
