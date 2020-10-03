@@ -3,9 +3,6 @@ import { Controller } from './controller';
 import { Issues } from './util';
 
 const Oops = Issues({
-  ContextNotAllowed: (name) =>
-    `Controller ${name} is tagged as global. Context API does not apply.`,
-
   DestroyNotActive: (name) =>
     `${name}.destory() was called on an instance which is not active. ` +
     `This is an antipattern and may caused unexpected behavior.`,

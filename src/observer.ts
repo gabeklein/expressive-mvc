@@ -25,9 +25,6 @@ const Oops = Issues({
   NotTracked: (name) => 
     `Can't watch property ${name}, it's not tracked on this instance.`,
 
-  IsComputed: (name) => 
-    `Cannot set ${name} on this controller, it is computed.`,
-
   ComputeFailed: (parent, property) =>
     `There was an attempt to access computed property ` + 
     `${parent}.${property} for the first time; however an ` +
