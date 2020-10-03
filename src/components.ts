@@ -1,10 +1,12 @@
 import {
   ChangeEventHandler,
+  Children,
   createElement,
   FC,
   forwardRef,
   HTMLProps,
   KeyboardEventHandler,
+  PropsWithChildren,
   useMemo,
 } from 'react';
 
@@ -18,6 +20,10 @@ type ControlledProps = {
   type?: string,
   onUpdate?: onChangeCallback | string | false,
   onReturn?: onChangeCallback | string
+}
+
+export function Noop({ children }: PropsWithChildren<{}>){
+  return Children.only(children);
 }
 
 export function ControlledValue(

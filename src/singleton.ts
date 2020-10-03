@@ -1,3 +1,4 @@
+import { Noop } from './components';
 import { Controller } from './controller';
 import { Issues } from './util';
 
@@ -57,7 +58,8 @@ export class Singleton extends Controller {
       Oops.DestroyNotActive(meta.name).warn();
   }
 
-  static get Provider(): never {
-    throw Oops.ContextNotAllowed(this.name);
+  static get Provider(){
+    this.use();
+    return Noop;
   }
 }
