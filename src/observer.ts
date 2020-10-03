@@ -259,12 +259,6 @@ export class Observer {
     }
   }
 
-  protected manage(key: string){
-    return this.subscribers[key] || (
-      this.subscribers[key] = new Set()
-    );
-  }
-
   public monitorValues(ignore: any = {}){
     const entries = entriesIn(this.subject);
 
@@ -281,21 +275,6 @@ export class Observer {
       else
         this.monitorValue(key, value);
     }
-  }
-
-  protected monitorValue(
-    key: string,
-    initial: any){
-
-    this.state[key] = initial;
-    this.manage(key);
-
-    defineProperty(this.subject, key, {
-      enumerable: true,
-      configurable: false,
-      get: () => this.state[key],
-      set: (value: any) => this.set(key, value)
-    })
   }
 
   public monitorComputed(Ignore?: Class){
@@ -322,6 +301,27 @@ export class Observer {
         set: Oops.NotTracked(key).throw,
         get: this.monitorComputedValue(key, getters[key])
       })
+  }
+
+  protected manage(key: string){
+    return this.subscribers[key] || (
+      this.subscribers[key] = new Set()
+    );
+  }
+
+  protected monitorValue(
+    key: string,
+    initial: any){
+
+    this.state[key] = initial;
+    this.manage(key);
+
+    defineProperty(this.subject, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => this.state[key],
+      set: (value: any) => this.set(key, value)
+    })
   }
 
   protected monitorComputedValue(

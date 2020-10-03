@@ -19,16 +19,6 @@ const Oops = Issues({
 })
 
 export class Singleton extends Controller {
-  destroy(){
-    super.destroy();
-
-    const meta = this.constructor as typeof Singleton;
-
-    if(this === meta.current)
-      meta.current = undefined;
-    else
-      Oops.DestroyNotActive(meta.name).warn();
-  }
 
   static current?: Singleton = undefined;
 
@@ -56,8 +46,15 @@ export class Singleton extends Controller {
     return instance;
   }
 
-  static get context(){
-    return undefined;
+  destroy(){
+    super.destroy();
+
+    const meta = this.constructor as typeof Singleton;
+
+    if(this === meta.current)
+      meta.current = undefined;
+    else
+      Oops.DestroyNotActive(meta.name).warn();
   }
 
   static get Provider(): never {
