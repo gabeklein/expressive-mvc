@@ -164,6 +164,30 @@ export class Observer {
     return true;
   }
 
+  public emit(...keys: string[]){
+    if(this.willEmit)
+      for(const x of keys)
+        this.willEmit.add(x);
+    else {
+      const batch = this.willEmit = new Set(keys);
+      setImmediate(() => {
+        this.willEmit = undefined;
+        this.emitSync(...batch);
+      });
+    }
+  }
+
+  public emitSync(...keys: string[]){
+    const queued = new Set<Callback>();
+
+    for(const k of keys)
+      for(const sub of this.subscribers[k] || [])
+        queued.add(sub);
+
+    for(const trigger of queued)
+      trigger();
+  }
+
   public addListener(
     key: string,
     callback: Callback,
@@ -193,30 +217,6 @@ export class Observer {
     )
 
     return () => cleanup.forEach(x => x());
-  }
-
-  public emit(...keys: string[]){
-    if(this.willEmit)
-      for(const x of keys)
-        this.willEmit.add(x);
-    else {
-      const batch = this.willEmit = new Set(keys);
-      setImmediate(() => {
-        this.willEmit = undefined;
-        this.emitSync(...batch);
-      });
-    }
-  }
-
-  public emitSync(...keys: string[]){
-    const queued = new Set<Callback>();
-
-    for(const k of keys)
-      for(const sub of this.subscribers[k] || [])
-        queued.add(sub);
-
-    for(const trigger of queued)
-      trigger();
   }
 
   public watch(
