@@ -4,8 +4,6 @@ import { Controller } from './controller';
 import { getContext, CONTEXT_MULTIPLEX } from './provider';
 import { define, entriesIn } from './util';
 
-type PeerContext = [string, Context<Controller>];
-
 const MAINTAIN = new WeakMap<Controller, Function | undefined>();
 
 export function ensurePeerControllers(instance: Controller){
@@ -15,38 +13,29 @@ export function ensurePeerControllers(instance: Controller){
     return;
   }
 
-  const pending = [] as PeerContext[];
+  const pending = [] as [string, Context<Controller>][];
   const entries = entriesIn(instance);
 
   for(const [key, { value }] of entries)
     if(Controller.isTypeof(value))
       pending.push([key, getContext(value)])
 
-  if(pending.length)
-    return attachPeersFromContext(instance, pending);
-  else
+  if(!pending.length){
     MAINTAIN.set(instance, undefined);
-}
+    return;
+  }
 
-function attachPeersFromContext(
-  subject: Controller, peers: PeerContext[]){
+  const multi = useContext(CONTEXT_MULTIPLEX) || {};
+  const expected = [ CONTEXT_MULTIPLEX ];
 
-  const multi = useContext(CONTEXT_MULTIPLEX);
-  const expected = [ CONTEXT_MULTIPLEX ] as Context<any>[];
+  for(const [name, context] of pending)
+    define(instance, name, multi[name] || (
+      expected.push(context), useContext(context)
+    ))
 
-  for(const [name, context] of peers)
-    if(multi && multi[name])
-      define(subject, name, multi[name])
-    else {
-      expected.push(context)
-      define(subject, name, useContext(context))
-    }
-
-  MAINTAIN.set(subject, () => {
-    expected.forEach(useContext);
-  });
+  MAINTAIN.set(instance, () => expected.forEach(useContext));
 
   return function reset(){
-    MAINTAIN.set(subject, undefined);
+    MAINTAIN.set(instance, undefined);
   }
 }
