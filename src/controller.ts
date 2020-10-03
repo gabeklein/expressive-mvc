@@ -1,11 +1,11 @@
 import { FunctionComponent, ProviderProps } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
+import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
 import { TEMP_CONTEXT } from './peers';
 import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
-import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './subscriber';
 import { assignSpecific, defineLazy, Issues } from './util';
 
 const Oops = Issues({

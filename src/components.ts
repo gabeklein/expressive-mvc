@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { Controller } from './controller';
-import { useValue } from './subscriber';
+import { useValue } from './hooks';
 
 type onChangeCallback = (v: any, e: any) => any;
 type ControlledInputProps = HTMLProps<HTMLInputElement> & ControlledProps;

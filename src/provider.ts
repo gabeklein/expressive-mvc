@@ -3,7 +3,7 @@ import { Context, createContext, createElement, FC, PropsWithChildren, useContex
 import { Controller } from './controller';
 import { observe } from './observer';
 import { ensurePeerControllers } from './peers';
-import { useOwnController } from './subscriber';
+import { useOwnController } from './hooks';
 import { create, getPrototypeOf, Issues, keys, values, within } from './util';
 
 const Oops = Issues({
