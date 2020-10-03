@@ -10,8 +10,8 @@ const Oops = Issues({
 });
 
 const MAINTAIN = new WeakMap<Controller, Function | undefined>();
-export const CONTEXT = new Map<typeof Controller, Context<Controller>>()
-export const MASTER_CONTEXT = createContext(null as any);
+const CONTEXT = new Map<typeof Controller, Context<Controller>>()
+const MASTER_CONTEXT = createContext(null as any);
 
 function getContext(
   Type: typeof Controller,
@@ -90,7 +90,7 @@ export function ControlProvider(this: Controller){
   }
 }
 
-export const MultiProvider = (props: PropsWithChildren<any>) => {
+export function MultipleProvider(props: PropsWithChildren<any>){
   let {
     style,
     children,
