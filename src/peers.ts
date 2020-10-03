@@ -4,14 +4,14 @@ import { Controller } from './controller';
 import { getContext, CONTEXT_MULTIPLEX } from './provider';
 import { define, entriesIn } from './util';
 
-export const TEMP_CONTEXT = Symbol("temp_maintain_hooks");
-
 type PeerContext = [string, Context<Controller>];
 
+const MAINTAIN = new WeakMap<Controller, Function | undefined>();
+
 export function ensurePeerControllers(instance: Controller){
-  if(TEMP_CONTEXT in instance){
-    if(typeof instance[TEMP_CONTEXT] == "function")
-      instance[TEMP_CONTEXT]();
+  if(MAINTAIN.has(instance)){
+    const hook = MAINTAIN.get(instance);
+    hook && hook();
     return;
   }
 
@@ -24,8 +24,8 @@ export function ensurePeerControllers(instance: Controller){
 
   if(pending.length)
     return attachPeersFromContext(instance, pending);
-  else 
-    instance[TEMP_CONTEXT] = undefined as any;
+  else
+    MAINTAIN.set(instance, undefined);
 }
 
 function attachPeersFromContext(
@@ -42,11 +42,11 @@ function attachPeersFromContext(
       define(subject, name, useContext(context))
     }
 
-  subject[TEMP_CONTEXT] = () => {
+  MAINTAIN.set(subject, () => {
     expected.forEach(useContext);
-  }
+  });
 
   return function reset(){
-    subject[TEMP_CONTEXT] = undefined as any;
+    MAINTAIN.set(subject, undefined);
   }
 }

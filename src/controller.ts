@@ -4,7 +4,6 @@ import { ControlledInput, ControlledValue } from './components';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
-import { TEMP_CONTEXT } from './peers';
 import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
 import { assignSpecific, defineLazy, Issues } from './util';
 
@@ -16,8 +15,6 @@ const Oops = Issues({
 export interface Controller 
   extends LifecycleMethods {
 
-  [TEMP_CONTEXT]: Callback;
-
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
   update(entries: Partial<this>): void;
@@ -28,7 +25,7 @@ export interface Controller
 }
 
 export class Controller {
-  
+
   static use(...args: any[]){
     return useOwnController(this, args);
   }
