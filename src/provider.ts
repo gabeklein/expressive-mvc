@@ -1,9 +1,7 @@
-import { Context, createContext, createElement, FC, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { Context, createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
-import { observe } from './observer';
 import { ensurePeerControllers } from './peers';
-import { useOwnController } from './hooks';
 import { create, getPrototypeOf, Issues, keys, values, within } from './util';
 
 const Oops = Issues({
@@ -55,23 +53,6 @@ export function ControlProvider(this: Controller){
       children = createElement("div", { className, style, children });
 
     return createElement(Context.Provider, { value: this, children });
-  }
-}
-
-export function createWrappedComponent(
-  this: typeof Controller, fn: FC<any>){
-
-  const { Provider } = getContext(this, true);
-  
-  return (forwardedProps: PropsWithChildren<any>) => {
-    const self = useOwnController(this);
-    const current = observe(self);
-
-    self.assign(forwardedProps);
-    
-    return createElement(Provider, { value: self }, 
-      createElement(fn, { self, ...current.values })
-    )
   }
 }
 

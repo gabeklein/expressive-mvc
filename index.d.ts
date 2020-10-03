@@ -2,7 +2,6 @@ import {
     FunctionComponentElement,
     ProviderProps,
     Context,
-    Component,
     FunctionComponent,
 } from 'react';
 
@@ -146,8 +145,6 @@ declare class Controller {
     static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
-
-    static hoc <T extends Class> (this: T, fc: FunctionComponent<InstanceType<T>>): Component<any>;
 
     static map <D, T extends new (data: D, index: number) => any>(this: T, array: D[]): InstanceType<T>[];
 

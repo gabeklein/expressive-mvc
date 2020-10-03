@@ -4,7 +4,7 @@ import { ControlledInput, ControlledValue } from './components';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
-import { ControlProvider, createWrappedComponent, getFromContext } from './provider';
+import { ControlProvider, getFromContext } from './provider';
 import { assignSpecific, defineLazy, Issues } from './util';
 
 const Oops = Issues({
@@ -131,8 +131,6 @@ export class Controller {
     if(this.willDestroy)
       this.willDestroy();
   }
-
-  static hoc = createWrappedComponent;
 
   static get Provider(){
     return this.use().Provider;
