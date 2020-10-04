@@ -1,6 +1,6 @@
 import { Controller } from './controller';
-import { Observer } from './observer';
-import { define, Issues } from './util';
+import { Observable, observe, Observer } from './observer';
+import { create, define, defineProperty, Issues, within } from './util';
 
 const Oops = Issues({
   FocusIsDetatched: () => 
@@ -9,36 +9,32 @@ const Oops = Issues({
 
 export class Subscription {
   private onRelease = [] as Callback[];
+  public parent: Observer;
   
   constructor(
-    public parent: Observer,
+    private subject: Observable,
     private refresh: Callback
-  ){}
+  ){
+    this.parent = observe(subject);
+  }
 
   public get proxy(){
-    const { parent } = this;
-    const { subject } = parent;
-    const proxy = Object.create(subject);
+    const master = within(this.subject);
+    const proxy = create(master);
 
     define(proxy, {
-      get: subject,
-      set: subject,
-      refresh: (...keys: string[]) => {
-        if(0 in keys)
-          parent.emit(...keys)
-        else
-          this.refresh()
-      }
+      get: master,
+      set: master
     });
 
-    for(const key of parent.watched)
-      Object.defineProperty(proxy, key, {
+    for(const key of this.parent.watched)
+      defineProperty(proxy, key, {
         configurable: true,
         set: (value) => {
-          subject[key] = value;
+          master[key] = value;
         },
         get: () => {
-          let value = subject[key];
+          let value = master[key];
 
           if(value instanceof Controller)
             value = this.followRecursive(key);
@@ -54,7 +50,10 @@ export class Subscription {
   }
 
   public commit(...keys: maybeStrings){
-    for(const key of keys || this.parent.watched)
+    if(keys.length == 0)
+      keys.push(...this.parent.watched)
+
+    for(const key of keys)
       delete (this.proxy as any)[key!];
   }
 
@@ -76,7 +75,7 @@ export class Subscription {
       let value = this.parent.subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.getDispatch(), this.refresh);
+        sub = new Subscription(value, this.refresh);
         sub.focus(rest);
 
         this.parent.once("didRender", () => sub!.commit());
@@ -84,7 +83,7 @@ export class Subscription {
       else if(rest.length)
         throw Oops.FocusIsDetatched();
   
-      Object.defineProperty(this, "proxy", {
+      defineProperty(this, "proxy", {
         get: () => sub ? sub.proxy : value,
         configurable: true
       })
@@ -120,7 +119,7 @@ export class Subscription {
       let value = subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value.getDispatch(), this.refresh);
+        sub = new Subscription(value, this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {
@@ -129,7 +128,7 @@ export class Subscription {
         });
       }
 
-      Object.defineProperty(this.proxy, key, {
+      defineProperty(this.proxy, key, {
         get: () => value,
         set: val => subject[key] = val,
         configurable: true,

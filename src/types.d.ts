@@ -20,4 +20,16 @@ type Callback = () => void;
  */
 type Class = new(...args: any[]) => any;
 
+type EffectCallback = (...args: any[]) => (Callback | undefined);
+
+type RefObject<T = any> = { current: T };
+
 type maybeStrings = Array<string | undefined>;
+
+type Recursive<T = any> = { [P in keyof T]: Recursive<T> };
+
+type Selector<T = any>= (list: Recursive<T>) => void;
+
+type HandleUpdatedValue
+  <T extends object = any, P extends keyof T = any> = 
+  (this: T, value: T[P], changed: P) => void;

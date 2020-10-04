@@ -1130,10 +1130,6 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 - `state.set` returns a circular reference to `state`
 - this is useful to access your state object while destructuring
 
-#### `refresh(): void`
-- requests a render without requiring that a value has changed. 
-- Helpful when working with getters, async and random-number-generators.
-
 #### `export<T>(this: T): { [P in keyof T]: T[P] }`
 - takes a snapshot of live state you can pass along, without unintended side effects.
 - this will only output the values which were enumerable in the source object.

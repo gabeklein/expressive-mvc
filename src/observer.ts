@@ -1,16 +1,29 @@
-import { Controller } from './controller';
-import { lifecycleEvents } from './lifecycle';
+import { Placeholder } from './directives';
 import { Subscription } from './subscription';
-import { entriesIn, Issues, within } from './util';
+import {
+  assign,
+  define,
+  defineProperty,
+  entriesIn,
+  getOwnPropertyDescriptor,
+  getPrototypeOf,
+  isFn,
+  Issues,
+  keys,
+  listAccess,
+  within,
+} from './util';
 
-const INIT_COMPUTE = Symbol("initial");
+export interface Observable {
+  applyDispatch(observer: Observer): void
+};
+
+const DISPATCH = new WeakMap<Observable, Observer>();
+const FIRST_COMPUTE = Symbol("is_initial");
 
 const Oops = Issues({
   NotTracked: (name) => 
     `Can't watch property ${name}, it's not tracked on this instance.`,
-
-  IsComputed: (name) => 
-    `Cannot set ${name} on this controller, it is computed.`,
 
   ComputeFailed: (parent, property) =>
     `There was an attempt to access computed property ` + 
@@ -20,247 +33,315 @@ const Oops = Issues({
   ComputedEarly: (property) => 
     `Note: Computed values are usually only calculated after first ` +
     `access, except where accessed implicitly by "on" or "export". Your ` + 
-    `'${property}' getter may have run earlier than intended because of that.`
+    `'${property}' getter may have run earlier than intended because of that.`,
+
+  BadReturn: () =>
+    `Callback for property-update may only return a function.`
 })
 
-type HandleUpdatedValues =
-  (observed: {}, updated: string[]) => void;
-
-type HandleUpdatedValue
-  <T extends object = any, P extends keyof T = any> = 
-  (this: T, value: T[P], changed: P) => void;
-
-export interface Emitter {
-  on(key: string | string[], listener: HandleUpdatedValue<this, any>): Callback;
-  
-  once(target: string, listener: HandleUpdatedValue<this, any>): void;
-  once(target: string): Promise<any> | undefined;
-
-  watch<P extends keyof this>(property: P, listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
-  watch<P extends keyof this>(properties: P[], listener: HandleUpdatedValue<this, P>, once?: boolean): () => void;
+export function observe(x: Observable){
+  let observer = DISPATCH.get(x);
+  if(!observer){
+    observer = new Observer(x);
+    x.applyDispatch(observer);
+    DISPATCH.set(x, observer);
+  }
+  return observer;
 }
 
-export class Observer implements Emitter {
+export class Observer {
   constructor(public subject: any){}
   
   protected state = {} as BunchOf<any>;
-  protected pending = new Set<string>();
-  protected subscribers = {} as BunchOf<Set<() => void>>
+  protected subscribers = {} as BunchOf<Set<() => void>>;
+  protected willEmit?: Set<string>;
 
   public get values(){
-    return Object.assign({}, this.state);
+    return assign({}, this.state);
   }
 
   public get watched(){
-    return Object.keys(this.subscribers);
+    return keys(this.subscribers);
   }
 
-  public emit(...keys: string[]){
-    for(const x of keys)
-      this.pending.add(x);
-      
-    this.update();
+  public mixin(){
+    define(this.subject, {
+      on: this.on,
+      once: this.once,
+      update: this.update,
+      effect: this.effect,
+      export: this.export
+    })
   }
 
-  public on(
-    target: string,
-    listener: HandleUpdatedValue){
+  public on = (
+    key: string | Selector,
+    listener: HandleUpdatedValue) => {
 
-    return this.watch(target, listener, false, false);
+    return this.watch(key, listener, false);
   }
 
-  public once(
-    target: string,
-    listener?: HandleUpdatedValue){
+  public once = (
+    key: string | Selector,
+    listener?: HandleUpdatedValue) => {
 
     if(listener)
-      this.watch(target, listener, true, false);
+      return this.watch(key, listener, true);
     else
-      return new Promise(resolve => {
-        this.watch(target, resolve, true, false)
-      });
+      return new Promise(resolve =>
+        this.watch(key, resolve, true)
+      );
   }
 
-  public pick(keys?: string[]){
+  public effect = (
+    callback: EffectCallback,
+    select: string[] | Selector) => {
+      
+    let unSet: Callback | undefined;
+
+    if(isFn(select))
+      select = listAccess(this.watched, select);
+
+    return this.addMultipleListener(select, () => {
+      unSet && unSet();
+      unSet = callback.call(this.subject);
+
+      if(!isFn(unSet) && unSet)
+        throw Oops.BadReturn()
+    })
+  }
+
+  public export = (
+    select?: string[] | Selector) => {
+
+    if(!select)
+      return { ...this.values };
+
     const acc = {} as BunchOf<any>;
 
-    if(keys)
-      for(const key of keys)
-        acc[key] = within(this.subject, key);
-
-    else {
-      for(const [key, { value }] of entriesIn(this))
-        if(value !== undefined)
-          acc[key] = value;
-      
-      Object.assign(acc, this.values);
-    }
+    if(isFn(select))
+      select = listAccess(this.watched, select);
+    
+    for(const key of select)
+      acc[key] = within(this.subject, key);
 
     return acc;
   }
 
-  public feed(
+  public update = (
+    select: string | string[] | Selector | BunchOf<any>,
+    ...rest: string[]) => {
+
+    if(typeof select == "string")
+      select = [select].concat(rest);
+
+    else if(isFn(select))
+      select = listAccess(this.watched, select as any);
+
+    if(Array.isArray(select))
+      select.forEach(k => this.emit(k))
+
+    else
+      for(const key in select)
+        this.set(key, select[key]);
+  }
+
+  public set(key: string, value: any){
+    let set = this.state;
+
+    if(!(key in this.subscribers))
+      set = this.subject;
+
+    if(set[key] === value)
+      return false;
+    else
+      set[key] = value;
+
+    this.emit(key);
+    return true;
+  }
+
+  public emit(...keys: string[]){
+    if(this.willEmit)
+      for(const x of keys)
+        this.willEmit.add(x);
+    else {
+      const batch = this.willEmit = new Set(keys);
+      setImmediate(() => {
+        this.willEmit = undefined;
+        this.emitSync(...batch);
+      });
+    }
+  }
+
+  public emitSync(...keys: string[]){
+    const queued = new Set<Callback>();
+
+    for(const k of keys)
+      for(const sub of this.subscribers[k] || [])
+        queued.add(sub);
+
+    for(const trigger of queued)
+      trigger();
+  }
+
+  public addListener(
+    key: string,
+    callback: Callback,
+    once?: boolean){
+
+    const listeners = this.manage(key);
+    const stop = () => { listeners.delete(callback) };
+    const onUpdate = once
+      ? () => { stop(); callback() }
+      : callback;
+
+    const desc = getOwnPropertyDescriptor(this.subject, key);
+    const getter = desc && desc.get;
+    if(getter && FIRST_COMPUTE in getter)
+      (getter as Function)(true);
+
+    listeners.add(onUpdate);
+    return stop;
+  }
+
+  public addMultipleListener(
     keys: string[],
-    observer: HandleUpdatedValues,
-    fireInitial?: boolean){
+    callback: (didUpdate: string) => void){
 
-    const pending = new Set<string>();
+    const cleanup = keys.map(k => 
+      this.addListener(k, () => callback(k))
+    )
 
-    const callback = () => {
-      const acc = {} as any;
-
-      for(const k of keys)
-        acc[k] = this.state[k];
-
-      observer.call(this.subject, acc, Array.from(pending));
-      pending.clear();
-    };
-
-    const release = this.addMultipleListener(keys, (key) => {
-      if(!pending.size)
-        setTimeout(callback, 0);
-
-      pending.add(key);
-    });
-
-    if(fireInitial)
-      callback();
-
-    return release;
+    return () => cleanup.forEach(x => x());
   }
 
   public watch(
-    watch: string | string[],
+    key: string | Selector,
     handler: (value: any, key: string) => void,
-    once?: boolean,
-    ignoreUndefined?: boolean){
+    once?: boolean){
 
-    if(typeof watch == "string")
-      watch = [watch];
+    if(isFn(key))
+      key = listAccess(this.watched, key)[0];
 
-    const onUpdate = (key: string) => {
-      if(once)
-        release();
-        
-      handler.call(this.subject, this.state[key], key);
-    }
+    const callback = () =>
+      handler.call(
+        this.subject, 
+        this.state[key as string],
+        key as string
+      );
 
-    const release =
-      this.addMultipleListener(watch, onUpdate, ignoreUndefined);
-
-    return release;
+    return this.addListener(key, callback, once);
   }
 
-  protected manage(
+  public access(
     key: string,
-    handler?: ((value: any) => any)){
+    callback?: EffectCallback){
 
-    if(handler)
-      Object.defineProperty(this.subject, key, {
-        enumerable: true,
-        configurable: false,
-        get: () => this.state[key],
-        set: handler 
+    let unSet: Callback | undefined;
+      
+    this.manage(key);
+    return {
+      get: () => this.state[key],
+      set: (value: any) => {
+        if(!this.set(key, value) || !callback)
+          return;
+  
+        unSet && unSet();
+        unSet = callback.call(this.subject, value);
+  
+        if(!isFn(unSet) && unSet)
+          throw Oops.BadReturn()
+      }
+    }
+  }
+
+  public monitorValues(ignore: any = {}){
+    const entries = entriesIn(this.subject);
+
+    for(const [key, desc] of entries){
+      const { value } = desc;
+
+      if(key in ignore
+      || "value" in desc == false
+      || isFn(value) && !/^[A-Z]/.test(key))
+        continue;
+
+      if(value instanceof Placeholder)
+        value.applyTo(this, key);
+      else
+        this.monitorValue(key, value);
+    }
+  }
+
+  public monitorComputed(Ignore?: Class){
+    const { subscribers, subject } = this;
+    const getters = {} as BunchOf<() => any>;
+
+    for(
+      let sub = subject; 
+      sub !== Ignore && sub.constructor !== Ignore;
+      sub = getPrototypeOf(sub)
+    )
+      for(const [key, item] of entriesIn(sub))
+        if(!item.get
+        || key == "constructor"
+        || key in subscribers 
+        || key in getters)
+          continue;
+        else 
+          getters[key] = item.get;
+
+    for(const key in getters)
+      defineProperty(subject, key, {
+        configurable: true,
+        set: Oops.NotTracked(key).throw,
+        get: this.monitorComputedValue(key, getters[key])
       })
+  }
 
+  protected manage(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
   }
 
-  public monitorValues(Ignore: any = {}){
-    const entries = entriesIn(this.subject);
+  protected monitorValue(
+    key: string,
+    initial: any){
 
-    for(const [key, desc] of entries){
-      if(key in Ignore)
-        continue;
-
-      if("value" in desc === false)
-        continue;
-
-      const { value } = desc;
-
-      if(typeof value === "function")
-        if(/^[A-Z]/.test(key) === false)
-            continue;
-
-      if(Controller.isTypeof(value))
-        this.subject.attach(key, value);
-      else
-        this.monitorValue(key, value)
-    }
-  }
-  
-  protected monitorValue(key: string, initial: any){
     this.state[key] = initial;
+    this.manage(key);
 
-    this.manage(key, (value: any) => {
-      if(this.state[key] === value)
-        if(!Array.isArray(value))
-          return;
-        
-      this.state[key] = value;
-      this.pending.add(key);
-      this.update();
+    defineProperty(this.subject, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => this.state[key],
+      set: (value: any) => this.set(key, value)
     })
   }
 
-  public monitorComputed(Ignore?: Class){
-    const { subscribers, subject } = this;
-    
-    const getters = {} as BunchOf<() => any>;
-    let search = subject;
+  protected monitorComputedValue(
+    key: string,
+    compute: () => any){
 
-    while(
-      search !== Ignore &&
-      search.constructor !== Ignore
-    ){
-      const entries = entriesIn(search);
+    const { state, subject } = this;
 
-      for(const [key, item] of entries)
-        if(key == "constructor" || key in this.state || key in getters)
-          continue;
-        else if(item.get)
-          getters[key] = item.get;
+    this.manage(key);
 
-      search = Object.getPrototypeOf(search)
+    const recalculate = () => {
+      const value = compute.call(subject);
+
+      if(state[key] !== value){
+        state[key] = value;
+        this.emitSync(key);
+      }
     }
 
-    for(const key in getters){
-      const compute = getters[key];
-      subscribers[key] = new Set();
-
-      Object.defineProperty(subject, key, {
-        configurable: true,
-        set: Oops.NotTracked(key).throw,
-        get: this.monitorComputedValue(key, compute)
-      })
-    }
-  }
-
-  protected monitorComputedValue(key: string, fn: () => any){
-    const { state, subscribers, subject } = this;
-
-    subscribers[key] = new Set();
-
-    const onValueDidChange = () => {
-      const value = fn.call(subject);
-      const subscribed = subscribers[key] || [];
-
-      if(state[key] === value)
-        return
-
-      state[key] = value;
-      this.pending.add(key);
-
-      for(const onDidUpdate of subscribed)
-        onDidUpdate();
-    }
-
-    const getStartingValue = (early = false) => {
+    const getStartingValue = (early?: boolean) => {
       try {
-        const sub = new Subscription(this, onValueDidChange);
-        const value = state[key] = fn.call(sub.proxy);
+        const sub = new Subscription(subject, recalculate);
+        const value = state[key] = compute.call(sub.proxy);
         sub.commit();
         return value;
       }
@@ -269,7 +350,7 @@ export class Observer implements Emitter {
         throw e;
       }
       finally {
-        Object.defineProperty(subject, key, {
+        defineProperty(subject, key, {
           set: Oops.NotTracked(key).throw,
           get: () => state[key],
           enumerable: true,
@@ -278,13 +359,14 @@ export class Observer implements Emitter {
       }
     }
 
-    within(getStartingValue, INIT_COMPUTE, true);
+    within(getStartingValue, FIRST_COMPUTE, true);
 
     return getStartingValue;
   }
 
   protected computedDidFail(
-    key: string, early?: boolean){
+    key: string,
+    early?: boolean){
 
     const parent = this.subject.constructor.name;
 
@@ -293,72 +375,4 @@ export class Observer implements Emitter {
     if(early)
       Oops.ComputedEarly(key).warn();
   };
-
-  protected update(){
-    if(!this.pending.size)
-      return;
-
-    setTimeout(() => {
-      const queued = new Set<Callback>();
-      const { pending: pendingUpdate, subscribers } = this;
-
-      for(const key of pendingUpdate)
-        for(const sub of subscribers[key] || [])
-          queued.add(sub);
-
-      for(const onDidUpdate of queued)
-        onDidUpdate();
-
-      pendingUpdate.clear();
-    }, 0);
-  }
-
-  public addListener(
-    key: string,
-    callback: Callback){
-
-    let register = this.manage(key);
-
-    register.add(callback);
-
-    return () =>
-      register.delete(callback);
-  }
-
-  public addMultipleListener(
-    keys: string[],
-    callback: (didUpdate: string) => void,
-    ignoreUndefined = true){
-
-    let clear: Function[] = [];
-
-    for(const key of keys){
-      let listeners = this.subscribers[key];
-
-      if(!listeners)
-        if(lifecycleEvents.indexOf(key) >= 0)
-          listeners = this.manage(key);
-        else if(ignoreUndefined){
-          this.monitorValue(key, undefined);
-          listeners = this.subscribers[key];
-        }
-        else
-          throw Oops.NotTracked(key);
-
-      const trigger = () => callback(key);
-      const descriptor = Object.getOwnPropertyDescriptor(this.subject, key);
-      const getter = descriptor && descriptor.get;
-
-      if(getter && INIT_COMPUTE in getter)
-        (<any>getter)(true);
-
-      listeners.add(trigger);
-      clear.push(() => listeners.delete(trigger));
-    }
-
-    return () => {
-      clear.forEach(x => x());
-      clear = [];
-    };
-  } 
 }

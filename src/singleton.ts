@@ -1,17 +1,11 @@
+import { Noop } from './components';
 import { Controller } from './controller';
-import { defineAtNeed, Issues } from './util';
+import { Issues } from './util';
 
 const Oops = Issues({
-  ContextNotAllowed: (name) =>
-    `Controller ${name} is tagged as global. Context API does not apply.`,
-
   DestroyNotActive: (name) =>
     `${name}.destory() was called on an instance which is not active. ` +
     `This is an antipattern and may caused unexpected behavior.`,
-
-  CantAttach: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}'. ` +
-    `This is not possible because '${child}' is not also a singleton.`,
 
   AlreadyExists: (type) =>
     `Shared instance of ${type} already exists! ` +
@@ -23,23 +17,6 @@ const Oops = Issues({
 })
 
 export class Singleton extends Controller {
-  destroy(){
-    super.destroy();
-
-    const meta = this.constructor as typeof Singleton;
-
-    if(this === meta.current)
-      meta.current = undefined;
-    else
-      Oops.DestroyNotActive(meta.name).warn();
-  }
-
-  attach(key: string, type: typeof Controller){
-    if(type.context)
-      throw Oops.CantAttach(this.constructor.name, type.name)
-    else 
-      defineAtNeed(this, key, () => type.find());
-  }
 
   static current?: Singleton = undefined;
 
@@ -67,11 +44,19 @@ export class Singleton extends Controller {
     return instance;
   }
 
-  static get context(){
-    return undefined;
+  destroy(){
+    super.destroy();
+
+    const meta = this.constructor as typeof Singleton;
+
+    if(this === meta.current)
+      meta.current = undefined;
+    else
+      Oops.DestroyNotActive(meta.name).warn();
   }
 
-  static get Provider(): never {
-    throw Oops.ContextNotAllowed(this.name);
+  static get Provider(){
+    this.use();
+    return Noop;
   }
 }
