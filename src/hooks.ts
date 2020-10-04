@@ -4,7 +4,7 @@ import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { attachFromContext } from './context';
-import { Subscription } from './subscription';
+import { Subscriber } from './subscriber';
 import { entriesIn, isFn, within } from './util';
 
 function useActiveMemo<T>(
@@ -46,7 +46,7 @@ export function usePassiveSubscriber(
   target: Observable, ...path: (string | undefined)[]){
 
   const subscription = useActiveMemo(refresh =>
-    new Subscription(target, refresh).focus(path)
+    new Subscriber(target, refresh).focus(path)
   );
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function useActiveSubscriber(
   target: Controller, args: any[]){
 
   const subscription = useActiveMemo(refresh => 
-    new Subscription(target, refresh)
+    new Subscriber(target, refresh)
   );
 
   useLifecycleEffect((name) => {
@@ -100,7 +100,7 @@ export function useOwnController(
 
   const subscription = useActiveMemo(refresh => {
     const instance = Type.create(args, callback);
-    return new Subscription(instance, refresh);
+    return new Subscriber(instance, refresh);
   });
 
   useLifecycleEffect((name) => {

@@ -1,5 +1,5 @@
 import { Placeholder } from './directives';
-import { Subscription } from './subscription';
+import { Subscriber } from './subscriber';
 import {
   assign,
   define,
@@ -323,7 +323,7 @@ export class Observer {
 
     const getStartingValue = (early?: boolean) => {
       try {
-        const sub = new Subscription(subject, recalculate);
+        const sub = new Subscriber(subject, recalculate);
         const value = state[key] = compute.call(sub.proxy);
         sub.commit();
         return value;
