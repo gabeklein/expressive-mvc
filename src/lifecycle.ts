@@ -73,18 +73,21 @@ export function useLifecycleEffect(
 
   let isFirstRender: true | undefined;
 
-  onEvent = useMemo(() => (isFirstRender = true, onEvent), []);
+  const event = useMemo(() => {
+    isFirstRender = true;
+    return onEvent;
+  }, []);
 
-  onEvent(isFirstRender ? lifecycle.WILL_MOUNT : lifecycle.WILL_UPDATE);
-  onEvent(lifecycle.WILL_RENDER);
+  event(isFirstRender ? lifecycle.WILL_MOUNT : lifecycle.WILL_UPDATE);
+  event(lifecycle.WILL_RENDER);
 
   useEffect(() => {
-    onEvent(lifecycle.DID_RENDER);
-    return () => onEvent(lifecycle.WILL_RESET);
+    event(lifecycle.DID_RENDER);
+    return () => event(lifecycle.WILL_RESET);
   })
 
   useEffect(() => {
-    onEvent(lifecycle.DID_MOUNT);
-    return () => onEvent(lifecycle.WILL_UNMOUNT);
+    event(lifecycle.DID_MOUNT);
+    return () => event(lifecycle.WILL_UNMOUNT);
   }, [])
 }
