@@ -1,14 +1,6 @@
-import {
-  ChangeEventHandler,
-  Children,
-  createElement,
-  FC,
-  forwardRef,
-  HTMLProps,
-  KeyboardEventHandler,
-  PropsWithChildren,
-  useMemo,
-} from 'react';
+import type { ChangeEventHandler, FC, HTMLProps, KeyboardEventHandler, PropsWithChildren } from 'react';
+
+import { Children, createElement, forwardRef, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { useValue } from './hooks';

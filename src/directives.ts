@@ -1,4 +1,5 @@
-import { Controller, Model } from './controller';
+import type { Controller, Model } from './controller';
+
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty, Issues } from './util';

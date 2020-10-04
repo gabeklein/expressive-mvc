@@ -1,4 +1,4 @@
-import { FunctionComponent, ProviderProps } from 'react';
+import type { FunctionComponent, ProviderProps } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
