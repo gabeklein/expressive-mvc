@@ -1,6 +1,6 @@
-import { createContext, createElement, CSSProperties, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
-import type { Controller } from './controller';
+import type { Controller, Model } from './controller';
 import { define, entriesIn, Issues } from './util';
 
 const Oops = Issues({
@@ -9,26 +9,55 @@ const Oops = Issues({
     `only be used within a Provider keyed for ${name}.`
 });
 
-export class Context 
-  extends Map<typeof Controller, Controller> {
-
-  constructor(
-    private inherits?: Context,
-    insert?: (readonly [typeof Controller, Controller])[]){
-    super(insert);
-  }
-
-  get(key: typeof Controller): Controller | undefined {
-    return super.get(key) || this.inherits && this.inherits.get(key);
-  }
-}
-
-const CONTEXT_BASE = new Context();
+const CONTEXT_BASE = createLayer();
 const CONTEXT_CHAIN = createContext(CONTEXT_BASE);
 const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
-export function getFromContext(Type: typeof Controller){
-  const instance = useContext(CONTEXT_CHAIN).get(Type);
+type Register = readonly (readonly [Model, Controller])[];
+type Lookup = {
+  find(T: Model): Controller | undefined;
+  extend(from?: Controller | (Model)[]): Lookup;
+  destroy(): void;
+}
+
+function createLayer(
+  inherits?: Lookup,
+  provides?: Register){
+  
+  const local = new Map(provides);
+  const lookup: Lookup = {
+    find(T){
+      if(local.has(T))
+        return local.get(T);
+      else if(inherits)
+        return inherits.find(T);
+    },
+    extend(insert){
+      let provides: Register | undefined;
+
+      if(Array.isArray(insert)){
+        provides = insert.map(Type => {
+          const instance = Type.create();
+          return [Type, instance];
+        })
+      }
+      else if(insert){
+        const Type = insert.constructor as Model;
+        provides = [[Type, insert]];
+      }
+
+      return createLayer(lookup, provides);
+    },
+    destroy(){
+      local.forEach(c => c.destroy())
+    }
+  }
+
+  return lookup;
+}
+
+export function getFromContext(Type: Model){
+  const instance = useContext(CONTEXT_CHAIN).find(Type);
 
   if(!instance)
     throw Oops.ContextNotFound(Type.name);
@@ -55,54 +84,38 @@ export function attachFromContext(instance: Controller){
   const context = useContext(CONTEXT_CHAIN);
 
   for(const [key, { value }] of pending)
-    define(instance, key, context.get(value));
+    define(instance, key, context.find(value));
 
   NEEDS_HOOK.set(instance, true);
 
   return () => NEEDS_HOOK.set(instance, false);
 }
 
-type ContainerProps = {
-  children?: ReactNode;
-  style?: CSSProperties;
-  className?: string;
-}
-
 export function ControlProvider(this: Controller){
+  return ({ children }: PropsWithChildren<{}>) => {
+    const parent = useContext(CONTEXT_CHAIN);
+    const provide = useMemo(() => parent.extend(this), []);
 
-  return (props: ContainerProps) => {
-    let { children } = props;
-
-    if(props.className || props.style)
-      children = createElement("div", props);
-
-    return createElement(InsertProvider, { for: this, children });
+    return createElement(
+      CONTEXT_CHAIN.Provider, { value: provide }, children
+    );
   }
 }
 
 type InsertProviderProps = {
-  children?: ReactNode;
-  for?: Controller;
-  of?: (typeof Controller)[]
-}
+  of?: (Model)[];
+  children: ReactNode;
+};
 
-export function InsertProvider(props: InsertProviderProps){
-  let {
-    children,
-    for: instance,
-    of: inserts
-  } = props;
-
+export function InsertProvider({
+  of: insertTypes, children
+}: InsertProviderProps){
   const parent = useContext(CONTEXT_CHAIN);
-  const context = useMemo(
-    () => new Context(parent, 
-      instance && [instance.constructor as any, instance] ||
-      inserts && inserts.map(T => [T, T.create()])  
-    ), 
-  []);
+  const provide = useMemo(() => parent.extend(insertTypes), []);
 
-  if(inserts)
-    useEffect(() => () => context.forEach(c => c.destroy()), []);
+  useEffect(() => provide.destroy, []);
 
-  return createElement(CONTEXT_CHAIN.Provider, { value: context, children });
+  return createElement(
+    CONTEXT_CHAIN.Provider, { value: provide }, children
+  );
 }
