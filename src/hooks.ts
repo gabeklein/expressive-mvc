@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
-import { attachFromContext } from './provider';
+import { attachFromContext } from './context';
 import { Subscription } from './subscription';
 import { entriesIn, isFn, within } from './util';
 

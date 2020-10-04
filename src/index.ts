@@ -16,5 +16,5 @@ export {
 } from './singleton';
 
 export {
-  MultiProvider as Provider
-} from './provider';
+  InsertProvider as Provider
+} from './context';

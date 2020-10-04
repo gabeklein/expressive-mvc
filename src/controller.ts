@@ -4,7 +4,7 @@ import { ControlledInput, ControlledValue } from './components';
 import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
-import { ControlProvider, getFromContext } from './provider';
+import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, Issues } from './util';
 
 const Oops = Issues({
