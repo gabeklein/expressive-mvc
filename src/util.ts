@@ -36,7 +36,9 @@ type DefineMultiple<T> = {
   [key: string]: (this: T) => any;
 }
 
-export const isFn = (x: any): x is Function => typeof x == "function";
+export function isFn(x: any): x is Function {
+  return typeof x == "function";
+}
 
 export function entriesIn<T>(object: T){
   return entries(getOwnPropertyDescriptors(object))
@@ -132,20 +134,6 @@ export function within(
     return source[key];
   else
     return source;
-}
-
-export class LinkedMap<K, V> extends Map<K, V> {
-  constructor(
-    private inherits?: LinkedMap<K, V>){
-    super();
-  }
-
-  get(key: K): V | undefined {
-    if(this.has(key))
-      return super.get(key);
-    else if(this.inherits)
-      return this.inherits.get(key);
-  }
 }
 
 type Params<T> = T extends (... args: infer T) => any ? T : never;

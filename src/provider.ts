@@ -1,37 +1,34 @@
-import { Context, createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, CSSProperties, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller } from './controller';
-import { create, define, entriesIn, getPrototypeOf, Issues, keys, values } from './util';
+import { define, entriesIn, Issues } from './util';
 
 const Oops = Issues({
   ContextNotFound: (name) =>
     `Can't subscribe to controller; this accessor can` +
-    `only be used within a Provider keyed to ${name}.`
+    `only be used within a Provider keyed for ${name}.`
 });
 
-const MAINTAIN = new WeakMap<Controller, Function | undefined>();
-const CONTEXT = new Map<typeof Controller, Context<Controller>>()
-const MASTER_CONTEXT = createContext(null as any);
+export class Context 
+  extends Map<typeof Controller, Controller> {
 
-function getContext(
-  Type: typeof Controller,
-  create?: boolean){
-
-  let context = CONTEXT.get(Type);
-  if(!context && create){
-    context = createContext(null as any);
-    CONTEXT.set(Type, context);
+  constructor(
+    private inherits?: Context,
+    insert?: (readonly [typeof Controller, Controller])[]){
+    super(insert);
   }
-  return context!;
+
+  get(key: typeof Controller): Controller | undefined {
+    return super.get(key) || this.inherits && this.inherits.get(key);
+  }
 }
 
-export function getFromContext(
-  Type: typeof Controller){
+const CONTEXT_BASE = new Context();
+const CONTEXT_CHAIN = createContext(CONTEXT_BASE);
+const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
-  const context = getContext(Type);
-  const instance = context
-    && useContext(context)
-    || useContext(MASTER_CONTEXT)[Type.name];
+export function getFromContext(Type: typeof Controller){
+  const instance = useContext(CONTEXT_CHAIN).get(Type);
 
   if(!instance)
     throw Oops.ContextNotFound(Type.name);
@@ -40,95 +37,72 @@ export function getFromContext(
 }
 
 export function attachFromContext(instance: Controller){
-  if(MAINTAIN.has(instance)){
-    const hook = MAINTAIN.get(instance);
-    hook && hook();
+  if(NEEDS_HOOK.has(instance)){
+    if(NEEDS_HOOK.get(instance))
+      useContext(CONTEXT_CHAIN);
     return;
   }
 
-  const pending = [] as [string, Context<Controller>][];
-  const entries = entriesIn(instance);
-
-  for(const [key, { value }] of entries)
-    if(Controller.isTypeof(value))
-      pending.push([key, getContext(value)])
+  const pending = entriesIn(instance).filter(
+    entry => Controller.isTypeof(entry[1].value)
+  )
 
   if(!pending.length){
-    MAINTAIN.set(instance, undefined);
+    NEEDS_HOOK.set(instance, false);
     return;
   }
+  
+  const context = useContext(CONTEXT_CHAIN);
 
-  const multi = useContext(MASTER_CONTEXT) || {};
-  const expected = [ MASTER_CONTEXT ];
+  for(const [key, { value }] of pending)
+    define(instance, key, context.get(value));
 
-  for(const [name, context] of pending)
-    define(instance, name, multi[name] || (
-      expected.push(context), useContext(context)
-    ))
+  NEEDS_HOOK.set(instance, true);
 
-  MAINTAIN.set(instance, () => expected.forEach(useContext));
+  return () => NEEDS_HOOK.set(instance, false);
+}
 
-  return function reset(){
-    MAINTAIN.set(instance, undefined);
-  }
+type ContainerProps = {
+  children?: ReactNode;
+  style?: CSSProperties;
+  className?: string;
 }
 
 export function ControlProvider(this: Controller){
-  const Model = this.constructor as typeof Controller;
-  const Context = getContext(Model, true);
-  
-  return (props: PropsWithChildren<any>) => {
-    let { children, className, style, ...outsideProps } = props;
 
-    if(keys(outsideProps).length)
-      this.update(outsideProps);
+  return (props: ContainerProps) => {
+    let { children } = props;
 
-    if(className || style)
-      children = createElement("div", { className, style, children });
+    if(props.className || props.style)
+      children = createElement("div", props);
 
-    return createElement(Context.Provider, { value: this, children });
+    return createElement(InsertProvider, { for: this, children });
   }
 }
 
-export function MultipleProvider(props: PropsWithChildren<any>){
+type InsertProviderProps = {
+  children?: ReactNode;
+  for?: Controller;
+  of?: (typeof Controller)[]
+}
+
+export function InsertProvider(props: InsertProviderProps){
   let {
-    style,
     children,
-    className,
-    of: group = []
+    for: instance,
+    of: inserts
   } = props;
 
-  let flushHooks = [] as Callback[];
+  const parent = useContext(CONTEXT_CHAIN);
+  const context = useMemo(
+    () => new Context(parent, 
+      instance && [instance.constructor as any, instance] ||
+      inserts && inserts.map(T => [T, T.create()])  
+    ), 
+  []);
 
-  const parent = useContext(MASTER_CONTEXT);
-  const provide = useMemo(() => {
-    const map = new Map<typeof Controller, Controller>();
-    
-    create(parent) as BunchOf<Controller>;
+  if(inserts)
+    useEffect(() => () => context.forEach(c => c.destroy()), []);
 
-    for(const Type of group)
-      for(let layer = Type; layer = getPrototypeOf(layer);)
-        if(layer === Controller){
-          map.set(Type, new Type());
-          break;
-        }
-
-    return map;
-  }, []); 
-
-  values(provide).forEach(mc => {
-    const onDidUnmount = attachFromContext(mc);
-    if(onDidUnmount)
-      flushHooks.push(onDidUnmount);
-  })
-
-  useEffect(() => () => {
-    flushHooks.forEach(x => x());
-    values(provide).forEach(x => x.destroy());
-  }, []);
-
-  if(className || style)
-    children = createElement("div", { className, style, children });
-
-  return createElement(MASTER_CONTEXT.Provider, { value: provide, children });
+  return createElement(CONTEXT_CHAIN.Provider, { value: context, children });
 }
