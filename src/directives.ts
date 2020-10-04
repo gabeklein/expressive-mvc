@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Controller, Model } from './controller';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty, Issues } from './util';
@@ -19,7 +19,7 @@ export class Placeholder {
   }
 }
 
-export function getPeerHelper<T extends typeof Controller>
+export function getPeerHelper<T extends Model>
   (Peer: T): InstanceType<T> {
 
   return Placeholder.is((on: Observer, as: string) => {

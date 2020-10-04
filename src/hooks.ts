@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Controller } from './controller';
+import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
 import { attachFromContext } from './provider';
@@ -17,7 +17,9 @@ function useActiveMemo<T>(
   return state[0] as T;
 }
 
-export function useValue(from: Controller, key: string){
+export function useValue(
+  from: Controller, key: string){
+    
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
   useEffect(() => from.on(key, onUpdate), []);
@@ -26,9 +28,8 @@ export function useValue(from: Controller, key: string){
 }
 
 export function usePassiveGetter(
-  target: Controller,
-  key?: string
-){
+  target: Controller, key?: string){
+
   return useMemo(() => {
     if(key)
       return within(target, key);
@@ -42,8 +43,7 @@ export function usePassiveGetter(
 }
 
 export function usePassiveSubscriber(
-  target: Observable,
-  ...path: (string | undefined)[]){
+  target: Observable, ...path: (string | undefined)[]){
 
   const subscription = useActiveMemo(refresh =>
     new Subscription(target, refresh).focus(path)
@@ -59,8 +59,7 @@ export function usePassiveSubscriber(
 }
 
 export function useActiveSubscriber(
-  target: Controller, 
-  args: any[]){
+  target: Controller, args: any[]){
 
   const subscription = useActiveMemo(refresh => 
     new Subscription(target, refresh)
@@ -86,14 +85,13 @@ export function useActiveSubscriber(
 }
 
 export function useOwnController(
-  Model: typeof Controller,
-  args?: any[], 
+  Type: Model, args?: any[], 
   callback?: (instance: Controller) => void){
 
   let release: Callback | undefined;
 
   const subscription = useActiveMemo(refresh => {
-    const instance = Model.create(args, callback);
+    const instance = Type.create(args, callback);
     return new Subscription(instance, refresh);
   });
 

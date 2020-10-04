@@ -12,6 +12,8 @@ const Oops = Issues({
     `${control}.${property} is marked as required for this render.`
 });
 
+export type Model = typeof Controller;
+
 export interface Controller 
   extends LifecycleMethods {
 
