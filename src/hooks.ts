@@ -5,7 +5,7 @@ import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect 
 import { Observable } from './observer';
 import { attachFromContext } from './provider';
 import { Subscription } from './subscription';
-import { isFn, within } from './util';
+import { entriesIn, isFn, within } from './util';
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -19,7 +19,7 @@ function useActiveMemo<T>(
 
 export function useValue(
   from: Controller, key: string){
-    
+
   const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
 
   useEffect(() => from.on(key, onUpdate), []);
@@ -84,6 +84,14 @@ export function useActiveSubscriber(
   return subscription.proxy;
 }
 
+function getPeersPending(of: Controller){
+  const list = [] as [string, Model][];
+  for(const [key, { value }] of entriesIn(of))
+    if(Controller.isTypeof(value))
+      list.push([key, value]);
+  return list;
+}
+
 export function useOwnController(
   Type: Model, args?: any[], 
   callback?: (instance: Controller) => void){
@@ -101,7 +109,7 @@ export function useOwnController(
     const handler = instance[alias] || instance[name];
 
     if(name == lifecycle.WILL_RENDER)
-      release = attachFromContext(instance);
+      release = attachFromContext(instance, getPeersPending);
 
     if(name == lifecycle.DID_MOUNT)
       subscription.commit();

@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { define, entriesIn, Issues } from './util';
+import { define, Issues } from './util';
 
 const Oops = Issues({
   ContextNotFound: (name) =>
@@ -65,16 +65,19 @@ export function getFromContext(Type: Model){
   return instance;
 }
 
-export function attachFromContext(instance: Controller){
+type GetPeers = (instance: Controller) => [string, typeof Controller][];
+
+export function attachFromContext(
+  instance: Controller,
+  getPending: GetPeers){
+
   if(NEEDS_HOOK.has(instance)){
     if(NEEDS_HOOK.get(instance))
       useContext(CONTEXT_CHAIN);
     return;
   }
 
-  const pending = entriesIn(instance).filter(
-    entry => Controller.isTypeof(entry[1].value)
-  )
+  const pending = getPending(instance);
 
   if(!pending.length){
     NEEDS_HOOK.set(instance, false);
@@ -83,8 +86,8 @@ export function attachFromContext(instance: Controller){
   
   const context = useContext(CONTEXT_CHAIN);
 
-  for(const [key, { value }] of pending)
-    define(instance, key, context.find(value));
+  for(const [key, type] of pending)
+    define(instance, key, context.find(type));
 
   NEEDS_HOOK.set(instance, true);
 
