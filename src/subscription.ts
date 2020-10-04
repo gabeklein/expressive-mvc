@@ -1,11 +1,8 @@
 import { Controller } from './controller';
 import { Observable, observe, Observer } from './observer';
-import { create, define, defineProperty, Issues, within } from './util';
+import { create, define, defineProperty, within } from './util';
 
-const Oops = Issues({
-  FocusIsDetatched: () => 
-    `Can't do that boss`
-})
+import Oops from './issues';
 
 export class Subscription {
   private onRelease = [] as Callback[];

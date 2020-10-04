@@ -1,13 +1,9 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { define, Issues } from './util';
+import { define } from './util';
 
-const Oops = Issues({
-  ContextNotFound: (name) =>
-    `Can't subscribe to controller; this accessor can` +
-    `only be used within a Provider keyed for ${name}.`
-});
+import Oops from './issues';
 
 const CONTEXT_BASE = createLayer();
 const CONTEXT_CHAIN = createContext(CONTEXT_BASE);

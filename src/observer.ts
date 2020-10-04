@@ -8,11 +8,12 @@ import {
   getOwnPropertyDescriptor,
   getPrototypeOf,
   isFn,
-  Issues,
   keys,
   listAccess,
   within,
 } from './util';
+
+import Oops from './issues';
 
 export interface Observable {
   applyDispatch(observer: Observer): void
@@ -20,24 +21,6 @@ export interface Observable {
 
 const DISPATCH = new WeakMap<Observable, Observer>();
 const FIRST_COMPUTE = Symbol("is_initial");
-
-const Oops = Issues({
-  NotTracked: (name) => 
-    `Can't watch property ${name}, it's not tracked on this instance.`,
-
-  ComputeFailed: (parent, property) =>
-    `There was an attempt to access computed property ` + 
-    `${parent}.${property} for the first time; however an ` +
-    `exception was thrown. Dependant values probably don't exist yet.`,
-
-  ComputedEarly: (property) => 
-    `Note: Computed values are usually only calculated after first ` +
-    `access, except where accessed implicitly by "on" or "export". Your ` + 
-    `'${property}' getter may have run earlier than intended because of that.`,
-
-  BadReturn: () =>
-    `Callback for property-update may only return a function.`
-})
 
 export function observe(x: Observable){
   let observer = DISPATCH.get(x);

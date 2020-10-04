@@ -5,12 +5,9 @@ import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubs
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy, Issues } from './util';
+import { assignSpecific, defineLazy } from './util';
 
-const Oops = Issues({
-  HasPropertyUndefined: (control, property) =>
-    `${control}.${property} is marked as required for this render.`
-});
+import Oops from './issues';
 
 export type Model = typeof Controller;
 
