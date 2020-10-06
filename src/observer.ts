@@ -329,7 +329,13 @@ export class Observer {
         return value;
       }
       catch(e){
-        this.computedDidFail(key, early);
+        const { name } = this.subject.constructor;
+
+        Oops.ComputeFailed(name, key).warn();
+    
+        if(early)
+          Oops.ComputedEarly(key).warn();
+
         throw e;
       }
       finally {
@@ -346,16 +352,4 @@ export class Observer {
 
     return getStartingValue;
   }
-
-  protected computedDidFail(
-    key: string,
-    early?: boolean){
-
-    const parent = this.subject.constructor.name;
-
-    Oops.ComputeFailed(parent, key).warn();
-
-    if(early)
-      Oops.ComputedEarly(key).warn();
-  };
 }
