@@ -109,11 +109,11 @@ export class Controller {
   public destroy(){
     const dispatch = observe(this);
 
-    if(dispatch)
-      dispatch.emit("willDestroy");
-    
     if(this.willDestroy)
       this.willDestroy();
+
+    if(dispatch)
+      dispatch.emit("willDestroy");
   }
 
   public applyDispatch(observer: Observer){
