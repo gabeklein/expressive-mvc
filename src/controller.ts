@@ -14,10 +14,12 @@ export type Model = typeof Controller;
 export interface Controller 
   extends LifecycleMethods {
 
+  // via Observer.mixin
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
   update(entries: Partial<this>): void;
 
+  // via defineLazy
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
@@ -116,6 +118,7 @@ export class Controller {
       dispatch.emit("willDestroy");
   }
 
+  /** When Observer attaches to instance */
   public applyDispatch(observer: Observer){
     observer.monitorValues();
     observer.monitorComputed(Controller);
@@ -125,6 +128,7 @@ export class Controller {
       this.didCreate();
   }
 
+  /** When Observer attaches to the meta */
   static applyDispatch(observer: Observer){
     observer.monitorValues(Function);
     observer.monitorComputed(Controller);
