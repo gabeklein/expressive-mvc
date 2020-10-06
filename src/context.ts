@@ -1,56 +1,83 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { define } from './util';
+import { create, define, getPrototypeOf, values, within } from './util';
 
 import Oops from './issues';
 
-const CONTEXT_BASE = createLayer();
-const CONTEXT_CHAIN = createContext(CONTEXT_BASE);
-const NEEDS_HOOK = new WeakMap<Controller, boolean>();
+const ADDRESS = new Map<Model, symbol[]>();
 
-type Register = readonly (readonly [Model, Controller])[];
-type Lookup = {
-  find(T: Model): Controller | undefined;
-  extend(from?: Controller | (Model)[]): Lookup;
-  destroy(): void;
-}
+export function keysFor(
+  T: typeof Controller): symbol[] {
 
-function createLayer(
-  inherits?: Lookup,
-  provides?: Register){
-  
-  const local = new Map(provides);
-  const lookup: Lookup = {
-    find(T){
-      if(local.has(T))
-        return local.get(T);
-      else if(inherits)
-        return inherits.find(T);
-    },
-    extend(insert){
-      let provides: Register | undefined;
+  let symbols = ADDRESS.get(T);
 
-      if(Array.isArray(insert)){
-        provides = insert.map(Type => {
-          const instance = Type.create();
-          return [Type, instance];
-        })
-      }
-      else if(insert){
-        const Type = insert.constructor as Model;
-        provides = [[Type, insert]];
-      }
+  if(!symbols){
+    ADDRESS.set(T,
+      symbols = [ Symbol(T.name) ]);
 
-      return createLayer(lookup, provides);
-    },
-    destroy(){
-      local.forEach(c => c.destroy())
-    }
+    if(T.inherits)
+      symbols.push(...keysFor(T.inherits));
   }
 
-  return lookup;
+  return symbols;
 }
+
+class Context {
+  find(T: Model){
+    let instance: Controller | undefined;
+    const race = new Map<Controller, symbol>();
+
+    for(const key of keysFor(T)){
+      const target = within(this, key);
+      if(target && !race.has(target))
+        race.set(instance = target, key);
+    }
+
+    if(race.size > 1){
+      let min = Infinity;
+      for(const [target, key] of race)
+        for(let c = this, i = 0; i<min; c = getPrototypeOf(c), i++)
+          if(c.hasOwnProperty(key)){
+            instance = target;
+            min = i;
+            break;
+          }
+    }
+
+    return instance;
+  }
+
+  concat(instance: Controller){
+    const layer = create(this);
+    const T = instance.constructor as Model;
+
+    for(const key of keysFor(T))
+      define(layer, key, instance);
+
+    return layer as Context;
+  }
+
+  manage(from: (Model)[] = []){
+    const layer = create(this);
+
+    for(const Type of from){
+      const instance = Type.create();
+      for(const key of keysFor(Type))
+        define(layer, key, instance);
+    }
+      
+    return layer as Context;
+  }
+
+  destroy(){
+    const registered: Controller[] = values(this);
+    registered.forEach((c) => c.destroy());
+  }
+}
+
+const CONTEXT_CHAIN = createContext(new Context());
+const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
 export function getFromContext(Type: Model){
   const instance = useContext(CONTEXT_CHAIN).find(Type);
@@ -93,7 +120,7 @@ export function attachFromContext(
 export function ControlProvider(this: Controller){
   return ({ children }: PropsWithChildren<{}>) => {
     const parent = useContext(CONTEXT_CHAIN);
-    const provide = useMemo(() => parent.extend(this), []);
+    const provide = useMemo(() => parent.concat(this), []);
 
     return createElement(
       CONTEXT_CHAIN.Provider, { value: provide }, children
@@ -106,11 +133,10 @@ type InsertProviderProps = {
   children: ReactNode;
 };
 
-export function InsertProvider({
-  of: insertTypes, children
-}: InsertProviderProps){
+export function InsertProvider(props: InsertProviderProps){
+  const { of: insertTypes, children } = props;
   const parent = useContext(CONTEXT_CHAIN);
-  const provide = useMemo(() => parent.extend(insertTypes), []);
+  const provide = useMemo(() => parent.manage(insertTypes), []);
 
   useEffect(() => provide.destroy, []);
 

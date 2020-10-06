@@ -5,7 +5,7 @@ import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubs
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy } from './util';
+import { assignSpecific, defineLazy, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -143,6 +143,12 @@ export class Controller {
       typeof maybe == "object" && 
       maybe.prototype instanceof this
     )
+  }
+
+  static get inherits(): typeof Controller | undefined {
+    const I = getPrototypeOf(this);
+    if(I !== Controller)
+      return I;
   }
 
   static get Provider(){
