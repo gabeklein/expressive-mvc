@@ -278,8 +278,10 @@ export class Observer {
     for(const key in getters)
       defineProperty(subject, key, {
         configurable: true,
-        set: Oops.NotTracked(key).throw,
-        get: this.monitorComputedValue(key, getters[key])
+        get: this.monitorComputedValue(key, getters[key]),
+        set: () => {
+          throw Oops.NotTracked(key)
+        }
       })
   }
 
@@ -340,10 +342,12 @@ export class Observer {
       }
       finally {
         defineProperty(subject, key, {
-          set: Oops.NotTracked(key).throw,
-          get: () => state[key],
           enumerable: true,
-          configurable: true
+          configurable: true,
+          get: () => state[key],
+          set: () => {
+            throw Oops.NotTracked(key)
+          }
         })
       }
     }

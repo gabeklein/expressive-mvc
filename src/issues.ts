@@ -2,14 +2,12 @@ type Params<T> = T extends (... args: infer T) => any ? T : never;
 type MessageVariable = string | number | boolean | null;
 
 class Issue extends Error {
-  constructor(message: string){
-    super(message);
-    // deletes first line of stack trace (helper call)
-    this.stack = this.stack!.replace(/\n.+/, "");
-  }
+  // delete the first line of stack trace
+  // hides lookup, not relevant to thrown error
+  stack?: string = this.stack!.replace(/\n.+/, "");
 
-  warn = () => { console.warn(this.message) }
-  throw = (): never => { throw this }
+  /** Emit this error as a warning instead */
+  warn = () => console.warn(this.message);
 }
 
 function Issues
