@@ -51,7 +51,6 @@ class Context {
 }
 
 const CONTEXT_CHAIN = createContext(new Context());
-const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
 export function getFromContext(Type: Model){
   const instance = useContext(CONTEXT_CHAIN).find(Type);
@@ -63,6 +62,7 @@ export function getFromContext(Type: Model){
 }
 
 type GetPeers = (instance: Controller) => [string, typeof Controller][];
+const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
 export function attachFromContext(
   instance: Controller,
