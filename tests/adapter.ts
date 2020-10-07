@@ -11,7 +11,7 @@ export const set = Source.set as typeof Public.set;
 export const ref = Source.ref as typeof Public.ref;
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as typeof Public.Provider;
+export const Provider = Source.Provider as unknown as Public.Provider;
 export default Controller;
 
 type Class = new(...args: any[]) => any;
