@@ -22,13 +22,12 @@ describe("effect", () => {
       "value4",
     ]);
   
-    const update = instance.once("value1");
-  
     instance.value1 = 2;
     instance.value2 = 3;
     instance.value3 = 4;
   
-    await update;
+    // wait for update event to flush queue
+    await instance.once("value1");
     
     expect(mock).toBeCalledTimes(4)
   })
@@ -46,13 +45,11 @@ describe("effect", () => {
       .value4
     );
   
-    const update = instance.once("value1");
-  
     instance.value1 = 2;
     instance.value2 = 3;
     instance.value3 = 4;
   
-    await update;
+    await instance.once(x => x.value1);
     
     expect(mock).toBeCalledTimes(4);
   })
