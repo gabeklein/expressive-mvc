@@ -5,17 +5,53 @@ import * as Source from "../src";
 // public type definitions
 import * as Public from "../";
 
+export const test = trySubscribe;
 export const get = Source.get as typeof Public.get;
+export const set = Source.set as typeof Public.set;
+export const ref = Source.ref as typeof Public.ref;
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as typeof Public.Provider;
+export const Provider = Source.Provider as unknown as Public.Provider;
 export default Controller;
-
-export { trySubscribe as test };
 
 type Class = new(...args: any[]) => any;
 
-const frame = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
+interface RenderControllerResult<T> 
+  extends RenderHookResult<unknown, T> {
+  /** Reference to controller instance. */
+  state: T;
+  /** Check if rerender was requested. Will reject if not. */
+  assertDidUpdate(): Promise<void>
+  /** Assert a rerender was not requested. Will reject if one was. */
+  assertDidNotUpdate(): Promise<void>
+}
+
+interface TestConsumerProps
+  <T extends typeof Controller>{
+  of: T; 
+  get: { 
+    [P in keyof InstanceType<T>]?: jest.Mock 
+  }
+}
+
+/**
+ * Helper component will pull specified VC from context,
+ * and pull values for analysis.
+ */
+export function Consumer<T extends typeof Controller>
+  ({ of: Subject, get }: TestConsumerProps<T>){
+
+  const instance = Subject.get();
+
+  for(const key in get){
+    const callback = get[key]!;
+    callback(instance[key]);
+  }
+
+  return null;
+}
+
+const STACK_FRAME = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
 
 /**
  * Error with test-friendlier stack trace. 
@@ -30,7 +66,7 @@ class TraceableError extends Error {
     let [ error, ...stack ] = this.stack!.split(/\n/);
 
     let trace = stack.map(line => {
-      const match = frame.exec(line) || [] as string[];
+      const match = STACK_FRAME.exec(line) || [] as string[];
       return {
         frame: match[0],
         callee: match[1],
@@ -52,6 +88,16 @@ class TraceableError extends Error {
   }
 }
 
+function mockPropertyAccess(
+  on: any, properties: string[]){
+
+  for(const property of properties){
+    let x: any = on;
+    for(const key of property.split("."))
+      x = x[key];
+  }
+}
+
 /**
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
@@ -67,9 +113,9 @@ function trySubscribe<T extends Class>(
 ): RenderControllerResult<InstanceType<T>>
 
 function trySubscribe(
-  init: (() => Public.Controller) | typeof Public.Controller,
-  watch?: string[]){
-
+  init: typeof Public.Controller | (() => Public.Controller),
+  watch?: string[]
+){
   if("prototype" in init){
     const Model = init as typeof Public.Controller;
     init = () => Model.use();
@@ -89,38 +135,10 @@ function trySubscribe(
   );
 }
 
-function mockPropertyAccess(
-  on: any, properties: string[]){
-
-  for(const property of properties){
-    let x: any = on;
-    for(const key of property.split("."))
-      x = x[key];
-  }
-}
-
-interface RenderControllerResult<T> 
-  extends RenderHookResult<unknown, T> {
-
-  /** Reference to controller instance. */
-  state: T;
-
-  /** Check if rerender was requested. Will reject if not. */
-  assertDidUpdate(): Promise<void>
-
-  /** Assert a rerender was not requested. Will reject if one was. */
-  assertDidNotUpdate(): Promise<void>
-}
-
 function plusUpdateAssertions(
-  result: RenderHookResult<any, any>){
-
-  const patched = result as RenderControllerResult<any>;
-  let { current } = patched.result;
-  
-  patched.state = current;
-
-  patched.assertDidUpdate = async () => {
+  render: RenderHookResult<any, any>
+){
+  async function assertDidUpdate(){
     const error = new TraceableError("Assertion failed: hook did not update");
     let didUpdate = false;
 
@@ -129,25 +147,29 @@ function plusUpdateAssertions(
         throw error
     }, 500)
 
-    await patched.waitForNextUpdate();
+    await render.waitForNextUpdate();
     
     didUpdate = true
   }
 
-  patched.assertDidNotUpdate = async () => {
+  async function assertDidNotUpdate(){
     const error = new TraceableError("Assertion failed: hook did update");
     let elapsed = false;
 
     setTimeout(() => {
       elapsed = true;
-      patched.rerender();
+      render.rerender();
     }, 500)
     
-    await patched.waitForNextUpdate();
+    await render.waitForNextUpdate();
 
     if(!elapsed) 
       throw error;
   }
 
-  return patched;
+  return Object.assign(render, {
+    state: render.result.current,
+    assertDidUpdate,
+    assertDidNotUpdate
+  })
 }

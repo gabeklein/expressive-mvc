@@ -1,23 +1,21 @@
-import {
-  ChangeEventHandler,
-  createElement,
-  FC,
-  forwardRef,
-  HTMLProps,
-  KeyboardEventHandler,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import type { ChangeEventHandler, FC, HTMLProps, KeyboardEventHandler, PropsWithChildren } from 'react';
+
+import { Children, createElement, forwardRef, useMemo } from 'react';
 
 import { Controller } from './controller';
+import { useValue } from './hooks';
 
-function useValue(from: Controller, key: string){
-  const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
+type onChangeCallback = (v: any, e: any) => any;
+type ControlledInputProps = HTMLProps<HTMLInputElement> & ControlledProps;
+type ControlledProps = {
+  to: string, 
+  type?: string,
+  onUpdate?: onChangeCallback | string | false,
+  onReturn?: onChangeCallback | string
+}
 
-  useEffect(() => from.getDispatch().watch(key, onUpdate), []);
-
-  return value;
+export function Noop({ children }: PropsWithChildren<{}>){
+  return Children.only(children);
 }
 
 export function ControlledValue(
@@ -27,28 +25,14 @@ export function ControlledValue(
     createElement("span", props, useValue(this, key));
 }
 
-type onChangeCallback = (v: any, e: any) => any;
-type ControlledInputProps = 
-  HTMLProps<HTMLInputElement>
-  & { 
-    to: string, 
-    type?: string,
-    onUpdate?: onChangeCallback | string | false,
-    onReturn?: onChangeCallback | string
-  }
-
 export function ControlledInput(this: Controller){
   return forwardRef((props: ControlledInputProps, ref) => {
     const { to, onUpdate, onReturn, ...passProps } = props;
 
     const value = useValue(this, to);
-    const events = useMemo(() =>
-      controlledEventProps(this, props), 
-    []);
+    const events = useMemo(() => controlledEventProps(this, props), []);
     
-    return createElement("input", {
-      ...passProps, ...events, ref, value
-    });
+    return createElement("input", { ...passProps, ...events, ref, value });
   })
 }
 

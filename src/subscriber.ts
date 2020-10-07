@@ -1,104 +1,149 @@
-import { useEffect, useState } from 'react';
-
 import { Controller } from './controller';
-import { componentLifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observer } from './observer';
-import { ensurePeerControllers } from './peers';
-import { Subscription } from './subscription';
+import { Observable, observe, Observer } from './observer';
+import { create, define, defineProperty, within } from './util';
 
-type Observable = { getDispatch(): Observer };
+import Oops from './issues';
 
-function useActiveMemo<T>(
-  init: (refresh: Callback) => T){
-
-  const [ state, update ] = useState<any>(() => [
-    init(() => update(state.concat()))
-  ]);
-
-  return state[0] as T;
-}
-
-export function usePassiveSubscriber(
-  target: Observable,
-  ...path: (string | undefined)[]){
-
-  const subscription = useActiveMemo(refresh => {
-    const parent = target.getDispatch();
-    return new Subscription(parent, refresh).focus(path);
-  });
-
-  useEffect(() => {
-    subscription.commit();
-    return () => subscription.release();
-  }, []);
-
-  return subscription.proxy;
-}
-
-export function useActiveSubscriber(
-  target: Controller, 
-  args: any[]){
-
-  const subscription = useActiveMemo(refresh => 
-    new Subscription(target.getDispatch(), refresh)
-  );
-
-  useLifecycleEffect((name) => {
-    const alias = subscriberLifecycle(name);
-    const handler = target[alias] || target[name];
-
-    if(name == "didMount")
-      subscription.commit();
-
-    if(handler)
-      handler.apply(handler, args || []);
-
-    subscription.parent.emit(name, alias);
-
-    if(name == "willUnmount")
-      subscription.release();
-  });
+export class Subscriber {
+  private onRelease = [] as Callback[];
+  public parent: Observer;
   
-  return subscription.proxy;
-}
+  constructor(
+    private subject: Observable,
+    private refresh: Callback
+  ){
+    this.parent = observe(subject);
+  }
 
-export function useOwnController(
-  Model: typeof Controller,
-  args?: any[], 
-  callback?: (instance: Controller) => void){
+  public get proxy(){
+    const master = within(this.subject);
+    const proxy = create(master);
 
-  let release: Callback | undefined;
+    define(proxy, {
+      get: master,
+      set: master
+    });
 
-  const subscription = useActiveMemo(refresh => {
-    const parent = Model.create(args, callback).getDispatch();
-    return new Subscription(parent, refresh);
-  });
+    for(const key of this.parent.watched)
+      defineProperty(proxy, key, {
+        configurable: true,
+        set: (value) => {
+          master[key] = value;
+        },
+        get: () => {
+          let value = master[key];
 
-  useLifecycleEffect((name) => {
-    const alias = componentLifecycle(name);
-    const instance = subscription.parent.subject as Controller;
-    const handler = instance[alias] || instance[name];
+          if(value instanceof Controller)
+            value = this.followRecursive(key);
+          else
+            this.follow(key);
 
-    if(name == "willRender")
-      release = ensurePeerControllers(instance);
+          return value;
+        }
+      })
 
-    if(name == "didMount")
-      subscription.commit();
+    define(this, { proxy });
+    return proxy;
+  }
 
-    if(handler)
-      handler.apply(handler, args || []);
+  public commit(...keys: maybeStrings){
+    if(keys.length == 0)
+      keys.push(...this.parent.watched)
 
-    subscription.parent.emit(name, alias);
+    for(const key of keys)
+      delete (this.proxy as any)[key!];
+  }
 
-    if(name == "willUnmount"){
-      subscription.release();
+  public release(){
+    for(const callback of this.onRelease)
+      callback()
+  }
 
-      if(release)
-        release();
+  public focus(keys: maybeStrings){
+    const [ key, ...rest ] = keys.filter(x => x);
+    let sub: Subscriber | undefined;
 
-      instance.destroy();
+    if(!key)
+      return this;
+
+    const reset = () => sub && sub.release();
+
+    const monitorChild = () => {
+      let value = this.parent.subject[key];
+
+      if(value instanceof Controller){
+        sub = new Subscriber(value, this.refresh);
+        sub.focus(rest);
+
+        this.parent.once("didRender", () => sub!.commit());
+      }
+      else if(rest.length)
+        throw Oops.FocusIsDetatched();
+  
+      defineProperty(this, "proxy", {
+        get: () => sub ? sub.proxy : value,
+        configurable: true
+      })
     }
-  });
 
-  return subscription.proxy;
+    const onUpdate = () => {
+      reset();
+      monitorChild();
+      this.refresh();
+    }
+
+    this.follow(key, onUpdate);
+    this.onRelease.push(reset);
+
+    monitorChild();
+
+    return this;
+  }
+
+  protected follow(key: string, cb?: Callback){
+    this.onRelease.push(
+      this.parent.addListener(key, cb || this.refresh)
+    )
+  }
+
+  protected followRecursive(key: string){
+    const { subject } = this.parent;
+    let sub: Subscriber | undefined;
+
+    const reset = () => sub && sub.release();
+
+    const applyChild = () => {
+      let value = subject[key];
+
+      if(value instanceof Controller){
+        sub = new Subscriber(value, this.refresh);
+        value = sub.proxy;
+  
+        this.parent.once("didRender", () => {
+          sub!.commit();
+          this.commit(key);
+        });
+      }
+
+      defineProperty(this.proxy, key, {
+        get: () => value,
+        set: val => subject[key] = val,
+        configurable: true,
+        enumerable: true
+      })
+
+      return value;
+    }
+
+    const onUpdate = () => {
+      reset();
+      applyChild();
+      this.refresh();
+    }
+
+    this.follow(key, onUpdate);
+    this.onRelease.push(reset);
+
+    return applyChild();
+  }
 }
