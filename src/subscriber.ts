@@ -61,10 +61,11 @@ export class Subscriber {
 
   public focus(keys: maybeStrings){
     const [ key, ...rest ] = keys.filter(x => x);
-    let sub: Subscriber | undefined;
 
     if(!key)
       return this;
+      
+    let sub: Subscriber | undefined;
 
     const reset = () => sub && sub.release();
 
