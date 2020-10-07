@@ -23,13 +23,18 @@ describe("effect", () => {
     ]);
   
     instance.value1 = 2;
-    instance.value2 = 3;
-    instance.value3 = 4;
-  
-    // wait for update event to flush queue
+
+    // wait for update event, thus queue flushed
     await instance.once("value1");
     
-    expect(mock).toBeCalledTimes(4)
+    instance.value2 = 3;
+    instance.value3 = 4;
+
+    // wait for update event to flush queue
+    await instance.once("value2");
+    
+    // expect two syncronous groups of updates.
+    expect(mock).toBeCalledTimes(2)
   })
 
   it('will watch values selected via function', async () => {
@@ -47,11 +52,15 @@ describe("effect", () => {
   
     instance.value1 = 2;
     instance.value2 = 3;
-    instance.value3 = 4;
-  
+
     await instance.once(x => x.value1);
+
+    instance.value3 = 4;
+
+    // expect value4, which relies on 3.
+    await instance.once(x => x.value4);
     
-    expect(mock).toBeCalledTimes(4);
+    expect(mock).toBeCalledTimes(2);
   })
 
   it('will reinvoke self-subscribed effect', async () => {

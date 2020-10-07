@@ -10,6 +10,7 @@ import {
   isFn,
   keys,
   listAccess,
+  squash,
   within,
 } from './util';
 
@@ -200,11 +201,12 @@ export class Observer {
 
   public addMultipleListener(
     keys: string[],
-    callback: (didUpdate: string) => void){
+    callback: () => void){
 
-    const cleanup = keys.map(k => 
-      this.addListener(k, () => callback(k))
-    )
+    const update = squash(callback);
+    const cleanup = keys.map(k =>
+      this.addListener(k, update)
+    );
 
     return () => cleanup.forEach(x => x());
   }

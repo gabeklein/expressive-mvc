@@ -61,6 +61,22 @@ export function listAccess(
   return Array.from(found);
 }
 
+export function squash(
+  callback: Callback){
+
+  let squash: undefined | boolean;
+  return () => {
+    if(squash)
+      return;
+      
+    squash = true;
+    callback();
+    setImmediate(() => {
+      squash = false;
+    })
+  }
+}
+
 export function assignSpecific(
   target: InstanceType<Class>,
   source: BunchOf<any>, 
