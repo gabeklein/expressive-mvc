@@ -78,20 +78,30 @@ export class Observer {
 
   public effect = (
     callback: EffectCallback<any>,
-    select: string[] | Selector) => {
-      
+    select?: string[] | Selector) => {
+    
+    const { subject } = this;
     let unSet: Callback | undefined;
 
-    if(isFn(select))
-      select = listAccess(this.watched, select);
-
-    return this.addMultipleListener(select, () => {
+    const reinvoke = () => {
       unSet && unSet();
-      unSet = callback.call(this.subject);
+      unSet = callback.call(subject, subject);
 
       if(!isFn(unSet) && unSet)
         throw Oops.BadEffectCallback()
-    })
+    }
+
+    if(!select){
+      const sub = new Subscriber(subject, reinvoke);
+      unSet = callback.call(sub.proxy, sub.proxy);
+      sub.commit();
+      return () => sub.release();
+    }
+    else {
+      if(isFn(select))
+        select = listAccess(this.watched, select);
+      return this.addMultipleListener(select, reinvoke);
+    }
   }
 
   public export = (
@@ -317,10 +327,11 @@ export class Observer {
     const recalculate = () => {
       const value = compute.call(subject);
 
-      if(state[key] !== value){
-        state[key] = value;
-        this.emitSync(key);
-      }
+      if(value === state[key])
+        return;
+
+      state[key] = value;
+      this.emitSync(key);
     }
 
     const getStartingValue = (early?: boolean) => {

@@ -56,4 +56,35 @@ describe("effect", () => {
     
     expect(mock).toBeCalledTimes(4);
   })
+
+  it('will reinvoke self-subscribed effect', async () => {
+    const instance = TestValues.create();
+    let invokedNTimes = 0;
+  
+    instance.effect(self => {
+      // destructure values to indicate access.
+      const { value1, value2, value3 } = self;
+      invokedNTimes++;
+    });
+  
+    instance.value1 = 2;
+    await instance.once(x => x.value1);
+
+    instance.value2 = 3;
+    await instance.once(x => x.value2);
+
+    instance.value2 = 4;
+    instance.value3 = 4;
+    await instance.once(x => x.value3);
+  
+    /**
+     * must invoke once to detect subscription
+     * 
+     * invokes three more times:
+     * - value 1
+     * - value 2
+     * - value 2 & 3 (squashed since syncronous)
+     */
+    expect(invokedNTimes).toBe(4);
+  })
 });
