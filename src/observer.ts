@@ -72,9 +72,9 @@ export class Observer {
     if(listener)
       return this.watch(key, listener, true);
     else
-      return new Promise(resolve =>
+      return new Promise(resolve => {
         this.watch(key, resolve, true)
-      );
+      });
   }
 
   public effect = (
