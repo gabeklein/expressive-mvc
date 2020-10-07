@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observable } from './observer';
-import { attachFromContext } from './context';
 import { Subscriber } from './subscriber';
 import { create, define, entriesIn, isFn, within } from './util';
 
-function useActiveMemo<T>(
+function useManaged<T>(
   init: (refresh: Callback) => T){
 
   const [ state, update ] = useState<any>(() => [
@@ -20,14 +20,14 @@ function useActiveMemo<T>(
 export function useValue(
   from: Controller, key: string){
 
-  const [ value, onUpdate ] = useState(() => (<Any>from)[key]);
+  const [ value, update ] = useState(() => (<Any>from)[key]);
 
-  useEffect(() => from.on(key, onUpdate), []);
+  useEffect(() => from.on(key, update), []);
 
   return value;
 }
 
-export function usePassiveGetter(
+export function usePassive(
   target: Controller, key?: string){
 
   return useMemo(() => {
@@ -42,26 +42,27 @@ export function usePassiveGetter(
   }, [])
 }
 
-export function usePassiveSubscriber(
-  target: Observable, ...path: (string | undefined)[]){
+export function useWatcher(
+  target: Observable, ...path: maybeStrings){
 
-  const subscription = useActiveMemo(refresh =>
+  const subscription = useManaged(refresh =>
     new Subscriber(target, refresh).focus(path)
   );
 
   useEffect(() => {
     if(!path[0])
       subscription.commit();
-    return () => subscription.release();
+    return () =>
+      subscription.release();
   }, []);
 
   return subscription.proxy;
 }
 
-export function useActiveSubscriber(
+export function useSubscriber(
   target: Controller, args: any[]){
 
-  const subscription = useActiveMemo(refresh => 
+  const subscription = useManaged(refresh => 
     new Subscriber(target, refresh)
   );
 
@@ -84,21 +85,13 @@ export function useActiveSubscriber(
   return subscription.proxy;
 }
 
-function getPeersPending(of: Controller){
-  const list = [] as [string, Model][];
-  for(const [key, { value }] of entriesIn(of))
-    if(Controller.isTypeof(value))
-      list.push([key, value]);
-  return list;
-}
-
-export function useOwnController(
+export function useController(
   Type: Model, args?: any[], 
   callback?: (instance: Controller) => void){
 
   let release: Callback | undefined;
 
-  const subscription = useActiveMemo(refresh => {
+  const subscription = useManaged(refresh => {
     const instance = Type.create(args, callback);
     return new Subscriber(instance, refresh);
   });
@@ -130,4 +123,12 @@ export function useOwnController(
   });
 
   return subscription.proxy;
+}
+
+function getPeersPending(of: Controller){
+  const list = [] as [string, Model][];
+  for(const [key, { value }] of entriesIn(of))
+    if(Controller.isTypeof(value))
+      list.push([key, value]);
+  return list;
 }

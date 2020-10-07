@@ -1,7 +1,7 @@
 import type { FunctionComponent, ProviderProps } from 'react';
 
 import { ControlledInput, ControlledValue } from './components';
-import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubscriber } from './hooks';
+import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
@@ -28,14 +28,14 @@ export interface Controller
 export class Controller {
 
   static use(...args: any[]){
-    return useOwnController(this, args);
+    return useController(this, args);
   }
 
   static uses(
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useOwnController(this, undefined, instance => {
+    return useController(this, undefined, instance => {
       assignSpecific(instance, props, only);
     })
   }
@@ -48,7 +48,9 @@ export class Controller {
       assignSpecific(instance, props, only);
     }
 
-    const subscriber = useOwnController(this, undefined, assignTo);
+    const subscriber = useController(
+      this, undefined, assignTo
+    );
 
     assignTo(subscriber);
         
@@ -56,11 +58,11 @@ export class Controller {
   }
 
   static get(key?: string){
-    return usePassiveGetter(this.find(), key);
+    return usePassive(this.find(), key);
   }
 
   public tap(...path: maybeStrings){
-    return usePassiveSubscriber(this, ...path);
+    return useWatcher(this, ...path);
   }
 
   static tap(...keys: maybeStrings){
@@ -77,7 +79,7 @@ export class Controller {
   }
 
   public sub(...args: any[]){
-    return useActiveSubscriber(this, args);
+    return useSubscriber(this, args);
   }
 
   static sub(...args: any[]){
@@ -85,7 +87,7 @@ export class Controller {
   }
 
   static meta(...path: maybeStrings): any {
-    return usePassiveSubscriber(this, ...path);
+    return useWatcher(this, ...path);
   }
 
   static find(){
