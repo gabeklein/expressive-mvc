@@ -32,7 +32,7 @@ export function getPeerHelper<T extends Model>
 }
 
 export function setRefHelper<T = any>
-  (effect?: EffectCallback): RefObject<T> {
+  (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);
@@ -45,7 +45,7 @@ export function setRefHelper<T = any>
 }
 
 export function setPropertyHelper<T = any>
-  (effect: EffectCallback): T {
+  (effect: EffectCallback<Controller, any>): T {
 
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);

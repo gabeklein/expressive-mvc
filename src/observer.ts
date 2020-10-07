@@ -77,7 +77,7 @@ export class Observer {
   }
 
   public effect = (
-    callback: EffectCallback,
+    callback: EffectCallback<any>,
     select: string[] | Selector) => {
       
     let unSet: Callback | undefined;
@@ -219,7 +219,7 @@ export class Observer {
 
   public access(
     key: string,
-    callback?: EffectCallback){
+    callback?: EffectCallback<any, any>){
 
     let unSet: Callback | undefined;
       
