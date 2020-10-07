@@ -1,59 +1,50 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { create, define, values, within } from './util';
+import { create, define, values } from './util';
 
 import Oops from './issues';
 
-const ADDRESS = new Map<Model, symbol[]>();
-
-export function keysFor(
-  T: typeof Controller): symbol[] {
-
-  let symbols = ADDRESS.get(T);
-
-  if(!symbols){
-    ADDRESS.set(T,
-      symbols = [ Symbol(T.name) ]);
-
-    if(T.inherits)
-      symbols.push(...keysFor(T.inherits));
-  }
-
-  return symbols;
-}
+const LOOKUP = new Map<Model, symbol>();
 
 class Context {
-  find(T: Model){
-    return within(this, keysFor(T)[0]);
+  private key(T: Model){
+    let key = LOOKUP.get(T);
+    if(!key)
+      LOOKUP.set(T, key = Symbol(T.name));
+    return key;
   }
 
-  concat(instance: Controller){
-    const layer = create(this);
-    const T = instance.constructor as Model;
-
-    for(const key of keysFor(T))
-      define(layer, key, instance);
-
-    return layer as Context;
+  public find(T: Model): Controller | undefined {
+    return (this as any)[this.key(T)];
   }
-
-  manage(from: Array<Model> | BunchOf<Model>){
-    const layer = create(this);
-
-    if(!Array.isArray(from))
-      from = values(from);
-
-    for(const Type of from){
-      const instance = Type.create();
-      for(const key of keysFor(Type))
-        define(layer, key, instance);
+  
+  private register(T: Model, I: Controller){
+    do {
+      define(this, this.key(T), I);
     }
-      
-    return layer as Context;
+    while(T = T.inherits!);
   }
 
-  destroy(){
+  public concat(instance: Controller){
+    const layer: Context = create(this);
+    layer.register(instance.constructor as Model, instance);
+    return layer;
+  }
+
+  public manage(types: Array<Model> | BunchOf<Model>){
+    const layer: Context = create(this);
+
+    if(!Array.isArray(types))
+      types = values(types);
+
+    for(const Type of types)
+      layer.register(Type, Type.create());
+      
+    return layer;
+  }
+
+  public destroy(){
     const registered: Controller[] = values(this);
     registered.forEach((c) => c.destroy());
   }
