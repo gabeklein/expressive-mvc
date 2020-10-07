@@ -58,8 +58,11 @@ class Context {
     return layer as Context;
   }
 
-  manage(from: (Model)[] = []){
+  manage(from: Array<Model> | BunchOf<Model>){
     const layer = create(this);
+
+    if(!Array.isArray(from))
+      from = values(from);
 
     for(const Type of from){
       const instance = Type.create();
@@ -131,12 +134,12 @@ export function ControlProvider(this: Controller | Model){
 }
 
 type InsertProviderProps = {
-  of?: (Model)[];
+  of?: Array<Model> | BunchOf<Model>;
   children: ReactNode;
 };
 
 export function InsertProvider(props: InsertProviderProps){
-  const { of: insertTypes, children } = props;
+  const { of: insertTypes = [], children } = props;
   const parent = useContext(CONTEXT_CHAIN);
   const provide = useMemo(() => parent.manage(insertTypes), []);
 

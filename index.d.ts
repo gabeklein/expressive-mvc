@@ -6,6 +6,7 @@ import {
 type Callback = () => void;
 type Class = new (...args: any) => any;
 type Expecting<A extends any[]> = new(...args: A) => any
+type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
@@ -161,7 +162,8 @@ declare function get <T extends Class> (type: T): InstanceType<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
 
-type Provider<T extends typeof Controller> = FunctionComponent<{ of: T[] }>
+type Provider<T extends typeof Controller> = 
+    FunctionComponent<{ of: Array<T> | BunchOf<T> }>
 
 export {
     IC,

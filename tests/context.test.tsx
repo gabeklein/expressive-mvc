@@ -60,7 +60,7 @@ describe("Provider", () => {
     const value = jest.fn();
     
     create(
-      <Provider of={[ Simple ]}>
+      <Provider of={{ Simple }}>
         <Consumer of={Simple} get={{ value }}/>
       </Provider>
     )
