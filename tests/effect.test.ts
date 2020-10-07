@@ -70,6 +70,7 @@ describe("effect", () => {
     instance.effect(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
+      void value1, value2, value3;
       invokedNTimes++;
     });
   
