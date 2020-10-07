@@ -5,22 +5,21 @@ import { useActiveSubscriber, useOwnController, usePassiveGetter, usePassiveSubs
 import { LifecycleMethods } from './lifecycle';
 import { observe, Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy, Issues } from './util';
+import { assignSpecific, defineLazy, getPrototypeOf } from './util';
 
-const Oops = Issues({
-  HasPropertyUndefined: (control, property) =>
-    `${control}.${property} is marked as required for this render.`
-});
+import Oops from './issues';
 
 export type Model = typeof Controller;
 
 export interface Controller 
   extends LifecycleMethods {
 
+  // via Observer.mixin
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
   update(entries: Partial<this>): void;
 
+  // via defineLazy
   Input: FunctionComponent<{ to: string }>;
   Value: FunctionComponent<{ of: string }>;
   Provider: FunctionComponent<ProviderProps<this>>;
@@ -112,13 +111,14 @@ export class Controller {
   public destroy(){
     const dispatch = observe(this);
 
-    if(dispatch)
-      dispatch.emit("willDestroy");
-    
     if(this.willDestroy)
       this.willDestroy();
+
+    if(dispatch)
+      dispatch.emit("willDestroy");
   }
 
+  /** When Observer attaches to instance */
   public applyDispatch(observer: Observer){
     observer.monitorValues();
     observer.monitorComputed(Controller);
@@ -128,6 +128,7 @@ export class Controller {
       this.didCreate();
   }
 
+  /** When Observer attaches to the meta */
   static applyDispatch(observer: Observer){
     observer.monitorValues(Function);
     observer.monitorComputed(Controller);
@@ -144,10 +145,16 @@ export class Controller {
     )
   }
 
-  static get Provider(){
-    return this.use().Provider;
+  static get inherits(): typeof Controller | undefined {
+    const I = getPrototypeOf(this);
+    if(I !== Controller)
+      return I;
   }
 }
+
+defineLazy(Controller, {
+  Provider: ControlProvider
+});
 
 defineLazy(Controller.prototype, {
   Provider: ControlProvider,

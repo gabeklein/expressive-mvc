@@ -22,15 +22,19 @@ describe("effect", () => {
       "value4",
     ]);
   
-    const update = instance.once("value1");
-  
     instance.value1 = 2;
+
+    // wait for update event, thus queue flushed
+    await instance.once("value1");
+    
     instance.value2 = 3;
     instance.value3 = 4;
-  
-    await update;
+
+    // wait for update event to flush queue
+    await instance.once("value2");
     
-    expect(mock).toBeCalledTimes(4)
+    // expect two syncronous groups of updates.
+    expect(mock).toBeCalledTimes(2)
   })
 
   it('will watch values selected via function', async () => {
@@ -38,22 +42,56 @@ describe("effect", () => {
     const mock = jest.fn();
   
     instance.effect( 
-      mock,
-      x => x
-      .value1
-      .value2
-      .value3
-      .value4
+      mock, x => (x
+        .value1
+        .value2
+        .value3
+        .value4
+      )
     );
-  
-    const update = instance.once("value1");
   
     instance.value1 = 2;
     instance.value2 = 3;
+
+    await instance.once(x => x.value1);
+
     instance.value3 = 4;
-  
-    await update;
+
+    // expect value4, which relies on 3.
+    await instance.once(x => x.value4);
     
-    expect(mock).toBeCalledTimes(4);
+    expect(mock).toBeCalledTimes(2);
+  })
+
+  it('will reinvoke self-subscribed effect', async () => {
+    const instance = TestValues.create();
+    let invokedNTimes = 0;
+  
+    instance.effect(self => {
+      // destructure values to indicate access.
+      const { value1, value2, value3 } = self;
+      void value1, value2, value3;
+      invokedNTimes++;
+    });
+  
+    instance.value1 = 2;
+    await instance.once(x => x.value1);
+
+    instance.value2 = 3;
+    await instance.once(x => x.value2);
+
+    instance.value2 = 4;
+    instance.value3 = 4;
+    await instance.once(x => x.value3);
+  
+    /**
+     * must invoke once to detect subscription
+     * 
+     * invokes three more times:
+     * - value 1
+     * - value 2
+     * - value 2 & 3 (squashed since syncronous)
+     */
+    expect(invokedNTimes).toBe(4);
   })
 });

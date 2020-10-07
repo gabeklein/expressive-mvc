@@ -30,6 +30,7 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
   else
     for(const [key, value] of entries(kv))
       defineProperty(target, key, { value });
+  return target;
 }
 
 type DefineMultiple<T> = {
@@ -59,6 +60,22 @@ export function listAccess(
   processor(spy);
 
   return Array.from(found);
+}
+
+export function squash(
+  callback: Callback){
+
+  let squash: undefined | boolean;
+  return () => {
+    if(squash)
+      return;
+      
+    squash = true;
+    callback();
+    setImmediate(() => {
+      squash = false;
+    })
+  }
 }
 
 export function assignSpecific(
@@ -115,13 +132,12 @@ export function defineLazy<T>(
 }
 
 /**
- * Abstract "Type-Waiver" for controller.
- * Prevent compiler from complaining about arbitary property access.
+ * "I don't care about property access."
  */
-export function within<T>(controller: T): Any;
-export function within<T>(controller: T, key: undefined): Any;
-export function within<T>(controller: T, key?: string | symbol): any;
-export function within<T, V>(controller: T, key: string | symbol, value: V): V;
+export function within<T>(object: T): Any;
+export function within<T>(object: T, key: undefined): Any;
+export function within<T>(object: T, key?: string | symbol): any;
+export function within<T, V>(object: T, key: string | symbol, value: V): V;
 
 export function within(
   source: any,
@@ -134,33 +150,4 @@ export function within(
     return source[key];
   else
     return source;
-}
-
-type Params<T> = T extends (... args: infer T) => any ? T : never;
-type MessageVariable = string | number | boolean | null;
-
-class Issue extends Error {
-  constructor(message: string){
-    super(message);
-    this.stack = this.stack!.replace(/\n.+/, "");
-  }
-
-  warn = () => { console.warn(this.message) }
-  throw = (): never => { throw this }
-}
-
-export function Issues
-  <O extends BunchOf<(...args: MessageVariable[]) => string>>
-  (register: O){
-  
-  const Library = {} as any;
-
-  for(const name in register)
-    Library[name] = () => 
-      new Issue(register[name].apply(null, arguments as any));
-
-  return Library as {
-    readonly [P in keyof O]:
-      (...args: Params<O[P]>) => Issue
-  };
 }

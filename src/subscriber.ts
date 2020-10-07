@@ -1,13 +1,10 @@
 import { Controller } from './controller';
 import { Observable, observe, Observer } from './observer';
-import { create, define, defineProperty, Issues, within } from './util';
+import { create, define, defineProperty, within } from './util';
 
-const Oops = Issues({
-  FocusIsDetatched: () => 
-    `Can't do that boss`
-})
+import Oops from './issues';
 
-export class Subscription {
+export class Subscriber {
   private onRelease = [] as Callback[];
   public parent: Observer;
   
@@ -64,7 +61,7 @@ export class Subscription {
 
   public focus(keys: maybeStrings){
     const [ key, ...rest ] = keys.filter(x => x);
-    let sub: Subscription | undefined;
+    let sub: Subscriber | undefined;
 
     if(!key)
       return this;
@@ -75,7 +72,7 @@ export class Subscription {
       let value = this.parent.subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value, this.refresh);
+        sub = new Subscriber(value, this.refresh);
         sub.focus(rest);
 
         this.parent.once("didRender", () => sub!.commit());
@@ -111,7 +108,7 @@ export class Subscription {
 
   protected followRecursive(key: string){
     const { subject } = this.parent;
-    let sub: Subscription | undefined;
+    let sub: Subscriber | undefined;
 
     const reset = () => sub && sub.release();
 
@@ -119,7 +116,7 @@ export class Subscription {
       let value = subject[key];
 
       if(value instanceof Controller){
-        sub = new Subscription(value, this.refresh);
+        sub = new Subscriber(value, this.refresh);
         value = sub.proxy;
   
         this.parent.once("didRender", () => {

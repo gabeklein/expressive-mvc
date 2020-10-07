@@ -1,20 +1,7 @@
 import { Noop } from './components';
 import { Controller } from './controller';
-import { Issues } from './util';
 
-const Oops = Issues({
-  DestroyNotActive: (name) =>
-    `${name}.destory() was called on an instance which is not active. ` +
-    `This is an antipattern and may caused unexpected behavior.`,
-
-  AlreadyExists: (type) =>
-    `Shared instance of ${type} already exists! ` +
-    `'${type}.use(...)' may only be mounted once at any one time.`,
-
-  DoesNotExist: (name) =>
-    `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\n` +
-    `Call ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`
-})
+import Oops from './issues';
 
 export class Singleton extends Controller {
 
@@ -22,7 +9,7 @@ export class Singleton extends Controller {
 
   static find(){
     if(!this.current)
-      throw Oops.DoesNotExist(this.name);
+      throw Oops.GlobalDoesNotExist(this.name);
 
     return this.current as unknown as Controller;
   }
@@ -36,7 +23,7 @@ export class Singleton extends Controller {
     let instance = Type.current as InstanceType<T>;
 
     if(instance)
-      throw Oops.AlreadyExists(this.name);
+      throw Oops.GlobalExists(this.name);
 
     instance = super.create(args, prepare) as any;
     Type.current = instance;

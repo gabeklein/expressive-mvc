@@ -1,66 +1,72 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { define, Issues } from './util';
+import { create, define, values, within } from './util';
 
-const Oops = Issues({
-  ContextNotFound: (name) =>
-    `Can't subscribe to controller; this accessor can` +
-    `only be used within a Provider keyed for ${name}.`
-});
+import Oops from './issues';
 
-const CONTEXT_BASE = createLayer();
-const CONTEXT_CHAIN = createContext(CONTEXT_BASE);
-const NEEDS_HOOK = new WeakMap<Controller, boolean>();
+const ADDRESS = new Map<Model, symbol[]>();
 
-type Register = readonly (readonly [Model, Controller])[];
-type Lookup = {
-  find(T: Model): Controller | undefined;
-  extend(from?: Controller | (Model)[]): Lookup;
-  destroy(): void;
-}
+export function keysFor(
+  T: typeof Controller): symbol[] {
 
-function createLayer(
-  inherits?: Lookup,
-  provides?: Register){
-  
-  const local = new Map(provides);
-  const lookup: Lookup = {
-    find(T){
-      if(local.has(T))
-        return local.get(T);
-      else if(inherits)
-        return inherits.find(T);
-    },
-    extend(insert){
-      let provides: Register | undefined;
+  let symbols = ADDRESS.get(T);
 
-      if(Array.isArray(insert)){
-        provides = insert.map(Type => {
-          const instance = Type.create();
-          return [Type, instance];
-        })
-      }
-      else if(insert){
-        const Type = insert.constructor as Model;
-        provides = [[Type, insert]];
-      }
+  if(!symbols){
+    ADDRESS.set(T,
+      symbols = [ Symbol(T.name) ]);
 
-      return createLayer(lookup, provides);
-    },
-    destroy(){
-      local.forEach(c => c.destroy())
-    }
+    if(T.inherits)
+      symbols.push(...keysFor(T.inherits));
   }
 
-  return lookup;
+  return symbols;
 }
+
+class Context {
+  find(T: Model){
+    return within(this, keysFor(T)[0]);
+  }
+
+  concat(instance: Controller){
+    const layer = create(this);
+    const T = instance.constructor as Model;
+
+    for(const key of keysFor(T))
+      define(layer, key, instance);
+
+    return layer as Context;
+  }
+
+  manage(from: Array<Model> | BunchOf<Model>){
+    const layer = create(this);
+
+    if(!Array.isArray(from))
+      from = values(from);
+
+    for(const Type of from){
+      const instance = Type.create();
+      for(const key of keysFor(Type))
+        define(layer, key, instance);
+    }
+      
+    return layer as Context;
+  }
+
+  destroy(){
+    const registered: Controller[] = values(this);
+    registered.forEach((c) => c.destroy());
+  }
+}
+
+const CONTEXT_CHAIN = createContext(new Context());
+const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 
 export function getFromContext(Type: Model){
   const instance = useContext(CONTEXT_CHAIN).find(Type);
 
   if(!instance)
-    throw Oops.ContextNotFound(Type.name);
+    throw Oops.NothingInContext(Type.name);
 
   return instance;
 }
@@ -94,10 +100,12 @@ export function attachFromContext(
   return () => NEEDS_HOOK.set(instance, false);
 }
 
-export function ControlProvider(this: Controller){
+export function ControlProvider(this: Controller | Model){
   return ({ children }: PropsWithChildren<{}>) => {
     const parent = useContext(CONTEXT_CHAIN);
-    const provide = useMemo(() => parent.extend(this), []);
+    const provide = useMemo(() => parent.concat(
+      typeof this == "function" ? this.create() : this
+    ), []);
 
     return createElement(
       CONTEXT_CHAIN.Provider, { value: provide }, children
@@ -106,15 +114,14 @@ export function ControlProvider(this: Controller){
 }
 
 type InsertProviderProps = {
-  of?: (Model)[];
+  of?: Array<Model> | BunchOf<Model>;
   children: ReactNode;
 };
 
-export function InsertProvider({
-  of: insertTypes, children
-}: InsertProviderProps){
+export function InsertProvider(props: InsertProviderProps){
+  const { of: insertTypes = [], children } = props;
   const parent = useContext(CONTEXT_CHAIN);
-  const provide = useMemo(() => parent.extend(insertTypes), []);
+  const provide = useMemo(() => parent.manage(insertTypes), []);
 
   useEffect(() => provide.destroy, []);
 

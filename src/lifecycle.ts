@@ -2,49 +2,30 @@ import { useEffect, useMemo } from 'react';
 
 import { values } from './util';
 
-export type LivecycleEvent =
-  | "willMount"
-  | "willUpdate"
-  | "willRender"
-  | "didRender"
-  | "willReset"
-  | "didMount"
-  | "willUnmount"
-  | "componentWillMount"
-  | "componentWillUpdate"
-  | "componentWillRender"
-  | "componentDidMount"
-  | "componentWillUnmount"
-  | "elementWillMount"
-  | "elementWillUpdate"
-  | "elementWillRender"
-  | "elementDidMount"
-  | "elementWillUnmount";
+export interface LifecycleMethods {
+  didCreate?(): void;
+  didMount?(...args: any[]): void;
+  didRender?(...args: any[]): void;
 
-  export interface LifecycleMethods {
-    didCreate?(): void;
-    didMount?(...args: any[]): void;
-    didRender?(...args: any[]): void;
+  willRender?(...args: any[]): void;
+  willReset?(...args: any[]): void;
+  willUpdate?(...args: any[]): void;
+  willMount?(...args: any[]): void;
+  willUnmount?(...args: any[]): void;
+  willDestroy?(callback?: Callback): void;
 
-    willRender?(...args: any[]): void;
-    willReset?(...args: any[]): void;
-    willUpdate?(...args: any[]): void;
-    willMount?(...args: any[]): void;
-    willUnmount?(...args: any[]): void;
-    willDestroy?(callback?: Callback): void;
-  
-    elementDidMount?(...args: any[]): void;
-    elementWillRender?(...args: any[]): void;
-    elementWillUpdate?(...args: any[]): void;
-    elementWillMount?(...args: any[]): void;
-    elementWillUnmount?(...args: any[]): void;
-  
-    componentDidMount?(...args: any[]): void;
-    componentWillRender?(...args: any[]): void;
-    componentWillUpdate?(...args: any[]): void;
-    componentWillMount?(...args: any[]): void;
-    componentWillUnmount?(...args: any[]): void;
-  }
+  elementDidMount?(...args: any[]): void;
+  elementWillRender?(...args: any[]): void;
+  elementWillUpdate?(...args: any[]): void;
+  elementWillMount?(...args: any[]): void;
+  elementWillUnmount?(...args: any[]): void;
+
+  componentDidMount?(...args: any[]): void;
+  componentWillRender?(...args: any[]): void;
+  componentWillUpdate?(...args: any[]): void;
+  componentWillMount?(...args: any[]): void;
+  componentWillUnmount?(...args: any[]): void;
+}
 
 export const lifecycle = {
   WILL_RESET: "willReset",
@@ -62,14 +43,14 @@ function aliasFor(prefix: string){
   for(const name of values(lifecycle))
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
 
-  return (name: string) => map[name] as LivecycleEvent;
+  return (name: string) => map[name] as keyof LifecycleMethods;
 }
 
 export const subscriberLifecycle = aliasFor("element");
 export const componentLifecycle = aliasFor("component");
 
 export function useLifecycleEffect(
-  onEvent: (name: LivecycleEvent) => void){
+  onEvent: (name: keyof LifecycleMethods) => void){
 
   let isFirstRender: true | undefined;
 

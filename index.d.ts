@@ -1,15 +1,13 @@
 import {
-    FunctionComponentElement,
-    ProviderProps,
-    Context,
     FunctionComponent,
+    PropsWithChildren
 } from 'react';
 
 type Callback = () => void;
 type Class = new (...args: any) => any;
 type Expecting<A extends any[]> = new(...args: A) => any
+type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
-type EffectCallback = () => (() => void) | undefined
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
@@ -27,7 +25,10 @@ interface Observable {
     once<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
-    effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
+    effect(
+        callback: (this: this, self: this) => ((() => void) | void), 
+        select?: (keyof this)[] | Selector<this>
+    ): Callback;
 
     export(): { [P in keyof this]: this[P] };
     export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
@@ -76,7 +77,7 @@ interface MC {
  * Defines special components which are bound to the controller.
  */
 interface RC {
-    Provider: FunctionComponent<ProviderProps<this>>;
+    Provider: FunctionComponent<PropsWithChildren<{}>>;
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 }
@@ -150,7 +151,7 @@ declare class Controller {
 
     static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
 
-    static Provider: FunctionComponentElement<any>;
+    static Provider: FunctionComponent<PropsWithChildren<{}>>;
 }
 
 declare class Singleton extends Controller {
@@ -161,7 +162,8 @@ declare function get <T extends Class> (type: T): InstanceType<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
 
-declare const Provider: FunctionComponentElement<{ using: Controller[] }>
+type Provider<T = typeof Controller> = 
+    FunctionComponent<{ of: Array<T> | BunchOf<T> }>
 
 export {
     IC,

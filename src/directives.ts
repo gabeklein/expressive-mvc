@@ -2,13 +2,9 @@ import type { Controller, Model } from './controller';
 
 import { Observer } from './observer';
 import { Singleton } from './singleton';
-import { define, defineLazy, defineProperty, Issues } from './util';
+import { define, defineLazy, defineProperty } from './util';
 
-const Oops = Issues({
-  CantAttach: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}'. ` +
-    `This is not possible because '${child}' is not also a singleton.`,
-})
+import Oops from './issues';
 
 export class Placeholder {
   constructor(
@@ -29,14 +25,14 @@ export function getPeerHelper<T extends Model>
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, as, () => Peer.find());
     else if(subject instanceof Singleton)
-      throw Oops.CantAttach(subject.constructor.name, Peer.name);
+      throw Oops.CantAttachGlobal(subject.constructor.name, Peer.name);
     else
       define(subject, as, Peer);
   })
 }
 
 export function setRefHelper<T = any>
-  (effect?: EffectCallback): RefObject<T> {
+  (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);
@@ -49,7 +45,7 @@ export function setRefHelper<T = any>
 }
 
 export function setPropertyHelper<T = any>
-  (effect: EffectCallback): T {
+  (effect: EffectCallback<Controller, any>): T {
 
   return Placeholder.is((on: Observer, as: string) => {
     const descriptor = on.access(as, effect);

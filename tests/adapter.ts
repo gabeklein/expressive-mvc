@@ -11,7 +11,7 @@ export const set = Source.set as typeof Public.set;
 export const ref = Source.ref as typeof Public.ref;
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as typeof Public.Provider;
+export const Provider = Source.Provider as unknown as Public.Provider;
 export default Controller;
 
 type Class = new(...args: any[]) => any;
@@ -24,6 +24,31 @@ interface RenderControllerResult<T>
   assertDidUpdate(): Promise<void>
   /** Assert a rerender was not requested. Will reject if one was. */
   assertDidNotUpdate(): Promise<void>
+}
+
+interface TestConsumerProps
+  <T extends typeof Controller>{
+  of: T; 
+  get: { 
+    [P in keyof InstanceType<T>]?: jest.Mock 
+  }
+}
+
+/**
+ * Helper component will pull specified VC from context,
+ * and pull values for analysis.
+ */
+export function Consumer<T extends typeof Controller>
+  ({ of: Subject, get }: TestConsumerProps<T>){
+
+  const instance = Subject.get();
+
+  for(const key in get){
+    const callback = get[key]!;
+    callback(instance[key]);
+  }
+
+  return null;
 }
 
 const STACK_FRAME = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
