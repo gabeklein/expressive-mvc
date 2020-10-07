@@ -90,7 +90,7 @@ export class Observer {
       unSet = callback.call(this.subject);
 
       if(!isFn(unSet) && unSet)
-        throw Oops.BadReturn()
+        throw Oops.BadEffectCallback()
     })
   }
 
@@ -234,7 +234,7 @@ export class Observer {
         unSet = callback.call(this.subject, value);
   
         if(!isFn(unSet) && unSet)
-          throw Oops.BadReturn()
+          throw Oops.BadEffectCallback()
       }
     }
   }
@@ -280,7 +280,7 @@ export class Observer {
         configurable: true,
         get: this.monitorComputedValue(key, getters[key]),
         set: () => {
-          throw Oops.NotTracked(key)
+          throw Oops.AccessNotTracked(key)
         }
       })
   }
@@ -346,7 +346,7 @@ export class Observer {
           configurable: true,
           get: () => state[key],
           set: () => {
-            throw Oops.NotTracked(key)
+            throw Oops.AccessNotTracked(key)
           }
         })
       }

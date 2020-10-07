@@ -56,7 +56,7 @@ export function getFromContext(Type: Model){
   const instance = useContext(CONTEXT_CHAIN).find(Type);
 
   if(!instance)
-    throw Oops.ContextNotFound(Type.name);
+    throw Oops.NothingInContext(Type.name);
 
   return instance;
 }

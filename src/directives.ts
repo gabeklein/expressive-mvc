@@ -25,7 +25,7 @@ export function getPeerHelper<T extends Model>
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, as, () => Peer.find());
     else if(subject instanceof Singleton)
-      throw Oops.CantAttach(subject.constructor.name, Peer.name);
+      throw Oops.CantAttachGlobal(subject.constructor.name, Peer.name);
     else
       define(subject, as, Peer);
   })
