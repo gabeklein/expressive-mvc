@@ -37,12 +37,12 @@ describe("effect", () => {
     const mock = jest.fn();
   
     instance.effect( 
-      mock,
-      x => x
-      .value1
-      .value2
-      .value3
-      .value4
+      mock, x => (x
+        .value1
+        .value2
+        .value3
+        .value4
+      )
     );
   
     instance.value1 = 2;
