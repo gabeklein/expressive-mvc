@@ -26,6 +26,31 @@ interface RenderControllerResult<T>
   assertDidNotUpdate(): Promise<void>
 }
 
+interface TestConsumerProps
+  <T extends typeof Controller>{
+  of: T; 
+  get: { 
+    [P in keyof InstanceType<T>]?: jest.Mock 
+  }
+}
+
+/**
+ * Helper component will pull specified VC from context,
+ * and pull values for analysis.
+ */
+export function Consumer<T extends typeof Controller>
+  ({ of: Subject, get }: TestConsumerProps<T>){
+
+  const instance = Subject.get();
+
+  for(const key in get){
+    const callback = get[key]!;
+    callback(instance[key]);
+  }
+
+  return null;
+}
+
 const STACK_FRAME = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
 
 /**

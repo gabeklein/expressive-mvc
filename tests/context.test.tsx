@@ -1,70 +1,115 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Controller, Provider } from "./adapter";
+import { Consumer, Controller, Provider } from "./adapter";
 
-type Model = typeof Controller;
-type AccessProps<T extends Model> = {
-  of: T; 
-  get: { 
-    [P in keyof InstanceType<T>]?: jest.Mock 
-  }
+class Foo extends Controller {
+  foo = "foo";
 }
 
-class Simple extends Controller {
-  value = "foo";
+class Bar extends Controller {
+  bar = "bar"
 }
 
-function Consumer<T extends Model>(
-  { of: Subject, get }: AccessProps<T>){
-
-  const instance = Subject.get();
-
-  for(const key in get)
-    get[key](instance[key]);
-
-  return null;
+class Baz extends Bar {
+  baz = "baz";
+  bar = "foobar";
+}
+function FooProvider({ children }: any){
+  const { Provider } = Foo.use();
+  return <Provider>{children}</Provider>;
 }
 
 describe("Provider", () => {
-  it("should create an instance of parent controller", () => {
-    const value = jest.fn();
+  it("provides an existing instance of controller", () => {
+    const foo = jest.fn();
 
     create(
-      <Simple.Provider>
-        <Consumer of={Simple} get={{ value }}/>
-      </Simple.Provider>
+      <FooProvider>
+        <Consumer of={Foo} get={{ foo }}/>
+      </FooProvider>
     );
 
-    expect(value).toBeCalledWith("foo");
+    expect(foo).toBeCalledWith("foo");
   })
 
-  it("should provide existing instance of controller", () => {
-    function Parent({ children }: any){
-      const { Provider } = Simple.use();
-      return <Provider>{children}</Provider>;
-    }
-
-    const value = jest.fn();
+  it("creates an instance of parent controller", () => {
+    const foo = jest.fn();
 
     create(
-      <Parent>
-        <Consumer of={Simple} get={{ value }}/>
-      </Parent>
+      <Foo.Provider>
+        <Consumer of={Foo} get={{ foo }}/>
+      </Foo.Provider>
     );
 
-    expect(value).toBeCalledWith("foo");
+    expect(foo).toBeCalledWith("foo");
   })
 
-  it("should create instance from MultiProvider", () => {
-    const value = jest.fn();
+  it("creates multiple instances via MultiProvider", () => {
+    const foo = jest.fn();
+    const bar = jest.fn();
     
     create(
-      <Provider of={{ Simple }}>
-        <Consumer of={Simple} get={{ value }}/>
+      <Provider of={{ Foo, Bar }}>
+        <Consumer of={Foo} get={{ foo }}/>
+        <Consumer of={Bar} get={{ bar }}/>
       </Provider>
     )
 
-    expect(value).toBeCalledWith("foo");
+    expect(foo).toBeCalledWith("foo");
+    expect(bar).toBeCalledWith("bar");
+  })
+})
+
+describe("Consumer", () => {
+  it("can handle complex arrangement", () => {
+    const foo = jest.fn();
+    const bar = jest.fn();
+    const baz = jest.fn();
+    
+    create(
+      <FooProvider>
+        <Baz.Provider>
+          <Provider of={{ Bar }}>
+            <Consumer of={Baz} get={{ baz }}/>
+            <Consumer of={Foo} get={{ foo }}/>
+            <Consumer of={Bar} get={{ bar }}/>
+          </Provider>
+        </Baz.Provider>
+      </FooProvider>
+    )
+
+    expect(foo).toBeCalledWith("foo");
+    expect(bar).toBeCalledWith("bar");
+    expect(baz).toBeCalledWith("baz");
+  })
+
+  it("may select a super-instance instead", () => {
+    const bar = jest.fn();
+    
+    create(
+      <Baz.Provider>
+        <Consumer of={Bar} get={{ bar }}/>
+      </Baz.Provider>
+    )
+
+    expect(bar).toBeCalledWith("foobar");
+  })
+
+  it("prefers closest over best match", () => {
+    const bar = jest.fn();
+    
+    create(
+      <Bar.Provider>
+        <Baz.Provider>
+          <Consumer of={Baz} get={{ bar }}/>
+          <Consumer of={Bar} get={{ bar }}/>
+        </Baz.Provider>
+      </Bar.Provider>
+    )
+
+    expect(bar).toBeCalledTimes(2);
+    expect(bar).toBeCalledWith("foobar");
+    expect(bar).not.toBeCalledWith("bar");
   })
 })
