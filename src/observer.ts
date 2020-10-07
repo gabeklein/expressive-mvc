@@ -10,6 +10,7 @@ import {
   isFn,
   keys,
   listAccess,
+  squash,
   within,
 } from './util';
 
@@ -71,27 +72,37 @@ export class Observer {
     if(listener)
       return this.watch(key, listener, true);
     else
-      return new Promise(resolve =>
+      return new Promise(resolve => {
         this.watch(key, resolve, true)
-      );
+      });
   }
 
   public effect = (
-    callback: EffectCallback,
-    select: string[] | Selector) => {
-      
+    callback: EffectCallback<any>,
+    select?: string[] | Selector) => {
+    
+    const { subject } = this;
     let unSet: Callback | undefined;
 
-    if(isFn(select))
-      select = listAccess(this.watched, select);
-
-    return this.addMultipleListener(select, () => {
+    const reinvoke = () => {
       unSet && unSet();
-      unSet = callback.call(this.subject);
+      unSet = callback.call(subject, subject);
 
       if(!isFn(unSet) && unSet)
-        throw Oops.BadReturn()
-    })
+        throw Oops.BadEffectCallback()
+    }
+
+    if(!select){
+      const sub = new Subscriber(subject, reinvoke);
+      unSet = callback.call(sub.proxy, sub.proxy);
+      sub.commit();
+      return () => sub.release();
+    }
+    else {
+      if(isFn(select))
+        select = listAccess(this.watched, select);
+      return this.addMultipleListener(select, reinvoke);
+    }
   }
 
   public export = (
@@ -190,11 +201,12 @@ export class Observer {
 
   public addMultipleListener(
     keys: string[],
-    callback: (didUpdate: string) => void){
+    callback: () => void){
 
-    const cleanup = keys.map(k => 
-      this.addListener(k, () => callback(k))
-    )
+    const update = squash(callback);
+    const cleanup = keys.map(k =>
+      this.addListener(k, update)
+    );
 
     return () => cleanup.forEach(x => x());
   }
@@ -219,7 +231,7 @@ export class Observer {
 
   public access(
     key: string,
-    callback?: EffectCallback){
+    callback?: EffectCallback<any, any>){
 
     let unSet: Callback | undefined;
       
@@ -234,7 +246,7 @@ export class Observer {
         unSet = callback.call(this.subject, value);
   
         if(!isFn(unSet) && unSet)
-          throw Oops.BadReturn()
+          throw Oops.BadEffectCallback()
       }
     }
   }
@@ -278,8 +290,10 @@ export class Observer {
     for(const key in getters)
       defineProperty(subject, key, {
         configurable: true,
-        set: Oops.NotTracked(key).throw,
-        get: this.monitorComputedValue(key, getters[key])
+        get: this.monitorComputedValue(key, getters[key]),
+        set: () => {
+          throw Oops.AccessNotTracked(key)
+        }
       })
   }
 
@@ -315,10 +329,11 @@ export class Observer {
     const recalculate = () => {
       const value = compute.call(subject);
 
-      if(state[key] !== value){
-        state[key] = value;
-        this.emitSync(key);
-      }
+      if(value === state[key])
+        return;
+
+      state[key] = value;
+      this.emitSync(key);
     }
 
     const getStartingValue = (early?: boolean) => {
@@ -340,10 +355,12 @@ export class Observer {
       }
       finally {
         defineProperty(subject, key, {
-          set: Oops.NotTracked(key).throw,
-          get: () => state[key],
           enumerable: true,
-          configurable: true
+          configurable: true,
+          get: () => state[key],
+          set: () => {
+            throw Oops.AccessNotTracked(key)
+          }
         })
       }
     }

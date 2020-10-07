@@ -9,7 +9,7 @@ export class Singleton extends Controller {
 
   static find(){
     if(!this.current)
-      throw Oops.DoesNotExist(this.name);
+      throw Oops.GlobalDoesNotExist(this.name);
 
     return this.current as unknown as Controller;
   }
@@ -23,7 +23,7 @@ export class Singleton extends Controller {
     let instance = Type.current as InstanceType<T>;
 
     if(instance)
-      throw Oops.AlreadyExists(this.name);
+      throw Oops.GlobalExists(this.name);
 
     instance = super.create(args, prepare) as any;
     Type.current = instance;

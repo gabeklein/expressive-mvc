@@ -20,7 +20,7 @@ type Callback = () => void;
  */
 type Class = new(...args: any[]) => any;
 
-type EffectCallback = (...args: any[]) => (Callback | undefined);
+type EffectCallback<T, A = T> = (this: T, self: A) => (Callback | undefined);
 
 type RefObject<T = any> = { current: T };
 

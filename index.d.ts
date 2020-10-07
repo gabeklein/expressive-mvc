@@ -27,7 +27,10 @@ interface Observable {
     once<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
-    effect(callback: EffectCallback, select: (keyof this)[] | Selector<this>): Callback;
+    effect(
+        callback: (this: this, self: this) => ((() => void) | void), 
+        select?: (keyof this)[] | Selector<this>
+    ): Callback;
 
     export(): { [P in keyof this]: this[P] };
     export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
