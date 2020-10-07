@@ -141,8 +141,7 @@ export class Controller {
     this: T, maybe: any): maybe is T {
 
     return (
-      !!maybe && 
-      typeof maybe == "object" && 
+      typeof maybe == "function" && 
       maybe.prototype instanceof this
     )
   }
