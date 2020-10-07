@@ -150,11 +150,11 @@ export class Controller {
     if(I !== Controller)
       return I;
   }
-
-  static get Provider(){
-    return this.use().Provider;
-  }
 }
+
+defineLazy(Controller, {
+  Provider: ControlProvider
+});
 
 defineLazy(Controller.prototype, {
   Provider: ControlProvider,

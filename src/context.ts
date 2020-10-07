@@ -117,10 +117,12 @@ export function attachFromContext(
   return () => NEEDS_HOOK.set(instance, false);
 }
 
-export function ControlProvider(this: Controller){
+export function ControlProvider(this: Controller | Model){
   return ({ children }: PropsWithChildren<{}>) => {
     const parent = useContext(CONTEXT_CHAIN);
-    const provide = useMemo(() => parent.concat(this), []);
+    const provide = useMemo(() => parent.concat(
+      typeof this == "function" ? this.create() : this
+    ), []);
 
     return createElement(
       CONTEXT_CHAIN.Provider, { value: provide }, children
