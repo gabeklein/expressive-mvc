@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
-import { create, define, getPrototypeOf, values, within } from './util';
+import { create, define, values, within } from './util';
 
 import Oops from './issues';
 
@@ -25,27 +25,7 @@ export function keysFor(
 
 class Context {
   find(T: Model){
-    let instance: Controller | undefined;
-    const race = new Map<Controller, symbol>();
-
-    for(const key of keysFor(T)){
-      const target = within(this, key);
-      if(target && !race.has(target))
-        race.set(instance = target, key);
-    }
-
-    if(race.size > 1){
-      let min = Infinity;
-      for(const [target, key] of race)
-        for(let c = this, i = 0; i<min; c = getPrototypeOf(c), i++)
-          if(c.hasOwnProperty(key)){
-            instance = target;
-            min = i;
-            break;
-          }
-    }
-
-    return instance;
+    return within(this, keysFor(T)[0]);
   }
 
   concat(instance: Controller){
