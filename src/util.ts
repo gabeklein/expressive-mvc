@@ -30,6 +30,7 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
   else
     for(const [key, value] of entries(kv))
       defineProperty(target, key, { value });
+  return target;
 }
 
 type DefineMultiple<T> = {

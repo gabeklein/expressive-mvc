@@ -5,7 +5,7 @@ import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect 
 import { Observable } from './observer';
 import { attachFromContext } from './context';
 import { Subscriber } from './subscriber';
-import { entriesIn, isFn, within } from './util';
+import { create, define, entriesIn, isFn, within } from './util';
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -34,11 +34,11 @@ export function usePassiveGetter(
     if(key)
       return within(target, key);
     else
-      return {
+      return define(
+        create(target), {
         get: target,
-        set: target,
-        ...target
-      }
+        set: target
+      })
   }, [])
 }
 
