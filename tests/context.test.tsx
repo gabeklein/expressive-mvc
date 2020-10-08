@@ -15,6 +15,7 @@ class Baz extends Bar {
   baz = "baz";
   bar = "foobar";
 }
+
 function FooProvider({ children }: any){
   const { Provider } = Foo.use();
   return <Provider>{children}</Provider>;
