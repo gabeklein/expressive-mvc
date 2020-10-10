@@ -1,4 +1,5 @@
 export {
+  childProperty as use,
   peerProperty as get,
   effectProperty as set,
   refProperty as ref

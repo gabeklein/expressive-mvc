@@ -14,6 +14,9 @@ export type Model = typeof Controller;
 export interface Controller 
   extends LifecycleMethods {
 
+  // via ChildController
+  parent?: Controller;
+
   // via Observer.mixin
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;

@@ -16,6 +16,19 @@ export class Placeholder {
   }
 }
 
+export function childProperty<T extends Model>
+  (Peer: T, callback?: (i: InstanceType<T>) => void): InstanceType<T> {
+
+  return Placeholder.is((on: Observer, as: string) => {
+    const parent = on.subject;
+    const instance = Peer.create();
+    define(instance, { parent });
+    define(parent, as, instance);
+    if(callback)
+      callback(instance);
+  })
+}
+
 export function peerProperty<T extends Model>
   (Peer: T): InstanceType<T> {
 

@@ -115,7 +115,9 @@ interface SC {
  */
 interface Meta extends Observable, SC {}
 
-interface Controller extends Observable, IC, SC, RC {}
+interface Controller extends Observable, IC, SC, RC {
+    parent?: Controller;
+}
 
 declare class Controller {
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
@@ -158,6 +160,7 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
+declare function use <T extends Class>(Peer: T, callback?: (i: InstanceType<T>) => void): InstanceType<T> 
 declare function get <T extends Class> (type: T): InstanceType<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
@@ -174,6 +177,7 @@ export {
 }
 
 export {
+    use,
     get,
     set,
     ref,
