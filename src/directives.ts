@@ -16,7 +16,7 @@ export class Placeholder {
   }
 }
 
-export function getPeerHelper<T extends Model>
+export function peerProperty<T extends Model>
   (Peer: T): InstanceType<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
@@ -31,7 +31,7 @@ export function getPeerHelper<T extends Model>
   })
 }
 
-export function setRefHelper<T = any>
+export function refProperty<T = any>
   (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
@@ -44,7 +44,7 @@ export function setRefHelper<T = any>
   })
 }
 
-export function setPropertyHelper<T = any>
+export function effectProperty<T = any>
   (effect: EffectCallback<Controller, any>): T {
 
   return Placeholder.is((on: Observer, as: string) => {

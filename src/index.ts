@@ -1,7 +1,7 @@
 export {
-  getPeerHelper as get,
-  setPropertyHelper as set,
-  setRefHelper as ref
+  peerProperty as get,
+  effectProperty as set,
+  refProperty as ref
 } from './directives';
 
 export {
