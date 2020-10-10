@@ -10,6 +10,7 @@ import { assignSpecific, defineLazy, getPrototypeOf } from './util';
 import Oops from './issues';
 
 export type Model = typeof Controller;
+export type State<T extends typeof Controller> = InstanceType<T>;
 
 export interface Controller 
   extends LifecycleMethods {
@@ -97,12 +98,12 @@ export class Controller {
     return getFromContext(this);
   }
 
-  static create<T extends Class>(
+  static create<T extends typeof Controller>(
     this: T,
     args?: any[],
-    prepare?: (self: InstanceType<T>) => void){
+    prepare?: (self: State<T>) => void){
 
-    const instance: InstanceType<T> = 
+    const instance: State<T> = 
       new (this as any)(...args || []);
 
     if(prepare)

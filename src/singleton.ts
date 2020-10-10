@@ -1,5 +1,5 @@
 import { Noop } from './components';
-import { Controller } from './controller';
+import { Controller, Model, State } from './controller';
 
 import Oops from './issues';
 
@@ -14,13 +14,13 @@ export class Singleton extends Controller {
     return this.current as unknown as Controller;
   }
 
-  static create<T extends Class>(
+  static create<T extends Model>(
     this: T,
     args: any[], 
     prepare?: (self: any) => void){
 
     const Type = this as unknown as typeof Singleton;
-    let instance = Type.current as InstanceType<T>;
+    let instance = Type.current as State<T>;
 
     if(instance)
       throw Oops.GlobalExists(this.name);

@@ -1,4 +1,4 @@
-import type { Controller, Model } from './controller';
+import type { Controller, Model, State } from './controller';
 
 import { Observer } from './observer';
 import { Singleton } from './singleton';
@@ -17,7 +17,7 @@ export class Placeholder {
 }
 
 export function childProperty<T extends Model>
-  (Peer: T, callback?: (i: InstanceType<T>) => void): InstanceType<T> {
+  (Peer: T, callback?: (i: State<T>) => void): State<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
     const parent = on.subject;
@@ -30,7 +30,7 @@ export function childProperty<T extends Model>
 }
 
 export function peerProperty<T extends Model>
-  (Peer: T): InstanceType<T> {
+  (Peer: T): State<T> {
 
   return Placeholder.is((on: Observer, as: string) => {
     const subject = on.subject as Controller;

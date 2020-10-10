@@ -4,7 +4,6 @@ import {
 } from 'react';
 
 type Callback = () => void;
-type Class = new (...args: any) => any;
 type Expecting<A extends any[]> = new(...args: A) => any
 type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
@@ -119,39 +118,42 @@ interface Controller extends Observable, IC, SC, RC {
     parent?: Controller;
 }
 
+type Model = typeof Controller;
+type State<T extends typeof Controller> = InstanceType<T>;
+
 declare class Controller {
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
-    static uses <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
-    static using <T extends Class, I extends InstanceType<T>, D extends Similar<I>> (this: T, data: D): I;
+    static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
+    static using <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
 
-    static get <T extends Class> (this: T): InstanceType<T> & SC;
-    static get <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    static get <T extends Model> (this: T): State<T> & SC;
+    static get <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
     
     public tap (): this & SC;
-    static tap <T extends Class> (this: T): InstanceType<T> & SC;
+    static tap <T extends Model> (this: T): State<T> & SC;
 
     public tap <K extends keyof this> (key: K): this[K];
-    static tap <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): I[K];
+    static tap <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
 
     public tap (...keys: string[]): any;
     static tap (...keys: string[]): any;
 
-    static has <T extends Class, I extends InstanceType<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
+    static has <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     public sub (...args: any[]): this & SC;
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceType<T> & SC;
+    static sub <T extends Model> (this: T, ...args: any[]): State<T> & SC;
 
-    static meta <T extends Class>(this: T): T & Meta;
+    static meta <T extends Model>(this: T): T & Meta;
     static meta (...keys: string[]): any;
 
-    static find <T extends Class>(this: T): InstanceType<T>;
+    static find <T extends Model>(this: T): State<T>;
 
     static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
     public destroy(): void;
 
-    static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
+    static isTypeof<T extends Model>(this: T, maybe: any): maybe is T;
 
     static Provider: FunctionComponent<PropsWithChildren<{}>>;
 }
@@ -160,8 +162,8 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-declare function use <T extends Class>(Peer: T, callback?: (i: InstanceType<T>) => void): InstanceType<T> 
-declare function get <T extends Class> (type: T): InstanceType<T>;
+declare function use <T extends Model>(Peer: T, callback?: (i: State<T>) => void): State<T> 
+declare function get <T extends Model> (type: T): State<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
 
