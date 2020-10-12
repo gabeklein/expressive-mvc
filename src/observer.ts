@@ -37,8 +37,8 @@ export function observe(x: Observable){
 export class Observer {
   constructor(public subject: any){}
   
-  protected state = {} as BunchOf<any>;
-  protected subscribers = {} as BunchOf<Set<() => void>>;
+  protected state: BunchOf<any> = {};
+  protected subscribers: BunchOf<Set<Callback>> = {};
   protected pending?: Set<string>;
 
   public get values(){
