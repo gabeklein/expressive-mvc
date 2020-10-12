@@ -1,4 +1,4 @@
-import Controller, { ref, set, test, use } from './adapter';
+import Controller, { event, ref, set, test, use } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -122,5 +122,55 @@ describe("ref Directive", () => {
     state.ref3.current = 2;
     await assertDidUpdate();
     expect(state.checkValue).toBe(true);
+  })
+})
+
+describe("event Directive", () => {
+  let control: Events;
+  let mockCallback: jest.Mock;
+
+  class Events extends Controller {
+    foo = event();
+    bar = event(mockCallback);
+    baz = event(() => mockCallback)
+  }
+
+  beforeEach(() => {
+    control = Events.create();
+    mockCallback = jest.fn();
+  })
+
+  it("applies callback function to key", () => {
+    expect(control.foo).toBeInstanceOf(Function);
+  })
+
+  it("disallows overwrite to key", () => {
+    const attempt = () => {
+      control.foo = function(){};
+    }
+    expect(attempt).toThrow();
+  })
+
+  it("emits standard event from property", async () => {
+    const updated = control.once(x => x.foo); 
+    control.foo();
+    await updated;
+  })
+
+  it("calls effect when events fired", async () => {
+    control.update(x => x.bar);
+    await control.once(x => x.bar);
+  })
+
+  it("calls previous callback when event fires again", async () => {
+    const fire = async () => {
+      control.update(x => x.baz);
+      await control.once(x => x.baz);
+    }
+
+    await fire();
+    expect(mockCallback).not.toBeCalled();
+    await fire();
+    expect(mockCallback).toBeCalled();
   })
 })
