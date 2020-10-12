@@ -40,6 +40,7 @@ export class Observer {
   protected state: BunchOf<any> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
   protected pending?: Set<string>;
+  protected waiting?: ((keys: string[]) => void)[];
 
   public get values(){
     return assign({}, this.state);
@@ -55,7 +56,8 @@ export class Observer {
       once: this.once,
       update: this.update,
       effect: this.effect,
-      export: this.export
+      export: this.export,
+      requestUpdate: this.requestUpdate
     })
   }
 
@@ -142,6 +144,17 @@ export class Observer {
         this.set(key, select[key]);
   }
 
+  public requestUpdate = (
+    callback?: (keys: string[]) => void) => {
+
+    let listen = this.waiting || (this.waiting = []);
+
+    if(callback)
+      listen.push(callback)
+    else
+      return new Promise(r => listen.push(r));
+  }
+
   public set(key: string, value: any){
     let set = this.state;
 
@@ -172,6 +185,7 @@ export class Observer {
 
   public emitSync(...keys: string[]){
     const queued = new Set<Callback>();
+    const after = this.waiting;
 
     for(const k of keys)
       for(const sub of this.subscribers[k] || [])
@@ -179,6 +193,12 @@ export class Observer {
 
     for(const trigger of queued)
       trigger();
+
+    if(after){
+      const list = Array.from(keys);
+      this.waiting = undefined;
+      after.forEach(x => x(list));
+    }
   }
 
   public addListener(
@@ -356,6 +376,10 @@ export class Observer {
         return;
 
       state[key] = value;
+
+      for(const notify of this.subscribers[key])
+        notify()
+
       this.emitSync(key);
     }
 

@@ -36,6 +36,9 @@ interface Observable {
     update(keys: Selector<this>): void;
     update<K extends keyof this>(keys: K[]): void;
     update<K extends keyof this>(...keys: K[]): void;
+
+    requestUpdate(): Promise<string[]>;
+    requestUpdate(cb: (keys: string[]) => void): void;
 }
 
 /**

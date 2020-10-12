@@ -22,6 +22,8 @@ export interface Controller
   on(key: string, value: any): Callback;
   once(key: string, value: any): Callback;
   update(entries: Partial<this>): void;
+  requestUpdate(): Promise<string[]>;
+  requestUpdate(cb: (keys: string[]) => void): void;
 
   // via defineLazy
   Input: FunctionComponent<{ to: string }>;
