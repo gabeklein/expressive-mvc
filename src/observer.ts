@@ -1,3 +1,4 @@
+import { Controller } from './controller';
 import { Placeholder } from './directives';
 import { Subscriber } from './subscriber';
 import {
@@ -101,6 +102,7 @@ export class Observer {
     else {
       if(isFn(select))
         select = listAccess(this.watched, select);
+
       return this.addMultipleListener(select, reinvoke);
     }
   }
@@ -203,6 +205,9 @@ export class Observer {
     keys: string[],
     callback: () => void){
 
+    if(keys.length > 2)
+      this.addListener(keys[0], callback)
+
     const update = squash(callback);
     const cleanup = keys.map(k =>
       this.addListener(k, update)
@@ -297,13 +302,31 @@ export class Observer {
       })
   }
 
+  public monitorEvent(
+    key: string,
+    callback?: EffectCallback<Controller>){
+
+    const fire = () => this.emit(key)
+
+    this.manage(key);
+    defineProperty(this.subject, key, {
+      get: () => fire,
+      set: () => {
+        throw Oops.AccessEvent(this.subject.constructor.name, key);
+      }
+    })
+
+    if(callback)
+      this.effect(callback, [key]);
+  }
+
   protected manage(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
   }
 
-  protected monitorValue(
+  public monitorValue(
     key: string,
     initial: any){
 
@@ -318,7 +341,7 @@ export class Observer {
     })
   }
 
-  protected monitorComputedValue(
+  public monitorComputedValue(
     key: string,
     compute: () => any){
 

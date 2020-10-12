@@ -69,3 +69,11 @@ export function effectProperty<T = any>
     });
   })
 }
+
+export function eventProperty
+  (callback?: EffectCallback<Controller>){
+
+  return Placeholder.is((on: Observer, as: string) => {
+    on.monitorEvent(as, callback);
+  })
+}

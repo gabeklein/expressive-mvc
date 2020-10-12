@@ -2,7 +2,8 @@ export {
   childProperty as use,
   peerProperty as get,
   effectProperty as set,
-  refProperty as ref
+  refProperty as ref,
+  eventProperty as event
 } from './directives';
 
 export {

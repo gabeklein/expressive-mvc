@@ -162,10 +162,11 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-declare function use <T extends Model>(Peer: T, callback?: (i: State<T>) => void): State<T> 
+declare function use <T extends Model> (Peer: T, callback?: (i: State<T>) => void): State<T> 
 declare function get <T extends Model> (type: T): State<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
+declare function event (callback?: () => Callback | void): Callback;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
@@ -183,6 +184,7 @@ export {
     get,
     set,
     ref,
+    event,
     Controller,
     Controller as VC,
     Controller as default,

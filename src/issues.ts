@@ -38,6 +38,9 @@ export default Issues({
   AccessNotTracked: (name) => 
     `Can't watch property ${name}, it's not tracked on this instance.`,
 
+  AccessEvent: (parent, name) =>
+    `Can't update ${parent}.${name}; it is only an event.`,
+
   ComputeFailed: (parent, property) =>
     `There was an attempt to access computed property ${parent}.${property} for the first time; however an exception was thrown. Dependant values probably don't exist yet.`,
 
