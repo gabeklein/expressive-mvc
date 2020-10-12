@@ -39,7 +39,7 @@ export class Observer {
   
   protected state = {} as BunchOf<any>;
   protected subscribers = {} as BunchOf<Set<() => void>>;
-  protected willEmit?: Set<string>;
+  protected pending?: Set<string>;
 
   public get values(){
     return assign({}, this.state);
@@ -158,13 +158,13 @@ export class Observer {
   }
 
   public emit(...keys: string[]){
-    if(this.willEmit)
+    if(this.pending)
       for(const x of keys)
-        this.willEmit.add(x);
+        this.pending.add(x);
     else {
-      const batch = this.willEmit = new Set(keys);
+      const batch = this.pending = new Set(keys);
       setImmediate(() => {
-        this.willEmit = undefined;
+        this.pending = undefined;
         this.emitSync(...batch);
       });
     }
