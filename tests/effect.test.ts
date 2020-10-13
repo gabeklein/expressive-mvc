@@ -25,13 +25,13 @@ describe("effect", () => {
     instance.value1 = 2;
 
     // wait for update event, thus queue flushed
-    await instance.once("value1");
+    await instance.requestUpdate()
     
     instance.value2 = 3;
     instance.value3 = 4;
 
     // wait for update event to flush queue
-    await instance.once("value2");
+    await instance.requestUpdate()
     
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -53,12 +53,12 @@ describe("effect", () => {
     instance.value1 = 2;
     instance.value2 = 3;
 
-    await instance.once(x => x.value1);
+    await instance.requestUpdate();
 
     instance.value3 = 4;
 
     // expect value4, which relies on 3.
-    await instance.once(x => x.value4);
+    await instance.requestUpdate();
     
     expect(mock).toBeCalledTimes(2);
   })
@@ -75,14 +75,14 @@ describe("effect", () => {
     });
   
     instance.value1 = 2;
-    await instance.once(x => x.value1);
+    await instance.requestUpdate();
 
     instance.value2 = 3;
-    await instance.once(x => x.value2);
+    await instance.requestUpdate();
 
     instance.value2 = 4;
     instance.value3 = 4;
-    await instance.once(x => x.value3);
+    await instance.requestUpdate();
   
     /**
      * must invoke once to detect subscription
