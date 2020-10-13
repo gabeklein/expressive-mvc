@@ -87,13 +87,13 @@ export class Observer {
     const { subject } = this;
     let unSet: Callback | undefined;
 
-    const reinvoke = () => {
+    const reinvoke = squash(() => {
       unSet && unSet();
       unSet = callback.call(subject, subject);
 
       if(!isFn(unSet) && unSet)
         throw Oops.BadEffectCallback()
-    }
+    })
 
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
@@ -177,22 +177,22 @@ export class Observer {
     else {
       const batch = this.pending = new Set(keys);
       setImmediate(() => {
+        this.emitSync(batch);
         this.pending = undefined;
-        this.emitSync(...batch);
       });
     }
   }
 
-  public emitSync(...keys: string[]){
-    const queued = new Set<Callback>();
+  protected emitSync(keys: Set<string>){
+    const hit = new Set<Callback>();
     const after = this.waiting;
 
     for(const k of keys)
       for(const sub of this.subscribers[k] || [])
-        queued.add(sub);
-
-    for(const trigger of queued)
-      trigger();
+        if(!hit.has(sub)){
+          hit.add(sub);
+          sub();
+        }
 
     if(after){
       const list = Array.from(keys);
@@ -377,10 +377,7 @@ export class Observer {
 
       state[key] = value;
 
-      for(const notify of this.subscribers[key])
-        notify()
-
-      this.emitSync(key);
+      this.emit(key);
     }
 
     const getStartingValue = (early?: boolean) => {
