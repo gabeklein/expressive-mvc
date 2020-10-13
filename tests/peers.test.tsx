@@ -51,7 +51,3 @@ describe("Peers", () => {
 
   it.todo("can access peers sharing same provider")
 })
-
-describe("Singleton", () => {
-  it.todo("may attach from context if created though use")
-})
