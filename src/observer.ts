@@ -98,7 +98,6 @@ export class Observer {
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
       unSet = callback.call(sub.proxy, sub.proxy);
-      sub.commit();
       return () => sub.release();
     }
     else {
@@ -384,7 +383,6 @@ export class Observer {
       try {
         const sub = new Subscriber(subject, recalculate);
         const value = state[key] = compute.call(sub.proxy);
-        sub.commit();
         return value;
       }
       catch(e){
