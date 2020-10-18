@@ -46,7 +46,8 @@ describe("Peers", () => {
   })
 
   it("will reject from context if a singleton", () => {
-    expect(() => Bad.create()).toThrow()
+    const attempt = () => Bad.create();
+    expect(attempt).toThrow()
   })
 
   it.todo("can access peers sharing same provider")
