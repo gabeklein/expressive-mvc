@@ -128,7 +128,7 @@ export class Controller {
 
   /** When Observer attaches to instance */
   public applyDispatch(observer: Observer){
-    observer.monitorValues();
+    observer.monitorValues({ get: 0, set: 0 });
     observer.monitorComputed(Controller);
     observer.mixin();
   
