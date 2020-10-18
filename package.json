@@ -1,6 +1,6 @@
 {
   "name": "deep-state",
-  "version": "1.0.0-beta.7",
+  "version": "1.0.0-beta.8",
   "description": "Easy to use state controllers using classes and hooks",
   "author": {
     "name": "Gabe Klein",
