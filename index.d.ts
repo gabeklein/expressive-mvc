@@ -179,7 +179,9 @@ export {
     SC,
     MC,
     Meta,
-    Observable
+    Observable,
+    Selector,
+    HandleUpdatedValue
 }
 
 export {
