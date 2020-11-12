@@ -4,3 +4,5 @@ node_modules/
 /examples/public/bundle.js*
 /examples/yarn.lock
 /examples/package-lock.json
+
+.DS_Store
