@@ -121,10 +121,12 @@ interface Controller extends Observable, IC, SC, RC {
     parent?: Controller;
 }
 
-type Model = typeof Controller;
-type State<T extends typeof Controller> = InstanceType<T>;
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never
 
-declare class Controller {
+type Model = typeof Controller;
+type State<T extends typeof Controller> = InstanceOf<T>;
+
+declare abstract class Controller {
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
     static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
