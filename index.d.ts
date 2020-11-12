@@ -4,11 +4,18 @@ import {
 } from 'react';
 
 type Callback = () => void;
-type Expecting<A extends any[]> = new(...args: A) => any
 type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
+
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
+
+type Expecting<A extends any[]> = new(...args: A) => any;
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never
+
+type Model = typeof Controller;
+type State<T extends typeof Controller> = InstanceOf<T>;
+
 type HandleUpdatedValue<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void
 
@@ -120,11 +127,6 @@ interface Meta extends Observable, SC {}
 interface Controller extends Observable, IC, SC, RC {
     parent?: Controller;
 }
-
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never
-
-type Model = typeof Controller;
-type State<T extends typeof Controller> = InstanceOf<T>;
 
 declare abstract class Controller {
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
