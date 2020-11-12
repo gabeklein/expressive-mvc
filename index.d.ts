@@ -16,8 +16,8 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never
 type Model = typeof Controller;
 type State<T extends typeof Controller> = InstanceOf<T>;
 
-type HandleUpdatedValue<T extends object, P extends keyof T> = 
-    (this: T, value: T[P], changed: P) => void
+type UpdateCallback<T extends object, P extends keyof T> = 
+    (this: T, value: T[P], changed: P) => void;
 
 /**
  * Observable Instance
@@ -26,9 +26,9 @@ type HandleUpdatedValue<T extends object, P extends keyof T> =
  * Able to be subscribed to, on a per-value basis to know when properties are updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): Callback;
+    on<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): Callback;
   
-    once<P extends keyof this>(property: P | Selector<this>, listener: HandleUpdatedValue<this, P>): void;
+    once<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): void;
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
 
     effect(
@@ -185,7 +185,7 @@ export {
     Meta,
     Observable,
     Selector,
-    HandleUpdatedValue
+    UpdateCallback
 }
 
 export {
