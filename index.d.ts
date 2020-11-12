@@ -183,6 +183,8 @@ export {
     SC,
     MC,
     Meta,
+    State,
+    Model,
     Observable,
     Selector,
     UpdateCallback
