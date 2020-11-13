@@ -1,6 +1,6 @@
 {
-  "name": "deep-state",
-  "version": "1.0.0-beta.9",
+  "name": "react-use-controller",
+  "version": "1.0.0-beta.29",
   "description": "Easy to use state controllers using classes and hooks",
   "author": {
     "name": "Gabe Klein",
@@ -8,7 +8,7 @@
     "url": "https://github.com/gabeklein"
   },
   "license": "MIT",
-  "repository": "https://github.com/gabeklein/deep-state",
+  "repository": "https://github.com/gabeklein/expressive-mvc",
   "publishConfig": {
     "access": "public"
   },

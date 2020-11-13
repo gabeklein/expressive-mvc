@@ -1,6 +1,6 @@
 
 <h1 align="center">
-  deep-state
+  react-use-controller
 </h1>
 
 <h4 align="center">
@@ -8,8 +8,8 @@
 </h4>
  
 <p align="center">
-  <a href="https://www.npmjs.com/package/deep-state"><img alt="NPM" src="https://badge.fury.io/js/deep-state.svg"></a>
-  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/deep-state.svg"></a>
+  <a href="https://www.npmjs.com/package/react-use-controller"><img alt="NPM" src="https://badge.fury.io/js/react-use-controller.svg"></a>
+  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/react-use-controller.svg"></a>
 </p>
 <br/>
 
@@ -87,7 +87,7 @@
 
 <h2 id="overview-section">Overview</h2>
 
-With deep-state, you can create and use javascript classes as controllers (via hooks) within any, or many, React components. 
+With react-use-controller, you can create and use javascript classes as controllers (via hooks) within any, or many, React components. 
 
 When built-in methods on a `Controller` class are used, an instance is either found or created, specially for the mounted component *(your View)*. By noting what's used at render, the hook *(a Controller)* can keep values up-to-date, following properties defined by your class *(the Model)*.
 
@@ -99,13 +99,13 @@ This behavior combines with actions, computed properties, events, and the compon
 
 Install with your preferred package manager
 ```bash
-npm install --save deep-state
+npm install --save react-use-controller
 ```
 
 Import and use in your react ([or preact!](https://preactjs.com)) apps.
 
 ```js
-import VC from "deep-state";
+import VC from "react-use-controller";
 ```
 
 > **Note:** `VC` here is short for (View) `Controller`, which is the default export.
@@ -131,13 +131,13 @@ Here are some library-specific terms which will be good to know.
 <details>
   <summary><ins>Tutorial Glossary</ins></summary><br/>
 
-  - **`VC`**: Alias for `Controller`, the core class powering most of deep-state.
+  - **`VC`**: Alias for `Controller`, the core class powering most of react-use-controller.
   - **Model**: Any class you'll write extending `VC`; the definition for a type of controller.
   - **State**: An instance of your model, usable to a live component.
   - **Controller**: The logic (inherited from `VC`) in an instance of state, managing its behavior.
   - **View**: A defined function-component which may be mounted and can accept hooks.
   - **Element**: Invocation of a component/view, actively mounted with a state and lifecycle.
-  - **Subscription**: An open channel to deep-state's communication engine, managing events.
+  - **Subscription**: An open channel to use-controller's communication engine, managing events.
   
 </details>
 <br/>
@@ -147,7 +147,7 @@ Here are some library-specific terms which will be good to know.
 Let's make a stateful counter.
 
 ```jsx
-import VC from "deep-state";
+import VC from "react-use-controller";
 
 class Counter extends VC {
   number = 1
@@ -701,7 +701,7 @@ const ActionSequence = () => {
 
 <h1 id="sharing-section">Sharing state</h1>
 
-One of the most important features of deep-state is an ability to share state with any number of subscribers, be them components or peer-controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
+One of the most important features of use-controller is an ability to share state with any number of subscribers, be them components or peer-controllers. Whether you want state from up-stream or to be usable app-wide, you can with a number of simple abstractions.
 
 In this chapter we will cover how to create and cast state for use by components and peers. It's in the [next chapter](#access-section) though, where we'll see how to access them.
 
@@ -776,7 +776,7 @@ Singletons will not be useable until state is initialized in one of three ways.
 > Consider the following model
 
 ```js
-import { GC } from "deep-state";
+import { GC } from "react-use-controller";
 
 class Login extends GC {
   thinking = false;
@@ -909,7 +909,7 @@ const InnerBar = () => {
 
 <h1 id="managing-section">Structuring your state</h1>
 
-Another core purpose of deep-state, and using classes, is to "dumb down" the state you are writing. Ideally we want controllers to be really good at **one** thing, and be able to cooperate with other controllers as an ecosystem.
+Another core purpose of use-controller, and using classes, is to "dumb down" the state you are writing. Ideally we want controllers to be really good at **one** thing, and be able to cooperate with other controllers as an ecosystem.
 
 > **This** is how we'll build better performing, easier to-work-with applications, even with the most complex of behavior.
 
@@ -924,7 +924,7 @@ Remember to code responsibly. This goes without saying, but typescript is your f
 > Typescript
 
 ```ts
-import Controller from "deep-state";
+import Controller from "react-use-controller";
 
 class FunActivity extends VC {
   /** Interval identifier for cleaning up */
