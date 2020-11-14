@@ -21,18 +21,7 @@ export interface Observable {
   applyDispatch(observer: Observer): void
 };
 
-const DISPATCH = new WeakMap<Observable, Observer>();
 const COMPUTED = Symbol("is_computed");
-
-export function observe(x: Observable){
-  let observer = DISPATCH.get(x);
-  if(!observer){
-    observer = new Observer(x);
-    x.applyDispatch(observer);
-    DISPATCH.set(x, observer);
-  }
-  return observer;
-}
 
 export class Observer {
   constructor(public subject: any){}

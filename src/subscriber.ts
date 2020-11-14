@@ -1,5 +1,5 @@
-import { Controller } from './controller';
-import { Observable, observe, Observer } from './observer';
+import { Controller, observe } from './controller';
+import { Observable, Observer } from './observer';
 import { create, define, defineProperty, within } from './util';
 
 import Oops from './issues';
