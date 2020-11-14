@@ -23,6 +23,7 @@ export interface Observable {
 
 const DISPATCH = new WeakMap<Observable, Observer>();
 const FIRST_COMPUTE = Symbol("is_initial");
+const IMPORTANT = Symbol("is_computed");
 
 export function observe(x: Observable){
   let observer = DISPATCH.get(x);
@@ -193,13 +194,18 @@ export class Observer {
   }
 
   protected emitSync(keys: Iterable<string>){
-    const already = new Set<Callback>();
+    const effects = new Set<Callback>();
+
     for(const k of keys)
       for(const notify of this.subscribers[k] || [])
-        if(!already.has(notify)){
-          already.add(notify);
+        if(within(notify, IMPORTANT))
           notify();
-        }
+        else
+          effects.add(notify);
+
+    for(const event of effects)
+        event();
+
     this.emitUpdate(keys);
   }
 
@@ -381,6 +387,8 @@ export class Observer {
 
       this.emit(key);
     }
+
+    within(recalculate, IMPORTANT, true);
 
     const getStartingValue = (early?: boolean) => {
       try {
