@@ -39,7 +39,7 @@ describe("requestUpdate method", () => {
 
   it("includes getters in batch which trigger them", async () => {
     // we must evaluate baz because it can't be
-    // subscribed to without this happening anyway. 
+    // subscribed to without this happening atleast once. 
     expect(control.baz).toBe(3);
 
     control.foo = 2;
