@@ -22,8 +22,7 @@ export interface Observable {
 };
 
 const DISPATCH = new WeakMap<Observable, Observer>();
-const FIRST_COMPUTE = Symbol("is_initial");
-const IMPORTANT = Symbol("is_computed");
+const COMPUTED = Symbol("is_computed");
 
 export function observe(x: Observable){
   let observer = DISPATCH.get(x);
@@ -198,13 +197,13 @@ export class Observer {
 
     for(const k of keys)
       for(const notify of this.subscribers[k] || [])
-        if(within(notify, IMPORTANT))
+        if(COMPUTED in notify)
           notify();
         else
           effects.add(notify);
 
-    for(const event of effects)
-        event();
+    for(const effect of effects)
+        effect();
 
     this.emitUpdate(keys);
   }
@@ -222,7 +221,7 @@ export class Observer {
 
     const desc = getOwnPropertyDescriptor(this.subject, key);
     const getter = desc && desc.get;
-    if(getter && FIRST_COMPUTE in getter)
+    if(getter && COMPUTED in getter)
       (getter as Function)(true);
 
     listeners.add(onUpdate);
@@ -388,8 +387,6 @@ export class Observer {
       this.emit(key);
     }
 
-    within(recalculate, IMPORTANT, true);
-
     const getStartingValue = (early?: boolean) => {
       try {
         const sub = new Subscriber(subject, recalculate);
@@ -418,7 +415,8 @@ export class Observer {
       }
     }
 
-    within(getStartingValue, FIRST_COMPUTE, true);
+    within(recalculate, COMPUTED, true);
+    within(getStartingValue, COMPUTED, true);
 
     return getStartingValue;
   }
