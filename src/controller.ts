@@ -45,6 +45,34 @@ export interface Controller
 
 export class Controller {
 
+  public tap(...path: maybeStrings){
+    return useWatcher(this, ...path);
+  }
+
+  public sub(...args: any[]){
+    return useSubscriber(this, args);
+  }
+
+  public destroy(){
+    const dispatch = observe(this);
+
+    if(this.willDestroy)
+      this.willDestroy();
+
+    if(dispatch)
+      dispatch.emit("willDestroy");
+  }
+
+  /** When Observer attaches to instance */
+  public applyDispatch(observer: Observer){
+    observer.monitorValues({ get: 0, set: 0, Provider: 0 });
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  
+    if(this.didCreate)
+      this.didCreate();
+  }
+
   static use(...args: any[]){
     return useController(this, args);
   }
@@ -79,10 +107,6 @@ export class Controller {
     return usePassive(this.find(), key);
   }
 
-  public tap(...path: maybeStrings){
-    return useWatcher(this, ...path);
-  }
-
   static tap(...keys: maybeStrings){
     return this.find().tap(...keys);
   }
@@ -94,10 +118,6 @@ export class Controller {
       throw Oops.HasPropertyUndefined(this.name, key);
 
     return value;
-  }
-
-  public sub(...args: any[]){
-    return useSubscriber(this, args);
   }
 
   static sub(...args: any[]){
@@ -126,26 +146,6 @@ export class Controller {
     observe(instance);
     
     return instance;
-  }
-
-  public destroy(){
-    const dispatch = observe(this);
-
-    if(this.willDestroy)
-      this.willDestroy();
-
-    if(dispatch)
-      dispatch.emit("willDestroy");
-  }
-
-  /** When Observer attaches to instance */
-  public applyDispatch(observer: Observer){
-    observer.monitorValues({ get: 0, set: 0, Provider: 0 });
-    observer.monitorComputed(Controller);
-    observer.mixin();
-  
-    if(this.didCreate)
-      this.didCreate();
   }
 
   /** When Observer attaches to the meta */
