@@ -154,6 +154,16 @@ export class Observer {
       return new Promise(r => listen.push(r));
   }
 
+  private emitUpdate(keys: Iterable<string>){
+    const after = this.waiting;
+
+    if(after){
+      const list = Array.from(keys);
+      this.waiting = undefined;
+      after.forEach(x => x(list));
+    }
+  }
+
   public set(key: string, value: any){
     let set = this.state;
 
@@ -182,22 +192,15 @@ export class Observer {
     }
   }
 
-  protected emitSync(keys: Set<string>){
-    const hit = new Set<Callback>();
-    const after = this.waiting;
-
+  protected emitSync(keys: Iterable<string>){
+    const already = new Set<Callback>();
     for(const k of keys)
-      for(const sub of this.subscribers[k] || [])
-        if(!hit.has(sub)){
-          hit.add(sub);
-          sub();
+      for(const notify of this.subscribers[k] || [])
+        if(!already.has(notify)){
+          already.add(notify);
+          notify();
         }
-
-    if(after){
-      const list = Array.from(keys);
-      this.waiting = undefined;
-      after.forEach(x => x(list));
-    }
+    this.emitUpdate(keys);
   }
 
   public addListener(
