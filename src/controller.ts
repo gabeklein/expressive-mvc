@@ -22,8 +22,11 @@ export function observe(x: Observable){
   let observer = DISPATCH.get(x);
   if(!observer){
     observer = new Observer(x);
-    x.applyDispatch(observer);
     DISPATCH.set(x, observer);
+  }
+  if(!observer.ready){
+    x.applyDispatch(observer);
+    observer.ready = true;
   }
   return observer;
 }
@@ -48,6 +51,10 @@ export interface Controller
 }
 
 export class Controller {
+  constructor(){
+    const observer = new Observer(this);
+    DISPATCH.set(this, observer);
+  }
 
   public tap(...path: maybeStrings){
     return useWatcher(this, ...path);

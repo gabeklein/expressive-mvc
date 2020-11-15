@@ -20,6 +20,8 @@ import Oops from './issues';
 const COMPUTED = Symbol("is_computed");
 
 export class Observer {
+  public ready?: true;
+
   constructor(public subject: any){
     define(subject, {
       on: this.on,
@@ -249,10 +251,13 @@ export class Observer {
     callback?: EffectCallback<any, any>){
 
     let unSet: Callback | undefined;
+    const { state } = this;
       
+    state[key] = state[key];
     this.manage(key);
+
     return {
-      get: () => this.state[key],
+      get: () => state[key],
       set: (value: any) => {
         if(!this.set(key, value) || !callback)
           return;
@@ -285,7 +290,7 @@ export class Observer {
   }
 
   public monitorComputed(Ignore?: Class){
-    const { subscribers, subject } = this;
+    const { state, subject } = this;
     const getters = {} as BunchOf<() => any>;
 
     for(
@@ -296,7 +301,7 @@ export class Observer {
       for(const [key, item] of entriesIn(sub))
         if(!item.get
         || key == "constructor"
-        || key in subscribers 
+        || key in state 
         || key in getters)
           continue;
         else 
