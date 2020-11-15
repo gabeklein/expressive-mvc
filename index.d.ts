@@ -20,6 +20,16 @@ type UpdateCallback<T extends object, P extends keyof T> =
     (this: T, value: T[P], changed: P) => void;
 
 /**
+ * Subscribed Controller
+ * 
+ * Target receives properties which assist in destructuring.
+ */
+type Accessible<T extends {}> = T & {
+    get: T;
+    set: T;
+}
+
+/**
  * Observable Instance
  * 
  * Implements internal value tracking. 
@@ -49,13 +59,13 @@ interface Observable {
 }
 
 /**
- * Model Controller
+ * Model Lifecycle
  * 
- * This represents available lifecycle callbacks. 
+ * Target contains available lifecycle callbacks. 
  * A controller, when subscribed to within a component, will run 
  * these callbacks appropriately during that component's lifecycle.
  */
-interface MC {
+interface WithLifecycle {
     didCreate?(): void;
     didMount?(...args: any[]): void;
     didRender?(...args: any[]): void;
@@ -83,49 +93,24 @@ interface MC {
 /**
  * React Controller
  * 
- * Defines special components which are bound to the controller.
+ * Containing helper components which are bound to the controller.
  */
-interface RC {
-    Provider: FunctionComponent<PropsWithChildren<{}>>;
+interface WithReact {
+    Provider: FunctionComponent<PropsWithChildren<this>>;
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 }
 
-/**
- * Instance Controller
- * 
- * Helper methods and properties available to an instance of this controller.
- */
-interface IC {
-    tap(): this & SC;
+interface Controller extends Observable, WithLifecycle, WithReact {
+    parent?: Controller;
+
+    tap(): Accessible<this>;
     tap<K extends keyof this>(key?: K): this[K];
     tap(...keys: string[]): any;
 
-    sub(...args: any[]): this & SC;
+    sub(...args: any[]): Accessible<this>;
 
     destroy(): void;
-}
-
-/**
- * Subscription Controller
- * 
- * Methods local to this controller when accessed through a subscription.
- */
-interface SC {
-    get: this;
-    set: this;
-}
-
-/**
- * Meta Controller
- * 
- * A subscribe-ready controller which watches the ***static*** values of this class. 
- * Allows for Singleton-like access to values "shared" by all instances.
- */
-interface Meta extends Observable, SC {}
-
-interface Controller extends Observable, IC, SC, RC {
-    parent?: Controller;
 }
 
 declare abstract class Controller {
@@ -134,11 +119,11 @@ declare abstract class Controller {
     static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
     static using <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
 
-    static get <T extends Model> (this: T): State<T> & SC;
+    static get <T extends Model> (this: T): Accessible<State<T>>;
     static get <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
     
-    public tap (): this & SC;
-    static tap <T extends Model> (this: T): State<T> & SC;
+    public tap (): Accessible<this>;
+    static tap <T extends Model> (this: T): Accessible<State<T>>;
 
     public tap <K extends keyof this> (key: K): this[K];
     static tap <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
@@ -148,10 +133,10 @@ declare abstract class Controller {
 
     static has <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
-    public sub (...args: any[]): this & SC;
-    static sub <T extends Model> (this: T, ...args: any[]): State<T> & SC;
+    public sub (...args: any[]): Accessible<this>;
+    static sub <T extends Model> (this: T, ...args: any[]): Accessible<State<T>>;
 
-    static meta <T extends Model>(this: T): T & Meta;
+    static meta <T extends Model>(this: T): Accessible<T & Observable>;
     static meta (...keys: string[]): any;
 
     static find <T extends Model>(this: T): State<T>;
@@ -179,13 +164,10 @@ type Provider<T = typeof Controller> =
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
 
 export {
-    IC,
-    SC,
-    MC,
-    Meta,
+    WithLifecycle,
+    Observable,
     State,
     Model,
-    Observable,
     Selector,
     UpdateCallback
 }
