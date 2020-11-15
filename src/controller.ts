@@ -73,6 +73,14 @@ export class Controller {
       this.didCreate();
   }
 
+  /** When Observer attaches to the meta */
+  static applyDispatch(observer: Observer){
+    observer.monitorValues(Function);
+    observer.monitorComputed(Controller);
+    observer.mixin();
+  }
+
+
   static use(...args: any[]){
     return useController(this, args);
   }
@@ -147,14 +155,6 @@ export class Controller {
     
     return instance;
   }
-
-  /** When Observer attaches to the meta */
-  static applyDispatch(observer: Observer){
-    observer.monitorValues(Function);
-    observer.monitorComputed(Controller);
-    observer.mixin();
-  }
-
   static isTypeof<T extends Class>(
     this: T, maybe: any): maybe is T {
 
