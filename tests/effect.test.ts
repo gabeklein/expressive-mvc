@@ -1,16 +1,16 @@
 import Controller from "./adapter";
 
-class TestValues extends Controller {
-  value1 = 1;
-  value2 = 2;
-  value3 = 3;
-
-  get value4(){
-    return this.value3 + 1;
-  }
-}
-
 describe("effect", () => {
+  class TestValues extends Controller {
+    value1 = 1;
+    value2 = 2;
+    value3 = 3;
+  
+    get value4(){
+      return this.value3 + 1;
+    }
+  }
+
   it('will watch values', async () => {
     const instance = TestValues.create();
     const mock = jest.fn();
@@ -93,5 +93,50 @@ describe("effect", () => {
      * - value 2 & 3 (squashed since syncronous)
      */
     expect(invokedNTimes).toBe(4);
+  })
+});
+
+describe("pre-initialized", () => {
+  class TestValues extends Controller {
+    constructor(mock: () => void){
+      super();
+      this.effect(mock, [
+        "value1",
+        "value3"
+      ]);
+    }
+
+    value1 = 1;
+    value2 = 2;
+  
+    get value3(){
+      return this.value2 + 1;
+    }
+  }
+
+  it('proactively watches values', async () => {
+    const mock = jest.fn();
+    const instance = TestValues.create([mock]);
+
+    instance.value1++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalledTimes(1);
+
+    instance.value2++;
+    await instance.requestUpdate();
+
+    // value2 shouldn't trigger anything
+    // value3 is not yet initialized
+    expect(mock).toBeCalledTimes(1);
+
+    // pull value3, now will be watched
+    instance.value3;
+
+    instance.value2++;
+    await instance.requestUpdate();
+
+    // expect pre-existing listener to hit
+    expect(mock).toBeCalledTimes(2);
   })
 });
