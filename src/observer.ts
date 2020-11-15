@@ -17,10 +17,6 @@ import {
 
 import Oops from './issues';
 
-export interface Observable {
-  applyDispatch(observer: Observer): void
-};
-
 const COMPUTED = Symbol("is_computed");
 
 export class Observer {

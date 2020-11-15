@@ -3,7 +3,7 @@ import type { FunctionComponent, ProviderProps } from 'react';
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
 import { LifecycleMethods } from './lifecycle';
-import { Observable, Observer } from './observer';
+import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, getPrototypeOf } from './util';
 
@@ -13,6 +13,10 @@ export type Model = typeof Controller;
 export type State<T extends typeof Controller> = InstanceType<T>;
 
 const DISPATCH = new WeakMap<Observable, Observer>();
+
+type Observable = {
+  applyDispatch(observer: Observer): void
+};
 
 export function observe(x: Observable){
   let observer = DISPATCH.get(x);
