@@ -24,7 +24,16 @@ export interface Observable {
 const COMPUTED = Symbol("is_computed");
 
 export class Observer {
-  constructor(public subject: any){}
+  constructor(public subject: any){
+    define(subject, {
+      on: this.on,
+      once: this.once,
+      update: this.update,
+      effect: this.effect,
+      export: this.export,
+      requestUpdate: this.requestUpdate
+    })
+  }
   
   protected state: BunchOf<any> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
@@ -37,17 +46,6 @@ export class Observer {
 
   public get watched(){
     return keys(this.subscribers);
-  }
-
-  public mixin(){
-    define(this.subject, {
-      on: this.on,
-      once: this.once,
-      update: this.update,
-      effect: this.effect,
-      export: this.export,
-      requestUpdate: this.requestUpdate
-    })
   }
 
   public on = (

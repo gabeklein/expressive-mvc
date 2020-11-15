@@ -67,7 +67,6 @@ export class Controller {
   public applyDispatch(observer: Observer){
     observer.monitorValues({ get: 0, set: 0, Provider: 0 });
     observer.monitorComputed(Controller);
-    observer.mixin();
   
     if(this.didCreate)
       this.didCreate();
@@ -77,7 +76,6 @@ export class Controller {
   static applyDispatch(observer: Observer){
     observer.monitorValues(Function);
     observer.monitorComputed(Controller);
-    observer.mixin();
   }
 
 
