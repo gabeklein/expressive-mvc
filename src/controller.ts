@@ -1,8 +1,7 @@
-import type { FunctionComponent, ProviderProps } from 'react';
+import type { Controller as Public, Observable } from "../";
 
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
-import { LifecycleMethods } from './lifecycle';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, getPrototypeOf } from './util';
@@ -14,11 +13,11 @@ export type State<T extends typeof Controller> = InstanceType<T>;
 
 const DISPATCH = new WeakMap<Observable, Observer>();
 
-type Observable = {
+type Observe = Observable & {
   applyDispatch(observer: Observer): void
-};
+}
 
-export function observe(x: Observable){
+export function observe(x: Observe){
   let observer = DISPATCH.get(x);
   if(!observer){
     observer = new Observer(x);
@@ -31,24 +30,7 @@ export function observe(x: Observable){
   return observer;
 }
 
-export interface Controller 
-  extends LifecycleMethods {
-
-  // via ChildController
-  parent?: Controller;
-
-  // via Observer.mixin
-  on(key: string, value: any): Callback;
-  once(key: string, value: any): Callback;
-  update(entries: Partial<this>): void;
-  requestUpdate(): Promise<string[]>;
-  requestUpdate(cb: (keys: string[]) => void): void;
-
-  // via defineLazy
-  Input: FunctionComponent<{ to: string }>;
-  Value: FunctionComponent<{ of: string }>;
-  Provider: FunctionComponent<ProviderProps<this>>;
-}
+export interface Controller extends Public {}
 
 export class Controller {
   constructor(){
@@ -142,7 +124,7 @@ export class Controller {
   }
 
   static meta(...path: maybeStrings): any {
-    return useWatcher(this, ...path);
+    return useWatcher(this as any, ...path);
   }
 
   static find(){
@@ -164,6 +146,7 @@ export class Controller {
     
     return instance;
   }
+
   static isTypeof<T extends Class>(
     this: T, maybe: any): maybe is T {
 

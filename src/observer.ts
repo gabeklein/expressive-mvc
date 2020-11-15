@@ -1,3 +1,5 @@
+import type { Observable, UpdateCallback, Selector } from "../";
+
 import { Controller } from './controller';
 import { Placeholder } from './directives';
 import { Subscriber } from './subscriber';
@@ -22,7 +24,7 @@ const COMPUTED = Symbol("is_computed");
 export class Observer {
   public ready?: true;
 
-  constructor(public subject: any){
+  constructor(public subject: Partial<Observable>){
     define(subject, {
       on: this.on,
       once: this.once,
@@ -47,15 +49,15 @@ export class Observer {
   }
 
   public on = (
-    key: string | Selector,
-    listener: HandleUpdatedValue) => {
+    key: string | Selector<this>,
+    listener: UpdateCallback<any, string>) => {
 
     return this.watch(key, listener, false);
   }
 
   public once = (
-    key: string | Selector,
-    listener?: HandleUpdatedValue) => {
+    key: string | Selector<this>,
+    listener?: UpdateCallback<any, string>) => {
 
     if(listener)
       return this.watch(key, listener, true);
@@ -67,7 +69,7 @@ export class Observer {
 
   public effect = (
     callback: EffectCallback<any>,
-    select?: string[] | Selector) => {
+    select?: string[] | Selector<this>) => {
     
     const { subject } = this;
     let unSet: Callback | undefined;
@@ -94,7 +96,7 @@ export class Observer {
   }
 
   public export = (
-    select?: string[] | Selector) => {
+    select?: string[] | Selector<this>) => {
 
     if(!select)
       return { ...this.values };
@@ -111,7 +113,7 @@ export class Observer {
   }
 
   public update = (
-    select: string | string[] | Selector | BunchOf<any>,
+    select: string | string[] | Selector<any> | BunchOf<any>,
     ...rest: string[]) => {
 
     if(typeof select == "string")
@@ -229,7 +231,7 @@ export class Observer {
   }
 
   public watch(
-    key: string | Selector,
+    key: string | Selector<any>,
     handler: (value: any, key: string) => void,
     once?: boolean){
 
@@ -248,7 +250,7 @@ export class Observer {
 
   public access(
     key: string,
-    callback?: EffectCallback<any, any>){
+    callback?: EffectCallback<any>){
 
     let unSet: Callback | undefined;
     const { state } = this;

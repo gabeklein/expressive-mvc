@@ -1,9 +1,10 @@
+import type { Observable } from "../";
+
 import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observable } from './observer';
 import { Subscriber } from './subscriber';
 import { create, define, entriesIn, isFn, within } from './util';
 
@@ -17,10 +18,10 @@ function useManaged<T>(
   return state[0] as T;
 }
 
-export function useValue(
-  from: Controller, key: string){
+export function useValue<T extends Controller>(
+  from: T, key: keyof T){
 
-  const [ value, update ] = useState(() => (<Any>from)[key]);
+  const [ value, update ] = useState(() => from[key]);
 
   useEffect(() => from.on(key, update), []);
 
