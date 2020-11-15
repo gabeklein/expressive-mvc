@@ -156,7 +156,7 @@ declare abstract class Controller {
 
     static find <T extends Model>(this: T): State<T>;
 
-    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
+    static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceType<T>;
 
     public destroy(): void;
 
