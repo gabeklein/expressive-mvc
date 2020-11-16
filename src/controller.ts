@@ -12,25 +12,6 @@ import Oops from './issues';
 export type Model = typeof Controller;
 export type State<T extends typeof Controller> = InstanceType<T>;
 
-const DISPATCH = new WeakMap<Observable, Observer>();
-
-export type Observable = {
-  applyDispatch(observer: Observer): void
-};
-
-export function observe(x: Observable){
-  let observer = DISPATCH.get(x);
-  if(!observer){
-    observer = new Observer(x);
-    DISPATCH.set(x, observer);
-  }
-  if(!observer.ready){
-    x.applyDispatch(observer);
-    observer.ready = true;
-  }
-  return observer;
-}
-
 export interface Controller 
   extends LifecycleMethods {
 
@@ -52,8 +33,7 @@ export interface Controller
 
 export class Controller {
   constructor(){
-    const observer = new Observer(this);
-    DISPATCH.set(this, observer);
+    Observer.apply(this);
   }
 
   public tap(...path: maybeStrings){
@@ -65,7 +45,7 @@ export class Controller {
   }
 
   public destroy(){
-    const dispatch = observe(this);
+    const dispatch = Observer.get(this);
 
     if(this.willDestroy)
       this.willDestroy();
@@ -160,7 +140,7 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    observe(instance);
+    Observer.get(instance);
     
     return instance;
   }

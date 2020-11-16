@@ -1,5 +1,5 @@
-import { Controller, Observable, observe } from './controller';
-import { Observer } from './observer';
+import { Controller } from './controller';
+import { Observed, Observer } from './observer';
 import { create, define, defineProperty, within } from './util';
 
 import Oops from './issues';
@@ -9,10 +9,10 @@ export class Subscriber {
   public parent: Observer;
   
   constructor(
-    private subject: Observable,
+    private subject: Observed,
     private refresh: Callback
   ){
-    this.parent = observe(subject);
+    this.parent = Observer.get(subject);
   }
 
   public get proxy(){
@@ -70,7 +70,7 @@ export class Subscriber {
     const reset = () => sub && sub.release();
 
     const monitorChild = () => {
-      let value = this.parent.subject[key];
+      let value = (this.parent.subject as any)[key];
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -114,7 +114,7 @@ export class Subscriber {
     const reset = () => sub && sub.release();
 
     const applyChild = () => {
-      let value = subject[key];
+      let value = (subject as any)[key];
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -128,7 +128,7 @@ export class Subscriber {
 
       defineProperty(this.proxy, key, {
         get: () => value,
-        set: val => subject[key] = val,
+        set: val => (subject as any)[key] = val,
         configurable: true,
         enumerable: true
       })

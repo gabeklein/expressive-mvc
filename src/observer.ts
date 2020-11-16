@@ -18,20 +18,41 @@ import {
 import Oops from './issues';
 
 const COMPUTED = Symbol("is_computed");
+const DISPATCH = new WeakMap<Observed, Observer>();
+
+export type Observed = {
+  applyDispatch(observer: Observer): void
+}
 
 export class Observer {
   public ready?: true;
+  
+  static apply(to: Observed){
+    const observe = new Observer(to);
 
-  constructor(public subject: any){
-    define(subject, {
-      on: this.on,
-      once: this.once,
-      update: this.update,
-      effect: this.effect,
-      export: this.export,
-      requestUpdate: this.requestUpdate
-    })
+    for(const [key, { value }] of entriesIn(observe))
+      if(typeof value == "function")
+        define(to, key, value);
+    
+    DISPATCH.set(to, observe);
+    return observe;
   }
+
+  static get(from: Observed){
+    let dispatch = DISPATCH.get(from);
+
+    if(!dispatch)
+      dispatch = Observer.apply(from);
+
+    if(!dispatch.ready){
+      from.applyDispatch(dispatch);
+      dispatch.ready = true;
+    }
+
+    return dispatch;
+  }
+
+  constructor(public subject: Observed){}
   
   protected state: BunchOf<any> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
@@ -289,7 +310,7 @@ export class Observer {
     }
   }
 
-  public monitorComputed(Ignore?: Class){
+  public monitorComputed(Ignore?: any){
     const { state, subject } = this;
     const getters = {} as BunchOf<() => any>;
 

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
-import { Controller, Model, Observable } from './controller';
+import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
+import { Observed } from './observer';
 import { Subscriber } from './subscriber';
 import { create, define, entriesIn, isFn, within } from './util';
 
@@ -42,7 +43,7 @@ export function usePassive(
 }
 
 export function useWatcher(
-  target: Observable, ...path: maybeStrings){
+  target: Observed, ...path: maybeStrings){
 
   const subscription = useManaged(refresh =>
     new Subscriber(target, refresh).focus(path)
