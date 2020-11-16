@@ -22,7 +22,7 @@ export function useValue(
 
   const [ value, update ] = useState(() => (<Any>from)[key]);
 
-  useEffect(() => from.on(key, update), []);
+  useEffect(() => from.on(key as any, update), []);
 
   return value;
 }

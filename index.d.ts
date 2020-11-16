@@ -14,7 +14,7 @@ type Expecting<A extends any[]> = new(...args: A) => any;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never
 
 type Model = typeof Controller;
-type State<T extends typeof Controller> = InstanceOf<T>;
+type State<T extends Model> = InstanceOf<T>;
 
 type UpdateCallback<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void;

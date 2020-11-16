@@ -1,5 +1,4 @@
-import type { FunctionComponent, ProviderProps } from 'react';
-import type { WithLifecycle } from '../';
+import type { Controller as Public } from '../';
 
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
@@ -10,26 +9,9 @@ import { assignSpecific, defineLazy, getPrototypeOf } from './util';
 import Oops from './issues';
 
 export type Model = typeof Controller;
-export type State<T extends typeof Controller> = InstanceType<T>;
+export type State<T extends Model> = InstanceOf<T>;
 
-export interface Controller 
-  extends WithLifecycle {
-
-  // via ChildController
-  parent?: Controller;
-
-  // via Observer.mixin
-  on(key: string, value: any): Callback;
-  once(key: string, value: any): Callback;
-  update(entries: Partial<this>): void;
-  requestUpdate(): Promise<string[]>;
-  requestUpdate(cb: (keys: string[]) => void): void;
-
-  // via defineLazy
-  Input: FunctionComponent<{ to: string }>;
-  Value: FunctionComponent<{ of: string }>;
-  Provider: FunctionComponent<ProviderProps<this>>;
-}
+export interface Controller extends Public {}
 
 export class Controller {
   constructor(){
@@ -68,7 +50,6 @@ export class Controller {
     observer.monitorValues(Function);
     observer.monitorComputed(Controller);
   }
-
 
   static use(...args: any[]){
     return useController(this, args);
@@ -129,7 +110,7 @@ export class Controller {
     return getFromContext(this);
   }
 
-  static create<T extends typeof Controller>(
+  static create<T extends Model>(
     this: T,
     args?: any[],
     prepare?: (self: State<T>) => void){
@@ -153,7 +134,7 @@ export class Controller {
     )
   }
 
-  static get inherits(): typeof Controller | undefined {
+  static get inherits(): Model | undefined {
     const I = getPrototypeOf(this);
     if(I !== Controller)
       return I;
