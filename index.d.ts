@@ -96,7 +96,7 @@ interface WithLifecycle {
  * Containing helper components which are bound to the controller.
  */
 interface WithReact {
-    Provider: FunctionComponent<PropsWithChildren<this>>;
+    Provider: FunctionComponent<PropsWithChildren<Partial<this>>>;
     Input: FunctionComponent<{ to: string }>;
     Value: FunctionComponent<{ of: string }>;
 }
