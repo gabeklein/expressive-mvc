@@ -33,7 +33,7 @@ type Accessible<T extends {}> = T & {
  * Observable Instance
  * 
  * Implements internal value tracking. 
- * Able to be subscribed to, on a per-value basis to know when properties are updated.
+ * Able to be subscribed to, per-value to know when updated.
  */
 interface Observable {
     on<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): Callback;

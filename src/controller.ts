@@ -1,8 +1,8 @@
 import type { FunctionComponent, ProviderProps } from 'react';
+import type { WithLifecycle } from '../';
 
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
-import { LifecycleMethods } from './lifecycle';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, getPrototypeOf } from './util';
@@ -13,7 +13,7 @@ export type Model = typeof Controller;
 export type State<T extends typeof Controller> = InstanceType<T>;
 
 export interface Controller 
-  extends LifecycleMethods {
+  extends WithLifecycle {
 
   // via ChildController
   parent?: Controller;
