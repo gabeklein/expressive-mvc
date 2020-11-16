@@ -14,7 +14,7 @@ export type State<T extends typeof Controller> = InstanceType<T>;
 
 const DISPATCH = new WeakMap<Observable, Observer>();
 
-type Observable = {
+export type Observable = {
   applyDispatch(observer: Observer): void
 };
 

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
-import { Controller, Model } from './controller';
+import { Controller, Model, Observable } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observable } from './observer';
 import { Subscriber } from './subscriber';
 import { create, define, entriesIn, isFn, within } from './util';
 
