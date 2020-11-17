@@ -11,11 +11,9 @@ type Similar<T> = { [X in keyof T]?: T[X] };
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
 
+type Class = new (...args: any[]) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never
-
-type Model = typeof Controller;
-type State<T extends Model> = InstanceOf<T>;
+type Instance<T> = T extends { prototype: infer U } ? U : never
 
 type UpdateCallback<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void;
@@ -117,36 +115,33 @@ interface Controller extends Observable, WithLifecycle, WithReact {
 declare abstract class Controller {
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): Accessible<InstanceType<T>>;
 
-    static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
-    static using <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
+    static uses <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
+    static using <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
 
-    static get <T extends Model> (this: T): Accessible<State<T>>;
-    static get <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
+    static get <T extends Class> (this: T): Accessible<Instance<T>>;
+    static get <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
     
     public tap (): Accessible<this>;
-    static tap <T extends Model> (this: T): Accessible<State<T>>;
-
     public tap <K extends keyof this> (key: K): this[K];
-    static tap <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
 
-    public tap (...keys: string[]): any;
-    static tap (...keys: string[]): any;
+    static tap <T extends Class> (this: T): Accessible<Instance<T>>;
+    static tap <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
 
-    static has <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
+    static has <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     public sub (...args: any[]): Accessible<this>;
-    static sub <T extends Model> (this: T, ...args: any[]): Accessible<State<T>>;
+    static sub <T extends Class> (this: T, ...args: any[]): Accessible<Instance<T>>;
 
-    static meta <T extends Model>(this: T): Accessible<T & Observable>;
+    static meta <T extends Class>(this: T): Accessible<T & Observable>;
     static meta (...keys: string[]): any;
 
-    static find <T extends Model>(this: T): State<T>;
+    static find <T extends Class>(this: T): Instance<T>;
 
     static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceType<T>;
 
     public destroy(): void;
 
-    static isTypeof<T extends Model>(this: T, maybe: any): maybe is T;
+    static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
 
     static Provider: FunctionComponent<PropsWithChildren<{}>>;
 }
@@ -155,8 +150,8 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-declare function use <T extends Model> (Peer: T, callback?: (i: State<T>) => void): State<T> 
-declare function get <T extends Model> (type: T): State<T>;
+declare function use <T extends Class> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
+declare function get <T extends Class> (type: T): Instance<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
@@ -167,8 +162,7 @@ type Provider<T = typeof Controller> =
 export {
     WithLifecycle,
     Observable,
-    State,
-    Model,
+    Instance,
     Selector,
     UpdateCallback
 }
