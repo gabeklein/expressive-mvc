@@ -86,7 +86,7 @@ export function useSubscriber(
 }
 
 export function useController(
-  Type: Model, args?: any[], 
+  Type: Model, args: any[], 
   callback?: (instance: Controller) => void){
 
   let release: Callback | undefined;
@@ -108,7 +108,7 @@ export function useController(
       subscription.commit();
 
     if(isFn(handler))
-      handler.apply(instance, args || []);
+      handler.apply(instance, args);
 
     subscription.parent.emit(name, alias);
 

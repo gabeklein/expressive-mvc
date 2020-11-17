@@ -59,7 +59,7 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
       
-    return useController(this, undefined, instance => {
+    return useController(this, [], instance => {
       assignSpecific(instance, props, only);
     })
   }
@@ -68,15 +68,14 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
 
-    function assignTo(instance: Controller){
+    function assign(instance: Controller){
       assignSpecific(instance, props, only);
     }
 
-    const subscriber = useController(
-      this, undefined, assignTo
-    );
+    const subscriber = 
+      useController(this, [], assign);
 
-    assignTo(subscriber);
+    assign(subscriber);
         
     return subscriber;
   }
@@ -125,6 +124,7 @@ export class Controller {
     
     return instance;
   }
+
   static isTypeof<T extends Class>(
     this: T, maybe: any): maybe is T {
 
