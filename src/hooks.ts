@@ -7,7 +7,7 @@ import { Observed } from './observer';
 import { Subscriber } from './subscriber';
 import { create, define, entriesIn, isFn, within } from './util';
 
-function useManaged<T>(
+function useActiveMemo<T>(
   init: (refresh: Callback) => T){
 
   const [ state, update ] = useState<any>(() => [
@@ -45,7 +45,7 @@ export function usePassive(
 export function useWatcher(
   target: Observed, ...path: maybeStrings){
 
-  const subscription = useManaged(refresh =>
+  const subscription = useActiveMemo(refresh =>
     new Subscriber(target, refresh).focus(path)
   );
 
@@ -62,7 +62,7 @@ export function useWatcher(
 export function useSubscriber(
   target: Controller, args: any[]){
 
-  const subscription = useManaged(refresh => 
+  const subscription = useActiveMemo(refresh => 
     new Subscriber(target, refresh)
   );
 
@@ -91,7 +91,7 @@ export function useController(
 
   let release: Callback | undefined;
 
-  const subscription = useManaged(refresh => {
+  const subscription = useActiveMemo(refresh => {
     const instance = Type.create(args, callback);
     return new Subscriber(instance, refresh);
   });
