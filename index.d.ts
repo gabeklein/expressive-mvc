@@ -1,6 +1,7 @@
 import {
     FunctionComponent,
-    PropsWithChildren
+    PropsWithChildren,
+    RefObject
 } from 'react';
 
 type Callback = () => void;
@@ -114,10 +115,10 @@ interface Controller extends Observable, WithLifecycle, WithReact {
 }
 
 declare abstract class Controller {
-    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
+    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): Accessible<InstanceType<T>>;
 
-    static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
-    static using <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): I;
+    static uses <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
+    static using <T extends Model, I extends State<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
 
     static get <T extends Model> (this: T): Accessible<State<T>>;
     static get <T extends Model, I extends State<T>, K extends keyof I> (this: T, key: K): I[K];
@@ -157,7 +158,7 @@ declare class Singleton extends Controller {
 declare function use <T extends Model> (Peer: T, callback?: (i: State<T>) => void): State<T> 
 declare function get <T extends Model> (type: T): State<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
-declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current?: T };
+declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
 
 type Provider<T = typeof Controller> = 
