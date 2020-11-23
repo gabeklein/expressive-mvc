@@ -79,6 +79,9 @@ export function eventProperty
 
   function registerEvent(on: Observer, key: string){
     on.monitorEvent(key, callback);
+    defineProperty(on.subject, key, {
+      value: () => on.emit(key)
+    })
   }
 
   return new Placeholder(registerEvent) as any;
