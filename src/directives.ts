@@ -1,5 +1,7 @@
 import type { Controller, Model, State } from './controller';
+import type { ComponentType } from 'react';
 
+import { createHocFactory, createProviderHOC } from './components';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty } from './util';
@@ -97,4 +99,34 @@ export function memoizedProperty
   }
     
   return new Placeholder(memoizeValue) as any;
+}
+
+export function componentProperty
+  (Type: ComponentType){
+
+  const factory = createHocFactory(Type);
+
+  function assignComponent(on: Observer, key: string){
+    defineProperty(on.subject, key, {
+      value: factory(on.subject as Controller)
+    })
+  }
+    
+  return new Placeholder(assignComponent) as any;
+}
+
+export function customProviderProperty
+  (Type: ComponentType){
+
+  const factory = createHocFactory(Type);
+
+  function assignProvider(on: Observer, key: string){
+    const control = on.subject as Controller;
+    const Component = factory(control);
+    const Provider = createProviderHOC(Component, control)
+
+    defineProperty(on.subject, key, { value: Provider })
+  }
+    
+  return new Placeholder(assignProvider) as any;
 }

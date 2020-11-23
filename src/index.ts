@@ -4,6 +4,8 @@ export {
   effectProperty as set,
   refProperty as ref,
   eventProperty as event,
+  componentProperty as hoc,
+  customProviderProperty as wrap,
   memoizedProperty as memo
 } from './directives';
 

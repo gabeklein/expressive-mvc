@@ -1,6 +1,8 @@
 import {
+    Component,
     FunctionComponent,
     PropsWithChildren,
+    ReactElement,
     RefObject
 } from 'react';
 
@@ -150,12 +152,17 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
+type ControllableComponent<T extends Controller, P> =
+    | { (props: PropsWithChildren<P>, context: T): ReactElement<any, any> | null }
+    | { new (props: P, context: T): Component<P, any> }
+
 declare function use <T extends Class> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
 declare function get <T extends Class> (type: T): Instance<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T): T;
+declare function hoc <T extends Controller, P extends {}, C extends ControllableComponent<T, P>> (component: C): C;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
@@ -183,5 +190,7 @@ export {
     set,
     ref,
     event,
-    memo
+    memo,
+    hoc,
+    hoc as wrap,
 }

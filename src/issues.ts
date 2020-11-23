@@ -60,5 +60,8 @@ export default Issues({
     `Tried to access singleton ${name} but one does not exist! Did you forget to initialize? \nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
 
   FocusIsDetatched: () => 
-    `Can't do that boss`
+    `Can't do that boss`,
+
+  BadHOCArgument: () =>
+    `Argument for hoc() is not a component.`
 });
