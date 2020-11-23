@@ -169,16 +169,19 @@ export {
 }
 
 export {
-    use,
-    get,
-    set,
-    ref,
-    event,
-    memo,
     Controller,
     Controller as VC,
     Controller as default,
     Singleton,
     Singleton as GC,
     Provider
+}
+
+export {
+    use,
+    get,
+    set,
+    ref,
+    event,
+    memo
 }
