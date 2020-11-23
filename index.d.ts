@@ -129,6 +129,8 @@ declare abstract class Controller {
     static tap <T extends Class> (this: T): Accessible<Instance<T>>;
     static tap <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
 
+    static tap (...keys: string[]): any;
+
     static has <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
     public sub (...args: any[]): Accessible<this>;
