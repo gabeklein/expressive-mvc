@@ -3,7 +3,8 @@ export {
   peerProperty as get,
   effectProperty as set,
   refProperty as ref,
-  eventProperty as event
+  eventProperty as event,
+  memoizedProperty as memo
 } from './directives';
 
 export {

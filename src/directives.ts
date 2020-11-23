@@ -86,3 +86,15 @@ export function eventProperty
 
   return new Placeholder(registerEvent) as any;
 }
+
+export function memoizedProperty
+  (factory: () => any){
+
+  function memoizeValue(on: Observer, key: string){
+    defineProperty(on.subject, key, {
+      value: factory.call(on.subject)
+    })
+  }
+    
+  return new Placeholder(memoizeValue) as any;
+}
