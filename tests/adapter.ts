@@ -16,7 +16,8 @@ export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as Public.Provider;
 export default Controller;
 
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+type Model = typeof Public.Controller;
 
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
@@ -28,8 +29,7 @@ interface RenderControllerResult<T>
   assertDidNotUpdate(): Promise<void>
 }
 
-interface TestConsumerProps
-  <T extends Public.Model>{
+interface TestConsumerProps<T>{
   of: T; 
   get: { 
     [P in keyof InstanceOf<T>]?: jest.Mock 
@@ -40,10 +40,10 @@ interface TestConsumerProps
  * Helper component will pull specified VC from context,
  * and pull values for analysis.
  */
-export function Consumer<T extends Public.Model>
+export function Consumer<T extends Model>
   ({ of: Subject, get }: TestConsumerProps<T>){
 
-  const instance: any = Subject.get();
+  const instance: any = (Subject as any).get();
 
   for(const key in get){
     const callback = get[key]!;
@@ -109,13 +109,13 @@ function trySubscribe<T>(
   watchProperties?: string[]
 ): RenderControllerResult<T>
 
-function trySubscribe<T extends Public.Model>(
+function trySubscribe<T extends Model>(
   type: T,
   watchProperties?: string[]
-): RenderControllerResult<Public.State<T>>
+): RenderControllerResult<InstanceOf<T>>
 
 function trySubscribe(
-  init: Public.Model | (() => Public.Controller),
+  init: Model | (() => Public.Controller),
   watch?: string[]
 ){
   if("prototype" in init){
