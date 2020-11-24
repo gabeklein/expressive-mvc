@@ -5,19 +5,23 @@ import * as Source from "../src";
 // public type definitions
 import * as Public from "../";
 
-export const test = trySubscribe;
+export const Controller = Source.Controller as unknown as typeof Public.Controller;
+export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
+export const Provider = Source.Provider as unknown as Public.Provider;
+
 export const get = Source.get as typeof Public.get;
 export const set = Source.set as typeof Public.set;
 export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;
 export const event = Source.event as typeof Public.event;
-export const Controller = Source.Controller as unknown as typeof Public.Controller;
-export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as Public.Provider;
+
+export const test = trySubscribe;
 export default Controller;
+export { Consumer };
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Model = typeof Public.Controller;
+type Instance = Public.Controller;
 
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
@@ -40,7 +44,7 @@ interface TestConsumerProps<T>{
  * Helper component will pull specified VC from context,
  * and pull values for analysis.
  */
-export function Consumer<T extends Model>
+function Consumer<T extends Model>
   ({ of: Subject, get }: TestConsumerProps<T>){
 
   const instance: any = (Subject as any).get();
@@ -68,14 +72,18 @@ class TraceableError extends Error {
     let [ error, ...stack ] = this.stack!.split(/\n/);
 
     let trace = stack.map(line => {
-      const match = STACK_FRAME.exec(line) || [] as string[];
-      return {
-        frame: match[0],
-        callee: match[1],
-        file: match[2],
-        line: match[3],
-        column: match[4]
-      }
+      const match = STACK_FRAME.exec(line);
+
+      if(!match)
+        return {};
+      else
+        return {
+          frame: match[0],
+          callee: match[1],
+          file: match[2],
+          line: match[3],
+          column: match[4]
+        }
     })
 
     trace = trace.filter(x => x.file);
@@ -84,9 +92,9 @@ class TraceableError extends Error {
 
     trace = trace.filter(x => x.file !== adaptor);
 
-    this.stack = [
-      error, ...trace.map(l => l.frame)
-    ].join("\n");
+    const frames = trace.map(l => l.frame);
+
+    this.stack = [ error ].concat(frames).join("\n");
   }
 }
 
@@ -104,20 +112,9 @@ function mockPropertyAccess(
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
  */
-function trySubscribe<T>(
-  init: () => T,
-  watchProperties?: string[]
-): RenderControllerResult<T>
-
-function trySubscribe<T extends Model>(
-  type: T,
-  watchProperties?: string[]
-): RenderControllerResult<InstanceOf<T>>
-
-function trySubscribe(
-  init: Model | (() => Public.Controller),
-  watch?: string[]
-){
+function trySubscribe<T extends Instance>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
+function trySubscribe<T extends Model>(type: T, watchProperties?: string[]): RenderControllerResult<InstanceOf<T>>
+function trySubscribe(init: Model | (() => Instance), watch?: string[]){
   if("prototype" in init){
     const Model = init as any;
     init = () => Model.use();
@@ -137,9 +134,7 @@ function trySubscribe(
   );
 }
 
-function plusUpdateAssertions(
-  render: RenderHookResult<any, any>
-){
+function plusUpdateAssertions(render: RenderHookResult<any, any>){
   async function assertDidUpdate(){
     const error = new TraceableError("Assertion failed: hook did not update");
     let didUpdate = false;
