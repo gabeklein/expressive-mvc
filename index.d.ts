@@ -154,9 +154,17 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
+interface ControllableFC <T extends Controller, P> {
+    (props: P, context: T): JSX.Element | ReactElement | null
+}
+
+interface ControllableCC <T extends Controller, P> {
+    new (props: P, context: T): Component<P, any>
+}
+
 type ControllableComponent<T extends Controller, P> =
-    | { (props: PropsWithChildren<P>, context: T): ReactElement<any, any> | null }
-    | { new (props: P, context: T): Component<P, any> }
+    | ControllableFC<T, P>
+    | ControllableCC<T, P>
 
 declare function use <T extends Class> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
 declare function get <T extends Class> (type: T): Instance<T>;
@@ -164,13 +172,15 @@ declare function set <T = any> (onValue: (current: T) => Callback | void): T | u
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T): T;
-declare function hoc <T extends Controller, P extends {}, C extends ControllableComponent<T, P>> (component: C): C;
+declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): typeof component;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
 
 export {
     WithLifecycle,
+    ControllableFC,
+    ControllableCC,
     Observable,
     Instance,
     Selector,
