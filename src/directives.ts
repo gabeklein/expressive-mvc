@@ -51,11 +51,9 @@ export function refProperty<T = any>
 
   function createReference(on: Observer, key: string){
     const descriptor = on.access(key, effect);
+    const value = defineProperty({}, "current", descriptor);
 
-    defineProperty(on.subject, key, {
-      enumerable: true,
-      value: defineProperty({}, "current", descriptor)
-    });
+    defineProperty(on.subject, key, { value, enumerable: true });
   }
 
   return new Placeholder(createReference) as any;
@@ -67,10 +65,7 @@ export function effectProperty<T = any>
   function registerEffect(on: Observer, key: string){
     const descriptor = on.access(key, effect);
 
-    defineProperty(on.subject, key, {
-      enumerable: true,
-      ...descriptor
-    });
+    defineProperty(on.subject, key, { ...descriptor, enumerable: true });
   }
 
   return new Placeholder(registerEffect) as any;
@@ -80,10 +75,10 @@ export function eventProperty
   (callback?: EffectCallback<Controller>){
 
   function registerEvent(on: Observer, key: string){
+    const trigger = () => on.emit(key);
+
     on.monitorEvent(key, callback);
-    defineProperty(on.subject, key, {
-      value: () => on.emit(key)
-    })
+    defineProperty(on.subject, key, { value: trigger })
   }
 
   return new Placeholder(registerEvent) as any;
@@ -93,9 +88,9 @@ export function memoizedProperty
   (factory: () => any){
 
   function memoizeValue(on: Observer, key: string){
-    defineProperty(on.subject, key, {
-      value: factory.call(on.subject)
-    })
+    const value = factory.call(on.subject);
+    
+    defineProperty(on.subject, key, { value });
   }
     
   return new Placeholder(memoizeValue) as any;
@@ -107,9 +102,9 @@ export function componentProperty
   const factory = createHocFactory(Type);
 
   function assignComponent(on: Observer, key: string){
-    defineProperty(on.subject, key, {
-      value: factory(on.subject as Controller)
-    })
+    const Component = factory(on.subject as Controller);
+    
+    defineProperty(on.subject, key, { value: Component });
   }
     
   return new Placeholder(assignComponent) as any;
