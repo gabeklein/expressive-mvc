@@ -27,7 +27,7 @@ export function createHocFactory(
         (Type as FunctionComponent)(props, control);
 }
 
-export function createProviderHOC(
+export function withProvider(
   Component: ComponentType,
   control: Controller){
 

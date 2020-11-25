@@ -5,7 +5,7 @@ export {
   refProperty as ref,
   eventProperty as event,
   componentProperty as hoc,
-  customProviderProperty as wrap,
+  parentComponentProperty as wrap,
   memoizedProperty as memo
 } from './directives';
 

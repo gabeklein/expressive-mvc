@@ -1,7 +1,7 @@
 import type { Controller, Model, State } from './controller';
 import type { ComponentType } from 'react';
 
-import { createHocFactory, createProviderHOC } from './hoc';
+import { createHocFactory, withProvider } from './hoc';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty } from './util';
@@ -102,11 +102,11 @@ export function memoizedProperty
 export function componentProperty
   (Type: ComponentType){
 
-  const factory = createHocFactory(Type);
+  const componentFor = createHocFactory(Type);
 
   function assignComponent(on: Observer, key: string){
     defineLazy(on.subject, key, () => {
-      return factory(on.subject as Controller)
+      return componentFor(on.subject as Controller)
     })
   }
     
@@ -116,13 +116,13 @@ export function componentProperty
 export function parentComponentProperty
   (Type: ComponentType){
 
-  const factory = createHocFactory(Type);
+  const componentFor = createHocFactory(Type);
 
   function assignProvider(on: Observer, key: string){
     defineLazy(on.subject, key, () => {
       const control = on.subject as Controller;
-      const Component = factory(control);
-      return createProviderHOC(Component, control)
+      const Component = componentFor(control);
+      return withProvider(Component, control)
     })
   }
     
