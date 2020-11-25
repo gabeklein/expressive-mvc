@@ -1,19 +1,8 @@
-import type {
-  ChangeEventHandler,
-  ComponentClass,
-  ComponentType,
-  FC,
-  FunctionComponent,
-  HTMLProps,
-  KeyboardEventHandler,
-  PropsWithChildren
-} from 'react';
-
+import type { ChangeEventHandler, FC, HTMLProps, KeyboardEventHandler, PropsWithChildren } from 'react';
 import { Children, createElement, forwardRef, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { useValue } from './hooks';
-import Oops from './issues';
 
 type ChangeCallback = (v: any, e: any) => any;
 
@@ -26,39 +15,6 @@ type ControlledProps = {
   type?: string,
   onUpdate?: ChangeCallback | string | false,
   onReturn?: ChangeCallback | string
-}
-
-type HOCFactory = (control: Controller) => ComponentType
-
-export function createHocFactory(
-  Type: ComponentType): HOCFactory {
-
-  if(typeof Type !== "function")
-    throw Oops.BadHOCArgument();
-
-  const proto = Type.prototype;
-    
-  if(proto && proto.isReactComponent)
-    return (control) => 
-      class extends (Type as ComponentClass) {
-        constructor(props: any){
-          super(props, control)
-        }
-      }
-  else
-    return (control) =>
-      (props: any) =>
-        (Type as FunctionComponent)(props, control);
-}
-
-export function createProviderHOC(
-  Component: ComponentType,
-  control: Controller){
-
-  return (props: any) =>
-    createElement(control.Provider, {}, 
-      createElement(Component, props)
-    );
 }
 
 export function Noop({ children }: PropsWithChildren<{}>){

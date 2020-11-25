@@ -1,7 +1,7 @@
 import type { Controller, Model, State } from './controller';
 import type { ComponentType } from 'react';
 
-import { createHocFactory, createProviderHOC } from './components';
+import { createHocFactory, createProviderHOC } from './hoc';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty } from './util';
