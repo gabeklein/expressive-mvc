@@ -105,25 +105,25 @@ export function componentProperty
   const factory = createHocFactory(Type);
 
   function assignComponent(on: Observer, key: string){
-    const Component = factory(on.subject as Controller);
-    
-    defineProperty(on.subject, key, { value: Component });
+    defineLazy(on.subject, key, () => {
+      return factory(on.subject as Controller)
+    })
   }
     
   return new Placeholder(assignComponent) as any;
 }
 
-export function customProviderProperty
+export function parentComponentProperty
   (Type: ComponentType){
 
   const factory = createHocFactory(Type);
 
   function assignProvider(on: Observer, key: string){
-    const control = on.subject as Controller;
-    const Component = factory(control);
-    const Provider = createProviderHOC(Component, control)
-
-    defineProperty(on.subject, key, { value: Provider })
+    defineLazy(on.subject, key, () => {
+      const control = on.subject as Controller;
+      const Component = factory(control);
+      return createProviderHOC(Component, control)
+    })
   }
     
   return new Placeholder(assignProvider) as any;
