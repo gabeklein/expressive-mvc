@@ -12,9 +12,8 @@ export function createHocFactory(
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();
 
-  const proto = Type.prototype;
-    
-  if(proto && proto.isReactComponent)
+  if(Type.prototype 
+  && Type.prototype.isReactComponent)
     return (control) => 
       class extends (Type as ComponentClass) {
         constructor(props: any){
