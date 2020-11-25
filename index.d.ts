@@ -171,7 +171,7 @@ declare function get <T extends Class> (type: T): Instance<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
-declare function memo <T> (compute: () => T): T;
+declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): typeof component;
 
 type Provider<T = typeof Controller> = 

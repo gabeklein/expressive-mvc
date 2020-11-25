@@ -85,12 +85,15 @@ export function eventProperty
 }
 
 export function memoizedProperty
-  (factory: () => any){
+  (factory: () => any, defer?: boolean){
 
   function memoizeValue(on: Observer, key: string){
-    const value = factory.call(on.subject);
-    
-    defineProperty(on.subject, key, { value });
+    const get = () => factory.call(on.subject);
+
+    if(defer)
+      defineLazy(on.subject, key, get);
+    else
+      define(on.subject, key, get())
   }
     
   return new Placeholder(memoizeValue) as any;
