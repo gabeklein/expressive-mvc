@@ -94,14 +94,11 @@ export function attachFromContext(
 
 export function ControlProvider(this: Controller | Model){
   return ({ children }: PropsWithChildren<{}>) => {
+    const instance = typeof this == "function" ? this.create() : this;
     const parent = useContext(CONTEXT_CHAIN);
-    const provide = useMemo(() => parent.concat(
-      typeof this == "function" ? this.create() : this
-    ), []);
+    const provide = useMemo(() => parent.concat(instance), []);
 
-    return createElement(
-      CONTEXT_CHAIN.Provider, { value: provide }, children
-    );
+    return createElement(CONTEXT_CHAIN.Provider, { value: provide }, children);
   }
 }
 
