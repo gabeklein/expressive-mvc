@@ -49,7 +49,7 @@ interface Observable {
         select?: (keyof this)[] | Selector<this>
     ): Callback;
 
-    export(): { [P in keyof this]: this[P] };
+    export(): this;
     export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
 
     update(entries: Partial<this>): void;
@@ -107,11 +107,11 @@ interface WithReact {
 interface Controller extends Observable, WithLifecycle, WithReact {
     parent?: Controller;
 
-    tap(): Accessible<this>;
+    tap(): this;
     tap<K extends keyof this>(key?: K): this[K];
     tap(...keys: string[]): any;
 
-    sub(...args: any[]): Accessible<this>;
+    sub(...args: any[]): this;
 
     destroy(): void;
 }
