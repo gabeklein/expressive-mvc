@@ -38,94 +38,91 @@ function FooProvider({ children }: any){
 
 describe("Provider", () => {
   it("provides an existing instance of controller", () => {
-    const foo = jest.fn();
+    const log = jest.fn();
 
     create(
       <FooProvider>
-        <Consumer of={Foo} got={i => foo(i.foo)}/>
+        <Consumer of={Foo} got={i => log(i.foo)}/>
       </FooProvider>
     );
 
-    expect(foo).toBeCalledWith("foo");
+    expect(log).toBeCalledWith("foo");
   })
 
   it("creates an instance of parent controller", () => {
-    const foo = jest.fn();
+    const log = jest.fn();
 
     create(
       <Foo.Provider>
-        <Consumer of={Foo} got={i => foo(i.foo)}/>
+        <Consumer of={Foo} got={i => log(i.foo)}/>
       </Foo.Provider>
     );
 
-    expect(foo).toBeCalledWith("foo");
+    expect(log).toBeCalledWith("foo");
   })
 
   it("creates multiple instances via MultiProvider", () => {
-    const foo = jest.fn();
-    const bar = jest.fn();
+    const log = jest.fn();
     
     create(
       <Provider of={{ Foo, Bar }}>
-        <Consumer of={Foo} got={i => foo(i.foo)}/>
-        <Consumer of={Bar} got={i => bar(i.bar)}/>
+        <Consumer of={Foo} got={i => log(i.foo)}/>
+        <Consumer of={Bar} got={i => log(i.bar)}/>
       </Provider>
     )
 
-    expect(foo).toBeCalledWith("foo");
-    expect(bar).toBeCalledWith("bar");
+    expect(log).toBeCalledWith("foo");
+    expect(log).toBeCalledWith("bar");
   })
 })
 
 describe("Consumer", () => {
   it("can handle complex arrangement", () => {
-    const foo = jest.fn();
-    const bar = jest.fn();
-    const baz = jest.fn();
+    const log = jest.fn();
     
     create(
       <FooProvider>
         <Baz.Provider>
           <Provider of={{ Bar }}>
-            <Consumer of={Baz} got={i => baz(i.baz)}/>
-            <Consumer of={Foo} got={i => foo(i.foo)}/>
-            <Consumer of={Bar} got={i => bar(i.bar)}/>
+            <Consumer of={Foo} got={i => log(i.foo)}/>
+            <Consumer of={Bar} got={i => log(i.bar)}/>
+            <Consumer of={Baz} got={i => log(i.baz)}/>
           </Provider>
         </Baz.Provider>
       </FooProvider>
     )
 
-    expect(foo).toBeCalledWith("foo");
-    expect(bar).toBeCalledWith("bar");
-    expect(baz).toBeCalledWith("baz");
+    expect(log).toBeCalledWith("foo");
+    expect(log).toBeCalledWith("bar");
+    expect(log).toBeCalledWith("baz");
   })
 
   it("may select a super-instance instead", () => {
-    const bar = jest.fn();
+    const log = jest.fn();
     
     create(
       <Baz.Provider>
-        <Consumer of={Bar} got={i => bar(i.bar)}/>
+        <Consumer of={Bar} got={i => log(i.bar)}/>
       </Baz.Provider>
     )
 
-    expect(bar).toBeCalledWith("foobar");
+    expect(log).toBeCalledWith("foobar");
   })
 
   it("prefers closest over best match", () => {
-    const bar = jest.fn();
+    const log = jest.fn();
     
     create(
       <Bar.Provider>
         <Baz.Provider>
-          <Consumer of={Baz} got={i => bar(i.bar)}/>
-          <Consumer of={Bar} got={i => bar(i.bar)}/>
+          <Consumer of={Baz} got={i => log(i.bar)}/>
+          <Consumer of={Bar} got={i => log(i.bar)}/>
         </Baz.Provider>
       </Bar.Provider>
     )
 
-    expect(bar).toBeCalledTimes(2);
-    expect(bar).toBeCalledWith("foobar");
-    expect(bar).not.toBeCalledWith("bar");
+    expect(log).toBeCalledTimes(2);
+    expect(log).toBeCalledWith("foobar");
+    expect(log).not.toBeCalledWith("bar");
   })
 })
