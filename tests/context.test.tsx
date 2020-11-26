@@ -1,7 +1,22 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Consumer, Controller, Provider } from "./adapter";
+import { Controller, Provider } from "./adapter";
+
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+
+interface TestConsumerProps<T>{
+  of: T;
+  got: (instance: InstanceOf<T>) => void;
+}
+
+function Consumer<T>
+  ({ of: Subject, got }: TestConsumerProps<T>){
+
+  const instance = (Subject as any).get();
+  got(instance);
+  return null;
+}
 
 class Foo extends Controller {
   foo = "foo";
@@ -12,8 +27,8 @@ class Bar extends Controller {
 }
 
 class Baz extends Bar {
-  baz = "baz";
   bar = "foobar";
+  baz = "baz";
 }
 
 function FooProvider({ children }: any){
@@ -27,7 +42,7 @@ describe("Provider", () => {
 
     create(
       <FooProvider>
-        <Consumer of={Foo} get={{ foo }}/>
+        <Consumer of={Foo} got={i => foo(i.foo)}/>
       </FooProvider>
     );
 
@@ -39,7 +54,7 @@ describe("Provider", () => {
 
     create(
       <Foo.Provider>
-        <Consumer of={Foo} get={{ foo }}/>
+        <Consumer of={Foo} got={i => foo(i.foo)}/>
       </Foo.Provider>
     );
 
@@ -52,8 +67,8 @@ describe("Provider", () => {
     
     create(
       <Provider of={{ Foo, Bar }}>
-        <Consumer of={Foo} get={{ foo }}/>
-        <Consumer of={Bar} get={{ bar }}/>
+        <Consumer of={Foo} got={i => foo(i.foo)}/>
+        <Consumer of={Bar} got={i => bar(i.bar)}/>
       </Provider>
     )
 
@@ -72,9 +87,9 @@ describe("Consumer", () => {
       <FooProvider>
         <Baz.Provider>
           <Provider of={{ Bar }}>
-            <Consumer of={Baz} get={{ baz }}/>
-            <Consumer of={Foo} get={{ foo }}/>
-            <Consumer of={Bar} get={{ bar }}/>
+            <Consumer of={Baz} got={i => baz(i.baz)}/>
+            <Consumer of={Foo} got={i => foo(i.foo)}/>
+            <Consumer of={Bar} got={i => bar(i.bar)}/>
           </Provider>
         </Baz.Provider>
       </FooProvider>
@@ -90,7 +105,7 @@ describe("Consumer", () => {
     
     create(
       <Baz.Provider>
-        <Consumer of={Bar} get={{ bar }}/>
+        <Consumer of={Bar} got={i => bar(i.bar)}/>
       </Baz.Provider>
     )
 
@@ -103,8 +118,8 @@ describe("Consumer", () => {
     create(
       <Bar.Provider>
         <Baz.Provider>
-          <Consumer of={Baz} get={{ bar }}/>
-          <Consumer of={Bar} get={{ bar }}/>
+          <Consumer of={Baz} got={i => bar(i.bar)}/>
+          <Consumer of={Bar} got={i => bar(i.bar)}/>
         </Baz.Provider>
       </Bar.Provider>
     )

@@ -17,7 +17,6 @@ export const event = Source.event as typeof Public.event;
 
 export const test = trySubscribe;
 export default Controller;
-export { Consumer };
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Model = typeof Public.Controller;
@@ -31,30 +30,6 @@ interface RenderControllerResult<T>
   assertDidUpdate(): Promise<void>
   /** Assert a rerender was not requested. Will reject if one was. */
   assertDidNotUpdate(): Promise<void>
-}
-
-interface TestConsumerProps<T>{
-  of: T; 
-  get: { 
-    [P in keyof InstanceOf<T>]?: jest.Mock 
-  }
-}
-
-/**
- * Helper component will pull specified VC from context,
- * and pull values for analysis.
- */
-function Consumer<T extends Model>
-  ({ of: Subject, get }: TestConsumerProps<T>){
-
-  const instance: any = (Subject as any).get();
-
-  for(const key in get){
-    const callback = get[key]!;
-    callback(instance[key]);
-  }
-
-  return null;
 }
 
 const STACK_FRAME = / *at ([^\/].+?)?(?: \()?(\/[\/a-zA-Z-_.]+):(\d+):(\d+)/;
