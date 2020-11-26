@@ -26,8 +26,10 @@ type UpdateCallback<T extends object, P extends keyof T> =
  * Target receives properties which assist in destructuring.
  */
 type Accessible<T extends {}> = T & {
-    get: T;
+    get: T; 
     set: T;
+    tap(): T;
+    sub(): T;
 }
 
 /**
@@ -123,17 +125,12 @@ declare abstract class Controller {
     static get <T extends Class> (this: T): Accessible<Instance<T>>;
     static get <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
     
-    public tap (): Accessible<this>;
-    public tap <K extends keyof this> (key: K): this[K];
-
     static tap <T extends Class> (this: T): Accessible<Instance<T>>;
     static tap <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
-
     static tap (...keys: string[]): any;
 
     static has <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
-    public sub (...args: any[]): Accessible<this>;
     static sub <T extends Class> (this: T, ...args: any[]): Accessible<Instance<T>>;
 
     static meta <T extends Class>(this: T): Accessible<T & Observable>;
@@ -142,8 +139,6 @@ declare abstract class Controller {
     static find <T extends Class>(this: T): Instance<T>;
 
     static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceType<T>;
-
-    public destroy(): void;
 
     static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
 
