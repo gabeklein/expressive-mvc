@@ -13,6 +13,8 @@ export const get = Source.get as typeof Public.get;
 export const set = Source.set as typeof Public.set;
 export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;
+export const hoc = Source.hoc as typeof Public.hoc;
+export const wrap = Source.wrap as typeof Public.wrap;
 export const event = Source.event as typeof Public.event;
 
 export const test = trySubscribe;

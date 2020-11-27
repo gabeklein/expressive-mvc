@@ -136,6 +136,10 @@ declare abstract class Controller {
     static meta <T extends Class>(this: T): Accessible<T & Observable>;
     static meta (...keys: string[]): any;
 
+    static hoc<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): typeof component;
+
+    static wrap<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): typeof component;
+
     static find <T extends Class>(this: T): Instance<T>;
 
     static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceType<T>;
@@ -150,7 +154,7 @@ declare class Singleton extends Controller {
 }
 
 interface ControllableFC <T extends Controller, P> {
-    (props: P, context: T): JSX.Element | ReactElement | null
+    (props: P, context: T): JSX.Element | ReactElement | null;
 }
 
 interface ControllableCC <T extends Controller, P> {

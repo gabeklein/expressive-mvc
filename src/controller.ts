@@ -1,5 +1,7 @@
 import type { Controller as Public } from '../';
+import type { ComponentType } from 'react';
 
+import { derivedConsumer, derivedProvider } from './hoc';
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
 import { Observer } from './observer';
@@ -103,6 +105,14 @@ export class Controller {
 
   static meta(...path: maybeStrings): any {
     return useWatcher(this, ...path);
+  }
+
+  static hoc(Type: ComponentType){
+    return derivedConsumer(Type, this);
+  }
+
+  static wrap(Type: ComponentType){
+    return derivedProvider(Type, this);
   }
 
   static find(){

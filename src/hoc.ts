@@ -1,10 +1,46 @@
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
-import { createElement } from 'react';
+import { createElement, useMemo } from 'react';
 
 import { Controller } from './controller';
 import Oops from './issues';
 
 type HOCFactory = (control: Controller) => ComponentType;
+
+export function derivedConsumer(
+  Type: ComponentType, 
+  Control: typeof Controller){
+
+  const componentFor = createHocFactory(Type);
+
+  return (props: any) => {
+    const instance = Control.find();
+    const Component = useMemo(() => componentFor(instance), []);
+    
+    return createElement(Component, props);
+  }
+}
+
+export function derivedProvider(
+  Type: ComponentType, 
+  Control: typeof Controller){
+    
+  const componentFor = createHocFactory(Type);
+
+  function create(){
+    const instance = Control.create();
+    const HOC = componentFor(instance);
+
+    return [ instance.Provider, HOC ];
+  }
+
+  return (props: any) => {
+    const [ Provider, Component ] = useMemo(create, []);
+
+    return createElement(Provider, null,
+      createElement(Component, props) 
+    );
+  }
+}
 
 export function createHocFactory(
   Type: ComponentType): HOCFactory {
