@@ -18,7 +18,7 @@ const singleton = Parent.create();
 
 it('access subvalue directly with tap', async () => {
   const { state, assertDidUpdate } = 
-    test(() => {
+    test((): any => {
       return Parent.tap("value")
     })
 
