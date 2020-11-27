@@ -22,6 +22,19 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Model = typeof Public.Controller;
 type Instance = Public.Controller;
 
+interface TestConsumerProps<T>{
+  of: T;
+  got: (instance: InstanceOf<T>) => void;
+}
+
+export function Consumer<T>
+  ({ of: Subject, got }: TestConsumerProps<T>){
+
+  const instance = (Subject as any).get();
+  got(instance);
+  return null;
+}
+
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
   /** Reference to controller instance. */

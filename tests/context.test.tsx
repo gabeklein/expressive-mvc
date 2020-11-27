@@ -1,22 +1,7 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Controller, Provider } from "./adapter";
-
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
-
-interface TestConsumerProps<T>{
-  of: T;
-  got: (instance: InstanceOf<T>) => void;
-}
-
-function Consumer<T>
-  ({ of: Subject, got }: TestConsumerProps<T>){
-
-  const instance = (Subject as any).get();
-  got(instance);
-  return null;
-}
+import { Consumer, Controller, Provider } from "./adapter";
 
 class Foo extends Controller {
   foo = "foo";
@@ -33,7 +18,9 @@ class Baz extends Bar {
 
 function FooProvider({ children }: any){
   const { Provider } = Foo.use();
-  return <Provider>{children}</Provider>;
+  return (
+    <Provider>{children}</Provider>
+  );
 }
 
 describe("Provider", () => {
@@ -109,7 +96,7 @@ describe("Consumer", () => {
     expect(log).toBeCalledWith("foobar");
   })
 
-  it("prefers closest over best match", () => {
+  it("prefers closest match over best match", () => {
     const log = jest.fn();
     
     create(
