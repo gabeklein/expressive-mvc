@@ -136,9 +136,8 @@ declare abstract class Controller {
     static meta <T extends Class>(this: T): Accessible<T & Observable>;
     static meta (...keys: string[]): any;
 
-    static hoc<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): typeof component;
-
-    static wrap<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): typeof component;
+    static hoc<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): ComponentType<P>;
+    static wrap<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): ComponentType<P>;
 
     static find <T extends Class>(this: T): Instance<T>;
 
@@ -154,7 +153,7 @@ declare class Singleton extends Controller {
 }
 
 interface ControllableFC <T extends Controller, P> {
-    (props: P, context: T): JSX.Element | ReactElement | null;
+    (props: P, context: T): JSX.Element | ReactElement | ReactNode | null;
 }
 
 interface ControllableCC <T extends Controller, P> {
@@ -171,7 +170,7 @@ declare function set <T = any> (onValue: (current: T) => Callback | void): T | u
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): RefObject<T>;
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
-declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): typeof component;
+declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
