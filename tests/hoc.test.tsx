@@ -57,7 +57,7 @@ describe("Instance HOCs", () => {
       </instance.Provider>
     )
 
-    // expect(injected).toBeCalledWith(instance);
+    expect(injected).toBeCalledWith(instance);
     expect(consumed).toBeCalledWith(instance);
   });
 })
