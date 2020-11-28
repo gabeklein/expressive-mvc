@@ -30,16 +30,7 @@ export function useValue(
 export function usePassive(
   target: Controller, key?: string){
 
-  return useMemo(() => {
-    if(key)
-      return within(target, key);
-    else
-      return define(
-        create(target), {
-        get: target,
-        set: target
-      })
-  }, [])
+  return useMemo(() => within(target, key), []);
 }
 
 export function useWatcher(

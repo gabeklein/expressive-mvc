@@ -68,8 +68,7 @@ describe("Instance HOCs", () => {
     create(
       <instance.CustomProvider>
         <Consumer of={Test} got={
-          //TODO: this should not need to be unwrapped.
-          i => expect(Object.getPrototypeOf(i)).toStrictEqual(instance)
+          i => expect(i).toStrictEqual(instance)
         }/>
       </instance.CustomProvider>
     )

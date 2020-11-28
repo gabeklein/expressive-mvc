@@ -22,17 +22,6 @@ type Instance<T> = T extends { prototype: infer U } ? U : never
 type UpdateCallback<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void;
 
-/**
- * Subscribed Controller
- * 
- * Target receives properties which assist in destructuring.
- */
-type Accessible<T extends {}> = T & {
-    get: T; 
-    set: T;
-    tap(): T;
-    sub(): T;
-}
 
 /**
  * Observable Instance
@@ -107,6 +96,9 @@ interface WithReact {
 }
 
 interface Controller extends Observable, WithLifecycle, WithReact {
+    get: this;
+    set: this;
+    
     parent?: Controller;
 
     tap(): this;
@@ -119,23 +111,23 @@ interface Controller extends Observable, WithLifecycle, WithReact {
 }
 
 declare abstract class Controller {
-    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): Accessible<InstanceType<T>>;
+    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
 
-    static uses <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
-    static using <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): Accessible<I>;
+    static uses <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): I;
+    static using <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): I;
 
-    static get <T extends Class> (this: T): Accessible<Instance<T>>;
+    static get <T extends Class> (this: T): Instance<T>;
     static get <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
     
-    static tap <T extends Class> (this: T): Accessible<Instance<T>>;
+    static tap <T extends Class> (this: T): Instance<T>;
     static tap <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): I[K];
     static tap (...keys: string[]): any;
 
     static has <T extends Class, I extends Instance<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
 
-    static sub <T extends Class> (this: T, ...args: any[]): Accessible<Instance<T>>;
+    static sub <T extends Class> (this: T, ...args: any[]): Instance<T>;
 
-    static meta <T extends Class>(this: T): Accessible<T & Observable>;
+    static meta <T extends Class>(this: T): T & Observable;
     static meta (...keys: string[]): any;
 
     static hoc<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): ComponentType<P>;

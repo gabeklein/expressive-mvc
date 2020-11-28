@@ -17,6 +17,8 @@ export interface Controller extends Public {}
 
 export class Controller {
   constructor(){
+    this.get = this;
+    this.set = this;
     Observer.apply(this);
   }
 
