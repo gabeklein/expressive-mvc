@@ -102,7 +102,7 @@ function mockPropertyAccess(
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
  */
-function trySubscribe<T extends Instance>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
+function trySubscribe<T extends Public.Observable>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
 function trySubscribe<T extends Model>(type: T, watchProperties?: string[]): RenderControllerResult<InstanceOf<T>>
 function trySubscribe(init: Model | (() => Instance), watch?: string[]){
   if("prototype" in init){
