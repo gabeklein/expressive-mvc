@@ -5,7 +5,7 @@ import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Observed } from './observer';
 import { Subscriber } from './subscriber';
-import { create, define, entriesIn, isFn, within } from './util';
+import { entriesIn, isFn, within } from './util';
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -17,18 +17,18 @@ function useActiveMemo<T>(
   return state[0] as T;
 }
 
-export function useValue(
-  from: Controller, key: string){
+export function useValue<T extends Controller>(
+  from: T, key: keyof T){
 
-  const [ value, update ] = useState(() => (<Any>from)[key]);
+  const [ value, update ] = useState(() => from[key]);
 
-  useEffect(() => from.on(key as any, update), []);
+  useEffect(() => from.on(key, update), []);
 
   return value;
 }
 
-export function usePassive(
-  target: Controller, key?: string){
+export function usePassive<T extends Controller>(
+  target: T, key?: string){
 
   return useMemo(() => within(target, key), []);
 }
