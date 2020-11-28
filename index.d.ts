@@ -22,7 +22,6 @@ type Instance<T> = T extends { prototype: infer U } ? U : never
 type UpdateCallback<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void;
 
-
 /**
  * Observable Instance
  * 
@@ -130,8 +129,8 @@ declare abstract class Controller {
     static meta <T extends Class>(this: T): T & Observable;
     static meta (...keys: string[]): any;
 
-    static hoc<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): ComponentType<P>;
-    static wrap<T extends Controller, P extends PropsWithChildren<{}>> (component: ControllableComponent<T, P>): ComponentType<P>;
+    static hoc<T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
+    static wrap<T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
 
     static find <T extends Class>(this: T): Instance<T>;
 

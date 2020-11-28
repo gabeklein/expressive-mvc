@@ -20,7 +20,9 @@ export const event = Source.event as typeof Public.event;
 export const test = trySubscribe;
 export default Controller;
 
+type Class = new (...args: any[]) => void;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+
 type Model = typeof Public.Controller;
 type Instance = Public.Controller;
 
@@ -61,28 +63,19 @@ class TraceableError extends Error {
 
     let [ error, ...stack ] = this.stack!.split(/\n/);
 
-    let trace = stack.map(line => {
-      const match = STACK_FRAME.exec(line);
+    let trace = stack.map(match => {
+      const [ frame, callee, file, line, column ] = 
+        STACK_FRAME.exec(match) || [];
 
-      if(!match)
-        return {};
-      else
-        return {
-          frame: match[0],
-          callee: match[1],
-          file: match[2],
-          line: match[3],
-          column: match[4]
-        }
+      return { frame, callee, file, line, column }
     })
 
     trace = trace.filter(x => x.file);
     
     const adaptor = trace[0].file;
-
-    trace = trace.filter(x => x.file !== adaptor);
-
-    const frames = trace.map(l => l.frame);
+    const frames = trace
+      .filter(x => x.file !== adaptor)
+      .map(l => l.frame);
 
     this.stack = [ error ].concat(frames).join("\n");
   }
@@ -102,8 +95,8 @@ function mockPropertyAccess(
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
  */
-function trySubscribe<T extends Public.Observable>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
-function trySubscribe<T extends Model>(type: T, watchProperties?: string[]): RenderControllerResult<InstanceOf<T>>
+function trySubscribe<T>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
+function trySubscribe<T extends Class>(type: T, watchProperties?: string[]): RenderControllerResult<InstanceOf<T>>
 function trySubscribe(init: Model | (() => Instance), watch?: string[]){
   if("prototype" in init){
     const Model = init as any;
