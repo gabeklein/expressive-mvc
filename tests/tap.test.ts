@@ -18,9 +18,7 @@ const singleton = Parent.create();
 
 it('access subvalue directly with tap', async () => {
   const { state, assertDidUpdate } = 
-    test((): any => {
-      return Parent.tap("value")
-    })
+    test(() => Parent.tap("value") as any)
 
   expect(state).toBe("foo");
 
@@ -31,9 +29,7 @@ it('access subvalue directly with tap', async () => {
 
 it('access child controller with tap', async () => {
   const { state, assertDidUpdate } = 
-    test(() => {
-      return Parent.tap("child")
-    })
+    test(() => Parent.tap("child"))
 
   expect(state.value).toBe("foo");
 
@@ -50,9 +46,7 @@ it('access child controller with tap', async () => {
 
 it('access nested controllers with tap', async () => {
   const { state } = 
-    test(() => {
-      return Parent.tap("child", "grandchild")
-    })
+    test(() => Parent.tap("child", "grandchild"))
 
   expect(state.value).toBe("bar");
 })
