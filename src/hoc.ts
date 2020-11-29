@@ -7,8 +7,8 @@ import Oops from './issues';
 type HOCFactory = (control: Controller) => ComponentType;
 
 export function derivedConsumer(
-  Type: ComponentType, 
-  Control: typeof Controller){
+  Control: typeof Controller,
+  Type: ComponentType) {
 
   const componentFor = createHocFactory(Type);
 
@@ -21,8 +21,8 @@ export function derivedConsumer(
 }
 
 export function derivedProvider(
-  Type: ComponentType, 
-  Control: typeof Controller){
+  Control: typeof Controller,
+  Type: ComponentType){
     
   const componentFor = createHocFactory(Type);
 

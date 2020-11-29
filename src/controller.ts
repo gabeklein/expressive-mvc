@@ -109,11 +109,11 @@ export class Controller {
   }
 
   static hoc(Type: ComponentType){
-    return memoize(derivedConsumer, Type, this);
+    return memoize(derivedConsumer, this, Type);
   }
 
   static wrap(Type: ComponentType){
-    return memoize(derivedProvider, Type, this);
+    return memoize(derivedProvider, this, Type);
   }
 
   static find(){
