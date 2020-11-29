@@ -6,7 +6,7 @@ import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy, getPrototypeOf } from './util';
+import { assignSpecific, defineLazy, getPrototypeOf, define, memoize } from './util';
 
 import Oops from './issues';
 
@@ -17,8 +17,7 @@ export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
-    this.get = this;
-    this.set = this;
+    define(this, { get: this, set: this });
     Observer.apply(this);
   }
 
