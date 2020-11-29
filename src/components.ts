@@ -6,12 +6,12 @@ import { useValue } from './hooks';
 
 type ChangeCallback = (v: any, e: any) => any;
 
-type ControlledInputProps = 
+type ControlledInputProps<T> = 
   & HTMLProps<HTMLInputElement>
-  & ControlledProps;
+  & ControlledProps<T>;
   
-type ControlledProps = {
-  to: string, 
+type ControlledProps<T extends {}> = {
+  to: keyof T, 
   type?: string,
   onUpdate?: ChangeCallback | string | false,
   onReturn?: ChangeCallback | string
@@ -21,19 +21,19 @@ export function Noop({ children }: PropsWithChildren<{}>){
   return Children.only(children);
 }
 
-export function ControlledValue(
-  this: Controller): FC<{ of: string }> {
+export function ControlledValue<T extends Controller>(
+  this: T): FC<{ of: keyof T }> {
 
   return ({ of: key, ...props }) =>
     createElement("span", props, useValue(this, key));
 }
 
-export function ControlledInput(this: Controller){
-  return forwardRef((props: ControlledInputProps, ref) => {
+export function ControlledInput<T extends Controller>(this: T){
+  return forwardRef((props: ControlledInputProps<T>, ref) => {
     const { to, onUpdate, onReturn, ...passProps } = props;
 
     const value = useValue(this, to);
-    const events = useMemo(() => controlledEventProps(this, props), []);
+    const events = useMemo(() => controlledEventProps(this, props as any), []);
     
     return createElement("input", { ...passProps, ...events, ref, value });
   })
@@ -41,7 +41,7 @@ export function ControlledInput(this: Controller){
 
 function controlledEventProps(
   control: Controller & Any,
-  inputProps: ControlledInputProps){
+  inputProps: ControlledInputProps<{}>){
 
   let { to, type, onUpdate, onReturn } = inputProps;
 
