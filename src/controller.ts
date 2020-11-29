@@ -41,7 +41,7 @@ export class Controller {
 
   /** When Observer attaches to instance */
   public applyDispatch(observer: Observer){
-    observer.monitorValues({ get: 0, set: 0, Provider: 0 });
+    observer.monitorValues();
     observer.monitorComputed(Controller);
   
     if(this.didCreate)
@@ -50,7 +50,7 @@ export class Controller {
 
   /** When Observer attaches to the meta */
   static applyDispatch(observer: Observer){
-    observer.monitorValues(Function);
+    observer.monitorValues();
     observer.monitorComputed(Controller);
   }
 

@@ -292,15 +292,13 @@ export class Observer {
     }
   }
 
-  public monitorValues(ignore: any = {}){
+  public monitorValues(){
     const entries = entriesIn(this.subject);
 
     for(const [key, desc] of entries){
       const { value } = desc;
 
-      if(key in ignore
-      || "value" in desc == false
-      || isFn(value) && !/^[A-Z]/.test(key))
+      if(!desc.enumerable || isFn(value) && !/^[A-Z]/.test(key))
         continue;
 
       if(value instanceof Placeholder)
