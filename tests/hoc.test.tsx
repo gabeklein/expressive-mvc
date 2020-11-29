@@ -38,8 +38,8 @@ describe("Instance HOCs", () => {
     const instance = Test.create();
 
     create(
-      <instance.Component got={
-        i => expect(i).toStrictEqual(instance)
+      <instance.Component got={i => 
+        expect(i).toStrictEqual(instance)
       }/>
     );
   });
@@ -52,8 +52,8 @@ describe("Instance HOCs", () => {
     const instance = Test.create();
 
     create(
-      <instance.Component got={
-        i => expect(i).toStrictEqual(instance)
+      <instance.Component got={i => 
+        expect(i).toStrictEqual(instance)
       }/>
     );
   });
@@ -67,8 +67,8 @@ describe("Instance HOCs", () => {
 
     create(
       <instance.CustomProvider>
-        <Consumer of={Test} got={
-          i => expect(i).toStrictEqual(instance)
+        <Consumer of={Test} got={i => 
+          expect(i).toStrictEqual(instance)
         }/>
       </instance.CustomProvider>
     )
@@ -80,31 +80,31 @@ describe("Static HOCs", () => {
   const TestProvider = Test.wrap(TestComponent);
   const TestConsumer = Test.hoc(TestComponent);
 
-  it("creates instance and provides to children", () => {
+  it("provides new instance to children", () => {
     create(
       <TestProvider>
-        <Consumer of={Test} got={
-          i => expect(i).toBeInstanceOf(Test)
+        <Consumer of={Test} got={i => 
+          expect(i).toBeInstanceOf(Test)
         }/>
       </TestProvider>
     )
   });
 
-  it("applies parent to component from context", () => {
+  it("custom provider receives own instance", () => {
     create(
-      <Test.Provider>
-        <TestConsumer got={
-          i => expect(i).toBeInstanceOf(Test)
-        }/>
-      </Test.Provider>
+      <TestProvider got={i => 
+        expect(i).toBeInstanceOf(Test)
+      }/>
     )
   });
 
-  it("custom provider also receives instance", () => {
+  it("custom consumer applies instance to component", () => {
     create(
-      <TestProvider got={
-        i => expect(i).toBeInstanceOf(Test)
-      }/>
+      <Test.Provider>
+        <TestConsumer got={i => 
+          expect(i).toBeInstanceOf(Test)
+        }/>
+      </Test.Provider>
     )
   });
 
@@ -113,10 +113,50 @@ describe("Static HOCs", () => {
 
     create(
       <TestProvider got={i => instance = i}>
-        <TestConsumer got={
-          i => expect(i).toStrictEqual(instance)
+        <TestConsumer got={i => 
+          expect(i).toStrictEqual(instance)
         }/>
       </TestProvider>
     )
   });
+});
+
+describe("Inheritable HOCs", () => {
+  class Parent extends VC {
+    static Direct = Parent.wrap(TestComponent);
+    static get Indirect(){
+      return this.wrap(TestComponent);
+    }
+  }
+
+  class Child extends Parent {};
+
+  it("creates A from A.hoc always", () => {
+    create(
+      <Parent.Direct got={i => {
+        expect(i).toBeInstanceOf(Parent);
+      }}/>
+    )
+    create(
+      <Child.Direct got={i => {
+        expect(i).toBeInstanceOf(Parent);
+        expect(i).not.toBeInstanceOf(Child);
+      }}/>
+    )
+  });
+
+  it("creates B from A.hoc if A used getter", () => {
+    create(
+      <Child.Indirect got={i => {
+        expect(i).toBeInstanceOf(Child);
+      }}/>
+    )
+  });
+
+  it("caches B.hoc component between uses", () => {
+    const A = Child.Indirect;
+    const B = Child.Indirect;
+
+    expect(A).toStrictEqual(B);
+  })
 })

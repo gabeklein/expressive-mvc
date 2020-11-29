@@ -151,3 +151,23 @@ export function within(
   else
     return source;
 }
+
+const CACHE = new Map<any, any>();
+
+export function memoize<T, A extends any[]>(
+  compute: (...args: A) => T, ...args: A): T {
+
+  let cache: any = CACHE;
+  const last = args[args.length - 1];
+
+  for(const k of args)
+    if(cache.has(k))
+      cache = cache.get(k);
+    else 
+      cache.set(k, 
+        cache = k === last
+          ? compute(...args) : new Map()
+      );
+
+  return cache;
+}

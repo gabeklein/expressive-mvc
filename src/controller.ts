@@ -13,7 +13,7 @@ import Oops from './issues';
 export type Model = typeof Controller;
 export type State<T extends Model> = InstanceOf<T>;
 
-export interface Controller extends Public {}
+export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
@@ -110,11 +110,11 @@ export class Controller {
   }
 
   static hoc(Type: ComponentType){
-    return derivedConsumer(Type, this);
+    return memoize(derivedConsumer, Type, this);
   }
 
   static wrap(Type: ComponentType){
-    return derivedProvider(Type, this);
+    return memoize(derivedProvider, Type, this);
   }
 
   static find(){
