@@ -30,7 +30,7 @@ export class Controller {
     return useSubscriber(this, args);
   }
 
-  public bind(key: string){
+  public bind = (key: string) => {
     return useBindRef(this, key);
   }
 
