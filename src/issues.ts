@@ -63,5 +63,8 @@ export default Issues({
     `Can't do that boss`,
 
   BadHOCArgument: () =>
-    `Argument for hoc() is not a component.`
+    `Argument for hoc() is not a component.`,
+
+  BindRefNotFound: (parent, property) =>
+    `Ref not found, trying to bind ${parent}.${property} to custom HOC.`
 });

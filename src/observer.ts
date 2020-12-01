@@ -69,9 +69,10 @@ export class Observer {
 
   public on = (
     key: string | Selector,
-    listener: HandleUpdatedValue) => {
+    listener: HandleUpdatedValue,
+    initial?: boolean) => {
 
-    return this.watch(key, listener, false);
+    return this.watch(key, listener, false, initial);
   }
 
   public once = (
@@ -252,7 +253,8 @@ export class Observer {
   public watch(
     key: string | Selector,
     handler: (value: any, key: string) => void,
-    once?: boolean){
+    once?: boolean,
+    initial?: boolean){
 
     if(isFn(key))
       key = listAccess(this.watched, key)[0];
@@ -263,6 +265,9 @@ export class Observer {
         this.state[key as string],
         key as string
       );
+
+    if(initial)
+      callback();
 
     return this.addListener(key, callback, once);
   }

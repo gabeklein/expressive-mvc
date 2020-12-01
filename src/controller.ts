@@ -1,6 +1,7 @@
 import type { Controller as Public } from '../';
 import type { ComponentType } from 'react';
 
+import { useBindRef } from './binding';
 import { derivedConsumer, derivedProvider } from './hoc';
 import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
@@ -27,6 +28,10 @@ export class Controller {
 
   public sub(...args: any[]){
     return useSubscriber(this, args);
+  }
+
+  public bind(key: string){
+    return useBindRef(this, key);
   }
 
   public destroy(){

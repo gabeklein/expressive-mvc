@@ -29,7 +29,7 @@ type UpdateCallback<T extends object, P extends keyof T> =
  * Able to be subscribed to, per-value to know when updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): Callback;
+    on<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>, initial?: boolean): Callback;
   
     once<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): void;
     once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
@@ -105,6 +105,8 @@ interface Controller extends Observable, WithLifecycle, WithReact {
     tap(...keys: string[]): any;
 
     sub(...args: any[]): this;
+
+    bind(key: string): (e: HTMLElement | null) => void;
 
     destroy(): void;
 }
