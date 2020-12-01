@@ -4,7 +4,7 @@ import { createElement, useMemo } from 'react';
 import { Controller } from './controller';
 import Oops from './issues';
 
-type HOCFactory = (control: Controller) => ComponentType;
+type HOCFactory<T> = (control: T) => ComponentType;
 
 export function derivedConsumer(
   Control: typeof Controller,
@@ -42,8 +42,8 @@ export function derivedProvider(
   }
 }
 
-export function createHocFactory(
-  Type: ComponentType): HOCFactory {
+export function createHocFactory<T = any>(
+  Type: ComponentType): HOCFactory<T> {
 
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();
