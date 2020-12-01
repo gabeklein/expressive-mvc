@@ -18,7 +18,7 @@ import {
 import Oops from './issues';
 
 const COMPUTED = Symbol("is_computed");
-const DISPATCH = new WeakMap<Observed, Observer>();
+const ASSIGNED = new WeakMap<Observed, Observer>();
 
 export type Observed = {
   applyDispatch(observer: Observer): void
@@ -34,12 +34,12 @@ export class Observer {
       if(typeof value == "function")
         define(to, key, value);
     
-    DISPATCH.set(to, observe);
+    ASSIGNED.set(to, observe);
     return observe;
   }
 
   static get(from: Observed){
-    let dispatch = DISPATCH.get(from);
+    let dispatch = ASSIGNED.get(from);
 
     if(!dispatch)
       dispatch = Observer.apply(from);

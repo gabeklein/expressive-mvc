@@ -50,16 +50,16 @@ export function createHocFactory(
 
   if(Type.prototype 
   && Type.prototype.isReactComponent)
-    return (control) => 
+    return (inject) => 
       class extends (Type as ComponentClass) {
         constructor(props: any){
-          super(props, control)
+          super(props, inject)
         }
       }
   else
-    return (control) =>
+    return (inject) =>
       (props: any) =>
-        (Type as FunctionComponent)(props, control);
+        (Type as FunctionComponent)(props, inject);
 }
 
 export function withProvider(

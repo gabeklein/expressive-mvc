@@ -5,7 +5,7 @@ import { create, define, defineProperty, within } from './util';
 import Oops from './issues';
 
 export class Subscriber {
-  private onRelease = [] as Callback[];
+  public cleanup = [] as Callback[];
   public parent: Observer;
   
   constructor(
@@ -55,7 +55,7 @@ export class Subscriber {
   }
 
   public release(){
-    for(const callback of this.onRelease)
+    for(const callback of this.cleanup)
       callback()
   }
 
@@ -102,7 +102,7 @@ export class Subscriber {
   }
 
   protected follow(key: string, cb?: Callback){
-    this.onRelease.push(
+    this.cleanup.push(
       this.parent.addListener(key, cb || this.refresh)
     )
   }
@@ -143,7 +143,7 @@ export class Subscriber {
     }
 
     this.follow(key, onUpdate);
-    this.onRelease.push(reset);
+    this.cleanup.push(reset);
 
     return applyChild();
   }
