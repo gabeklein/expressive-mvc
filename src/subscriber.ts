@@ -19,11 +19,6 @@ export class Subscriber {
     const master = within(this.subject);
     const proxy = create(master);
 
-    define(proxy, {
-      get: master,
-      set: master
-    });
-
     for(const key of this.parent.watched)
       defineProperty(proxy, key, {
         configurable: true,
@@ -51,7 +46,7 @@ export class Subscriber {
       keys.push(...this.parent.watched)
 
     for(const key of keys)
-      delete (this.proxy as any)[key!];
+      delete this.proxy[key!];
   }
 
   public release(){
@@ -70,7 +65,7 @@ export class Subscriber {
     const reset = () => sub && sub.release();
 
     const monitorChild = () => {
-      let value = (this.parent.subject as any)[key];
+      let value = within(this.parent.subject, key);
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -94,7 +89,7 @@ export class Subscriber {
     }
 
     this.follow(key, onUpdate);
-    this.onRelease.push(reset);
+    this.cleanup.push(reset);
 
     monitorChild();
 
@@ -114,7 +109,7 @@ export class Subscriber {
     const reset = () => sub && sub.release();
 
     const applyChild = () => {
-      let value = (subject as any)[key];
+      let value = within(subject, key);
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -128,7 +123,7 @@ export class Subscriber {
 
       defineProperty(this.proxy, key, {
         get: () => value,
-        set: val => (subject as any)[key] = val,
+        set: val => within(subject, key, val),
         configurable: true,
         enumerable: true
       })
