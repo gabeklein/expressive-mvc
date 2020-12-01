@@ -1,5 +1,7 @@
 import type { ChangeEventHandler, FC, HTMLProps, KeyboardEventHandler, PropsWithChildren } from 'react';
-import { Children, createElement, forwardRef, useMemo } from 'react';
+import type { ControllableRefFunction } from '..';
+
+import { Children, createElement, forwardRef, useMemo, memo } from 'react';
 
 import { Controller } from './controller';
 import { useValue } from './hooks';
@@ -19,6 +21,16 @@ type ControlledProps<T extends {}> = {
 
 export function Noop({ children }: PropsWithChildren<{}>){
   return Children.only(children);
+}
+
+export function boundRefComponent(
+  control: Controller,
+  property: string,
+  Inner: ControllableRefFunction<HTMLElement>){
+
+  return memo((props: {}) => {
+    return Inner(props, control.bind(property))
+  })
 }
 
 export function ControlledValue<T extends Controller>(

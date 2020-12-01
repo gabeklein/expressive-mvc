@@ -1,6 +1,8 @@
-import type { Controller, Model, State } from './controller';
 import type { ComponentType } from 'react';
+import type { ControllableRefFunction } from '..';
+import type { Controller, Model, State } from './controller';
 
+import { boundRefComponent } from './components';
 import { createHocFactory, withProvider } from './hoc';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
@@ -127,4 +129,16 @@ export function parentComponentProperty
   }
     
   return new Placeholder(assignProvider) as any;
+}
+
+export function boundComponentProperty
+  (Type: ControllableRefFunction<HTMLElement>, to: string){
+
+  function createBinding(on: Observer, key: string){
+    const control = on.subject as Controller;
+    const Component = boundRefComponent(control, to, Type);
+    define(control, key, Component);
+  }
+    
+  return new Placeholder(createBinding) as any;
 }

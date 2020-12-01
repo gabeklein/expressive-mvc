@@ -159,6 +159,10 @@ type ControllableComponent<T extends Controller, P> =
     | ControllableFC<T, P>
     | ControllableCC<T, P>
 
+interface ControllableRefFunction<T, P = {}> {
+    (props: PropsWithChildren<P>, ref: (instance: T | null) => void): ReactElement | null;
+}
+      
 declare function use <T extends Class> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
 declare function get <T extends Class> (type: T): Instance<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
@@ -166,6 +170,7 @@ declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | voi
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
+declare function bind<P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
@@ -177,7 +182,8 @@ export {
     Observable,
     Instance,
     Selector,
-    UpdateCallback
+    UpdateCallback,
+    ControllableRefFunction
 }
 
 export {
@@ -198,4 +204,5 @@ export {
     memo,
     hoc,
     hoc as wrap,
+    bind
 }

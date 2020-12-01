@@ -6,7 +6,8 @@ export {
   eventProperty as event,
   componentProperty as hoc,
   parentComponentProperty as wrap,
-  memoizedProperty as memo
+  memoizedProperty as memo,
+  boundComponentProperty as bind
 } from './directives';
 
 export {
