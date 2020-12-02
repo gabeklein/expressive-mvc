@@ -36,12 +36,13 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
+    let injected: Controller;
 
     create(
-      <instance.Component got={i => 
-        expect(i).toStrictEqual(instance)
-      }/>
+      <instance.Component got={i => injected = i}/>
     );
+    
+    expect(injected).toStrictEqual(instance);
   });
 
   it("applies instance to class component", () => {
@@ -50,12 +51,13 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
+    let injected: Controller;
 
     create(
-      <instance.Component got={i => 
-        expect(i).toStrictEqual(instance)
-      }/>
-    );
+      <instance.Component got={i => injected = i}/>
+    )
+
+    expect(injected).toStrictEqual(instance);
   });
 
   it("provides instance to children of component", () => {
@@ -64,60 +66,73 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
+    let injected: Controller;
 
     create(
       <instance.CustomProvider>
-        <Consumer of={Test} got={i => 
-          expect(i).toStrictEqual(instance)
-        }/>
+        <Consumer of={Test} got={i => injected = i}/>
       </instance.CustomProvider>
     )
+
+    expect(injected).toStrictEqual(instance);
   });
 })
 
 describe("Static HOCs", () => {
-  class Test extends VC {};
+  class Test extends VC {
+    constructor(){
+      super();
+    }
+  };
+
   const TestProvider = Test.wrap(TestComponent);
   const TestConsumer = Test.hoc(TestComponent);
 
-  it("provides new instance to children", () => {
+  it("creates new instance to provide children", () => {
+    let consumed: Controller;
+
     create(
       <TestProvider>
-        <Consumer of={Test} got={i => 
-          expect(i).toBeInstanceOf(Test)
-        }/>
+        <Consumer of={Test} got={i => consumed = i}/>
       </TestProvider>
     )
+
+    expect(consumed).toBeInstanceOf(Test);
   });
 
   it("custom provider receives own instance", () => {
+    let provided: Controller;
+
     create(
-      <TestProvider got={i => 
-        expect(i).toBeInstanceOf(Test)
-      }/>
+      <TestProvider got={i => provided = i}/>
     )
+
+    expect(provided).toBeInstanceOf(Test);
   });
 
   it("custom consumer applies instance to component", () => {
+    let consumed: Controller;
+    
     create(
       <Test.Provider>
-        <TestConsumer got={i => 
-          expect(i).toBeInstanceOf(Test)
-        }/>
+        <TestConsumer got={i => consumed = i}/>
       </Test.Provider>
     )
+
+    expect(consumed).toBeInstanceOf(Test);
   });
 
   it("provided and consumed instance is the same", () => {
-    let instance: Test;
+    let produced: Controller;
+    let consumed: Controller;
 
     create(
-      <TestProvider got={i => instance = i}>
-        <TestConsumer got={i => 
-          expect(i).toStrictEqual(instance)
-        }/>
+      <TestProvider got={i => produced = i}>
+        <TestConsumer got={i => consumed = i}/>
       </TestProvider>
     )
+
+    expect(produced).toStrictEqual(consumed);
   });
 });
 
@@ -132,25 +147,29 @@ describe("Inheritable HOCs", () => {
   class Child extends Parent {};
 
   it("creates A from A.hoc always", () => {
+    let child: Controller;
+    let parent: Controller;
+
     create(
-      <Parent.Direct got={i => {
-        expect(i).toBeInstanceOf(Parent);
-      }}/>
+      <>
+        <Parent.Direct got={i => parent = i}/>
+        <Child.Direct got={i => child = i}/>
+      </>
     )
-    create(
-      <Child.Direct got={i => {
-        expect(i).toBeInstanceOf(Parent);
-        expect(i).not.toBeInstanceOf(Child);
-      }}/>
-    )
+
+    expect(parent).toBeInstanceOf(Parent);
+    expect(child).toBeInstanceOf(Parent);
+    expect(child).not.toBeInstanceOf(Child);
   });
 
   it("creates B from A.hoc if A used getter", () => {
+    let created: Controller;
+
     create(
-      <Child.Indirect got={i => {
-        expect(i).toBeInstanceOf(Child);
-      }}/>
+      <Child.Indirect got={i => created = i}/>
     )
+
+    expect(created).toBeInstanceOf(Child);
   });
 
   it("caches B.hoc component between uses", () => {
