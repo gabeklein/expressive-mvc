@@ -36,34 +36,33 @@ describe("requestUpdate method", () => {
 
     control.foo = 2;
 
-    const updated = await control.requestUpdate();
-    expect(updated).toMatchObject(["foo"]);
+    const updated = control.requestUpdate();
+
+    await expect(updated).resolves.toMatchObject(["foo"]);
   })
 
   it('resolves immediately when no updates pending', async () => {
     const control = Control.create();
-    const update = await control.requestUpdate();
+    const update = control.requestUpdate();
 
-    expect(update).toBe(false);
+    await expect(update).resolves.toBe(false);
   })
 
   it('rejects if no update pending in strict mode', async () => {
     const control = Control.create();
     const update = control.requestUpdate(true);
     
-    const result = await update.catch((e) => e);
-    expect(result).toBeInstanceOf(Error);
+    await expect(update).rejects.toBeInstanceOf(Error);
   })
 
   it('rejects if update not expected in strict mode', async () => {
     const control = Control.create();
-    
+
     control.foo = 2;
 
     const update = control.requestUpdate(false);
     
-    const result = await update.catch((e) => e);
-    expect(result).toBeInstanceOf(Error);
+    await expect(update).rejects.toBeInstanceOf(Error);
   })
 
   it("includes getters in batch which trigger them", async () => {
@@ -75,7 +74,8 @@ describe("requestUpdate method", () => {
 
     control.bar = 3;
 
-    const updated = await control.requestUpdate();
-    expect(updated).toMatchObject(["bar", "baz"]);
+    const update = control.requestUpdate();
+
+    await expect(update).resolves.toMatchObject(["bar", "baz"]);
   })
 })
