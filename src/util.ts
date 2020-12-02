@@ -132,7 +132,7 @@ export function defineLazy<T>(
 }
 
 /**
- * "I don't care about property access."
+ * "I don't care about strict property access."
  */
 export function within<T>(object: T): Any;
 export function within<T>(object: T, key: undefined): Any;
