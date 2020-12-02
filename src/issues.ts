@@ -66,5 +66,8 @@ export default Issues({
     `Argument for hoc() is not a component.`,
 
   BindRefNotFound: (parent, property) =>
-    `Ref not found, trying to bind ${parent}.${property} to custom HOC.`
+    `Ref not found, trying to bind ${parent}.${property} to custom HOC.`,
+
+  StrictUpdate: () => 
+    `Strict requestUpdate() did not find pending updates.` 
 });

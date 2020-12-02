@@ -47,7 +47,7 @@ interface Observable {
     update<K extends keyof this>(keys: K[]): void;
     update<K extends keyof this>(...keys: K[]): void;
 
-    requestUpdate(): Promise<string[] | false>;
+    requestUpdate(strict?: boolean): Promise<string[] | false>;
     requestUpdate(cb: (keys: string[]) => void): void;
 }
 

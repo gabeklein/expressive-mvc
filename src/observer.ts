@@ -151,16 +151,18 @@ export class Observer {
   }
 
   public requestUpdate = (
-    callback?: (keys: string[]) => void) => {
+    callback?: boolean | ((keys: string[]) => void)) => {
 
     let listen = this.waiting || (this.waiting = []);
 
-    if(callback)
+    if(typeof callback == "function")
       listen.push(callback)
+    else if(this.pending)
+      return new Promise(r => listen.push(r));
+    else if(callback === true)
+      return Promise.reject(Oops.StrictUpdate());
     else
-      return this.pending
-        ? new Promise(r => listen.push(r))
-        : Promise.resolve(false)
+      return Promise.resolve(false);
   }
 
   private emitUpdate(keys: Iterable<string>){

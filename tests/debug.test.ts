@@ -48,6 +48,15 @@ describe("requestUpdate method", () => {
     expect(update).toBe(false);
   })
 
+  it('rejects immediately in strict mode', async () => {
+    const control = Control.create();
+    const update = await control
+      .requestUpdate(true)
+      .catch((e) => e);
+
+    expect(update).toBeInstanceOf(Error);
+  })
+
   it("includes getters in batch which trigger them", async () => {
     const control = Control.create();
 
