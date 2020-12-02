@@ -41,13 +41,8 @@ describe("effect", () => {
     const instance = TestValues.create();
     const mock = jest.fn();
   
-    instance.effect( 
-      mock, x => (x
-        .value1
-        .value2
-        .value3
-        .value4
-      )
+    instance.effect(mock,
+      $ => $.value1.value2.value3.value4
     );
   
     instance.value1 = 2;
@@ -96,7 +91,7 @@ describe("effect", () => {
   })
 });
 
-describe("pre-initialized", () => {
+describe("before initialized", () => {
   class TestValues extends Controller {
     constructor(mock: () => void){
       super();
