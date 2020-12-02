@@ -2,8 +2,7 @@ import type { ComponentType } from 'react';
 import type { ControllableRefFunction } from '..';
 import type { Controller, Model, State } from './controller';
 
-import { boundRefComponent } from './components';
-import { createHocFactory, withProvider } from './hoc';
+import { boundRefComponent, createHocFactory, withProvider } from './hoc';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty } from './util';

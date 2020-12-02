@@ -1,4 +1,3 @@
-import { Noop } from './components';
 import { Controller, Model, State } from './controller';
 
 import Oops from './issues';
@@ -44,6 +43,6 @@ export class Singleton extends Controller {
 
   static get Provider(){
     this.use();
-    return Noop;
+    return (props: any) => [].concat(props.children);
   }
 }

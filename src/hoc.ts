@@ -1,10 +1,23 @@
+import type { ControllableRefFunction } from '..';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
-import { createElement, useMemo } from 'react';
 
+import { createElement, useMemo, memo } from 'react';
+
+import { useBindRef } from './binding';
 import { Controller } from './controller';
 import Oops from './issues';
 
 type HOCFactory<T> = (control: T) => ComponentType;
+
+export function boundRefComponent(
+  control: Controller,
+  property: string,
+  Inner: ControllableRefFunction<HTMLElement>){
+
+  return memo((props: {}) => {
+    return Inner(props, useBindRef(control, property))
+  })
+}
 
 export function derivedConsumer(
   Control: typeof Controller,
