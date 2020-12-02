@@ -1,15 +1,14 @@
 import React, { ReactNode } from "react";
 import { create } from "react-test-renderer";
-import Controller from "..";
 
 import VC, { hoc, wrap, Consumer } from "./adapter";
 
 interface TestComponentProps {
-  got?: (control: Controller) => void;
+  got?: (control: any) => void;
   children?: ReactNode;
 }
 
-function TestComponent(props: TestComponentProps, control: Controller){
+function TestComponent(props: TestComponentProps, control: any){
   if(props.got)
     props.got(control);
 
@@ -17,7 +16,7 @@ function TestComponent(props: TestComponentProps, control: Controller){
 }
 
 class TestComponentClass extends React.Component<TestComponentProps> {
-  constructor(props: TestComponentProps, control: Controller){
+  constructor(props: TestComponentProps, control: any){
     super(props);
 
     if(props.got)
@@ -36,7 +35,7 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
-    let injected: Controller;
+    let injected;
 
     create(
       <instance.Component got={i => injected = i}/>
@@ -51,7 +50,7 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
-    let injected: Controller;
+    let injected;
 
     create(
       <instance.Component got={i => injected = i}/>
@@ -66,7 +65,7 @@ describe("Instance HOCs", () => {
     }
 
     const instance = Test.create();
-    let injected: Controller;
+    let injected;
 
     create(
       <instance.CustomProvider>
@@ -89,7 +88,7 @@ describe("Static HOCs", () => {
   const TestConsumer = Test.hoc(TestComponent);
 
   it("creates new instance to provide children", () => {
-    let consumed: Controller;
+    let consumed;
 
     create(
       <TestProvider>
@@ -101,7 +100,7 @@ describe("Static HOCs", () => {
   });
 
   it("custom provider receives own instance", () => {
-    let provided: Controller;
+    let provided;
 
     create(
       <TestProvider got={i => provided = i}/>
@@ -111,7 +110,7 @@ describe("Static HOCs", () => {
   });
 
   it("custom consumer applies instance to component", () => {
-    let consumed: Controller;
+    let consumed;
     
     create(
       <Test.Provider>
@@ -123,8 +122,7 @@ describe("Static HOCs", () => {
   });
 
   it("provided and consumed instance is the same", () => {
-    let produced: Controller;
-    let consumed: Controller;
+    let produced, consumed;
 
     create(
       <TestProvider got={i => produced = i}>
@@ -147,8 +145,7 @@ describe("Inheritable HOCs", () => {
   class Child extends Parent {};
 
   it("creates A from A.hoc always", () => {
-    let child: Controller;
-    let parent: Controller;
+    let child, parent;
 
     create(
       <>
@@ -163,7 +160,7 @@ describe("Inheritable HOCs", () => {
   });
 
   it("creates B from A.hoc if A used getter", () => {
-    let created: Controller;
+    let created;
 
     create(
       <Child.Indirect got={i => created = i}/>

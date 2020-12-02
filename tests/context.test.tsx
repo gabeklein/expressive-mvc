@@ -10,7 +10,7 @@ class Baz extends Bar {}
 describe("Provider", () => {
   it("provides an existing instance of controller", () => {
     const instance = Foo.create();
-    let injected: Foo;
+    let injected;
 
     create(
       <instance.Provider>
@@ -22,7 +22,7 @@ describe("Provider", () => {
   })
 
   it("creates an instance of parent controller", () => {
-    let injected: Foo;
+    let injected;
 
     create(
       <Foo.Provider>
@@ -34,8 +34,7 @@ describe("Provider", () => {
   })
 
   it("creates multiple instances via MultiProvider", () => {
-    let bar: Bar;
-    let foo: Foo;
+    let bar, foo;
     
     create(
       <Provider of={{ Foo, Bar }}>
@@ -52,9 +51,7 @@ describe("Provider", () => {
 describe("Consumer", () => {
   it("can handle complex arrangement", () => {
     const instance = Foo.create();
-    let foo: Foo;
-    let bar: Bar;
-    let baz: Baz;
+    let foo, bar, baz;
 
     create(
       <instance.Provider>
@@ -73,8 +70,8 @@ describe("Consumer", () => {
     expect(baz).toBeInstanceOf(Baz);
   })
 
-  it("will select 'extends' if accessible", () => {
-    let bar: Bar;
+  it("will select extended class if found", () => {
+    let bar;
     
     create(
       <Baz.Provider>
@@ -86,8 +83,7 @@ describe("Consumer", () => {
   })
 
   it("prefers closest match over best match", () => {
-    let foundBar: Bar;
-    let foundBaz: Baz;
+    let foundBar, foundBaz;
 
     create(
       <Bar.Provider>
