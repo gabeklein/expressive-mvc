@@ -6,17 +6,13 @@ describe("requestUpdate method", () => {
     bar = 2;
 
     get baz(){
-      return this.bar + this.foo;
+      return this.bar + 1;
     }
   }
 
-  let control: Control;
-
-  beforeEach(() => {
-    control = Control.create();
-  })
-
   it("provides promise resolving next update", async () => {
+    const control = Control.create();
+    
     // actual update is async so this should work
     control.foo = 2;
     await control.requestUpdate();
@@ -25,25 +21,43 @@ describe("requestUpdate method", () => {
     await control.requestUpdate();
   })
   
-  it("runs callback on next update", async () => {
+  it("runs callback for next update emitted", async () => {
+    const control = Control.create();
     const mock = jest.fn();
 
-    const update = control.requestUpdate();
     control.requestUpdate(mock);
+    control.bar = 3;
 
-    control.foo = 2;
-
-    await update;
+    await control.requestUpdate();
     expect(mock).toHaveBeenCalled();
   })
 
+  it("resolves keys next updates involved", async () => {
+    const control = Control.create();
+
+    control.foo = 2;
+
+    const updated = await control.requestUpdate();
+    expect(updated).toMatchObject(["foo"]);
+  })
+
+  it('resolves immediately when no updates pending', async () => {
+    const control = Control.create();
+    const update = await control.requestUpdate();
+
+    expect(update).toBe(false);
+  })
+
   it("includes getters in batch which trigger them", async () => {
+    const control = Control.create();
+
     // we must evaluate baz because it can't be
     // subscribed to without this happening atleast once. 
     expect(control.baz).toBe(3);
 
-    control.foo = 2;
+    control.bar = 3;
+
     const updated = await control.requestUpdate();
-    expect(updated).toMatchObject(["foo", "baz"]);
+    expect(updated).toMatchObject(["bar", "baz"]);
   })
 })

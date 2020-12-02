@@ -158,7 +158,9 @@ export class Observer {
     if(callback)
       listen.push(callback)
     else
-      return new Promise(r => listen.push(r));
+      return this.pending
+        ? new Promise(r => listen.push(r))
+        : Promise.resolve(false)
   }
 
   private emitUpdate(keys: Iterable<string>){
