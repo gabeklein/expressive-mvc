@@ -1,6 +1,6 @@
-import Controller, { test } from "./adapter";
+import VC from "./adapter";
 
-class Subject extends Controller {
+class Subject extends VC {
   value = 1;
   value2 = 2;
 
@@ -9,47 +9,42 @@ class Subject extends Controller {
   }
 }
 
-it('loads values from class', () => {
-  const { state } = test(Subject);
-
-  expect(state.value).toBe(1);
-  expect(state.value2).toBe(2);
-})
-
-it('updates on value change', async () => {
-  const { state, assertDidUpdate } =
-    test(Subject, ["value"]);
+describe("controller", () => {
+  it('instantiate from class', () => {
+    const state = Subject.create();
   
-  state.value = 2
-  await assertDidUpdate();
-  expect(state.value).toBe(2);
-})
-
-it('methods may change state', async () => {
-  const { state, assertDidUpdate } =
-    test(Subject, ["value"]);
+    expect(state.value).toBe(1);
+    expect(state.value2).toBe(2);
+  })
   
-  state.setValueToThree();
-  await assertDidUpdate();
-  expect(state.value).toBe(3)
-})
+  it('updates when a value changes', async () => {
+    const state = Subject.create();
+    
+    expect(state.value).toBe(1);
 
-it('no update on untracked value change', async () => {
-  const { state, assertDidNotUpdate } = test(Subject);
+    state.value = 2
+    await state.requestUpdate(true);
+
+    expect(state.value).toBe(2);
+  })
   
-  state.value = 2
+  it('methods may change state', async () => {
+    const state = Subject.create();
+    
+    state.setValueToThree();
+    await state.requestUpdate(true);
 
-  await assertDidNotUpdate();
-  expect(state.value).toBe(2);
-})
-
-it('set & get are circular references', async () => {
-  const { state, assertDidUpdate } =
-    test(Subject, ["value"]);
+    expect(state.value).toBe(3)
+  })
+    
+  it('defines get/set as circular references', async () => {
+    const state = Subject.create();
+    
+    expect(state.get.value).toBe(1);
   
-  expect(state.get.value).toBe(1);
-
-  state.set.value = 2;
-  await assertDidUpdate()
-  expect(state.get.value).toBe(2)
+    state.set.value = 2;
+    await state.requestUpdate(true);
+    
+    expect(state.get.value).toBe(2)
+  })
 })
