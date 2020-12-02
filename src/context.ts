@@ -5,8 +5,6 @@ import { create, define, values } from './util';
 
 import Oops from './issues';
 
-const LOOKUP = new Map<Model, symbol>();
-
 class Context {
   private key(T: Model){
     let key = LOOKUP.get(T);
@@ -50,6 +48,8 @@ class Context {
   }
 }
 
+const LOOKUP = new Map<Model, symbol>();
+const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 const CONTEXT_CHAIN = createContext(new Context());
 
 export function getFromContext(Type: Model){
@@ -61,13 +61,9 @@ export function getFromContext(Type: Model){
   return instance;
 }
 
-type GetPeers = (instance: Controller) => [string, Model][];
-
-const NEEDS_HOOK = new WeakMap<Controller, boolean>();
-
 export function attachFromContext(
   instance: Controller,
-  getPending: GetPeers){
+  getPending: (instance: Controller) => [string, Model][]){
 
   if(NEEDS_HOOK.has(instance)){
     if(NEEDS_HOOK.get(instance))
