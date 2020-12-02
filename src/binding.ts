@@ -13,10 +13,10 @@ export function useBindRef(
       cleanup();
       cleanup = undefined as any;
     }
-    if(e)
-      cleanup = e instanceof HTMLInputElement
-        ? createTwoWayBinding(e, control, key)
-        : createOneWayBinding(e, control, key)
+    if(e instanceof HTMLInputElement)
+      cleanup = createTwoWayBinding(e, control, key);
+    else if(e)
+      cleanup = createOneWayBinding(e, control, key);
   }, []);
 
   useEffect(() => {
