@@ -31,7 +31,7 @@ describe("requestUpdate method", () => {
     expect(mock).toHaveBeenCalled();
   })
 
-  it("resolves keys next updates involved", async () => {
+  it("resolves keys next update involved", async () => {
     const control = Control.create();
 
     control.foo = 2;

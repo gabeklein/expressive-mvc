@@ -1,7 +1,41 @@
-import Controller from "./adapter";
+import VC from "./adapter";
+
+describe("observers", () => {
+  class Subject extends VC {
+    seconds = 0;
+  
+    get minutes(){
+      return Math.floor(this.seconds / 60)
+    }
+  }
+  
+  it('dispatches changes to observer', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on("seconds", callback);
+    state.seconds = 30;
+  
+    await state.requestUpdate();
+  
+    expect(callback).toBeCalledWith(30, "seconds");
+  })
+  
+  it('dispatches changes to computed value', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on("minutes", callback);
+    state.seconds = 60;
+
+    await state.requestUpdate();
+  
+    expect(callback).toBeCalledWith(1, "minutes");
+  })
+})
 
 describe("effect", () => {
-  class TestValues extends Controller {
+  class TestValues extends VC {
     value1 = 1;
     value2 = 2;
     value3 = 3;
@@ -91,8 +125,8 @@ describe("effect", () => {
   })
 });
 
-describe("before initialized", () => {
-  class TestValues extends Controller {
+describe("requests before initialized", () => {
+  class TestValues extends VC {
     constructor(mock: () => void){
       super();
       this.effect(mock, [
@@ -109,7 +143,7 @@ describe("before initialized", () => {
     }
   }
 
-  it('proactively watches values', async () => {
+  it('will watch values proactively', async () => {
     const mock = jest.fn();
     const instance = TestValues.create([mock]);
 
