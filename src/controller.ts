@@ -3,7 +3,6 @@ import type { ComponentType } from 'react';
 
 import { useBindRef } from './binding';
 import { derivedConsumer, derivedProvider } from './hoc';
-import { ControlledInput, ControlledValue } from './components';
 import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
@@ -157,12 +156,5 @@ export class Controller {
   }
 }
 
-defineLazy(Controller, {
-  Provider: ControlProvider
-});
-
-defineLazy(Controller.prototype, {
-  Provider: ControlProvider,
-  Value: ControlledValue,
-  Input: ControlledInput
-});
+for(const to of [ Controller, Controller.prototype ])
+  defineLazy(to, { Provider: ControlProvider });

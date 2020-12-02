@@ -90,8 +90,6 @@ interface WithLifecycle {
  */
 interface WithReact {
     Provider: FunctionComponent<PropsWithChildren<Partial<this>>>;
-    Input: FunctionComponent<{ to: string }>;
-    Value: FunctionComponent<{ of: string }>;
 }
 
 interface Controller extends Observable, WithLifecycle, WithReact {

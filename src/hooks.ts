@@ -17,16 +17,6 @@ function useActiveMemo<T>(
   return state[0] as T;
 }
 
-export function useValue<T extends Controller>(
-  from: T, key: keyof T){
-
-  const [ value, update ] = useState(() => from[key]);
-
-  useEffect(() => from.on(key, update), []);
-
-  return value;
-}
-
 export function usePassive<T extends Controller>(
   target: T, key?: string){
 
