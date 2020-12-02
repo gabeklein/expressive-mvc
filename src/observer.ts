@@ -157,10 +157,10 @@ export class Observer {
 
     if(typeof callback == "function")
       listen.push(callback)
+    else if(!this.pending === callback)
+      return Promise.reject(Oops.StrictUpdate())
     else if(this.pending)
       return new Promise(r => listen.push(r));
-    else if(callback === true)
-      return Promise.reject(Oops.StrictUpdate());
     else
       return Promise.resolve(false);
   }

@@ -13,7 +13,6 @@ describe("requestUpdate method", () => {
   it("provides promise resolving next update", async () => {
     const control = Control.create();
     
-    // actual update is async so this should work
     control.foo = 2;
     await control.requestUpdate();
     
@@ -48,13 +47,23 @@ describe("requestUpdate method", () => {
     expect(update).toBe(false);
   })
 
-  it('rejects immediately in strict mode', async () => {
+  it('rejects if no update pending in strict mode', async () => {
     const control = Control.create();
-    const update = await control
-      .requestUpdate(true)
-      .catch((e) => e);
+    const update = control.requestUpdate(true);
+    
+    const result = await update.catch((e) => e);
+    expect(result).toBeInstanceOf(Error);
+  })
 
-    expect(update).toBeInstanceOf(Error);
+  it('rejects if update not expected in strict mode', async () => {
+    const control = Control.create();
+    
+    control.foo = 2;
+
+    const update = control.requestUpdate(false);
+    
+    const result = await update.catch((e) => e);
+    expect(result).toBeInstanceOf(Error);
   })
 
   it("includes getters in batch which trigger them", async () => {
