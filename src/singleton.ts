@@ -1,16 +1,21 @@
+import { Singleton as Public } from "../"
 import { Controller, Model, State } from './controller';
 
 import Oops from './issues';
 
-export class Singleton extends Controller {
+export class Singleton
+  extends Controller
+  implements Public {
 
   static current?: Singleton = undefined;
 
   static find(){
-    if(!this.current)
-      throw Oops.GlobalDoesNotExist(this.name);
+    const { current } = this;
 
-    return this.current as unknown as Controller;
+    if(!current)
+      throw Oops.GlobalDoesNotExist(this.name);
+    else
+      return current;
   }
 
   static create<T extends Model>(

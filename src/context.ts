@@ -1,4 +1,4 @@
-import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import type { Controller, Model } from './controller';
 import { create, define, values } from './util';
@@ -100,10 +100,11 @@ export function ControlProvider(this: Controller | Model){
 
 type InsertProviderProps = {
   of?: Array<Model> | BunchOf<Model>;
-  children: ReactNode;
 };
 
-export function InsertProvider(props: InsertProviderProps){
+export function InsertProvider(
+  props: PropsWithChildren<InsertProviderProps>){
+
   const { of: insertTypes = [], children } = props;
   const parent = useContext(CONTEXT_CHAIN);
   const provide = useMemo(() => parent.manage(insertTypes), []);
