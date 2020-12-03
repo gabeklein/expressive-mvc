@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observed } from './observer';
+import { Observed, Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { entriesIn, isFn, within } from './util';
 
@@ -64,6 +64,27 @@ export function useSubscriber(
   });
   
   return subscription.proxy;
+}
+
+export function useMemoized(
+  Type: Model, args: any[]){
+
+  const instance = useMemo(() => Type.create(args), []);
+
+  useLifecycleEffect((name) => {
+    const alias = componentLifecycle(name);
+    const handler = instance[alias] || instance[name];
+
+    if(isFn(handler))
+      handler.apply(instance, args);
+
+    Observer.get(instance).emit(name, alias);
+
+    if(name == lifecycle.WILL_UNMOUNT)
+      instance.destroy();
+  });
+
+  return instance;
 }
 
 export function useController(

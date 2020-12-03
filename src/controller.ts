@@ -3,7 +3,7 @@ import type { ComponentType } from 'react';
 
 import { useBindRef } from './binding';
 import { derivedConsumer, derivedProvider } from './hoc';
-import { useSubscriber, useController, usePassive, useWatcher } from './hooks';
+import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, getPrototypeOf, define, memoize } from './util';
@@ -85,6 +85,10 @@ export class Controller {
     assign(subscriber);
         
     return subscriber;
+  }
+
+  static memo(...args: any[]){
+    return useMemoized(this, args);
   }
 
   static get(key?: string){
