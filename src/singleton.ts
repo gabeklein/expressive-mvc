@@ -1,5 +1,8 @@
-import { Singleton as Public } from "../"
+import type { Singleton as Public } from "../"
+
 import { Controller, Model, State } from './controller';
+import { useMemoized } from "./hooks";
+import { defineLazy } from "./util";
 
 import Oops from './issues';
 
@@ -45,9 +48,13 @@ export class Singleton
     else
       Oops.DestroyNotActive(meta.name).warn();
   }
-
-  static get Provider(){
-    this.use();
-    return (props: any) => [].concat(props.children);
-  }
 }
+
+defineLazy(Singleton, {
+  Provider(){
+    return (props: any) => {
+      useMemoized(this, []);
+      return [].concat(props.children);
+    }
+  }
+});
