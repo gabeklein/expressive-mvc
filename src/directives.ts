@@ -51,7 +51,7 @@ export function refProperty<T = any>
   (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
   function createReference(on: Observer, key: string){
-    const descriptor = on.access(key, effect);
+    const descriptor = on.accessor(key, effect);
     const value = defineProperty({}, "current", descriptor);
 
     defineProperty(on.subject, key, { value, enumerable: true });
@@ -64,7 +64,7 @@ export function effectProperty<T = any>
   (effect: EffectCallback<Controller, any>): T {
 
   function registerEffect(on: Observer, key: string){
-    const descriptor = on.access(key, effect);
+    const descriptor = on.accessor(key, effect);
 
     defineProperty(on.subject, key, { ...descriptor, enumerable: true });
   }

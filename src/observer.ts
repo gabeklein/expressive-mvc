@@ -307,7 +307,7 @@ export class Observer {
     return this.addListener(key, callback, once);
   }
 
-  public access(
+  public accessor(
     key: string,
     callback?: EffectCallback<any, any>){
 
