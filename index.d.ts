@@ -169,6 +169,7 @@ declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
 declare function bind<P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
+declare function def<T> (value: T): T; 
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
@@ -202,5 +203,6 @@ export {
     memo,
     hoc,
     hoc as wrap,
-    bind
+    bind,
+    def
 }

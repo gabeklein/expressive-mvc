@@ -3,9 +3,9 @@ import type { ControllableRefFunction } from '..';
 import type { Controller, Model, State } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './hoc';
-import { Observer } from './observer';
+import { Observer, LOOSE } from './observer';
 import { Singleton } from './singleton';
-import { define, defineLazy, defineProperty } from './util';
+import { define, defineLazy, defineProperty, within } from './util';
 
 import Oops from './issues';
 
@@ -140,4 +140,16 @@ export function boundComponentProperty
   }
     
   return new Placeholder(createBinding) as any;
+}
+
+export function defaultValueProperty(value: any){
+  function setDefault(on: Observer, key: string){
+    on.monitorValue(key, value, true);
+  }
+
+  const out = new Placeholder(setDefault);
+
+  within(out, LOOSE, true);
+    
+  return out as any;
 }

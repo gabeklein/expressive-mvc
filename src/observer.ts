@@ -19,6 +19,7 @@ import Oops from './issues';
 
 const COMPUTED = Symbol("is_computed");
 const ASSIGNED = new WeakMap<{}, Observer>();
+export const LOOSE = Symbol("default_only");
 
 export class Observer {
   public ready?: true;
@@ -67,6 +68,9 @@ export class Observer {
         continue;
 
       function override(value: any){
+        if(value instanceof Placeholder && LOOSE in value)
+          return;
+
         delete getters[key];
         defineProperty(subject, key, {
           value,
@@ -401,14 +405,15 @@ export class Observer {
 
   public monitorValue(
     key: string,
-    initial: any){
+    initial: any,
+    loose?: boolean){
 
     this.state[key] = initial;
     this.manage(key);
 
     defineProperty(this.subject, key, {
       enumerable: true,
-      configurable: false,
+      configurable: loose || false,
       get: () => this.state[key],
       set: (value: any) => this.set(key, value)
     })
