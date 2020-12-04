@@ -47,41 +47,7 @@ export class Observer {
     private onReady?: Callback){
 
     ASSIGNED.set(subject, this);
-    this.prepareComputed(base);
-  }
-
-  private prepareComputed(stopAt: typeof Controller){
-    const { subject, getters } = this;
-
-    for(
-      let sub = subject; 
-      sub.constructor !== stopAt && sub !== stopAt;
-      sub = getPrototypeOf(sub))
-    for(const [key, item] of entriesIn(sub)){
-      if(!item.get || key in getters)
-        continue;
-
-      function override(value: any){
-        if(value instanceof Placeholder && LOOSE in value)
-          return;
-
-        delete getters[key];
-        defineProperty(subject, key, {
-          value,
-          configurable: true,
-          enumerable: true,
-          writable: true
-        })
-      }
-
-      defineProperty(subject, key, {
-        configurable: true,
-        set: item.set || override,
-        get: item.get
-      })
-
-      getters[key] = item.get;
-    }
+    this.prepare(base);
   }
   
   protected state: BunchOf<any> = {};
@@ -329,6 +295,42 @@ export class Observer {
         if(!isFn(unSet) && unSet)
           throw Oops.BadEffectCallback()
       }
+    }
+  }
+
+  protected prepare(stopAt: typeof Controller){
+    const { subject, getters } = this;
+
+    for(
+      let sub = subject; 
+      sub.constructor !== stopAt && sub !== stopAt;
+      sub = getPrototypeOf(sub))
+    for(
+      const [key, item] of entriesIn(sub)){
+
+      if(!item.get || key in getters)
+        continue;
+
+      function override(value: any){
+        if(value instanceof Placeholder && LOOSE in value)
+          return;
+
+        delete getters[key];
+        defineProperty(subject, key, {
+          value,
+          configurable: true,
+          enumerable: true,
+          writable: true
+        })
+      }
+
+      defineProperty(subject, key, {
+        configurable: true,
+        set: item.set || override,
+        get: item.get
+      })
+
+      getters[key] = item.get;
     }
   }
 
