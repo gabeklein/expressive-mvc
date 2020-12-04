@@ -35,14 +35,8 @@ export class Observer {
     if(!dispatch)
       throw Oops.NoObserver(from.constructor.name);
 
-    if(!dispatch.ready){
-      dispatch.ready = true;
-      dispatch.monitorValues();
-      dispatch.monitorComputed();
-
-      if(dispatch.onReady)
-        dispatch.onReady();
-    }
+    if(!dispatch.ready)
+      dispatch.monitor();
 
     return dispatch;
   }
@@ -338,8 +332,12 @@ export class Observer {
     }
   }
 
-  public monitorValues(){
-    const entries = entriesIn(this.subject);
+  protected monitor(){
+    const { state, subject, getters, subscribers } = this;
+    const expected = {} as BunchOf<Callback>;
+    const entries = entriesIn(subject);
+
+    this.ready = true;
 
     for(const [key, desc] of entries){
       const { value } = desc;
@@ -352,11 +350,6 @@ export class Observer {
       else
         this.monitorValue(key, value);
     }
-  }
-
-  public monitorComputed(){
-    const { state, subject, getters, subscribers } = this;
-    const expected = {} as BunchOf<Callback>;
 
     for(const key in getters){
       const init = this.monitorComputedValue(key, getters[key]);
@@ -374,9 +367,11 @@ export class Observer {
     }
 
     for(const key in expected)
-      if(key in state === false){
+      if(key in state === false)
         expected[key]();
-      }
+
+    if(this.onReady)
+      this.onReady();
   }
 
   public monitorEvent(
