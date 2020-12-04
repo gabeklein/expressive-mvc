@@ -277,8 +277,8 @@ export class Observer {
     key: string,
     callback?: EffectCallback<any, any>){
 
-    let unSet: Callback | undefined;
     const { state } = this;
+    let unSet: Callback | undefined;
       
     state[key] = state[key];
     this.manage(key);
