@@ -29,12 +29,12 @@ export class Observer {
   
   static apply(to: Observed){
     const observe = new Observer(to);
+    ASSIGNED.set(to, observe);
 
     for(const [key, { value }] of entriesIn(observe))
       if(typeof value == "function")
         define(to, key, value);
     
-    ASSIGNED.set(to, observe);
     return observe;
   }
 
@@ -45,8 +45,8 @@ export class Observer {
       dispatch = Observer.apply(from);
 
     if(!dispatch.ready){
-      from.applyDispatch(dispatch);
       dispatch.ready = true;
+      from.applyDispatch(dispatch);
     }
 
     return dispatch;
@@ -318,8 +318,9 @@ export class Observer {
   }
 
   public monitorComputed(Ignore?: any){
-    const { state, subject } = this;
-    const getters = {} as BunchOf<() => any>;
+    const { state, subject, subscribers } = this;
+    const getters = {} as BunchOf<Callback>;
+    const expected = {} as BunchOf<Callback>;
 
     for(
       let sub = subject; 
@@ -335,14 +336,25 @@ export class Observer {
         else 
           getters[key] = item.get;
 
-    for(const key in getters)
-      defineProperty(subject, key, {
-        configurable: true,
-        get: this.monitorComputedValue(key, getters[key]),
-        set: () => {
-          throw Oops.AccessNotTracked(key)
-        }
-      })
+    for(const key in getters){
+      const init = this.monitorComputedValue(key, getters[key]);
+
+      if(subscribers[key].size)
+        expected[key] = init;
+      else
+        defineProperty(subject, key, {
+          configurable: true,
+          get: init,
+          set: () => {
+            throw Oops.AccessNotTracked(key)
+          }
+        })
+    }
+
+    for(const key in expected)
+      if(key in state === false){
+        expected[key]();
+      }
   }
 
   public monitorEvent(
