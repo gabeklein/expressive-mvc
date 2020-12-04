@@ -22,9 +22,21 @@ export {
   values
 }
 
-export function define(target: {}, values: {}): void;
-export function define(target: {}, key: string | symbol, value: any): void;
-export function define(target: {}, kv: {} | string | symbol, v?: {}){
+export {
+  assignSpecific,
+  define,
+  defineLazy,
+  entriesIn,
+  isFn,
+  listAccess,
+  memoize,
+  squash,
+  within
+}
+
+function define(target: {}, values: {}): void;
+function define(target: {}, key: string | symbol, value: any): void;
+function define(target: {}, kv: {} | string | symbol, v?: {}){
   if(typeof kv == "string" || typeof kv == "symbol")
     defineProperty(target, kv, { value: v })
   else
@@ -33,19 +45,15 @@ export function define(target: {}, kv: {} | string | symbol, v?: {}){
   return target;
 }
 
-type DefineMultiple<T> = {
-  [key: string]: (this: T) => any;
-}
-
-export function isFn(x: any): x is Function {
+function isFn(x: any): x is Function {
   return typeof x == "function";
 }
 
-export function entriesIn<T>(object: T){
+function entriesIn<T>(object: T){
   return entries(getOwnPropertyDescriptors(object))
 }
 
-export function listAccess(
+function listAccess(
   available: string[],
   processor: (x: Recursive) => void){
 
@@ -62,9 +70,7 @@ export function listAccess(
   return Array.from(found);
 }
 
-export function squash(
-  callback: Callback){
-
+function squash(callback: Callback){
   let squash: undefined | boolean;
   return () => {
     if(squash)
@@ -78,7 +84,7 @@ export function squash(
   }
 }
 
-export function assignSpecific(
+function assignSpecific(
   target: InstanceType<Class>,
   source: BunchOf<any>, 
   only?: string[]){
@@ -101,18 +107,11 @@ export function assignSpecific(
     values[key] = source[key];
 }
 
-export function defineLazy<T>(
-  object: T, 
-  property: string | symbol,
-  init: (this: T) => any
-): void;
+type DefineMultiple<T> = { [key: string]: (this: T) => any };
 
-export function defineLazy<T>(
-  object: T, 
-  property: DefineMultiple<T>
-): void;
-
-export function defineLazy<T>(
+function defineLazy<T>(object: T, property: string | symbol, init: (this: T) => any): void;
+function defineLazy<T>(object: T, property: DefineMultiple<T>): void;
+function defineLazy<T>(
   object: T, 
   property: string | symbol | DefineMultiple<T>, 
   init?: (this: T) => any){
@@ -134,12 +133,11 @@ export function defineLazy<T>(
 /**
  * "I don't care about strict property access."
  */
-export function within<T>(object: T): Any;
-export function within<T>(object: T, key: undefined): Any;
-export function within<T>(object: T, key?: string | symbol): any;
-export function within<T, V>(object: T, key: string | symbol, value: V): V;
-
-export function within(
+function within<T>(object: T): Any;
+function within<T>(object: T, key: undefined): Any;
+function within<T>(object: T, key?: string | symbol): any;
+function within<T, V>(object: T, key: string | symbol, value: V): V;
+function within(
   source: any,
   key?: string | symbol,
   value?: any){
@@ -153,11 +151,10 @@ export function within(
 }
 
 const CACHE = new Map<any, any>();
+type Compute<R, A extends any[]> = (...args: A) => R;
 
-export function memoize<R, A extends any[]>
-  (compute: ((...args: A) => R), ...args: A): R;
-
-export function memoize(...args: any[]){
+function memoize<R, A extends any[]>(compute: Compute<R, A>, ...args: A): R;
+function memoize(...args: any[]){
   let cache: any = CACHE;
   const first = args[0];
   const last = args[args.length - 1];
