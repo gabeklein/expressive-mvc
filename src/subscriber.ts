@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { Observed, Observer } from './observer';
+import { Observer } from './observer';
 import { create, define, defineProperty, within } from './util';
 
 import Oops from './issues';
@@ -9,7 +9,7 @@ export class Subscriber {
   public parent: Observer;
   
   constructor(
-    private subject: Observed,
+    private subject: {},
     private refresh: Callback
   ){
     this.parent = Observer.get(subject);
