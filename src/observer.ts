@@ -427,12 +427,10 @@ export class Observer {
     const recalculate = () => {
       const value = compute.call(subject);
 
-      if(value === state[key])
-        return;
-
-      state[key] = value;
-
-      this.emit(key);
+      if(value !== state[key]){
+        state[key] = value;
+        this.emit(key);
+      }
     }
 
     const getStartingValue = (early?: boolean) => {
