@@ -4,8 +4,7 @@ import {
     FunctionComponent,
     PropsWithChildren,
     ReactElement,
-    ReactNode,
-    RefObject
+    ReactNode
 } from 'react';
 
 type Callback = () => void;

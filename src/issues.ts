@@ -1,28 +1,27 @@
-type Params<T> = T extends (... args: infer T) => any ? T : never;
 type MessageVariable = string | number | boolean | null;
+type Messages = BunchOf<(...args: MessageVariable[]) => string>;
+type Params<T> = T extends (... args: infer T) => any ? T : never;
+type Issues<M extends Messages> = {
+  readonly [P in keyof M]: (...args: Params<M[P]>) => Issue;
+}
 
 class Issue extends Error {
-  // delete the first line of stack trace
-  // hides lookup, not relevant to thrown error
+  // delete the first line of stack trace,
+  // hiding lookup step, not relevant to error.
   stack?: string = this.stack!.replace(/\n.+/, "");
 
-  /** Emit this error as a warning instead */
+  /** Emit this issue as a warning instead. */
   warn = () => console.warn(this.message);
 }
 
-function Issues
-  <O extends BunchOf<(...args: MessageVariable[]) => string>>
-  (register: O){
-  
+function Issues<O extends Messages>(register: O): Issues<O> {
   const Library = {} as any;
 
   for(const name in register)
     Library[name] = () => 
       new Issue(register[name].apply(null, arguments as any));
 
-  return Library as {
-    readonly [P in keyof O]: (...args: Params<O[P]>) => Issue
-  };
+  return Library;
 }
 
 export default Issues({
