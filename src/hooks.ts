@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observed, Observer } from './observer';
+import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { entriesIn, isFn, within } from './util';
 
@@ -24,11 +24,14 @@ export function usePassive<T extends Controller>(
 }
 
 export function useWatcher(
-  target: Observed, ...path: maybeStrings){
+  target: {} | (() => {}), ...path: maybeStrings){
 
-  const subscription = useActiveMemo(refresh =>
-    new Subscriber(target, refresh).focus(path)
-  );
+  const subscription = useActiveMemo(refresh => {
+    if(typeof target == "function")
+      target = target();
+
+    return new Subscriber(target, refresh).focus(path)
+  });
 
   useEffect(() => {
     if(!path[0])

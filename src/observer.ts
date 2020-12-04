@@ -1,9 +1,9 @@
-import { Controller } from './controller';
+import type { Controller } from './controller';
+
 import { Placeholder } from './directives';
 import { Subscriber } from './subscriber';
 import {
   assign,
-  define,
   defineProperty,
   entriesIn,
   getOwnPropertyDescriptor,
@@ -18,44 +18,77 @@ import {
 import Oops from './issues';
 
 const COMPUTED = Symbol("is_computed");
-const ASSIGNED = new WeakMap<Observed, Observer>();
-
-export type Observed = {
-  applyDispatch(observer: Observer): void
-}
+const ASSIGNED = new WeakMap<{}, Observer>();
 
 export class Observer {
   public ready?: true;
-  
-  static apply(to: Observed){
-    const observe = new Observer(to);
-    ASSIGNED.set(to, observe);
 
-    for(const [key, { value }] of entriesIn(observe))
-      if(typeof value == "function")
-        define(to, key, value);
-    
-    return observe;
+  static ensure(on: {}, base: typeof Controller){
+    if(!ASSIGNED.has(on))
+      return new Observer(on, base);
   }
 
-  static get(from: Observed){
+  static get(from: {}){
     let dispatch = ASSIGNED.get(from);
 
     if(!dispatch)
-      dispatch = Observer.apply(from);
+      throw Oops.NoObserver(from.constructor.name);
 
     if(!dispatch.ready){
       dispatch.ready = true;
-      from.applyDispatch(dispatch);
+      dispatch.monitorValues();
+      dispatch.monitorComputed();
+
+      if(dispatch.onReady)
+        dispatch.onReady();
     }
 
     return dispatch;
   }
 
-  constructor(public subject: Observed){}
+  constructor(
+    public subject: {},
+    base: typeof Controller,
+    private onReady?: Callback){
+
+    ASSIGNED.set(subject, this);
+    this.prepareComputed(base);
+  }
+
+  private prepareComputed(stopAt: typeof Controller){
+    const { subject, getters } = this;
+
+    for(
+      let sub = subject; 
+      sub.constructor !== stopAt && sub !== stopAt;
+      sub = getPrototypeOf(sub))
+    for(const [key, item] of entriesIn(sub)){
+      if(!item.get || key in getters)
+        continue;
+
+      function override(value: any){
+        delete getters[key];
+        defineProperty(subject, key, {
+          value,
+          configurable: true,
+          enumerable: true,
+          writable: true
+        })
+      }
+
+      defineProperty(subject, key, {
+        configurable: true,
+        set: item.set || override,
+        get: item.get
+      })
+
+      getters[key] = item.get;
+    }
+  }
   
   protected state: BunchOf<any> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
+  protected getters: BunchOf<Callback> = {};
   protected pending?: Set<string>;
   protected waiting?: ((keys: string[]) => void)[];
 
@@ -317,24 +350,9 @@ export class Observer {
     }
   }
 
-  public monitorComputed(Ignore?: any){
-    const { state, subject, subscribers } = this;
-    const getters = {} as BunchOf<Callback>;
+  public monitorComputed(){
+    const { state, subject, getters, subscribers } = this;
     const expected = {} as BunchOf<Callback>;
-
-    for(
-      let sub = subject; 
-      sub !== Ignore && sub.constructor !== Ignore;
-      sub = getPrototypeOf(sub)
-    )
-      for(const [key, item] of entriesIn(sub))
-        if(!item.get
-        || key == "constructor"
-        || key in state 
-        || key in getters)
-          continue;
-        else 
-          getters[key] = item.get;
 
     for(const key in getters){
       const init = this.monitorComputedValue(key, getters[key]);

@@ -155,16 +155,6 @@ describe("requests before initialized", () => {
     instance.value2++;
     await instance.requestUpdate();
 
-    // value2 shouldn't trigger anything
-    // value3 is not yet initialized
-    expect(mock).toBeCalledTimes(1);
-
-    // pull value3, now will be watched
-    instance.value3;
-
-    instance.value2++;
-    await instance.requestUpdate();
-
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(2);
   })

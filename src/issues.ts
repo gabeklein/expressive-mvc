@@ -69,5 +69,8 @@ export default Issues({
     `Ref not found, trying to bind ${parent}.${property} to custom HOC.`,
 
   StrictUpdate: () => 
-    `Strict requestUpdate() did not find pending updates.` 
+    `Strict requestUpdate() did not find pending updates.`,
+
+  NoObserver: (className) =>
+    `No observer exists for this instance of ${className}. Is it a Controller?`
 });

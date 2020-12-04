@@ -6,7 +6,7 @@ import { derivedConsumer, derivedProvider } from './hoc';
 import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
 import { Observer } from './observer';
 import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy, getPrototypeOf, define, memoize } from './util';
+import { assignSpecific, defineLazy, getPrototypeOf, define, memoize, entriesIn } from './util';
 
 import Oops from './issues';
 
@@ -17,8 +17,13 @@ export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
+    const dispatch = new Observer(this, Controller, this.didCreate);
+
     define(this, { get: this, set: this });
-    Observer.apply(this);
+
+    for(const [key, { value }] of entriesIn(dispatch))
+      if(typeof value == "function")
+        define(this, key, value);
   }
 
   public tap(...path: maybeStrings){
@@ -41,21 +46,6 @@ export class Controller {
 
     if(dispatch)
       dispatch.emit("willDestroy");
-  }
-
-  /** When Observer attaches to instance */
-  public applyDispatch(observer: Observer){
-    observer.monitorValues();
-    observer.monitorComputed(Controller);
-  
-    if(this.didCreate)
-      this.didCreate();
-  }
-
-  /** When Observer attaches to the meta */
-  static applyDispatch(observer: Observer){
-    observer.monitorValues();
-    observer.monitorComputed(Controller);
   }
 
   static use(...args: any[]){
@@ -113,7 +103,10 @@ export class Controller {
   }
 
   static meta(...path: maybeStrings): any {
-    return useWatcher(this, ...path);
+    return useWatcher(() => {
+      Observer.ensure(this, Controller);
+      return this;
+    }, ...path);
   }
 
   static hoc(Type: ComponentType){
