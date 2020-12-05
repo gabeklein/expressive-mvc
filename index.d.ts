@@ -18,6 +18,8 @@ type Class = new (...args: any[]) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
 type Instance<T> = T extends { prototype: infer U } ? U : never
 
+type Model = typeof Controller;
+
 type UpdateCallback<T extends object, P extends keyof T> = 
     (this: T, value: T[P], changed: P) => void;
 
@@ -41,7 +43,7 @@ interface Observable {
     export(): this;
     export<P extends keyof this>(select: P[] | Selector<this>): Pick<this, P>;
 
-    update(entries: Partial<this>): void;
+    update<T extends this>(entries: Partial<T>): void;
     update(keys: Selector<this>): void;
     update<K extends keyof this>(keys: K[]): void;
     update<K extends keyof this>(...keys: K[]): void;
@@ -109,7 +111,9 @@ interface Controller extends Observable, WithLifecycle, WithReact {
 }
 
 declare abstract class Controller {
-    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceType<T>;
+    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): Instance<T>;
+
+    static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): Instance<T>;
 
     static uses <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): I;
     static using <T extends Class, I extends Instance<T>, D extends Similar<I>> (this: T, data: D): I;
@@ -128,14 +132,16 @@ declare abstract class Controller {
     static meta <T extends Class>(this: T): T & Observable;
     static meta (...keys: string[]): any;
 
-    static hoc<T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
-    static wrap<T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
+    static hoc<T extends Controller, P> (component: ControllableComponent<P, T>): FunctionComponent<P>;
+    static wrap<T extends Controller, P> (component: ControllableComponent<P, T>): FunctionComponent<P>;
 
     static find <T extends Class>(this: T): Instance<T>;
 
-    static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceType<T>;
+    static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): Instance<T>;
 
     static isTypeof<T extends Class>(this: T, maybe: any): maybe is T;
+
+    static inheriting: Model | undefined;
 
     static Provider: FunctionComponent<PropsWithChildren<{}>>;
 }
@@ -144,29 +150,29 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-interface ControllableFC <T extends Controller, P> {
+interface ControllableFC <P, T = Controller> {
     (props: P, context: T): JSX.Element | ReactElement | ReactNode | null;
 }
 
-interface ControllableCC <T extends Controller, P> {
+interface ControllableCC <P, T = Controller> {
     new (props: P, context: T): Component<P, any>
 }
 
-type ControllableComponent<T extends Controller, P> =
-    | ControllableFC<T, P>
-    | ControllableCC<T, P>
+type ControllableComponent<P, T = Controller> =
+    | ControllableFC<P, T>
+    | ControllableCC<P, T>
 
 interface ControllableRefFunction<T, P = {}> {
     (props: PropsWithChildren<P>, ref: (instance: T | null) => void): ReactElement | null;
 }
       
-declare function use <T extends Class> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
-declare function get <T extends Class> (type: T): Instance<T>;
+declare function use <T extends Model> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
+declare function get <T extends Model> (type: T): Instance<T>;
 declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
-declare function hoc <T extends Controller, P> (component: ControllableComponent<T, P>): ComponentType<P>;
+declare function hoc <T extends Controller, P> (component: ControllableComponent<P, T>): ComponentType<P>;
 declare function bind<P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
 declare function is<T> (value: T): T; 
 
@@ -175,6 +181,7 @@ type Provider<T = typeof Controller> =
 
 export {
     WithLifecycle,
+    ControllableComponent,
     ControllableFC,
     ControllableCC,
     Observable,

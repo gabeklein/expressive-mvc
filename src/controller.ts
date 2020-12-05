@@ -1,5 +1,5 @@
-import type { Controller as Public } from '../';
-import type { ComponentType } from 'react';
+import type { Controller as Public, ControllableComponent } from '../';
+import type { FunctionComponent } from 'react';
 
 import { useBindRef } from './binding';
 import { derivedConsumer, derivedProvider } from './hoc';
@@ -109,11 +109,15 @@ export class Controller {
     }, ...path);
   }
 
-  static hoc(Type: ComponentType){
+  static hoc<P>(
+    Type: ControllableComponent<P>
+  ): FunctionComponent<P> {
     return memoize(derivedConsumer, this, Type);
   }
 
-  static wrap(Type: ComponentType){
+  static wrap<P>(
+    Type: ControllableComponent<P>
+  ): FunctionComponent<P> {
     return memoize(derivedProvider, this, Type);
   }
 
@@ -137,7 +141,7 @@ export class Controller {
     return instance;
   }
 
-  static isTypeof<T extends Class>(
+  static isTypeof<T extends Model>(
     this: T, maybe: any): maybe is T {
 
     return (
@@ -146,7 +150,7 @@ export class Controller {
     )
   }
 
-  static get inherits(): Model | undefined {
+  static get inheriting(): Model | undefined {
     const I = getPrototypeOf(this);
     if(I !== Controller)
       return I;

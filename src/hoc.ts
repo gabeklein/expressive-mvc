@@ -1,4 +1,4 @@
-import type { ControllableRefFunction } from '..';
+import type { ControllableRefFunction, ControllableComponent } from '..';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import { createElement, useMemo, memo } from 'react';
@@ -7,7 +7,7 @@ import { useBindRef } from './binding';
 import { Controller } from './controller';
 import Oops from './issues';
 
-type HOCFactory<T> = (control: T) => ComponentType;
+type HOCFactory<T, P = {}> = (control: T) => ComponentType<P>;
 
 export function boundRefComponent(
   control: Controller,
@@ -19,9 +19,10 @@ export function boundRefComponent(
   })
 }
 
-export function derivedConsumer(
+export function derivedConsumer<P extends {}>(
   Control: typeof Controller,
-  Type: ComponentType) {
+  Type: ControllableComponent<P>
+): FunctionComponent<P> {
 
   const componentFor = createHocFactory(Type);
 
@@ -33,9 +34,10 @@ export function derivedConsumer(
   }
 }
 
-export function derivedProvider(
+export function derivedProvider<P extends {}>(
   Control: typeof Controller,
-  Type: ComponentType){
+  Type: ControllableComponent<P>
+): FunctionComponent<P> {
     
   const componentFor = createHocFactory(Type);
 
@@ -49,30 +51,30 @@ export function derivedProvider(
   return (props: any) => {
     const [ Provider, Component ] = useMemo(create, []);
 
-    return createElement(Provider, null,
-      createElement(Component, props) 
+    return createElement(Provider as any, null,
+      createElement(Component as any, props) 
     );
   }
 }
 
-export function createHocFactory<T = any>(
-  Type: ComponentType): HOCFactory<T> {
+export function createHocFactory<T = any, P = {}>(
+  Type: ControllableComponent<P>
+): HOCFactory<T, P> {
 
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();
 
-  if(Type.prototype 
-  && Type.prototype.isReactComponent)
+  if(Type.prototype && Type.prototype.isReactComponent)
     return (inject) => 
-      class extends (Type as ComponentClass) {
-        constructor(props: any){
+      class extends (Type as unknown as ComponentClass<P>) {
+        constructor(props: P){
           super(props, inject)
         }
       }
   else
     return (inject) =>
       (props: any) =>
-        (Type as FunctionComponent)(props, inject);
+        (Type as FunctionComponent<P>)(props, inject);
 }
 
 export function withProvider(

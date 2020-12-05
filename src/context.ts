@@ -21,7 +21,7 @@ class Context {
     do {
       define(this, this.key(T), I);
     }
-    while(T = T.inherits!);
+    while(T = T.inheriting!);
   }
 
   public concat(instance: Controller){

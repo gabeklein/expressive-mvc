@@ -151,9 +151,12 @@ function within(
 }
 
 const CACHE = new Map<any, any>();
-type Compute<R, A extends any[]> = (...args: A) => R;
 
-function memoize<R, A extends any[]>(compute: Compute<R, A>, ...args: A): R;
+function memoize<R, A extends any[]>(
+  compute: (...args: A) => R,
+  ...args: A
+): R;
+
 function memoize(...args: any[]){
   let cache: any = CACHE;
   const first = args[0];
