@@ -142,7 +142,7 @@ export function boundComponentProperty
   return new Placeholder(createBinding) as any;
 }
 
-export function defaultValueProperty(value: any){
+export function defineValueProperty(value: any){
   function setDefault(on: Observer, key: string){
     on.monitorValue(key, value, true);
   }

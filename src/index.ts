@@ -8,7 +8,7 @@ export {
   parentComponentProperty as wrap,
   memoizedProperty as memo,
   boundComponentProperty as bind,
-  defaultValueProperty as def
+  defineValueProperty as is
 } from './directives';
 
 export {

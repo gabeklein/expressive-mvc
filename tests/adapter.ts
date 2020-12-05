@@ -16,7 +16,7 @@ export const use = Source.use as typeof Public.use;
 export const hoc = Source.hoc as typeof Public.hoc;
 export const wrap = Source.wrap as typeof Public.wrap;
 export const event = Source.event as typeof Public.event;
-export const def = Source.def as typeof Public.def;
+export const def = Source.is as typeof Public.is;
 
 export const test = trySubscribe;
 export default Controller;
