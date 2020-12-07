@@ -164,19 +164,26 @@ export function offlineProperty(value: any){
 
 export function tupleProperty<T extends any[]>
   (...values: T): T {
+
+  if(values.length == 0)
+    values = undefined as any;
+  else if(values.length == 1 && Array.isArray(values[0]))
+    values = values[0] as any;
   
   function assign(on: Observer, key: string){
     on.monitorValue(key, values, (next: any[]) => {
       const current = on.state[key] as any[];
 
-      if(next.length !== current.length)
-        throw Oops.TupleMismatch(
-          on.subject.constructor.name, key,
-          current.length, next.length
-        )
-
-      if(current.every((val, i) => val === next[i]))
-        return;
+      if(current){
+        if(next.length !== current.length)
+          throw Oops.TupleMismatch(
+            on.subject.constructor.name, key,
+            current.length, next.length
+          )
+  
+        if(current.every((val, i) => val === next[i]))
+          return;
+      }
 
       on.state[key] = next;
       on.emit(key);
