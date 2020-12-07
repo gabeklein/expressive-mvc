@@ -167,26 +167,27 @@ export function tupleProperty<T extends any[]>
 
   if(values.length == 0)
     values = undefined as any;
-  else if(values.length == 1 && Array.isArray(values[0]))
+  else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
   function assign(on: Observer, key: string){
-    on.monitorValue(key, values, (next: any[]) => {
-      const current = on.state[key] as any[];
+    on.monitorValue(key, values, (next: any) => {
+      const current: any = on.state[key];
+      let update = false;
 
-      if(current){
-        if(next.length !== current.length)
-          throw Oops.TupleMismatch(
-            on.subject.constructor.name, key,
-            current.length, next.length
-          )
-  
-        if(current.every((val, i) => val === next[i]))
-          return;
+      if(!current){
+        update = true;
+        on.state[key] = current;
       }
+      else 
+        for(const k in current)
+          if(current[k] !== next[k]){
+            current[k] = next[k];
+            update = true;
+          }
 
-      on.state[key] = next;
-      on.emit(key);
+      if(update)
+        on.emit(key);
     });
   }
 
