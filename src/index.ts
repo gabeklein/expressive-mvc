@@ -9,7 +9,8 @@ export {
   memoizedProperty as memo,
   boundComponentProperty as bind,
   defineValueProperty as is,
-  offlineProperty as off
+  offlineProperty as off,
+  tupleProperty as tuple
 } from './directives';
 
 export {

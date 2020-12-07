@@ -174,6 +174,8 @@ declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<P, T>): ComponentType<P>;
 declare function bind<P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
+declare function tuple<T extends any[]> (): Readonly<T> | undefined;
+declare function tuple<T extends any[]> (...values: T): Readonly<T>;
 declare function is<T> (value: T): T; 
 declare function off<T> (value: T): T;
 
@@ -211,6 +213,7 @@ export {
     hoc,
     hoc as wrap,
     bind,
+    tuple,
     is,
     off
 }

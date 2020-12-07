@@ -71,5 +71,8 @@ export default Issues({
     `Strict requestUpdate() did not find pending updates.`,
 
   NoObserver: (className) =>
-    `No observer exists for this instance of ${className}. Is it a Controller?`
+    `No observer exists for this instance of ${className}. Is it a Controller?`,
+
+  TupleMismatch: (parent, key, expects, length) =>
+    `Tuple property ${parent}.${key} only expects array with length ${expects} but got ${length}!`
 });

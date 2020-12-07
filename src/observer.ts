@@ -50,7 +50,7 @@ export class Observer {
     this.prepare(base);
   }
   
-  protected state: BunchOf<any> = {};
+  public state: BunchOf<any> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
   protected getters: BunchOf<Callback> = {};
   protected pending?: Set<string>;
@@ -402,7 +402,8 @@ export class Observer {
 
   public monitorValue(
     key: string,
-    initial: any){
+    initial: any,
+    assign?: (value: any) => void){
 
     this.state[key] = initial;
     this.manage(key);
@@ -410,7 +411,9 @@ export class Observer {
     defineProperty(this.subject, key, {
       enumerable: true,
       get: () => this.state[key],
-      set: (value: any) => this.set(key, value)
+      set: assign && assign.bind(this) || (
+        (value: any) => this.set(key, value)
+      )
     })
   }
 
