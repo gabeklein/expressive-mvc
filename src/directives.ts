@@ -9,7 +9,7 @@ import { define, defineLazy, defineProperty, within } from './util';
 
 import Oops from './issues';
 
-export class Placeholder {
+export class Pending {
   constructor(
     public applyTo: (recipient: Observer, key: string) => void
   ){}
@@ -27,7 +27,7 @@ export function childProperty<T extends Model>
       callback(instance);
   }
 
-  return new Placeholder(bindChild) as any;
+  return new Pending(bindChild) as any;
 }
 
 export function peerProperty<T extends Model>
@@ -44,7 +44,7 @@ export function peerProperty<T extends Model>
       define(subject, key, Peer);
   }
 
-  return new Placeholder(bindSibling) as any;
+  return new Pending(bindSibling) as any;
 }
 
 export function refProperty<T = any>
@@ -57,7 +57,7 @@ export function refProperty<T = any>
     defineProperty(on.subject, key, { value, enumerable: true });
   }
 
-  return new Placeholder(createReference) as any;
+  return new Pending(createReference) as any;
 }
 
 export function effectProperty<T = any>
@@ -69,7 +69,7 @@ export function effectProperty<T = any>
     defineProperty(on.subject, key, { ...descriptor, enumerable: true });
   }
 
-  return new Placeholder(registerEffect) as any;
+  return new Pending(registerEffect) as any;
 }
 
 export function eventProperty
@@ -82,7 +82,7 @@ export function eventProperty
     defineProperty(on.subject, key, { value: trigger })
   }
 
-  return new Placeholder(registerEvent) as any;
+  return new Pending(registerEvent) as any;
 }
 
 export function memoizedProperty
@@ -97,7 +97,7 @@ export function memoizedProperty
       define(on.subject, key, get())
   }
     
-  return new Placeholder(memoizeValue) as any;
+  return new Pending(memoizeValue) as any;
 }
 
 export function componentProperty
@@ -111,7 +111,7 @@ export function componentProperty
     })
   }
     
-  return new Placeholder(assignComponent) as any;
+  return new Pending(assignComponent) as any;
 }
 
 export function parentComponentProperty
@@ -127,7 +127,7 @@ export function parentComponentProperty
     })
   }
     
-  return new Placeholder(assignProvider) as any;
+  return new Pending(assignProvider) as any;
 }
 
 export function boundComponentProperty
@@ -139,7 +139,7 @@ export function boundComponentProperty
     define(control, key, Component);
   }
     
-  return new Placeholder(createBinding) as any;
+  return new Pending(createBinding) as any;
 }
 
 export function defineValueProperty(value: any){
@@ -147,7 +147,7 @@ export function defineValueProperty(value: any){
     on.monitorValue(key, value);
   }
 
-  const placeholder = new Placeholder(setDefault);
+  const placeholder = new Pending(setDefault);
 
   within(placeholder, LOOSE, true);
     
@@ -159,7 +159,7 @@ export function offlineProperty(value: any){
     within(on.subject, key, value);
   }
 
-  return new Placeholder(assign);
+  return new Pending(assign);
 }
 
 export function tupleProperty<T extends any[]>
@@ -183,5 +183,5 @@ export function tupleProperty<T extends any[]>
     });
   }
 
-  return new Placeholder(assign) as any;
+  return new Pending(assign) as any;
 }

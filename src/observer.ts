@@ -1,6 +1,6 @@
 import type { Controller } from './controller';
 
-import { Placeholder } from './directives';
+import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
   assign,
@@ -312,7 +312,7 @@ export class Observer {
         continue;
 
       function override(value: any){
-        if(value instanceof Placeholder && LOOSE in value)
+        if(value instanceof Pending && LOOSE in value)
           return;
 
         delete getters[key];
@@ -347,7 +347,7 @@ export class Observer {
       if(!desc.enumerable || isFn(value) && !/^[A-Z]/.test(key))
         continue;
 
-      if(value instanceof Placeholder)
+      if(value instanceof Pending)
         value.applyTo(this, key);
       else
         this.monitorValue(key, value);
