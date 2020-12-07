@@ -153,3 +153,11 @@ export function defineValueProperty(value: any){
     
   return placeholder as any;
 }
+
+export function offlineProperty(value: any){
+  function assign(on: Observer, key: string){
+    within(on.subject, key, value);
+  }
+
+  return new Placeholder(assign);
+}

@@ -8,7 +8,8 @@ export {
   parentComponentProperty as wrap,
   memoizedProperty as memo,
   boundComponentProperty as bind,
-  defineValueProperty as is
+  defineValueProperty as is,
+  offlineProperty as off
 } from './directives';
 
 export {
