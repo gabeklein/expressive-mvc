@@ -144,12 +144,12 @@ export function boundComponentProperty
 
 export function defineValueProperty(value: any){
   function setDefault(on: Observer, key: string){
-    on.monitorValue(key, value, true);
+    on.monitorValue(key, value);
   }
 
-  const out = new Placeholder(setDefault);
+  const placeholder = new Placeholder(setDefault);
 
-  within(out, LOOSE, true);
+  within(placeholder, LOOSE, true);
     
-  return out as any;
+  return placeholder as any;
 }

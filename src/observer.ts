@@ -402,15 +402,13 @@ export class Observer {
 
   public monitorValue(
     key: string,
-    initial: any,
-    loose?: boolean){
+    initial: any){
 
     this.state[key] = initial;
     this.manage(key);
 
     defineProperty(this.subject, key, {
       enumerable: true,
-      configurable: loose || false,
       get: () => this.state[key],
       set: (value: any) => this.set(key, value)
     })
