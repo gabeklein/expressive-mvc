@@ -27,7 +27,6 @@
     "build": "rollup --config",
     "watch": "rollup --config --watch --sourcemap",
     "start": "npm run --prefix examples start",
-    "prepare": "npm install --prefix examples",
     "prebuild": "rm -rf lib/",
     "publish:beta": "npm version prerelease --preid=beta",
     "preversion": "npm run build; jest",
