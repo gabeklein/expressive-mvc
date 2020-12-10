@@ -2,7 +2,7 @@ import type { ComponentType } from 'react';
 import type { ControllableRefFunction } from '..';
 import type { Controller, Model, State } from './controller';
 
-import { boundRefComponent, createHocFactory, withProvider } from './hoc';
+import { boundRefComponent, createHocFactory, withProvider } from './components';
 import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty, within } from './util';

@@ -2,7 +2,7 @@ import type { Controller as Public, ControllableComponent } from '../';
 import type { FunctionComponent } from 'react';
 
 import { useBindRef } from './binding';
-import { derivedConsumer, derivedProvider } from './hoc';
+import { derivedConsumer, derivedProvider } from './components';
 import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
 import { Dispatch } from './dispatch';
 import { ControlProvider, getFromContext } from './context';
