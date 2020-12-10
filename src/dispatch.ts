@@ -77,19 +77,12 @@ export class Dispatch extends Observer {
     select?: string[] | Selector) => {
     
     const { subject } = this;
-    let unSet: Callback | undefined;
-
-    const reinvoke = squash(() => {
-      unSet && unSet();
-      unSet = callback.call(subject, subject);
-
-      if(!isFn(unSet) && unSet)
-        throw Oops.BadEffectCallback()
-    })
+    const invoke = createEffect(callback);
+    const reinvoke = squash(() => invoke(subject));
 
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
-      unSet = callback.call(sub.proxy, sub.proxy);
+      invoke(sub.proxy);
       return () => sub.release();
     }
     else {
@@ -237,7 +230,7 @@ export class Dispatch extends Observer {
     callback?: EffectCallback<any, any>){
 
     const { state } = this;
-    let unSet: Callback | undefined;
+    const update = callback && createEffect(callback);
       
     state[key] = state[key];
     this.monitor(key);
@@ -245,17 +238,21 @@ export class Dispatch extends Observer {
     return {
       get: () => state[key],
       set: (value: any) => {
-        const updated = this.set(key, value);
-
-        if(!updated || !callback)
-          return;
-  
-        unSet && unSet();
-        unSet = callback.call(this.subject, value);
-  
-        if(!isFn(unSet) && unSet)
-          throw Oops.BadEffectCallback()
+        if(this.set(key, value) && update)
+          update(value, this.subject);
       }
     }
+  }
+}
+
+function createEffect(callback: EffectCallback<any>){
+  let unSet: Callback | undefined;
+
+  return (value: any, callee = value) => {
+    unSet && unSet();
+    unSet = callback.call(callee, value);
+
+    if(unSet && !isFn(unSet))
+      throw Oops.BadEffectCallback()
   }
 }

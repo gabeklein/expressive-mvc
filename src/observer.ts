@@ -116,8 +116,8 @@ export class Observer {
     initial: any,
     assign?: (value: any) => void){
 
-    this.state[key] = initial;
     this.monitor(key);
+    this.state[key] = initial;
 
     defineProperty(this.subject, key, {
       enumerable: true,
