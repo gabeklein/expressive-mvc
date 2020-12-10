@@ -3,7 +3,6 @@ import type { Controller } from './controller';
 import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
-  assign,
   defineProperty,
   entriesIn,
   getOwnPropertyDescriptor,
@@ -21,7 +20,221 @@ const COMPUTED = Symbol("is_computed");
 const ASSIGNED = new WeakMap<{}, Observer>();
 export const LOOSE = Symbol("default_only");
 
-export class Observer {
+export class Watcher {
+  constructor(
+    public subject: {},
+    base: typeof Controller){
+
+    this.prepare(base);
+  }
+
+  public state: BunchOf<any> = {};
+  protected getters: BunchOf<Callback> = {};
+  protected subscribers: BunchOf<Set<Callback>> = {};
+  protected pending?: Set<string>;
+  protected waiting?: ((keys: string[]) => void)[];
+
+  public get watched(){
+    return keys(this.subscribers);
+  }
+
+  protected prepare(stopAt: typeof Controller){
+    const { subject, getters } = this;
+
+    for(
+      let sub = subject; 
+      sub.constructor !== stopAt && sub !== stopAt;
+      sub = getPrototypeOf(sub))
+    for(
+      const [key, item] of entriesIn(sub)){
+
+      if(!item.get || key in getters)
+        continue;
+
+      function override(value: any){
+        if(value instanceof Pending && LOOSE in value)
+          return;
+
+        delete getters[key];
+        defineProperty(subject, key, {
+          value,
+          configurable: true,
+          enumerable: true,
+          writable: true
+        })
+      }
+
+      defineProperty(subject, key, {
+        configurable: true,
+        set: item.set || override,
+        get: item.get
+      })
+
+      getters[key] = item.get;
+    }
+  }
+
+  protected manageProperties(){
+    for(const entry of entriesIn(this.subject))
+      this.manageProperty(...entry);
+  }
+
+  protected manageProperty(
+    key: string, { value, enumerable }: PropertyDescriptor){
+
+    if(enumerable && !isFn(value) || /^[A-Z]/.test(key))
+      this.monitorValue(key, value);
+  }
+
+  protected manageGetters(){
+    const { state, subject, getters, subscribers } = this;
+    const expected = {} as BunchOf<Callback>;
+  
+    for(const key in getters){
+      const init = this.monitorComputedValue(key, getters[key]);
+
+      if(subscribers[key].size)
+        expected[key] = init;
+      else
+        defineProperty(subject, key, {
+          configurable: true,
+          get: init,
+          set: () => {
+            throw Oops.AccessNotTracked(key)
+          }
+        })
+    }
+
+    for(const key in expected)
+      if(key in state === false)
+        expected[key]();
+  }
+
+  protected monitor(key: string){
+    return this.subscribers[key] || (
+      this.subscribers[key] = new Set()
+    );
+  }
+
+  public monitorValue(
+    key: string,
+    initial: any,
+    assign?: (value: any) => void){
+
+    this.state[key] = initial;
+    this.monitor(key);
+
+    defineProperty(this.subject, key, {
+      enumerable: true,
+      get: () => this.state[key],
+      set: assign && assign.bind(this) || (
+        (value: any) => this.set(key, value)
+      )
+    })
+  }
+
+  protected monitorComputedValue(
+    key: string, compute: () => any){
+
+    this.monitor(key);
+
+    const { state, subject } = this;
+
+    const recompute = () => {
+      const value = compute.call(subject);
+
+      if(value !== state[key]){
+        state[key] = value;
+        this.emit(key);
+      }
+    }
+
+    const initialize = (early?: boolean) => {
+      try {
+        const sub = new Subscriber(subject, recompute);
+        const value = state[key] = compute.call(sub.proxy);
+        return value;
+      }
+      catch(e){
+        const { name } = this.subject.constructor;
+
+        Oops.ComputeFailed(name, key).warn();
+
+        if(early)
+          Oops.ComputedEarly(key).warn();
+
+        throw e;
+      }
+      finally {
+        defineProperty(subject, key, {
+          enumerable: true,
+          configurable: true,
+          get: () => state[key],
+          set: () => {
+            throw Oops.AccessNotTracked(key)
+          }
+        })
+      }
+    }
+
+    within(recompute, COMPUTED, true);
+    within(initialize, COMPUTED, true);
+
+    return initialize;
+  }
+
+  public set(key: string, value: any){
+    let set: any = this.subject;
+
+    if(key in this.subscribers)
+      set = this.state;
+
+    if(set[key] === value)
+      return false;
+    else
+      set[key] = value;
+
+    this.emit(key);
+    return true;
+  }
+
+  public emit(...keys: string[]){
+    if(this.pending)
+      for(const x of keys)
+        this.pending.add(x);
+    else {
+      const batch = this.pending = new Set(keys);
+      setImmediate(() => {
+        this.emitSync(batch);
+        this.pending = undefined;
+      });
+    }
+  }
+
+  private emitSync(keys: Set<string>){
+    const effects = new Set<Callback>();
+
+    for(const k of keys)
+      for(const notify of this.subscribers[k] || [])
+        if(COMPUTED in notify)
+          notify();
+        else
+          effects.add(notify);
+
+    for(const effect of effects)
+        effect();
+
+    const after = this.waiting;
+
+    if(after){
+      const list = Array.from(keys);
+      this.waiting = undefined;
+      after.forEach(x => x(list));
+    }
+  }
+}
+
+export class Observer extends Watcher {
   public ready?: true;
 
   static ensure(on: {}, base: typeof Controller){
@@ -35,8 +248,14 @@ export class Observer {
     if(!dispatch)
       throw Oops.NoObserver(from.constructor.name);
 
-    if(!dispatch.ready)
-      dispatch.monitor();
+    if(!dispatch.ready){
+      dispatch.ready = true;
+      dispatch.manageProperties();
+      dispatch.manageGetters();
+  
+      if(dispatch.onReady)
+        dispatch.onReady();
+    }
 
     return dispatch;
   }
@@ -44,24 +263,11 @@ export class Observer {
   constructor(
     public subject: {},
     base: typeof Controller,
-    private onReady?: Callback){
+    protected onReady?: Callback){
 
+    super(subject, base);
     ASSIGNED.set(subject, this);
     this.prepare(base);
-  }
-  
-  public state: BunchOf<any> = {};
-  protected subscribers: BunchOf<Set<Callback>> = {};
-  protected getters: BunchOf<Callback> = {};
-  protected pending?: Set<string>;
-  protected waiting?: ((keys: string[]) => void)[];
-
-  public get values(){
-    return assign({}, this.state);
-  }
-
-  public get watched(){
-    return keys(this.subscribers);
   }
 
   public on = (
@@ -116,7 +322,7 @@ export class Observer {
     select?: string[] | Selector) => {
 
     if(!select)
-      return { ...this.values };
+      return { ...this.state };
 
     const acc = {} as BunchOf<any>;
 
@@ -135,13 +341,11 @@ export class Observer {
 
     if(typeof select == "string")
       select = [select].concat(rest);
-
     else if(isFn(select))
-      select = listAccess(this.watched, select as any);
+      select = listAccess(this.watched, select);
 
     if(Array.isArray(select))
       select.forEach(k => this.emit(k))
-
     else
       for(const key in select)
         this.set(key, select[key]);
@@ -150,70 +354,44 @@ export class Observer {
   public requestUpdate = (
     callback?: boolean | ((keys: string[]) => void)) => {
 
-    let listen = this.waiting || (this.waiting = []);
+    let waiting = this.waiting || (this.waiting = []);
 
     if(typeof callback == "function")
-      listen.push(callback)
+      waiting.push(callback)
     else if(!this.pending === callback)
       return Promise.reject(Oops.StrictUpdate())
     else if(this.pending)
-      return new Promise(r => listen.push(r));
+      return new Promise(r => waiting.push(r));
     else
       return Promise.resolve(false);
   }
 
-  private emitUpdate(keys: Iterable<string>){
-    const after = this.waiting;
+  
+  protected manageProperty(
+    key: string, desc: PropertyDescriptor){
 
-    if(after){
-      const list = Array.from(keys);
-      this.waiting = undefined;
-      after.forEach(x => x(list));
-    }
-  }
-
-  public set(key: string, value: any){
-    let set = this.state;
-
-    if(!(key in this.subscribers))
-      set = this.subject;
-
-    if(set[key] === value)
-      return false;
+    if(desc.value instanceof Pending)
+      desc.value.applyTo(this, key);
     else
-      set[key] = value;
-
-    this.emit(key);
-    return true;
+      super.manageProperty(key, desc);
   }
 
-  public emit(...keys: string[]){
-    if(this.pending)
-      for(const x of keys)
-        this.pending.add(x);
-    else {
-      const batch = this.pending = new Set(keys);
-      setImmediate(() => {
-        this.emitSync(batch);
-        this.pending = undefined;
-      });
-    }
-  }
+  public monitorEvent(
+    key: string,
+    callback?: EffectCallback<Controller>){
 
-  protected emitSync(keys: Iterable<string>){
-    const effects = new Set<Callback>();
+    const fire = () => this.emit(key)
 
-    for(const k of keys)
-      for(const notify of this.subscribers[k] || [])
-        if(COMPUTED in notify)
-          notify();
-        else
-          effects.add(notify);
+    this.monitor(key);
+    defineProperty(this.subject, key, {
+      get: () => fire,
+      set: () => {
+        throw Oops.AccessEvent(this.subject.constructor.name, key);
+      }
+    })
 
-    for(const effect of effects)
-        effect();
-
-    this.emitUpdate(keys);
+    if(callback)
+      this.effect(callback, [key]);
   }
 
   public addListener(
@@ -221,7 +399,7 @@ export class Observer {
     callback: Callback,
     once?: boolean){
 
-    const listeners = this.manage(key);
+    const listeners = this.monitor(key);
     const stop = () => { listeners.delete(callback) };
     const onUpdate = once
       ? () => { stop(); callback() }
@@ -281,12 +459,14 @@ export class Observer {
     let unSet: Callback | undefined;
       
     state[key] = state[key];
-    this.manage(key);
+    this.monitor(key);
 
     return {
       get: () => state[key],
       set: (value: any) => {
-        if(!this.set(key, value) || !callback)
+        const updated = this.set(key, value);
+
+        if(!updated || !callback)
           return;
   
         unSet && unSet();
@@ -296,175 +476,5 @@ export class Observer {
           throw Oops.BadEffectCallback()
       }
     }
-  }
-
-  protected prepare(stopAt: typeof Controller){
-    const { subject, getters } = this;
-
-    for(
-      let sub = subject; 
-      sub.constructor !== stopAt && sub !== stopAt;
-      sub = getPrototypeOf(sub))
-    for(
-      const [key, item] of entriesIn(sub)){
-
-      if(!item.get || key in getters)
-        continue;
-
-      function override(value: any){
-        if(value instanceof Pending && LOOSE in value)
-          return;
-
-        delete getters[key];
-        defineProperty(subject, key, {
-          value,
-          configurable: true,
-          enumerable: true,
-          writable: true
-        })
-      }
-
-      defineProperty(subject, key, {
-        configurable: true,
-        set: item.set || override,
-        get: item.get
-      })
-
-      getters[key] = item.get;
-    }
-  }
-
-  protected monitor(){
-    const { state, subject, getters, subscribers } = this;
-    const expected = {} as BunchOf<Callback>;
-    const entries = entriesIn(subject);
-
-    this.ready = true;
-
-    for(const [key, desc] of entries){
-      const { value } = desc;
-
-      if(!desc.enumerable || isFn(value) && !/^[A-Z]/.test(key))
-        continue;
-
-      if(value instanceof Pending)
-        value.applyTo(this, key);
-      else
-        this.monitorValue(key, value);
-    }
-
-    for(const key in getters){
-      const init = this.monitorComputedValue(key, getters[key]);
-
-      if(subscribers[key].size)
-        expected[key] = init;
-      else
-        defineProperty(subject, key, {
-          configurable: true,
-          get: init,
-          set: () => {
-            throw Oops.AccessNotTracked(key)
-          }
-        })
-    }
-
-    for(const key in expected)
-      if(key in state === false)
-        expected[key]();
-
-    if(this.onReady)
-      this.onReady();
-  }
-
-  public monitorEvent(
-    key: string,
-    callback?: EffectCallback<Controller>){
-
-    const fire = () => this.emit(key)
-
-    this.manage(key);
-    defineProperty(this.subject, key, {
-      get: () => fire,
-      set: () => {
-        throw Oops.AccessEvent(this.subject.constructor.name, key);
-      }
-    })
-
-    if(callback)
-      this.effect(callback, [key]);
-  }
-
-  protected manage(key: string){
-    return this.subscribers[key] || (
-      this.subscribers[key] = new Set()
-    );
-  }
-
-  public monitorValue(
-    key: string,
-    initial: any,
-    assign?: (value: any) => void){
-
-    this.state[key] = initial;
-    this.manage(key);
-
-    defineProperty(this.subject, key, {
-      enumerable: true,
-      get: () => this.state[key],
-      set: assign && assign.bind(this) || (
-        (value: any) => this.set(key, value)
-      )
-    })
-  }
-
-  public monitorComputedValue(
-    key: string,
-    compute: () => any){
-
-    const { state, subject } = this;
-
-    this.manage(key);
-
-    const recalculate = () => {
-      const value = compute.call(subject);
-
-      if(value !== state[key]){
-        state[key] = value;
-        this.emit(key);
-      }
-    }
-
-    const getStartingValue = (early?: boolean) => {
-      try {
-        const sub = new Subscriber(subject, recalculate);
-        const value = state[key] = compute.call(sub.proxy);
-        return value;
-      }
-      catch(e){
-        const { name } = this.subject.constructor;
-
-        Oops.ComputeFailed(name, key).warn();
-    
-        if(early)
-          Oops.ComputedEarly(key).warn();
-
-        throw e;
-      }
-      finally {
-        defineProperty(subject, key, {
-          enumerable: true,
-          configurable: true,
-          get: () => state[key],
-          set: () => {
-            throw Oops.AccessNotTracked(key)
-          }
-        })
-      }
-    }
-
-    within(recalculate, COMPUTED, true);
-    within(getStartingValue, COMPUTED, true);
-
-    return getStartingValue;
   }
 }
