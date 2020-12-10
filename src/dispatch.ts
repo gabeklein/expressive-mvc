@@ -147,7 +147,6 @@ export class Dispatch extends Observer {
     else
       return Promise.resolve(false);
   }
-
   
   protected manageProperty(
     key: string, desc: PropertyDescriptor){

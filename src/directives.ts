@@ -9,11 +9,10 @@ import { define, defineLazy, defineProperty, within } from './util';
 
 import Oops from './issues';
 
-export const LOOSE = Symbol("default_only");
-
 export class Pending {
   constructor(
-    public applyTo: (recipient: Dispatch, key: string) => void
+    public applyTo: (recipient: Dispatch, key: string) => void,
+    public loose?: boolean
   ){}
 }
 
@@ -148,12 +147,8 @@ export function defineValueProperty(value: any){
   function setDefault(on: Dispatch, key: string){
     on.monitorValue(key, value);
   }
-
-  const placeholder = new Pending(setDefault);
-
-  within(placeholder, LOOSE, true);
     
-  return placeholder as any;
+  return new Pending(setDefault, true) as any;
 }
 
 export function offlineProperty(value: any){

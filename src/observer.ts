@@ -1,6 +1,6 @@
 import type { Controller } from './controller';
 
-import { Pending, LOOSE } from './directives';
+import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
   defineProperty,
@@ -47,7 +47,7 @@ export class Observer {
         continue;
 
       function override(value: any){
-        if(value instanceof Pending && LOOSE in value)
+        if(value instanceof Pending && value.loose)
           return;
 
         delete getters[key];
