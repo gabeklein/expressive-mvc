@@ -4,7 +4,7 @@ import type { FunctionComponent } from 'react';
 import { useBindRef } from './binding';
 import { derivedConsumer, derivedProvider } from './hoc';
 import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
-import { Observer } from './observer';
+import { Dispatch } from './dispatch';
 import { ControlProvider, getFromContext } from './context';
 import { assignSpecific, defineLazy, getPrototypeOf, define, memoize, entriesIn } from './util';
 
@@ -17,7 +17,7 @@ export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
-    const dispatch = new Observer(this, Controller, this.didCreate);
+    const dispatch = new Dispatch(this, Controller, this.didCreate);
 
     define(this, { get: this, set: this });
 
@@ -39,7 +39,7 @@ export class Controller {
   }
 
   public destroy(){
-    const dispatch = Observer.get(this);
+    const dispatch = Dispatch.get(this);
 
     if(this.willDestroy)
       this.willDestroy();
@@ -104,7 +104,7 @@ export class Controller {
 
   static meta(...path: maybeStrings): any {
     return useWatcher(() => {
-      Observer.ensure(this, Controller);
+      Dispatch.ensure(this, Controller);
       return this;
     }, ...path);
   }
@@ -136,7 +136,7 @@ export class Controller {
     if(prepare)
       prepare(instance);
 
-    Observer.get(instance);
+    Dispatch.get(instance);
     
     return instance;
   }

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
+import { Dispatch } from './dispatch';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
-import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { entriesIn, isFn, within } from './util';
 
@@ -81,7 +81,7 @@ export function useMemoized(
     if(isFn(handler))
       handler.apply(instance, args);
 
-    Observer.get(instance).emit(name, alias);
+    Dispatch.get(instance).emit(name, alias);
 
     if(name == lifecycle.WILL_UNMOUNT)
       instance.destroy();

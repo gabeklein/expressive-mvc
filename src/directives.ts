@@ -3,22 +3,24 @@ import type { ControllableRefFunction } from '..';
 import type { Controller, Model, State } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './hoc';
-import { Observer, LOOSE } from './observer';
+import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty, within } from './util';
 
 import Oops from './issues';
 
+export const LOOSE = Symbol("default_only");
+
 export class Pending {
   constructor(
-    public applyTo: (recipient: Observer, key: string) => void
+    public applyTo: (recipient: Dispatch, key: string) => void
   ){}
 }
 
 export function childProperty<T extends Model>
   (Peer: T, callback?: (i: State<T>) => void): State<T> {
 
-  function bindChild(on: Observer, key: string){
+  function bindChild(on: Dispatch, key: string){
     const parent = on.subject;
     const instance = Peer.create();
     define(instance, { parent });
@@ -33,7 +35,7 @@ export function childProperty<T extends Model>
 export function peerProperty<T extends Model>
   (Peer: T): State<T> {
 
-  function bindSibling(on: Observer, key: string){
+  function bindSibling(on: Dispatch, key: string){
     const subject = on.subject as Controller;
 
     if(Singleton.isTypeof(Peer))
@@ -50,7 +52,7 @@ export function peerProperty<T extends Model>
 export function refProperty<T = any>
   (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
-  function createReference(on: Observer, key: string){
+  function createReference(on: Dispatch, key: string){
     const descriptor = on.accessor(key, effect);
     const value = defineProperty({}, "current", descriptor);
 
@@ -63,7 +65,7 @@ export function refProperty<T = any>
 export function effectProperty<T = any>
   (effect: EffectCallback<Controller, any>): T {
 
-  function registerEffect(on: Observer, key: string){
+  function registerEffect(on: Dispatch, key: string){
     const descriptor = on.accessor(key, effect);
 
     defineProperty(on.subject, key, { ...descriptor, enumerable: true });
@@ -75,7 +77,7 @@ export function effectProperty<T = any>
 export function eventProperty
   (callback?: EffectCallback<Controller>){
 
-  function registerEvent(on: Observer, key: string){
+  function registerEvent(on: Dispatch, key: string){
     const trigger = () => on.emit(key);
 
     on.monitorEvent(key, callback);
@@ -88,7 +90,7 @@ export function eventProperty
 export function memoizedProperty
   (factory: () => any, defer?: boolean){
 
-  function memoizeValue(on: Observer, key: string){
+  function memoizeValue(on: Dispatch, key: string){
     const get = () => factory.call(on.subject);
 
     if(defer)
@@ -105,7 +107,7 @@ export function componentProperty
 
   const componentFor = createHocFactory(Type);
 
-  function assignComponent(on: Observer, key: string){
+  function assignComponent(on: Dispatch, key: string){
     defineLazy(on.subject, key, () => {
       return componentFor(on.subject as Controller)
     })
@@ -119,7 +121,7 @@ export function parentComponentProperty
 
   const componentFor = createHocFactory(Type);
 
-  function assignProvider(on: Observer, key: string){
+  function assignProvider(on: Dispatch, key: string){
     defineLazy(on.subject, key, () => {
       const control = on.subject as Controller;
       const Component = componentFor(control);
@@ -133,7 +135,7 @@ export function parentComponentProperty
 export function boundComponentProperty
   (Type: ControllableRefFunction<HTMLElement>, to: string){
 
-  function createBinding(on: Observer, key: string){
+  function createBinding(on: Dispatch, key: string){
     const control = on.subject as Controller;
     const Component = boundRefComponent(control, to, Type);
     define(control, key, Component);
@@ -143,7 +145,7 @@ export function boundComponentProperty
 }
 
 export function defineValueProperty(value: any){
-  function setDefault(on: Observer, key: string){
+  function setDefault(on: Dispatch, key: string){
     on.monitorValue(key, value);
   }
 
@@ -155,7 +157,7 @@ export function defineValueProperty(value: any){
 }
 
 export function offlineProperty(value: any){
-  function assign(on: Observer, key: string){
+  function assign(on: Dispatch, key: string){
     within(on.subject, key, value);
   }
 
@@ -170,7 +172,7 @@ export function tupleProperty<T extends any[]>
   else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
-  function assign(on: Observer, key: string){
+  function assign(on: Dispatch, key: string){
     on.monitorValue(key, values, (next: any) => {
       const current: any = on.state[key];
       let update = false;

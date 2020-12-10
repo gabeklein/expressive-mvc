@@ -1,18 +1,18 @@
 import { Controller } from './controller';
-import { Observer } from './observer';
+import { Dispatch } from './dispatch';
 import { create, define, defineProperty, within } from './util';
 
 import Oops from './issues';
 
 export class Subscriber {
   public cleanup = [] as Callback[];
-  public parent: Observer;
+  public parent: Dispatch;
   
   constructor(
     private subject: {},
     private refresh: Callback
   ){
-    this.parent = Observer.get(subject);
+    this.parent = Dispatch.get(subject);
   }
 
   public get proxy(){
