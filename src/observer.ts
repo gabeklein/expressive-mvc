@@ -105,7 +105,7 @@ export class Observer {
         expected[key]();
   }
 
-  protected monitor(key: string){
+  public monitor(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );

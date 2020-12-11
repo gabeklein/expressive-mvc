@@ -4,7 +4,6 @@ import { Pending } from './directives';
 import { Observer, COMPUTED } from './observer';
 import { Subscriber } from './subscriber';
 import {
-  defineProperty,
   getOwnPropertyDescriptor,
   isFn,
   listAccess,
@@ -150,24 +149,6 @@ export class Dispatch extends Observer {
       super.manageProperty(key, desc);
   }
 
-  public monitorEvent(
-    key: string,
-    callback?: EffectCallback<Controller>){
-
-    const fire = () => this.emit(key)
-
-    this.monitor(key);
-    defineProperty(this.subject, key, {
-      get: () => fire,
-      set: () => {
-        throw Oops.AccessEvent(this.subject.constructor.name, key);
-      }
-    })
-
-    if(callback)
-      this.effect(callback, [key]);
-  }
-
   public addListener(
     key: string,
     callback: Callback,
@@ -224,28 +205,9 @@ export class Dispatch extends Observer {
 
     return this.addListener(key, callback, once);
   }
-
-  public accessor(
-    key: string,
-    callback?: EffectCallback<any, any>){
-
-    const { state } = this;
-    const update = callback && createEffect(callback);
-      
-    state[key] = state[key];
-    this.monitor(key);
-
-    return {
-      get: () => state[key],
-      set: (value: any) => {
-        if(this.set(key, value) && update)
-          update(value, this.subject);
-      }
-    }
-  }
 }
 
-function createEffect(callback: EffectCallback<any>){
+export function createEffect(callback: EffectCallback<any>){
   let unSet: Callback | undefined;
 
   return (value: any, callee = value) => {

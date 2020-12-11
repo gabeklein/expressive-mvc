@@ -3,7 +3,7 @@ import type { ControllableRefFunction } from '..';
 import type { Controller, Model, State } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './components';
-import { Dispatch } from './dispatch';
+import { Dispatch, createEffect } from './dispatch';
 import { Singleton } from './singleton';
 import { define, defineLazy, defineProperty, within } from './util';
 
@@ -52,10 +52,20 @@ export function refProperty<T = any>
   (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
   function createReference(on: Dispatch, key: string){
-    const descriptor = on.accessor(key, effect);
-    const value = defineProperty({}, "current", descriptor);
+    const reset = effect && createEffect(effect);
+    const value = defineProperty({}, "current", {
+      get: () => on.state[key],
+      set: (value: any) => {
+        if(on.set(key, value) && reset)
+          reset(value, on.subject);
+      }
+    });
 
-    defineProperty(on.subject, key, { value, enumerable: true });
+    on.monitor(key);
+    defineProperty(on.subject, key, {
+      enumerable: true,
+      value
+    });
   }
 
   return new Pending(createReference) as any;
@@ -65,9 +75,17 @@ export function effectProperty<T = any>
   (effect: EffectCallback<Controller, any>): T {
 
   function registerEffect(on: Dispatch, key: string){
-    const descriptor = on.accessor(key, effect);
+    const reset = createEffect(effect);
 
-    defineProperty(on.subject, key, { ...descriptor, enumerable: true });
+    on.monitor(key);
+    defineProperty(on.subject, key, {
+      enumerable: true,
+      get: () => on.state[key],
+      set: (value: any) => {
+        if(on.set(key, value))
+          reset(value, on.subject);
+      }
+    });
   }
 
   return new Pending(registerEffect) as any;
@@ -79,8 +97,16 @@ export function eventProperty
   function registerEvent(on: Dispatch, key: string){
     const trigger = () => on.emit(key);
 
-    on.monitorEvent(key, callback);
-    defineProperty(on.subject, key, { value: trigger })
+    on.monitor(key);
+    defineProperty(on.subject, key, {
+      get: () => trigger,
+      set: () => {
+        throw Oops.AccessEvent(on.subject.constructor.name, key);
+      }
+    })
+
+    if(callback)
+      on.effect(callback, [key]);
   }
 
   return new Pending(registerEvent) as any;
