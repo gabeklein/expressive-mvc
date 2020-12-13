@@ -159,13 +159,15 @@ describe("event Directive", () => {
 
   it("calls effect when events fired", async () => {
     control.update(x => x.bar);
-    await control.once(x => x.bar);
+    const updates = await control.requestUpdate(true);
+    expect(updates).toMatchObject(["bar"]);
   })
 
   it("calls previous callback when event fires again", async () => {
     const fire = async () => {
       control.update(x => x.baz);
-      await control.once(x => x.baz);
+      const updates = await control.requestUpdate(true);
+      expect(updates).toMatchObject(["baz"]);
     }
 
     await fire();
