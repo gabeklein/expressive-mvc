@@ -1,6 +1,6 @@
 {
   "name": "react-use-controller",
-  "version": "1.0.0-beta.33",
+  "version": "1.0.0-beta.34",
   "description": "Easy to use state controllers using classes and hooks",
   "author": {
     "name": "Gabe Klein",
