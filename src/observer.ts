@@ -8,12 +8,24 @@ import {
   getPrototypeOf,
   isFn,
   keys,
-  within,
+  within
 } from './util';
 
 import Oops from './issues';
 
-export const COMPUTED = Symbol("is_computed");
+export const COMPUTED = Symbol("computed");
+
+interface GetterInfo {
+  on: Observer;
+  key: string;
+  priority: number;
+}
+
+function meta(x: Function): GetterInfo;
+function meta<T>(x: Function, set: T): T;
+function meta(x: Function, set?: any){
+  return within(x, COMPUTED, set) as GetterInfo;
+}
 
 export class Observer {
   constructor(
@@ -26,7 +38,6 @@ export class Observer {
   public state: BunchOf<any> = {};
   protected getters: BunchOf<Callback> = {};
   protected subscribers: BunchOf<Set<Callback>> = {};
-  protected pending?: Set<string>;
   protected waiting?: ((keys: string[]) => void)[];
 
   public get watched(){
@@ -134,8 +145,9 @@ export class Observer {
     this.monitor(key);
 
     const { state, subject } = this;
+    const self = { key, on: this, priority: 1 };
 
-    const recompute = () => {
+    const refresh = () => {
       const value = compute.call(subject);
 
       if(value !== state[key]){
@@ -146,8 +158,16 @@ export class Observer {
 
     const initialize = (early?: boolean) => {
       try {
-        const sub = new Subscriber(subject, recompute);
+        const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
         const value = state[key] = compute.call(sub.proxy);
+
+        for(const key of sub.watched)
+          if(key in this.getters){
+            const getter = meta(this.getters[key]);
+            if(getter.priority >= self.priority)
+              self.priority = getter.priority + 1;
+          }
+
         return value;
       }
       catch(e){
@@ -172,8 +192,8 @@ export class Observer {
       }
     }
 
-    within(recompute, COMPUTED, true);
-    within(initialize, COMPUTED, true);
+    meta(compute, self);
+    meta(initialize, true);
 
     return initialize;
   }
@@ -193,38 +213,50 @@ export class Observer {
     return true;
   }
 
-  public emit(...keys: string[]){
-    if(this.pending)
-      for(const x of keys)
-        this.pending.add(x);
-    else {
-      const batch = this.pending = new Set(keys);
-      setImmediate(() => {
-        this.emitSync(batch);
-        this.pending = undefined;
-      });
-    }
-  }
-
-  private emitSync(keys: Set<string>){
+  public emit(key: string){
     const effects = new Set<Callback>();
+    const handled = new Set<string>();
+    let computed = [] as Callback[];
 
-    for(const k of keys)
-      for(const notify of this.subscribers[k] || [])
-        if(COMPUTED in notify)
-          notify();
-        else
+    const include = (key: string) => {
+      if(handled.has(key))
+        return;
+
+      handled.add(key);
+      for(const notify of this.subscribers[key] || []){
+        const getter = meta(notify);
+        if(!getter || getter.on !== this)
           effects.add(notify);
+        else
+          computed = computed
+            .concat(notify)
+            .sort((a, b) => meta(a).priority - meta(b).priority)
+      }
+    };
 
-    for(const effect of effects)
-        effect();
+    this.emit = include;
+    include(key);
 
-    const after = this.waiting;
+    setImmediate(() => {
+      const after = this.waiting;
 
-    if(after){
-      const list = Array.from(keys);
-      this.waiting = undefined;
-      after.forEach(x => x(list));
-    }
+      while(computed.length){
+        const compute = computed.shift()!;
+        const { key } = meta(compute);
+      
+        if(!handled.has(key))
+          compute();
+      }
+
+      effects.forEach(x => x());
+
+      if(after){
+        delete this.waiting;
+        const list = Array.from(handled);
+        after.forEach(x => x(list));
+      }
+
+      delete this.emit;
+    })
   }
 }

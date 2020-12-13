@@ -129,12 +129,13 @@ export class Dispatch extends Observer {
     callback?: boolean | ((keys: string[]) => void)) => {
 
     let waiting = this.waiting || (this.waiting = []);
+    const active = getOwnPropertyDescriptor(this, "emit");
 
     if(typeof callback == "function")
       waiting.push(callback)
-    else if(!this.pending === callback)
+    else if(!active === callback)
       return Promise.reject(Oops.StrictUpdate())
-    else if(this.pending)
+    else if(active)
       return new Promise(r => waiting.push(r));
     else
       return Promise.resolve(false);

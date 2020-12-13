@@ -51,6 +51,7 @@ export function useSubscriber(
   );
 
   useLifecycleEffect((name) => {
+    const { parent } = subscription;
     const alias = subscriberLifecycle(name);
     const handler = target[alias] || target[name];
 
@@ -60,7 +61,8 @@ export function useSubscriber(
     if(isFn(handler))
       handler.apply(target, args || []);
 
-    subscription.parent.emit(name, alias);
+    parent.emit(name);
+    parent.emit(alias);
 
     if(name == lifecycle.WILL_UNMOUNT)
       subscription.release();
@@ -77,11 +79,13 @@ export function useMemoized(
   useLifecycleEffect((name) => {
     const alias = componentLifecycle(name);
     const handler = instance[alias] || instance[name];
+    const observer = Dispatch.get(instance);
 
     if(isFn(handler))
       handler.apply(instance, args);
 
-    Dispatch.get(instance).emit(name, alias);
+    observer.emit(name);
+    observer.emit(alias);
 
     if(name == lifecycle.WILL_UNMOUNT)
       instance.destroy();
@@ -102,8 +106,9 @@ export function useController(
   });
 
   useLifecycleEffect((name) => {
+    const { parent } = subscription;
     const alias = componentLifecycle(name);
-    const instance = subscription.parent.subject as Controller;
+    const instance = parent.subject as Controller;
     const handler = instance[alias] || instance[name];
 
     if(name == lifecycle.WILL_RENDER)
@@ -115,7 +120,8 @@ export function useController(
     if(isFn(handler))
       handler.apply(instance, args);
 
-    subscription.parent.emit(name, alias);
+    parent.emit(name);
+    parent.emit(alias);
 
     if(name == lifecycle.WILL_UNMOUNT){
       subscription.release();

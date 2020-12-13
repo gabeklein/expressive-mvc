@@ -1,17 +1,20 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { create, define, defineProperty, within } from './util';
+import { create, define, defineProperty, within, assign } from './util';
 
 import Oops from './issues';
 
 export class Subscriber {
   public cleanup = [] as Callback[];
   public parent: Dispatch;
+  public watched = [] as string[];
   
   constructor(
     private subject: {},
-    private refresh: Callback
+    private refresh: Callback,
+    private metadata?: {}
   ){
+    assign(refresh, metadata);
     this.parent = Dispatch.get(subject);
   }
 
@@ -97,6 +100,10 @@ export class Subscriber {
   }
 
   protected follow(key: string, cb?: Callback){
+    if(cb)
+      assign(cb, this.metadata);
+
+    this.watched.push(key);
     this.cleanup.push(
       this.parent.addListener(key, cb || this.refresh)
     )
