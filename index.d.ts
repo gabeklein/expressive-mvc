@@ -168,7 +168,7 @@ interface ControllableRefFunction<T, P = {}> {
       
 declare function use <T extends Model> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
 declare function get <T extends Model> (type: T): Instance<T>;
-declare function set <T = any> (onValue: (current: T) => Callback | void): T | undefined;
+declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
@@ -178,8 +178,8 @@ declare function tuple<T extends readonly any[] = []> (): Readonly<T> | undefine
 declare function tuple<T extends readonly any[]> (initial: T): Readonly<T>;
 declare function tuple<T extends {}> (initial: T): Readonly<T>;
 declare function tuple<T extends readonly any[]> (...values: T): Readonly<T>;
-declare function is<T> (value: T): T; 
-declare function off<T> (value: T): T;
+declare function def<T> (value: T): T; 
+declare function omit<T> (value: T): T;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
@@ -208,7 +208,7 @@ export {
 export {
     use,
     get,
-    set,
+    watch,
     ref,
     event,
     memo,
@@ -216,6 +216,6 @@ export {
     hoc as wrap,
     bind,
     tuple,
-    is,
-    off
+    def,
+    omit
 }

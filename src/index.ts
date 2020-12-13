@@ -1,15 +1,15 @@
 export {
   childProperty as use,
   peerProperty as get,
-  effectProperty as set,
+  effectProperty as watch,
   refProperty as ref,
   eventProperty as event,
   componentProperty as hoc,
   parentComponentProperty as wrap,
   memoizedProperty as memo,
   boundComponentProperty as bind,
-  defineValueProperty as is,
-  offlineProperty as off,
+  defineValueProperty as def,
+  passiveProperty as omit,
   tupleProperty as tuple
 } from './directives';
 

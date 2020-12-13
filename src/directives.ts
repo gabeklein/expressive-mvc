@@ -177,7 +177,7 @@ export function defineValueProperty(value: any){
   return new Pending(setDefault, true) as any;
 }
 
-export function offlineProperty(value: any){
+export function passiveProperty(value: any){
   function assign(on: Dispatch, key: string){
     within(on.subject, key, value);
   }
