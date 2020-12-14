@@ -148,19 +148,24 @@ export class Observer {
     const self = { key, on: this, priority: 1 };
 
     const refresh = () => {
-      const value = compute.call(subject);
-
-      if(value !== state[key]){
-        state[key] = value;
-        this.emit(key);
-      }
+      this.set(key, compute.call(subject));
     }
 
     const initialize = (early?: boolean) => {
-      try {
-        const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
-        const value = state[key] = compute.call(sub.proxy);
+      const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
 
+      try {
+        return state[key] = compute.call(sub.proxy);
+      }
+      catch(e){
+        Oops.ComputeFailed(subject.constructor.name, key).warn();
+
+        if(early)
+          Oops.ComputedEarly(key).warn();
+
+        throw e;
+      }
+      finally {
         for(const key of sub.watched){
           const compute = getters.get(key);
           if(compute){
@@ -170,19 +175,6 @@ export class Observer {
           }
         }
 
-        return value;
-      }
-      catch(e){
-        const { name } = this.subject.constructor;
-
-        Oops.ComputeFailed(name, key).warn();
-
-        if(early)
-          Oops.ComputedEarly(key).warn();
-
-        throw e;
-      }
-      finally {
         defineProperty(subject, key, {
           enumerable: true,
           configurable: true,
