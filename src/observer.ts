@@ -14,6 +14,7 @@ import {
 import Oops from './issues';
 
 export const COMPUTED = Symbol("computed");
+// const UpdatesPending = new WeakMap<Observer, (key: string) => void>();
 
 interface GetterInfo {
   on: Observer;
@@ -208,6 +209,12 @@ export class Observer {
   }
 
   public emit(key: string){
+    const done = () => { delete this.emit };
+    this.emit = this.beginUpdate(done);
+    this.emit(key);
+  }
+
+  protected beginUpdate(done: Callback){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     let computed = [] as Callback[];
@@ -226,12 +233,9 @@ export class Observer {
             .concat(notify)
             .sort((a, b) => meta(a).priority - meta(b).priority)
       }
-    };
+    }
 
-    this.emit = include;
-    include(key);
-
-    setImmediate(() => {
+    const commit = () => {
       const after = this.waiting;
 
       while(computed.length){
@@ -250,7 +254,10 @@ export class Observer {
         after.forEach(x => x(list));
       }
 
-      delete this.emit;
-    })
+      done();
+    }
+
+    setImmediate(commit);
+    return include;
   }
 }
