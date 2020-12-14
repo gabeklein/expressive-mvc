@@ -36,7 +36,7 @@ export class Observer {
   }
 
   public state: BunchOf<any> = {};
-  protected getters: BunchOf<Callback> = {};
+  protected getters = new Map<string, Callback>();
   protected subscribers: BunchOf<Set<Callback>> = {};
   protected waiting?: ((keys: string[]) => void)[];
 
@@ -54,14 +54,14 @@ export class Observer {
     for(
       const [key, item] of entriesIn(sub)){
 
-      if(!item.get || key in getters)
+      if(!item.get || getters.has(key))
         continue;
 
       function override(value: any){
         if(value instanceof Pending && value.loose)
           return;
 
-        delete getters[key];
+        getters.delete(key);
         defineProperty(subject, key, {
           value,
           configurable: true,
@@ -76,13 +76,13 @@ export class Observer {
         get: item.get
       })
 
-      getters[key] = item.get;
+      getters.set(key, item.get);
     }
   }
 
   protected manageProperties(){
-    for(const entry of entriesIn(this.subject))
-      this.manageProperty(...entry);
+    for(const [k, d] of entriesIn(this.subject))
+      this.manageProperty(k, d);
   }
 
   protected manageProperty(
@@ -94,13 +94,13 @@ export class Observer {
 
   protected manageGetters(){
     const { state, subject, getters, subscribers } = this;
-    const expected = {} as BunchOf<Callback>;
-  
-    for(const key in getters){
-      const init = this.monitorComputedValue(key, getters[key]);
+    const expected = new Map<string, Callback>();
+
+    for(const [key, compute] of getters){
+      const init = this.monitorComputedValue(key, compute);
 
       if(subscribers[key].size)
-        expected[key] = init;
+        expected.set(key, init);
       else
         defineProperty(subject, key, {
           configurable: true,
@@ -111,9 +111,9 @@ export class Observer {
         })
     }
 
-    for(const key in expected)
+    for(const [key, compute] of expected)
       if(key in state === false)
-        expected[key]();
+        compute();
   }
 
   public monitor(key: string){
@@ -144,7 +144,7 @@ export class Observer {
 
     this.monitor(key);
 
-    const { state, subject } = this;
+    const { state, subject, getters } = this;
     const self = { key, on: this, priority: 1 };
 
     const refresh = () => {
@@ -161,12 +161,14 @@ export class Observer {
         const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
         const value = state[key] = compute.call(sub.proxy);
 
-        for(const key of sub.watched)
-          if(key in this.getters){
-            const getter = meta(this.getters[key]);
-            if(getter.priority >= self.priority)
-              self.priority = getter.priority + 1;
+        for(const key of sub.watched){
+          const compute = getters.get(key);
+          if(compute){
+            const { priority } = meta(compute);
+            if(priority >= self.priority)
+              self.priority = priority + 1;
           }
+        }
 
         return value;
       }
