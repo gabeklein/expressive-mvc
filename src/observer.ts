@@ -154,7 +154,7 @@ export class Observer {
       this.set(key, compute.call(subject));
     }
 
-    const initialize = (early?: boolean) => {
+    const create = (early?: boolean) => {
       const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
 
       try {
@@ -190,9 +190,9 @@ export class Observer {
     }
 
     meta(compute, self);
-    meta(initialize, true);
+    meta(create, true);
 
-    return initialize;
+    return create;
   }
 
   public follow(
