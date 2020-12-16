@@ -115,8 +115,8 @@ describe("Peers", () => {
 
   it("can attach from context and singleton", () => {
     class Bar extends Controller {
-      foo = get(Foo);
-      baz = get(Baz);
+      foo = get(Foo as any) as Foo;
+      baz = get(Baz as any) as Baz;
     }
 
     const gotValues = jest.fn();
@@ -140,7 +140,7 @@ describe("Peers", () => {
     class Illegal extends Singleton {
       // foo is not also Global
       // this should fail
-      foo = get(Foo);
+      foo = get(Foo as any) as Foo;
     }
 
     const attempt = () => Illegal.create();
