@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
-import type { Controller, Model } from './controller';
-import { create, define, values } from './util';
+import { Controller, Model } from './controller';
+import { create, define, values, entriesIn } from './util';
 
 import Oops from './issues';
 
@@ -61,17 +61,16 @@ export function getFromContext(Type: Model){
   return instance;
 }
 
-export function attachFromContext(
-  instance: Controller,
-  getPending: (instance: Controller) => [string, Model][]){
-
+export function attachFromContext(instance: Controller){
   if(NEEDS_HOOK.has(instance)){
     if(NEEDS_HOOK.get(instance))
       useContext(CONTEXT_CHAIN);
     return;
   }
 
-  const pending = getPending(instance);
+  const pending = entriesIn(instance)
+    .map(([key, desc]) => [key, desc.value])
+    .filter(entry => Controller.isTypeof(entry[1]));
 
   if(!pending.length){
     NEEDS_HOOK.set(instance, false);

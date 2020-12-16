@@ -5,7 +5,7 @@ import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { entriesIn, isFn, within } from './util';
+import { isFn, within } from './util';
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -112,7 +112,7 @@ export function useController(
     const handler = instance[alias] || instance[name];
 
     if(name == lifecycle.WILL_RENDER)
-      release = attachFromContext(instance, getPeersPending);
+      release = attachFromContext(instance);
 
     if(name == lifecycle.DID_MOUNT)
       subscription.commit();
@@ -134,12 +134,4 @@ export function useController(
   });
 
   return subscription.proxy;
-}
-
-function getPeersPending(of: Controller){
-  const list = [] as [string, Model][];
-  for(const [key, { value }] of entriesIn(of))
-    if(Controller.isTypeof(value))
-      list.push([key, value]);
-  return list;
 }
