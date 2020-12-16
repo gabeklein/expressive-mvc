@@ -1,7 +1,7 @@
 import type { Controller } from './controller';
 
 import { Pending } from './directives';
-import { Observer, COMPUTED } from './observer';
+import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import {
   getOwnPropertyDescriptor,
@@ -84,12 +84,17 @@ export class Dispatch extends Observer {
       invoke(sub.proxy);
       return () => sub.release();
     }
-    else {
-      if(isFn(select))
-        select = listAccess(this.watched, select);
 
-      return this.addMultipleListener(select, reinvoke);
+    if(isFn(select))
+      select = listAccess(this.watched, select);
+
+    if(select.length > 1){
+      const update = squash(reinvoke);
+      const cleanup = select.map(k => this.follow(k, update));
+      return () => cleanup.forEach(x => x());
     }
+
+    return this.follow(select[0], reinvoke);
   }
 
   public export = (
@@ -169,42 +174,7 @@ export class Dispatch extends Observer {
     if(initial)
       callback();
 
-    return this.addListener(key, callback, once);
-  }
-
-  public addListener(
-    key: string,
-    callback: Callback,
-    once?: boolean){
-
-    const listeners = this.monitor(key);
-    const stop = () => { listeners.delete(callback) };
-    const onUpdate = once
-      ? () => { stop(); callback() }
-      : callback;
-
-    const desc = getOwnPropertyDescriptor(this.subject, key);
-    const getter = desc && desc.get;
-    if(getter && COMPUTED in getter)
-      (getter as Function)(true);
-
-    listeners.add(onUpdate);
-    return stop;
-  }
-
-  public addMultipleListener(
-    keys: string[],
-    callback: () => void){
-
-    if(keys.length > 2)
-      this.addListener(keys[0], callback)
-
-    const update = squash(callback);
-    const cleanup = keys.map(k =>
-      this.addListener(k, update)
-    );
-
-    return () => cleanup.forEach(x => x());
+    return this.follow(key, callback, once);
   }
 }
 

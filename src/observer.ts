@@ -8,19 +8,21 @@ import {
   getPrototypeOf,
   isFn,
   keys,
-  within
+  within,
+  getOwnPropertyDescriptor
 } from './util';
 
 import Oops from './issues';
 
 export const COMPUTED = Symbol("computed");
-// const UpdatesPending = new WeakMap<Observer, (key: string) => void>();
 
 interface GetterInfo {
   on: Observer;
   key: string;
   priority: number;
 }
+
+type MaybeCompute = ((early?: boolean) => void) | undefined;
 
 function meta(x: Function): GetterInfo;
 function meta<T>(x: Function, set: T): T;
@@ -193,6 +195,24 @@ export class Observer {
     return initialize;
   }
 
+  public follow(
+    key: string,
+    callback: Callback,
+    once?: boolean){
+
+    const list = this.monitor(key);
+    const stop = () => list.delete(callback);
+    const property = getOwnPropertyDescriptor(this.subject, key);
+    const getter = property && property.get as MaybeCompute;
+
+    if(getter && COMPUTED in getter)
+      getter(true);
+
+    list.add(once ? () => { stop(); callback() } : callback);
+
+    return stop;
+  }
+
   public set(key: string, value: any){
     let set: any = this.subject;
 
@@ -214,7 +234,7 @@ export class Observer {
     this.emit(key);
   }
 
-  protected beginUpdate(done: Callback){
+  private beginUpdate(done: Callback){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     let computed = [] as Callback[];
@@ -222,8 +242,9 @@ export class Observer {
     const include = (key: string) => {
       if(handled.has(key))
         return;
+      else
+        handled.add(key);
 
-      handled.add(key);
       for(const notify of this.subscribers[key] || []){
         const getter = meta(notify);
         if(!getter || getter.on !== this)
@@ -236,8 +257,6 @@ export class Observer {
     }
 
     const commit = () => {
-      const after = this.waiting;
-
       while(computed.length){
         const compute = computed.shift()!;
         const { key } = meta(compute);
@@ -247,6 +266,8 @@ export class Observer {
       }
 
       effects.forEach(x => x());
+
+      const after = this.waiting;
 
       if(after){
         delete this.waiting;
