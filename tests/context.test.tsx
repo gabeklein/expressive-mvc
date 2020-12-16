@@ -1,7 +1,8 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Consumer, Controller, Provider } from "./adapter";
+import { Consumer, Controller, Provider, get, Issue } from "./adapter";
+import { Singleton } from "..";
 
 class Foo extends Controller {}
 class Bar extends Controller {}
@@ -96,5 +97,54 @@ describe("Consumer", () => {
 
     expect(foundBaz).toBeInstanceOf(Baz);
     expect(foundBar).toBeInstanceOf(Baz);
+  })
+});
+
+describe("Peers", () => {
+  class Foo extends Controller {
+    value = "foo";
+  }
+  
+  class Baz extends Singleton {
+    value = "baz";
+  }
+  
+  beforeAll(() => Baz.create());
+
+  it.todo("can access peers sharing same provider");
+
+  it("can attach from context and singleton", () => {
+    class Bar extends Controller {
+      foo = get(Foo);
+      baz = get(Baz);
+    }
+
+    const gotValues = jest.fn();
+
+    function BarPeerConsumer(){
+      const { foo, baz } = Bar.use();
+      gotValues(foo.value, baz.value);
+      return null;
+    }
+
+    create(
+      <Foo.Provider>
+        <BarPeerConsumer />
+      </Foo.Provider>
+    );
+
+    expect(gotValues).toBeCalledWith("foo", "baz");
+  })
+
+  it("will reject from context if a singleton", () => {
+    class Illegal extends Singleton {
+      // foo is not also Global
+      // this should fail
+      foo = get(Foo);
+    }
+
+    const attempt = () => Illegal.create();
+    const error = Issue.CantAttachGlobal(Illegal.name, Foo.name)
+    expect(attempt).toThrow(error);
   })
 })

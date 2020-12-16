@@ -1,4 +1,4 @@
-import VC, { use, parent, Issue } from "./adapter";
+import VC, { Issue, parent, use } from './adapter';
 
 describe("Parent-Child", () => {
   it("creates parent-child relationship", () => {
@@ -50,4 +50,4 @@ describe("Parent-Child", () => {
 
     expect(attempt).toThrowError(error);
   })
-})
+});
