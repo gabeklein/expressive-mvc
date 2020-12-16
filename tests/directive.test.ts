@@ -1,4 +1,4 @@
-import Controller, { event, ref, set, test, use, def } from './adapter';
+import Controller, { event, ref, set, test, use, def, Issue } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -148,7 +148,8 @@ describe("event Directive", () => {
     const attempt = () => {
       control.foo = function(){};
     }
-    expect(attempt).toThrow();
+    const error = Issue.AccessEvent(Events.name, "foo");
+    expect(attempt).toThrow(error);
   })
 
   it("emits standard event from property", async () => {

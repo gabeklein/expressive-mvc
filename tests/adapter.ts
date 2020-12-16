@@ -5,6 +5,8 @@ import * as Source from "../src";
 // public type definitions
 import * as Public from "../";
 
+export { default as Issue } from "../src/issues";
+
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as Public.Provider;
@@ -17,6 +19,7 @@ export const hoc = Source.hoc as typeof Public.hoc;
 export const wrap = Source.wrap as typeof Public.wrap;
 export const event = Source.event as typeof Public.event;
 export const def = Source.def as typeof Public.def;
+export const parent = Source.parent as typeof Public.parent;
 
 export const test = trySubscribe;
 export default Controller;

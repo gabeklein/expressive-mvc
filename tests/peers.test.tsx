@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Controller, get, Singleton } from "./adapter";
+import { Controller, get, Singleton, Issue } from "./adapter";
 
 class Foo extends Controller {
   value = "foo";
@@ -47,7 +47,8 @@ describe("Peers", () => {
 
   it("will reject from context if a singleton", () => {
     const attempt = () => Bad.create();
-    expect(attempt).toThrow()
+    const error = Issue.CantAttachGlobal(Bad.name, Foo.name)
+    expect(attempt).toThrow(error);
   })
 
   it.todo("can access peers sharing same provider")
