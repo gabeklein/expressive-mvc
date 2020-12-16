@@ -1,6 +1,6 @@
 import type { Singleton as Public } from "../"
 
-import { Controller, Model, State } from './controller';
+import { Controller, Model } from './controller';
 import { useMemoized } from "./hooks";
 import { defineLazy } from "./util";
 
@@ -27,7 +27,7 @@ export class Singleton
     prepare?: (self: any) => void){
 
     const Type = this as unknown as typeof Singleton;
-    let instance = Type.current as State<T>;
+    let instance = Type.current as InstanceOf<T>;
 
     if(instance)
       throw Oops.GlobalExists(this.name);

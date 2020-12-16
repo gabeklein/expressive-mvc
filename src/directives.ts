@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { ControllableRefFunction } from '..';
-import type { Controller, Model, State } from './controller';
+import type { Controller, Model } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './components';
 import { Dispatch, createEffect } from './dispatch';
@@ -17,7 +17,7 @@ export class Pending {
 }
 
 export function childProperty<T extends Model>
-  (Peer: T, callback?: (i: State<T>) => void): State<T> {
+  (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   function bindChild(on: Dispatch, key: string){
     const parent = on.subject;
@@ -32,7 +32,7 @@ export function childProperty<T extends Model>
 }
 
 export function peerProperty<T extends Model>
-  (Peer: T): State<T> {
+  (Peer: T): InstanceOf<T> {
 
   function bindSibling(on: Dispatch, key: string){
     const subject = on.subject as Controller;
@@ -173,7 +173,7 @@ export function defineValueProperty(value: any){
   function setDefault(on: Dispatch, key: string){
     on.monitorValue(key, value);
   }
-    
+
   return new Pending(setDefault, true) as any;
 }
 

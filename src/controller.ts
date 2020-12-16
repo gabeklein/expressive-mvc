@@ -11,7 +11,6 @@ import { assignSpecific, defineLazy, getPrototypeOf, define, memoize, entriesIn 
 import Oops from './issues';
 
 export type Model = typeof Controller;
-export type State<T extends Model> = InstanceOf<T>;
 
 export interface Controller extends Public {};
 
@@ -128,9 +127,9 @@ export class Controller {
   static create<T extends Model>(
     this: T,
     args?: any[],
-    prepare?: (self: State<T>) => void){
+    prepare?: (self: InstanceOf<T>) => void){
 
-    const instance: State<T> = 
+    const instance: InstanceOf<T> = 
       new (this as any)(...args || []);
 
     if(prepare)
