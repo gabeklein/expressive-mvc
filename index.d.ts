@@ -96,8 +96,6 @@ interface WithReact {
 interface Controller extends Observable, WithLifecycle, WithReact {
     get: this;
     set: this;
-    
-    parent?: Controller;
 
     tap(): this;
     tap<K extends keyof this>(key?: K): this[K];
@@ -167,6 +165,8 @@ interface ControllableRefFunction<T, P = {}> {
 }
       
 declare function use <T extends Model> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
+declare function parent <T extends Model> (Expects: T, required: true): Instance<T>;
+declare function parent <T extends Model> (Expects: T, required?: false): Instance<T> | undefined;
 declare function get <T extends Model> (type: T): Instance<T>;
 declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
@@ -207,6 +207,7 @@ export {
 
 export {
     use,
+    parent,
     get,
     watch,
     ref,

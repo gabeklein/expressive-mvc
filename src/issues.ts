@@ -56,7 +56,7 @@ export default Issues({
     `Shared instance of ${type} already exists! '${type}.use(...)' may only be mounted once at any one time.`,
 
   GlobalDoesNotExist: (name) =>
-    `Tried to access singleton ${name} but one does not exist! Did you forget to initialize? \nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
+    `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
 
   FocusIsDetatched: () => 
     `Can't do that boss`,
@@ -71,5 +71,11 @@ export default Issues({
     `Strict requestUpdate() did not find pending updates.`,
 
   NoObserver: (className) =>
-    `No observer exists for this instance of ${className}. Is it a Controller?`
+    `No observer exists for this instance of ${className}. Is it a Controller?`,
+
+  ParentRequired: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
+
+  UnexpectedParent: (expects, child, got) =>
+    `New ${child} created as child of ${got} but must be instanceof ${expects}`
 });

@@ -1,5 +1,6 @@
 export {
   childProperty as use,
+  parentProperty as parent,
   peerProperty as get,
   effectProperty as watch,
   refProperty as ref,

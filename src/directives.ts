@@ -16,19 +16,49 @@ export class Pending {
   ){}
 }
 
+const ParentRelationship = new WeakMap<{}, {}>();
+
 export function childProperty<T extends Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   function bindChild(on: Dispatch, key: string){
     const parent = on.subject;
-    const instance = Peer.create();
-    define(instance, { parent });
+    const instance = new Peer() as InstanceOf<T>;
+
     define(parent, key, instance);
+    ParentRelationship.set(instance, parent);
+
+    Dispatch.get(instance);
+
     if(callback)
       callback(instance);
   }
 
   return new Pending(bindChild) as any;
+}
+
+export function parentProperty<T extends Model>
+  (Expects: T, required?: boolean): InstanceOf<T> {
+
+  function attachParent(on: Dispatch, key: string){
+    const { subject } = on;
+    const { name: expectsType } = Expects;
+    const { name: onType } = subject.constructor;
+    const parent = ParentRelationship.get(subject);
+
+    if(!parent){
+      if(required)
+        throw Oops.ParentRequired(expectsType, onType);
+    }
+    else if(!(parent instanceof Expects)){
+      const gotType = parent.constructor.name;
+      throw Oops.UnexpectedParent(expectsType, onType, gotType);
+    }
+
+    define(subject, key, parent);
+  }
+
+  return new Pending(attachParent) as any;
 }
 
 export function peerProperty<T extends Model>

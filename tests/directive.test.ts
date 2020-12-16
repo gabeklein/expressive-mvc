@@ -64,10 +64,6 @@ describe("use Directive", () => {
     expect(parent.child).toBeInstanceOf(Child);
   })
 
-  it('assigned parent property to child', () => {
-    expect(parent.child.parent).toBe(parent);
-  })
-
   it('ran child callback on create', () => {
     expect(parent.hello).toBe(WORLD);
   })
