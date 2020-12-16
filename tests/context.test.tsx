@@ -1,8 +1,7 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import { Consumer, Controller, Provider, get, Issue } from "./adapter";
-import { Singleton } from "..";
+import { Consumer, Controller, Provider, get, Issue, Singleton } from "./adapter";
 
 class Foo extends Controller {}
 class Bar extends Controller {}
