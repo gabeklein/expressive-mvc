@@ -18,8 +18,8 @@ function Issues<O extends Messages>(register: O): Issues<O> {
   const Library = {} as any;
 
   for(const name in register)
-    Library[name] = () => 
-      new Issue(register[name].apply(null, arguments as any));
+    Library[name] = (...args: MessageVariable[]) => 
+      new Issue(register[name].apply(null, args));
 
   return Library;
 }
