@@ -48,7 +48,6 @@ export class Dispatch extends Observer {
 
     super(subject, base);
     ASSIGNED.set(subject, this);
-    this.prepare(base);
   }
 
   public on = (
