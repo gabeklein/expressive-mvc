@@ -29,7 +29,6 @@ export {
   defineLazy,
   entriesIn,
   isFn,
-  listAccess,
   memoize,
   squash,
   within
@@ -68,23 +67,6 @@ function allEntriesIn(object: {}, until: {}){
       return { value }; 
     }
   }
-}
-
-function listAccess(
-  available: string[],
-  processor: (x: Recursive) => void){
-
-  const found = new Set<string>();
-  const spy = {} as Recursive;
-
-  for(const key of available)
-    defineProperty(spy, key, {
-      get: () => (found.add(key), spy)
-    });
-
-  processor(spy);
-
-  return Array.from(found);
 }
 
 function squash(callback: Callback){

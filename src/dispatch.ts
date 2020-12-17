@@ -4,9 +4,10 @@ import { Pending } from './directives';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import {
+  assign,
+  defineProperty,
   getOwnPropertyDescriptor,
   isFn,
-  listAccess,
   squash,
   within
 } from './util';
@@ -50,6 +51,20 @@ export class Dispatch extends Observer {
     ASSIGNED.set(subject, this);
   }
 
+  public select(selector: Selector){
+    const found = new Set<string>();
+    const spy = {} as Recursive;
+  
+    for(const key of this.watched)
+      defineProperty(spy, key, {
+        get(){ found.add(key); return spy }
+      });
+  
+    selector(spy);
+
+    return Array.from(found);
+  }
+
   public on = (
     key: string | Selector,
     listener: HandleUpdatedValue,
@@ -85,7 +100,7 @@ export class Dispatch extends Observer {
     }
 
     if(isFn(select))
-      select = listAccess(this.watched, select);
+      select = this.select(select);
 
     if(select.length > 1){
       const update = squash(reinvoke);
@@ -100,12 +115,12 @@ export class Dispatch extends Observer {
     select?: string[] | Selector) => {
 
     if(!select)
-      return { ...this.state };
+      return assign({}, this.state);
 
     const acc = {} as BunchOf<any>;
 
     if(isFn(select))
-      select = listAccess(this.watched, select);
+      select = this.select(select);
     
     for(const key of select)
       acc[key] = within(this.subject, key);
@@ -120,7 +135,7 @@ export class Dispatch extends Observer {
     if(typeof select == "string")
       select = [select].concat(rest);
     else if(isFn(select))
-      select = listAccess(this.watched, select);
+      select = this.select(select);
 
     if(Array.isArray(select))
       select.forEach(k => this.emit(k))
