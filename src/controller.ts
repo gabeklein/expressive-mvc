@@ -16,9 +16,14 @@ export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
-    const dispatch = new Dispatch(this, Controller, this.didCreate);
+    const dispatch = new Dispatch(
+      this, Controller, this.didCreate
+    );
 
-    define(this, { get: this, set: this });
+    define(this, {
+      get: this,
+      set: this
+    });
 
     for(const [key, { value }] of entriesIn(dispatch))
       if(typeof value == "function")

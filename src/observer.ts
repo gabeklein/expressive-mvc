@@ -14,19 +14,17 @@ import {
 
 import Oops from './issues';
 
-export const COMPUTED = Symbol("computed");
-
-type MaybeCompute = ((early?: boolean) => void) | undefined;
-
 interface GetterInfo {
   on: Observer;
   key: string;
   priority: number;
 }
 
-function meta(x: Function): GetterInfo;
-function meta<T>(x: Function, set: T): T;
-function meta(x: Function, set?: any){
+export const COMPUTED = Symbol("computed");
+
+function metaData(x: Function): GetterInfo;
+function metaData<T>(x: Function, set: T): T;
+function metaData(x: Function, set?: any){
   return within(x, COMPUTED, set) as GetterInfo;
 }
 
@@ -69,13 +67,12 @@ export class Observer {
         })
       }
 
+      getters.set(key, compute);
       defineProperty(subject, key, {
         configurable: true,
         set: item.set || override,
         get: item.get
       })
-
-      getters.set(key, item.get);
     }
   }
 
@@ -151,7 +148,8 @@ export class Observer {
     }
 
     const create = (early?: boolean) => {
-      const sub = new Subscriber(subject, refresh, { [COMPUTED]: self });
+      const meta = { [COMPUTED]: self };
+      const sub = new Subscriber(subject, refresh, meta);
 
       try {
         return state[key] = compute.call(sub.proxy);
@@ -168,7 +166,7 @@ export class Observer {
         for(const key of sub.watched){
           const compute = getters.get(key);
           if(compute){
-            const { priority } = meta(compute);
+            const { priority } = metaData(compute);
             if(priority >= self.priority)
               self.priority = priority + 1;
           }
@@ -185,8 +183,8 @@ export class Observer {
       }
     }
 
-    meta(compute, self);
-    meta(create, true);
+    metaData(compute, self);
+    metaData(create, true);
 
     return create;
   }
@@ -196,15 +194,20 @@ export class Observer {
     callback: Callback,
     once?: boolean){
 
+    type MaybeComputed = (early?: boolean) => void;
+
     const list = this.monitor(key);
     const stop = () => list.delete(callback);
     const property = getOwnPropertyDescriptor(this.subject, key);
-    const getter = property && property.get as MaybeCompute;
+    const getter = property && property.get as MaybeComputed;
 
     if(getter && COMPUTED in getter)
       getter(true);
 
-    list.add(once ? () => { stop(); callback() } : callback);
+    list.add(once
+      ? () => { stop(); callback() }
+      : callback
+    );
 
     return stop;
   }
@@ -231,7 +234,7 @@ export class Observer {
   }
 
   public emit(key: string){
-    const done = () => { delete this.emit };
+    const done = () => { delete (this as any).emit };
     this.emit = this.beginUpdate(done);
     this.emit(key);
   }
@@ -248,20 +251,22 @@ export class Observer {
         handled.add(key);
 
       for(const notify of this.subscribers[key] || []){
-        const getter = meta(notify);
+        const getter = metaData(notify);
         if(!getter || getter.on !== this)
           effects.add(notify);
         else
           computed = computed
             .concat(notify)
-            .sort((a, b) => meta(a).priority - meta(b).priority)
+            .sort((a, b) =>
+              metaData(a).priority - metaData(b).priority
+            )
       }
     }
 
     const commit = () => {
       while(computed.length){
         const compute = computed.shift()!;
-        const { key } = meta(compute);
+        const { key } = metaData(compute);
       
         if(!handled.has(key))
           compute();

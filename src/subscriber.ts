@@ -19,23 +19,22 @@ export class Subscriber {
   }
 
   public get proxy(){
-    const master = within(this.subject);
-    const proxy = create(master);
+    const source = this.subject as any;
+    const proxy = create(source);
 
     for(const key of this.parent.watched)
       defineProperty(proxy, key, {
         configurable: true,
         set: (value) => {
-          master[key] = value;
+          source[key] = value;
         },
         get: () => {
-          let value = master[key];
+          let value = source[key];
 
           if(value instanceof Controller)
-            value = this.followRecursive(key);
-          else
-            this.follow(key);
-
+            return this.followRecursive(key);
+  
+          this.follow(key);
           return value;
         }
       })
