@@ -40,8 +40,8 @@ export default Issues({
   AccessEvent: (parent, name) =>
     `Can't update ${parent}.${name}; it is only an event.`,
 
-  ComputeFailed: (parent, property) =>
-    `There was an attempt to access computed property ${parent}.${property} for the first time; however an exception was thrown. Dependant values probably don't exist yet.`,
+  ComputeFailed: (parent, property, initial) =>
+    `An exception was thrown while ${initial ? "getting initial value of" : "refreshing"} ${parent}.${property}. Property will be skipped.`,
 
   ComputedEarly: (property) => 
     `Note: Computed values are usually only calculated after first access, except where accessed implicitly by "on" or "export". Your '${property}' getter may have run earlier than intended because of that.`,

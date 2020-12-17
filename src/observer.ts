@@ -144,7 +144,20 @@ export class Observer {
     const self = { key, on: this, priority: 1 };
 
     const refresh = () => {
-      this.set(key, compute.call(subject));
+      let next;
+
+      try {
+        next = compute.call(subject);
+      }
+      catch(err){
+        Oops.ComputeFailed(subject.constructor.name, key, false).warn();
+        throw err;
+      }
+
+      if(next !== state[key]){
+        state[key] = next;
+        this.emit(key);
+      }
     }
 
     const create = (early?: boolean) => {
@@ -155,7 +168,7 @@ export class Observer {
         return state[key] = compute.call(sub.proxy);
       }
       catch(e){
-        Oops.ComputeFailed(subject.constructor.name, key).warn();
+        Oops.ComputeFailed(subject.constructor.name, key, true).warn();
 
         if(early)
           Oops.ComputedEarly(key).warn();
