@@ -46,7 +46,6 @@ interface Observable {
     update<T extends this>(entries: Partial<T>): void;
     update(keys: Selector<this>): void;
     update<K extends keyof this>(keys: K[]): void;
-    update<K extends keyof this>(...keys: K[]): void;
 
     requestUpdate(strict?: boolean): Promise<string[] | false>;
     requestUpdate(cb: (keys: string[]) => void): void;

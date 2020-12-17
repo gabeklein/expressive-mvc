@@ -129,11 +129,10 @@ export class Dispatch extends Observer {
   }
 
   public update = (
-    select: string | string[] | Selector | BunchOf<any>,
-    ...rest: string[]) => {
+    select: string | string[] | Selector | BunchOf<any>) => {
 
     if(typeof select == "string")
-      select = [select].concat(rest);
+      select = [select];
     else if(isFn(select))
       select = this.select(select);
 
