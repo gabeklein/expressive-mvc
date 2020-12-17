@@ -85,10 +85,7 @@ export function refProperty<T = any>
     const reset = effect && createEffect(effect);
     const value = defineProperty({}, "current", {
       get: () => on.state[key],
-      set: (value: any) => {
-        if(on.set(key, value) && reset)
-          reset(value, on.subject);
-      }
+      set: (v) => on.set(key, v, reset)
     });
 
     on.monitor(key);
@@ -111,10 +108,7 @@ export function effectProperty<T = any>
     defineProperty(on.subject, key, {
       enumerable: true,
       get: () => on.state[key],
-      set: (value: any) => {
-        if(on.set(key, value))
-          reset(value, on.subject);
-      }
+      set: x => on.set(key, x, reset)
     });
   }
 

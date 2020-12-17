@@ -209,19 +209,25 @@ export class Observer {
     return stop;
   }
 
-  public set(key: string, value: any){
-    let set: any = this.subject;
+  public set<T>(
+    key: string,
+    value: T,
+    effect?: (next: T, callee?: any) => void){
 
-    if(key in this.subscribers)
-      set = this.state;
+    const state: any =
+      key in this.subscribers
+        ? this.state
+        : this.subject;
 
-    if(set[key] === value)
-      return false;
+    if(state[key] == value)
+      return;
     else
-      set[key] = value;
+      state[key] = value;
+
+    if(effect)
+      effect(value, this.subject);
 
     this.emit(key);
-    return true;
   }
 
   public emit(key: string){
