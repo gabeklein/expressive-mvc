@@ -16,13 +16,13 @@ import Oops from './issues';
 
 export const COMPUTED = Symbol("computed");
 
+type MaybeCompute = ((early?: boolean) => void) | undefined;
+
 interface GetterInfo {
   on: Observer;
   key: string;
   priority: number;
 }
-
-type MaybeCompute = ((early?: boolean) => void) | undefined;
 
 function meta(x: Function): GetterInfo;
 function meta<T>(x: Function, set: T): T;
@@ -38,10 +38,11 @@ export class Observer {
     this.prepare(base);
   }
 
-  public state: BunchOf<any> = {};
   protected getters = new Map<string, Callback>();
   protected subscribers: BunchOf<Set<Callback>> = {};
   protected waiting?: ((keys: string[]) => void)[];
+
+  public state: BunchOf<any> = {};
 
   public get watched(){
     return keys(this.subscribers);

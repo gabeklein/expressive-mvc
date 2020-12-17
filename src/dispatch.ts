@@ -51,6 +51,15 @@ export class Dispatch extends Observer {
     ASSIGNED.set(subject, this);
   }
 
+  protected manageProperty(
+    key: string, desc: PropertyDescriptor){
+
+    if(desc.value instanceof Pending)
+      desc.value.applyTo(this, key);
+    else
+      super.manageProperty(key, desc);
+  }
+
   public select(selector: Selector){
     const found = new Set<string>();
     const spy = {} as Recursive;
@@ -63,6 +72,28 @@ export class Dispatch extends Observer {
     selector(spy);
 
     return Array.from(found);
+  }
+
+  public watch(
+    key: string | Selector,
+    handler: (value: any, key: string) => void,
+    once?: boolean,
+    initial?: boolean){
+
+    if(isFn(key))
+      [ key ] = this.select(key);
+
+    const callback = () =>
+      handler.call(
+        this.subject, 
+        this.state[key as string],
+        key as string
+      );
+
+    if(initial)
+      callback();
+
+    return this.follow(key, callback, once);
   }
 
   public on = (
@@ -157,37 +188,6 @@ export class Dispatch extends Observer {
       return new Promise(r => waiting.push(r));
     else
       return Promise.resolve(false);
-  }
-  
-  protected manageProperty(
-    key: string, desc: PropertyDescriptor){
-
-    if(desc.value instanceof Pending)
-      desc.value.applyTo(this, key);
-    else
-      super.manageProperty(key, desc);
-  }
-
-  public watch(
-    key: string | Selector,
-    handler: (value: any, key: string) => void,
-    once?: boolean,
-    initial?: boolean){
-
-    if(isFn(key))
-      key = listAccess(this.watched, key)[0];
-
-    const callback = () =>
-      handler.call(
-        this.subject, 
-        this.state[key as string],
-        key as string
-      );
-
-    if(initial)
-      callback();
-
-    return this.follow(key, callback, once);
   }
 }
 

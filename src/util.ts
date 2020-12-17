@@ -152,8 +152,7 @@ function within(
 const CACHE = new Map<any, any>();
 
 function memoize<R, A extends any[]>(
-  compute: (...args: A) => R,
-  ...args: A
+  compute: (...args: A) => R, ...args: A
 ): R;
 
 function memoize(...args: any[]){
