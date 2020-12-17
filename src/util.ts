@@ -23,6 +23,7 @@ export {
 }
 
 export {
+  allEntriesIn,
   assignSpecific,
   define,
   defineLazy,
@@ -49,8 +50,24 @@ function isFn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function entriesIn<T>(object: T){
+function entriesIn(object: {}){
   return entries(getOwnPropertyDescriptors(object))
+}
+
+function allEntriesIn(object: {}, until: {}){
+  let layer = object;
+
+  return <IterableIterator<[string, PropertyDescriptor][]>>{
+    [Symbol.iterator](){ return this },
+    next(){
+      if(layer === until || layer.constructor === until)
+        return { done: true };
+
+      const value = entriesIn(layer);
+      layer = getPrototypeOf(layer);
+      return { value }; 
+    }
+  }
 }
 
 function listAccess(

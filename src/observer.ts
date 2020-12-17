@@ -3,13 +3,13 @@ import type { Controller } from './controller';
 import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
+  allEntriesIn,
   defineProperty,
   entriesIn,
-  getPrototypeOf,
+  getOwnPropertyDescriptor,
   isFn,
   keys,
-  within,
-  getOwnPropertyDescriptor
+  within
 } from './util';
 
 import Oops from './issues';
@@ -47,16 +47,11 @@ export class Observer {
     return keys(this.subscribers);
   }
 
-  protected prepare(stopAt: typeof Controller){
+  protected prepare(base: typeof Controller){
     const { subject, getters } = this;
 
-    for(
-      let sub = subject; 
-      sub.constructor !== stopAt && sub !== stopAt;
-      sub = getPrototypeOf(sub))
-    for(
-      const [key, item] of entriesIn(sub)){
-
+    for(const layer of allEntriesIn(subject, base))
+    for(const [key, item] of layer){
       if(!item.get || getters.has(key))
         continue;
 
