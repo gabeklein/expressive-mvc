@@ -45,9 +45,9 @@ describe("use Directive", () => {
   class Parent extends Controller {
     hello?: string = undefined;
 
-    child = use(Child, child => {
+    child = use(Child as any, (child: any) => {
       this.hello = child.hello;
-    });
+    }) as Child;
   }
 
   class Child extends Controller {

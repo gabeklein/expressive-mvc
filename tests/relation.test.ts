@@ -3,10 +3,10 @@ import VC, { Issue, parent, use } from './adapter';
 describe("Parent-Child", () => {
   it("creates parent-child relationship", () => {
     class Foo extends VC {
-      child = use(Bar);
+      child = use(Bar as any) as Bar;
     }
     class Bar extends VC {
-      parent = parent(Foo);
+      parent = parent(Foo as any) as Foo;
     }
 
     const foo = Foo.create();
@@ -35,7 +35,7 @@ describe("Parent-Child", () => {
   it("throws if parent is incorrect type", () => {
     class Expected extends VC {}
     class Unexpected extends VC {
-      child = use(Adopted);
+      child = use(Adopted as any) as Adopted;
     }
     class Adopted extends VC {
       expects = parent(Expected);
