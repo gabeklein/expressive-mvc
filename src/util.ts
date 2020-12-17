@@ -28,7 +28,7 @@ export {
   define,
   defineLazy,
   entriesIn,
-  isFn,
+  fn,
   memoize,
   squash,
   within
@@ -44,7 +44,7 @@ function define(target: {}, kv: {} | string | symbol, v?: {}){
       defineProperty(target, key, { value });
 }
 
-function isFn(x: any): x is Function {
+function fn(x: any): x is Function {
   return typeof x == "function";
 }
 

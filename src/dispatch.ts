@@ -7,7 +7,7 @@ import {
   assign,
   defineProperty,
   getOwnPropertyDescriptor,
-  isFn,
+  fn,
   squash,
   within
 } from './util';
@@ -80,7 +80,7 @@ export class Dispatch extends Observer {
     once?: boolean,
     initial?: boolean){
 
-    if(isFn(key))
+    if(fn(key))
       [ key ] = this.select(key);
 
     const callback = () =>
@@ -130,7 +130,7 @@ export class Dispatch extends Observer {
       return () => sub.release();
     }
 
-    if(isFn(select))
+    if(fn(select))
       select = this.select(select);
 
     if(select.length > 1){
@@ -150,7 +150,7 @@ export class Dispatch extends Observer {
 
     const acc = {} as BunchOf<any>;
 
-    if(isFn(select))
+    if(fn(select))
       select = this.select(select);
     
     for(const key of select)
@@ -164,7 +164,7 @@ export class Dispatch extends Observer {
 
     if(typeof select == "string")
       select = [select];
-    else if(isFn(select))
+    else if(fn(select))
       select = this.select(select);
 
     if(Array.isArray(select))
@@ -198,7 +198,7 @@ export function createEffect(callback: EffectCallback<any>){
     unSet && unSet();
     unSet = callback.call(callee, value);
 
-    if(unSet && !isFn(unSet))
+    if(unSet && !fn(unSet))
       throw Oops.BadEffectCallback()
   }
 }

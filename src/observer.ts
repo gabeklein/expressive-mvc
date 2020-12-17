@@ -7,7 +7,7 @@ import {
   defineProperty,
   entriesIn,
   getOwnPropertyDescriptor,
-  isFn,
+  fn,
   keys,
   within
 } from './util';
@@ -87,7 +87,7 @@ export class Observer {
   protected manageProperty(
     key: string, { value, enumerable }: PropertyDescriptor){
 
-    if(enumerable && !isFn(value) || /^[A-Z]/.test(key))
+    if(enumerable && !fn(value) || /^[A-Z]/.test(key))
       this.monitorValue(key, value);
   }
 

@@ -5,7 +5,7 @@ import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { isFn, within } from './util';
+import { fn, within } from './util';
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -58,7 +58,7 @@ export function useSubscriber(
     if(name == lifecycle.DID_MOUNT)
       subscription.commit();
 
-    if(isFn(handler))
+    if(fn(handler))
       handler.apply(target, args || []);
 
     parent.emit(name);
@@ -81,7 +81,7 @@ export function useMemoized(
     const handler = instance[alias] || instance[name];
     const observer = Dispatch.get(instance);
 
-    if(isFn(handler))
+    if(fn(handler))
       handler.apply(instance, args);
 
     observer.emit(name);
@@ -117,7 +117,7 @@ export function useController(
     if(name == lifecycle.DID_MOUNT)
       subscription.commit();
 
-    if(isFn(handler))
+    if(fn(handler))
       handler.apply(instance, args);
 
     parent.emit(name);
