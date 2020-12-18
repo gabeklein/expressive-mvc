@@ -1,4 +1,4 @@
-import Controller, { event, ref, set, test, use, def, Issue } from './adapter';
+import Controller, { event, ref, set, test, use, def } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -25,8 +25,10 @@ describe("set Directive", () => {
   
     expect(state.checkResult).toBe(undefined);
     state.once("test1", callback);
+
     state.test1 = 1;
     expect(state.checkResult).toBe(2);
+
     await assertDidUpdate();
     expect(callback).toBeCalledWith(1, "test1");
   })
@@ -35,9 +37,11 @@ describe("set Directive", () => {
     const { state, assertDidUpdate } = test(Subject, ["test2"]);
   
     state.test2 = 1;
+
     await assertDidUpdate();
     expect(state.checkResult).toBe(undefined);
     state.test2 = 2;
+
     await assertDidUpdate();
     expect(state.checkResult).toBe(true);
   })
@@ -152,14 +156,6 @@ describe("event Directive", () => {
 
   it("applies callback function to key", () => {
     expect(control.foo).toBeInstanceOf(Function);
-  })
-
-  it("disallows overwrite to key", () => {
-    const attempt = () => {
-      control.foo = function(){};
-    }
-    const error = Issue.AccessEvent(Events.name, "foo");
-    expect(attempt).toThrow(error);
   })
 
   it("emits standard event from property", async () => {

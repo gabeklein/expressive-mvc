@@ -73,6 +73,7 @@ export class Observer {
       getters.set(key, compute);
       displayName(compute, `run ${key}`);
       this.apply(key, {
+        configurable: true,
         set: item.set || redefine,
         get: compute
       })
@@ -112,9 +113,7 @@ export class Observer {
         compute();
   }
 
-  public apply(
-    key: string, desc: PropertyDescriptor){
-
+  public apply(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, 
       assign({ enumerable: true }, desc)  
     )
