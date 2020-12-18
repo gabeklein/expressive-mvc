@@ -85,8 +85,7 @@ export function refProperty<T = any>
     const reset = effect && createEffect(effect);
 
     on.monitor(key);
-    defineProperty(on.subject, key, {
-      enumerable: true,
+    on.apply(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
         set: on.setter(key, reset)
@@ -104,8 +103,7 @@ export function effectProperty<T = any>
     const reset = createEffect(effect);
 
     on.monitor(key);
-    defineProperty(on.subject, key, {
-      enumerable: true,
+    on.apply(key, {
       get: on.getter(key),
       set: on.setter(key, reset)
     })
@@ -121,7 +119,7 @@ export function eventProperty
     const trigger = () => on.emit(key);
 
     on.monitor(key);
-    defineProperty(on.subject, key, {
+    on.apply(key, {
       get: () => trigger,
       set: () => {
         throw Oops.AccessEvent(on.subject.constructor.name, key);

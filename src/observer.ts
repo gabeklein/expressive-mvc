@@ -10,7 +10,8 @@ import {
   fn,
   keys,
   within,
-  displayName
+  displayName,
+  assign
 } from './util';
 
 import Oops from './issues';
@@ -57,24 +58,22 @@ export class Observer {
       if(!compute || getters.has(key))
         continue;
 
-      function override(value: any){
+      const redefine = (value: any) => {
         if(value instanceof Pending && value.loose)
           return;
 
         getters.delete(key);
-        defineProperty(subject, key, {
+        this.apply(key, {
           value,
           configurable: true,
-          enumerable: true,
           writable: true
-        })
+        });
       }
 
       getters.set(key, compute);
       displayName(compute, `run ${key}`);
-      defineProperty(subject, key, {
-        configurable: true,
-        set: item.set || override,
+      this.apply(key, {
+        set: item.set || redefine,
         get: compute
       })
     }
@@ -93,7 +92,7 @@ export class Observer {
   }
 
   protected manageGetters(){
-    const { state, subject, getters, subscribers } = this;
+    const { state, getters, subscribers } = this;
     const expected = new Map<string, Callback>();
 
     for(const [key, compute] of getters){
@@ -102,8 +101,7 @@ export class Observer {
       if(subscribers[key].size)
         expected.set(key, init);
       else
-        defineProperty(subject, key, {
-          configurable: true,
+        this.apply(key, {
           get: init,
           set: Oops.AssignToGetter(key).warn
         })
@@ -112,6 +110,14 @@ export class Observer {
     for(const [key, compute] of expected)
       if(key in state === false)
         compute();
+  }
+
+  public apply(
+    key: string, desc: PropertyDescriptor){
+
+    defineProperty(this.subject, key, 
+      assign({ enumerable: true }, desc)  
+    )
   }
 
   public monitor(key: string){
@@ -127,9 +133,7 @@ export class Observer {
 
     this.monitor(key);
     this.state[key] = initial;
-
-    defineProperty(this.subject, key, {
-      enumerable: true,
+    this.apply(key, {
       get: this.getter(key),
       set: assign ? assign.bind(this) : this.setter(key)
     });
@@ -185,8 +189,7 @@ export class Observer {
           }
         }
 
-        defineProperty(subject, key, {
-          enumerable: true,
+        this.apply(key, {
           get: this.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
