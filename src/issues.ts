@@ -7,7 +7,7 @@ type Issues<M extends Messages> = {
 
 class Issue extends Error {
   // delete the first line of stack trace,
-  // hiding lookup step, not relevant to error.
+  // hides the lookup step not relevant to error.
   stack?: string = this.stack!.replace(/\n.+/, "");
 
   /** Emit this issue as a warning instead. */
