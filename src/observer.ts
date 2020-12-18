@@ -126,11 +126,9 @@ export class Observer {
 
     defineProperty(this.subject, key, {
       enumerable: true,
-      get: () => this.state[key],
-      set: assign && assign.bind(this) || (
-        (value: any) => this.set(key, value)
-      )
-    })
+      get: this.getter(key),
+      set: assign ? assign.bind(this) : this.setter(key)
+    });
   }
 
   protected monitorComputedValue(
@@ -185,8 +183,7 @@ export class Observer {
 
         defineProperty(subject, key, {
           enumerable: true,
-          configurable: true,
-          get: () => state[key],
+          get: this.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
       }
@@ -196,6 +193,28 @@ export class Observer {
     metaData(create, true);
 
     return create;
+  }
+
+  public getter(key: string){
+    return () => this.state[key];
+  }
+
+  public setter(
+    key: string,
+    effect?: (next: any, callee?: any) => void){
+
+    const state: any = this.state;
+    return (value: any) => {
+      if(state[key] == value)
+        return;
+
+      state[key] = value;
+
+      if(effect)
+        effect(value, this.subject);
+
+      this.emit(key);
+    };
   }
 
   public follow(
@@ -219,27 +238,6 @@ export class Observer {
     );
 
     return stop;
-  }
-
-  public set<T>(
-    key: string,
-    value: T,
-    effect?: (next: T, callee?: any) => void){
-
-    const state: any =
-      key in this.subscribers
-        ? this.state
-        : this.subject;
-
-    if(state[key] == value)
-      return;
-    else
-      state[key] = value;
-
-    if(effect)
-      effect(value, this.subject);
-
-    this.emit(key);
   }
 
   public emit(key: string){

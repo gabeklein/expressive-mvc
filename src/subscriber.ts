@@ -25,9 +25,7 @@ export class Subscriber {
     for(const key of this.parent.watched)
       defineProperty(proxy, key, {
         configurable: true,
-        set: (value) => {
-          source[key] = value;
-        },
+        set: this.parent.setter(key),
         get: () => {
           let value = source[key];
 

@@ -83,15 +83,14 @@ export function refProperty<T = any>
 
   function createReference(on: Dispatch, key: string){
     const reset = effect && createEffect(effect);
-    const value = defineProperty({}, "current", {
-      get: () => on.state[key],
-      set: (v) => on.set(key, v, reset)
-    });
 
     on.monitor(key);
     defineProperty(on.subject, key, {
       enumerable: true,
-      value
+      value: defineProperty({}, "current", {
+        get: on.getter(key),
+        set: on.setter(key, reset)
+      })
     });
   }
 
@@ -107,9 +106,9 @@ export function effectProperty<T = any>
     on.monitor(key);
     defineProperty(on.subject, key, {
       enumerable: true,
-      get: () => on.state[key],
-      set: x => on.set(key, x, reset)
-    });
+      get: on.getter(key),
+      set: on.setter(key, reset)
+    })
   }
 
   return new Pending(registerEffect) as any;

@@ -170,8 +170,7 @@ export class Dispatch extends Observer {
     if(Array.isArray(select))
       select.forEach(k => this.emit(k))
     else
-      for(const key in select)
-        this.set(key, select[key]);
+      assign(this.subject, select);
   }
 
   public requestUpdate = (
