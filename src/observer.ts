@@ -24,6 +24,10 @@ interface GetterInfo {
 
 export const COMPUTED = Symbol("computed");
 
+export type RequestCallback = (keys: string[]) => void;
+
+const Updating = new WeakMap<Observer, (key: string) => void>();
+
 function metaData(x: Function): GetterInfo;
 function metaData<T>(x: Function, set: T): T;
 function metaData(x: Function, set?: any){
@@ -40,9 +44,13 @@ export class Observer {
 
   protected getters = new Map<string, Callback>();
   protected subscribers = {} as BunchOf<Set<Callback>>;
-  protected waiting?: ((keys: string[]) => void)[];
+  protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
+
+  public get pending(){
+    return Updating.has(this);
+  }
 
   public get watched(){
     return keys(this.subscribers);
@@ -257,12 +265,20 @@ export class Observer {
   }
 
   public emit(key: string){
-    const done = () => { delete (this as any).emit };
-    this.emit = this.beginUpdate(done);
-    this.emit(key);
+    let include = Updating.get(this);
+
+    if(!include)
+      Updating.set(this, include = 
+        this.beginUpdate(list => {
+          Updating.delete(this);
+          this.waiting.splice(0).forEach(x => x(list));
+        })
+      );
+
+    include(key);
   }
 
-  private beginUpdate(done: Callback){
+  private beginUpdate(done: RequestCallback){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     let computed = [] as Callback[];
@@ -270,8 +286,8 @@ export class Observer {
     const include = (key: string) => {
       if(handled.has(key))
         return;
-      else
-        handled.add(key);
+
+      handled.add(key);
 
       for(const notify of this.subscribers[key] || []){
         const getter = metaData(notify);
@@ -297,15 +313,7 @@ export class Observer {
 
       effects.forEach(x => x());
 
-      const after = this.waiting;
-
-      if(after){
-        delete this.waiting;
-        const list = Array.from(handled);
-        after.forEach(x => x(list));
-      }
-
-      done();
+      done(Array.from(handled));
     }
 
     setImmediate(commit);

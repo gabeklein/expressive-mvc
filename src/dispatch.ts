@@ -1,7 +1,7 @@
 import type { Controller } from './controller';
 
 import { Pending } from './directives';
-import { Observer } from './observer';
+import { Observer, RequestCallback } from './observer';
 import { Subscriber } from './subscriber';
 import {
   assign,
@@ -176,10 +176,9 @@ export class Dispatch extends Observer {
   }
 
   public requestUpdate = (
-    callback?: boolean | ((keys: string[]) => void)) => {
+    callback?: RequestCallback | boolean) => {
 
-    let waiting = this.waiting || (this.waiting = []);
-    const active = this.hasOwnProperty("emit");
+    const { pending: active, waiting } = this;
 
     if(typeof callback == "function")
       waiting.push(callback)
