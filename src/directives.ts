@@ -215,13 +215,15 @@ export function tupleProperty<T extends any[]>
     values = values[0] as any;
   
   function assign(on: Dispatch, key: string){
+    const source = on.state;
+
     function setTuple(next: any){
-      const current: any = on.state[key];
+      const current: any = source[key];
       let update = false;
 
       if(!current){
         update = true;
-        on.state[key] = current;
+        source[key] = current;
       }
       else 
         for(const k in current)
@@ -235,7 +237,13 @@ export function tupleProperty<T extends any[]>
     }
 
     displayName(setTuple, `set ${key}`);
-    on.monitorValue(key, values, setTuple);
+
+    source[key] = values;
+    on.monitor(key);
+    on.apply(key, {
+      get: on.getter(key),
+      set: setTuple
+    });
   }
 
   return new Pending(assign) as any;

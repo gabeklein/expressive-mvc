@@ -127,15 +127,13 @@ export class Observer {
   }
 
   public monitorValue(
-    key: string,
-    initial: any,
-    assign?: (value: any) => void){
+    key: string, initial: any){
 
     this.monitor(key);
     this.state[key] = initial;
     this.apply(key, {
       get: this.getter(key),
-      set: assign ? assign.bind(this) : this.setter(key)
+      set: this.setter(key)
     });
   }
 
