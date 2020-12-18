@@ -101,9 +101,7 @@ export class Observer {
         defineProperty(subject, key, {
           configurable: true,
           get: init,
-          set: () => {
-            throw Oops.AccessNotTracked(key)
-          }
+          set: Oops.AssignToGetter(key).warn
         })
     }
 
@@ -189,9 +187,7 @@ export class Observer {
           enumerable: true,
           configurable: true,
           get: () => state[key],
-          set: () => {
-            throw Oops.AccessNotTracked(key)
-          }
+          set: Oops.AssignToGetter(key).warn
         })
       }
     }

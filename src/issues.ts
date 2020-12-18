@@ -34,8 +34,8 @@ export default Issues({
   CantAttachGlobal: (parent, child) =>
     `Singleton '${parent}' attempted to attach '${child}'. This is not possible because '${child}' is not also a singleton.`,
 
-  AccessNotTracked: (name) => 
-    `Can't watch property ${name}, it's not tracked on this instance.`,
+  AssignToGetter: (name) => 
+    `Property ${name} is a getter only. Assignment was skipped.`,
 
   AccessEvent: (parent, name) =>
     `Can't update ${parent}.${name}; it is only an event.`,
