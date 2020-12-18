@@ -127,13 +127,17 @@ export class Observer {
   }
 
   public monitorValue(
-    key: string, initial: any){
+    key: string,
+    initial: any,
+    effect?: (value: any, callee?: any) => void){
+
+    if(initial !== undefined)
+      this.state[key] = initial;
 
     this.monitor(key);
-    this.state[key] = initial;
     this.apply(key, {
       get: this.getter(key),
-      set: this.setter(key)
+      set: this.setter(key, effect)
     });
   }
 
