@@ -66,7 +66,10 @@ export class Dispatch extends Observer {
   
     for(const key of this.watched)
       defineProperty(spy, key, {
-        get(){ found.add(key); return spy }
+        get(){
+          found.add(key);
+          return spy;
+        }
       });
   
     selector(spy);
@@ -93,7 +96,7 @@ export class Dispatch extends Observer {
     if(initial)
       callback();
 
-    return this.follow(key, callback, once);
+    return this.addListener(key, callback, once);
   }
 
   public on = (
@@ -135,11 +138,11 @@ export class Dispatch extends Observer {
 
     if(select.length > 1){
       const update = squash(reinvoke);
-      const cleanup = select.map(k => this.follow(k, update));
+      const cleanup = select.map(k => this.addListener(k, update));
       return () => cleanup.forEach(x => x());
     }
 
-    return this.follow(select[0], reinvoke);
+    return this.addListener(select[0], reinvoke);
   }
 
   public export = (

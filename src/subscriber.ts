@@ -106,7 +106,7 @@ export class Subscriber {
 
     this.watched.push(key);
     this.cleanup.push(
-      this.parent.follow(key, cb || this.refresh)
+      this.parent.addListener(key, cb || this.refresh)
     )
   }
 

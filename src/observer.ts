@@ -96,7 +96,7 @@ export class Observer {
     const expected = new Map<string, Callback>();
 
     for(const [key, compute] of getters){
-      const init = this.monitorComputedValue(key, compute);
+      const init = this.monitorComputed(key, compute);
 
       if(subscribers[key].size)
         expected.set(key, init);
@@ -137,7 +137,7 @@ export class Observer {
     });
   }
 
-  protected monitorComputedValue(
+  protected monitorComputed(
     key: string, compute: () => any){
 
     this.monitor(key);
@@ -230,7 +230,7 @@ export class Observer {
     return set;
   }
 
-  public follow(
+  public addListener(
     key: string,
     callback: Callback,
     once?: boolean){
