@@ -30,6 +30,7 @@ export {
   entriesIn,
   fn,
   memoize,
+  displayName,
   squash,
   within
 }
@@ -46,6 +47,10 @@ function define(target: {}, kv: {} | string | symbol, v?: {}){
 
 function fn(x: any): x is Function {
   return typeof x == "function";
+}
+
+function displayName<T extends Function>(fn: T, name: string){
+  (fn as { displayName?: string }).displayName = name;
 }
 
 function entriesIn(object: {}){

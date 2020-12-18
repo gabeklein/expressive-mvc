@@ -9,7 +9,8 @@ import {
   getOwnPropertyDescriptor,
   fn,
   keys,
-  within
+  within,
+  displayName
 } from './util';
 
 import Oops from './issues';
@@ -51,7 +52,9 @@ export class Observer {
 
     for(const layer of allEntriesIn(subject, base))
     for(const [key, item] of layer){
-      if(!item.get || getters.has(key))
+      const compute = item.get;
+
+      if(!compute || getters.has(key))
         continue;
 
       function override(value: any){
@@ -68,10 +71,11 @@ export class Observer {
       }
 
       getters.set(key, compute);
+      displayName(compute, `run ${key}`);
       defineProperty(subject, key, {
         configurable: true,
         set: item.set || override,
-        get: item.get
+        get: compute
       })
     }
   }
@@ -189,6 +193,9 @@ export class Observer {
       }
     }
 
+    displayName(refresh, `try ${key}`);
+    displayName(create, `new ${key}`);
+
     metaData(compute, self);
     metaData(create, true);
 
@@ -196,7 +203,9 @@ export class Observer {
   }
 
   public getter(key: string){
-    return () => this.state[key];
+    const get = () => this.state[key];
+    displayName(get, `get ${key}`);
+    return get;
   }
 
   public setter(
@@ -204,7 +213,7 @@ export class Observer {
     effect?: (next: any, callee?: any) => void){
 
     const state: any = this.state;
-    return (value: any) => {
+    const set = (value: any) => {
       if(state[key] == value)
         return;
 
@@ -214,7 +223,10 @@ export class Observer {
         effect(value, this.subject);
 
       this.emit(key);
-    };
+    }
+
+    displayName(set, `set ${key}`);
+    return set;
   }
 
   public follow(

@@ -5,7 +5,7 @@ import type { Controller, Model } from './controller';
 import { boundRefComponent, createHocFactory, withProvider } from './components';
 import { Dispatch, createEffect } from './dispatch';
 import { Singleton } from './singleton';
-import { define, defineLazy, defineProperty, within } from './util';
+import { define, defineLazy, defineProperty, within, displayName } from './util';
 
 import Oops from './issues';
 
@@ -217,7 +217,7 @@ export function tupleProperty<T extends any[]>
     values = values[0] as any;
   
   function assign(on: Dispatch, key: string){
-    on.monitorValue(key, values, (next: any) => {
+    function setTuple(next: any){
       const current: any = on.state[key];
       let update = false;
 
@@ -234,7 +234,10 @@ export function tupleProperty<T extends any[]>
 
       if(update)
         on.emit(key);
-    });
+    }
+
+    displayName(setTuple, `set ${key}`);
+    on.monitorValue(key, values, setTuple);
   }
 
   return new Pending(assign) as any;

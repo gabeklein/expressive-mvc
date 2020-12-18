@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { create, define, defineProperty, within, assign } from './util';
+import { create, define, defineProperty, displayName, within, assign } from './util';
 
 import Oops from './issues';
 
@@ -22,20 +22,24 @@ export class Subscriber {
     const source = this.subject as any;
     const proxy = create(source);
 
-    for(const key of this.parent.watched)
+    for(const key of this.parent.watched){
+      const subscribe = () => {
+        let value = source[key];
+
+        if(value instanceof Controller)
+          return this.followRecursive(key);
+
+        this.follow(key);
+        return value;
+      }
+
+      displayName(subscribe, `tap ${key}`);
       defineProperty(proxy, key, {
         configurable: true,
         set: this.parent.setter(key),
-        get: () => {
-          let value = source[key];
-
-          if(value instanceof Controller)
-            return this.followRecursive(key);
-  
-          this.follow(key);
-          return value;
-        }
+        get: subscribe
       })
+    }
 
     define(this, { proxy });
     return proxy;
