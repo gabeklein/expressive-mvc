@@ -17,7 +17,6 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
-  getOwnPropertyDescriptors,
   keys,
   values
 }

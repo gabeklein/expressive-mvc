@@ -6,7 +6,6 @@ import { Subscriber } from './subscriber';
 import {
   assign,
   defineProperty,
-  getOwnPropertyDescriptor,
   fn,
   squash,
   within
@@ -180,14 +179,14 @@ export class Dispatch extends Observer {
     callback?: boolean | ((keys: string[]) => void)) => {
 
     let waiting = this.waiting || (this.waiting = []);
-    const active = getOwnPropertyDescriptor(this, "emit");
+    const active = this.hasOwnProperty("emit");
 
     if(typeof callback == "function")
       waiting.push(callback)
     else if(!active === callback)
       return Promise.reject(Oops.StrictUpdate())
     else if(active)
-      return new Promise(r => waiting.push(r));
+      return new Promise(cb => waiting.push(cb));
     else
       return Promise.resolve(false);
   }

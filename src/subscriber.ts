@@ -103,10 +103,12 @@ export class Subscriber {
   protected follow(key: string, cb?: Callback){
     if(cb)
       assign(cb, this.metadata);
+    else
+      cb = this.refresh;
 
     this.watched.push(key);
     this.cleanup.push(
-      this.parent.addListener(key, cb || this.refresh)
+      this.parent.addListener(key, cb)
     )
   }
 

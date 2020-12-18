@@ -39,10 +39,10 @@ export class Observer {
   }
 
   protected getters = new Map<string, Callback>();
-  protected subscribers: BunchOf<Set<Callback>> = {};
+  protected subscribers = {} as BunchOf<Set<Callback>>;
   protected waiting?: ((keys: string[]) => void)[];
 
-  public state: BunchOf<any> = {};
+  public state = {} as BunchOf<any>;
 
   public get watched(){
     return keys(this.subscribers);
