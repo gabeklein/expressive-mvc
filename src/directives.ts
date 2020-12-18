@@ -116,14 +116,9 @@ export function eventProperty
   (callback?: EffectCallback<Controller>){
 
   function registerEvent(on: Dispatch, key: string){
-    const trigger = () => on.emit(key);
-
     on.monitor(key);
     on.apply(key, {
-      get: () => trigger,
-      set: () => {
-        throw Oops.AccessEvent(on.subject.constructor.name, key);
-      }
+      value(){ on.emit(key) }
     })
 
     if(callback)

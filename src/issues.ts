@@ -37,9 +37,6 @@ export default Issues({
   AssignToGetter: (name) => 
     `Property ${name} is a getter only. Assignment was skipped.`,
 
-  AccessEvent: (parent, name) =>
-    `Can't update ${parent}.${name}; it is only an event.`,
-
   ComputeFailed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "getting initial value of" : "refreshing"} ${parent}.${property}. Property will be skipped.`,
 
