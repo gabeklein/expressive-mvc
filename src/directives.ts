@@ -148,9 +148,9 @@ export function componentProperty
   const componentFor = createHocFactory(Type);
 
   function assignComponent(on: Dispatch, key: string){
-    defineLazy(on.subject, key, () => {
-      return componentFor(on.subject as Controller)
-    })
+    defineLazy(on.subject, key,
+      () => componentFor(on.subject as Controller)
+    )
   }
     
   return new Pending(assignComponent) as any;
