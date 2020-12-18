@@ -13,6 +13,10 @@ describe("set Directive", () => {
         this.checkResult = true;
       }
     });
+  
+    test3 = set("foo", value => {
+      this.checkResult = value;
+    });
   }
   
   it('invokes callback of set property', async () => {
@@ -36,6 +40,16 @@ describe("set Directive", () => {
     state.test2 = 2;
     await assertDidUpdate();
     expect(state.checkResult).toBe(true);
+  })
+  
+  it('may assign a default value', async () => {
+    const state = Subject.create();
+  
+    expect(state.test3).toBe("foo");
+    state.test3 = "bar";
+
+    await state.requestUpdate();
+    expect(state.checkResult).toBe("bar");
   })
 })
 

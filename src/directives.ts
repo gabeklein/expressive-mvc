@@ -97,16 +97,15 @@ export function refProperty<T = any>
 }
 
 export function effectProperty<T = any>
-  (effect: EffectCallback<Controller, any>): T {
+  (value: any, effect?: EffectCallback<Controller, T>): T {
+
+  if(!effect)
+    effect = value,
+    value = undefined;
 
   function registerEffect(on: Dispatch, key: string){
-    const reset = createEffect(effect);
-
-    on.monitor(key);
-    on.apply(key, {
-      get: on.getter(key),
-      set: on.setter(key, reset)
-    })
+    const reset = createEffect(effect!);
+    on.monitorValue(key, value, reset);
   }
 
   return new Pending(registerEffect) as any;
