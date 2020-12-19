@@ -95,6 +95,9 @@ export class Observer {
       this.manageProperty(k, d);
 
     for(const [key, compute] of getters){
+      if(key in state)
+        continue;
+
       const init = this.monitorComputed(key, compute);
 
       if(subscribers[key].size)
@@ -106,9 +109,7 @@ export class Observer {
         })
     }
 
-    for(const [key, compute] of expected)
-      if(key in state === false)
-        compute();
+    expected.forEach(x => x());
   }
 
   protected manageProperty(
@@ -188,8 +189,10 @@ export class Observer {
       finally {
         for(const key of sub.watched){
           const compute = getters.get(key);
-          if(compute){
-            const { priority } = metaData(compute);
+          const meta = compute && metaData(compute);
+
+          if(meta){
+            const { priority } = meta;
             if(priority >= self.priority)
               self.priority = priority + 1;
           }
