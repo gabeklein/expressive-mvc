@@ -278,7 +278,7 @@ export class Observer {
   private beginUpdate(done: RequestCallback){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
-    let computed = [] as Callback[];
+    const pending = [] as Callback[];
 
     const include = (key: string) => {
       if(handled.has(key))
@@ -290,18 +290,17 @@ export class Observer {
         const getter = metaData(notify);
         if(!getter || getter.on !== this)
           effects.add(notify);
-        else
-          computed = computed
-            .concat(notify)
-            .sort((a, b) =>
-              metaData(a).priority - metaData(b).priority
-            )
+        else {
+          const p = metaData(notify).priority;
+          const i = pending.findIndex(q => metaData(q).priority < p);
+          pending.splice(i + 1, 0, notify);
+        }
       }
     }
 
     const commit = () => {
-      while(computed.length){
-        const compute = computed.shift()!;
+      while(pending.length){
+        const compute = pending.shift()!;
         const { key } = metaData(compute);
       
         if(!handled.has(key))
