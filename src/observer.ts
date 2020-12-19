@@ -60,11 +60,11 @@ export class Observer {
     const { subject, getters } = this;
 
     for(const layer of allEntriesIn(subject, base))
-    for(const [key, item] of layer){
-      const compute = item.get;
-
-      if(!compute || getters.has(key))
+    for(const [key, { get, set }] of layer){
+      if(!get || getters.has(key))
         continue;
+
+      displayName(get, `run ${key}`);
 
       const redefine = (value: any) => {
         if(value instanceof Pending && value.loose)
@@ -78,19 +78,13 @@ export class Observer {
         });
       }
 
-      getters.set(key, compute);
-      displayName(compute, `run ${key}`);
+      getters.set(key, get);
       this.apply(key, {
         configurable: true,
-        set: item.set || redefine,
-        get: compute
+        set: set || redefine,
+        get: get
       })
     }
-  }
-
-  protected manageProperties(){
-    for(const [k, d] of entriesIn(this.subject))
-      this.manageProperty(k, d);
   }
 
   protected manageProperty(
@@ -100,9 +94,12 @@ export class Observer {
       this.monitorValue(key, value);
   }
 
-  protected manageGetters(){
+  protected boostrap(){
     const { state, getters, subscribers } = this;
     const expected = new Map<string, Callback>();
+
+    for(const [k, d] of entriesIn(this.subject))
+      this.manageProperty(k, d);
 
     for(const [key, compute] of getters){
       const init = this.monitorComputed(key, compute);
