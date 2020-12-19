@@ -84,8 +84,8 @@ export function refProperty<T = any>
   function createReference(on: Dispatch, key: string){
     const reset = effect && createEffect(effect);
 
-    on.monitor(key);
-    on.apply(key, {
+    on.register(key);
+    on.override(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
         set: on.setter(key, reset)
@@ -115,8 +115,8 @@ export function eventProperty
   (callback?: EffectCallback<Controller>){
 
   function registerEvent(on: Dispatch, key: string){
-    on.monitor(key);
-    on.apply(key, {
+    on.register(key);
+    on.override(key, {
       value(){ on.emit(key) }
     })
 
@@ -233,8 +233,8 @@ export function tupleProperty<T extends any[]>
     displayName(setTuple, `set ${key}`);
 
     source[key] = values;
-    on.monitor(key);
-    on.apply(key, {
+    on.register(key);
+    on.override(key, {
       get: on.getter(key),
       set: setTuple
     });

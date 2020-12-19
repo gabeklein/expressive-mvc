@@ -66,12 +66,12 @@ export class Observer {
 
       displayName(get, `run ${key}`);
 
-      const redefine = (value: any) => {
+      const reset = (value: any) => {
         if(value instanceof Pending && value.loose)
           return;
 
         getters.delete(key);
-        this.apply(key, {
+        this.override(key, {
           value,
           configurable: true,
           writable: true
@@ -79,22 +79,15 @@ export class Observer {
       }
 
       getters.set(key, get);
-      this.apply(key, {
+      this.override(key, {
         configurable: true,
-        set: set || redefine,
+        set: set || reset,
         get: get
       })
     }
   }
 
-  protected manageProperty(
-    key: string, { value, enumerable }: PropertyDescriptor){
-
-    if(enumerable && !fn(value) || /^[A-Z]/.test(key))
-      this.monitorValue(key, value);
-  }
-
-  protected boostrap(){
+  protected start(){
     const { state, getters, subscribers } = this;
     const expected = new Map<string, Callback>();
 
@@ -107,7 +100,7 @@ export class Observer {
       if(subscribers[key].size)
         expected.set(key, init);
       else
-        this.apply(key, {
+        this.override(key, {
           get: init,
           set: Oops.AssignToGetter(key).warn
         })
@@ -118,13 +111,20 @@ export class Observer {
         compute();
   }
 
-  public apply(key: string, desc: PropertyDescriptor){
+  protected manageProperty(
+    key: string, { value, enumerable }: PropertyDescriptor){
+
+    if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+      this.monitorValue(key, value);
+  }
+
+  public override(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, 
       assign({ enumerable: true }, desc)  
     )
   }
 
-  public monitor(key: string){
+  public register(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
@@ -138,8 +138,8 @@ export class Observer {
     if(initial !== undefined)
       this.state[key] = initial;
 
-    this.monitor(key);
-    this.apply(key, {
+    this.register(key);
+    this.override(key, {
       get: this.getter(key),
       set: this.setter(key, effect)
     });
@@ -148,7 +148,7 @@ export class Observer {
   protected monitorComputed(
     key: string, compute: () => any){
 
-    this.monitor(key);
+    this.register(key);
 
     const { state, subject, getters } = this;
     const self = { key, on: this, priority: 1 };
@@ -195,7 +195,7 @@ export class Observer {
           }
         }
 
-        this.apply(key, {
+        this.override(key, {
           get: this.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
@@ -221,12 +221,11 @@ export class Observer {
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    const state: any = this.state;
     const set = (value: any) => {
-      if(state[key] == value)
+      if(this.state[key] == value)
         return;
 
-      state[key] = value;
+      this.state[key] = value;
 
       if(effect)
         effect(value, this.subject);
@@ -245,8 +244,8 @@ export class Observer {
 
     type MaybeComputed = (early?: boolean) => void;
 
-    const list = this.monitor(key);
-    const stop = () => list.delete(callback);
+    const list = this.register(key);
+    const done = () => list.delete(callback);
     const property = getOwnPropertyDescriptor(this.subject, key);
     const getter = property && property.get as MaybeComputed;
 
@@ -254,11 +253,11 @@ export class Observer {
       getter(true);
 
     list.add(once
-      ? () => { stop(); callback() }
+      ? () => { done(); callback() }
       : callback
     );
 
-    return stop;
+    return done;
   }
 
   public emit(key: string){
@@ -266,7 +265,7 @@ export class Observer {
 
     if(!include)
       Updating.set(this, include = 
-        this.beginUpdate(list => {
+        this.sync(list => {
           Updating.delete(this);
           this.waiting.splice(0).forEach(x => x(list));
         })
@@ -275,12 +274,26 @@ export class Observer {
     include(key);
   }
 
-  private beginUpdate(done: RequestCallback){
+  private sync(done: RequestCallback){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
-    const include = (key: string) => {
+    setImmediate(() => {
+      while(pending.length){
+        const compute = pending.shift()!;
+        const { key } = metaData(compute);
+      
+        if(!handled.has(key))
+          compute();
+      }
+
+      effects.forEach(x => x());
+
+      done(Array.from(handled));
+    });
+
+    return (key: string) => {
       if(handled.has(key))
         return;
 
@@ -296,23 +309,6 @@ export class Observer {
           pending.splice(i + 1, 0, notify);
         }
       }
-    }
-
-    const commit = () => {
-      while(pending.length){
-        const compute = pending.shift()!;
-        const { key } = metaData(compute);
-      
-        if(!handled.has(key))
-          compute();
-      }
-
-      effects.forEach(x => x());
-
-      done(Array.from(handled));
-    }
-
-    setImmediate(commit);
-    return include;
+    };
   }
 }

@@ -31,7 +31,7 @@ export class Dispatch extends Observer {
 
     if(!dispatch.ready){
       dispatch.ready = true;
-      dispatch.boostrap();
+      dispatch.start();
   
       if(dispatch.onReady)
         dispatch.onReady();
