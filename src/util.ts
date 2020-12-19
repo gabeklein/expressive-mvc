@@ -1,3 +1,5 @@
+import Oops from './issues';
+
 const {
   assign,
   create,
@@ -24,13 +26,14 @@ export {
 export {
   allEntriesIn,
   assignSpecific,
+  createEffect,
   define,
   defineLazy,
   entriesIn,
   fn,
   memoize,
   displayName,
-  squash,
+  debounce,
   within
 }
 
@@ -52,14 +55,14 @@ function displayName<T extends Function>(fn: T, name: string){
   (fn as { displayName?: string }).displayName = name;
 }
 
-function entriesIn(object: {}){
+function entriesIn(object: {}): PropertyDescriptors {
   return entries(getOwnPropertyDescriptors(object))
 }
 
 function allEntriesIn(object: {}, until: {}){
   let layer = object;
 
-  return <IterableIterator<[string, PropertyDescriptor][]>>{
+  return <IterableIterator<PropertyDescriptors>>{
     [Symbol.iterator](){ return this },
     next(){
       if(layer === until || layer.constructor === until)
@@ -72,16 +75,16 @@ function allEntriesIn(object: {}, until: {}){
   }
 }
 
-function squash(callback: Callback){
-  let squash: undefined | boolean;
+function debounce(callback: Callback){
+  let throttle: undefined | boolean;
   return () => {
-    if(squash)
+    if(throttle)
       return;
-      
-    squash = true;
+
+    throttle = true;
     callback();
     setImmediate(() => {
-      squash = false;
+      throttle = false;
     })
   }
 }
@@ -173,4 +176,16 @@ function memoize(...args: any[]){
       );
 
   return cache;
+}
+
+function createEffect(callback: EffectCallback<any>){
+  let unSet: Callback | undefined;
+
+  return (value: any, callee = value) => {
+    unSet && unSet();
+    unSet = callback.call(callee, value);
+
+    if(unSet && !fn(unSet))
+      throw Oops.BadEffectCallback()
+  }
 }

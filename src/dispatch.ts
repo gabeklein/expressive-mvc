@@ -5,9 +5,10 @@ import { Observer, RequestCallback } from './observer';
 import { Subscriber } from './subscriber';
 import {
   assign,
+  createEffect,
   defineProperty,
   fn,
-  squash,
+  debounce,
   within
 } from './util';
 
@@ -123,7 +124,7 @@ export class Dispatch extends Observer {
     
     const { subject } = this;
     const invoke = createEffect(callback);
-    const reinvoke = squash(() => invoke(subject));
+    const reinvoke = debounce(() => invoke(subject));
 
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
@@ -135,7 +136,7 @@ export class Dispatch extends Observer {
       select = this.select(select);
 
     if(select.length > 1){
-      const update = squash(reinvoke);
+      const update = debounce(reinvoke);
       const cleanup = select.map(k => this.addListener(k, update));
       return () => cleanup.forEach(x => x());
     }
@@ -190,14 +191,3 @@ export class Dispatch extends Observer {
   }
 }
 
-export function createEffect(callback: EffectCallback<any>){
-  let unSet: Callback | undefined;
-
-  return (value: any, callee = value) => {
-    unSet && unSet();
-    unSet = callback.call(callee, value);
-
-    if(unSet && !fn(unSet))
-      throw Oops.BadEffectCallback()
-  }
-}

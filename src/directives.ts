@@ -3,9 +3,9 @@ import type { ControllableRefFunction } from '..';
 import type { Controller, Model } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './components';
-import { Dispatch, createEffect } from './dispatch';
+import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
-import { define, defineLazy, defineProperty, within, displayName } from './util';
+import { createEffect, define, defineLazy, defineProperty, within, displayName } from './util';
 
 import Oops from './issues';
 
@@ -208,7 +208,7 @@ export function tupleProperty<T extends any[]>
   else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
-  function assign(on: Dispatch, key: string){
+  function createTuple(on: Dispatch, key: string){
     const source = on.state;
 
     function setTuple(next: any){
@@ -240,5 +240,5 @@ export function tupleProperty<T extends any[]>
     });
   }
 
-  return new Pending(assign) as any;
+  return new Pending(createTuple) as any;
 }

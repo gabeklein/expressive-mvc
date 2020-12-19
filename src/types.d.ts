@@ -30,7 +30,9 @@ type Recursive<T = any> = { [P in keyof T]: Recursive<T> };
 
 type Selector<T = any>= (list: Recursive<T>) => void;
 
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+
+type PropertyDescriptors = [string, PropertyDescriptor][];
 
 type HandleUpdatedValue
   <T extends object = any, P extends keyof T = any> = 
