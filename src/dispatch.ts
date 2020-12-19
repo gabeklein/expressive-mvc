@@ -177,13 +177,13 @@ export class Dispatch extends Observer {
   public requestUpdate = (
     callback?: RequestCallback | boolean) => {
 
-    const { pending: active, waiting } = this;
+    const { pending, waiting } = this;
 
     if(typeof callback == "function")
       waiting.push(callback)
-    else if(!active === callback)
+    else if(!pending === callback)
       return Promise.reject(Oops.StrictUpdate())
-    else if(active)
+    else if(pending)
       return new Promise(cb => waiting.push(cb));
     else
       return Promise.resolve(false);
