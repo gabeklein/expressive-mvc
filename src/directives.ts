@@ -186,7 +186,10 @@ export function boundComponentProperty
 
 export function defineValueProperty(value: any){
   function setDefault(this: Dispatch, key: string){
-    this.monitorValue(key, value);
+    if(this.getters.has(key))
+      return;
+    else
+      this.monitorValue(key, value);
   }
 
   return new Pending(setDefault, true) as any;
