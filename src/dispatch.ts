@@ -17,7 +17,7 @@ import Oops from './issues';
 const ASSIGNED = new WeakMap<{}, Dispatch>();
 
 export class Dispatch extends Observer {
-  public ready?: true;
+  private ready = false;
 
   static ensure(on: {}, base: typeof Controller){
     if(!ASSIGNED.has(on))
@@ -54,12 +54,12 @@ export class Dispatch extends Observer {
     key: string, desc: PropertyDescriptor){
 
     if(desc.value instanceof Pending)
-      desc.value.applyTo(this, key);
+      desc.value.applyTo.call(this, key);
     else
       super.manageProperty(key, desc);
   }
 
-  public select(selector: Selector){
+  protected select(selector: Selector){
     const found = new Set<string>();
     const spy = {} as Recursive;
   
@@ -76,7 +76,7 @@ export class Dispatch extends Observer {
     return Array.from(found);
   }
 
-  public watch(
+  protected watch(
     key: string | Selector,
     handler: (value: any, key: string) => void,
     once?: boolean,

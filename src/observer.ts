@@ -46,7 +46,7 @@ export class Observer {
   protected subscribers = {} as BunchOf<Set<Callback>>;
   protected waiting = [] as RequestCallback[];
 
-  public state = {} as BunchOf<any>;
+  protected state = {} as BunchOf<any>;
 
   public get pending(){
     return Updating.has(this);
@@ -56,7 +56,7 @@ export class Observer {
     return keys(this.subscribers);
   }
 
-  protected prepare(base: typeof Controller){
+  private prepare(base: typeof Controller){
     const { subject, getters } = this;
 
     for(const layer of allEntriesIn(subject, base))
@@ -119,19 +119,19 @@ export class Observer {
       this.monitorValue(key, value);
   }
 
-  public override(key: string, desc: PropertyDescriptor){
+  protected override(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, 
       assign({ enumerable: true }, desc)  
     )
   }
 
-  public register(key: string){
+  protected register(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
   }
 
-  public monitorValue(
+  protected monitorValue(
     key: string,
     initial: any,
     effect?: (value: any, callee?: any) => void){
@@ -146,7 +146,7 @@ export class Observer {
     });
   }
 
-  protected monitorComputed(
+  private monitorComputed(
     key: string, compute: () => any){
 
     this.register(key);

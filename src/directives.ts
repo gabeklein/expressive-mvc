@@ -11,7 +11,7 @@ import Oops from './issues';
 
 export class Pending {
   constructor(
-    public applyTo: (recipient: Dispatch, key: string) => void,
+    public applyTo: (this: Dispatch, key: string) => void,
     public loose?: boolean
   ){}
 }
@@ -21,8 +21,8 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function childProperty<T extends Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  function bindChild(on: Dispatch, key: string){
-    const parent = on.subject;
+  function bindChild(this: Dispatch, key: string){
+    const parent = this.subject;
     const instance = new Peer() as InstanceOf<T>;
 
     define(parent, key, instance);
@@ -40,8 +40,8 @@ export function childProperty<T extends Model>
 export function parentProperty<T extends Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  function attachParent(on: Dispatch, key: string){
-    const { subject } = on;
+  function attachParent(this: Dispatch, key: string){
+    const { subject } = this;
     const { name: expectsType } = Expects;
     const { name: onType } = subject.constructor;
     const parent = ParentRelationship.get(subject);
@@ -64,8 +64,8 @@ export function parentProperty<T extends Model>
 export function peerProperty<T extends Model>
   (Peer: T): InstanceOf<T> {
 
-  function bindSibling(on: Dispatch, key: string){
-    const subject = on.subject as Controller;
+  function bindSibling(this: Dispatch, key: string){
+    const subject = this.subject as Controller;
 
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, key, () => Peer.find());
@@ -81,14 +81,14 @@ export function peerProperty<T extends Model>
 export function refProperty<T = any>
   (effect?: EffectCallback<Controller, any>): RefObject<T> {
 
-  function createReference(on: Dispatch, key: string){
+  function createReference(this: Dispatch, key: string){
     const reset = effect && createEffect(effect);
 
-    on.register(key);
-    on.override(key, {
+    this.register(key);
+    this.override(key, {
       value: defineProperty({}, "current", {
-        get: on.getter(key),
-        set: on.setter(key, reset)
+        get: this.getter(key),
+        set: this.setter(key, reset)
       })
     });
   }
@@ -103,9 +103,9 @@ export function effectProperty<T = any>
     effect = value,
     value = undefined;
 
-  function registerEffect(on: Dispatch, key: string){
+  function registerEffect(this: Dispatch, key: string){
     const reset = createEffect(effect!);
-    on.monitorValue(key, value, reset);
+    this.monitorValue(key, value, reset);
   }
 
   return new Pending(registerEffect) as any;
@@ -114,14 +114,14 @@ export function effectProperty<T = any>
 export function eventProperty
   (callback?: EffectCallback<Controller>){
 
-  function registerEvent(on: Dispatch, key: string){
-    on.register(key);
-    on.override(key, {
-      value(){ on.emit(key) }
+  function registerEvent(this: Dispatch, key: string){
+    this.register(key);
+    this.override(key, {
+      value: () => this.emit(key)
     })
 
     if(callback)
-      on.effect(callback, [key]);
+      this.effect(callback, [key]);
   }
 
   return new Pending(registerEvent) as any;
@@ -130,13 +130,13 @@ export function eventProperty
 export function memoizedProperty
   (factory: () => any, defer?: boolean){
 
-  function memoizeValue(on: Dispatch, key: string){
-    const get = () => factory.call(on.subject);
+  function memoizeValue(this: Dispatch, key: string){
+    const get = () => factory.call(this.subject);
 
     if(defer)
-      defineLazy(on.subject, key, get);
+      defineLazy(this.subject, key, get);
     else
-      define(on.subject, key, get())
+      define(this.subject, key, get())
   }
     
   return new Pending(memoizeValue) as any;
@@ -147,9 +147,9 @@ export function componentProperty
 
   const componentFor = createHocFactory(Type);
 
-  function assignComponent(on: Dispatch, key: string){
-    defineLazy(on.subject, key,
-      () => componentFor(on.subject as Controller)
+  function assignComponent(this: Dispatch, key: string){
+    defineLazy(this.subject, key,
+      () => componentFor(this.subject as Controller)
     )
   }
     
@@ -161,9 +161,9 @@ export function parentComponentProperty
 
   const componentFor = createHocFactory(Type);
 
-  function assignProvider(on: Dispatch, key: string){
-    defineLazy(on.subject, key, () => {
-      const control = on.subject as Controller;
+  function assignProvider(this: Dispatch, key: string){
+    defineLazy(this.subject, key, () => {
+      const control = this.subject as Controller;
       const Component = componentFor(control);
       return withProvider(Component, control)
     })
@@ -175,8 +175,8 @@ export function parentComponentProperty
 export function boundComponentProperty
   (Type: ControllableRefFunction<HTMLElement>, to: string){
 
-  function createBinding(on: Dispatch, key: string){
-    const control = on.subject as Controller;
+  function createBinding(this: Dispatch, key: string){
+    const control = this.subject as Controller;
     const Component = boundRefComponent(control, to, Type);
     define(control, key, Component);
   }
@@ -185,16 +185,16 @@ export function boundComponentProperty
 }
 
 export function defineValueProperty(value: any){
-  function setDefault(on: Dispatch, key: string){
-    on.monitorValue(key, value);
+  function setDefault(this: Dispatch, key: string){
+    this.monitorValue(key, value);
   }
 
   return new Pending(setDefault, true) as any;
 }
 
 export function passiveProperty(value: any){
-  function assign(on: Dispatch, key: string){
-    within(on.subject, key, value);
+  function assign(this: Dispatch, key: string){
+    within(this.subject, key, value);
   }
 
   return new Pending(assign);
@@ -208,10 +208,10 @@ export function tupleProperty<T extends any[]>
   else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
-  function createTuple(on: Dispatch, key: string){
-    const source = on.state;
+  function createTuple(this: Dispatch, key: string){
+    const source = this.state;
 
-    function setTuple(next: any){
+    const setTuple = (next: any) => {
       const current: any = source[key];
       let update = false;
 
@@ -227,15 +227,15 @@ export function tupleProperty<T extends any[]>
           }
 
       if(update)
-        on.emit(key);
+        this.emit(key);
     }
 
     displayName(setTuple, `set ${key}`);
 
     source[key] = values;
-    on.register(key);
-    on.override(key, {
-      get: on.getter(key),
+    this.register(key);
+    this.override(key, {
+      get: this.getter(key),
       set: setTuple
     });
   }
