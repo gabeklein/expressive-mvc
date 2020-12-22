@@ -25,13 +25,10 @@
   ],
   "scripts": {
     "build": "rollup --config",
-    "watch": "rollup --config --watch --sourcemap",
-    "start": "npm run --prefix examples start",
     "prebuild": "rm -rf lib/",
     "publish:beta": "npm version prerelease --preid=beta",
     "preversion": "jest",
-    "postversion": "npm publish",
-    "prepublish": "npm run build",
+    "postversion": "npm run build; npm publish",
     "postpublish": "git push; git push --tags; rm -rf lib",
     "test": "jest --watchAll"
   },
