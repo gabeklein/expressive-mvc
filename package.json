@@ -20,7 +20,7 @@
   "module": "src/index.ts",
   "types": "index.d.ts",
   "files": [
-    "lib/",
+    "lib/index.js",
     "index.d.ts"
   ],
   "scripts": {
