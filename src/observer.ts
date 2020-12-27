@@ -261,7 +261,7 @@ export class Observer {
       : callback
     );
 
-    return done;
+    return done as Callback;
   }
 
   public emit(key: string){
