@@ -59,7 +59,7 @@ export class Dispatch extends Observer {
       super.manageProperty(key, desc);
   }
 
-  protected select(selector: Selector){
+  protected select(using: Selector){
     const found = new Set<string>();
     const spy = {} as Recursive;
   
@@ -71,50 +71,50 @@ export class Dispatch extends Observer {
         }
       });
   
-    selector(spy);
+    using(spy);
 
     return Array.from(found);
   }
 
   protected watch(
-    key: string | Selector,
+    target: string | Selector,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    if(fn(key))
-      [ key ] = this.select(key);
+    if(fn(target))
+      [ target ] = this.select(target);
 
     const callback = () =>
       handler.call(
         this.subject, 
-        this.state[key as string],
-        key as string
+        this.state[target as string],
+        target as string
       );
 
     if(initial)
       callback();
 
-    return this.addListener(key, callback, once);
+    return this.addListener(target, callback, once);
   }
 
   public on = (
-    key: string | Selector,
+    property: string | Selector,
     listener: HandleUpdatedValue,
     initial?: boolean) => {
 
-    return this.watch(key, listener, false, initial);
+    return this.watch(property, listener, false, initial);
   }
 
   public once = (
-    key: string | Selector,
+    property: string | Selector,
     listener?: HandleUpdatedValue) => {
 
     if(listener)
-      return this.watch(key, listener, true);
+      return this.watch(property, listener, true);
     else
       return new Promise(resolve => {
-        this.watch(key, resolve, true)
+        this.watch(property, resolve, true)
       });
   }
 
