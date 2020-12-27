@@ -136,8 +136,7 @@ export class Dispatch extends Observer {
       select = this.select(select);
 
     if(select.length > 1){
-      const update = debounce(reinvoke);
-      const cleanup = select.map(k => this.addListener(k, update));
+      const cleanup = select.map(k => this.addListener(k, reinvoke));
       return () => cleanup.forEach(x => x());
     }
 
