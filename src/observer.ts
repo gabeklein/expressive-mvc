@@ -110,6 +110,7 @@ export class Observer {
     }
 
     expected.forEach(x => x());
+    this.reset([]);
   }
 
   protected manageProperty(
@@ -270,11 +271,15 @@ export class Observer {
       Updating.set(this, include = 
         this.sync(list => {
           Updating.delete(this);
-          this.waiting.splice(0).forEach(x => x(list));
+          this.reset(list);
         })
       );
 
     include(key);
+  }
+
+  private reset(frame: string[]){
+    this.waiting.splice(0).forEach(x => x(frame));
   }
 
   private sync(done: RequestCallback){

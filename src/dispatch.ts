@@ -48,6 +48,23 @@ export class Dispatch extends Observer {
 
     super(subject, base);
     ASSIGNED.set(subject, this);
+    this.acceptEarly();
+  }
+
+  private acceptEarly(){
+    const { watch } = this;
+
+    this.watch = (...args) => {
+      let undo: Callback;
+      this.requestUpdate(() => {
+        undo = watch.apply(this, args)
+      })
+      return () => undo();
+    }
+
+    this.requestUpdate(() => {
+      delete (this as any).watch;
+    })
   }
 
   protected manageProperty(
