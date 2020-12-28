@@ -11,6 +11,7 @@ type Callback = () => void;
 type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
 
+type Select<T> = (arg: T) => any;
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
 type Selector<T> = (select: Recursive<T>) => void;
 
@@ -20,8 +21,8 @@ type Instance<T> = T extends { prototype: infer U } ? U : never
 
 type Model = typeof Controller;
 
-type UpdateCallback<T extends object, P extends keyof T> = 
-    (this: T, value: T[P], changed: P) => void;
+type DidUpdate<T, V> = (this: T, value: V, updated: keyof T) => void;
+type DidUpdateSpecific<T, P extends keyof T> = (this: T, value: T[P], changed: P) => void;
 
 /**
  * Observable Instance
@@ -30,10 +31,11 @@ type UpdateCallback<T extends object, P extends keyof T> =
  * Able to be subscribed to, per-value to know when updated.
  */
 interface Observable {
-    on<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>, initial?: boolean): Callback;
+    on<S extends Select<this>>(via: S, cb: DidUpdate<this, ReturnType<S>>, initial?: boolean): Callback;
+    on<P extends keyof this>(property: P, listener: DidUpdateSpecific<this, P>, initial?: boolean): Callback;
   
-    once<P extends keyof this>(property: P | Selector<this>, listener: UpdateCallback<this, P>): void;
-    once<P extends keyof this>(property: P | Selector<this>): Promise<this[P]>;
+    once<S extends Select<this>>(via: S, cb: DidUpdate<this, ReturnType<S>>): Callback;
+    once<P extends keyof this>(property: P, listener: DidUpdateSpecific<this, P>): void;
 
     effect(
         callback: (this: this, self: this) => ((() => void) | void), 
@@ -192,7 +194,6 @@ export {
     Observable,
     Instance,
     Selector,
-    UpdateCallback,
     ControllableRefFunction
 }
 
