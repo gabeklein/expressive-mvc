@@ -77,5 +77,8 @@ export default Issues({
     `New ${child} created as child of ${got} but must be instanceof ${expects}`,
 
   SetActionProperty: (key) =>
-    `Attempted assignment of ${key}. This is not allowed because an action-property.`
+    `Attempted assignment of ${key}. This is not allowed because an action-property.`,
+
+  DuplicateAction: (key) =>
+    `Invoked action ${key} but one is already active.`
 });

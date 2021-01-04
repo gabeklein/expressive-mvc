@@ -256,6 +256,8 @@ export function actionProperty<F extends Async>(action: F){
       this.emit(key);
     }
     const run = async (...args: any[]) => {
+      if(pending)
+        throw Oops.DuplicateAction(key);
       block(true);
       const x = await action.apply(this.subject, args);
       block(false);

@@ -1,4 +1,4 @@
-import Controller, { act, event, ref, set, test, use, def } from './adapter';
+import Controller, { act, event, ref, set, test, use, def, Issue } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -240,4 +240,13 @@ describe("act directive", () => {
     expect(onEnd).toContain("action");
     expect(control.action).toBeInstanceOf(Function);
   });
+
+  it("throws if invoked while in-progress", () => {
+    const { action } = Test.create();
+    const expected = Issue.DuplicateAction("action");
+    const run = () => action!();
+
+    run();
+    expect(run).rejects.toThrowError(expected);
+  })
 })
