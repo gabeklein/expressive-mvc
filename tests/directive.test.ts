@@ -1,4 +1,4 @@
-import Controller, { event, ref, set, test, use, def } from './adapter';
+import Controller, { act, event, ref, set, test, use, def } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -199,4 +199,45 @@ describe("default Directive", () => {
 
     expect(test.value).toBe("barbaz");
   })
+})
+
+describe("act directive", () => {
+  class Test extends Controller {
+    action = act(this.method);
+    invoked = jest.fn();
+
+    async method(param?: any){
+      this.invoked(param);
+      return new Promise(res => setTimeout(res, 100));
+    }
+  }
+
+  it("invokes provided function via wrapper", () => {
+    const control = Test.create();
+    const foo = Symbol();
+    expect(control.action).not.toBeUndefined();
+    control.action!(foo);
+    expect(control.invoked).toBeCalledWith(foo);
+  });
+
+  it("sets method to undefined for duration", async () => {
+    const control = Test.create();
+    control.action!();
+    expect(control.action).toBeUndefined();
+    await new Promise(res => setTimeout(res, 110));
+    expect(control.action).toBeInstanceOf(Function);
+  });
+
+  it("emits method key before/after activity", async () => {
+    const control = Test.create();
+    control.action!();
+
+    const onBegin = await control.requestUpdate();
+    expect(onBegin).toContain("action");
+    expect(control.action).toBeUndefined();
+
+    const onEnd = await control.requestUpdate(200);
+    expect(onEnd).toContain("action");
+    expect(control.action).toBeInstanceOf(Function);
+  });
 })

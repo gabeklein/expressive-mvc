@@ -10,6 +10,7 @@ import {
 type Callback = () => void;
 type BunchOf<T> = { [key: string]: T };
 type Similar<T> = { [X in keyof T]?: T[X] };
+type Async = (...args: any[]) => Promise<any>;
 
 type Select<T> = (arg: T) => any;
 type Recursive<T> = { [P in keyof T]: Recursive<T> };
@@ -17,7 +18,7 @@ type Selector<T> = (select: Recursive<T>) => void;
 
 type Class = new (...args: any[]) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
-type Instance<T> = T extends { prototype: infer U } ? U : never
+type Instance<T> = T extends { prototype: infer U } ? U : never;
 
 type Model = typeof Controller;
 
@@ -176,6 +177,7 @@ declare function get <T extends Model> (type: T): Instance<T>;
 declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function watch <T = any> (starting: T, onValue: (current: T) => Callback | void): T;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
+declare function act<T extends Async>(action: T): T | undefined;
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<P, T>): ComponentType<P>;
@@ -216,6 +218,7 @@ export {
     get,
     watch,
     ref,
+    act,
     event,
     memo,
     hoc,

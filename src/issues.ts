@@ -74,5 +74,8 @@ export default Issues({
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 
   UnexpectedParent: (expects, child, got) =>
-    `New ${child} created as child of ${got} but must be instanceof ${expects}`
+    `New ${child} created as child of ${got} but must be instanceof ${expects}`,
+
+  SetActionProperty: (key) =>
+    `Attempted assignment of ${key}. This is not allowed because an action-property.`
 });

@@ -4,6 +4,7 @@ export {
   peerProperty as get,
   effectProperty as watch,
   refProperty as ref,
+  actionProperty as act,
   eventProperty as event,
   componentProperty as hoc,
   parentComponentProperty as wrap,

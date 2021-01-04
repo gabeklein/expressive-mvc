@@ -17,6 +17,7 @@ export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;
 export const hoc = Source.hoc as typeof Public.hoc;
 export const wrap = Source.wrap as typeof Public.wrap;
+export const act = Source.act as typeof Public.act;
 export const event = Source.event as typeof Public.event;
 export const def = Source.def as typeof Public.def;
 export const parent = Source.parent as typeof Public.parent;

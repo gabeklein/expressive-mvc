@@ -245,3 +245,28 @@ export function tupleProperty<T extends any[]>
 
   return new Pending(createTuple) as any;
 }
+
+type Async<T = any> = (...args: any[]) => Promise<T>;
+
+export function actionProperty<F extends Async>(action: F){
+  function createAction(this: Dispatch, key: string){
+    let pending = false;
+    const block = (setTo: boolean) => {
+      pending = setTo;
+      this.emit(key);
+    }
+    const run = async (...args: any[]) => {
+      block(true);
+      const x = await action.apply(this.subject, args);
+      block(false);
+      return x;
+    }
+    this.register(key);
+    this.override(key, {
+      get: () => pending ? undefined : run,
+      set: Oops.SetActionProperty(key).warn
+    });
+  }
+
+  return new Pending(createAction) as any;
+}
