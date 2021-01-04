@@ -37,7 +37,6 @@ describe("requestUpdate method", () => {
     control.foo = 2;
 
     const updated = control.requestUpdate();
-
     await expect(updated).resolves.toMatchObject(["foo"]);
   })
 
@@ -46,6 +45,28 @@ describe("requestUpdate method", () => {
     const update = control.requestUpdate();
 
     await expect(update).resolves.toBe(false);
+  })
+
+  it('resolves false after timeout when provided', async () => {
+    let resolved = false;
+
+    const control = Control.create();
+    const check = control.requestUpdate(100);
+
+    // forked-then, intercepts resolve
+    check.then(() => resolved = true);
+
+    // wait until just before update
+    await new Promise(res => setTimeout(res, 99));
+
+    // check intercept didn't resolve yet
+    expect(resolved).toBe(false);
+
+    // wait for the expected timeout
+    await expect(check).resolves.toBe(false);
+
+    // check intercept resolved, for good measure
+    expect(resolved).toBe(true);
   })
 
   it('rejects if no update pending in strict mode', async () => {

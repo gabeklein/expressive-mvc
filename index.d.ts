@@ -53,6 +53,7 @@ interface Observable {
     update<K extends keyof this>(keys: K[]): void;
 
     requestUpdate(strict?: boolean): Promise<string[] | false>;
+    requestUpdate(timeout: number): Promise<string[] | false>;
     requestUpdate(cb: (keys: string[]) => void): void;
 }
 
