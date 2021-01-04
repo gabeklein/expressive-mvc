@@ -177,7 +177,7 @@ declare function get <T extends Model> (type: T): Instance<T>;
 declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function watch <T = any> (starting: T, onValue: (current: T) => Callback | void): T;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
-declare function act<T extends Async>(action: T): T | undefined;
+declare function act<T extends Async>(action: T): T & { allowed: boolean } | undefined;
 declare function event (callback?: () => Callback | void): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<P, T>): ComponentType<P>;

@@ -263,6 +263,9 @@ export function actionProperty<F extends Async>(action: F){
       block(false);
       return x;
     }
+    defineProperty(run, "allowed", {
+      get(){ return !pending }
+    })
     this.register(key);
     this.override(key, {
       get: () => pending ? undefined : run,

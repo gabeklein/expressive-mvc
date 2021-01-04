@@ -228,6 +228,16 @@ describe("act directive", () => {
     expect(control.action).toBeInstanceOf(Function);
   });
 
+  it("exposes 'allowed' on a closured action", async () => {
+    const act = Test.create().action!;
+
+    expect(act.allowed).toBe(true);
+    act();
+    expect(act.allowed).toBe(false);
+    await new Promise(res => setTimeout(res, 110));
+    expect(act.allowed).toBe(true);
+  });
+
   it("emits method key before/after activity", async () => {
     const control = Test.create();
     control.action!();
