@@ -34,7 +34,10 @@ interface Observable {
     on<S extends Select<this>>(via: S, cb: DidUpdate<this, ReturnType<S>>, initial?: boolean): Callback;
     on<P extends keyof this>(property: P, listener: DidUpdateSpecific<this, P>, initial?: boolean): Callback;
   
+    once<S extends Select<this>>(via: S): Promise<ReturnType<S>>;
     once<S extends Select<this>>(via: S, cb: DidUpdate<this, ReturnType<S>>): Callback;
+
+    once<P extends keyof this>(property: P): Promise<this[P]>;
     once<P extends keyof this>(property: P, listener: DidUpdateSpecific<this, P>): void;
 
     effect(
