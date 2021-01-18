@@ -249,17 +249,16 @@ export class Observer {
     type MaybeComputed = (early?: boolean) => void;
 
     const list = this.register(key);
-    const done = () => list.delete(callback);
+    const handler =
+      once ? () => { done(); callback() } : callback;
+    const done = () => list.delete(handler);
     const property = getOwnPropertyDescriptor(this.subject, key);
     const getter = property && property.get as MaybeComputed;
 
     if(getter && COMPUTED in getter)
       getter(true);
 
-    list.add(once
-      ? () => { done(); callback() }
-      : callback
-    );
+    list.add(handler);
 
     return done as Callback;
   }
