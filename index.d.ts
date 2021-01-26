@@ -95,11 +95,11 @@ interface WithLifecycle {
  * 
  * Containing helper components which are bound to the controller.
  */
-interface WithReact {
+interface WithProvider {
     Provider: FunctionComponent<PropsWithChildren<Partial<this>>>;
 }
 
-interface Controller extends Observable, WithLifecycle, WithReact {
+interface Controller extends Observable, WithLifecycle, WithProvider {
     get: this;
     set: this;
 
@@ -193,6 +193,7 @@ type Provider<T = typeof Controller> =
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>
 
 export {
+    WithProvider,
     WithLifecycle,
     ControllableComponent,
     ControllableFC,

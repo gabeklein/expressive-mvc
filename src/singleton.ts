@@ -1,14 +1,10 @@
-import type { Singleton as Public } from "../"
-
 import { Controller, Model } from './controller';
 import { useMemoized } from "./hooks";
 import { defineLazy } from "./util";
 
 import Oops from './issues';
 
-export class Singleton
-  extends Controller
-  implements Public {
+export class Singleton extends Controller {
 
   static current?: Singleton = undefined;
 

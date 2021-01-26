@@ -1,4 +1,4 @@
-import type { Controller as Public, ControllableComponent } from '../';
+import type { ControllableComponent, WithProvider, WithLifecycle } from '../';
 import type { FunctionComponent } from 'react';
 
 import { useBindRef } from './binding';
@@ -12,7 +12,7 @@ import Oops from './issues';
 
 export type Model = typeof Controller;
 
-export interface Controller extends Public {};
+export interface Controller extends WithLifecycle, WithProvider {};
 
 export class Controller {
   constructor(){
