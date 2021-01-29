@@ -87,6 +87,46 @@ describe("overriding computed", () => {
   })
 })
 
+describe("reference computed", () => {
+  class Test extends Controller {
+    multiplier = 0;
+    previous: any;
+
+    get value(): number {
+      const { value, multiplier } = this;
+
+      // use set to bypass subscriber
+      this.set.previous = value;
+
+      return Math.ceil(Math.random() * 10) * multiplier;
+    }
+  }
+
+  test("computed may access own previous value", async () => {
+    const test = Test.create();
+
+    // shouldn't exist until getter's side-effect
+    expect("previous" in test).toBe(false);
+
+    const initial = test.value;
+
+    // will start at 0 because of multiple
+    expect(initial).toBe(0);
+
+    // should now exist but be undefined (initial get)
+    expect("previous" in test).toBe(true);
+    expect(test.previous).toBeUndefined();
+
+    // change upstream value to trigger re-compute
+    test.multiplier = 1;
+    await test.requestUpdate(true);
+
+    // getter should see current value while producing new one
+    expect(test.previous).toBe(initial);
+    expect(test.value).not.toBe(initial);
+  })
+})
+
 describe.skip("recursive computed", () => {
   class Test extends Controller {
     value = 0;
@@ -112,3 +152,4 @@ describe.skip("recursive computed", () => {
     expect(test.format).toBe("Value 1 is odd");
   })
 })
+

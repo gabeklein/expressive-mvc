@@ -177,7 +177,9 @@ export class Observer {
       const sub = new Subscriber(subject, refresh, meta);
 
       try {
-        return state[key] = compute.call(sub.proxy);
+        const { proxy } = sub;
+        defineProperty(proxy, key, { value: undefined });
+        return state[key] = compute.call(proxy);
       }
       catch(e){
         Oops.ComputeFailed(subject.constructor.name, key, true).warn();
