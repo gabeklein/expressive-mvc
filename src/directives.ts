@@ -251,21 +251,26 @@ type Async<T = any> = (...args: any[]) => Promise<T>;
 export function actionProperty<F extends Async>(action: F){
   function createAction(this: Dispatch, key: string){
     let pending = false;
-    const block = (setTo: boolean) => {
-      pending = setTo;
-      this.emit(key);
-    }
+
     const run = async (...args: any[]) => {
       if(pending)
         throw Oops.DuplicateAction(key);
-      block(true);
-      const x = await action.apply(this.subject, args);
-      block(false);
-      return x;
+
+      pending = true;
+      this.emit(key);
+
+      return action
+        .apply(this.subject, args)
+        .finally(() => {
+          pending = false;
+          this.emit(key);
+        })
     }
+
     defineProperty(run, "allowed", {
-      get(){ return !pending }
+      get: () => !pending
     })
+
     this.register(key);
     this.override(key, {
       get: () => pending ? undefined : run,
