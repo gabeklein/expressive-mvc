@@ -99,6 +99,15 @@ interface WithProvider {
     Provider: FunctionComponent<PropsWithChildren<Partial<this>>>;
 }
 
+type RefFunction = (e: HTMLElement | null) => void;
+type RefsOnlyForString<T> = {
+    [P in keyof T as T[P] extends string ? P : never]: RefFunction;
+}
+
+type BindAgent<T extends Controller> =
+    & ((key: keyof T) => RefFunction)
+    & RefsOnlyForString<T>
+
 interface Controller extends Observable, WithLifecycle, WithProvider {
     get: this;
     set: this;
@@ -109,7 +118,7 @@ interface Controller extends Observable, WithLifecycle, WithProvider {
 
     sub(...args: any[]): this;
 
-    bind(key: string): (e: HTMLElement | null) => void;
+    bind: BindAgent<this>;
 
     destroy(): void;
 }
@@ -173,7 +182,7 @@ interface ControllableRefFunction<T, P = {}> {
 declare function use <T extends Model> (Peer: T, callback?: (i: Instance<T>) => void): Instance<T> 
 declare function parent <T extends Model> (Expects: T, required: true): Instance<T>;
 declare function parent <T extends Model> (Expects: T, required?: false): Instance<T> | undefined;
-declare function get <T extends Model> (type: T): Instance<T>;
+declare function get <T extends Class> (type: T): Instance<T>;
 declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
 declare function watch <T = any> (starting: T, onValue: (current: T) => Callback | void): T;
 declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };

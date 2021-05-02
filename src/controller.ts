@@ -1,7 +1,7 @@
 import type { ControllableComponent, Controller as Public } from '../';
 import type { FunctionComponent } from 'react';
 
-import { useBindRef } from './binding';
+import { createBindAgent } from './binding';
 import { derivedConsumer, derivedProvider } from './components';
 import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
 import { Dispatch } from './dispatch';
@@ -34,8 +34,8 @@ export class Controller {
     return useSubscriber(this, args);
   }
 
-  public bind = (key: string) => {
-    return useBindRef(this, key);
+  public get bind(){
+    return createBindAgent(this);
   }
 
   public destroy(){

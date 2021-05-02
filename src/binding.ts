@@ -1,7 +1,26 @@
 import type { Controller } from "./controller";
+
 import { useEffect, useCallback } from 'react';
+import { entries, define, defineProperty } from './util';
 
 import Oops from "./issues";
+
+export function createBindAgent(requestedBy: Controller){
+  const { get: instance } = requestedBy;
+  const fn: any = (key: string) => useBindRef(instance, key);
+  const tracked = entries(instance.export());
+
+  tracked.forEach(([ name, value ]) => {
+    if(typeof value === "string")
+      defineProperty(fn, name, {
+        get: () => fn(name)
+      });
+  });
+
+  define(instance, { bind: fn });
+
+  return fn;
+}
 
 export function useBindRef(
   control: Controller, key: string){
