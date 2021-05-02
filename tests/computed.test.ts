@@ -51,42 +51,6 @@ describe("ordered computed", () => {
   })
 })
 
-describe("overriding computed", () => {
-  class A extends Controller {
-    a = "foo";
-    b = def("foo");
-    get c(){ return "foo" }
-    get d(){ return "foo" }
-  }
-
-  class B extends A {
-    get a(){ return "bar" }
-    get b(){ return "bar" }
-    get c(){ return "bar" }
-    d = "bar";
-  }
-
-  test("B getter wont override A value", () => {
-    const test = B.create();
-    expect(test.a).toBe("foo");
-  })
-
-  test("B getter will override A default", () => {
-    const test = B.create();
-    expect(test.b).toBe("bar");
-  })
-
-  test("B getter will override A getter", () => {
-    const test = B.create();
-    expect(test.c).toBe("bar");
-  })
-
-  test("B value will override A getter", () => {
-    const test = B.create();
-    expect(test.d).toBe("bar");
-  })
-})
-
 describe("reference computed", () => {
   class Test extends Controller {
     multiplier = 0;

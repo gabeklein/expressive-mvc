@@ -1,4 +1,4 @@
-import Controller, { act, event, ref, set, test, use, def, Issue } from './adapter';
+import Controller, { act, event, ref, set, test, use, Issue } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -181,23 +181,6 @@ describe("event Directive", () => {
     expect(mockCallback).not.toBeCalled();
     await fire();
     expect(mockCallback).toBeCalled();
-  })
-})
-
-describe("default Directive", () => {
-  it("yeilds to getter with same name", () => {
-    class Super extends Controller {
-      value = def("foobar");
-    }
-    class Sub extends Super {
-      get value(){
-        return "barbaz"
-      }
-    }
-
-    const test = Sub.create();
-
-    expect(test.value).toBe("barbaz");
   })
 })
 

@@ -15,17 +15,10 @@ describe("computed", () => {
   }
 
   class Child extends Parent {
-    value3 = 4;
-
     get value4(){
       return "bar";
     }
   }
-
-  it("allowes inheritors to override", () => {
-    const instance = Child.create();
-    expect(instance.value3).toBe(4);
-  })
 
   it("picks closest getter for computed", () => {
     const instance = Child.create();
