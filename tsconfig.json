@@ -12,7 +12,7 @@
         "lib": ["ES2018", "DOM"]
     },
     "exclude": [
-        "index.d.ts",
+        "types",
         "tests"
     ]
 }

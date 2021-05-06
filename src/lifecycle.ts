@@ -1,4 +1,4 @@
-import type { WithLifecycle } from '../'
+import type { WithLifecycle } from '..'
 
 import { useEffect, useMemo } from 'react';
 

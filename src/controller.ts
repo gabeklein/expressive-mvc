@@ -1,4 +1,4 @@
-import type { ControllableComponent, Controller as Public } from '../';
+import type { ControllableComponent, Controller as Public } from '..';
 import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';

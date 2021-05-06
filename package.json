@@ -18,10 +18,10 @@
   ],
   "main": "lib/index.js",
   "module": "src/index.ts",
-  "types": "index.d.ts",
+  "types": "types/index.d.ts",
   "files": [
     "lib/index.js",
-    "index.d.ts"
+    "types"
   ],
   "scripts": {
     "build": "rollup --config",
