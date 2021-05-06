@@ -185,6 +185,9 @@ function createEffect(callback: EffectCallback<any>){
     unSet && unSet();
     unSet = callback.call(callee, value);
 
+    if(unSet instanceof Promise)
+      unSet = undefined;
+
     if(unSet && !fn(unSet))
       throw Oops.BadEffectCallback()
   }

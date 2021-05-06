@@ -22,6 +22,7 @@ type Instance<T> = T extends { prototype: infer U } ? U : never;
 
 type Model = typeof Controller;
 
+type EffectCallback<T, A = T> = (this: T, self: A) => Callback | Promise<any> | void;
 type DidUpdate<T, V> = (this: T, value: V, updated: keyof T) => void;
 type DidUpdateSpecific<T, P extends keyof T> = (this: T, value: T[P], changed: P) => void;
 
@@ -183,20 +184,20 @@ declare function use <T extends Model> (Peer: T, callback?: (i: Instance<T>) => 
 declare function parent <T extends Model> (Expects: T, required: true): Instance<T>;
 declare function parent <T extends Model> (Expects: T, required?: false): Instance<T> | undefined;
 declare function get <T extends Class> (type: T): Instance<T>;
-declare function watch <T = any> (onValue: (current: T) => Callback | void): T | undefined;
-declare function watch <T = any> (starting: T, onValue: (current: T) => Callback | void): T;
-declare function ref <T = HTMLElement> (onValue?: (current: T) => Callback | void): { current: T | null };
-declare function act<T extends Async>(action: T): T & { allowed: boolean } | undefined;
-declare function event (callback?: () => Callback | void): Callback;
+declare function watch <T = any> (callback: EffectCallback<T>): T | undefined;
+declare function watch <T = any> (starting: T, callback: EffectCallback<T>): T;
+declare function ref <T = HTMLElement> (callback?: EffectCallback<T>): { current: T | null };
+declare function act <T extends Async>(action: T): T & { allowed: boolean } | undefined;
+declare function event (callback?: EffectCallback<any>): Callback;
 declare function memo <T> (compute: () => T, lazy?: boolean): T;
 declare function hoc <T extends Controller, P> (component: ControllableComponent<P, T>): ComponentType<P>;
-declare function bind<P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
-declare function tuple<T extends readonly any[] = []> (): Readonly<T> | undefined;
-declare function tuple<T extends readonly any[]> (initial: T): Readonly<T>;
-declare function tuple<T extends {}> (initial: T): Readonly<T>;
-declare function tuple<T extends readonly any[]> (...values: T): Readonly<T>;
-declare function def<T> (value: T): T; 
-declare function omit<T> (value: T): T;
+declare function bind <P, T = HTMLElement> (Component: ControllableRefFunction<T, P>, to: string): ComponentType<P>;
+declare function tuple <T extends readonly any[] = []> (): Readonly<T> | undefined;
+declare function tuple <T extends readonly any[]> (initial: T): Readonly<T>;
+declare function tuple <T extends {}> (initial: T): Readonly<T>;
+declare function tuple <T extends readonly any[]> (...values: T): Readonly<T>;
+declare function def <T> (value: T): T; 
+declare function omit <T> (value: T): T;
 
 type Provider<T = typeof Controller> = 
     FunctionComponent<{ of: Array<T> | BunchOf<T> }>

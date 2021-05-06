@@ -99,9 +99,10 @@ export function refProperty<T = any>
 export function effectProperty<T = any>
   (value: any, effect?: EffectCallback<Controller, T>): T {
 
-  if(!effect)
-    effect = value,
+  if(!effect){
+    effect = value;
     value = undefined;
+  }
 
   function registerEffect(this: Dispatch, key: string){
     const reset = createEffect(effect!);
@@ -246,9 +247,9 @@ export function tupleProperty<T extends any[]>
   return new Pending(createTuple) as any;
 }
 
-type Async<T = any> = (...args: any[]) => Promise<T>;
+type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
-export function actionProperty<F extends Async>(action: F){
+export function actionProperty(action: AsyncFn){
   function createAction(this: Dispatch, key: string){
     let pending = false;
 
