@@ -1,35 +1,5 @@
 import { Component as ReactComponent, FC, PropsWithChildren, ReactElement, ReactNode } from 'react';
 
-/**
- * Observable Instance
- * 
- * Implements internal value tracking. 
- * Able to be subscribed to, per-value to know when updated.
- */
-interface Observable {
-    on <S extends Select<this>> (via: S, cb: DidUpdate<this, ReturnType<S>>, initial?: boolean): Callback;
-    on <P extends keyof this> (property: P, listener: DidUpdateSpecific<this, P>, initial?: boolean): Callback;
-  
-    once <S extends Select<this>> (via: S): Promise<ReturnType<S>>;
-    once <S extends Select<this>> (via: S, cb: DidUpdate<this, ReturnType<S>>): Callback;
-
-    once <P extends keyof this> (property: P): Promise<this[P]>;
-    once <P extends keyof this> (property: P, listener: DidUpdateSpecific<this, P>): void;
-
-    effect(callback: EffectCallback<this>, select?: (keyof this)[] | Selector<this>): Callback;
-
-    export(): this;
-    export <P extends keyof this> (select: P[] | Selector<this>): Pick<this, P>;
-
-    update <T extends this> (entries: Partial<T>): void;
-    update(keys: Selector<this>): void;
-    update <K extends keyof this> (keys: K[]): void;
-
-    requestUpdate(strict?: boolean): Promise<string[] | false>;
-    requestUpdate(timeout: number): Promise<string[] | false>;
-    requestUpdate(cb: (keys: string[]) => void): void;
-}
-
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
 
@@ -48,9 +18,8 @@ declare namespace Controller {
     type FunctionComponent <P, T = Controller> =
         (props: P, context: T) => JSX.Element | ReactElement | ReactNode | null;
     
-    type ClassComponent <P, T = Controller> = {
-        new (props: P, context: T): ReactComponent<P, any>;
-    }
+    type ClassComponent <P, T = Controller> =
+        new (props: P, context: T) => ReactComponent<P, any>;
     
     type ComponentWithRef <T, P = {}> =
         (props: PropsWithChildren<P>, ref: (instance: T | null) => void) => ReactElement | null;
@@ -60,7 +29,7 @@ declare namespace Controller {
     };
 }
 
-interface Controller extends Observable, Lifecycle {
+interface Controller extends Dispatch, Lifecycle {
     get: this;
     set: this;
 
@@ -99,7 +68,7 @@ declare abstract class Controller {
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceOf<T>;
 
-    static meta <T extends Class>(this: T): T & Observable;
+    static meta <T extends Class>(this: T): T & Dispatch;
     static meta (...keys: string[]): any;
 
     static hoc <T extends Controller, P> (component: Controller.Component<P, T>): FC<P>;
