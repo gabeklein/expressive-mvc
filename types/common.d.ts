@@ -10,7 +10,7 @@ type Selector<T> = (select: Recursive<T>) => void;
 
 type Class = new(...args: any[]) => any;
 
-type maybeStrings = (string | undefined)[];
+type MaybeStrings = (string | undefined)[];
 
 type Expecting<A extends any[]> = new(...args: A) => any;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
