@@ -54,8 +54,8 @@ declare abstract class Controller {
 
     static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
-    static uses <T extends Class, I extends InstanceOf<T>, D extends Similar<I>> (this: T, data: D): I;
-    static using <T extends Class, I extends InstanceOf<T>, D extends Similar<I>> (this: T, data: D): I;
+    static uses <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
+    static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
 
     static get <T extends Class> (this: T): InstanceOf<T>;
     static get <T extends Class, I extends InstanceOf<T>, K extends keyof I> (this: T, key: K): I[K];

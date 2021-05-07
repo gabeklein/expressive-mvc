@@ -55,14 +55,14 @@ function displayName<T extends Function>(fn: T, name: string){
   (fn as { displayName?: string }).displayName = name;
 }
 
-function entriesIn(object: {}): PropertyDescriptors {
+function entriesIn(object: {}): [string, PropertyDescriptor][] {
   return entries(getOwnPropertyDescriptors(object))
 }
 
 function allEntriesIn(object: {}, until: {}){
   let layer = object;
 
-  return <IterableIterator<PropertyDescriptors>>{
+  return <IterableIterator<[string, PropertyDescriptor][]>>{
     [Symbol.iterator](){ return this },
     next(){
       if(layer === until || layer.constructor === until)
@@ -138,8 +138,8 @@ function defineLazy<T>(
 /**
  * "I don't care about strict property access."
  */
-function within<T>(object: T): Any;
-function within<T>(object: T, key: undefined): Any;
+function within<T>(object: T): BunchOf<any>;
+function within<T>(object: T, key: undefined): BunchOf<any>;
 function within<T>(object: T, key?: string | symbol): any;
 function within<T, V>(object: T, key: string | symbol, value: V): V;
 function within(
@@ -179,7 +179,7 @@ function memoize(...args: any[]){
 }
 
 function createEffect(callback: EffectCallback<any>){
-  let unSet: Callback | Promise<any> | undefined;
+  let unSet: Callback | Promise<any> | void;
 
   return (value: any, callee = value) => {
     typeof unSet == "function" && unSet();
