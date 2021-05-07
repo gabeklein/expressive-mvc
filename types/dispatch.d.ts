@@ -5,14 +5,14 @@
  * Able to be subscribed to, per-value to know when updated.
  */
 interface Dispatch {
-  on <S extends Select<this>> (via: S, cb: UpdateCallback<this, ReturnType<S>>, initial?: boolean): Callback;
-  on <P extends keyof this> (property: P, listener: ValueCallback<this, P>, initial?: boolean): Callback;
+  on <S extends Select<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>, initial?: boolean): Callback;
+  on <P extends keyof this> (property: P, listener: UpdateCallback<this, P>, initial?: boolean): Callback;
 
   once <S extends Select<this>> (via: S): Promise<ReturnType<S>>;
-  once <S extends Select<this>> (via: S, cb: UpdateCallback<this, ReturnType<S>>): Callback;
+  once <S extends Select<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>): Callback;
 
   once <P extends keyof this> (property: P): Promise<this[P]>;
-  once <P extends keyof this> (property: P, listener: ValueCallback<this, P>): void;
+  once <P extends keyof this> (property: P, listener: UpdateCallback<this, P>): void;
 
   effect(callback: EffectCallback<this>, select?: (keyof this)[] | Selector<this>): Callback;
 

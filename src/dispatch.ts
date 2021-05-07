@@ -117,7 +117,7 @@ export class Dispatch extends Observer {
 
   public on = (
     property: string | Selector<this>,
-    listener: ValueCallback<any, any>,
+    listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
     return this.watch(property, listener, false, initial);
@@ -125,7 +125,7 @@ export class Dispatch extends Observer {
 
   public once = (
     property: string | Selector<this>,
-    listener?: ValueCallback<any, any>) => {
+    listener?: UpdateCallback<any, any>) => {
 
     if(listener)
       return this.watch(property, listener, true);
