@@ -3,7 +3,7 @@ type BunchOf<T> = { [key: string]: T };
 type Async = (...args: any[]) => Promise<any>;
 
 type Select<T> = (arg: T) => any;
-type Recursive<T> = { [P in keyof T]: Recursive<T> };
+type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
 type Selector<T> = (select: Recursive<T>) => void;
 
 type MaybeStrings = (string | undefined)[];
