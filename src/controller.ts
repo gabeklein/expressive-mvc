@@ -1,4 +1,4 @@
-import type { ControllableComponent, Controller as Public } from '..';
+import type { Controller as Public } from '..';
 import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';
@@ -109,15 +109,11 @@ export class Controller {
     }, ...path);
   }
 
-  static hoc<P>(
-    Type: ControllableComponent<P>
-  ): FunctionComponent<P> {
+  static hoc<P>(Type: Public.Component<P>): FunctionComponent<P> {
     return memoize(derivedConsumer, this, Type);
   }
 
-  static wrap<P>(
-    Type: ControllableComponent<P>
-  ): FunctionComponent<P> {
+  static wrap<P>(Type: Public.Component<P>): FunctionComponent<P> {
     return memoize(derivedProvider, this, Type);
   }
 

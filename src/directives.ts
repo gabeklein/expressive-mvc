@@ -1,5 +1,4 @@
-import type { ComponentType } from 'react';
-import type { ControllableRefFunction } from '..';
+import type { Controller as Public } from '..';
 import type { Controller, Model } from './controller';
 
 import { boundRefComponent, createHocFactory, withProvider } from './components';
@@ -79,7 +78,7 @@ export function peerProperty<T extends Model>
 }
 
 export function refProperty<T = any>
-  (effect?: EffectCallback<Controller, any>): RefObject<T> {
+  (effect?: EffectCallback<Controller, any>): { current: T } {
 
   function createReference(this: Dispatch, key: string){
     const reset = effect && createEffect(effect);
@@ -144,7 +143,7 @@ export function memoizedProperty
 }
 
 export function componentProperty
-  (Type: ComponentType){
+  (Type: Public.Component<{}>){
 
   const componentFor = createHocFactory(Type);
 
@@ -158,7 +157,7 @@ export function componentProperty
 }
 
 export function parentComponentProperty
-  (Type: ComponentType){
+  (Type: Public.Component<{}>){
 
   const componentFor = createHocFactory(Type);
 
@@ -174,7 +173,7 @@ export function parentComponentProperty
 }
 
 export function boundComponentProperty
-  (Type: ControllableRefFunction<HTMLElement>, to: string){
+  (Type: Public.ComponentWithRef<HTMLElement>, to: string){
 
   function createBinding(this: Dispatch, key: string){
     const control = this.subject as Controller;

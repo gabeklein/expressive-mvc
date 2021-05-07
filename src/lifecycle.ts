@@ -1,5 +1,3 @@
-import type { WithLifecycle } from '..'
-
 import { useEffect, useMemo } from 'react';
 
 import { values } from './util';
@@ -14,20 +12,22 @@ export const lifecycle = {
   DID_MOUNT: "didMount"
 } as const;
 
+type ValuesIn<T> = T[keyof T];
+
 function aliasFor(prefix: string){
   const map = {} as BunchOf<string>;
 
   for(const name of values(lifecycle))
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
 
-  return (name: string) => map[name] as keyof WithLifecycle;
+  return (name: string) => map[name] as ValuesIn<typeof lifecycle>;
 }
 
 export const subscriberLifecycle = aliasFor("element");
 export const componentLifecycle = aliasFor("component");
 
 export function useLifecycleEffect(
-  onEvent: (name: keyof WithLifecycle) => void){
+  onEvent: (name: ValuesIn<typeof lifecycle>) => void){
 
   let isFirstRender: true | undefined;
 

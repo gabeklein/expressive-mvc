@@ -11,8 +11,11 @@
         "jsx": "react",
         "lib": ["ES2018", "DOM"]
     },
+    "include": [
+        "src",
+        "types"
+    ],
     "exclude": [
-        "types",
         "tests"
     ]
 }

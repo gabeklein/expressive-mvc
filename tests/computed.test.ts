@@ -1,4 +1,4 @@
-import Controller, { def } from "./adapter";
+import Controller from "./adapter";
 
 describe("ordered computed", () => {
   let computed: string[];

@@ -76,9 +76,9 @@ export class Dispatch extends Observer {
       super.manageProperty(key, desc);
   }
 
-  protected select(using: Selector){
+  protected select(using: Selector<this>){
     const found = new Set<string>();
-    const spy = {} as Recursive;
+    const spy = {} as Recursive<this>;
   
     for(const key of this.watched)
       defineProperty(spy, key, {
@@ -94,7 +94,7 @@ export class Dispatch extends Observer {
   }
 
   protected watch(
-    target: string | Selector,
+    target: string | Selector<this>,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
@@ -116,7 +116,7 @@ export class Dispatch extends Observer {
   }
 
   public on = (
-    property: string | Selector,
+    property: string | Selector<this>,
     listener: HandleUpdatedValue,
     initial?: boolean) => {
 
@@ -124,7 +124,7 @@ export class Dispatch extends Observer {
   }
 
   public once = (
-    property: string | Selector,
+    property: string | Selector<this>,
     listener?: HandleUpdatedValue) => {
 
     if(listener)
@@ -137,7 +137,7 @@ export class Dispatch extends Observer {
 
   public effect = (
     callback: EffectCallback<any>,
-    select?: string[] | Selector) => {
+    select?: string[] | Selector<this>) => {
     
     const { subject } = this;
     const invoke = createEffect(callback);
@@ -161,7 +161,7 @@ export class Dispatch extends Observer {
   }
 
   public export = (
-    select?: string[] | Selector) => {
+    select?: string[] | Selector<this>) => {
 
     if(!select)
       return assign({}, this.state);
@@ -178,7 +178,7 @@ export class Dispatch extends Observer {
   }
 
   public update = (
-    select: string | string[] | Selector | BunchOf<any>) => {
+    select: string | string[] | Selector<this> | BunchOf<any>) => {
 
     if(typeof select == "string")
       select = [select];

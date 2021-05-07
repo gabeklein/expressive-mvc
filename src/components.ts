@@ -1,4 +1,4 @@
-import type { ControllableRefFunction, ControllableComponent } from '..';
+import type { Controller as Public } from '..';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import { createElement, useMemo, memo } from 'react';
@@ -10,7 +10,7 @@ import Oops from './issues';
 export function boundRefComponent(
   control: Controller,
   property: string,
-  Inner: ControllableRefFunction<HTMLElement>){
+  Inner: Public.ComponentWithRef<HTMLElement>){
 
   return memo((props: {}) => {
     return Inner(props, useBindRef(control, property))
@@ -29,7 +29,7 @@ export function withProvider(
 
 export function derivedConsumer<P extends {}>(
   Control: typeof Controller,
-  Type: ControllableComponent<P>
+  Type: Public.Component<P>
 ): FunctionComponent<P> {
 
   const componentFor = createHocFactory(Type);
@@ -44,7 +44,7 @@ export function derivedConsumer<P extends {}>(
 
 export function derivedProvider<P extends {}>(
   Control: typeof Controller,
-  Type: ControllableComponent<P>
+  Type: Public.Component<P>
 ): FunctionComponent<P> {
     
   const componentFor = createHocFactory(Type);
@@ -66,7 +66,7 @@ export function derivedProvider<P extends {}>(
 }
 
 export function createHocFactory<T = any, P = {}>(
-  Type: ControllableComponent<P>){
+  Type: Public.Component<P>){
 
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();

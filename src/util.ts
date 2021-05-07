@@ -179,10 +179,10 @@ function memoize(...args: any[]){
 }
 
 function createEffect(callback: EffectCallback<any>){
-  let unSet: Callback | undefined;
+  let unSet: Callback | Promise<any> | undefined;
 
   return (value: any, callee = value) => {
-    unSet && unSet();
+    typeof unSet == "function" && unSet();
     unSet = callback.call(callee, value);
 
     if(unSet instanceof Promise)
