@@ -2,8 +2,8 @@ type BunchOf<T> = { [key: string]: T };
 type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
 type ReplaceAll<T, R> = { [K in keyof T]: R };
 
-type Select<T> = (arg: T) => any;
-type Selector<T> = (select: Recursive<T>) => void;
+type SelectFunction<T, O = {}> = (arg: Omit<T, keyof O>) => any;
+type QueryFunction<T, O = {}> = (select: Recursive<Omit<T, keyof O>>) => void;
 
 type StringsOptional = (string | undefined)[];
 type Async = (...args: any[]) => Promise<any>;
