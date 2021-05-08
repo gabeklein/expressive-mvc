@@ -5,7 +5,7 @@
  * A controller, when subscribed to within a component, will
  * call these respectively to that component's lifecycle.
  */
- interface Lifecycle {
+interface Lifecycle {
   didMount?(...args: any[]): void;
   didRender?(...args: any[]): void;
   willRender?(...args: any[]): void;

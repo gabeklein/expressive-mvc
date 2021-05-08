@@ -1,3 +1,7 @@
+/// <reference path="common.d.ts" />
+/// <reference path="dispatch.d.ts" />
+/// <reference path="lifecycle.d.ts" />
+
 import { Component as ReactComponent, FC, PropsWithChildren, ReactElement, ReactNode } from 'react';
 
 declare namespace Controller {
