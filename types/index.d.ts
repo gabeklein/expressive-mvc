@@ -6,11 +6,13 @@ import Dispatch from './dispatch';
 import Lifecycle from './lifecycle';
 
 declare namespace Controller {
+    type Entries<T> = Omit<T, keyof Controller>;
+    type Values<T> = Partial<Entries<T>>;
+    type Events<T> = Exclude<keyof T, keyof Controller> & keyof Lifecycle;
     type Fields<T> = Exclude<keyof T, keyof Controller>;
-    type Entries<T extends Controller> = Omit<T, keyof Controller>;
 
-    type Select<T extends Controller> = SelectFunction<T, Controller>;
-    type Query<T extends Controller> = QueryFunction<T, Controller>;
+    type SelectEvent<T> = SelectFunction<T, Omit<Controller, keyof Lifecycle>>;
+    type SelectFields<T> = QueryFunction<T, Controller>;
 
     type Binder <T extends Controller> =
         & ((key: Fields<T>) => RefFunction)
@@ -36,7 +38,6 @@ declare abstract class Controller {
     destroy(): void;
 
     didCreate?(): void;
-    willDestroy?(): void;
 
     tap(): this;
     tap <K extends Controller.Fields<this>> (key?: K): this[K];
@@ -46,7 +47,7 @@ declare abstract class Controller {
 
     bind: Controller.Binder<this>;
 
-    Provider: React.FC<Partial<Controller.Entries<this>>>;
+    Provider: React.FC<Controller.Values<this>>;
 
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 

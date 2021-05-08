@@ -13,6 +13,7 @@ interface Lifecycle {
   willUpdate?(...args: any[]): void;
   willMount?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
+  willDestroy?(): void;
 
   elementDidMount?(...args: any[]): void;
   elementWillRender?(...args: any[]): void;
