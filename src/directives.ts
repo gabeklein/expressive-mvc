@@ -148,8 +148,8 @@ export function componentProperty
   const componentFor = createHocFactory(Type);
 
   function assignComponent(this: Dispatch, key: string){
-    defineLazy(this.subject, key,
-      () => componentFor(this.subject as Controller)
+    defineLazy(this.subject, key, () =>
+      componentFor(this.subject as Controller)
     )
   }
     
@@ -173,7 +173,7 @@ export function parentComponentProperty
 }
 
 export function boundComponentProperty
-  (Type: Public.ComponentWithRef<HTMLElement>, to: string){
+  (Type: Public.Component<{}, HTMLElement>, to: string){
 
   function createBinding(this: Dispatch, key: string){
     const control = this.subject as Controller;

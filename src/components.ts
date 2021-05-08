@@ -1,7 +1,7 @@
 import type { Controller as Public } from '..';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
-import { createElement, useMemo, memo } from 'react';
+import { createElement, useMemo } from 'react';
 
 import { useBindRef } from './binding';
 import { Controller } from './controller';
@@ -10,11 +10,16 @@ import Oops from './issues';
 export function boundRefComponent(
   control: Controller,
   property: string,
-  Inner: Public.ComponentWithRef<HTMLElement>){
+  Inner: Public.Component<{}, any>){
 
-  return memo((props: {}) => {
-    return Inner(props, useBindRef(control, property))
-  })
+  const componentFor = createHocFactory(Inner);
+
+  return (props: {}) => {
+    const ref = useBindRef(control, property);
+    const Component = useMemo(() => componentFor(ref), []);
+
+    return createElement(Component, props);
+  }
 }
 
 export function withProvider(
@@ -66,7 +71,8 @@ export function derivedProvider<P extends {}>(
 }
 
 export function createHocFactory<T = any, P = {}>(
-  Type: Public.Component<P>){
+  Type: Public.Component<P, T>
+): (inject: T) => ComponentType<P> {
 
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();
@@ -77,8 +83,10 @@ export function createHocFactory<T = any, P = {}>(
     return functionHOC<T, P>(Type as any);
 }
 
-function classTypeHOC<T, P>(Type: ComponentClass<P>){
-  return (inject: T): ComponentClass<P> =>
+function classTypeHOC<T, P>(
+  Type: ComponentClass<P>){
+
+  return (inject: T) =>
     class extends Type {
       constructor(props: P){
         super(props, inject);
@@ -86,7 +94,9 @@ function classTypeHOC<T, P>(Type: ComponentClass<P>){
     }
 }
 
-function functionHOC<T, P>(Type: FunctionComponent<P>){
-  return (inject: T): FunctionComponent<P> =>
+function functionHOC<T, P>(
+  Type: FunctionComponent<P>){
+
+  return (inject: T) =>
     (props: P) => Type(props, inject);
 }

@@ -20,10 +20,6 @@ declare namespace Controller {
     
     type ClassComponent <P, T = Controller> =
         new (props: P, context: T) => ReactComponent<P, any>;
-    
-    type ComponentWithRef <T, P = {}> =
-        (props: PropsWithChildren<P>, ref: (instance: T | null) => void) => ReactElement | null;
-
 }
 
 interface Controller extends Dispatch, Lifecycle {
