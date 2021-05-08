@@ -9,7 +9,7 @@ export { default as Issue } from "../src/issues";
 
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as Public.Provider;
+export const Provider = Source.Provider as unknown as typeof Public.Provider;
 
 export const get = Source.get as typeof Public.get;
 export const set = Source.watch as typeof Public.watch;

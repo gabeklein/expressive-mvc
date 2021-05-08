@@ -24,9 +24,6 @@ declare namespace Controller {
     type ComponentWithRef <T, P = {}> =
         (props: PropsWithChildren<P>, ref: (instance: T | null) => void) => ReactElement | null;
 
-    type ProviderProps <T = typeof Controller> = {
-        of: Array<T> | BunchOf<T>
-    };
 }
 
 interface Controller extends Dispatch, Lifecycle {
@@ -89,7 +86,9 @@ declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-declare const Provider: FC<Controller.ProviderProps>;
+declare const Provider: FC<{
+    of: Array<typeof Controller> | BunchOf<typeof Controller>
+}>;
 
 export {
     Controller,
