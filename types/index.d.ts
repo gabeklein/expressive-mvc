@@ -7,12 +7,14 @@ import React from 'react';
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
 
+    type Entries<T extends Controller> = Omit<T, keyof Controller>;
+
     type Select<T extends Controller> = SelectFunction<T, Controller>;
     type Query<T extends Controller> = QueryFunction<T, Controller>;
 
     type Binder <T extends Controller> =
         & ((key: keyof T) => Reference)
-        & ReplaceAll<Omit<T, keyof Controller>, Reference>
+        & ReplaceAll<Entries<T>, Reference>
 
     type Component <P, T = Controller> =
         | FunctionComponent<P, T>
@@ -37,7 +39,7 @@ interface Controller extends Dispatch, Lifecycle {
 
     bind: Controller.Binder<this>;
 
-    Provider: React.FC<React.PropsWithChildren<Partial<this>>>;
+    Provider: React.FC<Partial<Controller.Entries<this>>>;
 }
 
 declare abstract class Controller {
