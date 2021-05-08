@@ -8,6 +8,8 @@ type Selector<T> = (select: Recursive<T>) => void;
 
 type StringsOptional = (string | undefined)[];
 
+type ReplaceAll<T, R> = { [K in keyof T]: R };
+
 type Class = new(...args: any[]) => any;
 type Expecting<A extends any[]> = new(...args: A) => any;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;

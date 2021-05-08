@@ -7,13 +7,9 @@ import { Component as ReactComponent, FC, PropsWithChildren, ReactElement } from
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
 
-    type RefsOnlyForString <T> = {
-        [P in keyof T as T[P] extends string ? P : never]: Reference;
-    }
-    
     type Binder <T extends Controller> =
         & ((key: keyof T) => Reference)
-        & RefsOnlyForString<T>
+        & ReplaceAll<Omit<T, keyof Controller>, Reference>
 
     type Component <P, T = Controller> =
         | FunctionComponent<P, T>
