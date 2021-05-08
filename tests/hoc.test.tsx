@@ -1,14 +1,13 @@
-import React, { ReactNode } from "react";
+import React from "react";
 import { create } from "react-test-renderer";
 
 import VC, { hoc, wrap, Consumer } from "./adapter";
 
-interface TestComponentProps {
+type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
-  children?: ReactNode;
-}
+}>
 
-function TestComponent(props: TestComponentProps, control: any){
+const TestComponent = (props: TestComponentProps, control: any) => {
   if(props.got)
     props.got(control);
 

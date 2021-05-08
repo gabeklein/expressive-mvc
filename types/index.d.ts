@@ -2,7 +2,7 @@
 /// <reference path="dispatch.d.ts" />
 /// <reference path="lifecycle.d.ts" />
 
-import { Component as ReactComponent, FC, PropsWithChildren, ReactElement } from 'react';
+import React from 'react';
 
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
@@ -16,10 +16,10 @@ declare namespace Controller {
         | ClassComponent<P, T>;
 
     type FunctionComponent <P, T = Controller> =
-        (props: P, context: T) => ReactElement<P, any> | null;
+        (props: P, inject: T) => React.ReactElement<P, any> | React.ReactNode | null;
     
     type ClassComponent <P, T = Controller> =
-        new (props: P, context: T) => ReactComponent<P, any>;
+        new (props: P, inject: T) => React.Component<P, any>;
 }
 
 interface Controller extends Dispatch, Lifecycle {
@@ -34,7 +34,7 @@ interface Controller extends Dispatch, Lifecycle {
 
     bind: Controller.Binder<this>;
 
-    Provider: FC<PropsWithChildren<Partial<this>>>;
+    Provider: React.FC<React.PropsWithChildren<Partial<this>>>;
 }
 
 declare abstract class Controller {
@@ -64,8 +64,8 @@ declare abstract class Controller {
     static meta <T extends Class>(this: T): T & Dispatch;
     static meta (...keys: string[]): any;
 
-    static hoc <T extends Controller, P> (component: Controller.Component<P, T>): FC<P>;
-    static wrap <T extends Controller, P> (component: Controller.Component<P, T>): FC<P>;
+    static hoc <T extends Controller, P> (component: Controller.Component<P, T>): React.FC<P>;
+    static wrap <T extends Controller, P> (component: Controller.Component<P, T>): React.FC<P>;
 
     static find <T extends Class>(this: T): InstanceOf<T>;
 
@@ -75,14 +75,14 @@ declare abstract class Controller {
 
     static inheriting: typeof Controller | undefined;
 
-    static Provider: FC<PropsWithChildren<{}>>;
+    static Provider: React.FC<React.PropsWithChildren<{}>>;
 }
 
 declare class Singleton extends Controller {
     static current?: Singleton;
 }
 
-declare const Provider: FC<{
+declare const Provider: React.FC<{
     of: Array<typeof Controller> | BunchOf<typeof Controller>
 }>;
 

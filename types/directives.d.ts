@@ -1,5 +1,3 @@
-import { ComponentType } from 'react';
-
 import { Controller } from '.';
 
 export function use <T extends typeof Controller> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
@@ -29,8 +27,8 @@ export function def <T> (value: T): T;
 
 export function omit <T> (value: T): T;
 
-export function bind <P, T = HTMLElement> (Component: Controller.Component<P, T>, to: string): ComponentType<P>;
+export function bind <P, T = HTMLElement> (Component: Controller.Component<P, T>, to: string): React.ComponentType<P>;
 
-export function hoc <T extends Controller, P> (component: Controller.Component<P, T>): ComponentType<P>;
+export function hoc <T extends Controller, P> (component: Controller.Component<P, T>): React.ComponentType<P>;
 
-export function wrap <T extends Controller, P> (component: Controller.Component<P, T>): ComponentType<P>;
+export function wrap <T extends Controller, P> (component: Controller.Component<P, T>): React.ComponentType<P>;
