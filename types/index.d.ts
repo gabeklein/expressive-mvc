@@ -7,6 +7,9 @@ import React from 'react';
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
 
+    type Select<T extends Controller> = SelectFunction<T, Controller>;
+    type Query<T extends Controller> = QueryFunction<T, Controller>;
+
     type Binder <T extends Controller> =
         & ((key: keyof T) => Reference)
         & ReplaceAll<Omit<T, keyof Controller>, Reference>
