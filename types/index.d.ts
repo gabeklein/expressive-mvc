@@ -5,13 +5,14 @@
 import React from 'react';
 
 declare namespace Controller {
+    type Properties<T> = Exclude<keyof T, keyof Controller>;
     type Entries<T extends Controller> = Omit<T, keyof Controller>;
 
     type Select<T extends Controller> = SelectFunction<T, Controller>;
     type Query<T extends Controller> = QueryFunction<T, Controller>;
 
     type Binder <T extends Controller> =
-        & ((key: keyof T) => RefFunction)
+        & ((key: Properties<T>) => RefFunction)
         & ReplaceAll<Entries<T>, RefFunction>
 
     type Component <P, T = Controller> =
@@ -30,7 +31,7 @@ interface Controller extends Dispatch, Lifecycle {
     set: this;
 
     tap(): this;
-    tap <K extends keyof this> (key?: K): this[K];
+    tap <K extends Controller.Properties<this>> (key?: K): this[K];
     tap(...keys: string[]): any;
 
     sub(...args: any[]): this;
@@ -54,13 +55,13 @@ declare abstract class Controller {
     static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
 
     static get <T extends Class> (this: T): InstanceOf<T>;
-    static get <T extends Class, I extends InstanceOf<T>, K extends keyof I> (this: T, key: K): I[K];
+    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.Properties<T>> (this: T, key: K): I[K];
     
     static tap <T extends Class> (this: T): InstanceOf<T>;
-    static tap <T extends Class, I extends InstanceOf<T>, K extends keyof I> (this: T, key: K): I[K];
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.Properties<T>> (this: T, key: K): I[K];
     static tap (...keys: string[]): any;
 
-    static has <T extends Class, I extends InstanceOf<T>, K extends keyof I> (this: T, key: K): Exclude<I[K], undefined>;
+    static has <T extends Class, I extends InstanceOf<T>, K extends Controller.Properties<T>> (this: T, key: K): Exclude<I[K], undefined>;
 
     static sub <T extends Class> (this: T, ...args: any[]): InstanceOf<T>;
 
