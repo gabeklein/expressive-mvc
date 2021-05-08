@@ -5,16 +5,14 @@
 import React from 'react';
 
 declare namespace Controller {
-    type Reference = (e: HTMLElement | null) => void;
-
     type Entries<T extends Controller> = Omit<T, keyof Controller>;
 
     type Select<T extends Controller> = SelectFunction<T, Controller>;
     type Query<T extends Controller> = QueryFunction<T, Controller>;
 
     type Binder <T extends Controller> =
-        & ((key: keyof T) => Reference)
-        & ReplaceAll<Entries<T>, Reference>
+        & ((key: keyof T) => RefFunction)
+        & ReplaceAll<Entries<T>, RefFunction>
 
     type Component <P, T = Controller> =
         | FunctionComponent<P, T>

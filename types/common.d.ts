@@ -6,6 +6,7 @@ type SelectFunction<T, O = {}> = (arg: Omit<Required<T>, keyof O>) => any;
 type QueryFunction<T, O = {}> = (select: Recursive<Omit<Required<T>, keyof O>>) => void;
 
 type StringsOptional = (string | undefined)[];
+type RefFunction = (e: HTMLElement | null) => void;
 type Async = (...args: any[]) => Promise<any>;
 type Class = new (...args: any[]) => any;
 type Expecting<A extends any[]> = new(...args: A) => any;
