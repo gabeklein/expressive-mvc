@@ -34,14 +34,11 @@ describe("Instance HOCs", () => {
       Component = hoc(TestComponent);
     }
 
-    const instance = Test.create();
-    let injected;
+    const { Component, get: instance } = Test.create();
 
     create(
-      <instance.Component got={i => injected = i}/>
+      <Component got={i => expect(i).toStrictEqual(instance)} />
     );
-    
-    expect(injected).toStrictEqual(instance);
   });
 
   it("applies instance to class component", () => {
@@ -49,14 +46,11 @@ describe("Instance HOCs", () => {
       Component = hoc(TestComponentClass);
     }
 
-    const instance = Test.create();
-    let injected;
+    const { Component, get: instance } = Test.create();
 
     create(
-      <instance.Component got={i => injected = i}/>
-    )
-
-    expect(injected).toStrictEqual(instance);
+      <Component got={i => expect(i).toStrictEqual(instance)} />
+    );
   });
 
   it("provides instance to children of component", () => {
@@ -64,16 +58,13 @@ describe("Instance HOCs", () => {
       CustomProvider = wrap(TestComponentClass);
     }
 
-    const instance = Test.create();
-    let injected;
+    const { CustomProvider, get: instance } = Test.create();
 
     create(
-      <instance.CustomProvider>
-        <Consumer of={Test} got={i => injected = i}/>
-      </instance.CustomProvider>
+      <CustomProvider>
+        <Consumer of={Test} got={i => expect(i).toStrictEqual(instance)} />
+      </CustomProvider>
     )
-
-    expect(injected).toStrictEqual(instance);
   });
 })
 
@@ -88,45 +79,34 @@ describe("Static HOCs", () => {
   const TestConsumer = Test.hoc(TestComponent);
 
   it("creates new instance to provide children", () => {
-    let consumed;
-
     create(
       <TestProvider>
-        <Consumer of={Test} got={i => consumed = i}/>
+        <Consumer of={Test} got={i => expect(i).toBeInstanceOf(Test)} />
       </TestProvider>
     )
-
-    expect(consumed).toBeInstanceOf(Test);
   });
 
   it("custom provider receives own instance", () => {
-    let provided;
-
     create(
-      <TestProvider got={i => provided = i}/>
+      <TestProvider got={i => expect(i).toBeInstanceOf(Test)} />
     )
-
-    expect(provided).toBeInstanceOf(Test);
   });
 
   it("custom consumer applies instance to component", () => {
-    let consumed;
-    
     create(
       <Test.Provider>
-        <TestConsumer got={i => consumed = i}/>
+        <TestConsumer got={i => expect(i).toBeInstanceOf(Test)} />
       </Test.Provider>
     )
-
-    expect(consumed).toBeInstanceOf(Test);
   });
 
   it("provided and consumed instance is the same", () => {
-    let produced, consumed;
+    let produced!: Test;
+    let consumed!: Test;
 
     create(
       <TestProvider got={i => produced = i}>
-        <TestConsumer got={i => consumed = i}/>
+        <TestConsumer got={i => consumed = i} />
       </TestProvider>
     )
 
@@ -137,6 +117,7 @@ describe("Static HOCs", () => {
 describe("Inheritable HOCs", () => {
   class Parent extends VC {
     static Direct = Parent.wrap(TestComponent);
+  
     static get Indirect(){
       return this.wrap(TestComponent);
     }
@@ -145,28 +126,23 @@ describe("Inheritable HOCs", () => {
   class Child extends Parent {};
 
   it("creates A from A.hoc always", () => {
-    let child, parent;
-
     create(
       <>
-        <Parent.Direct got={i => parent = i}/>
-        <Child.Direct got={i => child = i}/>
+        <Parent.Direct got={i => {
+          expect(i).toBeInstanceOf(Parent)
+        }}/>
+        <Child.Direct got={i => {
+          expect(i).toBeInstanceOf(Parent);
+          expect(i).not.toBeInstanceOf(Child);
+        }}/>
       </>
     )
-
-    expect(parent).toBeInstanceOf(Parent);
-    expect(child).toBeInstanceOf(Parent);
-    expect(child).not.toBeInstanceOf(Child);
   });
 
   it("creates B from A.hoc if A used getter", () => {
-    let created;
-
     create(
-      <Child.Indirect got={i => created = i}/>
+      <Child.Indirect got={i => expect(i).toBeInstanceOf(Child)} />
     )
-
-    expect(created).toBeInstanceOf(Child);
   });
 
   it("caches B.hoc component between uses", () => {
