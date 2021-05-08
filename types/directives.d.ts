@@ -1,4 +1,4 @@
-import { Controller } from '.';
+import Controller from '.';
 
 export function use <T extends typeof Controller> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
 

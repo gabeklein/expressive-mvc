@@ -26,3 +26,5 @@ interface Lifecycle {
   componentWillMount?(...args: any[]): void;
   componentWillUnmount?(...args: any[]): void;
 }
+
+export = Lifecycle;

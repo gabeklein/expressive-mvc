@@ -1,8 +1,9 @@
 /// <reference path="common.d.ts" />
-/// <reference path="dispatch.d.ts" />
-/// <reference path="lifecycle.d.ts" />
 
 import React from 'react';
+
+import Dispatch from './dispatch';
+import Lifecycle from './lifecycle';
 
 declare namespace Controller {
     type Properties<T> = Exclude<keyof T, keyof Controller>;
