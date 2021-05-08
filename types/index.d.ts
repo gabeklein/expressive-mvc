@@ -27,9 +27,16 @@ declare namespace Controller {
         new (props: P, inject: T) => React.Component<P, any>;
 }
 
-interface Controller extends Dispatch, Lifecycle {
+interface Controller extends Dispatch, Lifecycle {}
+
+declare abstract class Controller {
     get: this;
     set: this;
+
+    destroy(): void;
+
+    didCreate?(): void;
+    willDestroy?(): void;
 
     tap(): this;
     tap <K extends Controller.Fields<this>> (key?: K): this[K];
@@ -40,13 +47,6 @@ interface Controller extends Dispatch, Lifecycle {
     bind: Controller.Binder<this>;
 
     Provider: React.FC<Partial<Controller.Entries<this>>>;
-}
-
-declare abstract class Controller {
-    destroy(): void;
-
-    didCreate?(): void;
-    willDestroy?(): void;
 
     static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
