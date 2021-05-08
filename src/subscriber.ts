@@ -45,7 +45,7 @@ export class Subscriber {
     return proxy;
   }
 
-  public commit(...keys: MaybeStrings){
+  public commit(...keys: StringsOptional){
     if(keys.length == 0)
       keys.push(...this.parent.watched)
 
@@ -58,7 +58,7 @@ export class Subscriber {
       callback()
   }
 
-  public focus(keys: MaybeStrings){
+  public focus(keys: StringsOptional){
     const [ key, ...rest ] = keys.filter(x => x);
 
     if(!key)

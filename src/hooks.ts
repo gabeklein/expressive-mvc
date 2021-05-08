@@ -24,7 +24,7 @@ export function usePassive<T extends Controller>(
 }
 
 export function useWatcher(
-  target: {} | (() => {}), ...path: MaybeStrings){
+  target: {} | (() => {}), ...path: StringsOptional){
 
   const subscription = useActiveMemo(refresh => {
     if(typeof target == "function")

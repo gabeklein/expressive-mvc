@@ -6,7 +6,7 @@ type Select<T> = (arg: T) => any;
 type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
 type Selector<T> = (select: Recursive<T>) => void;
 
-type MaybeStrings = (string | undefined)[];
+type StringsOptional = (string | undefined)[];
 
 type Class = new(...args: any[]) => any;
 type Expecting<A extends any[]> = new(...args: A) => any;

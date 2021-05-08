@@ -26,7 +26,7 @@ export class Controller {
         define(this, key, value);
   }
 
-  public tap(...path: MaybeStrings){
+  public tap(...path: StringsOptional){
     return useWatcher(this, ...path);
   }
 
@@ -85,7 +85,7 @@ export class Controller {
     return usePassive(this.find(), key);
   }
 
-  static tap(...keys: MaybeStrings){
+  static tap(...keys: StringsOptional){
     return this.find().tap(...keys);
   }
 
@@ -102,7 +102,7 @@ export class Controller {
     return this.find().sub(...args);
   }
 
-  static meta(...path: MaybeStrings): any {
+  static meta(...path: StringsOptional): any {
     return useWatcher(() => {
       Dispatch.ensure(this, Controller);
       return this;
