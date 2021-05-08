@@ -2,7 +2,7 @@
 /// <reference path="dispatch.d.ts" />
 /// <reference path="lifecycle.d.ts" />
 
-import { Component as ReactComponent, FC, PropsWithChildren, ReactElement, ReactNode } from 'react';
+import { Component as ReactComponent, FC, PropsWithChildren, ReactElement } from 'react';
 
 declare namespace Controller {
     type Reference = (e: HTMLElement | null) => void;
@@ -20,7 +20,7 @@ declare namespace Controller {
         | ClassComponent<P, T>;
 
     type FunctionComponent <P, T = Controller> =
-        (props: P, context: T) => JSX.Element | ReactElement | ReactNode | null;
+        (props: P, context: T) => ReactElement<P, any> | null;
     
     type ClassComponent <P, T = Controller> =
         new (props: P, context: T) => ReactComponent<P, any>;
