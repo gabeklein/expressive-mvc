@@ -20,9 +20,9 @@ interface Dispatch {
 
   export(): Controller.Entries<this>;
   export <P extends Controller.Fields<this>> (select: P[]): Pick<this, P>;
-  export(select: Controller.SelectFields<this>): Controller.Values<this>;
+  export(select: Controller.SelectFields<this>): Controller.Data<this>;
 
-  update <O extends Controller.Values<this>> (via: O): void;
+  update <O extends Controller.Data<this>> (via: O): void;
   update(keys: Controller.SelectFields<this>): void;
   update(keys: Controller.Fields<this>[]): void;
 
