@@ -35,7 +35,7 @@ export class Controller {
   }
 
   public get bind(){
-    return createBindAgent(this);
+    return createBindAgent(this) as any;
   }
 
   public destroy(){
