@@ -146,7 +146,7 @@ export class Controller {
     )
   }
 
-  static get inheriting(): Model | undefined {
+  static get inherits(): Model | undefined {
     const I = getPrototypeOf(this);
     if(I !== Controller)
       return I;

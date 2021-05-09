@@ -78,7 +78,7 @@ declare abstract class Controller {
 
     static isTypeof <T extends Class>(this: T, maybe: any): maybe is T;
 
-    static inheriting: typeof Controller | undefined;
+    static inherits: typeof Controller | undefined;
 
     static Provider: React.FC<React.PropsWithChildren<{}>>;
 }
