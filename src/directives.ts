@@ -17,7 +17,7 @@ export class Pending {
 
 const ParentRelationship = new WeakMap<{}, {}>();
 
-export function childProperty<T extends Model>
+export function setChild<T extends Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   function bindChild(this: Dispatch, key: string){
@@ -36,7 +36,7 @@ export function childProperty<T extends Model>
   return new Pending(bindChild) as any;
 }
 
-export function parentProperty<T extends Model>
+export function setParent<T extends Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
   function attachParent(this: Dispatch, key: string){
@@ -60,7 +60,7 @@ export function parentProperty<T extends Model>
   return new Pending(attachParent) as any;
 }
 
-export function peerProperty<T extends Model>
+export function setPeer<T extends Model>
   (Peer: T): InstanceOf<T> {
 
   function bindSibling(this: Dispatch, key: string){
@@ -77,7 +77,7 @@ export function peerProperty<T extends Model>
   return new Pending(bindSibling) as any;
 }
 
-export function refProperty<T = any>
+export function setReference<T = any>
   (effect?: EffectCallback<Controller, any>): { current: T } {
 
   function createReference(this: Dispatch, key: string){
@@ -95,7 +95,7 @@ export function refProperty<T = any>
   return new Pending(createReference) as any;
 }
 
-export function effectProperty<T = any>
+export function setEffect<T = any>
   (value: any, effect?: EffectCallback<Controller, T>): T {
 
   if(!effect){
@@ -111,7 +111,7 @@ export function effectProperty<T = any>
   return new Pending(registerEffect) as any;
 }
 
-export function eventProperty
+export function setEvent
   (callback?: EffectCallback<Controller>){
 
   function registerEvent(this: Dispatch, key: string){
@@ -127,7 +127,7 @@ export function eventProperty
   return new Pending(registerEvent) as any;
 }
 
-export function memoizedProperty
+export function setMemo
   (factory: () => any, defer?: boolean){
 
   function memoizeValue(this: Dispatch, key: string){
@@ -142,7 +142,7 @@ export function memoizedProperty
   return new Pending(memoizeValue) as any;
 }
 
-export function componentProperty
+export function setComponent
   (Type: Public.Component<{}>){
 
   const componentFor = createHocFactory(Type);
@@ -156,7 +156,7 @@ export function componentProperty
   return new Pending(assignComponent) as any;
 }
 
-export function parentComponentProperty
+export function setParentComponent
   (Type: Public.Component<{}>){
 
   const componentFor = createHocFactory(Type);
@@ -172,7 +172,7 @@ export function parentComponentProperty
   return new Pending(assignProvider) as any;
 }
 
-export function boundComponentProperty
+export function setBoundComponent
   (Type: Public.Component<{}, HTMLElement>, to: string){
 
   function createBinding(this: Dispatch, key: string){
@@ -184,7 +184,7 @@ export function boundComponentProperty
   return new Pending(createBinding) as any;
 }
 
-export function defineValueProperty(value: any){
+export function setValue(value: any){
   function setDefault(this: Dispatch, key: string){
     if(this.getters.has(key))
       return;
@@ -195,7 +195,7 @@ export function defineValueProperty(value: any){
   return new Pending(setDefault, true) as any;
 }
 
-export function passiveProperty(value: any){
+export function setIgnored(value: any){
   function assign(this: Dispatch, key: string){
     within(this.subject, key, value);
   }
@@ -203,7 +203,7 @@ export function passiveProperty(value: any){
   return new Pending(assign);
 }
 
-export function tupleProperty<T extends any[]>
+export function setTuple<T extends any[]>
   (...values: T): T {
 
   if(values.length == 0)
@@ -248,7 +248,7 @@ export function tupleProperty<T extends any[]>
 
 type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
-export function actionProperty(action: AsyncFn){
+export function setAction(action: AsyncFn){
   function createAction(this: Dispatch, key: string){
     let pending = false;
 

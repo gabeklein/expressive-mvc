@@ -11,7 +11,7 @@ export const Controller = Source.Controller as unknown as typeof Public.Controll
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
 
-export const get = Source.get as typeof Public.get;
+export const tap = Source.tap as typeof Public.tap;
 export const set = Source.watch as typeof Public.watch;
 export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;

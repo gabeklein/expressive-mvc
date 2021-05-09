@@ -1,18 +1,18 @@
 export {
-  childProperty as use,
-  parentProperty as parent,
-  peerProperty as get,
-  effectProperty as watch,
-  refProperty as ref,
-  actionProperty as act,
-  eventProperty as event,
-  componentProperty as hoc,
-  parentComponentProperty as wrap,
-  memoizedProperty as memo,
-  boundComponentProperty as bind,
-  defineValueProperty as def,
-  passiveProperty as omit,
-  tupleProperty as tuple
+  setChild as use,
+  setParent as parent,
+  setPeer as tap,
+  setEffect as watch,
+  setReference as ref,
+  setAction as act,
+  setEvent as event,
+  setComponent as hoc,
+  setParentComponent as wrap,
+  setBoundComponent as bind,
+  setMemo as memo,
+  setValue as def,
+  setIgnored as omit,
+  setTuple as tuple
 } from './directives';
 
 export {

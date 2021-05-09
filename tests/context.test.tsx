@@ -1,7 +1,7 @@
-import React from "react";
-import { create } from "react-test-renderer";
+import React from 'react';
+import { create } from 'react-test-renderer';
 
-import { Consumer, Controller, Provider, get, Issue, Singleton } from "./adapter";
+import { Consumer, Controller, Issue, Provider, Singleton, tap } from './adapter';
 
 class Foo extends Controller {}
 class Bar extends Controller {}
@@ -88,8 +88,8 @@ describe("Peers", () => {
 
   it("can attach from context and singleton", () => {
     class Bar extends Controller {
-      foo = get(Foo as any) as Foo;
-      baz = get(Baz as any) as Baz;
+      foo = tap(Foo);
+      baz = tap(Baz);
     }
 
     const gotValues = jest.fn();
@@ -113,7 +113,7 @@ describe("Peers", () => {
     class Illegal extends Singleton {
       // foo is not also Global
       // this should fail
-      foo = get(Foo as any) as Foo;
+      foo = tap(Foo);
     }
 
     const attempt = () => Illegal.create();

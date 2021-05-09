@@ -5,7 +5,7 @@ export function use <T extends typeof Controller> (Peer: T, callback?: (i: Insta
 export function parent <T extends typeof Controller> (Expects: T, required: true): InstanceOf<T>;
 export function parent <T extends typeof Controller> (Expects: T, required?: false): InstanceOf<T> | undefined;
 
-export function get <T extends Class> (type: T): InstanceOf<T>;
+export function tap <T extends Class> (type: T): InstanceOf<T>;
 
 export function watch <T = any> (callback: EffectCallback<T>): T | undefined;
 export function watch <T = any> (starting: T, callback: EffectCallback<T>): T;
