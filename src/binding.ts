@@ -6,20 +6,20 @@ import { entries, define, defineProperty } from './util';
 import Oops from "./issues";
 
 export function createBindAgent(requestedBy: Controller){
-  const { get: instance } = requestedBy;
-  const fn: any = (key: string) => useBindRef(instance, key);
+  const instance = requestedBy.get;
   const tracked = entries(instance.export());
+  const bind = {};
 
   tracked.forEach(([ name, value ]) => {
     if(typeof value === "string")
-      defineProperty(fn, name, {
-        get: () => fn(name)
+      defineProperty(bind, name, {
+        get: () => useBindRef(instance, name)
       });
   });
 
-  define(instance, { bind: fn });
+  define(instance, { bind });
 
-  return fn;
+  return bind;
 }
 
 export function useBindRef(

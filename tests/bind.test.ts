@@ -1,28 +1,19 @@
-import Controller, { test } from "./adapter";
+import Controller from "./adapter";
 
 describe("bind", () => {
   class Form extends Controller {
     username = "";
     password = "";
-
-    birthday = new Date();
+    birthday = 0;
   }
   
-  it('has bind-function generator method', async () => {
-    const { state } = test(Form);
-    const { bind } = state;
-
-    expect(bind).toBeInstanceOf(Function);
-  })
-  
-  it('method contains shortcuts for string values', async () => {
-    const { state } = test(Form);
-    const { bind } = state;
+  it('bind contains refFunctions cooresponding to values', async () => {
+    const { bind } = Form.create();
 
     expect(bind.hasOwnProperty("username")).toBe(true);
     expect(bind.hasOwnProperty("password")).toBe(true);
 
-    // Form.birthday isn't a string, should thus be ignored.
+    // ignores non-string values
     expect(bind.hasOwnProperty("birthday")).toBe(false);
   })
 })

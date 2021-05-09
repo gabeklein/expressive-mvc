@@ -14,9 +14,8 @@ declare namespace Controller {
     type SelectEvent<T> = SelectFunction<T, Omit<Controller, keyof Lifecycle>>;
     type SelectFields<T> = QueryFunction<T, Controller>;
 
-    type Binder <T extends Controller> =
-        & ((key: Fields<T>) => RefFunction)
-        & ReplaceAll<Entries<T>, RefFunction>
+    type Bind <T extends Controller> =
+        ReplaceAll<Entries<T>, RefFunction>
 
     type Component <P, T = Controller> =
         | FunctionComponent<P, T>
@@ -45,7 +44,7 @@ declare abstract class Controller {
 
     sub(...args: any[]): this;
 
-    bind: Controller.Binder<this>;
+    bind: Controller.Bind<this>;
 
     Provider: React.FC<Controller.Data<this>>;
 
