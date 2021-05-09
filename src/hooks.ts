@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
-import { componentLifecycle, lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
+import { componentLifecycle, Lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { fn, within } from './util';
 
@@ -55,7 +55,7 @@ export function useSubscriber(
     const alias = subscriberLifecycle(name);
     const handler = target[alias] || target[name];
 
-    if(name == lifecycle.DID_MOUNT)
+    if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
 
     if(fn(handler))
@@ -64,7 +64,7 @@ export function useSubscriber(
     parent.emit(name);
     parent.emit(alias);
 
-    if(name == lifecycle.WILL_UNMOUNT)
+    if(name == Lifecycle.WILL_UNMOUNT)
       subscription.release();
   });
   
@@ -87,7 +87,7 @@ export function useMemoized(
     observer.emit(name);
     observer.emit(alias);
 
-    if(name == lifecycle.WILL_UNMOUNT)
+    if(name == Lifecycle.WILL_UNMOUNT)
       instance.destroy();
   });
 
@@ -111,10 +111,10 @@ export function useController(
     const instance = parent.subject as Controller;
     const handler = instance[alias] || instance[name];
 
-    if(name == lifecycle.WILL_RENDER)
+    if(name == Lifecycle.WILL_RENDER)
       release = attachFromContext(instance);
 
-    if(name == lifecycle.DID_MOUNT)
+    if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
 
     if(fn(handler))
@@ -123,7 +123,7 @@ export function useController(
     parent.emit(name);
     parent.emit(alias);
 
-    if(name == lifecycle.WILL_UNMOUNT){
+    if(name == Lifecycle.WILL_UNMOUNT){
       subscription.release();
 
       if(release)

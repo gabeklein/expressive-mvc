@@ -2,32 +2,32 @@ import { useEffect, useMemo } from 'react';
 
 import { values } from './util';
 
-export const lifecycle = {
-  WILL_RESET: "willReset",
-  WILL_RENDER: "willRender",
-  WILL_UPDATE: "willUpdate",
-  WILL_MOUNT: "willMount",
-  WILL_UNMOUNT: "willUnmount",
-  DID_RENDER: "didRender",
-  DID_MOUNT: "didMount"
-} as const;
+export enum Lifecycle {
+  WILL_RESET = "willReset",
+  WILL_RENDER = "willRender",
+  WILL_UPDATE = "willUpdate",
+  WILL_MOUNT = "willMount",
+  WILL_UNMOUNT = "willUnmount",
+  DID_RENDER = "didRender",
+  DID_MOUNT = "didMount"
+};
 
 type ValuesIn<T> = T[keyof T];
 
 function aliasFor(prefix: string){
   const map = {} as BunchOf<string>;
 
-  for(const name of values(lifecycle))
+  for(const name of values(Lifecycle))
     map[name] = prefix + name[0].toUpperCase() + name.slice(1);
 
-  return (name: string) => map[name] as ValuesIn<typeof lifecycle>;
+  return (name: string) => map[name] as ValuesIn<typeof Lifecycle>;
 }
 
 export const subscriberLifecycle = aliasFor("element");
 export const componentLifecycle = aliasFor("component");
 
 export function useLifecycleEffect(
-  onEvent: (name: ValuesIn<typeof lifecycle>) => void){
+  onEvent: (name: ValuesIn<typeof Lifecycle>) => void){
 
   let isFirstRender: true | undefined;
 
@@ -36,16 +36,16 @@ export function useLifecycleEffect(
     return onEvent;
   }, []);
 
-  event(isFirstRender ? lifecycle.WILL_MOUNT : lifecycle.WILL_UPDATE);
-  event(lifecycle.WILL_RENDER);
+  event(isFirstRender ? Lifecycle.WILL_MOUNT : Lifecycle.WILL_UPDATE);
+  event(Lifecycle.WILL_RENDER);
 
   useEffect(() => {
-    event(lifecycle.DID_RENDER);
-    return () => event(lifecycle.WILL_RESET);
+    event(Lifecycle.DID_RENDER);
+    return () => event(Lifecycle.WILL_RESET);
   })
 
   useEffect(() => {
-    event(lifecycle.DID_MOUNT);
-    return () => event(lifecycle.WILL_UNMOUNT);
+    event(Lifecycle.DID_MOUNT);
+    return () => event(Lifecycle.WILL_UNMOUNT);
   }, [])
 }
