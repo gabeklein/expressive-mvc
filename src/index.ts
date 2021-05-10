@@ -11,7 +11,7 @@ export {
   setBoundComponent as bind,
   setMemo as memo,
   setValue as def,
-  setIgnored as omit,
+  setIgnored as lazy,
   setTuple as tuple
 } from './directives';
 
