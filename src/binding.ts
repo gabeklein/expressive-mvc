@@ -28,8 +28,10 @@ export function useBindRef(
   let cleanup: Callback | undefined;
 
   const ref = useCallback((e: HTMLElement | null) => {
-    if(cleanup)
-      cleanup(), cleanup = undefined;
+    if(cleanup){
+      cleanup();
+      cleanup = undefined;
+    }
     if(e instanceof HTMLInputElement)
       cleanup = createTwoWayBinding(e, control, key);
     else if(e)
