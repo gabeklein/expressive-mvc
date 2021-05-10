@@ -1,4 +1,4 @@
-import Controller, { act, event, ref, set, test, use, Issue } from './adapter';
+import Controller, { act, event, ref, set, use, Issue } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {
@@ -20,7 +20,7 @@ describe("set Directive", () => {
   }
   
   it('invokes callback of set property', async () => {
-    const { state, assertDidUpdate } = test(Subject, ["test1"]);
+    const state = Subject.create();
     const callback = jest.fn();
   
     expect(state.checkResult).toBe(undefined);
@@ -29,20 +29,20 @@ describe("set Directive", () => {
     state.test1 = 1;
     expect(state.checkResult).toBe(2);
 
-    await assertDidUpdate();
+    await state.requestUpdate(true)
     expect(callback).toBeCalledWith(1, "test1");
   })
   
   it('invokes callback on property overwrite', async () => {
-    const { state, assertDidUpdate } = test(Subject, ["test2"]);
+    const state = Subject.create();
   
     state.test2 = 1;
 
-    await assertDidUpdate();
+    await state.requestUpdate(true);
     expect(state.checkResult).toBe(undefined);
     state.test2 = 2;
 
-    await assertDidUpdate();
+    await state.requestUpdate(true);
     expect(state.checkResult).toBe(true);
   })
   
@@ -105,17 +105,17 @@ describe("ref Directive", () => {
   }
   
   it('watches "current" of ref property', async () => {
-    const { state, assertDidUpdate } = test(Subject, ["ref1"]);
+    const state = Subject.create();
     const callback = jest.fn()
   
     state.once("ref1", callback);
     state.ref1.current = "value1";
-    await assertDidUpdate();
+    await state.requestUpdate(true);
     expect(callback).toBeCalledWith("value1", "ref1");
   })
   
   it('invokes callback of ref property', async () => {
-    const { state, assertDidUpdate } = test(Subject, ["ref2"]);
+    const state = Subject.create();
     const targetValue = Symbol("inserted object");
     const callback = jest.fn();
   
@@ -123,18 +123,18 @@ describe("ref Directive", () => {
     state.once("ref2", callback);
     state.ref2.current = targetValue;
     expect(state.checkValue).toBe(targetValue);
-    await assertDidUpdate();
+    await state.requestUpdate(true);
     expect(callback).toBeCalledWith(targetValue, "ref2");
   })
   
   it('invokes callback on ref overwrite', async () => {
-    const { state, assertDidUpdate } = test(Subject, ["ref3"]);
+    const state = Subject.create();
   
     state.ref3.current = 1;
-    await assertDidUpdate();
+    await state.requestUpdate();
     expect(state.checkValue).toBe(undefined);
     state.ref3.current = 2;
-    await assertDidUpdate();
+    await state.requestUpdate();
     expect(state.checkValue).toBe(true);
   })
 })

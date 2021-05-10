@@ -46,22 +46,22 @@ describe("computed", () => {
     d = "bar";
   }
 
-  test("B getter wont override A value", () => {
+  it("B getter wont override A value", () => {
     const test = B.create();
     expect(test.a).toBe("foo");
   })
 
-  test("B getter will override A default", () => {
+  it("B getter will override A default", () => {
     const test = B.create();
     expect(test.b).toBe("bar");
   })
 
-  test("B getter will override A getter", () => {
+  it("B getter will override A getter", () => {
     const test = B.create();
     expect(test.c).toBe("bar");
   })
 
-  test("B value will override A getter", () => {
+  it("B value will override A getter", () => {
     const test = B.create();
     expect(test.d).toBe("bar");
   })

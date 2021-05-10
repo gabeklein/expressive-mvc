@@ -10,7 +10,7 @@ class Parent extends Controller {
 }
 
 it('tracks values of nested controllers', async () => {
-  const { state, assertDidUpdate } = 
+  const { state, assertDidUpdate } =
     test(Parent, ["value", "child.value"])
 
   expect(state.value).toBe("foo");
@@ -24,7 +24,7 @@ it('tracks values of nested controllers', async () => {
 })
 
 it('tracks a new child as update to nested value', async () => {
-  const { state, assertDidUpdate } = 
+  const { state, assertDidUpdate } =
     test(Parent, ["child", "child.value"]);
 
   expect(state.child.value).toBe("foo");

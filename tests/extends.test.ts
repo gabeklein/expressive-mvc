@@ -42,7 +42,7 @@ describe("extension", () => {
   }
 
   it('initializes from extended Controller', () => {
-    const { state } = test(Subject);
+    const state = Subject.create();
 
     expect(state.value).toBe(1);
     expect(state.value2).toBe(2);

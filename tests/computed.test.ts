@@ -66,7 +66,7 @@ describe("reference computed", () => {
     }
   }
 
-  test("computed may access own previous value", async () => {
+  it("computed may access own previous value", async () => {
     const test = Test.create();
 
     // shouldn't exist until getter's side-effect

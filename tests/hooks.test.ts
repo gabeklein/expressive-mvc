@@ -25,7 +25,7 @@ describe("basic", () => {
   });
 
   it('expose get/set to dodge tracking', async () => {
-    const { state, assertDidUpdate ,assertDidNotUpdate } = test(() => {
+    const { state, assertDidUpdate, assertDidNotUpdate } = test(() => {
       const state = Subject.use();
 
       void state.value;
@@ -54,21 +54,20 @@ describe("computed", () => {
   }
   
   it('triggers computed value when input values change', async () => {
-    const { state, assertDidNotUpdate, assertDidUpdate } = 
-      test(Subject, ["minutes"]);
+    const state = Subject.create();
   
     state.seconds = 30;
   
-    await assertDidNotUpdate();
+    await state.requestUpdate(true);
   
     expect(state.seconds).toEqual(30);
     expect(state.minutes).toEqual(0);
   
-    await assertDidNotUpdate();
+    await state.requestUpdate(false);
     
     state.seconds = 60;
   
-    await assertDidUpdate();
+    await state.requestUpdate(true);
   
     expect(state.seconds).toEqual(60);
     expect(state.minutes).toEqual(1);
