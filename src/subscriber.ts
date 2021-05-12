@@ -1,10 +1,9 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { create, define, defineProperty, displayName, within, assign } from './util';
-
 import Oops from './issues';
+import { assign, create, define, defineProperty, displayName, fn, within } from './util';
 
-export class Subscriber<T = {}> {
+export class Subscriber<T = any> {
   public cleanup = [] as Callback[];
   public parent: Dispatch;
   public watched = [] as string[];
@@ -18,7 +17,7 @@ export class Subscriber<T = {}> {
     this.parent = Dispatch.get(subject);
   }
 
-  public get proxy(){
+  public get proxy(): T {
     const source = this.subject as any;
     const proxy = create(source);
 
@@ -45,12 +44,22 @@ export class Subscriber<T = {}> {
     return proxy;
   }
 
+  public declare(event: string, args?: any[]){
+    const target = this.subject as any;
+    const handle = target[event];
+
+    if(fn(handle))
+      handle.apply(target, args);
+
+    this.parent.emit(event);
+  }
+
   public commit(...keys: StringsOptional){
     if(keys.length == 0)
       keys.push(...this.parent.watched)
 
     for(const key of keys)
-      delete this.proxy[key!];
+      delete (this.proxy as any)[key!];
   }
 
   public release(){
@@ -64,7 +73,7 @@ export class Subscriber<T = {}> {
     if(!key)
       return this;
       
-    let sub: Subscriber | undefined;
+    let sub: Subscriber<any> | undefined;
 
     const reset = () => sub && sub.release();
 
@@ -114,7 +123,7 @@ export class Subscriber<T = {}> {
 
   protected followRecursive(key: string){
     const { subject } = this.parent;
-    let sub: Subscriber | undefined;
+    let sub: Subscriber<any> | undefined;
 
     const reset = () => sub && sub.release();
 

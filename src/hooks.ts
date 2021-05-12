@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
-import { Dispatch } from './dispatch';
-import { componentLifecycle, Lifecycle, subscriberLifecycle, useLifecycleEffect } from './lifecycle';
+import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { fn, within } from './util';
+import { within } from './util';
+
+export const subscriberEvent = forAlias("element");
+export const componentEvent = forAlias("component");
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){
@@ -51,18 +53,13 @@ export function useSubscriber(
   );
 
   useLifecycleEffect((name) => {
-    const { parent } = subscription;
-    const alias = subscriberLifecycle(name);
-    const handler = target[alias] || target[name];
-
     if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
 
-    if(fn(handler))
-      handler.apply(target, args || []);
+    const alias = subscriberEvent(name);
 
-    parent.emit(name);
-    parent.emit(alias);
+    for(const event of [alias, name])
+      subscription.declare(event, args);
 
     if(name == Lifecycle.WILL_UNMOUNT)
       subscription.release();
@@ -76,9 +73,7 @@ export function useMemoized(
 
   const instance = useMemo(() => Type.create(args), []);
 
-  useEffect(() => () => {
-    instance.destroy();
-  }, []);
+  useEffect(() => () => instance.destroy(), []);
 
   return instance;
 }
@@ -95,22 +90,18 @@ export function useController(
   });
 
   useLifecycleEffect((name) => {
-    const { parent } = subscription;
-    const alias = componentLifecycle(name);
-    const instance = parent.subject as Controller;
-    const handler = instance[alias] || instance[name];
+    const { subject } = subscription;
 
     if(name == Lifecycle.WILL_RENDER)
-      release = attachFromContext(instance);
+      release = attachFromContext(subject);
 
     if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
 
-    if(fn(handler))
-      handler.apply(instance, args);
+    const alias = componentEvent(name);
 
-    parent.emit(name);
-    parent.emit(alias);
+    for(const event of [alias, name])
+      subscription.declare(event);
 
     if(name == Lifecycle.WILL_UNMOUNT){
       subscription.release();
@@ -118,7 +109,7 @@ export function useController(
       if(release)
         release();
 
-      instance.destroy();
+      subject.destroy();
     }
   });
 

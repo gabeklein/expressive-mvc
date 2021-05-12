@@ -1,4 +1,5 @@
 type BunchOf<T> = { [key: string]: T };
+type Values<T> = T[keyof T];
 type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
 type ReplaceAll<T, R> = { [K in keyof T]: R };
 

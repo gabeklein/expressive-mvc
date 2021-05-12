@@ -12,22 +12,19 @@ export enum Lifecycle {
   DID_MOUNT = "didMount"
 };
 
-type ValuesIn<T> = T[keyof T];
+export type LifecycleEvent = Values<typeof Lifecycle>;
 
-function aliasFor(prefix: string){
-  const map = {} as BunchOf<string>;
+export function forAlias(prefix: string){
+  const map = new Map<LifecycleEvent, string>();
 
   for(const name of values(Lifecycle))
-    map[name] = prefix + name[0].toUpperCase() + name.slice(1);
+    map.set(name, prefix + name[0].toUpperCase() + name.slice(1));
 
-  return (name: string) => map[name] as ValuesIn<typeof Lifecycle>;
+  return (name: LifecycleEvent) => map.get(name)!;
 }
 
-export const subscriberLifecycle = aliasFor("element");
-export const componentLifecycle = aliasFor("component");
-
 export function useLifecycleEffect(
-  onEvent: (name: ValuesIn<typeof Lifecycle>) => void){
+  onEvent: (name: LifecycleEvent) => void){
 
   let isFirstRender: true | undefined;
 
