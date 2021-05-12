@@ -85,8 +85,8 @@ export class Controller {
     return usePassive(this.find(), key);
   }
 
-  static tap(...keys: StringsOptional){
-    return this.find().tap(...keys);
+  static tap(key?: string){
+    return this.find().tap(key);
   }
 
   static has(key: string){
@@ -102,11 +102,11 @@ export class Controller {
     return this.find().sub(...args);
   }
 
-  static meta(...path: StringsOptional): any {
+  static meta(select?: string): any {
     return useWatcher(() => {
       Dispatch.ensure(this, Controller);
       return this;
-    }, ...path);
+    }, select);
   }
 
   static hoc<P>(Type: Public.Component<P>): FunctionComponent<P> {

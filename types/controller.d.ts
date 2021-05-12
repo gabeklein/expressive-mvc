@@ -174,9 +174,6 @@ export abstract class Controller {
     /** Tracks specific key of this controller within a component. */
     tap <K extends Controller.Fields<this>> (key?: K): this[K];
 
-    /** Tracks deep property of this controller within a component. */
-    tap(...keys: string[]): any;
-
     /**
      * **React Hook** - Find and subcribe to applicable controller. 
      * 
@@ -268,13 +265,6 @@ export abstract class Controller {
      * Documentation TBD.
      */
     static meta <T extends Class>(this: T): T & Dispatch;
-
-     /** 
-     * @experimental
-     * 
-     * **React Hook** - Fetch and subscribe to deep value of this class within ambient component.
-     */
-    static meta (...keys: string[]): any;
 
     /**
      * Produces a turn-key HOC acting as a context consumer for `this`.

@@ -121,13 +121,7 @@ describe("tap", () => {
     await assertDidUpdate();
   })
   
-  it('access nested controllers with tap', async () => {
-    const { state } = test(() => {
-      return Parent.tap("child", "grandchild");
-    })
-  
-    expect(state.value).toBe("bar");
-  })
+  it.todo('access nested controllers with tap')
 })
 
 describe("meta", () => {
