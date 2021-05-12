@@ -32,7 +32,7 @@ export {
   entriesIn,
   fn,
   memoize,
-  displayName,
+  setDisplayName,
   debounce,
   within
 }
@@ -51,7 +51,7 @@ function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function displayName<T extends Function>(fn: T, name: string){
+function setDisplayName<T extends Function>(fn: T, name: string){
   (fn as { displayName?: string }).displayName = name;
 }
 

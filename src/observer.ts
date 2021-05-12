@@ -4,14 +4,14 @@ import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
   allEntriesIn,
+  assign,
   defineProperty,
   entriesIn,
-  getOwnPropertyDescriptor,
   fn,
+  getOwnPropertyDescriptor,
   keys,
+  setDisplayName,
   within,
-  displayName,
-  assign
 } from './util';
 
 import Oops from './issues';
@@ -64,7 +64,7 @@ export class Observer {
       if(!get || getters.has(key))
         continue;
 
-      displayName(get, `run ${key}`);
+      setDisplayName(get, `run ${key}`);
 
       const reset = (value: any) => {
         if(value instanceof Pending && value.loose)
@@ -208,8 +208,8 @@ export class Observer {
       }
     }
 
-    displayName(refresh, `try ${key}`);
-    displayName(create, `new ${key}`);
+    setDisplayName(refresh, `try ${key}`);
+    setDisplayName(create, `new ${key}`);
 
     metaData(compute, self);
     metaData(create, true);
@@ -219,7 +219,7 @@ export class Observer {
 
   public getter(key: string){
     const get = () => this.state[key];
-    displayName(get, `get ${key}`);
+    setDisplayName(get, `get ${key}`);
     return get;
   }
 
@@ -239,7 +239,7 @@ export class Observer {
       this.emit(key);
     }
 
-    displayName(set, `set ${key}`);
+    setDisplayName(set, `set ${key}`);
     return set;
   }
 
@@ -251,8 +251,7 @@ export class Observer {
     type MaybeComputed = (early?: boolean) => void;
 
     const list = this.register(key);
-    const handler =
-      once ? () => { done(); callback() } : callback;
+    const handler = once ? () => { done(); callback() } : callback;
     const done = () => list.delete(handler);
     const property = getOwnPropertyDescriptor(this.subject, key);
     const getter = property && property.get as MaybeComputed;

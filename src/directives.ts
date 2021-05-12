@@ -4,7 +4,7 @@ import type { Controller, Model } from './controller';
 import { boundRefComponent, createHocFactory, withProvider } from './components';
 import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
-import { createEffect, define, defineLazy, defineProperty, within, displayName } from './util';
+import { createEffect, define, defineLazy, defineProperty, setDisplayName, within } from './util';
 
 import Oops from './issues';
 
@@ -233,7 +233,7 @@ export function setTuple<T extends any[]>
         this.emit(key);
     }
 
-    displayName(setTuple, `set ${key}`);
+    setDisplayName(setTuple, `set ${key}`);
 
     source[key] = values;
     this.register(key);

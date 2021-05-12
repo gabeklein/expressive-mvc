@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import Oops from './issues';
-import { assign, create, define, defineProperty, displayName, fn, within } from './util';
+import { assign, create, define, defineProperty, fn, setDisplayName, within } from './util';
 
 export class Subscriber<T = any> {
   public cleanup = [] as Callback[];
@@ -32,7 +32,7 @@ export class Subscriber<T = any> {
         return value;
       }
 
-      displayName(subscribe, `tap ${key}`);
+      setDisplayName(subscribe, `tap ${key}`);
       defineProperty(proxy, key, {
         configurable: true,
         set: this.parent.setter(key),
