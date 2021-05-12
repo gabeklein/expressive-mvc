@@ -149,7 +149,7 @@ export function setComponent
 
   function assignComponent(this: Dispatch, key: string){
     defineLazy(this.subject, key, () =>
-      componentFor(this.subject as Controller)
+      componentFor(this.subject as any)
     )
   }
     
@@ -163,7 +163,7 @@ export function setParentComponent
 
   function assignProvider(this: Dispatch, key: string){
     defineLazy(this.subject, key, () => {
-      const control = this.subject as Controller;
+      const control = this.subject as any;
       const Component = componentFor(control);
       return withProvider(Component, control)
     })

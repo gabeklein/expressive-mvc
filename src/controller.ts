@@ -27,11 +27,11 @@ export class Controller {
   }
 
   public tap(...path: StringsOptional){
-    return useWatcher(this, ...path);
+    return useWatcher(this, ...path) as any;
   }
 
   public sub(...args: any[]){
-    return useSubscriber(this, args);
+    return useSubscriber(this, args) as any;
   }
 
   public get bind(){
