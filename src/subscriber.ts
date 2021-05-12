@@ -4,13 +4,13 @@ import { create, define, defineProperty, displayName, within, assign } from './u
 
 import Oops from './issues';
 
-export class Subscriber {
+export class Subscriber<T = {}> {
   public cleanup = [] as Callback[];
   public parent: Dispatch;
   public watched = [] as string[];
   
   constructor(
-    private subject: {},
+    public subject: T,
     private refresh: Callback,
     private metadata?: {}
   ){
