@@ -25,11 +25,11 @@ export namespace Controller {
      * ---
      * 
      * ```js
-     * Controller.update(x => x.didMountComponent)
+     * Controller.on(x => x.didMountComponent, cb)
      * ```
      * is equivalent to, while also more robust than:
      * ```js
-     * Controller.update(["didMountComponent"])
+     * Controller.on(["didMountComponent"], cb)
      * ```
      * 
      * **Note**: Will not select more than one item unlike `SelectFields`
@@ -224,7 +224,7 @@ export abstract class Controller {
     /**
      * **React Hook** - Fetch specific value from instance of this controller in context.
      */
-    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<T>> (this: T, key: K): I[K];
+    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
     
     /** 
      * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
@@ -234,7 +234,7 @@ export abstract class Controller {
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<T>> (this: T, key: K): I[K];
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
 
     /** 
      * @experimental
@@ -249,7 +249,7 @@ export abstract class Controller {
      * Similar to `tap(property)`, however will throw of value is undefined.
      * This makes return type non-nullable and easy to use without optional chaining.
      */
-    static has <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<T>> (this: T, key: K): Exclude<I[K], undefined>;
+    static has <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): Exclude<I[K], undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
