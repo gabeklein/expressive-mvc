@@ -76,20 +76,9 @@ export function useMemoized(
 
   const instance = useMemo(() => Type.create(args), []);
 
-  useLifecycleEffect((name) => {
-    const alias = componentLifecycle(name);
-    const handler = instance[alias] || instance[name];
-    const observer = Dispatch.get(instance);
-
-    if(fn(handler))
-      handler.apply(instance, args);
-
-    observer.emit(name);
-    observer.emit(alias);
-
-    if(name == Lifecycle.WILL_UNMOUNT)
-      instance.destroy();
-  });
+  useEffect(() => () => {
+    instance.destroy();
+  }, []);
 
   return instance;
 }
