@@ -89,7 +89,14 @@ describe("tap", () => {
     value = "bar"
   }
   
-  const singleton = Parent.create();
+  let singleton!: Parent;
+
+  beforeEach(() => {
+    if(Parent.current)
+      singleton.destroy();
+
+    singleton = Parent.create();
+  });
   
   it('access subvalue directly with tap', async () => {
     const { state, assertDidUpdate } = test(() => {
@@ -101,6 +108,14 @@ describe("tap", () => {
     singleton.value = "bar";
   
     await assertDidUpdate();
+  })
+  
+  it('access subvalue directly with tap', async () => {
+    const { state } = test(() => {
+      return Parent.tap(x => x.value);
+    });
+  
+    expect(state).toBe("foo");
   })
   
   it('access child controller with tap', async () => {
@@ -136,6 +151,8 @@ describe("meta", () => {
     static value = "foo";
     static child = new Child("foo");
   }
+
+  beforeEach(() => Parent.value = "foo")
   
   it('tracks static values on meta', async () => {
     const { state, assertDidUpdate } = test(() => {
@@ -150,6 +167,14 @@ describe("meta", () => {
   
     await assertDidUpdate();
     expect(state.value).toBe("bar");
+  })
+  
+  it('pulls static values via selector', async () => {
+    const { state } = test(() => {
+      return Parent.meta(x => x.value);
+    });
+  
+    expect(state).toBe("foo");
   })
   
   it('tracks child controller values on meta', async () => {

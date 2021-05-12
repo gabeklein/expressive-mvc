@@ -26,8 +26,8 @@ export class Controller {
         define(this, key, value);
   }
 
-  public tap(...path: StringsOptional){
-    return useWatcher(this, ...path) as any;
+  public tap(path?: string | SelectFunction<any>){
+    return useWatcher(this, path) as any;
   }
 
   public sub(...args: any[]){
@@ -81,11 +81,11 @@ export class Controller {
     return useMemoized(this, args);
   }
 
-  static get(key?: string){
+  static get(key?: string | SelectFunction<any>){
     return usePassive(this.find(), key);
   }
 
-  static tap(key?: string){
+  static tap(key?: string | SelectFunction<any>){
     return this.find().tap(key);
   }
 
@@ -102,11 +102,11 @@ export class Controller {
     return this.find().sub(...args);
   }
 
-  static meta(select?: string): any {
+  static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
       Dispatch.ensure(this, Controller);
       return this;
-    }, select);
+    }, path);
   }
 
   static hoc<P>(Type: Public.Component<P>): FunctionComponent<P> {

@@ -21,7 +21,7 @@ export class Dispatch extends Observer {
 
   static ensure(on: {}, base: typeof Controller){
     if(!ASSIGNED.has(on))
-      return new Dispatch(on, base);
+      new Dispatch(on, base);
   }
 
   static get(from: {}){
@@ -76,7 +76,7 @@ export class Dispatch extends Observer {
       super.manageProperty(key, desc);
   }
 
-  protected select(using: QueryFunction<this>){
+  public select(using: QueryFunction<this>){
     const found = new Set<string>();
     const spy = {} as Recursive<this>;
   

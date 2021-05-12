@@ -36,6 +36,8 @@ export namespace Controller {
      */
     type SelectEvent<T> = SelectFunction<T, Omit<Controller, keyof Lifecycle>>;
 
+    type SelectField<T> = SelectFunction<T, Controller>;
+
     /**
      * Field selector function you provide. Argument is a representation of controller specified.
      * *When used as an argument*, return a chain of properties desired for a given operation.
@@ -174,6 +176,9 @@ export abstract class Controller {
     /** Tracks specific key of this controller within a component. */
     tap <K extends Controller.Fields<this>> (key?: K): this[K];
 
+    /** Tracks specific key of this controller within a component. */
+    tap <K extends Controller.SelectField<this>> (key?: K): ReturnType<K>;
+
     /**
      * **React Hook** - Find and subcribe to applicable controller. 
      * 
@@ -183,12 +188,16 @@ export abstract class Controller {
     */
     sub(...args: any[]): this;
 
-    /** Description TBD */
+    /**
+     * **React Hook** Spawn and maintain a controller within a component.
+     * 
+     * Differs from `use()` by disabling subscription and lifecycle events.
+     * More efficient if you don't need hook-based features available where used.
+     */
     static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
     /**
-     * **React Hook** - Create and attach an instance of this controller
-     * a react component.
+     * **React Hook** - Create and attach an instance of this controller a react component.
      * 
      * Note: Controller will be destroyed when ambient component unmounts!
      * 
@@ -222,6 +231,11 @@ export abstract class Controller {
      * **React Hook** - Fetch specific value from instance of this controller in context.
      */
     static get <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
+
+    /**
+     * **React Hook** - Fetch specific value from instance of this controller in context.
+     */
+    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.SelectField<I>> (this: T, key?: K): ReturnType<K>;
     
     /** 
      * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
@@ -233,12 +247,10 @@ export abstract class Controller {
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
 
-    /** 
-     * @experimental
-     * 
-     * **React Hook** - Fetch and subscribe to deep value of this controller within ambient component.
+    /**
+     * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap (...keys: string[]): any;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.SelectField<I>> (this: T, key?: K): ReturnType<K>;
 
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
@@ -265,6 +277,13 @@ export abstract class Controller {
      * Documentation TBD.
      */
     static meta <T extends Class>(this: T): T & Dispatch;
+
+    /** 
+     * **React Hook** - Fetch and subscribe to **class itself** using selectors.
+     * 
+     * Documentation TBD.
+     */
+    static meta <T extends Class, K extends Controller.SelectField<T>> (this: T, key?: K): ReturnType<K>;
 
     /**
      * Produces a turn-key HOC acting as a context consumer for `this`.

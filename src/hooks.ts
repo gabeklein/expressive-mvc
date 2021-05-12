@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { attachFromContext } from './context';
 import { Controller, Model } from './controller';
+import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { within } from './util';
@@ -20,23 +21,32 @@ function useActiveMemo<T>(
 }
 
 export function usePassive<T extends Controller>(
-  target: T, key?: string){
+  target: T, select?: string | SelectFunction<any>){
 
-  return useMemo(() => within(target, key), []);
+  return useMemo(() => {
+    if(typeof select == "function")
+      return select(target);
+
+    return within(target, select);
+  }, []);
 }
 
 export function useWatcher(
-  target: {} | (() => {}), ...path: StringsOptional){
+  target: {} | (() => {}),
+  path?: string | SelectFunction<any>){
 
   const subscription = useActiveMemo(refresh => {
     if(typeof target == "function")
       target = target();
 
-    return new Subscriber(target, refresh).focus(path)
+    if(typeof path == "function")
+      [ path ] = Dispatch.get(target).select(path);
+
+    return new Subscriber(target, refresh).focus([path])
   });
 
   useEffect(() => {
-    if(!path[0])
+    if(!path)
       subscription.commit();
     return () =>
       subscription.release();
