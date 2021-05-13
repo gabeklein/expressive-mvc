@@ -8,7 +8,7 @@ export namespace Controller {
     type Fields<T, E = Controller> = Exclude<keyof T, keyof E>;
 
     /** Subset of `keyof T` excluding keys defined by base controller besides lifecycle methods. */
-    type Events<T, E = Controller> = Fields<T, E> | keyof Lifecycle;
+    type Events<T, E = Controller> = Exclude<keyof T, Exclude<keyof E, keyof Lifecycle>>;
 
     /** Object containing data to be found in T. */
     type Entries<T, E = Controller> = Pick<T, Fields<T, E>>;
