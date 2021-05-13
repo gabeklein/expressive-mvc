@@ -96,6 +96,7 @@ export function useController(
 
   const subscription = useActiveMemo(refresh => {
     const instance = Type.create(args, callback);
+
     return new Subscriber(instance, refresh);
   });
 

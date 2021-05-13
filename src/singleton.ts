@@ -5,7 +5,6 @@ import { defineLazy } from "./util";
 import Oops from './issues';
 
 export class Singleton extends Controller {
-
   static current?: Singleton = undefined;
 
   static find(){
@@ -29,9 +28,8 @@ export class Singleton extends Controller {
       throw Oops.GlobalExists(this.name);
 
     instance = super.create(args, prepare) as any;
-    Type.current = instance;
     
-    return instance;
+    return Type.current = instance;
   }
 
   destroy(){
