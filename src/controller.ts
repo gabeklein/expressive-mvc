@@ -129,11 +129,11 @@ export class Controller {
     const instance: InstanceOf<T> = 
       new (this as any)(...args || []);
 
+    Dispatch.get(instance);
+
     if(prepare)
       prepare(instance);
 
-    Dispatch.get(instance);
-    
     return instance;
   }
 
