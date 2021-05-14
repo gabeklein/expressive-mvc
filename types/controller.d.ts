@@ -102,7 +102,7 @@ export abstract class Controller {
      * ```
      * ---
      * 
-     * **Access values without implying should watch:**
+     * **Access values without implying should be watched:**
      * 
      * Also useful to "peek" values without implying you
      * want them watched, when accessed from a built-in hook.
@@ -126,7 +126,7 @@ export abstract class Controller {
     /**
      * Circular reference to `this` controller (similar as `get`).
      * 
-     * Useful mnemonic for updating values on a controller from within components.
+     * Useful mnemonic to update values on a controller from within a component.
      * 
      * ---
      * 
@@ -143,23 +143,24 @@ export abstract class Controller {
     set: this;
 
     /**
-     * Plug-n-Play references cooresponding to properties of this controller.
+     * Plug-n-Play references for properties of this controller.
      * 
-     * Will automatically bind between chosen element and the live value of field applied.
+     * Matched ref-functions automatically bind between receiving element and live value of field.
      * 
-     * For `<input type="text" />` this is a two-way binding, user-input
-     * will be captured and included in controller's state/event stream as well.
+     * For `<input type="text" />` this is a two-way binding,
+     * user-input is captured and part of controller's state/event stream.
      */
     bind: ReplaceAll<Controller.Entries<this>, RefFunction>;
 
     /** 
-     * Mark this instance for garbage-collection. 
-     * Fires off `willDestroy` event to all listeners.
+     * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
+     * 
+     * Implemented by class in-use, see `Controller.willDestroy`.
      */
     destroy(): void;
 
     /**
-     * Callback for when a controller is deemed formally created, and is about to be in use.
+     * Callback for when a controller is fully activated and about to be in use.
      * 
      * Invoke after initial state has been locked, and instance is now aware of what values should be tracked.
      */
@@ -184,10 +185,10 @@ export abstract class Controller {
     sub(...args: any[]): this;
 
     /**
-     * **React Hook** Spawn and maintain a controller within a component.
+     * **React Hook** - Spawn and maintain a controller from within a component.
      * 
-     * Differs from `use()` by disabling subscription and lifecycle events.
-     * More efficient if you don't need hook-based features available where used.
+     * Differs from `use()` being without a subscription and lifecycle events.
+     * Much more efficient if you don't need hook-based features.
      */
     static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
@@ -265,7 +266,7 @@ export abstract class Controller {
     static sub <T extends Class> (this: T, ...args: any[]): InstanceOf<T>;
 
     /** 
-     * **React Hook** - Fetch and subscribe to **class itself** within an ambient component.
+     * **React Hook** - Fetch and subscribe to *class itself* within a component.
      * 
      * This allows you to do pretty meta stuff.
      * 
@@ -274,7 +275,7 @@ export abstract class Controller {
     static meta <T extends Class>(this: T): T & Dispatch;
 
     /** 
-     * **React Hook** - Fetch and subscribe to **class itself** using selectors.
+     * **React Hook** - Fetch and subscribe to value defined on class itself using selectors.
      * 
      * Documentation TBD.
      */
