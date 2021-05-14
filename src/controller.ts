@@ -2,7 +2,7 @@ import type { Controller as Public } from '..';
 import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';
-import { getFromContext } from './context';
+import { Context } from './context';
 import { Dispatch } from './dispatch';
 import { derivedConsumer, derivedProvider } from './hoc';
 import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
@@ -65,14 +65,9 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
 
-    function assign(instance: Controller){
-      assignSpecific(instance, props, only);
-    }
+    const subscriber = useController(this, []);
 
-    const subscriber = 
-      useController(this, [], assign);
-
-    assign(subscriber);
+    assignSpecific(subscriber, props, only);
         
     return subscriber;
   }
@@ -118,7 +113,7 @@ export class Controller {
   }
 
   static find(){
-    return getFromContext(this);
+    return Context.find(this);
   }
 
   static create<T extends Model>(

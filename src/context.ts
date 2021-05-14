@@ -1,11 +1,11 @@
-import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, createElement, ReactNode, useContext, useEffect, useMemo } from 'react';
 
 import { Controller, Model } from './controller';
 import { create, define, entriesIn, values } from './util';
 
 import Oops from './issues';
 
-class Context {
+export class Context {
   private key(T: Model){
     let key = LOOKUP.get(T);
     if(!key)
@@ -48,20 +48,29 @@ class Context {
     const registered: Controller[] = values(this);
     registered.forEach((c) => c.destroy());
   }
+
+  public provider(children: ReactNode){
+    return createElement(CONTEXT_CHAIN.Provider, { value: this }, children);
+  }
+
+  static find(Type: Model){
+    const instance = useContext(CONTEXT_CHAIN).find(Type);
+  
+    if(!instance)
+      throw Oops.NothingInContext(Type.name);
+  
+    return instance;
+  }
+
+  static insert(layer: Controller | Array<Model> | BunchOf<Model>){
+    const parent = useContext(CONTEXT_CHAIN);
+    return useMemo(() => parent.concat(layer), [layer]);
+  }
 }
 
 const LOOKUP = new Map<Model, symbol>();
 const NEEDS_HOOK = new WeakMap<Controller, boolean>();
 const CONTEXT_CHAIN = createContext(new Context());
-
-export function getFromContext(Type: Model){
-  const instance = useContext(CONTEXT_CHAIN).find(Type);
-
-  if(!instance)
-    throw Oops.NothingInContext(Type.name);
-
-  return instance;
-}
 
 export function attachFromContext(instance: Controller){
   if(NEEDS_HOOK.has(instance)){
@@ -91,13 +100,6 @@ export function attachFromContext(instance: Controller){
   }
 }
 
-function useSpecialContext(
-  using: Controller | Array<Model> | BunchOf<Model>){
-
-  const parent = useContext(CONTEXT_CHAIN);
-  return useMemo(() => parent.concat(using), [using]);
-}
-
 interface ProviderProps {
   of: Controller | Model | Array<Model> | BunchOf<Model>,
   children?: ReactNode 
@@ -107,7 +109,7 @@ export function Provider(props: ProviderProps){
   const { of: target, children, ...data } = props;
  
   if(Controller.isTypeof(target))
-    return createElement(SmartProvider, { target, data }, children);
+    return createElement(ParentProvider, { target, data }, children);
   else if(target instanceof Controller)
     return createElement(DirectProvider, { target, data }, children);
   else if(typeof target == "object")
@@ -117,34 +119,30 @@ export function Provider(props: ProviderProps){
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ target: Array<Model> | BunchOf<Model> }>){
+  props: { target: Array<Model> | BunchOf<Model>, children?: ReactNode }){
 
-  const value = useSpecialContext(props.target);
+  const layer = Context.insert(props.target);
 
-  useEffect(() => () => value.destroy(), []);
+  useEffect(() => () => layer.destroy(), []);
 
-  return createElement(CONTEXT_CHAIN.Provider, { value }, props.children);
+  return layer.provider(props.children); 
 }
 
-function SmartProvider(
+function ParentProvider(
   props: { target: Model, data: {}, children?: ReactNode }){
 
-  const { target } = props;
-  const instance = useMemo(() => target.create(), [target]);
-  const value = useSpecialContext(instance);
+  const instance = props.target.using(props.data);
+  const layer = Context.insert(instance.get);
 
-  instance.update(props.data);
-  useEffect(() => () => instance.destroy(), [target]);
-
-  return createElement(CONTEXT_CHAIN.Provider, { value }, props.children);
+  return layer.provider(props.children); 
 }
 
 function DirectProvider(
   props: { target: Controller, data: {}, children?: ReactNode }){
 
-  const value = useSpecialContext(props.target);
+  const layer = Context.insert(props.target);
 
   props.target.update(props.data);
 
-  return createElement(CONTEXT_CHAIN.Provider, { value }, props.children);
+  return layer.provider(props.children); 
 }
