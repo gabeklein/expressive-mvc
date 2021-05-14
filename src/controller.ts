@@ -2,9 +2,9 @@ import type { Controller as Public } from '..';
 import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';
-import { derivedConsumer, derivedProvider } from './components';
 import { getFromContext } from './context';
 import { Dispatch } from './dispatch';
+import { derivedConsumer, derivedProvider } from './hoc';
 import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entriesIn, getPrototypeOf, memoize } from './util';
 

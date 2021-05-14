@@ -1,8 +1,8 @@
 import type { Controller as Public } from '..';
 import type { Controller, Model } from './controller';
 
-import { boundRefComponent, createHocFactory, withProvider } from './components';
 import { Dispatch } from './dispatch';
+import { boundRefComponent, createHocFactory, withProvider } from './hoc';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, setDisplayName, within } from './util';
 
