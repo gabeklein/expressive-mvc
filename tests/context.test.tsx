@@ -31,8 +31,8 @@ describe("Provider", () => {
   it("merges props into controller", () => {
     create(
       <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} got={instance => {
-          expect(instance.value).toStrictEqual("foobar");
+        <Consumer of={Foo} got={i => {
+          expect(i.value).toStrictEqual("foobar");
         }} />
       </Provider>
     );
@@ -52,9 +52,7 @@ describe("Provider", () => {
 
     const render = create(
       <Provider of={Foo}>
-        <Consumer of={Foo} got={instance => {
-          instance.willDestroy = didUnmount;
-        }} />
+        <Consumer of={Foo} got={i => i.willDestroy = didUnmount} />
       </Provider>
     );
 
@@ -116,24 +114,24 @@ describe("Peers", () => {
     value = "foo";
   }
   
-  class Baz extends Singleton {
+  class Bar extends Singleton {
     value = "baz";
   }
   
-  beforeAll(() => Baz.create());
+  beforeAll(() => Bar.create());
 
   it.todo("can access peers sharing same provider");
 
   it("can attach from context and singleton", () => {
-    class Bar extends Controller {
-      foo = tap(Foo);
-      baz = tap(Baz);
-    }
-
     const gotValues = jest.fn();
 
+    class Baz extends Controller {
+      foo = tap(Foo);
+      baz = tap(Bar);
+    }
+
     function BarPeerConsumer(){
-      const { foo, baz } = Bar.use();
+      const { foo, baz } = Baz.use();
       gotValues(foo.value, baz.value);
       return null;
     }
