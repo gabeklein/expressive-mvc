@@ -96,15 +96,17 @@ function assignSpecific(
 
   const values = within(target);
   const proto = target.constructor.prototype;
-  const select = only || keys(source);
   const defer: string[] = [];
 
-  for(const key of select){
+  for(const key of only || keys(source)){
+    if(only && !(key in source))
+      continue;
+
     const descriptor = getOwnPropertyDescriptor(proto, key);
 
     if(descriptor && descriptor.set)
       defer.push(key)
-    else
+    else if(target.hasOwnProperty(key))
       values[key] = source[key];
   }
 

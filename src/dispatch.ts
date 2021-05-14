@@ -5,6 +5,7 @@ import { Observer, RequestCallback } from './observer';
 import { Subscriber } from './subscriber';
 import {
   assign,
+  assignSpecific,
   createEffect,
   defineProperty,
   fn,
@@ -188,7 +189,7 @@ export class Dispatch extends Observer {
     if(Array.isArray(select))
       select.forEach(k => this.emit(k))
     else
-      assign(this.subject, select);
+      assignSpecific(this.subject, select, this.watched);
   }
 
   public requestUpdate = (

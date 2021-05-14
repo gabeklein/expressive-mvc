@@ -60,31 +60,31 @@ export class Observer {
     const { subject, getters } = this;
 
     for(const layer of allEntriesIn(subject, base))
-    for(const [key, { get, set }] of layer){
-      if(!get || getters.has(key))
-        continue;
+      for(const [key, { get, set }] of layer){
+        if(!get || getters.has(key))
+          continue;
 
-      setDisplayName(get, `run ${key}`);
+        setDisplayName(get, `run ${key}`);
 
-      const reset = (value: any) => {
-        if(value instanceof Pending && value.loose)
-          return;
+        const reset = (value: any) => {
+          if(value instanceof Pending && value.loose)
+            return;
 
-        getters.delete(key);
+          getters.delete(key);
+          this.override(key, {
+            value,
+            configurable: true,
+            writable: true
+          });
+        }
+
+        getters.set(key, get);
         this.override(key, {
-          value,
           configurable: true,
-          writable: true
-        });
+          set: set || reset,
+          get: get
+        })
       }
-
-      getters.set(key, get);
-      this.override(key, {
-        configurable: true,
-        set: set || reset,
-        get: get
-      })
-    }
   }
 
   protected start(){
