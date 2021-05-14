@@ -27,13 +27,13 @@ export {
   allEntriesIn,
   assignSpecific,
   createEffect,
+  debounce,
   define,
   defineLazy,
   entriesIn,
   fn,
   memoize,
   setDisplayName,
-  debounce,
   within
 }
 

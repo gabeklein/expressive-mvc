@@ -3,7 +3,9 @@ import { create } from 'react-test-renderer';
 
 import { Consumer, Controller, Issue, Provider, Singleton, tap } from './adapter';
 
-class Foo extends Controller {}
+class Foo extends Controller {
+  value?: string = undefined;
+}
 class Bar extends Controller {}
 class Baz extends Bar {}
 
@@ -12,17 +14,27 @@ describe("Provider", () => {
     const instance = Foo.create();
 
     create(
-      <instance.Provider>
+      <Provider of={instance}>
         <Consumer of={Foo} got={i => expect(i).toStrictEqual(instance)} />
-      </instance.Provider>
+      </Provider>
     );
   })
 
-  it("creates an instance of parent controller", () => {
+  it("creates an instance of controller class", () => {
     create(
-      <Foo.Provider>
+      <Provider of={Foo}>
         <Consumer of={Foo} got={i => expect(i).toBeInstanceOf(Foo)} />
-      </Foo.Provider>
+      </Provider>
+    );
+  })
+
+  it("merges props into controller", () => {
+    create(
+      <Provider of={Foo} value="foobar">
+        <Consumer of={Foo} got={instance => {
+          expect(instance.value).toStrictEqual("foobar");
+        }} />
+      </Provider>
     );
   })
 
@@ -34,6 +46,22 @@ describe("Provider", () => {
       </Provider>
     )
   })
+
+  it("will destroy created instance when unmounts", async () => {
+    const didUnmount = jest.fn();
+
+    const render = create(
+      <Provider of={Foo}>
+        <Consumer of={Foo} got={instance => {
+          instance.willDestroy = didUnmount;
+        }} />
+      </Provider>
+    );
+
+    render.unmount();
+
+    expect(didUnmount).toHaveBeenCalled()
+  });
 })
 
 describe("Consumer", () => {
@@ -41,34 +69,44 @@ describe("Consumer", () => {
     const instance = Foo.create();
 
     create(
-      <instance.Provider>
-        <Baz.Provider>
+      <Provider of={instance}>
+        <Provider of={Baz}>
           <Provider of={{ Bar }}>
             <Consumer of={Foo} got={i => expect(i).toStrictEqual(instance)} />
             <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Bar)} />
             <Consumer of={Baz} got={i => expect(i).toBeInstanceOf(Baz)} />
           </Provider>
-        </Baz.Provider>
-      </instance.Provider>
+        </Provider>
+      </Provider>
     )
   })
 
   it("will select extended class if found", () => {
     create(
-      <Baz.Provider>
+      <Provider of={Baz}>
         <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Baz)} />
-      </Baz.Provider>
+      </Provider>
     )
   })
 
+  it("will select closest instance of same type", () => {
+    create(
+      <Provider of={Foo} value="outer">
+        <Provider of={Foo} value="inner">
+          <Consumer of={Foo} got={i => expect(i.value).toStrictEqual("inner")} />
+        </Provider>
+      </Provider>
+    )
+  });
+
   it("prefers closest match over best match", () => {
     create(
-      <Bar.Provider>
-        <Baz.Provider>
+      <Provider of={Bar}>
+        <Provider of={Baz}>
           <Consumer of={Baz} got={i => expect(i).toBeInstanceOf(Baz)} />
           <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Baz)} />
-        </Baz.Provider>
-      </Bar.Provider>
+        </Provider>
+      </Provider>
     )
   })
 });
@@ -101,9 +139,9 @@ describe("Peers", () => {
     }
 
     create(
-      <Foo.Provider>
+      <Provider of={Foo}>
         <BarPeerConsumer />
-      </Foo.Provider>
+      </Provider>
     );
 
     expect(gotValues).toBeCalledWith("foo", "baz");

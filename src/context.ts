@@ -1,7 +1,7 @@
 import { createContext, createElement, PropsWithChildren, useContext, useEffect, useMemo } from 'react';
 
 import { Controller, Model } from './controller';
-import { create, define, values, entriesIn } from './util';
+import { assignSpecific, create, define, entriesIn, values } from './util';
 
 import Oops from './issues';
 
@@ -23,7 +23,6 @@ class Context {
     }
     while(T = T.inherits!);
   }
-
   public concat(instance: Controller){
     const layer: Context = create(this);
     layer.register(instance.constructor as Model, instance);
@@ -76,7 +75,7 @@ export function attachFromContext(instance: Controller){
     NEEDS_HOOK.set(instance, false);
     return;
   }
-  
+
   const context = useContext(CONTEXT_CHAIN);
 
   for(const [key, type] of pending)
@@ -87,30 +86,55 @@ export function attachFromContext(instance: Controller){
   return () => NEEDS_HOOK.set(instance, false);
 }
 
-export function ControlProvider(this: Controller | Model){
-  return ({ children }: PropsWithChildren<{}>) => {
-    const instance = typeof this == "function" ? this.create() : this;
-    const parent = useContext(CONTEXT_CHAIN);
-    const provide = useMemo(() => parent.concat(instance), []);
+type MultiProviderProps = { of: Array<Model> | BunchOf<Model> };
+type SingleProviderProps = { of: Model | Controller, data: {} };
 
-    return createElement(CONTEXT_CHAIN.Provider, { value: provide }, children);
-  }
-}
+export function MultiProvider(
+  props: PropsWithChildren<MultiProviderProps>){
 
-type InsertProviderProps = {
-  of?: Array<Model> | BunchOf<Model>;
-};
-
-export function InsertProvider(
-  props: PropsWithChildren<InsertProviderProps>){
-
-  const { of: insertTypes = [], children } = props;
   const parent = useContext(CONTEXT_CHAIN);
-  const provide = useMemo(() => parent.manage(insertTypes), []);
+  const layer = useMemo(() => parent.manage(props.of), []);
 
-  useEffect(() => provide.destroy, []);
+  useEffect(() => layer.destroy, []);
 
   return createElement(
-    CONTEXT_CHAIN.Provider, { value: provide }, children
+    CONTEXT_CHAIN.Provider, { value: layer }, props.children
   );
+}
+
+export function SingleProvider(props: PropsWithChildren<SingleProviderProps>){
+  const target = props.of;
+
+  function assign(){
+    assignSpecific(instance, props.data);
+  }
+
+  const instance = useMemo(() => {
+    return typeof target == "function" ? target.create() : target;
+  }, [target]);
+
+  assign();
+
+  const parent = useContext(CONTEXT_CHAIN);
+  const layer = useMemo(() => parent.concat(instance), [instance]);
+
+  useEffect(() => {
+    if(target !== instance)
+      return () => instance.destroy();
+  }, [target])
+
+  return createElement(CONTEXT_CHAIN.Provider, { value: layer }, props.children);
+}
+
+export function Provider(
+  props: PropsWithChildren<{ of: Controller } | MultiProviderProps>){
+
+  const { of: target, children, ...rest } = props;
+ 
+  if(typeof target == "function" || target instanceof Controller)
+    return createElement(SingleProvider, { of: target, data: rest }, children);
+  else if(typeof target == "object")
+    return createElement(MultiProvider, { of: target }, children);
+  else
+    throw new Error("Provider expects either 'of' or 'for' props.");
 }

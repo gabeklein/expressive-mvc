@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import VC, { hoc, wrap, Consumer } from "./adapter";
+import VC, { hoc, wrap, Consumer, Provider } from "./adapter";
 
 type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
@@ -93,9 +93,9 @@ describe("Static HOCs", () => {
 
   it("custom consumer applies instance to component", () => {
     create(
-      <Test.Provider>
+      <Provider of={Test}>
         <TestConsumer got={i => expect(i).toBeInstanceOf(Test)} />
-      </Test.Provider>
+      </Provider>
     )
   });
 

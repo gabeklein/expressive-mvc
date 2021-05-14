@@ -150,12 +150,7 @@ export abstract class Controller {
      * For `<input type="text" />` this is a two-way binding, user-input
      * will be captured and included in controller's state/event stream as well.
      */
-    bind: ReplaceAll<Controller.Entries<this>, RefFunction>
- 
-    /**
-     * Make this instance available to children via hook-based static methods. 
-     */
-    Provider: React.FC<Controller.Data<this>>;
+    bind: ReplaceAll<Controller.Entries<this>, RefFunction>;
 
     /** 
      * Mark this instance for garbage-collection. 
@@ -329,11 +324,6 @@ export abstract class Controller {
      * Retreives parent inherited by this class, unless it is base `Controller`.
      */
     static inherits: typeof Controller | undefined;
-
-    /**
-     * Create an instance of this Controller and provide it to all children.
-     */
-    static Provider: React.FC<React.PropsWithChildren<{}>>;
 }
 
 export class Singleton extends Controller {
@@ -341,6 +331,11 @@ export class Singleton extends Controller {
     static current?: Singleton;
 }
 
-export const Provider: React.FC<{
-    of: Array<typeof Controller> | BunchOf<typeof Controller>
-}>;
+type ProviderOfProps = { of: Class[] | { [key: string]: Class } }
+
+type ProviderForProps<E> = E extends Class
+    ? ({ of: E, children?: React.ReactNode } & Controller.Data<InstanceType<E>>)
+    : ({ of: E, children?: React.ReactNode } & Controller.Data<E>);
+
+export const Provider: <T>
+    (props: ProviderForProps<T>) => ReturnType<React.FC<{}>>;

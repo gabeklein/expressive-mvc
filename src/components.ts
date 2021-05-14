@@ -4,6 +4,7 @@ import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 import { createElement, useMemo } from 'react';
 
 import { useBindRef } from './binding';
+import { Provider } from './context';
 import { Controller } from './controller';
 import Oops from './issues';
 
@@ -27,7 +28,7 @@ export function withProvider(
   control: Controller){
 
   return (props: any) =>
-    createElement(control.Provider, {}, 
+    createElement(Provider, { of: control }, 
       createElement(Component, props)
     );
 }
@@ -51,21 +52,20 @@ export function derivedProvider<P extends {}>(
   Control: typeof Controller,
   Type: Public.Component<P>
 ): FunctionComponent<P> {
-    
   const componentFor = createHocFactory(Type);
 
   function create(){
     const instance = Control.create();
     const HOC = componentFor(instance);
 
-    return [ instance.Provider, HOC ];
+    return [ instance, HOC ] as const;
   }
 
   return (props: any) => {
-    const [ Provider, Component ] = useMemo(create, []);
+    const [ instance, Component ] = useMemo(create, []);
 
-    return createElement(Provider as any, null,
-      createElement(Component as any, props) 
+    return createElement(Provider, { of: instance },
+      createElement(Component, props) 
     );
   }
 }

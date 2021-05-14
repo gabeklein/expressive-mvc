@@ -3,10 +3,10 @@ import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';
 import { derivedConsumer, derivedProvider } from './components';
-import { useSubscriber, useController, usePassive, useWatcher, useMemoized } from './hooks';
+import { getFromContext } from './context';
 import { Dispatch } from './dispatch';
-import { ControlProvider, getFromContext } from './context';
-import { assignSpecific, defineLazy, getPrototypeOf, define, memoize, entriesIn } from './util';
+import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
+import { assignSpecific, define, entriesIn, getPrototypeOf, memoize } from './util';
 
 import Oops from './issues';
 
@@ -152,6 +152,3 @@ export class Controller {
       return I;
   }
 }
-
-for(const to of [ Controller, Controller.prototype ])
-  defineLazy(to, { Provider: ControlProvider });
