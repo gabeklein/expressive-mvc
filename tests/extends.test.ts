@@ -55,12 +55,4 @@ describe("extension", () => {
 
     expect(state.init).toBe("Hello World!");
   })
-
-  it('can initialize a Provider', () => {
-    test(() => {
-      const control = Subject.use();
-      void control.Provider;
-      return control;
-    })
-  })
 })

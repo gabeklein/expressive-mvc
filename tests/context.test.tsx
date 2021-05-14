@@ -31,8 +31,18 @@ describe("Provider", () => {
   it("merges props into controller", () => {
     create(
       <Provider of={Foo} value="foobar">
+        <Consumer of={Foo} got={i => expect(i.value).toStrictEqual("foobar")} />
+      </Provider>
+    );
+  })
+
+  it("won't merge foriegn values into controller", () => {
+    create(
+      // @ts-ignore - type-checking warns against this
+      <Provider of={Foo} nonValue="foobar">
         <Consumer of={Foo} got={i => {
-          expect(i.value).toStrictEqual("foobar");
+          // @ts-ignore
+          expect(i.nonValue).toBeUndefined();
         }} />
       </Provider>
     );
@@ -110,29 +120,28 @@ describe("Consumer", () => {
 });
 
 describe("Peers", () => {
-  class Foo extends Controller {
-    value = "foo";
-  }
+  it("can attach from both context and singleton", () => {
+    class Foo extends Controller {
+      value = "foo";
+    }
   
-  class Bar extends Singleton {
-    value = "baz";
-  }
-  
-  beforeAll(() => Bar.create());
-
-  it.todo("can access peers sharing same provider");
-
-  it("can attach from context and singleton", () => {
-    const gotValues = jest.fn();
+    class Bar extends Singleton {
+      value = "baz";
+    }
 
     class Baz extends Controller {
       foo = tap(Foo);
       baz = tap(Bar);
     }
 
+    Bar.create();
+
     function BarPeerConsumer(){
       const { foo, baz } = Baz.use();
-      gotValues(foo.value, baz.value);
+
+      expect(foo.value).toBe("foo");
+      expect(baz.value).toBe("baz");
+
       return null;
     }
 
@@ -141,19 +150,18 @@ describe("Peers", () => {
         <BarPeerConsumer />
       </Provider>
     );
-
-    expect(gotValues).toBeCalledWith("foo", "baz");
   })
 
   it("will reject from context if a singleton", () => {
-    class Illegal extends Singleton {
-      // foo is not also Global
-      // this should fail
-      foo = tap(Foo);
+    class Regular extends Controller {}
+    class Global extends Singleton {
+      notPossible = tap(Regular);
     }
 
-    const attempt = () => Illegal.create();
-    const error = Issue.CantAttachGlobal(Illegal.name, Foo.name)
-    expect(attempt).toThrow(error);
+    const error = Issue.CantAttachGlobal(Global.name, Regular.name);
+
+    expect(() => Global.create()).toThrow(error);
   })
+
+  it.todo("can access peers sharing same provider");
 })
