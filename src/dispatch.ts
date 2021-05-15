@@ -15,18 +15,18 @@ import {
 
 import Oops from './issues';
 
-const ASSIGNED = new WeakMap<{}, Dispatch>();
+const Register = new WeakMap<{}, Dispatch>();
 
 export class Dispatch extends Observer {
   private ready = false;
 
   static ensure(on: {}, base: typeof Controller){
-    if(!ASSIGNED.has(on))
+    if(!Register.has(on))
       new Dispatch(on, base);
   }
 
   static get(from: {}){
-    let dispatch = ASSIGNED.get(from);
+    let dispatch = Register.get(from);
 
     if(!dispatch)
       throw Oops.NoObserver(from.constructor.name);
@@ -48,7 +48,7 @@ export class Dispatch extends Observer {
     protected onReady?: Callback){
 
     super(subject, base);
-    ASSIGNED.set(subject, this);
+    Register.set(subject, this);
     this.acceptEarly();
   }
 

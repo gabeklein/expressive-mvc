@@ -7,8 +7,8 @@ import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { within } from './util';
 
-export const subscriberEvent = forAlias("element");
-export const componentEvent = forAlias("component");
+const subscriberEvent = forAlias("element");
+const componentEvent = forAlias("component");
 
 function useActiveMemo<T>(
   init: (refresh: Callback) => T){

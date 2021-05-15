@@ -5,7 +5,9 @@ import { entries, define, defineProperty } from './util';
 
 import Oops from "./issues";
 
-export function createBindAgent(requestedBy: Controller){
+export function createBindAgent(
+  requestedBy: Controller){
+
   const instance = requestedBy.get;
   const tracked = entries(instance.export());
   const bind = {};

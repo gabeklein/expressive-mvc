@@ -2,14 +2,14 @@ import { useEffect, useMemo } from 'react';
 
 import { values } from './util';
 
-export enum Lifecycle {
-  WILL_RESET = "willReset",
-  WILL_RENDER = "willRender",
-  WILL_UPDATE = "willUpdate",
-  WILL_MOUNT = "willMount",
-  WILL_UNMOUNT = "willUnmount",
-  DID_RENDER = "didRender",
-  DID_MOUNT = "didMount"
+export const Lifecycle = {
+  WILL_RESET: "willReset",
+  WILL_RENDER: "willRender",
+  WILL_UPDATE: "willUpdate",
+  WILL_MOUNT: "willMount",
+  WILL_UNMOUNT: "willUnmount",
+  DID_RENDER: "didRender",
+  DID_MOUNT: "didMount"
 };
 
 export type LifecycleEvent = Values<typeof Lifecycle>;
