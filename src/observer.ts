@@ -44,7 +44,10 @@ export class Observer {
     public subject: {},
     base: typeof Controller){
 
-    this.prepare(base);
+    for(const layer of allEntriesIn(subject, base))
+      for(const [key, { get, set }] of layer)
+        if(get)
+          this.prepareComputed(key, get, set);
   }
 
   public get pending(){
@@ -55,35 +58,34 @@ export class Observer {
     return keys(this.subscribers);
   }
 
-  private prepare(base: typeof Controller){
-    const { subject, getters } = this;
+  private prepareComputed(
+    key: string,
+    get?: () => any,
+    set?: (v: any) => void){
 
-    for(const layer of allEntriesIn(subject, base))
-      for(const [key, { get, set }] of layer){
-        if(!get || getters.has(key))
-          continue;
+    if(!get || this.getters.has(key))
+      return;
 
-        setDisplayName(get, `run ${key}`);
+    setDisplayName(get, `run ${key}`);
 
-        const reset = (value: any) => {
-          if(value instanceof Pending && value.loose)
-            return;
+    const reset = (value: any) => {
+      if(value instanceof Pending && value.loose)
+        return;
 
-          getters.delete(key);
-          this.override(key, {
-            value,
-            configurable: true,
-            writable: true
-          });
-        }
+      this.getters.delete(key);
+      this.override(key, {
+        value,
+        configurable: true,
+        writable: true
+      });
+    }
 
-        getters.set(key, get);
-        this.override(key, {
-          configurable: true,
-          set: set || reset,
-          get: get
-        })
-      }
+    this.getters.set(key, get);
+    this.override(key, {
+      configurable: true,
+      set: set || reset,
+      get
+    })
   }
 
   protected start(){
