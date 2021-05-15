@@ -33,6 +33,7 @@ export {
   entriesIn,
   fn,
   memoize,
+  selectFrom,
   setDisplayName,
   within
 }
@@ -193,4 +194,21 @@ function createEffect(callback: EffectCallback<any>){
     if(unSet && !fn(unSet))
       throw Oops.BadEffectCallback()
   }
+}
+
+function selectFrom(keys: string[], invoke: Function){
+  const found = new Set<string>();
+  const spy = {} as Recursive<any>;
+
+  for(const key of keys)
+    defineProperty(spy, key, {
+      get(){
+        found.add(key);
+        return spy;
+      }
+    });
+
+  invoke(spy);
+
+  return Array.from(found);
 }

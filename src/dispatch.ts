@@ -7,9 +7,9 @@ import {
   assign,
   assignSpecific,
   createEffect,
-  defineProperty,
   fn,
   debounce,
+  selectFrom,
   within
 } from './util';
 
@@ -77,38 +77,28 @@ export class Dispatch extends Observer {
       super.manageProperty(key, desc);
   }
 
-  public select(using: QueryFunction<this>){
-    const found = new Set<string>();
-    const spy = {} as Recursive<this>;
-  
-    for(const key of this.watched)
-      defineProperty(spy, key, {
-        get(){
-          found.add(key);
-          return spy;
-        }
-      });
-  
-    using(spy);
+  public select(
+    using: string | string[] | QueryFunction<this>){
 
-    return Array.from(found);
+    if(fn(using))
+      return selectFrom(this.watched, using);
+
+    if(typeof using == "string")
+      return [using];
+
+    return using;
   }
 
   protected watch(
-    target: string | QueryFunction<this>,
+    key: string | QueryFunction<this>,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    if(fn(target))
-      [ target ] = this.select(target);
+    const [ target ] = this.select(key);
 
     const callback = () =>
-      handler.call(
-        this.subject, 
-        this.state[target as string],
-        target as string
-      );
+      handler.call(this.subject, this.state[target], target);
 
     if(initial)
       callback();
@@ -150,8 +140,7 @@ export class Dispatch extends Observer {
       return () => sub.release();
     }
 
-    if(fn(select))
-      select = this.select(select);
+    select = this.select(select);
 
     if(select.length > 1){
       const cleanup = select.map(k => this.addListener(k, reinvoke));
@@ -169,8 +158,7 @@ export class Dispatch extends Observer {
 
     const acc = {} as BunchOf<any>;
 
-    if(fn(select))
-      select = this.select(select);
+    select = this.select(select);
     
     for(const key of select)
       acc[key] = within(this.subject, key);
@@ -197,7 +185,7 @@ export class Dispatch extends Observer {
 
     const { pending, waiting } = this;
 
-    if(typeof argument == "function")
+    if(fn(argument))
       waiting.push(argument)
     else if(typeof argument == "number")
       return new Promise(cb => {
@@ -212,4 +200,3 @@ export class Dispatch extends Observer {
       return Promise.resolve(false);
   }
 }
-
