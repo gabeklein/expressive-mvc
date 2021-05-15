@@ -72,7 +72,7 @@ export class Dispatch extends Observer {
     key: string, desc: PropertyDescriptor){
 
     if(desc.value instanceof Pending)
-      desc.value.applyTo.call(this, key);
+      desc.value.applyTo(this, key);
     else
       super.manageProperty(key, desc);
   }

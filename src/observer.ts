@@ -35,18 +35,17 @@ function metaData(x: Function, set?: any){
 }
 
 export class Observer {
+  public getters = new Map<string, Callback>();
+  public subscribers = {} as BunchOf<Set<Callback>>;
+  public waiting = [] as RequestCallback[];
+  public state = {} as BunchOf<any>;
+
   constructor(
     public subject: {},
     base: typeof Controller){
 
     this.prepare(base);
   }
-
-  protected getters = new Map<string, Callback>();
-  protected subscribers = {} as BunchOf<Set<Callback>>;
-  protected waiting = [] as RequestCallback[];
-
-  protected state = {} as BunchOf<any>;
 
   public get pending(){
     return Updating.has(this);
@@ -120,19 +119,19 @@ export class Observer {
       this.monitorValue(key, value);
   }
 
-  protected override(key: string, desc: PropertyDescriptor){
+  public override(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, 
       assign({ enumerable: true }, desc)  
     )
   }
 
-  protected register(key: string){
+  public register(key: string){
     return this.subscribers[key] || (
       this.subscribers[key] = new Set()
     );
   }
 
-  protected monitorValue(
+  public monitorValue(
     key: string,
     initial: any,
     effect?: (value: any, callee?: any) => void){
