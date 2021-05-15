@@ -33,43 +33,6 @@ export function withProvider(
     );
 }
 
-export function derivedConsumer<P extends {}>(
-  Control: typeof Controller,
-  Type: Public.Component<P>
-): FunctionComponent<P> {
-
-  const componentFor = createHocFactory(Type);
-
-  return (props: any) => {
-    const instance = Control.find();
-    const Component = useMemo(() => componentFor(instance), []);
-    
-    return createElement(Component, props);
-  }
-}
-
-export function derivedProvider<P extends {}>(
-  Control: typeof Controller,
-  Type: Public.Component<P>
-): FunctionComponent<P> {
-  const componentFor = createHocFactory(Type);
-
-  function create(){
-    const instance = Control.create();
-    const HOC = componentFor(instance);
-
-    return [ instance, HOC ] as const;
-  }
-
-  return (props: any) => {
-    const [ instance, Component ] = useMemo(create, []);
-
-    return createElement(Provider, { of: instance },
-      createElement(Component, props) 
-    );
-  }
-}
-
 export function createHocFactory<T = any, P = {}>(
   Type: Public.Component<P, T>
 ): (inject: T) => ComponentType<P> {
@@ -83,9 +46,7 @@ export function createHocFactory<T = any, P = {}>(
     return functionHOC<T, P>(Type as any);
 }
 
-function classTypeHOC<T, P>(
-  Type: ComponentClass<P>){
-
+function classTypeHOC<T, P>(Type: ComponentClass<P>){
   return (inject: T) =>
     class extends Type {
       constructor(props: P){
@@ -94,9 +55,7 @@ function classTypeHOC<T, P>(
     }
 }
 
-function functionHOC<T, P>(
-  Type: FunctionComponent<P>){
-
+function functionHOC<T, P>(Type: FunctionComponent<P>){
   return (inject: T) =>
     (props: P) => Type(props, inject);
 }

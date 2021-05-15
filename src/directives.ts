@@ -162,8 +162,9 @@ export function setParentComponent
   const componentFor = createHocFactory(Type);
 
   function assignProvider(this: Dispatch, key: string){
-    defineLazy(this.subject, key, () => {
-      const control = this.subject as any;
+    const control = this.subject as any;
+
+    defineLazy(control, key, () => {
       const Component = componentFor(control);
       return withProvider(Component, control)
     })

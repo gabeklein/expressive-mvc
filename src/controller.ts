@@ -1,12 +1,10 @@
 import type { Controller as Public } from '..';
-import type { FunctionComponent } from 'react';
 
 import { createBindAgent } from './binding';
 import { Context } from './context';
 import { Dispatch } from './dispatch';
-import { derivedConsumer, derivedProvider } from './hoc';
 import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
-import { assignSpecific, define, entriesIn, fn, getPrototypeOf, memoize } from './util';
+import { assignSpecific, define, entriesIn, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -102,14 +100,6 @@ export class Controller {
       Dispatch.ensure(this, Controller);
       return this;
     }, path);
-  }
-
-  static hoc<P>(Type: Public.Component<P>): FunctionComponent<P> {
-    return memoize(derivedConsumer, this, Type);
-  }
-
-  static wrap<P>(Type: Public.Component<P>): FunctionComponent<P> {
-    return memoize(derivedProvider, this, Type);
   }
 
   static find(){

@@ -32,7 +32,6 @@ export {
   defineLazy,
   entriesIn,
   fn,
-  memoize,
   selectFrom,
   setDisplayName,
   within
@@ -156,29 +155,6 @@ function within(
     return source[key];
   else
     return source;
-}
-
-const CACHE = new Map<any, any>();
-
-function memoize<R, A extends any[]>(
-  compute: (...args: A) => R, ...args: A
-): R;
-
-function memoize(...args: any[]){
-  let cache: any = CACHE;
-  const first = args[0];
-  const last = args[args.length - 1];
-
-  for(const k of args)
-    if(cache.has(k))
-      cache = cache.get(k);
-    else
-      cache.set(k, 
-        cache = k === last
-          ? first(...args.slice(1)) : new Map()
-      );
-
-  return cache;
 }
 
 function createEffect(callback: EffectCallback<any>){
