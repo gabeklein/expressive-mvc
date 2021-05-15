@@ -42,7 +42,12 @@ export function useWatcher(
     if(typeof path == "function")
       [ path ] = Dispatch.get(target).select(path);
 
-    return new Subscriber(target, refresh).focus([path])
+    const sub = new Subscriber(target, refresh);
+
+    if(path)
+      sub.focus(path);
+
+    return sub;
   });
 
   useEffect(() => {

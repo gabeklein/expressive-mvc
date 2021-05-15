@@ -1,12 +1,11 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import Oops from './issues';
 import { assign, create, define, defineProperty, fn, setDisplayName, within } from './util';
 
 export class Subscriber<T = any> {
-  public cleanup = [] as Callback[];
-  public parent: Dispatch;
+  private cleanup = [] as Callback[];
   public watched = [] as string[];
+  public parent: Dispatch;
   
   constructor(
     public subject: T,
@@ -67,12 +66,7 @@ export class Subscriber<T = any> {
       callback()
   }
 
-  public focus(keys: StringsOptional){
-    const [ key, ...rest ] = keys.filter(x => x);
-
-    if(!key)
-      return this;
-      
+  public focus(key: string){
     let sub: Subscriber<any> | undefined;
 
     const reset = () => sub && sub.release();
@@ -82,12 +76,8 @@ export class Subscriber<T = any> {
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
-        sub.focus(rest);
-
         this.parent.once("didRender", () => sub!.commit());
       }
-      else if(rest.length)
-        throw Oops.FocusIsDetatched();
   
       defineProperty(this, "proxy", {
         get: () => sub ? sub.proxy : value,
@@ -109,19 +99,19 @@ export class Subscriber<T = any> {
     return this;
   }
 
-  protected follow(key: string, cb?: Callback){
-    if(cb)
-      assign(cb, this.metadata);
+  private follow(key: string, callback?: Callback){
+    if(callback)
+      assign(callback, this.metadata);
     else
-      cb = this.refresh;
+      callback = this.refresh;
 
     this.watched.push(key);
     this.cleanup.push(
-      this.parent.addListener(key, cb)
+      this.parent.addListener(key, callback)
     )
   }
 
-  protected followRecursive(key: string){
+  private followRecursive(key: string){
     const { subject } = this.parent;
     let sub: Subscriber<any> | undefined;
 
