@@ -6,7 +6,7 @@ import { Context } from './context';
 import { Dispatch } from './dispatch';
 import { derivedConsumer, derivedProvider } from './hoc';
 import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
-import { assignSpecific, define, entriesIn, getPrototypeOf, memoize } from './util';
+import { assignSpecific, define, entriesIn, fn, getPrototypeOf, memoize } from './util';
 
 import Oops from './issues';
 
@@ -22,7 +22,7 @@ export class Controller {
     define(this, { get: this, set: this });
 
     for(const [key, { value }] of entriesIn(dispatch))
-      if(typeof value == "function")
+      if(fn(value))
         define(this, key, value);
   }
 
@@ -113,7 +113,12 @@ export class Controller {
   }
 
   static find(){
-    return Context.find(this);
+    const instance = Context.useLayer().get(this);
+  
+    if(!instance)
+      throw Oops.NothingInContext(this.name);
+  
+    return instance;
   }
 
   static create<T extends Model>(
@@ -136,7 +141,7 @@ export class Controller {
     this: T, maybe: any): maybe is T {
 
     return (
-      typeof maybe == "function" && 
+      fn(maybe) && 
       maybe.prototype instanceof this
     )
   }

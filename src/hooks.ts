@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { attachFromContext } from './context';
+import { Context } from './context';
 import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { within } from './util';
+import { define, entriesIn, fn, within } from './util';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
@@ -24,7 +24,7 @@ export function usePassive<T extends Controller>(
   target: T, select?: string | SelectFunction<any>){
 
   return useMemo(() => {
-    if(typeof select == "function")
+    if(fn(select))
       return select(target);
 
     return within(target, select);
@@ -36,10 +36,10 @@ export function useWatcher(
   path?: string | SelectFunction<any>){
 
   const subscription = useActiveMemo(refresh => {
-    if(typeof target == "function")
+    if(fn(target))
       target = target();
 
-    if(typeof path == "function")
+    if(fn(path))
       [ path ] = Dispatch.get(target).select(path);
 
     const sub = new Subscriber(target, refresh);
@@ -93,11 +93,36 @@ export function useMemoized(
   return instance;
 }
 
+const ContextUsed = new WeakMap<Controller, boolean>();
+
+export function usePeerContext(instance: Controller){
+  const expected = ContextUsed.get(instance);
+
+  if(expected !== undefined){
+    if(expected)
+      Context.useLayer();
+    return;
+  }
+
+  const pending = entriesIn(instance)
+    .map(([key, desc]) => [key, desc.value])
+    .filter(entry => Controller.isTypeof(entry[1]));
+
+  if(!pending.length)
+    ContextUsed.set(instance, false);
+  else {
+    const ambient = Context.useLayer();
+  
+    for(const [key, type] of pending)
+      define(instance, key, ambient.get(type));
+  
+    ContextUsed.set(instance, true);
+  }
+}
+
 export function useController(
   Type: Model, args: any[], 
   callback?: (instance: Controller) => void){
-
-  let release: Callback | undefined;
 
   const subscription = useActiveMemo(refresh => {
     const instance = Type.create(args, callback);
@@ -109,7 +134,7 @@ export function useController(
     const { subject } = subscription;
 
     if(name == Lifecycle.WILL_RENDER)
-      release = attachFromContext(subject);
+      usePeerContext(subject);
 
     if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
@@ -121,10 +146,6 @@ export function useController(
 
     if(name == Lifecycle.WILL_UNMOUNT){
       subscription.release();
-
-      if(release)
-        release();
-
       subject.destroy();
     }
   });
