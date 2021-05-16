@@ -5,7 +5,7 @@ import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { define, entriesIn, fn, within } from './util';
+import { define, entriesIn, fn } from './util';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
@@ -27,7 +27,10 @@ export function usePassive<T extends Controller>(
     if(fn(select))
       return select(target);
 
-    return within(target, select);
+    if(select)
+      return (target as any)[select];
+    
+    return target;
   }, []);
 }
 

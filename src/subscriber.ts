@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { assign, create, define, defineProperty, fn, setDisplayName, within } from './util';
+import { assign, create, define, defineProperty, fn, setDisplayName } from './util';
 
 export class Subscriber<T = any> {
   private cleanup = [] as Callback[];
@@ -72,7 +72,7 @@ export class Subscriber<T = any> {
     const reset = () => sub && sub.release();
 
     const monitorChild = () => {
-      let value = within(this.parent.subject, key);
+      let value = (this.parent.subject as any)[key];
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -118,7 +118,7 @@ export class Subscriber<T = any> {
     const reset = () => sub && sub.release();
 
     const applyChild = () => {
-      let value = within(subject, key);
+      let value = (subject as any)[key];
 
       if(value instanceof Controller){
         sub = new Subscriber(value, this.refresh);
@@ -132,7 +132,7 @@ export class Subscriber<T = any> {
 
       defineProperty(this.proxy, key, {
         get: () => value,
-        set: val => within(subject, key, val),
+        set: val => (subject as any)[key] = val,
         configurable: true,
         enumerable: true
       })

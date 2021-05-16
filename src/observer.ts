@@ -9,8 +9,7 @@ import {
   fn,
   getOwnPropertyDescriptor,
   keys,
-  setDisplayName,
-  within,
+  setDisplayName
 } from './util';
 
 import Oops from './issues';
@@ -30,7 +29,10 @@ const Updating = new WeakMap<Observer, (key: string) => void>();
 function metaData(x: Function): GetterInfo;
 function metaData<T>(x: Function, set: T): T;
 function metaData(x: Function, set?: any){
-  return within(x, COMPUTED, set) as GetterInfo;
+  if(set)
+    return (x as any)[COMPUTED] = set;
+  else
+    return (x as any)[COMPUTED];
 }
 
 export class Observer {

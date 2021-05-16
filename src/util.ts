@@ -33,8 +33,7 @@ export {
   entriesIn,
   fn,
   selectFrom,
-  setDisplayName,
-  within
+  setDisplayName
 }
 
 function define(target: {}, values: {}): void;
@@ -94,7 +93,7 @@ function assignSpecific(
   source: BunchOf<any>, 
   only?: string[]){
 
-  const values = within(target);
+  const values = target as any;
   const proto = target.constructor.prototype;
   const defer: string[] = [];
 
@@ -135,26 +134,6 @@ function defineLazy<T>(
         return value;
       }
     });
-}
-
-/**
- * "I don't care about strict property access."
- */
-function within<T>(object: T): BunchOf<any>;
-function within<T>(object: T, key: undefined): BunchOf<any>;
-function within<T>(object: T, key?: string | symbol): any;
-function within<T, V>(object: T, key: string | symbol, value: V): V;
-function within(
-  source: any,
-  key?: string | symbol,
-  value?: any){
-
-  if(value)
-    return source[key!] = value;
-  if(key)
-    return source[key];
-  else
-    return source;
 }
 
 function createEffect(callback: EffectCallback<any>){

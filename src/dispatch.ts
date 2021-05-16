@@ -9,8 +9,7 @@ import {
   createEffect,
   fn,
   debounce,
-  selectFrom,
-  within
+  selectFrom
 } from './util';
 
 import Oops from './issues';
@@ -161,7 +160,7 @@ export class Dispatch extends Observer {
     select = this.select(select);
     
     for(const key of select)
-      acc[key] = within(this.subject, key);
+      acc[key] = (this.subject as any)[key];
 
     return acc;
   }

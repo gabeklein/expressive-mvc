@@ -4,7 +4,7 @@ import type { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { boundRefComponent, createHocFactory, withProvider } from './hoc';
 import { Singleton } from './singleton';
-import { createEffect, define, defineLazy, defineProperty, setDisplayName, within } from './util';
+import { createEffect, define, defineLazy, defineProperty, setDisplayName } from './util';
 
 import Oops from './issues';
 
@@ -171,7 +171,7 @@ export function setBoundComponent
 
 export function setIgnored(value: any){
   return Pending.define((on, key) => {
-    within(on.subject, key, value);
+    (on.subject as any)[key] = value;
   })
 }
 
