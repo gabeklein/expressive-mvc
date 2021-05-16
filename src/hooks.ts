@@ -133,12 +133,9 @@ export function useController(
     return new Subscriber(instance, refresh);
   });
 
+  usePeerContext(subscription.subject);
+
   useLifecycleEffect((name) => {
-    const { subject } = subscription;
-
-    if(name == Lifecycle.WILL_RENDER)
-      usePeerContext(subject);
-
     if(name == Lifecycle.DID_MOUNT)
       subscription.commit();
 
@@ -149,7 +146,7 @@ export function useController(
 
     if(name == Lifecycle.WILL_UNMOUNT){
       subscription.release();
-      subject.destroy();
+      subscription.subject.destroy();
     }
   });
 
