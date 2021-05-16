@@ -10,12 +10,11 @@ import Oops from './issues';
 
 export class Pending {
   constructor(
-    public applyTo: (on: Dispatch, key: string) => void,
-    public loose?: boolean
+    public applyTo: (on: Dispatch, key: string) => void
   ){}
 
-  static define(init: (on: Dispatch, key: string) => void, loose?: boolean): any {
-    return new Pending(init, loose)
+  static define(init: (on: Dispatch, key: string) => void): any {
+    return new Pending(init)
   }
 }
 
@@ -168,15 +167,6 @@ export function setBoundComponent
     const Component = boundRefComponent(control, to, Type);
     define(control, key, Component);
   })
-}
-
-export function setValue(value: any){
-  return Pending.define((on, key) => {
-    if(on.getters.has(key))
-      return;
-    else
-      on.monitorValue(key, value);
-  }, true)
 }
 
 export function setIgnored(value: any){

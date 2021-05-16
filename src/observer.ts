@@ -1,6 +1,5 @@
 import type { Controller } from './controller';
 
-import { Pending } from './directives';
 import { Subscriber } from './subscriber';
 import {
   allEntriesIn,
@@ -69,9 +68,6 @@ export class Observer {
     setDisplayName(get, `run ${key}`);
 
     const reset = (value: any) => {
-      if(value instanceof Pending && value.loose)
-        return;
-
       this.getters.delete(key);
       this.override(key, {
         value,

@@ -10,7 +10,6 @@ export {
   setParentComponent as wrap,
   setBoundComponent as bind,
   setMemo as memo,
-  setValue as def,
   setIgnored as lazy,
   setTuple as tuple
 } from './directives';
