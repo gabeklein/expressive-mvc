@@ -26,8 +26,12 @@ export class Subscriber<T = any> {
       const subscribe = () => {
         let value = source[key];
 
-        if(value instanceof Controller)
-          return this.followRecursive(key);
+        if(value instanceof Controller){
+          const sub = this.followRecursive(key);
+
+          if(sub)
+            return sub.proxy;
+        }
 
         this.follow(key);
         return value;
@@ -59,7 +63,7 @@ export class Subscriber<T = any> {
       ? [key] : this.parent.watched;
 
     for(const key of remove)
-      delete (this.proxy as any)[key!];
+      delete (this.proxy as any)[key];
   }
 
   public release(){
@@ -68,9 +72,8 @@ export class Subscriber<T = any> {
   }
 
   public focus(key: string){
-    let sub: Subscriber<any> | undefined;
-
-    const spy = () => {
+    this.fork(key, () => {
+      let sub: Subscriber<any> | undefined;
       let value = (this.subject as any)[key];
 
       if(value instanceof Controller){
@@ -82,22 +85,32 @@ export class Subscriber<T = any> {
         get: () => sub ? sub.proxy : value,
         configurable: true
       })
-    }
 
-    const stop = () => sub && sub.release();
+      return sub;
+    })
 
+    return this;
+  }
+
+  public fork(
+    key: string,
+    subscribe: () => Subscriber | undefined){
+
+    const { cleanup, callback } = this;
+    let child: Subscriber | undefined;
+
+    const create = () => child = subscribe();
+    const release = () => child && child.release();
     const updated = () => {
-      stop();
-      spy();
-      this.callback();
+      release();
+      create();
+      callback();
     }
 
     this.follow(key, updated);
-    this.cleanup.push(stop);
+    cleanup.push(release);
 
-    spy();
-
-    return this;
+    return create();
   }
 
   private follow(key: string, callback?: Callback){
@@ -113,43 +126,24 @@ export class Subscriber<T = any> {
   }
 
   private followRecursive(key: string){
-    let sub: Subscriber<any> | undefined;
-
-    const spy = () => {
+    return this.fork(key, () => {
       const { subject } = this.parent;
       let value = (subject as any)[key];
-
-      if(value instanceof Controller){
-        sub = new Subscriber(value, this.callback);
-        value = sub.proxy;
+      let sub = new Subscriber(value, this.callback);
   
-        this.parent.once("didRender", () => {
-          sub!.commit();
-          this.commit(key);
-        });
-      }
+      this.parent.once("didRender", () => {
+        sub!.commit();
+        this.commit(key);
+      });
 
       defineProperty(this.proxy, key, {
-        get: () => value,
-        set: x => (subject as any)[key] = x,
+        get: () => sub.proxy,
+        set: it => (subject as any)[key] = it,
         configurable: true,
         enumerable: true
       })
 
-      return value;
-    }
-
-    const stop = () => sub && sub.release();
-
-    const update = () => {
-      stop();
-      spy();
-      this.callback();
-    }
-
-    this.follow(key, update);
-    this.cleanup.push(stop);
-
-    return spy();
+      return sub;
+    });
   }
 }
