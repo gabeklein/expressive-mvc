@@ -23,12 +23,11 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function setChild<T extends Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Pending.define((on, key) => {
-    const parent = on.subject;
+  return Pending.define(({ subject }, key) => {
     const instance = new Peer() as InstanceOf<T>;
 
-    define(parent, key, instance);
-    ParentRelationship.set(instance, parent);
+    define(subject, key, instance);
+    ParentRelationship.set(instance, subject);
 
     Dispatch.for(instance);
 
@@ -40,10 +39,9 @@ export function setChild<T extends Model>
 export function setParent<T extends Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return Pending.define((on, key) => {
-    const { subject } = on;
-    const { name: expectsType } = Expects;
-    const { name: onType } = subject.constructor;
+  return Pending.define(({ subject }, key) => {
+    const expectsType = Expects.name;
+    const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
 
     if(!parent){
@@ -62,9 +60,7 @@ export function setParent<T extends Model>
 export function setPeer<T extends Model>
   (Peer: T): InstanceOf<T> {
 
-  return Pending.define((on, key) => {
-    const subject = on.subject as Controller;
-
+  return Pending.define(({ subject }, key) => {
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, key, () => Peer.find());
     else if(subject instanceof Singleton)
@@ -121,13 +117,13 @@ export function setEvent
 export function setMemo
   (factory: () => any, defer?: boolean){
 
-  return Pending.define((on, key) => {
-    const get = () => factory.call(on.subject);
+  return Pending.define(({ subject }, key) => {
+    const get = () => factory.call(subject);
 
     if(defer)
-      defineLazy(on.subject, key, get);
+      defineLazy(subject, key, get);
     else
-      define(on.subject, key, get())
+      define(subject, key, get())
   }) 
 }
 
@@ -136,9 +132,9 @@ export function setComponent
 
   const componentFor = createHocFactory(Type);
 
-  return Pending.define((on, key) => {
-    defineLazy(on.subject, key, () =>
-      componentFor(on.subject as any)
+  return Pending.define(({ subject }, key) => {
+    defineLazy(subject, key, () =>
+      componentFor(subject as any)
     )
   })
 }
