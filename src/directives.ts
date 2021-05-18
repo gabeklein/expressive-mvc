@@ -56,7 +56,6 @@ export function setParent<T extends Model>
     }
 
     define(subject, key, parent);
-
   })
 }
 
@@ -223,7 +222,7 @@ export function setAction(action: AsyncFn){
   return Pending.define((on, key) => {
     let pending = false;
 
-    const run = async (...args: any[]) => {
+    async function run(...args: any[]){
       if(pending)
         throw Oops.DuplicateAction(key);
 
@@ -238,6 +237,7 @@ export function setAction(action: AsyncFn){
         })
     }
 
+    setDisplayName(run, `run ${key}`);
     defineProperty(run, "allowed", {
       get: () => !pending
     })
