@@ -26,5 +26,6 @@ export {
 } from './singleton';
 
 export {
+  Consumer,
   Provider
 } from './context';

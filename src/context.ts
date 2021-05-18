@@ -1,7 +1,16 @@
-import { createContext, createElement, PropsWithChildren, ReactNode, useContext, useEffect, useMemo } from 'react';
+import {
+  createContext,
+  createElement,
+  PropsWithChildren,
+  ReactElement,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 
 import { Controller, Model } from './controller';
-import { create, define, values } from './util';
+import { create, define, fn, values } from './util';
 
 export class Context {
   private table = new Map<Model, symbol>();
@@ -50,6 +59,26 @@ export class Context {
   static useLayer(){
     return useContext(this.Single);
   }
+}
+
+type Output = ReactElement<any, any> | null;
+
+interface ConsumerProps {
+  of: Model;
+  get?: (value: Controller) => Output;
+  tap?: (value: Controller) => Output;
+  children?: (value: Controller) => Output;
+}
+
+export const Consumer = (props: ConsumerProps) => {
+  const { get, children: render, of: Control } = props;
+
+  if(fn(render))
+    return render(Control.tap());
+  else if(fn(get))
+    get(Control.get());
+
+  return null;
 }
 
 interface ProviderProps {

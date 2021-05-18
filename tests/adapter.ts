@@ -10,6 +10,7 @@ export { default as Issue } from "../src/issues";
 export const Controller = Source.Controller as unknown as typeof Public.Controller;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
+export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 
 export const tap = Source.tap as typeof Public.tap;
 export const set = Source.watch as typeof Public.watch;
@@ -29,19 +30,6 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
 type Model = typeof Public.Controller;
 type Instance = Public.Controller;
-
-interface TestConsumerProps<T>{
-  of: T;
-  got: (instance: InstanceOf<T>) => void;
-}
-
-export function Consumer<T>
-  ({ of: Subject, got }: TestConsumerProps<T>){
-
-  const instance = (Subject as any).get();
-  got(instance);
-  return null;
-}
 
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {

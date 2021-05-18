@@ -15,7 +15,7 @@ describe("Provider", () => {
 
     create(
       <Provider of={instance}>
-        <Consumer of={Foo} got={i => expect(i).toStrictEqual(instance)} />
+        <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
       </Provider>
     );
   })
@@ -23,7 +23,7 @@ describe("Provider", () => {
   it("creates an instance of given class", () => {
     create(
       <Provider of={Foo}>
-        <Consumer of={Foo} got={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
       </Provider>
     );
   })
@@ -31,7 +31,7 @@ describe("Provider", () => {
   it("will assign props to controller", () => {
     create(
       <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} got={i => expect(i.value).toStrictEqual("foobar")} />
+        <Consumer of={Foo} get={i => expect(i.value).toStrictEqual("foobar")} />
       </Provider>
     );
   })
@@ -40,7 +40,7 @@ describe("Provider", () => {
     create(
       // @ts-ignore - type-checking warns against this
       <Provider of={Foo} nonValue="foobar">
-        <Consumer of={Foo} got={i => {
+        <Consumer of={Foo} get={i => {
           // @ts-ignore
           expect(i.nonValue).toBeUndefined();
         }} />
@@ -51,8 +51,8 @@ describe("Provider", () => {
   it("provides all instances if `of` is an object", () => {
     create(
       <Provider of={{ Foo, Bar }}>
-        <Consumer of={Foo} got={i => expect(i).toBeInstanceOf(Foo)} />
-        <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Bar)} />
+        <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
       </Provider>
     )
   })
@@ -62,7 +62,7 @@ describe("Provider", () => {
 
     const render = create(
       <Provider of={Foo}>
-        <Consumer of={Foo} got={i => i.willDestroy = didUnmount} />
+        <Consumer of={Foo} get={i => i.willDestroy = didUnmount} />
       </Provider>
     );
 
@@ -80,9 +80,9 @@ describe("Consumer", () => {
       <Provider of={instance}>
         <Provider of={Baz}>
           <Provider of={{ Bar }}>
-            <Consumer of={Foo} got={i => expect(i).toStrictEqual(instance)} />
-            <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Bar)} />
-            <Consumer of={Baz} got={i => expect(i).toBeInstanceOf(Baz)} />
+            <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
+            <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+            <Consumer of={Baz} get={i => expect(i).toBeInstanceOf(Baz)} />
           </Provider>
         </Provider>
       </Provider>
@@ -92,7 +92,7 @@ describe("Consumer", () => {
   it("will select extended class if found", () => {
     create(
       <Provider of={Baz}>
-        <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Baz)} />
+        <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
       </Provider>
     )
   })
@@ -101,7 +101,7 @@ describe("Consumer", () => {
     create(
       <Provider of={Foo} value="outer">
         <Provider of={Foo} value="inner">
-          <Consumer of={Foo} got={i => expect(i.value).toStrictEqual("inner")} />
+          <Consumer of={Foo} get={i => expect(i.value).toStrictEqual("inner")} />
         </Provider>
       </Provider>
     )
@@ -111,8 +111,7 @@ describe("Consumer", () => {
     create(
       <Provider of={Bar}>
         <Provider of={Baz}>
-          <Consumer of={Baz} got={i => expect(i).toBeInstanceOf(Baz)} />
-          <Consumer of={Bar} got={i => expect(i).toBeInstanceOf(Baz)} />
+          <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
         </Provider>
       </Provider>
     )

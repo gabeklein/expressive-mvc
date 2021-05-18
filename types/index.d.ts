@@ -5,9 +5,13 @@ export {
     Controller as VC,
     Controller as default,
     Singleton,
-    Singleton as GC,
-    Provider
+    Singleton as GC
 } from './controller';
+
+export {
+    Consumer,
+    Provider
+} from './react';
 
 export {
     setChild as use,

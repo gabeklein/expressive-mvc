@@ -26,7 +26,7 @@ function Issues<O extends Messages>(register: O): Issues<O> {
 
 export default Issues({
   NothingInContext: (name) =>
-    `Can't subscribe to controller; this accessor can only be used within a Provider keyed for ${name}.`,
+    `Couldn't find controller for ${name} in context; did you forget to use a Provider?`,
 
   HasPropertyUndefined: (control, property) =>
     `${control}.${property} is marked as required for this render.`,

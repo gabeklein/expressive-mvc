@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 
 import Dispatch from './dispatch';
 import Lifecycle from './lifecycle';
@@ -331,12 +331,3 @@ export class Singleton extends Controller {
     /** Current instance of this controller accessable anywhere. */
     static current?: Singleton;
 }
-
-type ProviderOfProps = { of: Class[] | { [key: string]: Class } }
-
-type ProviderForProps<E> = E extends Class
-    ? ({ of: E, children?: React.ReactNode } & Controller.Data<InstanceType<E>>)
-    : ({ of: E, children?: React.ReactNode } & Controller.Data<E>);
-
-export const Provider: <T>
-    (props: ProviderForProps<T>) => ReturnType<React.FC<{}>>;
