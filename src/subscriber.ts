@@ -3,8 +3,8 @@ import { Dispatch } from './dispatch';
 import { assign, create, defineProperty, fn, setDisplayName } from './util';
 
 export class Subscriber<T = any> {
-  private cleanup = [] as Callback[];
-  public watched = [] as string[];
+  private onDone = [] as Callback[];
+  public following = [] as string[];
   public parent: Dispatch;
   public proxy: T;
   
@@ -19,23 +19,10 @@ export class Subscriber<T = any> {
   }
 
   public spy(){
-    const source = this.subject as any;
-    const proxy = create(source);
+    const proxy = create(this.subject as any);
 
     for(const key of this.parent.watched){
-      const subscribe = () => {
-        let value = source[key];
-
-        if(value instanceof Controller){
-          const sub = this.followRecursive(key);
-
-          if(sub)
-            return sub.proxy;
-        }
-
-        this.follow(key);
-        return value;
-      }
+      const subscribe = () => this.spyOn(key);
 
       setDisplayName(subscribe, `tap ${key}`);
       defineProperty(proxy, key, {
@@ -46,6 +33,39 @@ export class Subscriber<T = any> {
     }
 
     return proxy;
+  }
+
+  private spyOn(key: string){
+    const source = this.subject as any;
+    let sub: Subscriber | undefined;
+
+    this.listen(key, () => {
+      let value = source[key];
+
+      if(value instanceof Controller){
+        let child = new Subscriber(value, this.callback);
+    
+        this.parent.once("didRender", () => {
+          child.commit();
+          this.commit(key);
+        });
+
+        defineProperty(this.proxy, key, {
+          get: () => child.proxy,
+          set: it => source[key] = it,
+          configurable: true,
+          enumerable: true
+        })
+
+        return sub = child;
+      }
+    });
+
+    this.following.push(key);
+
+    return sub
+      ? sub.proxy
+      : (this.parent.state as any)[key];
   }
 
   public declare(event: string, args?: any[]){
@@ -67,83 +87,57 @@ export class Subscriber<T = any> {
   }
 
   public release(){
-    for(const callback of this.cleanup)
+    for(const callback of this.onDone)
       callback()
   }
 
   public focus(key: string){
-    this.fork(key, () => {
-      let sub: Subscriber<any> | undefined;
+    this.listen(key, () => {
       let value = (this.subject as any)[key];
 
       if(value instanceof Controller){
-        sub = new Subscriber(value, this.callback);
-        this.parent.once("didRender", () => sub!.commit());
-      }
-  
-      defineProperty(this, "proxy", {
-        get: () => sub ? sub.proxy : value,
-        configurable: true
-      })
+        const child = new Subscriber(value, this.callback);
 
-      return sub;
-    })
+        this.parent.once("didRender", () => child.commit());
+        this.proxy = child.proxy as any;
+
+        return child;
+      }
+
+      this.proxy = value;
+    });
 
     return this;
   }
 
-  public fork(
+  public listen(
     key: string,
     subscribe: () => Subscriber | undefined){
 
-    const { cleanup, callback } = this;
     let child: Subscriber | undefined;
 
-    const create = () => child = subscribe();
-    const release = () => child && child.release();
-    const updated = () => {
+    const create = () => {
+      child = subscribe();
+    }
+    const release = () => {
+      child && child.release();
+      child = undefined;
+    }
+    const update = () => {
       release();
       create();
-      callback();
+      this.callback();
     }
 
-    this.follow(key, updated);
-    cleanup.push(release);
-
-    return create();
-  }
-
-  private follow(key: string, callback?: Callback){
-    if(callback)
-      assign(callback, this.metadata);
-    else
-      callback = this.callback;
-
-    this.watched.push(key);
-    this.cleanup.push(
-      this.parent.addListener(key, callback)
-    )
-  }
-
-  private followRecursive(key: string){
-    return this.fork(key, () => {
-      const { subject } = this.parent;
-      let value = (subject as any)[key];
-      let sub = new Subscriber(value, this.callback);
-  
-      this.parent.once("didRender", () => {
-        sub!.commit();
-        this.commit(key);
-      });
-
-      defineProperty(this.proxy, key, {
-        get: () => sub.proxy,
-        set: it => (subject as any)[key] = it,
-        configurable: true,
-        enumerable: true
-      })
-
-      return sub;
+    const unwatch =
+      this.parent.addListener(key, update);
+      
+    this.onDone.push(() => {
+      release();
+      unwatch();
     });
+
+    assign(update, this.metadata);
+    create();
   }
 }

@@ -189,7 +189,7 @@ export class Observer {
         throw e;
       }
       finally {
-        for(const key of sub.watched){
+        for(const key of sub.following){
           const compute = getters.get(key);
           const meta = compute && metaData(compute);
 
