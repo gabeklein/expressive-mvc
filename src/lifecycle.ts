@@ -10,7 +10,7 @@ export const Lifecycle = {
   WILL_UNMOUNT: "willUnmount",
   DID_RENDER: "didRender",
   DID_MOUNT: "didMount"
-};
+} as const;
 
 export type LifecycleEvent = Values<typeof Lifecycle>;
 
