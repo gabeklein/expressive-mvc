@@ -24,7 +24,7 @@ export class Dispatch extends Observer {
       new Dispatch(on, base);
   }
 
-  static get(from: {}){
+  static for(from: {}){
     let dispatch = Register.get(from);
 
     if(!dispatch)

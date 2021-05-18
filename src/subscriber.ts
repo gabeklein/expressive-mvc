@@ -14,7 +14,7 @@ export class Subscriber<T = any> {
     private metadata?: {}
   ){
     assign(callback, metadata);
-    this.parent = Dispatch.get(subject);
+    this.parent = Dispatch.for(subject);
     this.proxy = this.spy();
   }
 

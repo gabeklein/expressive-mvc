@@ -37,7 +37,7 @@ export class Controller {
   }
 
   public destroy(){
-    const dispatch = Dispatch.get(this);
+    const dispatch = Dispatch.for(this);
 
     if(this.willDestroy)
       this.willDestroy();
@@ -119,7 +119,7 @@ export class Controller {
     const instance: InstanceOf<T> = 
       new (this as any)(...args || []);
 
-    Dispatch.get(instance);
+    Dispatch.for(instance);
 
     if(prepare)
       prepare(instance);

@@ -43,7 +43,7 @@ export function useWatcher(
       target = target();
 
     if(fn(path))
-      [ path ] = Dispatch.get(target).select(path);
+      [ path ] = Dispatch.for(target).select(path);
 
     const sub = new Subscriber(target, refresh);
 
