@@ -77,5 +77,8 @@ export default Issues({
     `Attempted assignment of ${key}. This is not allowed because an action-property.`,
 
   DuplicateAction: (key) =>
-    `Invoked action ${key} but one is already active.`
+    `Invoked action ${key} but one is already active.`,
+
+  BadProviderProps: () =>
+    `Provider expects either 'of' or 'for' props.`
 });

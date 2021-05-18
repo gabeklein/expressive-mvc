@@ -12,6 +12,8 @@ import {
 import { Controller, Model } from './controller';
 import { create, define, fn, values } from './util';
 
+import Oops from './issues';
+
 export class Context {
   private table = new Map<Model, symbol>();
 
@@ -96,7 +98,7 @@ export function Provider(props: ProviderProps){
   else if(typeof target == "object")
     return createElement(MultiProvider, { types: target }, children);
   else
-    throw new Error("Provider expects either 'of' or 'for' props.");
+    throw Oops.BadProviderProps();
 }
 
 function ParentProvider(
