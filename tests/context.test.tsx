@@ -20,7 +20,7 @@ describe("Provider", () => {
     );
   })
 
-  it("creates an instance of controller class", () => {
+  it("creates an instance of given class", () => {
     create(
       <Provider of={Foo}>
         <Consumer of={Foo} got={i => expect(i).toBeInstanceOf(Foo)} />
@@ -28,7 +28,7 @@ describe("Provider", () => {
     );
   })
 
-  it("merges props into controller", () => {
+  it("will assign props to controller", () => {
     create(
       <Provider of={Foo} value="foobar">
         <Consumer of={Foo} got={i => expect(i.value).toStrictEqual("foobar")} />
@@ -36,7 +36,7 @@ describe("Provider", () => {
     );
   })
 
-  it("won't merge foriegn values into controller", () => {
+  it("will not assign foriegn props to controller", () => {
     create(
       // @ts-ignore - type-checking warns against this
       <Provider of={Foo} nonValue="foobar">
@@ -48,7 +48,7 @@ describe("Provider", () => {
     );
   })
 
-  it("creates multiple instances via MultiProvider", () => {
+  it("provides all instances if `of` is an object", () => {
     create(
       <Provider of={{ Foo, Bar }}>
         <Consumer of={Foo} got={i => expect(i).toBeInstanceOf(Foo)} />
@@ -120,45 +120,57 @@ describe("Consumer", () => {
 });
 
 describe("Peers", () => {
-  it("can attach from both context and singleton", () => {
+  it("will attach property via tap directive", () => {
     class Foo extends Controller {
-      value = "foo";
-    }
-  
-    class Bar extends Singleton {
-      value = "baz";
+      bar = tap(Bar);
     }
 
-    class Baz extends Controller {
-      foo = tap(Foo);
-      baz = tap(Bar);
+    class Bar extends Controller {
+      value = "bar";
     }
 
-    Bar.create();
+    const Test = () => {
+      const { bar } = Foo.use();
 
-    function BarPeerConsumer(){
-      const { foo, baz } = Baz.use();
-
-      expect(foo.value).toBe("foo");
-      expect(baz.value).toBe("baz");
+      expect(bar.value).toBe("bar");
 
       return null;
     }
 
     create(
-      <Provider of={Foo}>
-        <BarPeerConsumer />
+      <Provider of={Bar}>
+        <Test />
       </Provider>
     );
   })
 
-  it("will reject from context if a singleton", () => {
-    class Regular extends Controller {}
-    class Global extends Singleton {
-      notPossible = tap(Regular);
+  it("will attach a singleton via tap directive", () => {
+    class Foo extends Controller {
+      bar = tap(Bar);
     }
 
-    const error = Issue.CantAttachGlobal(Global.name, Regular.name);
+    class Bar extends Singleton {
+      value = "bar";
+    }
+
+    Bar.create();
+
+    const Test = () => {
+      const { bar } = Foo.use();
+      expect(bar.value).toBe("bar");
+      return null;
+    }
+
+    create(<Test />);
+  })
+
+  it("will reject from context if a singleton", () => {
+    class Normal extends Controller {}
+    class Global extends Singleton {
+      notPossible = tap(Normal);
+    }
+
+    const error = Issue.CantAttachGlobal(Global.name, Normal.name);
 
     expect(() => Global.create()).toThrow(error);
   })
