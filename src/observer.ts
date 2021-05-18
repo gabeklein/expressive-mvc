@@ -22,8 +22,6 @@ interface GetterInfo {
 
 export const COMPUTED = Symbol("computed");
 
-export type RequestCallback = (keys: string[]) => void;
-
 const Updating = new WeakMap<Observer, (key: string) => void>();
 
 function metaData(x: Function): GetterInfo;

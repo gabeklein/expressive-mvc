@@ -1,7 +1,7 @@
 import type { Controller } from './controller';
 
 import { Pending } from './directives';
-import { Observer, RequestCallback } from './observer';
+import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import {
   assign,
