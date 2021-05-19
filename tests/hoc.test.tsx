@@ -61,7 +61,7 @@ describe("Instance HOCs", () => {
 
     create(
       <CustomProvider>
-        <Consumer of={Test} got={i => expect(i).toStrictEqual(instance)} />
+        <Consumer of={Test} get={i => expect(i).toStrictEqual(instance)} />
       </CustomProvider>
     )
   });
