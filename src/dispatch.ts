@@ -21,7 +21,7 @@ export class Dispatch extends Observer {
 
   static ensure(on: {}, base: typeof Controller){
     if(!Register.has(on))
-      new Dispatch(on, base);
+      new this(on, base);
   }
 
   static for(from: {}){

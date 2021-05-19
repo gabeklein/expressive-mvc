@@ -219,9 +219,18 @@ export abstract class Controller {
     static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
 
     /**
-     * **React Hook** - Fetch most applicable instance of this controller in context.
+     * **React Hook** - Fetch most instance of this controller from context, if exists.
+     * 
+     * @param expect - If true, will throw where controller cannot be found. Otherwise, may return undefined.
      */
-    static get <T extends Class> (this: T): InstanceOf<T>;
+    static get <T extends Class> (this: T, expect?: boolean): InstanceOf<T> | undefined;
+
+    /**
+     * **React Hook** - Fetch most instance of this controller from context.
+     * 
+     * @param expect - Will throw if controller cannot be found.
+     */
+    static get <T extends Class> (this: T, expect: true): InstanceOf<T>;
 
     /**
      * **React Hook** - Fetch specific value from instance of this controller in context.

@@ -20,18 +20,19 @@ function useActiveMemo<T>(
   return state[0] as T;
 }
 
-export function usePassive<T extends Controller>(
-  target: T, select?: string | SelectFunction<any>){
+export function usePassive<T extends Model>(
+  target: T,
+  select?: boolean | string | SelectFunction<any>){
 
-  return useMemo(() => {
-    if(fn(select))
-      return select(target);
+  const instance = target.find(!!select)!;
 
-    if(select)
-      return (target as any)[select];
-    
-    return target;
-  }, []);
+  if(fn(select))
+    return select(instance);
+
+  if(typeof select == "string")
+    return (instance as any)[select];
+  
+  return instance;
 }
 
 export function useWatcher(

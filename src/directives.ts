@@ -62,7 +62,7 @@ export function setPeer<T extends Model>
 
   return Pending.define(({ subject }, key) => {
     if(Singleton.isTypeof(Peer))
-      defineLazy(subject, key, () => Peer.find());
+      defineLazy(subject, key, () => Peer.find(true));
     else if(subject instanceof Singleton)
       throw Oops.CantAttachGlobal(subject.constructor.name, Peer.name);
     else

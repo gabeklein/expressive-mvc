@@ -13,8 +13,17 @@ type ConsumerProps<E extends Class> =
     | {
         /** Type of controller to fetch from context. */
         of: E;
+        /** 
+         * Getter function. Is called on every natural render of this component.
+         * Will throw if usable instance cannot be found in context.
+         */
+        has: (value: InstanceType<E>) => void;
+    }
+    | {
+        /** Type of controller to fetch from context. */
+        of: E;
         /** Getter function. Is called on every natural render of this component. */
-        get: (value: InstanceType<E>) => void;
+        get: (value: InstanceType<E> | undefined) => void;
     }
     | {
         /** Type of controller to fetch from context. */
@@ -24,7 +33,7 @@ type ConsumerProps<E extends Class> =
          * 
          * Similar to `tap()`, updates to properties accessed in
          * this function will cause a refresh when they change.
-         **/
+         */
         children: (value: InstanceType<E>) => ComponentOutput;
     }
 

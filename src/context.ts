@@ -28,8 +28,13 @@ export class Context {
     return key;
   }
 
-  public get(T: Model): Controller | undefined {
-    return (this as any)[this.key(T)];
+  public get(T: Model, strict?: boolean): Controller | undefined {
+    const instance = (this as any)[this.key(T)];
+
+    if(!instance && strict)
+      throw Oops.NothingInContext(T.name);
+
+    return instance;
   }
   
   public push(...items: Controller[]){
@@ -63,22 +68,23 @@ export class Context {
   }
 }
 
-type Output = ReactElement<any, any> | null;
-
 interface ConsumerProps {
   of: Model;
-  get?: (value: Controller) => Output;
-  tap?: (value: Controller) => Output;
-  children?: (value: Controller) => Output;
+  get?: (value: Controller) => void;
+  has?: (value: Controller) => void;
+  children?: (value: Controller) => ReactElement<any, any> | null;
 }
 
 export const Consumer = (props: ConsumerProps) => {
-  const { get, children: render, of: Control } = props;
+  const { get, has, children: render, of: Control } = props;
 
   if(fn(render))
     return render(Control.tap());
-  else if(fn(get))
-    get(Control.get());
+
+  const callback = has || get;
+
+  if(fn(callback))
+    callback(Control.get(!!has));
 
   return null;
 }

@@ -31,7 +31,7 @@ describe("Provider", () => {
   it("will assign props to controller", () => {
     create(
       <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} get={i => expect(i.value).toStrictEqual("foobar")} />
+        <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("foobar")} />
       </Provider>
     );
   })
@@ -40,7 +40,7 @@ describe("Provider", () => {
     create(
       // @ts-ignore - type-checking warns against this
       <Provider of={Foo} nonValue="foobar">
-        <Consumer of={Foo} get={i => {
+        <Consumer of={Foo} has={i => {
           // @ts-ignore
           expect(i.nonValue).toBeUndefined();
         }} />
@@ -62,7 +62,7 @@ describe("Provider", () => {
 
     const render = create(
       <Provider of={Foo}>
-        <Consumer of={Foo} get={i => i.willDestroy = didUnmount} />
+        <Consumer of={Foo} has={i => i.willDestroy = didUnmount} />
       </Provider>
     );
 
@@ -89,6 +89,24 @@ describe("Consumer", () => {
     )
   })
 
+  it("get prop will pass undefined if not found", () => {
+    create(
+      <Consumer of={Bar} get={i => expect(i).toBeUndefined()} />
+    )
+  })
+
+  it.skip("has prop will throw if not found", () => {
+    // React throwing error-boundary warning despite assertion.
+
+    const test = () => create(
+      <Consumer of={Bar} has={i => void i} />
+    )
+
+    expect(test).toThrow(
+      Issue.NothingInContext(Bar.name)
+    );
+  })
+
   it("will select extended class if found", () => {
     create(
       <Provider of={Baz}>
@@ -101,7 +119,7 @@ describe("Consumer", () => {
     create(
       <Provider of={Foo} value="outer">
         <Provider of={Foo} value="inner">
-          <Consumer of={Foo} get={i => expect(i.value).toStrictEqual("inner")} />
+          <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("inner")} />
         </Provider>
       </Provider>
     )
@@ -169,9 +187,9 @@ describe("Peers", () => {
       notPossible = tap(Normal);
     }
 
-    const error = Issue.CantAttachGlobal(Global.name, Normal.name);
-
-    expect(() => Global.create()).toThrow(error);
+    expect(() => Global.create()).toThrow(
+      Issue.CantAttachGlobal(Global.name, Normal.name)
+    );
   })
 
   it.todo("can access peers sharing same provider");

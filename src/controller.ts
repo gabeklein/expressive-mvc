@@ -74,16 +74,16 @@ export class Controller {
     return useMemoized(this, args);
   }
 
-  static get(key?: string | SelectFunction<any>){
-    return usePassive(this.find(), key);
+  static get(key?: boolean | string | SelectFunction<any>){
+    return usePassive(this, key);
   }
 
   static tap(key?: string | SelectFunction<any>){
-    return this.find().tap(key);
+    return this.find(true).tap(key);
   }
 
   static has(key: string){
-    const value = this.find().tap(key);
+    const value = this.tap(key);
 
     if(value === undefined)
       throw Oops.HasPropertyUndefined(this.name, key);
@@ -92,7 +92,7 @@ export class Controller {
   }
 
   static sub(...args: any[]){
-    return this.find().sub(...args);
+    return this.find(true).sub(...args);
   }
 
   static meta(path: string | SelectFunction<any>): any {
@@ -102,13 +102,10 @@ export class Controller {
     }, path);
   }
 
-  static find(){
-    const instance = Context.useLayer().get(this);
-  
-    if(!instance)
-      throw Oops.NothingInContext(this.name);
-  
-    return instance;
+  static find(strict: true): Controller;
+  static find(strict?: boolean): Controller | undefined;
+  static find(strict?: boolean){
+    return Context.useLayer().get(this, strict);
   }
 
   static create<T extends Model>(
