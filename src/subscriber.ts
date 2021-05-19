@@ -14,25 +14,20 @@ export class Subscriber<T = any> {
     private metadata?: {}
   ){
     assign(callback, metadata);
-    this.parent = Dispatch.for(subject);
-    this.proxy = this.spy();
-  }
 
-  public spy(){
-    const proxy = create(this.subject as any);
+    this.parent = Dispatch.for(subject);
+    this.proxy = create(subject as any);
 
     for(const key of this.parent.watched){
       const subscribe = () => this.spyOn(key);
 
       setDisplayName(subscribe, `tap ${key}`);
-      defineProperty(proxy, key, {
+      defineProperty(this.proxy, key, {
         configurable: true,
         set: this.parent.setter(key),
         get: subscribe
       })
     }
-
-    return proxy;
   }
 
   private spyOn(key: string){
