@@ -1,23 +1,32 @@
 import VC from "./adapter";
 
 class Subject extends VC {
-  value = 1;
-  value2 = 2;
+  value: number;
 
-  setValueToThree = () => {
-    this.value = 3;
+  constructor(initial?: number){
+    super();
+    this.value = initial || 1;
+  }
+
+  setValue = (to: number) => {
+    this.value = to;
   }
 }
 
 describe("controller", () => {
-  it('instantiate from class', () => {
+  it('will instantiate from custom class', () => {
     const state = Subject.create();
   
     expect(state.value).toBe(1);
-    expect(state.value2).toBe(2);
+  })
+
+  it('will send create() arguments to constructor', () => {
+    const state = Subject.create([3]);
+
+    expect(state.value).toBe(3);
   })
   
-  it('updates when a value changes', async () => {
+  it('will update when a value changes', async () => {
     const state = Subject.create();
     
     expect(state.value).toBe(1);
@@ -28,10 +37,10 @@ describe("controller", () => {
     expect(state.value).toBe(2);
   })
   
-  it('methods may change state', async () => {
+  it('accepts update from within a method', async () => {
     const state = Subject.create();
     
-    state.setValueToThree();
+    state.setValue(3);
     await state.requestUpdate(true);
 
     expect(state.value).toBe(3)
