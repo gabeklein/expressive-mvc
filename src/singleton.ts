@@ -1,6 +1,4 @@
 import { Controller, Model } from './controller';
-import { useMemoized } from "./hooks";
-import { defineLazy } from "./util";
 
 import Oops from './issues';
 
@@ -43,12 +41,3 @@ export class Singleton extends Controller {
       Oops.DestroyNotActive(meta.name).warn();
   }
 }
-
-defineLazy(Singleton, {
-  Provider(){
-    return (props: any) => {
-      useMemoized(this, []);
-      return [].concat(props.children);
-    }
-  }
-});
