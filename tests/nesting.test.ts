@@ -1,4 +1,4 @@
-import Controller, { test } from "./adapter";
+import { Controller, test } from "./adapter";
 
 class Child extends Controller {
   value = "foo"

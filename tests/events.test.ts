@@ -1,7 +1,7 @@
-import VC from "./adapter";
+import { Controller } from "./adapter";
 
 describe("observers", () => {
-  class Subject extends VC {
+  class Subject extends Controller {
     seconds = 0;
   
     get minutes(){
@@ -35,7 +35,7 @@ describe("observers", () => {
 })
 
 describe("effect", () => {
-  class TestValues extends VC {
+  class TestValues extends Controller {
     value1 = 1;
     value2 = 2;
     value3 = 3;
@@ -126,7 +126,7 @@ describe("effect", () => {
 });
 
 describe("requests before initialized", () => {
-  class TestValues extends VC {
+  class TestValues extends Controller {
     constructor(mock: () => void){
       super();
       this.effect(mock, [

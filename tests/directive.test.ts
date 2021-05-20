@@ -1,4 +1,4 @@
-import Controller, { act, event, ref, set, use, Issue } from './adapter';
+import { act, Controller, event, Issue, ref, set, use } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Controller {

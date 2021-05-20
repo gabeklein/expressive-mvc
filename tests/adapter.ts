@@ -23,7 +23,6 @@ export const event = Source.event as typeof Public.event;
 export const parent = Source.parent as typeof Public.parent;
 
 export const test = trySubscribe;
-export default Controller;
 
 type Class = new (...args: any[]) => void;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;

@@ -1,7 +1,7 @@
-import VC, { Singleton, test } from "./adapter";
+import { Controller, Singleton, test } from "./adapter";
 
 describe("basic", () => {
-  class Subject extends VC {
+  class Subject extends Controller {
     value = 1;
     value2 = 2;
   }
@@ -45,7 +45,7 @@ describe("basic", () => {
 })
 
 describe("computed", () => {
-  class Subject extends VC {
+  class Subject extends Controller {
     seconds = 0;
   
     get minutes(){
@@ -80,12 +80,12 @@ describe("tap", () => {
     child = new Child();
   }
   
-  class Child extends VC {
+  class Child extends Controller {
     value = "foo"
     grandchild = new GrandChild();
   }
   
-  class GrandChild extends VC {
+  class GrandChild extends Controller {
     value = "bar"
   }
   
@@ -140,14 +140,14 @@ describe("tap", () => {
 })
 
 describe("meta", () => {
-  class Child extends VC {
+  class Child extends Controller {
     constructor(
       public value: string){
       super();
     }
   }
   
-  class Parent extends VC {
+  class Parent extends Controller {
     static value = "foo";
     static child = new Child("foo");
   }

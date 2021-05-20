@@ -1,6 +1,6 @@
-import VC from "./adapter";
+import { Controller } from "./adapter";
 
-class Subject extends VC {
+class Subject extends Controller {
   value: number;
 
   constructor(initial?: number){
@@ -27,7 +27,7 @@ describe("controller", () => {
   })
   
   it('will call didCreate method if exists', () => {
-    class Subject extends VC {
+    class Subject extends Controller {
       constructor(callback: () => void){
         super();
         this.didCreate = callback;

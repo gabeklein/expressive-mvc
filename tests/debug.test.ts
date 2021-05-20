@@ -1,4 +1,4 @@
-import Controller from "./adapter";
+import { Controller } from "./adapter";
 
 describe("requestUpdate method", () => {
   class Control extends Controller {

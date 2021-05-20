@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "react-test-renderer";
 
-import VC, { hoc, wrap, Consumer } from "./adapter";
+import { Controller, hoc, wrap, Consumer } from "./adapter";
 
 type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
@@ -29,7 +29,7 @@ class TestComponentClass extends React.Component<TestComponentProps> {
 
 describe("Instance HOCs", () => {
   it("applies instance to function component", () => {
-    class Test extends VC {
+    class Test extends Controller {
       Component = hoc(TestComponentFunction);
     }
 
@@ -41,7 +41,7 @@ describe("Instance HOCs", () => {
   });
 
   it("applies instance to class component", () => {
-    class Test extends VC {
+    class Test extends Controller {
       Component = hoc(TestComponentClass);
     }
 
@@ -53,7 +53,7 @@ describe("Instance HOCs", () => {
   });
 
   it("provides instance to children of component", () => {
-    class Test extends VC {
+    class Test extends Controller {
       CustomProvider = wrap(TestComponentClass);
     }
 

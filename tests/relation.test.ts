@@ -1,11 +1,11 @@
-import VC, { Issue, parent, use } from './adapter';
+import { Controller, Issue, parent, use } from './adapter';
 
 describe("Parent-Child", () => {
   it("creates parent-child relationship", () => {
-    class Foo extends VC {
+    class Foo extends Controller {
       child = use(Bar as any) as Bar;
     }
-    class Bar extends VC {
+    class Bar extends Controller {
       parent = parent(Foo as any) as Foo;
     }
 
@@ -17,8 +17,8 @@ describe("Parent-Child", () => {
   })
 
   it("throws when required parent is absent :(", () => {
-    class Detatched extends VC {}
-    class NonStandalone extends VC {
+    class Detatched extends Controller {}
+    class NonStandalone extends Controller {
       expects = parent(Detatched, true);
     }
 
@@ -33,11 +33,11 @@ describe("Parent-Child", () => {
   })
 
   it("throws if parent is incorrect type", () => {
-    class Expected extends VC {}
-    class Unexpected extends VC {
+    class Expected extends Controller {}
+    class Unexpected extends Controller {
       child = use(Adopted as any) as Adopted;
     }
-    class Adopted extends VC {
+    class Adopted extends Controller {
       expects = parent(Expected);
     }
 
