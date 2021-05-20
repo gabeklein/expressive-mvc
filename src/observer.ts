@@ -22,8 +22,6 @@ interface GetterInfo {
 
 export const COMPUTED = Symbol("computed");
 
-const Updating = new WeakMap<Observer, (key: string) => void>();
-
 function metaData(x: Function): GetterInfo;
 function metaData<T>(x: Function, set: T): T;
 function metaData(x: Function, set?: any){
@@ -49,9 +47,7 @@ export class Observer {
           this.prepareComputed(key, get, set);
   }
 
-  public get pending(){
-    return Updating.has(this);
-  }
+  public pending?: (key: string) => void;
 
   public get watched(){
     return keys(this.subscribers);
@@ -262,24 +258,17 @@ export class Observer {
   }
 
   public emit(key: string){
-    let include = Updating.get(this);
+    if(!this.pending)
+      this.pending = this.sync();
 
-    if(!include)
-      Updating.set(this, include = 
-        this.sync(list => {
-          Updating.delete(this);
-          this.reset(list);
-        })
-      );
-
-    include(key);
+    this.pending(key);
   }
 
   private reset(frame: string[]){
     this.waiting.splice(0).forEach(x => x(frame));
   }
 
-  private sync(done: RequestCallback){
+  private sync(){
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
@@ -295,7 +284,8 @@ export class Observer {
 
       effects.forEach(x => x());
 
-      done(Array.from(handled));
+      this.pending = undefined;
+      this.reset(Array.from(handled));
     });
 
     return (key: string) => {
