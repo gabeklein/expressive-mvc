@@ -145,7 +145,7 @@ describe("requests before initialized", () => {
 
   it('will watch values proactively', async () => {
     const mock = jest.fn();
-    const instance = TestValues.create([mock]);
+    const instance = TestValues.create(mock);
 
     instance.value1++;
     await instance.requestUpdate();

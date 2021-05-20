@@ -112,17 +112,12 @@ export class Controller {
   }
 
   static create<T extends Model>(
-    this: T,
-    args?: any[],
-    prepare?: (self: InstanceOf<T>) => void){
+    this: T, ...args: any[]){
 
     const instance: InstanceOf<T> = 
-      new (this as any)(...args || []);
+      new (this as any)(...args);
 
     Dispatch.for(instance);
-
-    if(prepare)
-      prepare(instance);
 
     return instance;
   }

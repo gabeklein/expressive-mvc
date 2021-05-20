@@ -90,7 +90,7 @@ export function useSubscriber(
 export function useMemoized(
   Type: Model, args: any[]){
 
-  const instance = useMemo(() => Type.create(args), []);
+  const instance = useMemo(() => Type.create(...args), []);
 
   useEffect(() => () => instance.destroy(), []);
 
@@ -129,7 +129,10 @@ export function useController(
   callback?: (instance: Controller) => void){
 
   const subscription = useActiveMemo(refresh => {
-    const instance = Type.create(args, callback);
+    const instance = Type.create(...args);
+
+    if(callback)
+      callback(instance);
 
     return new Subscriber(instance, refresh);
   });

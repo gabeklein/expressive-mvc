@@ -21,7 +21,7 @@ describe("controller", () => {
   })
 
   it('will send create() arguments to constructor', () => {
-    const state = Subject.create([3]);
+    const state = Subject.create(3);
 
     expect(state.value).toBe(3);
   })
@@ -38,7 +38,7 @@ describe("controller", () => {
       expect(this).toStrictEqual(state);
     }
 
-    const state = Subject.create([init]);
+    const state = Subject.create(init);
   })
 
   it('will update when a value changes', async () => {

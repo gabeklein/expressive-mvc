@@ -15,9 +15,7 @@ export class Singleton extends Controller {
   }
 
   static create<T extends Model>(
-    this: T,
-    args: any[], 
-    prepare?: (self: any) => void){
+    this: T, ...args: any[]){
 
     const Type = this as unknown as typeof Singleton;
     let instance = Type.current as InstanceOf<T>;
@@ -25,7 +23,7 @@ export class Singleton extends Controller {
     if(instance)
       throw Oops.GlobalExists(this.name);
 
-    instance = super.create(args, prepare) as any;
+    instance = super.create(...args) as any;
     
     return Type.current = instance;
   }

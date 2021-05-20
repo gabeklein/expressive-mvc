@@ -321,7 +321,7 @@ export abstract class Controller {
      * 
      * @param args - arguments sent to constructor
      */
-    static create <A extends any[], T extends Expecting<A>> (this: T, args?: A): InstanceOf<T>;
+    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
     /**
      * Static equivalent of `x instanceof this`.
