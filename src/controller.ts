@@ -14,8 +14,11 @@ export interface Controller extends Public {};
 
 export class Controller {
   constructor(){
-    const cb = this.didCreate && this.didCreate.bind(this);
-    const dispatch = new Dispatch(this, Controller, cb);
+    const cb = this.didCreate;
+    const dispatch = new Dispatch(this, Controller);
+
+    if(cb)
+      dispatch.requestUpdate(cb.bind(this));
 
     define(this, { get: this, set: this });
 

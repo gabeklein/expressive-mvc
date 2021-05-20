@@ -33,9 +33,6 @@ export class Dispatch extends Observer {
     if(!dispatch.ready){
       dispatch.ready = true;
       dispatch.start();
-  
-      if(dispatch.onReady)
-        dispatch.onReady();
     }
 
     return dispatch;
@@ -43,8 +40,7 @@ export class Dispatch extends Observer {
 
   constructor(
     public subject: {},
-    base: typeof Controller,
-    protected onReady?: Callback){
+    base: typeof Controller){
 
     super(subject, base);
     Register.set(subject, this);

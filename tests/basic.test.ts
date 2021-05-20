@@ -26,6 +26,21 @@ describe("controller", () => {
     expect(state.value).toBe(3);
   })
   
+  it('will call didCreate method if exists', () => {
+    class Subject extends VC {
+      constructor(callback: () => void){
+        super();
+        this.didCreate = callback;
+      }
+    }
+
+    function init(this: Subject){
+      expect(this).toStrictEqual(state);
+    }
+
+    const state = Subject.create([init]);
+  })
+
   it('will update when a value changes', async () => {
     const state = Subject.create();
     
