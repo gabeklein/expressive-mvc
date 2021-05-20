@@ -24,12 +24,6 @@ export const parent = Source.parent as typeof Public.parent;
 
 export const test = trySubscribe;
 
-type Class = new (...args: any[]) => void;
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
-
-type Model = typeof Public.Controller;
-type Instance = Public.Controller;
-
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
   /** Reference to controller instance. */
@@ -72,43 +66,14 @@ class TraceableError extends Error {
   }
 }
 
-function mockPropertyAccess(
-  on: any, properties: string[]){
-
-  for(const property of properties){
-    let x: any = on;
-    for(const key of property.split("."))
-      x = x[key];
-  }
-}
-
 /**
  * Test a ModelController with this. 
  * Equivalent to `renderHook`, however for controllers.
  */
-function trySubscribe<T>(init: () => T, watchProperties?: string[]): RenderControllerResult<T>
-function trySubscribe<T extends Class>(type: T, watchProperties?: string[]): RenderControllerResult<InstanceOf<T>>
-function trySubscribe(init: Model | (() => Instance), watch?: string[]){
-  if("prototype" in init){
-    const Model = init as any;
-    init = () => Model.use();
-  }
+function trySubscribe<T>(init: () => T): RenderControllerResult<T>
+function trySubscribe(init: () => Public.Controller){
+  const render = renderHook(init);
 
-  if(watch){
-    const createController = init;
-    init = () => {
-      const x = createController();
-      mockPropertyAccess(x, watch);
-      return x;
-    }
-  }
-
-  return plusUpdateAssertions(
-    renderHook(init)
-  );
-}
-
-function plusUpdateAssertions(render: RenderHookResult<any, any>){
   async function assertDidUpdate(){
     const error = new TraceableError("Assertion failed: hook did not update");
     let didUpdate = false;
