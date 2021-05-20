@@ -105,7 +105,7 @@ export class Controller {
   static find(strict: true): Controller;
   static find(strict?: boolean): Controller | undefined;
   static find(strict?: boolean){
-    return Context.useLayer().get(this, strict);
+    return Context.useAmbientLayer().get(this, strict);
   }
 
   static create<T extends Model>(

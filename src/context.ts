@@ -63,7 +63,7 @@ export class Context {
 
   static Single = createContext(new Context());
 
-  static useLayer(){
+  static useAmbientLayer(){
     return useContext(this.Single);
   }
 }
@@ -112,8 +112,8 @@ function ParentProvider(
 
   const instance = props.target.using(props.data);
 
-  const parent = Context.useLayer();
-  const layer = useMemo(() => parent.push(instance.get), [props.target]);
+  const current = Context.useAmbientLayer();
+  const layer = useMemo(() => current.push(instance.get), [props.target]);
 
   return layer.provider(props.children); 
 }
@@ -123,8 +123,8 @@ function DirectProvider(
 
   props.target.update(props.data);
 
-  const parent = Context.useLayer();
-  const layer = useMemo(() => parent.push(props.target), [props.target]);
+  const current = Context.useAmbientLayer();
+  const layer = useMemo(() => current.push(props.target), [props.target]);
 
   return layer.provider(props.children); 
 }
@@ -132,8 +132,8 @@ function DirectProvider(
 function MultiProvider(
   props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
 
-  const parent = Context.useLayer();
-  const layer = useMemo(() =>  parent.push(
+  const current = Context.useAmbientLayer();
+  const layer = useMemo(() => current.push(
     ...values(props.types).map(T => T.create())
   ), []);
 

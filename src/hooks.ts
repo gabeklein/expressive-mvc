@@ -104,7 +104,7 @@ export function usePeerContext(instance: Controller){
 
   if(expected !== undefined){
     if(expected)
-      Context.useLayer();
+      Context.useAmbientLayer();
     return;
   }
 
@@ -115,7 +115,7 @@ export function usePeerContext(instance: Controller){
   if(!pending.length)
     ContextUsed.set(instance, false);
   else {
-    const ambient = Context.useLayer();
+    const ambient = Context.useAmbientLayer();
   
     for(const [key, type] of pending)
       define(instance, key, ambient.get(type));
