@@ -4,7 +4,7 @@ import type { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { boundRefComponent, createHocFactory, withProvider } from './hoc';
 import { Singleton } from './singleton';
-import { createEffect, define, defineLazy, defineProperty, setDisplayName } from './util';
+import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
 
 import Oops from './issues';
 
@@ -181,7 +181,7 @@ export function setTuple<T extends any[]>
   return Pending.define((on, key) => {
     const source = on.state;
 
-    const setTuple = (next: any) => {
+    const setTuple = traceable(`set ${key}`, (next: any) => {
       const current: any = source[key];
       let update = false;
 
@@ -198,9 +198,7 @@ export function setTuple<T extends any[]>
 
       if(update)
         on.emit(key);
-    }
-
-    setDisplayName(setTuple, `set ${key}`);
+    });
 
     source[key] = values;
     on.register(key);
@@ -218,7 +216,7 @@ export function setAction(action: AsyncFn){
   return Pending.define((on, key) => {
     let pending = false;
 
-    async function run(...args: any[]){
+    const run = traceable(`run ${key}`, (...args: any[]) => {
       if(pending)
         throw Oops.DuplicateAction(key);
 
@@ -231,9 +229,8 @@ export function setAction(action: AsyncFn){
           pending = false;
           on.emit(key);
         })
-    }
+    });
 
-    setDisplayName(run, `run ${key}`);
     defineProperty(run, "allowed", {
       get: () => !pending
     })

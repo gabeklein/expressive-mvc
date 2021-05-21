@@ -9,7 +9,7 @@ import {
   fn,
   getOwnPropertyDescriptor,
   keys,
-  setDisplayName
+  traceable
 } from './util';
 
 import Oops from './issues';
@@ -61,8 +61,6 @@ export class Observer {
     if(!get || this.getters.has(key))
       return;
 
-    setDisplayName(get, `run ${key}`);
-
     const reset = (value: any) => {
       this.getters.delete(key);
       this.override(key, {
@@ -74,9 +72,9 @@ export class Observer {
 
     this.getters.set(key, get);
     this.override(key, {
-      configurable: true,
       set: set || reset,
-      get
+      get: traceable(`run ${key}`, get),
+      configurable: true
     })
   }
 
@@ -201,8 +199,8 @@ export class Observer {
       }
     }
 
-    setDisplayName(refresh, `try ${key}`);
-    setDisplayName(create, `new ${key}`);
+    traceable(`try ${key}`, refresh);
+    traceable(`new ${key}`, create);
 
     metaData(compute, self);
     metaData(create, true);
@@ -211,16 +209,14 @@ export class Observer {
   }
 
   public getter(key: string){
-    const get = () => this.state[key];
-    setDisplayName(get, `get ${key}`);
-    return get;
+    return traceable(`get ${key}`, () => this.state[key]);
   }
 
   public setter(
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    const set = (value: any) => {
+    return traceable(`set ${key}`, (value: any) => {
       if(this.state[key] == value)
         return;
 
@@ -230,10 +226,7 @@ export class Observer {
         effect(value, this.subject);
 
       this.emit(key);
-    }
-
-    setDisplayName(set, `set ${key}`);
-    return set;
+    });
   }
 
   public addListener(

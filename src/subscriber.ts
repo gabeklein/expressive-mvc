@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { assign, create, defineProperty, fn, setDisplayName } from './util';
+import { assign, create, defineProperty, fn, traceable } from './util';
 
 export class Subscriber<T = any> {
   private onDone = [] as Callback[];
@@ -18,16 +18,12 @@ export class Subscriber<T = any> {
     this.parent = Dispatch.for(subject);
     this.proxy = create(subject as any);
 
-    for(const key of this.parent.watched){
-      const subscribe = () => this.spyOn(key);
-
-      setDisplayName(subscribe, `tap ${key}`);
+    for(const key of this.parent.watched)
       defineProperty(this.proxy, key, {
-        configurable: true,
         set: this.parent.setter(key),
-        get: subscribe
+        get: traceable(`tap ${key}`, () => this.spyOn(key)),
+        configurable: true
       })
-    }
   }
 
   private spyOn(key: string){

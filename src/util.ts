@@ -33,7 +33,7 @@ export {
   entriesIn,
   fn,
   selectFrom,
-  setDisplayName
+  traceable
 }
 
 function define(target: {}, values: {}): void;
@@ -50,8 +50,9 @@ function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function setDisplayName<T extends Function>(fn: T, name: string){
+function traceable<T extends Function>(name: string, fn: T){
   (fn as { displayName?: string }).displayName = name;
+  return fn;
 }
 
 function entriesIn(object: {}): [string, PropertyDescriptor][] {
