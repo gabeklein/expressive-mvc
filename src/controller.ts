@@ -27,16 +27,18 @@ export class Controller {
         define(this, key, value);
   }
 
+  public get bind(){
+    const agent = createBindAgent(this);
+    define(this.get, { bind: agent });
+    return agent as any;
+  }
+
   public tap(path?: string | SelectFunction<any>){
     return useWatcher(this, path) as any;
   }
 
   public sub(...args: any[]){
     return useSubscriber(this, args) as any;
-  }
-
-  public get bind(){
-    return createBindAgent(this) as any;
   }
 
   public destroy(){
