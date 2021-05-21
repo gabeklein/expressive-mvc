@@ -63,7 +63,9 @@ function allEntriesIn(object: {}, until: {}){
   let layer = object;
 
   return <IterableIterator<[string, PropertyDescriptor][]>>{
-    [Symbol.iterator](){ return this },
+    [Symbol.iterator](){
+      return this;
+    },
     next(){
       if(layer === until || layer.constructor === until)
         return { done: true };
@@ -129,7 +131,7 @@ function defineLazy<T>(
   else
     defineProperty(object, property, { 
       configurable: true,
-      get: function(){
+      get(){
         const value = init!.call(this);
         defineProperty(this, property, { value });
         return value;

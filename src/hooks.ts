@@ -24,7 +24,10 @@ export function usePassive<T extends Model>(
   target: T,
   select?: boolean | string | SelectFunction<any>){
 
-  const instance = target.find(!!select)!;
+  const instance = target.find(!!select);
+
+  if(!instance)
+    return;
 
   if(fn(select))
     return select(instance);

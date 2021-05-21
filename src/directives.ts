@@ -74,13 +74,13 @@ export function setReference<T = any>
   (effect?: EffectCallback<Controller, any>): { current: T } {
 
   return Pending.define((on, key) => {
-    const reset = effect && createEffect(effect);
-
     on.register(key);
     on.override(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
-        set: on.setter(key, reset)
+        set: on.setter(key,
+          effect && createEffect(effect)
+        )
       })
     });
   })

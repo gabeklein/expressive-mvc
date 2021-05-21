@@ -40,13 +40,10 @@ export class Controller {
   }
 
   public destroy(){
-    const dispatch = Dispatch.for(this);
-
     if(this.willDestroy)
       this.willDestroy();
 
-    if(dispatch)
-      dispatch.emit("willDestroy");
+    Dispatch.for(this).emit("willDestroy");
   }
 
   static use(...args: any[]){
@@ -66,11 +63,11 @@ export class Controller {
     props: BunchOf<any>, 
     only?: string[]){
 
-    const subscriber = useController(this, []);
+    const instance = useController(this, []);
 
-    assignSpecific(subscriber, props, only);
-        
-    return subscriber;
+    assignSpecific(instance, props, only);
+
+    return instance;
   }
 
   static memo(...args: any[]){
