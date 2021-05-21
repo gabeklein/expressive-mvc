@@ -1,6 +1,7 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
-import { assign, create, defineProperty, fn, traceable } from './util';
+import { GetterInfo, metaData } from './observer';
+import { create, defineProperty, fn, traceable } from './util';
 
 export class Subscriber<T = any> {
   private onDone = [] as Callback[];
@@ -11,10 +12,8 @@ export class Subscriber<T = any> {
   constructor(
     public subject: T,
     private callback: Callback,
-    private metadata?: {}
+    private metadata?: GetterInfo
   ){
-    assign(callback, metadata);
-
     this.parent = Dispatch.for(subject);
     this.proxy = create(subject as any);
 
@@ -59,7 +58,7 @@ export class Subscriber<T = any> {
 
     return sub
       ? sub.proxy
-      : (this.parent.state as any)[key];
+      : this.parent.state[key];
   }
 
   public declare(event: string, args?: any[]){
@@ -131,7 +130,9 @@ export class Subscriber<T = any> {
       unwatch();
     });
 
-    assign(update, this.metadata);
+    if(this.metadata)
+      metaData(update, this.metadata);
+
     create();
   }
 }

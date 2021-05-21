@@ -14,21 +14,21 @@ import {
 
 import Oops from './issues';
 
-interface GetterInfo {
+export interface GetterInfo {
   on: Observer;
   key: string;
   priority: number;
 }
 
-export const COMPUTED = Symbol("computed");
+const ComputedInfo = new WeakMap<Function, GetterInfo>();
 
-function metaData(x: Function): GetterInfo;
-function metaData<T>(x: Function, set: T): T;
-function metaData(x: Function, set?: any){
+export function metaData(x: Function): GetterInfo;
+export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
+export function metaData(x: Function, set?: GetterInfo){
   if(set)
-    return (x as any)[COMPUTED] = set;
+    return ComputedInfo.set(x, set);
   else
-    return (x as any)[COMPUTED];
+    return ComputedInfo.get(x);
 }
 
 export class Observer {
@@ -143,7 +143,7 @@ export class Observer {
     this.register(key);
 
     const { state, subject, getters } = this;
-    const self = { key, on: this, priority: 1 };
+    const info = { key, on: this, priority: 1 };
 
     const refresh = () => {
       let next;
@@ -163,11 +163,10 @@ export class Observer {
     }
 
     const create = (early?: boolean) => {
-      const meta = { [COMPUTED]: self };
-      const sub = new Subscriber(subject, refresh, meta);
+      const { proxy, following } =
+        new Subscriber(subject, refresh, info);
 
       try {
-        const { proxy } = sub;
         defineProperty(proxy, key, { value: undefined });
         return state[key] = compute.call(proxy);
       }
@@ -180,15 +179,12 @@ export class Observer {
         throw e;
       }
       finally {
-        for(const key of sub.following){
+        for(const key of following){
           const compute = getters.get(key);
           const meta = compute && metaData(compute);
 
-          if(meta){
-            const { priority } = meta;
-            if(priority >= self.priority)
-              self.priority = priority + 1;
-          }
+          if(meta && meta.priority >= info.priority)
+            info.priority = meta.priority + 1;
         }
 
         this.override(key, {
@@ -201,8 +197,8 @@ export class Observer {
     traceable(`try ${key}`, refresh);
     traceable(`new ${key}`, create);
 
-    metaData(compute, self);
-    metaData(create, true);
+    metaData(compute, info);
+    metaData(create, info);
 
     return create;
   }
@@ -235,20 +231,21 @@ export class Observer {
     callback: Callback,
     once?: boolean){
 
-    type MaybeComputed = (early?: boolean) => void;
+    type Computed = (early?: boolean) => void;
 
     const list = this.register(key);
     const handler = once ? () => { done(); callback() } : callback;
-    const done = () => list.delete(handler);
-    const property = getOwnPropertyDescriptor(this.subject, key);
-    const getter = property && property.get as MaybeComputed;
+    const done = () => { list.delete(handler) };
 
-    if(getter && COMPUTED in getter)
+    const property = getOwnPropertyDescriptor(this.subject, key);
+    const getter = property && property.get as Computed;
+
+    if(getter && metaData(getter))
       getter(true);
 
     list.add(handler);
 
-    return done as Callback;
+    return done;
   }
 
   public emit(key: string){
