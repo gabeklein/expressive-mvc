@@ -3,7 +3,6 @@ import type { Controller } from './controller';
 import { Subscriber } from './subscriber';
 import {
   allEntriesIn,
-  assign,
   defineProperty,
   entriesIn,
   fn,
@@ -43,8 +42,7 @@ export class Observer {
 
     for(const layer of allEntriesIn(subject, base))
       for(const [key, { get, set }] of layer)
-        if(get)
-          this.prepareComputed(key, get, set);
+        get && this.prepareComputed(key, get, set);
   }
 
   public pending?: (key: string) => void;
@@ -55,16 +53,16 @@ export class Observer {
 
   private prepareComputed(
     key: string,
-    get?: () => any,
+    get: () => any,
     set?: (v: any) => void){
 
-    if(!get || this.getters.has(key))
+    if(this.getters.has(key))
       return;
 
     if(!set)
       set = (value: any) => {
         this.getters.delete(key);
-        this.override(key, {
+        this.inject(key, {
           value,
           configurable: true,
           writable: true
@@ -74,7 +72,7 @@ export class Observer {
     traceable(`run ${key}`, get);
 
     this.getters.set(key, get);
-    this.override(key, { get, set, configurable: true });
+    this.inject(key, { get, set, configurable: true });
   }
 
   protected start(){
@@ -93,7 +91,7 @@ export class Observer {
       if(subscribers[key].size)
         expected.set(key, init);
       else
-        this.override(key, {
+        this.inject(key, {
           get: init,
           set: Oops.AssignToGetter(key).warn
         })
@@ -110,10 +108,8 @@ export class Observer {
       this.monitorValue(key, value);
   }
 
-  public override(key: string, desc: PropertyDescriptor){
-    defineProperty(this.subject, key, 
-      assign({ enumerable: true }, desc)  
-    )
+  public inject(key: string, desc: PropertyDescriptor){
+    defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
   public register(key: string){
@@ -131,7 +127,7 @@ export class Observer {
       this.state[key] = initial;
 
     this.register(key);
-    this.override(key, {
+    this.inject(key, {
       get: this.getter(key),
       set: this.setter(key, effect)
     });
@@ -168,6 +164,7 @@ export class Observer {
 
       try {
         defineProperty(proxy, key, { value: undefined });
+
         return state[key] = compute.call(proxy);
       }
       catch(e){
@@ -187,7 +184,7 @@ export class Observer {
             info.priority = meta.priority + 1;
         }
 
-        this.override(key, {
+        this.inject(key, {
           get: this.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
@@ -287,12 +284,14 @@ export class Observer {
 
       for(const notify of this.subscribers[key] || []){
         const getter = metaData(notify);
+
         if(!getter || getter.on !== this)
           effects.add(notify);
         else {
-          const p = metaData(notify).priority;
-          const i = pending.findIndex(q => metaData(q).priority < p);
-          pending.splice(i + 1, 0, notify);
+          const offset = pending.findIndex(q => 
+            metaData(q).priority < getter.priority
+          );
+          pending.splice(offset + 1, 0, notify);
         }
       }
     };

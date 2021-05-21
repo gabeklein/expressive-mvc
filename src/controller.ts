@@ -115,7 +115,7 @@ export class Controller {
   static find(strict: true): Controller;
   static find(strict?: boolean): Controller | undefined;
   static find(strict?: boolean){
-    return Context.useAmbientLayer().get(this, strict);
+    return Context.useAmbient().get(this, strict);
   }
 
   static isTypeof<T extends Model>(

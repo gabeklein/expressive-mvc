@@ -105,7 +105,7 @@ const ContextUsed = new WeakMap<Controller, boolean>();
 function usePeerContext(instance: Controller){
   if(ContextUsed.has(instance)){
     if(ContextUsed.get(instance))
-      Context.useAmbientLayer();
+      Context.useAmbient();
     return;
   }
 
@@ -116,7 +116,7 @@ function usePeerContext(instance: Controller){
   const hasPeers = pending.length > 0;
 
   if(hasPeers){
-    const ambient = Context.useAmbientLayer();
+    const ambient = Context.useAmbient();
   
     for(const [key, type] of pending)
       define(instance, key, ambient.get(type));

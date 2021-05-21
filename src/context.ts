@@ -17,7 +17,7 @@ import Oops from './issues';
 export class Context {
   static Single = createContext(new Context());
 
-  static useAmbientLayer(){
+  static useAmbient(){
     return useContext(this.Single);
   }
 
@@ -111,7 +111,7 @@ function ParentProvider(
   props: PropsWithChildren<{ target: Model, data: {} }>){
 
   const instance = props.target.using(props.data);
-  const current = Context.useAmbientLayer();
+  const current = Context.useAmbient();
   const layer = useMemo(() => current.push(instance.get), [props.target]);
 
   return layer.provider(props.children); 
@@ -122,7 +122,7 @@ function DirectProvider(
 
   props.target.update(props.data);
 
-  const current = Context.useAmbientLayer();
+  const current = Context.useAmbient();
   const layer = useMemo(() => current.push(props.target), [props.target]);
 
   return layer.provider(props.children); 
@@ -131,7 +131,7 @@ function DirectProvider(
 function MultiProvider(
   props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
 
-  const current = Context.useAmbientLayer();
+  const current = Context.useAmbient();
   const layer = useMemo(() => current.push(
     ...values(props.types).map(T => T.create())
   ), []);
