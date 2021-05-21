@@ -61,21 +61,20 @@ export class Observer {
     if(!get || this.getters.has(key))
       return;
 
-    const reset = (value: any) => {
-      this.getters.delete(key);
-      this.override(key, {
-        value,
-        configurable: true,
-        writable: true
-      });
-    }
+    if(!set)
+      set = (value: any) => {
+        this.getters.delete(key);
+        this.override(key, {
+          value,
+          configurable: true,
+          writable: true
+        });
+      }
+
+    traceable(`run ${key}`, get);
 
     this.getters.set(key, get);
-    this.override(key, {
-      set: set || reset,
-      get: traceable(`run ${key}`, get),
-      configurable: true
-    })
+    this.override(key, { get, set, configurable: true });
   }
 
   protected start(){
@@ -216,7 +215,7 @@ export class Observer {
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    return traceable(`set ${key}`, (value: any) => {
+    const assigned = (value: any) => {
       if(this.state[key] == value)
         return;
 
@@ -226,7 +225,9 @@ export class Observer {
         effect(value, this.subject);
 
       this.emit(key);
-    });
+    }
+      
+    return traceable(`set ${key}`, assigned);
   }
 
   public addListener(

@@ -181,7 +181,7 @@ export function setTuple<T extends any[]>
   return Pending.define((on, key) => {
     const source = on.state;
 
-    const setTuple = traceable(`set ${key}`, (next: any) => {
+    const setTuple = (next: any) => {
       const current: any = source[key];
       let update = false;
 
@@ -198,7 +198,9 @@ export function setTuple<T extends any[]>
 
       if(update)
         on.emit(key);
-    });
+    };
+
+    traceable(`set ${key}`, setTuple);
 
     source[key] = values;
     on.register(key);
@@ -216,7 +218,7 @@ export function setAction(action: AsyncFn){
   return Pending.define((on, key) => {
     let pending = false;
 
-    const run = traceable(`run ${key}`, (...args: any[]) => {
+    const run = (...args: any[]) => {
       if(pending)
         return Promise.reject(
           Oops.DuplicateAction(key)
@@ -231,7 +233,9 @@ export function setAction(action: AsyncFn){
           pending = false;
           on.emit(key);
         })
-    });
+    };
+
+    traceable(`run ${key}`, run);
 
     defineProperty(run, "allowed", {
       get: () => !pending

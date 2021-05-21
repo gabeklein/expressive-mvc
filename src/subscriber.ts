@@ -18,12 +18,15 @@ export class Subscriber<T = any> {
     this.parent = Dispatch.for(subject);
     this.proxy = create(subject as any);
 
-    for(const key of this.parent.watched)
+    for(const key of this.parent.watched){
+      const access = () => this.spyOn(key);
+
       defineProperty(this.proxy, key, {
+        get: traceable(`tap ${key}`, access),
         set: this.parent.setter(key),
-        get: traceable(`tap ${key}`, () => this.spyOn(key)),
         configurable: true
       })
+    }
   }
 
   private spyOn(key: string){
