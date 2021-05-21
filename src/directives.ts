@@ -218,7 +218,9 @@ export function setAction(action: AsyncFn){
 
     const run = traceable(`run ${key}`, (...args: any[]) => {
       if(pending)
-        throw Oops.DuplicateAction(key);
+        return Promise.reject(
+          Oops.DuplicateAction(key)
+        );
 
       pending = true;
       on.emit(key);
