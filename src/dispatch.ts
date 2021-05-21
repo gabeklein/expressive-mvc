@@ -7,9 +7,9 @@ import {
   assign,
   assignSpecific,
   createEffect,
-  fn,
   debounce,
-  selectFrom
+  fn,
+  recursiveSelect
 } from './util';
 
 import Oops from './issues';
@@ -76,7 +76,7 @@ export class Dispatch extends Observer {
     using: string | string[] | QueryFunction<this>){
 
     if(fn(using))
-      return selectFrom(this.watched, using);
+      return recursiveSelect(this.watched, using);
 
     if(typeof using == "string")
       return [using];

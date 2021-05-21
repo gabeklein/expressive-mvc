@@ -32,7 +32,7 @@ export {
   defineLazy,
   entriesIn,
   fn,
-  selectFrom,
+  recursiveSelect,
   traceable
 }
 
@@ -154,7 +154,7 @@ function createEffect(callback: EffectCallback<any>){
   }
 }
 
-function selectFrom(keys: string[], invoke: Function){
+function recursiveSelect(keys: string[], using: Function){
   const found = new Set<string>();
   const spy = {} as Recursive<any>;
 
@@ -166,7 +166,7 @@ function selectFrom(keys: string[], invoke: Function){
       }
     });
 
-  invoke(spy);
+  using(spy);
 
   return Array.from(found);
 }
