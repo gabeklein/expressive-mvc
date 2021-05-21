@@ -10,8 +10,8 @@ import { define, entriesIn, fn } from './util';
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-function useActiveMemo<T>(
-  init: (refresh: Callback) => T){
+function useRefresh<T>(
+  init: (trigger: Callback) => T){
 
   const [ state, update ] = useState<any>(() => [
     init(() => update(state.concat()))
@@ -42,14 +42,14 @@ export function useWatcher(
   target: {} | (() => {}),
   path?: string | SelectFunction<any>){
 
-  const subscription = useActiveMemo(refresh => {
+  const subscription = useRefresh(trigger => {
     if(fn(target))
       target = target();
 
     if(fn(path))
       [ path ] = Dispatch.for(target).select(path);
 
-    const sub = new Subscriber(target, refresh);
+    const sub = new Subscriber(target, trigger);
 
     if(path)
       sub.focus(path);
@@ -70,8 +70,8 @@ export function useWatcher(
 export function useSubscriber(
   target: Controller, args: any[]){
 
-  const subscription = useActiveMemo(refresh => 
-    new Subscriber(target, refresh)
+  const subscription = useRefresh(trigger => 
+    new Subscriber(target, trigger)
   );
 
   useLifecycleEffect((name) => {
@@ -90,7 +90,7 @@ export function useSubscriber(
   return subscription.proxy;
 }
 
-export function useMemoized(
+export function useLazy(
   Type: Model, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);
@@ -102,11 +102,9 @@ export function useMemoized(
 
 const ContextUsed = new WeakMap<Controller, boolean>();
 
-export function usePeerContext(instance: Controller){
-  const expected = ContextUsed.get(instance);
-
-  if(expected !== undefined){
-    if(expected)
+function usePeerContext(instance: Controller){
+  if(ContextUsed.has(instance)){
+    if(ContextUsed.get(instance))
       Context.useAmbientLayer();
     return;
   }
@@ -115,29 +113,29 @@ export function usePeerContext(instance: Controller){
     .map(([key, desc]) => [key, desc.value])
     .filter(entry => Controller.isTypeof(entry[1]));
 
-  if(!pending.length)
-    ContextUsed.set(instance, false);
-  else {
+  const hasPeers = pending.length > 0;
+
+  if(hasPeers){
     const ambient = Context.useAmbientLayer();
   
     for(const [key, type] of pending)
       define(instance, key, ambient.get(type));
-  
-    ContextUsed.set(instance, true);
   }
+
+  ContextUsed.set(instance, hasPeers);
 }
 
 export function useController(
   Type: Model, args: any[], 
   callback?: (instance: Controller) => void){
 
-  const subscription = useActiveMemo(refresh => {
+  const subscription = useRefresh(trigger => {
     const instance = Type.create(...args);
 
     if(callback)
       callback(instance);
 
-    return new Subscriber(instance, refresh);
+    return new Subscriber(instance, trigger);
   });
 
   usePeerContext(subscription.subject);

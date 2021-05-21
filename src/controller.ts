@@ -3,7 +3,7 @@ import type { Controller as Public } from '..';
 import { createBindAgent } from './binding';
 import { Context } from './context';
 import { Dispatch } from './dispatch';
-import { useController, useMemoized, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useController, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entriesIn, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
@@ -71,7 +71,7 @@ export class Controller {
   }
 
   static memo(...args: any[]){
-    return useMemoized(this, args);
+    return useLazy(this, args);
   }
 
   static get(key?: boolean | string | SelectFunction<any>){
