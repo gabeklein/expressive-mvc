@@ -42,10 +42,7 @@ export class Controller {
   }
 
   public destroy(){
-    if(this.willDestroy)
-      this.willDestroy();
-
-    Dispatch.for(this).emit("willDestroy");
+    this.declare("willDestroy");
   }
 
   static use(...args: any[]){
@@ -132,6 +129,7 @@ export class Controller {
 
   static get inherits(): Model | undefined {
     const I = getPrototypeOf(this);
+
     if(I !== Controller)
       return I;
   }

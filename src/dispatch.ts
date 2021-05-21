@@ -175,6 +175,16 @@ export class Dispatch extends Observer {
       assignSpecific(this.subject, select, this.watched);
   }
 
+  public declare = (event: string, args?: any[]) => {
+    const target = this.subject as any;
+    const handle = target[event];
+
+    if(fn(handle))
+      handle.apply(target, args);
+
+    this.emit(event);
+  }
+
   public requestUpdate = (
     argument?: RequestCallback | boolean | number) => {
 

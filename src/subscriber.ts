@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { GetterInfo, metaData } from './observer';
-import { create, defineProperty, fn, traceable } from './util';
+import { create, defineProperty, traceable } from './util';
 
 export class Subscriber<T = any> {
   private onDone = [] as Callback[];
@@ -59,16 +59,6 @@ export class Subscriber<T = any> {
     return sub
       ? sub.proxy
       : this.parent.state[key];
-  }
-
-  public declare(event: string, args?: any[]){
-    const target = this.subject as any;
-    const handle = target[event];
-
-    if(fn(handle))
-      handle.apply(target, args);
-
-    this.parent.emit(event);
   }
 
   public commit(key?: string){
