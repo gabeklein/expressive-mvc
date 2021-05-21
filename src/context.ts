@@ -15,6 +15,12 @@ import { create, define, fn, values } from './util';
 import Oops from './issues';
 
 export class Context {
+  static Single = createContext(new Context());
+
+  static useAmbientLayer(){
+    return useContext(this.Single);
+  }
+
   private table = new Map<Model, symbol>();
 
   private key(T: Model){
@@ -59,12 +65,6 @@ export class Context {
 
   public provider(children: ReactNode){
     return createElement(Context.Single.Provider, { value: this }, children);
-  }
-
-  static Single = createContext(new Context());
-
-  static useAmbientLayer(){
-    return useContext(this.Single);
   }
 }
 
@@ -111,7 +111,6 @@ function ParentProvider(
   props: PropsWithChildren<{ target: Model, data: {} }>){
 
   const instance = props.target.using(props.data);
-
   const current = Context.useAmbientLayer();
   const layer = useMemo(() => current.push(instance.get), [props.target]);
 
