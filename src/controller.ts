@@ -45,6 +45,17 @@ export class Controller {
     this.declare("willDestroy");
   }
 
+  static create<T extends Model>(
+    this: T, ...args: any[]){
+
+    const instance: InstanceOf<T> = 
+      new (this as any)(...args);
+
+    Dispatch.for(instance);
+
+    return instance;
+  }
+
   static use(...args: any[]){
     return useController(this, args);
   }
@@ -105,17 +116,6 @@ export class Controller {
   static find(strict?: boolean): Controller | undefined;
   static find(strict?: boolean){
     return Context.useAmbientLayer().get(this, strict);
-  }
-
-  static create<T extends Model>(
-    this: T, ...args: any[]){
-
-    const instance: InstanceOf<T> = 
-      new (this as any)(...args);
-
-    Dispatch.for(instance);
-
-    return instance;
   }
 
   static isTypeof<T extends Model>(

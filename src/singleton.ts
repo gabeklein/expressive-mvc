@@ -5,15 +5,6 @@ import Oops from './issues';
 export class Singleton extends Controller {
   static current?: Singleton = undefined;
 
-  static find(){
-    const { current } = this;
-
-    if(!current)
-      throw Oops.GlobalDoesNotExist(this.name);
-    else
-      return current;
-  }
-
   static create<T extends Model>(
     this: T, ...args: any[]){
 
@@ -26,6 +17,15 @@ export class Singleton extends Controller {
     instance = super.create(...args) as any;
     
     return Type.current = instance;
+  }
+
+  static find(){
+    const { current } = this;
+
+    if(!current)
+      throw Oops.GlobalDoesNotExist(this.name);
+    else
+      return current;
   }
 
   destroy(){
