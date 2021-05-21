@@ -18,7 +18,7 @@ export class Subscriber<T = any> {
     this.proxy = create(subject as any);
 
     for(const key of this.parent.watched){
-      const access = () => this.spyOn(key);
+      const access = () => this.spy(key);
 
       defineProperty(this.proxy, key, {
         get: traceable(`tap ${key}`, access),
@@ -28,11 +28,24 @@ export class Subscriber<T = any> {
     }
   }
 
-  private spyOn(key: string){
+  public commit(key?: string){
+    const remove = key
+      ? [key] : this.parent.watched;
+
+    for(const key of remove)
+      delete (this.proxy as any)[key];
+  }
+
+  public release(){
+    for(const callback of this.onDone)
+      callback()
+  }
+
+  private spy(key: string){
     const source = this.subject as any;
     let sub: Subscriber | undefined;
 
-    this.listen(key, () => {
+    this.manage(key, () => {
       let value = source[key];
 
       if(value instanceof Controller){
@@ -61,21 +74,8 @@ export class Subscriber<T = any> {
       : this.parent.state[key];
   }
 
-  public commit(key?: string){
-    const remove = key
-      ? [key] : this.parent.watched;
-
-    for(const key of remove)
-      delete (this.proxy as any)[key];
-  }
-
-  public release(){
-    for(const callback of this.onDone)
-      callback()
-  }
-
   public focus(key: string){
-    this.listen(key, () => {
+    this.manage(key, () => {
       let value = (this.subject as any)[key];
 
       if(value instanceof Controller){
@@ -93,22 +93,24 @@ export class Subscriber<T = any> {
     return this;
   }
 
-  public listen(
+  public manage(
     key: string,
     subscribe: () => Subscriber | undefined){
 
     let child: Subscriber | undefined;
 
-    const create = () => {
+    const start = () => {
       child = subscribe();
     }
-    const release = () => {
-      child && child.release();
-      child = undefined;
+    const stop = () => {
+      if(child){
+        child.release();
+        child = undefined;
+      }
     }
     const update = () => {
-      release();
-      create();
+      stop();
+      start();
       this.callback();
     }
 
@@ -116,13 +118,13 @@ export class Subscriber<T = any> {
       this.parent.addListener(key, update);
       
     this.onDone.push(() => {
-      release();
+      stop();
       unwatch();
     });
 
     if(this.metadata)
       metaData(update, this.metadata);
 
-    create();
+    start();
   }
 }
