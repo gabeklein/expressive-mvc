@@ -21,6 +21,27 @@ export class Context {
     return useContext(this.Single);
   }
 
+  static createLayer(
+    insert: Controller | Array<Model> | BunchOf<Model>,
+    dependancy?: any){
+
+    const current = this.useAmbient();
+
+    return useMemo(() => {
+      const provide =
+        insert instanceof Controller ? [ insert ] :
+        values(insert).map(T => T.create());
+
+      return current.push(provide);
+    }, [ dependancy ])
+  }
+
+  public createProvider(children: ReactNode){
+    return createElement(
+      Context.Single.Provider, { value: this }, children
+    );
+  }
+
   private table = new Map<Model, symbol>();
 
   private key(T: Model){
@@ -43,8 +64,10 @@ export class Context {
     return instance;
   }
   
-  public push(...items: Controller[]){
+  public push(items: Controller | Controller[]){
     const next = create(this) as Context;
+
+    items = ([] as Controller[]).concat(items);
 
     for(const I of items){
       let T = I.constructor as Model;
@@ -61,10 +84,6 @@ export class Context {
   public pop(){
     for(const c of values<Controller>(this as any))
       c.destroy();
-  }
-
-  public provider(children: ReactNode){
-    return createElement(Context.Single.Provider, { value: this }, children);
   }
 }
 
@@ -110,33 +129,32 @@ export function Provider(props: ProviderProps){
 function ParentProvider(
   props: PropsWithChildren<{ target: Model, data: {} }>){
 
-  const instance = props.target.using(props.data);
-  const current = Context.useAmbient();
-  const layer = useMemo(() => current.push(instance.get), [props.target]);
+  let { children, target, data } = props;
+  const instance = target.using(data);
 
-  return layer.provider(props.children); 
+  return Context
+    .createLayer(instance.get, target)
+    .createProvider(children); 
 }
 
 function DirectProvider(
   props: PropsWithChildren<{ target: Controller, data: {} }>){
 
-  props.target.update(props.data);
+  const { target, data, children } = props;
 
-  const current = Context.useAmbient();
-  const layer = useMemo(() => current.push(props.target), [props.target]);
+  target.update(data);
 
-  return layer.provider(props.children); 
+  return Context
+    .createLayer(target, target)
+    .createProvider(children);
 }
 
 function MultiProvider(
   props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
 
-  const current = Context.useAmbient();
-  const layer = useMemo(() => current.push(
-    ...values(props.types).map(T => T.create())
-  ), []);
+  const layer = Context.createLayer(props.types);
 
   useEffect(() => () => layer.pop(), []);
 
-  return layer.provider(props.children); 
+  return layer.createProvider(props.children); 
 }
