@@ -125,13 +125,13 @@ export class Dispatch extends Observer {
     callback: EffectCallback<any>,
     select?: string[] | QueryFunction<this>) => {
     
-    const { subject } = this;
-    const invoke = createEffect(callback);
-    const reinvoke = debounce(() => invoke(subject));
+    let { subject } = this;
+    const effect = createEffect(callback);
+    const reinvoke = debounce(() => effect(subject));
 
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
-      invoke(sub.proxy);
+      effect(subject = sub.proxy);
       return () => sub.release();
     }
 

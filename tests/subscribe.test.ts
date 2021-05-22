@@ -80,7 +80,7 @@ describe("nested properties", () => {
     await update();
   })
   
-  it.skip('will update if intermediary does change', async () => {
+  it('will update if intermediary does change', async () => {
     const state = Parent.create();
     const update = subscribeTo(state, it => {
       void it.value;
