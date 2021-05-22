@@ -186,57 +186,57 @@ describe("event Directive", () => {
 
 describe("act directive", () => {
   class Test extends Controller {
-    action = act(this.method);
-    invoked = jest.fn();
+    action = act(this.wait);
 
-    async method(param?: any){
-      this.invoked(param);
-      return new Promise(res => setTimeout(res, 100));
+    async wait<T>(input?: T){
+      return new Promise<T>(res => {
+        setTimeout(() => res(input), 0)
+      });
     }
   }
 
-  it("invokes provided function via wrapper", () => {
+  it("passes arguments to wrapped function", async () => {
     const control = Test.create();
-    const foo = Symbol();
-    expect(control.action).not.toBeUndefined();
-    control.action!(foo);
-    expect(control.invoked).toBeCalledWith(foo);
+    const input = Symbol("unique");
+    const output = control.action!(input);
+    
+    await expect(output).resolves.toBe(input);
   });
 
   it("sets method to undefined for duration", async () => {
     const control = Test.create();
-    control.action!();
+    const promise = control.action!();
     expect(control.action).toBeUndefined();
-    await new Promise(res => setTimeout(res, 110));
+    await promise;
     expect(control.action).toBeInstanceOf(Function);
   });
 
-  it("exposes 'allowed' on a closured action", async () => {
+  it("exposes 'allowed' for closured action", async () => {
     const act = Test.create().action!;
 
     expect(act.allowed).toBe(true);
-    act();
+    const promise = act();
     expect(act.allowed).toBe(false);
-    await new Promise(res => setTimeout(res, 110));
+    await promise;
     expect(act.allowed).toBe(true);
   });
 
   it("emits method key before/after activity", async () => {
     const control = Test.create();
-    const result = control.action!();
+    const promise = control.action!();
 
     const onBegin = await control.requestUpdate();
     expect(onBegin).toContain("action");
     expect(control.action).toBeUndefined();
 
-    await result;
+    await promise;
 
     const onEnd = await control.requestUpdate();
     expect(onEnd).toContain("action");
     expect(control.action).toBeInstanceOf(Function);
   });
 
-  it("throws if invoked while in-progress", () => {
+  it("throws immediately if already in-progress", () => {
     const { action } = Test.create();
     const expected = Issue.DuplicateAction("action");
     const run = () => action!();
