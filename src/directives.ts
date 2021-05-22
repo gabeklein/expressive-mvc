@@ -218,11 +218,11 @@ export function setAction(action: AsyncFn){
   return Pending.define((on, key) => {
     let pending = false;
 
-    const run = (...args: any[]) => {
+    function invoke(...args: any[]){
       if(pending)
         return Promise.reject(
           Oops.DuplicateAction(key)
-        );
+        )
 
       pending = true;
       on.emit(key);
@@ -235,16 +235,17 @@ export function setAction(action: AsyncFn){
         })
     };
 
-    traceable(`run ${key}`, run);
-
-    defineProperty(run, "allowed", {
-      get: () => !pending
+    traceable(`run ${key}`, invoke);
+    defineProperty(invoke, "active", {
+      get: () => pending
     })
 
     on.register(key);
     on.assign(key, {
-      get: () => pending ? undefined : run,
-      set: Oops.SetActionProperty(key).warn
+      get: () => invoke,
+      set: () => {
+        throw Oops.SetActionProperty(key);
+      }
     });
   })
 }

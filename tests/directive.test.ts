@@ -186,11 +186,11 @@ describe("event Directive", () => {
 
 describe("act directive", () => {
   class Test extends Controller {
-    action = act(this.wait);
+    test = act(this.wait);
 
     async wait<T>(input?: T){
-      return new Promise<T>(res => {
-        setTimeout(() => res(input), 0)
+      return new Promise<T | undefined>(res => {
+        setTimeout(() => res(input), 1)
       });
     }
   }
@@ -198,50 +198,47 @@ describe("act directive", () => {
   it("passes arguments to wrapped function", async () => {
     const control = Test.create();
     const input = Symbol("unique");
-    const output = control.action!(input);
+    const output = control.test(input);
     
     await expect(output).resolves.toBe(input);
   });
 
-  it("sets method to undefined for duration", async () => {
-    const control = Test.create();
-    const promise = control.action!();
-    expect(control.action).toBeUndefined();
-    await promise;
-    expect(control.action).toBeInstanceOf(Function);
-  });
+  it("sets active to true for run-duration", async () => {
+    const { test } = Test.create();
 
-  it("exposes 'allowed' for closured action", async () => {
-    const act = Test.create().action!;
+    expect(test.active).toBe(false);
 
-    expect(act.allowed).toBe(true);
-    const promise = act();
-    expect(act.allowed).toBe(false);
-    await promise;
-    expect(act.allowed).toBe(true);
+    const result = test();
+    expect(test.active).toBe(true);
+
+    await result;
+    expect(test.active).toBe(false);
   });
 
   it("emits method key before/after activity", async () => {
-    const control = Test.create();
-    const promise = control.action!();
+    let update: string[] | false;
+    const { test, requestUpdate } = Test.create();
 
-    const onBegin = await control.requestUpdate();
-    expect(onBegin).toContain("action");
-    expect(control.action).toBeUndefined();
+    expect(test.active).toBe(false);
 
-    await promise;
+    const result = test();
+    expect(test.active).toBe(true);
+  
+    update = await requestUpdate(true);
+    expect(update).toContain("test");
 
-    const onEnd = await control.requestUpdate();
-    expect(onEnd).toContain("action");
-    expect(control.action).toBeInstanceOf(Function);
+    await result;
+    expect(test.active).toBe(false);
+
+    update = await requestUpdate(true);
+    expect(update).toContain("test");
   });
 
   it("throws immediately if already in-progress", () => {
-    const { action } = Test.create();
-    const expected = Issue.DuplicateAction("action");
-    const run = () => action!();
+    const { test } = Test.create();
+    const expected = Issue.DuplicateAction("test");
 
-    run();
-    expect(run).rejects.toThrowError(expected);
+    test();
+    expect(() => test()).rejects.toThrowError(expected);
   })
 })

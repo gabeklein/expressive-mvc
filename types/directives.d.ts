@@ -55,19 +55,16 @@ declare namespace Directives {
   export function setReference <T = HTMLElement> (callback?: EffectCallback<T>): { current: T | null };
   
   /**
-   * Sets an exotic method with provided logic. Property accepts an async function.
+   * Sets an exotic method with managed ready-state. Property accepts an async function.
    * 
-   * When set method is invoked, it is set to undefined (and `allowed` property to false), for duration of call.
-   * The update is broadcast to event-stream, respectively when function is called and then returns (or throws).
+   * When an act-method is invoked, its `active` property to true for duration of call.
+   * This is emitted as an update to property, both when called and after returns (or throws).
    * 
-   * The result of this behavior is managed ready-state.
-   * If key-value is undefined, you know method is in-progress. Same if `allowed === false`.
-   * 
-   * **Important:** - Subsequent calls (where may be closured) will immediately throw if one is still pending.
+   * **Note:** Subsequent calls will immediately throw if one is still pending.
    * 
    * @param action - Action to fire when resulting property is invoked.
    */
-  export function setAction <T extends Async>(action: T): T & { allowed: boolean } | undefined;
+  export function setAction <T extends Async>(action: T): T & { active: boolean };
   
   /**
    * Assigns a shortcut to trigger host-property event.
