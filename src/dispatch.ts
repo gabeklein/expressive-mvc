@@ -186,17 +186,12 @@ export class Dispatch extends Observer {
   }
 
   public requestUpdate = (
-    argument?: RequestCallback | boolean | number) => {
+    argument?: RequestCallback | boolean) => {
 
     const { pending, waiting } = this;
 
     if(fn(argument))
       waiting.push(argument)
-    else if(typeof argument == "number")
-      return new Promise(cb => {
-        waiting.push(cb);
-        setTimeout(cb, argument, false);
-      })
     else if(!pending === argument)
       return Promise.reject(Oops.StrictUpdate())
     else if(pending)

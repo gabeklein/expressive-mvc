@@ -223,13 +223,15 @@ describe("act directive", () => {
 
   it("emits method key before/after activity", async () => {
     const control = Test.create();
-    control.action!();
+    const result = control.action!();
 
     const onBegin = await control.requestUpdate();
     expect(onBegin).toContain("action");
     expect(control.action).toBeUndefined();
 
-    const onEnd = await control.requestUpdate(200);
+    await result;
+
+    const onEnd = await control.requestUpdate();
     expect(onEnd).toContain("action");
     expect(control.action).toBeInstanceOf(Function);
   });

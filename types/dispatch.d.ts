@@ -29,7 +29,6 @@ interface Dispatch {
   declare(event: string, arguments?: any[]): void;
 
   requestUpdate(strict?: boolean): Promise<string[] | false>;
-  requestUpdate(timeout: number): Promise<string[] | false>;
   requestUpdate(cb: (keys: string[]) => void): void;
 }
 
