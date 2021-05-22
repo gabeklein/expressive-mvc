@@ -1,7 +1,6 @@
-import React from "react";
-import { create } from "react-test-renderer";
+import React from 'react';
 
-import { Controller, hoc, wrap, Consumer } from "./adapter";
+import { Consumer, Controller, hoc, render, wrap } from './adapter';
 
 type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
@@ -35,7 +34,7 @@ describe("Instance HOCs", () => {
 
     const { Component, get: instance } = Test.create();
 
-    create(
+    render(
       <Component got={i => expect(i).toStrictEqual(instance)} />
     );
   });
@@ -47,7 +46,7 @@ describe("Instance HOCs", () => {
 
     const { Component, get: instance } = Test.create();
 
-    create(
+    render(
       <Component got={i => expect(i).toStrictEqual(instance)} />
     );
   });
@@ -59,7 +58,7 @@ describe("Instance HOCs", () => {
 
     const { CustomProvider, get: instance } = Test.create();
 
-    create(
+    render(
       <CustomProvider>
         <Consumer of={Test} get={i => expect(i).toStrictEqual(instance)} />
       </CustomProvider>

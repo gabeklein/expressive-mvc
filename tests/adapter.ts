@@ -24,6 +24,8 @@ export const parent = Source.parent as typeof Public.parent;
 
 export const test = trySubscribe;
 
+export { create as render } from "react-test-renderer";
+
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
   /** Reference to controller instance. */

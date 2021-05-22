@@ -1,7 +1,6 @@
 import React from 'react';
-import { create } from 'react-test-renderer';
 
-import { Consumer, Controller, Issue, Provider, Singleton, tap } from './adapter';
+import { Consumer, Controller, Issue, Provider, render, Singleton, tap } from './adapter';
 
 class Foo extends Controller {
   value?: string = undefined;
@@ -13,7 +12,7 @@ describe("Provider", () => {
   it("provides an existing instance of controller", () => {
     const instance = Foo.create();
 
-    create(
+    render(
       <Provider of={instance}>
         <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
       </Provider>
@@ -21,7 +20,7 @@ describe("Provider", () => {
   })
 
   it("creates an instance of given class", () => {
-    create(
+    render(
       <Provider of={Foo}>
         <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
       </Provider>
@@ -29,7 +28,7 @@ describe("Provider", () => {
   })
 
   it("will assign props to controller", () => {
-    create(
+    render(
       <Provider of={Foo} value="foobar">
         <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("foobar")} />
       </Provider>
@@ -37,7 +36,7 @@ describe("Provider", () => {
   })
 
   it("will accept render function on class-type", () => {
-    create(
+    render(
       <Provider of={Foo}>
         {(instance) => {
           return <Consumer of={Foo} get={i => {
@@ -52,7 +51,7 @@ describe("Provider", () => {
   })
 
   it("will not assign foriegn props to controller", () => {
-    create(
+    render(
       // @ts-ignore - type-checking warns against this
       <Provider of={Foo} nonValue="foobar">
         <Consumer of={Foo} has={i => {
@@ -64,7 +63,7 @@ describe("Provider", () => {
   })
 
   it("provides all instances if `of` is an object", () => {
-    create(
+    render(
       <Provider of={{ Foo, Bar }}>
         <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
         <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
@@ -75,13 +74,13 @@ describe("Provider", () => {
   it("will destroy created instance when unmounts", async () => {
     const didUnmount = jest.fn();
 
-    const render = create(
+    const result = render(
       <Provider of={Foo}>
         <Consumer of={Foo} has={i => i.willDestroy = didUnmount} />
       </Provider>
     );
 
-    render.unmount();
+    result.unmount();
 
     expect(didUnmount).toHaveBeenCalled()
   });
@@ -91,7 +90,7 @@ describe("Consumer", () => {
   it("can handle complex arrangement", () => {
     const instance = Foo.create();
 
-    create(
+    render(
       <Provider of={instance}>
         <Provider of={Baz}>
           <Provider of={{ Bar }}>
@@ -105,7 +104,7 @@ describe("Consumer", () => {
   })
 
   it("get prop will pass undefined if not found", () => {
-    create(
+    render(
       <Consumer of={Bar} get={i => expect(i).toBeUndefined()} />
     )
   })
@@ -113,7 +112,7 @@ describe("Consumer", () => {
   it.skip("has prop will throw if not found", () => {
     // React throwing error-boundary warning despite assertion.
 
-    const test = () => create(
+    const test = () => render(
       <Consumer of={Bar} has={i => void i} />
     )
 
@@ -123,7 +122,7 @@ describe("Consumer", () => {
   })
 
   it("will select extended class if found", () => {
-    create(
+    render(
       <Provider of={Baz}>
         <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
       </Provider>
@@ -131,7 +130,7 @@ describe("Consumer", () => {
   })
 
   it("will select closest instance of same type", () => {
-    create(
+    render(
       <Provider of={Foo} value="outer">
         <Provider of={Foo} value="inner">
           <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("inner")} />
@@ -141,7 +140,7 @@ describe("Consumer", () => {
   });
 
   it("prefers closest match over best match", () => {
-    create(
+    render(
       <Provider of={Bar}>
         <Provider of={Baz}>
           <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
@@ -169,7 +168,7 @@ describe("Peers", () => {
       return null;
     }
 
-    create(
+    render(
       <Provider of={Bar}>
         <Test />
       </Provider>
@@ -193,7 +192,7 @@ describe("Peers", () => {
       return null;
     }
 
-    create(<Test />);
+    render(<Test />);
   })
 
   it("will reject from context if a singleton", () => {
