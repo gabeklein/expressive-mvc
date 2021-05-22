@@ -49,7 +49,8 @@ export class Subscriber<T = any> {
       let value = source[key];
 
       if(value instanceof Controller){
-        let child = new Subscriber(value, this.callback);
+        let child = sub =
+          new Subscriber(value, this.callback);
     
         this.parent.once("didRender", () => {
           child.commit();
@@ -63,7 +64,7 @@ export class Subscriber<T = any> {
           enumerable: true
         })
 
-        return sub = child;
+        return child;
       }
     });
 

@@ -151,14 +151,14 @@ export class Dispatch extends Observer {
     if(!select)
       return assign({}, this.state);
 
-    const acc = {} as BunchOf<any>;
+    const data = {} as BunchOf<any>;
 
     select = this.select(select);
     
     for(const key of select)
-      acc[key] = (this.subject as any)[key];
+      data[key] = (this.subject as any)[key];
 
-    return acc;
+    return data;
   }
 
   public update = (

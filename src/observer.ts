@@ -62,7 +62,7 @@ export class Observer {
     if(!set)
       set = (value: any) => {
         this.getters.delete(key);
-        this.inject(key, {
+        this.assign(key, {
           value,
           configurable: true,
           writable: true
@@ -72,7 +72,7 @@ export class Observer {
     traceable(`run ${key}`, get);
 
     this.getters.set(key, get);
-    this.inject(key, { get, set, configurable: true });
+    this.assign(key, { get, set, configurable: true });
   }
 
   protected start(){
@@ -91,7 +91,7 @@ export class Observer {
       if(subscribers[key].size)
         expected.set(key, init);
       else
-        this.inject(key, {
+        this.assign(key, {
           get: init,
           set: Oops.AssignToGetter(key).warn
         })
@@ -108,7 +108,7 @@ export class Observer {
       this.monitorValue(key, value);
   }
 
-  public inject(key: string, desc: PropertyDescriptor){
+  public assign(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
@@ -127,7 +127,7 @@ export class Observer {
       this.state[key] = initial;
 
     this.register(key);
-    this.inject(key, {
+    this.assign(key, {
       get: this.getter(key),
       set: this.setter(key, effect)
     });
@@ -135,8 +135,6 @@ export class Observer {
 
   private monitorComputed(
     key: string, compute: () => any){
-
-    this.register(key);
 
     const { state, subject, getters } = this;
     const info = { key, on: this, priority: 1 };
@@ -184,12 +182,14 @@ export class Observer {
             info.priority = meta.priority + 1;
         }
 
-        this.inject(key, {
+        this.assign(key, {
           get: this.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
       }
     }
+
+    this.register(key);
 
     traceable(`try ${key}`, refresh);
     traceable(`new ${key}`, create);
@@ -246,10 +246,7 @@ export class Observer {
   }
 
   public emit(key: string){
-    if(!this.pending)
-      this.pending = this.sync();
-
-    this.pending(key);
+    (this.pending || this.sync())(key);
   }
 
   private reset(frame: string[]){
@@ -276,7 +273,7 @@ export class Observer {
       this.reset(Array.from(handled));
     });
 
-    return (key: string) => {
+    return this.pending = (key: string) => {
       if(handled.has(key))
         return;
 

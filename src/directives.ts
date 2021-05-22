@@ -75,7 +75,7 @@ export function setReference<T = any>
 
   return Pending.define((on, key) => {
     on.register(key);
-    on.inject(key, {
+    on.assign(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
         set: on.setter(key,
@@ -105,7 +105,7 @@ export function setEvent
 
   return Pending.define((on, key) => {
     on.register(key);
-    on.inject(key, {
+    on.assign(key, {
       value: () => on.emit(key)
     })
 
@@ -204,7 +204,7 @@ export function setTuple<T extends any[]>
 
     source[key] = values;
     on.register(key);
-    on.inject(key, {
+    on.assign(key, {
       get: on.getter(key),
       set: setTuple
     });
@@ -242,7 +242,7 @@ export function setAction(action: AsyncFn){
     })
 
     on.register(key);
-    on.inject(key, {
+    on.assign(key, {
       get: () => pending ? undefined : run,
       set: Oops.SetActionProperty(key).warn
     });
