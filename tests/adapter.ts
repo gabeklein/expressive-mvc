@@ -22,9 +22,9 @@ export const act = Source.act as typeof Public.act;
 export const event = Source.event as typeof Public.event;
 export const parent = Source.parent as typeof Public.parent;
 
-export const test = trySubscribe;
-
 export { create as render } from "react-test-renderer";
+export { trySubscribe as test };
+export { subscribeTo }
 
 interface RenderControllerResult<T> 
   extends RenderHookResult<unknown, T> {
@@ -110,4 +110,30 @@ function trySubscribe(init: () => Public.Controller){
     assertDidUpdate,
     assertDidNotUpdate
   })
+}
+
+function subscribeTo<T extends Public.Controller>(
+  target: T,
+  accessor: (self: T) => void){
+
+  const didTrigger = jest.fn();
+
+  (target as any).effect(self => {
+    accessor(self);
+    didTrigger();
+  });
+
+  // ignore initial invocation.
+  didTrigger.mockReset();
+  
+  return async (isExpected = true) => {
+    await new Promise(res => setImmediate(res));
+
+    if(isExpected){
+      expect(didTrigger).toHaveBeenCalled();
+      didTrigger.mockReset();
+    }
+    else
+      expect(didTrigger).not.toHaveBeenCalled();
+  }
 }
