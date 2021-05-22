@@ -36,6 +36,21 @@ describe("Provider", () => {
     );
   })
 
+  it("will accept render function on class-type", () => {
+    create(
+      <Provider of={Foo}>
+        {(instance) => {
+          return <Consumer of={Foo} get={i => {
+            // instance injected should be a subscribe-clone.
+            expect(i).not.toStrictEqual(instance);
+            // get actual instance via circular-get property.
+            expect(i).toStrictEqual(instance.get);
+          }} />
+        }}
+      </Provider>
+    );
+  })
+
   it("will not assign foriegn props to controller", () => {
     create(
       // @ts-ignore - type-checking warns against this

@@ -132,6 +132,9 @@ function ParentProvider(
   let { children, target, data } = props;
   const instance = target.using(data);
 
+  if(fn(children))
+    children = children(instance);
+
   return Context
     .createLayer(instance.get, target)
     .createProvider(children); 
