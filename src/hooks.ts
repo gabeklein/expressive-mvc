@@ -81,7 +81,7 @@ export function useSubscriber(
     const alias = subscriberEvent(name);
 
     for(const event of [alias, name])
-      subscription.parent.declare(event, args);
+      subscription.parent.emit(event, args);
 
     if(name == Lifecycle.WILL_UNMOUNT)
       subscription.release();
@@ -147,7 +147,7 @@ export function useController(
     const alias = componentEvent(name);
 
     for(const event of [alias, name])
-      subscription.parent.declare(event);
+      subscription.parent.emit(event, []);
 
     if(name == Lifecycle.WILL_UNMOUNT){
       subscription.release();

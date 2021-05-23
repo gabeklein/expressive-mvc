@@ -42,7 +42,7 @@ export class Controller {
   }
 
   public destroy(){
-    this.declare("willDestroy");
+    Dispatch.for(this).emit("willDestroy", []);
   }
 
   static create<T extends Model>(

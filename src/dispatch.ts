@@ -101,6 +101,18 @@ export class Dispatch extends Observer {
     return this.addListener(target, callback, once);
   }
 
+  public emit(event: string, args?: any[]){
+    if(args){
+      const { subject } = this as any;
+      const handle = subject[event];
+  
+      if(fn(handle))
+        handle.apply(subject, args);
+    }
+
+    super.emit(event);
+  }
+
   public on = (
     property: string | QueryFunction<this>,
     listener: UpdateCallback<any, any>,
@@ -170,19 +182,9 @@ export class Dispatch extends Observer {
       select = this.select(select);
 
     if(Array.isArray(select))
-      select.forEach(k => this.emit(k))
+      select.forEach(k => super.emit(k))
     else
       assignSpecific(this.subject, select, this.watched);
-  }
-
-  public declare = (event: string, args?: any[]) => {
-    const target = this.subject as any;
-    const handle = target[event];
-
-    if(fn(handle))
-      handle.apply(target, args);
-
-    this.emit(event);
   }
 
   public requestUpdate = (
