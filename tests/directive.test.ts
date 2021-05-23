@@ -222,15 +222,15 @@ describe("act directive", () => {
     expect(test.active).toBe(false);
 
     const result = test();
-    expect(test.active).toBe(true);
-  
     update = await requestUpdate(true);
+
+    expect(test.active).toBe(true);
     expect(update).toContain("test");
 
     await result;
-    expect(test.active).toBe(false);
-
     update = await requestUpdate(true);
+
+    expect(test.active).toBe(false);
     expect(update).toContain("test");
   });
 
