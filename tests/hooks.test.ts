@@ -1,35 +1,5 @@
 import { Controller, Singleton, test } from './adapter';
 
-describe("computed", () => {
-  class Subject extends Controller {
-    seconds = 0;
-  
-    get minutes(){
-      return Math.floor(this.seconds / 60)
-    }
-  }
-  
-  it('triggers computed value when input values change', async () => {
-    const state = Subject.create();
-  
-    state.seconds = 30;
-  
-    await state.requestUpdate(true);
-  
-    expect(state.seconds).toEqual(30);
-    expect(state.minutes).toEqual(0);
-  
-    await state.requestUpdate(false);
-    
-    state.seconds = 60;
-  
-    await state.requestUpdate(true);
-  
-    expect(state.seconds).toEqual(60);
-    expect(state.minutes).toEqual(1);
-  })
-})
-
 describe("tap", () => {
   class Parent extends Singleton {
     value = "foo";
