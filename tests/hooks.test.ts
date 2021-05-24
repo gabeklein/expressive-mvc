@@ -1,4 +1,4 @@
-import { Controller, Singleton, test } from './adapter';
+import { Controller, Singleton, renderHook } from './adapter';
 
 describe("tap", () => {
   class Parent extends Singleton {
@@ -24,107 +24,113 @@ describe("tap", () => {
     singleton = Parent.create();
   });
   
-  it('access subvalue directly with tap', async () => {
-    const { state, assertDidUpdate } = test(() => {
+  it('access subvalue directly', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => {
       return Parent.tap("value");
     })
   
-    expect(state).toBe("foo");
+    expect(result.current).toBe("foo");
   
     singleton.value = "bar";
-  
-    await assertDidUpdate();
+    await waitForNextUpdate();
+    expect(result.current).toBe("bar");
   })
   
-  it('access subvalue directly with tap', async () => {
-    const { state } = test(() => {
+  it('access subvalue directly', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => {
       return Parent.tap(x => x.value);
     });
   
-    expect(state).toBe("foo");
+    expect(result.current).toBe("foo");
+
+    singleton.value = "bar";
+    await waitForNextUpdate();
+    expect(result.current).toBe("bar");
   })
   
-  it('access child controller with tap', async () => {
-    const { state, assertDidUpdate } = test(() => {
+  it('access child controller', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => {
       return Parent.tap("child");
     })
   
-    expect(state.value).toBe("foo");
+    expect(result.current.value).toBe("foo");
   
-    state.value = "bar"
+    result.current.value = "bar"
   
-    await assertDidUpdate();
+    await waitForNextUpdate();
   
-    expect(state.value).toBe("bar");
+    expect(result.current.value).toBe("bar");
   
     singleton.child = new Child();
   
-    await assertDidUpdate();
+    await waitForNextUpdate();
+
+    expect(result.current.value).toBe("foo");
   })
   
-  it.todo('access nested controllers with tap')
+  it.todo('access nested controllers')
 })
 
 describe("meta", () => {
   class Child extends Controller {
-    constructor(
-      public value: string){
-      super();
-    }
+    value = "foo";
   }
   
   class Parent extends Controller {
     static value = "foo";
-    static child = new Child("foo");
+    static child = new Child();
   }
 
   beforeEach(() => Parent.value = "foo")
   
-  it('tracks static values on meta', async () => {
-    const { state, assertDidUpdate } = test(() => {
+  it('will track static values', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => {
       const meta = Parent.meta();
-      void meta.value;
+      return meta.value;
+    });
+
+    expect(result.current).toBe("foo");
+
+    Parent.value = "bar";
+    await waitForNextUpdate();
+    expect(result.current).toBe("bar");
+  })
+  
+  it.skip('will track specific values', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => {
+      const meta = Parent.meta(x => x.value);
       return meta;
     });
-  
-    expect(state.value).toBe("foo");
-  
-    state.value = "bar";
-  
-    await assertDidUpdate();
-    expect(state.value).toBe("bar");
+
+    expect(result.current).toBe("foo");
+
+    Parent.value = "bar";
+    await waitForNextUpdate();
+    expect(result.current).toBe("bar");
   })
   
-  it('pulls static values via selector', async () => {
-    const { state } = test(() => {
-      return Parent.meta(x => x.value);
-    });
-  
-    expect(state).toBe("foo");
-  })
-  
-  it('tracks child controller values on meta', async () => {
-    const { state, assertDidUpdate } = test(() => {
+  it('will track child controller values', async () => {
+    const { result: { current }, waitForNextUpdate } = renderHook(() => {
       const meta = Parent.meta();
       void meta.child.value;
       return meta;
     });
   
-    expect(state.child.value).toBe("foo");
+    expect(current.child.value).toBe("foo");
   
     // Will refresh on sub-value change.
-    state.child.value = "bar";
-    await assertDidUpdate();
-    expect(state.child.value).toBe("bar");
+    current.child.value = "bar";
+    await waitForNextUpdate();
+    expect(current.child.value).toBe("bar");
   
     // Will refresh on repalcement.
-    state.child = new Child("foo");
-    await assertDidUpdate();
-    expect(state.child.value).toBe("foo");
+    current.child = new Child();
+    await waitForNextUpdate();
+    expect(current.child.value).toBe("foo");
   
     // Fresh subscription does still work.
-    state.child.value = "bar";
-    await assertDidUpdate();
-    expect(state.child.value).toBe("bar");
+    current.child.value = "bar";
+    await waitForNextUpdate();
+    expect(current.child.value).toBe("bar");
   })
 })
