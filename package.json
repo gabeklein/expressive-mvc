@@ -17,7 +17,6 @@
     "hooks"
   ],
   "main": "lib/index.js",
-  "module": "src/index.ts",
   "types": "types/index.d.ts",
   "files": [
     "lib/index.js",
