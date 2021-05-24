@@ -9,7 +9,7 @@ describe("observers", () => {
     }
   }
   
-  it('dispatches changes to observer', async () => {
+  it('will dispatche changes to observer', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -21,7 +21,7 @@ describe("observers", () => {
     expect(callback).toBeCalledWith(30, "seconds");
   })
   
-  it('dispatches changes to computed value', async () => {
+  it('will dispatch changes to computed value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -125,7 +125,7 @@ describe("effect", () => {
   })
 });
 
-describe("requests before initialized", () => {
+describe("requests made before init", () => {
   class TestValues extends Controller {
     constructor(mock: () => void){
       super();

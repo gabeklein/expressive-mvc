@@ -6,14 +6,18 @@ type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
 }>
 
-const TestComponentFunction = (props: TestComponentProps, control: any) => {
+const TestComponentFunction = (
+  props: TestComponentProps, control: any) => {
+
   if(props.got)
     props.got(control);
 
   return props.children || null;
 }
 
-class TestComponentClass extends React.Component<TestComponentProps> {
+class TestComponentClass
+  extends React.Component<TestComponentProps> {
+
   constructor(props: TestComponentProps, control: any){
     super(props);
 
@@ -26,8 +30,8 @@ class TestComponentClass extends React.Component<TestComponentProps> {
   }
 }
 
-describe("Instance HOCs", () => {
-  it("applies instance to function component", () => {
+describe("Instance HOC", () => {
+  it("will apply instance to function component", () => {
     class Test extends Controller {
       Component = hoc(TestComponentFunction);
     }
@@ -39,7 +43,9 @@ describe("Instance HOCs", () => {
     );
   });
 
-  it("applies instance to class component", () => {
+  it.todo("will still work if component-value changes")
+
+  it("will apply instance to class component", () => {
     class Test extends Controller {
       Component = hoc(TestComponentClass);
     }
@@ -51,7 +57,7 @@ describe("Instance HOCs", () => {
     );
   });
 
-  it("provides instance to children of component", () => {
+  it("will provide instance to children of component", () => {
     class Test extends Controller {
       CustomProvider = wrap(TestComponentClass);
     }

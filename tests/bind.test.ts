@@ -7,7 +7,7 @@ describe("bind", () => {
     birthday = 0;
   }
   
-  it('bind contains refFunctions cooresponding to values', async () => {
+  it('will contains refFunctions cooresponding to values', async () => {
     const { bind } = Form.create();
 
     expect(bind.hasOwnProperty("username")).toBe(true);
@@ -16,4 +16,7 @@ describe("bind", () => {
     // ignores non-string values
     expect(bind.hasOwnProperty("birthday")).toBe(false);
   })
+
+  it.todo("will bind element to value of property")
+  it.todo("will bind input to value of property")
 })

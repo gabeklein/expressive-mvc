@@ -30,58 +30,60 @@ describe("computed", () => {
   })
 })
 
-describe("ordered computed", () => {
-  let computed: string[];
-  beforeEach(() => computed = []);
+describe("co-dependant computed", () => {
+  let didCompute: string[];
+
+  beforeEach(() => didCompute = []);
 
   class Test extends Controller {
     X = 1;
 
     get A(){
       const value = this.X 
-      computed.push("A")
+      didCompute.push("A")
       return value;
     };
     get B(){
       const value = this.A + 1 
-      computed.push("B")
+      didCompute.push("B")
       return value;
     };
     get C(){
       const value = this.X + this.B + 1
-      computed.push("C")
+      didCompute.push("C")
       return value;
     };
     get D(){
       const value = this.A + this.C + 1
-      computed.push("D")
+      didCompute.push("D")
       return value;
     };
   }
 
-  it("computed values are evaluated in-order", async () => {
+  it("will be evaluated in order", async () => {
     const test = Test.create();
 
-    // initialize D, should cascade to dependants
+    // initialize D, should cascade to dependancies
     expect(test.D).toBe(6);
     await test.requestUpdate();
+
     // should evaluate in order, by use
-    expect(computed).toMatchObject(["A", "B", "C", "D"]);
+    expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
 
     // empty computed
-    computed = [];
+    didCompute = [];
 
     // change value of X, will trigger A & C;
     test.X = 2;
     const updated = await test.requestUpdate();
 
     // should evaluate by prioritiy
-    expect(computed).toMatchObject(["A", "B", "C", "D"]);
+    expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
     expect(updated).toMatchObject(["X", "A", "B", "C", "D"]);
   })
 })
 
-describe("reference computed", () => {
+describe("circular computed", () => {
   class Test extends Controller {
     multiplier = 0;
     previous: any;
@@ -96,7 +98,7 @@ describe("reference computed", () => {
     }
   }
 
-  it("computed may access own previous value", async () => {
+  it("may access own previous value", async () => {
     const test = Test.create();
 
     // shouldn't exist until getter's side-effect
@@ -137,7 +139,7 @@ describe.skip("recursive computed", () => {
     }
   }
 
-  it("getter may cause its own update", async () => {
+  it("may cause its own update", async () => {
     const test = Test.create();
 
     expect(test.format).toBe("Value 0 is even");
