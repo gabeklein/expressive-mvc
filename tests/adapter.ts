@@ -118,7 +118,7 @@ function subscribeTo<T extends Public.Controller>(
 
   const didTrigger = jest.fn();
 
-  (target as any).effect(self => {
+  target.effect(self => {
     accessor(self);
     didTrigger();
   });
