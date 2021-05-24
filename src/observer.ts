@@ -258,7 +258,7 @@ export class Observer {
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
-    setImmediate(() => {
+    setTimeout(() => {
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -271,7 +271,7 @@ export class Observer {
 
       this.pending = undefined;
       this.reset(Array.from(handled));
-    });
+    }, 0);
 
     return this.pending = (key: string) => {
       if(handled.has(key))

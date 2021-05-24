@@ -39,7 +39,7 @@ function subscribeTo<T extends Public.Controller>(
   didTrigger.mockReset();
   
   return async (isExpected = true) => {
-    await new Promise(res => setImmediate(res));
+    await new Promise(res => setTimeout(res, 0));
 
     if(isExpected){
       expect(didTrigger).toHaveBeenCalled();

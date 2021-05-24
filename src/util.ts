@@ -79,15 +79,15 @@ function allEntriesIn(object: {}, until: {}){
 
 function debounce(callback: Callback){
   let throttle: undefined | boolean;
-  return () => {
-    if(throttle)
-      return;
 
-    throttle = true;
-    callback();
-    setImmediate(() => {
-      throttle = false;
-    })
+  return () => {
+    if(!throttle){
+      throttle = true;
+      callback();
+      setTimeout(() => {
+        throttle = false;
+      }, 0)
+    }
   }
 }
 
