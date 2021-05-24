@@ -4,7 +4,7 @@ import { createBindAgent } from './binding';
 import { Context } from './context';
 import { Dispatch } from './dispatch';
 import { useController, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { assignSpecific, define, entriesIn, fn, getPrototypeOf } from './util';
+import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -22,7 +22,7 @@ export class Controller {
 
     define(this, { get: this, set: this });
 
-    for(const [key, { value }] of entriesIn(dispatch))
+    for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
   }
