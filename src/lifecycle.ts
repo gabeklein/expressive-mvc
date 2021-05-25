@@ -12,15 +12,26 @@ export const Lifecycle = {
   DID_MOUNT: "didMount"
 } as const;
 
+export const lifecycleEvents = [
+  "didCreate",
+  "willDestroy",
+  ...values(Lifecycle)
+];
+
 export type LifecycleEvent = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){
   const map = new Map<LifecycleEvent, string>();
 
-  for(const name of values(Lifecycle))
-    map.set(name, prefix + name[0].toUpperCase() + name.slice(1));
+  for(const name of values(Lifecycle)){
+    const alias = prefix + name[0].toUpperCase() + name.slice(1);
 
-  return (name: LifecycleEvent) => map.get(name)!;
+    lifecycleEvents.push(alias);
+    map.set(name, alias);
+  }
+
+  return (name: LifecycleEvent) =>
+    map.get(name) as LifecycleEvent;
 }
 
 export function useLifecycleEffect(

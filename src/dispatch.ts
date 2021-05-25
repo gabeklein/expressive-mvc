@@ -1,6 +1,7 @@
 import type { Controller } from './controller';
 
 import { Pending } from './directives';
+import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import {
@@ -75,8 +76,10 @@ export class Dispatch extends Observer {
   public select(
     using: string | string[] | QueryFunction<this>){
 
-    if(fn(using))
-      return recursiveSelect(this.watched, using);
+    if(fn(using)){
+      const watchable = lifecycleEvents.concat(this.watched);
+      return recursiveSelect(watchable, using);
+    }
 
     if(typeof using == "string")
       return [using];
