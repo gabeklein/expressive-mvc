@@ -1,4 +1,4 @@
-import type { Controller as Public } from '..';
+import type { Controller as Public } from '../types';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import { createElement, useMemo } from 'react';

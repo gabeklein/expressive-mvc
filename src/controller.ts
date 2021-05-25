@@ -1,4 +1,4 @@
-import type { Controller as Public } from '..';
+import type { Controller as Public } from '../types';
 
 import { createBindAgent } from './binding';
 import { Context } from './context';

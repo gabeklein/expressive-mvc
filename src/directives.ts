@@ -1,4 +1,4 @@
-import type { Controller as Public } from '..';
+import type { Controller as Public } from '../types';
 import type { Controller, Model } from './controller';
 
 import { Dispatch } from './dispatch';
