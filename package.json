@@ -24,6 +24,7 @@
   ],
   "scripts": {
     "build": "rollup --config",
+    "watch": "rollup --config --sourcemap --watch",
     "prebuild": "rm -rf lib/",
     "publish:beta": "npm version prerelease --preid=beta",
     "preversion": "jest",
