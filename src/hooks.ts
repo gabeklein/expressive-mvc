@@ -13,7 +13,7 @@ const componentEvent = forAlias("component");
 function useRefresh<T>(
   init: (trigger: Callback) => T){
 
-  const [ state, update ] = useState<any>(() => [
+  const [ state, update ] = useState(() => [
     init(() => update(state.concat()))
   ]);
 
