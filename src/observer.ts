@@ -31,9 +31,9 @@ export function metaData(x: Function, set?: GetterInfo){
 }
 
 export class Observer {
-  public getters = new Map<string, Callback>();
-  public subscribers = {} as BunchOf<Set<Callback>>;
-  public waiting = [] as RequestCallback[];
+  private getters = new Map<string, Callback>();
+  private subscribers = {} as BunchOf<Set<Callback>>;
+  protected waiting = [] as RequestCallback[];
   public state = {} as BunchOf<any>;
 
   constructor(
