@@ -1,4 +1,4 @@
-import React, { ReactElement } from 'react';
+import React from 'react';
 
 import Dispatch from './dispatch';
 import Lifecycle from './lifecycle';
