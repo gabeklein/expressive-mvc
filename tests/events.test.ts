@@ -161,6 +161,30 @@ describe("requests made before init", () => {
     expect(mock).toBeCalledTimes(2);
   })
 
+  it('effect method with selector', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        // @ts-ignore
+        this.effect(mock, x => x.value1.value3);
+      }
+    }
+
+    const mock = jest.fn();
+    const instance = Test.create();
+
+    instance.value1++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalled();
+
+    instance.value2++;
+    await instance.requestUpdate();
+
+    // expect pre-existing listener to hit
+    expect(mock).toBeCalledTimes(2);
+  })
+
   it('on method', async () => {
     class Test extends TestValues {
       constructor(){

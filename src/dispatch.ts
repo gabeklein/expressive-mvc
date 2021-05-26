@@ -10,6 +10,7 @@ import {
   createEffect,
   debounce,
   fn,
+  keys,
   recursiveSelect
 } from './util';
 
@@ -76,11 +77,15 @@ export class Dispatch extends Observer {
   public select(
     using: string | string[] | QueryFunction<this>){
 
-    if(fn(using))
-      return recursiveSelect([
+    if(fn(using)){
+      const available = new Set([
         ...lifecycleEvents,
-        ...this.watched
-      ], using);
+        ...this.getters.keys(),
+        ...keys(this.subject)
+      ]);
+
+      return recursiveSelect(available, using);
+    }
 
     if(typeof using == "string")
       return [using];
