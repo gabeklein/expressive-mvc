@@ -48,23 +48,6 @@ export class Dispatch extends Observer {
 
     Register.set(subject, this);
     this.prepareComputed(base);
-    this.acceptEarly();
-  }
-
-  private acceptEarly(){
-    const { watch } = this;
-
-    this.watch = (...args) => {
-      let undo: Callback;
-      this.requestUpdate(() => {
-        undo = watch.apply(this, args)
-      })
-      return () => undo();
-    }
-
-    this.requestUpdate(() => {
-      delete (this as any).watch;
-    })
   }
 
   protected manageProperty(
@@ -153,9 +136,20 @@ export class Dispatch extends Observer {
     const reinvoke = debounce(() => effect(subject));
 
     if(!select){
-      const sub = new Subscriber(subject, reinvoke);
-      effect(subject = sub.proxy);
-      return sub.listen();
+      let sub: Subscriber;
+
+      const capture = () => {
+        sub = new Subscriber(subject, reinvoke);
+        effect(subject = sub.proxy);
+        sub.listen();
+      }
+
+      if(this.ready)
+        capture();
+      else
+        this.requestUpdate(capture);
+      
+      return () => sub.release();
     }
 
     if(fn(select)){

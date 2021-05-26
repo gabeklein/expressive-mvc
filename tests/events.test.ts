@@ -182,6 +182,37 @@ describe("requests made before init", () => {
     expect(mock).toBeCalledTimes(2);
   })
 
+  it('effect method with subscription', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.effect(this.test);
+      }
+
+      test(){
+        void this.value1;
+        void this.value3;
+        mock();
+      }
+    }
+
+    const mock = jest.fn();
+    const instance = Test.create();
+
+    // runs immediately to aquire subscription
+    expect(mock).toBeCalled();
+
+    instance.value1++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalledTimes(2);
+
+    instance.value2++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalledTimes(3);
+  })
+
   it('on method', async () => {
     class Test extends TestValues {
       constructor(){
