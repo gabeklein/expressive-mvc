@@ -156,7 +156,13 @@ export class Dispatch extends Observer {
       return sub.listen();
     }
 
-    select = this.select(select);
+    if(fn(select)){
+      const k = new Set([
+        ...this.getters.keys(),
+        ...keys(this.subject)
+      ]);
+      select = recursiveSelect(select, k)
+    }
 
     return this.addListener(select, reinvoke);
   }
