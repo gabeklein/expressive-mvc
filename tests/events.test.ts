@@ -127,14 +127,6 @@ describe("effect", () => {
 
 describe("requests made before init", () => {
   class TestValues extends Controller {
-    constructor(mock: () => void){
-      super();
-      this.effect(mock, [
-        "value1",
-        "value3"
-      ]);
-    }
-
     value1 = 1;
     value2 = 2;
   
@@ -143,19 +135,82 @@ describe("requests made before init", () => {
     }
   }
 
-  it('will watch values proactively', async () => {
+  it('effect method', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.effect(mock, [
+          "value1",
+          "value3"
+        ]);
+      }
+    }
+
     const mock = jest.fn();
-    const instance = TestValues.create(mock);
+    const instance = Test.create();
 
     instance.value1++;
     await instance.requestUpdate();
 
-    expect(mock).toBeCalledTimes(1);
+    expect(mock).toBeCalled();
 
     instance.value2++;
     await instance.requestUpdate();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(2);
+  })
+
+  it('on method', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        // @ts-ignore
+        this.on("value1", mock);
+      }
+    }
+
+    const mock = jest.fn();
+    const instance = Test.create();
+
+    instance.value1++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalled();
+  })
+
+  it('on method with getter', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        // @ts-ignore
+        this.on("value3", mock);
+      }
+    }
+    
+    const mock = jest.fn();
+    const instance = Test.create();
+
+    instance.value2++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalled();
+  })
+
+  it('on method with selector', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.on(x => x.value1, mock);
+      }
+    }
+    
+    const mock = jest.fn();
+    const instance = Test.create();
+
+    instance.value1++;
+    await instance.requestUpdate();
+
+    expect(mock).toBeCalled();
   })
 });
