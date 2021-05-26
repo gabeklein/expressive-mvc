@@ -5,7 +5,9 @@ import { create, defineProperty, traceable } from './util';
 
 export class Subscriber<T = any> {
   private onDone = [] as Callback[];
-  public following = [] as string[];
+  private dependant = new Set<Subscriber>();
+
+  public following = {} as BunchOf<Callback>;
   public parent: Dispatch;
   public proxy: T;
   
@@ -21,12 +23,10 @@ export class Subscriber<T = any> {
       const initial = () => {
         let value = (this.subject as any)[key];
 
-        this.following.push(key);
-
         if(value instanceof Controller)
           return this.recursive(key) || value;
     
-        this.listen(key);
+        this.follow(key);
         return value;
       }
 
@@ -38,16 +38,14 @@ export class Subscriber<T = any> {
     }
   }
 
-  private listen(key: string, cb?: Callback){
+  private follow(key: string, cb?: Callback){
     if(!cb)
       cb = () => this.callback();
 
     if(this.metadata)
       metaData(cb, this.metadata);
-      
-    this.onDone.push(
-      this.parent.addListener(key, cb)
-    )
+
+    this.following[key] = cb;
   }
 
   public commit(key?: string){
@@ -56,11 +54,6 @@ export class Subscriber<T = any> {
 
     for(const key of remove)
       delete (this.proxy as any)[key];
-  }
-
-  public release(){
-    for(const callback of this.onDone)
-      callback()
   }
 
   private recursive(key: string){
@@ -112,26 +105,58 @@ export class Subscriber<T = any> {
     return this;
   }
 
+  public listen(commit?: boolean){
+    this.dependant.forEach(x => x.listen());
+    this.parent.followers.add(this.following);
+
+    if(commit)
+      this.commit();
+  }
+
+  public release(){
+    this.dependant.forEach(x => x.release());
+    this.parent.followers.delete(this.following);
+
+    for(const callback of this.onDone)
+      callback()
+  }
+
   public watch(
     key: string,
     subscribe: () => Subscriber | undefined){
 
     let child: Subscriber | undefined;
 
-    const start = () => {
+    const start = (mounted?: true) => {
       child = subscribe();
-    }
-    const stop = () => {
-      if(child){
-        child.release();
-        child = undefined;
-      }
+
+      if(!child)
+        return;
+
+      this.dependant.add(child);
+
+      if(mounted)
+        child.listen();
     }
 
-    this.onDone.push(stop);
-    this.listen(key, () => {
-      stop();
-      start();
+    this.onDone.push(() => {
+      if(child){
+        for(const callback of child.onDone)
+          callback();
+
+        child = undefined;
+      }
+    });
+
+    this.follow(key, () => {
+      if(child){
+        for(const callback of child.onDone)
+          callback();
+
+        this.dependant.delete(child);
+      }
+
+      start(true);
       this.callback();
     });
 

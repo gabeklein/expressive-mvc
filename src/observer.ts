@@ -31,10 +31,12 @@ export function metaData(x: Function, set?: GetterInfo){
 }
 
 export class Observer {
-  private getters = new Map<string, Callback>();
-  private subscribers = {} as BunchOf<Set<Callback>>;
+  protected getters = new Map<string, Callback>();
+  protected subscribers = {} as BunchOf<Set<Callback>>;
   protected waiting = [] as RequestCallback[];
+
   public state = {} as BunchOf<any>;
+  public followers = new Set<BunchOf<Callback>>();
 
   constructor(
     public subject: {},
@@ -157,13 +159,12 @@ export class Observer {
     }
 
     const create = (early?: boolean) => {
-      const { proxy, following } =
-        new Subscriber(subject, refresh, info);
+      const sub = new Subscriber(subject, refresh, info);
 
       try {
-        defineProperty(proxy, key, { value: undefined });
+        defineProperty(sub.proxy, key, { value: undefined });
 
-        return state[key] = compute.call(proxy);
+        return state[key] = compute.call(sub.proxy);
       }
       catch(e){
         Oops.ComputeFailed(subject.constructor.name, key, true).warn();
@@ -174,7 +175,9 @@ export class Observer {
         throw e;
       }
       finally {
-        for(const key of following){
+        sub.listen();
+
+        for(const key of keys(sub.following)){
           const compute = getters.get(key);
           const meta = compute && metaData(compute);
 
@@ -262,7 +265,7 @@ export class Observer {
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
-      
+
         if(!handled.has(key))
           compute();
       }
@@ -273,24 +276,31 @@ export class Observer {
       this.reset(Array.from(handled));
     }, 0);
 
+    const register = (key: string, notify: Callback) => {
+      const getter = metaData(notify);
+
+      if(!getter || getter.on !== this)
+        effects.add(notify);
+      else {
+        const offset = pending.findIndex(q => 
+          metaData(q).priority < getter.priority
+        );
+        pending.splice(offset + 1, 0, notify);
+      }
+    }
+
     return this.pending = (key: string) => {
       if(handled.has(key))
         return;
 
       handled.add(key);
 
-      for(const notify of this.subscribers[key] || []){
-        const getter = metaData(notify);
+      for(const group of this.followers)
+        if(key in group)
+          register(key, group[key]);
 
-        if(!getter || getter.on !== this)
-          effects.add(notify);
-        else {
-          const offset = pending.findIndex(q => 
-            metaData(q).priority < getter.priority
-          );
-          pending.splice(offset + 1, 0, notify);
-        }
-      }
+      for(const notify of this.subscribers[key] || [])
+        register(key, notify);
     };
   }
 }

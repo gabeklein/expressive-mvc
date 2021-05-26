@@ -58,8 +58,7 @@ export function useWatcher(
   });
 
   useEffect(() => {
-    if(!path)
-      subscription.commit();
+    subscription.listen(!path);
     return () =>
       subscription.release();
   }, []);
@@ -76,7 +75,7 @@ export function useSubscriber(
 
   useLifecycleEffect((name) => {
     if(name == Lifecycle.DID_MOUNT)
-      subscription.commit();
+      subscription.listen(true);
 
     const alias = subscriberEvent(name);
 
@@ -142,7 +141,7 @@ export function useController(
 
   useLifecycleEffect((name) => {
     if(name == Lifecycle.DID_MOUNT)
-      subscription.commit();
+      subscription.listen(true);
 
     const alias = componentEvent(name);
 

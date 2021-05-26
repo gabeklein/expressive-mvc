@@ -147,6 +147,8 @@ export class Dispatch extends Observer {
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
       effect(subject = sub.proxy);
+      sub.listen();
+
       return () => sub.release();
     }
 
