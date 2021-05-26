@@ -23,7 +23,7 @@ export class Subscriber<T = any> {
         let value = (this.subject as any)[key];
 
         if(value instanceof Controller)
-          return this.recursive(key) || value;
+          return this.recursive(key);
     
         this.follow(key);
         return value;
