@@ -271,15 +271,15 @@ export class Observer {
       this.reset(Array.from(handled));
     }, 0);
 
-    const register = (key: string, notify: Callback) => {
-      const getter = metaData(notify);
-      const byPriority = (q: Callback) => 
-          metaData(q).priority < getter.priority
+    const register = (notify: Callback) => {
+      const target = metaData(notify);
 
-      if(!getter || getter.on !== this)
+      if(!target || target.on !== this)
         effects.add(notify);
       else {
-        const offset = pending.findIndex(byPriority);
+        const offset = pending.findIndex(
+          peer => target.priority > metaData(peer).priority
+        );
         pending.splice(offset + 1, 0, notify);
       }
     }
@@ -292,7 +292,7 @@ export class Observer {
 
       for(const group of this.followers)
         if(key in group)
-          register(key, group[key]);
+          register(group[key]);
     };
   }
 }
