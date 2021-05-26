@@ -139,10 +139,7 @@ describe("requests made before init", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        this.effect(mock, [
-          "value1",
-          "value3"
-        ]);
+        this.effect(mock, ["value1", "value3"]);
       }
     }
 

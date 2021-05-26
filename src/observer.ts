@@ -20,6 +20,7 @@ export interface GetterInfo {
 }
 
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
+const ComputedInit = new WeakSet<Function>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
@@ -188,7 +189,7 @@ export class Observer {
     traceable(`new ${key}`, create);
 
     metaData(compute, info);
-    metaData(create, info);
+    ComputedInit.add(create);
 
     return create;
   }
@@ -233,7 +234,7 @@ export class Observer {
       const property = getOwnPropertyDescriptor(this.subject, key);
       const getter = property && property.get as Computed;
   
-      if(getter && metaData(getter))
+      if(getter && ComputedInit.has(getter))
         getter(true);
     }
 
