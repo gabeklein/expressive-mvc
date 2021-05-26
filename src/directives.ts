@@ -74,7 +74,7 @@ export function setReference<T = any>
   (effect?: EffectCallback<Controller, any>): { current: T } {
 
   return Pending.define((on, key) => {
-    on.register(key);
+    on.watched.add(key);
     on.assign(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
@@ -104,7 +104,7 @@ export function setEvent
   (callback?: EffectCallback<Controller>){
 
   return Pending.define((on, key) => {
-    on.register(key);
+    on.watched.add(key);
     on.assign(key, {
       value: () => on.emit(key)
     })
@@ -203,7 +203,7 @@ export function setTuple<T extends any[]>
     traceable(`set ${key}`, setTuple);
 
     source[key] = values;
-    on.register(key);
+    on.watched.add(key);
     on.assign(key, {
       get: on.getter(key),
       set: setTuple
@@ -240,7 +240,7 @@ export function setAction(action: AsyncFn){
       get: () => pending
     })
 
-    on.register(key);
+    on.watched.add(key);
     on.assign(key, {
       get: () => invoke,
       set: () => {

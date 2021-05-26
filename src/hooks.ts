@@ -13,11 +13,11 @@ const componentEvent = forAlias("component");
 function useRefresh<T>(
   init: (trigger: Callback) => T){
 
-  const [ state, update ] = useState(() => [
+  const [ state, update ] = useState((): T[] => [
     init(() => update(state.concat()))
   ]);
 
-  return state[0] as T;
+  return state[0];
 }
 
 export function usePassive<T extends Model>(
@@ -57,11 +57,7 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(() => {
-    subscription.listen(!path);
-    return () =>
-      subscription.release();
-  }, []);
+  useEffect(() => subscription.listen(!path), []);
 
   return subscription.proxy;
 }

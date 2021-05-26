@@ -4,7 +4,6 @@ import { GetterInfo, metaData } from './observer';
 import { create, defineProperty, traceable } from './util';
 
 export class Subscriber<T = any> {
-  private onDone = [] as Callback[];
   private dependant = new Set<Subscriber>();
 
   public following = {} as BunchOf<Callback>;
@@ -111,14 +110,13 @@ export class Subscriber<T = any> {
 
     if(commit)
       this.commit();
+
+    return () => this.release();
   }
 
   public release(){
     this.dependant.forEach(x => x.release());
     this.parent.followers.delete(this.following);
-
-    for(const callback of this.onDone)
-      callback()
   }
 
   public watch(
@@ -127,7 +125,7 @@ export class Subscriber<T = any> {
 
     let child: Subscriber | undefined;
 
-    const start = (mounted?: true) => {
+    const start = (mounted?: boolean) => {
       child = subscribe();
 
       if(!child)
@@ -139,20 +137,9 @@ export class Subscriber<T = any> {
         child.listen();
     }
 
-    this.onDone.push(() => {
-      if(child){
-        for(const callback of child.onDone)
-          callback();
-
-        child = undefined;
-      }
-    });
-
     this.follow(key, () => {
       if(child){
-        for(const callback of child.onDone)
-          callback();
-
+        child.release();
         this.dependant.delete(child);
       }
 

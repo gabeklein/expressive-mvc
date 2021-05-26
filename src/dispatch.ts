@@ -76,10 +76,11 @@ export class Dispatch extends Observer {
   public select(
     using: string | string[] | QueryFunction<this>){
 
-    if(fn(using)){
-      const watchable = lifecycleEvents.concat(this.watched);
-      return recursiveSelect(watchable, using);
-    }
+    if(fn(using))
+      return recursiveSelect([
+        ...lifecycleEvents,
+        ...this.watched
+      ], using);
 
     if(typeof using == "string")
       return [using];
@@ -93,10 +94,10 @@ export class Dispatch extends Observer {
     once?: boolean,
     initial?: boolean){
 
-    const [ target ] = this.select(key);
+    const target = this.select(key);
 
     const callback = () =>
-      handler.call(this.subject, this.state[target], target);
+      handler.call(this.subject, this.state[target[0]], target[0]);
 
     if(initial)
       callback();
@@ -147,19 +148,12 @@ export class Dispatch extends Observer {
     if(!select){
       const sub = new Subscriber(subject, reinvoke);
       effect(subject = sub.proxy);
-      sub.listen();
-
-      return () => sub.release();
+      return sub.listen();
     }
 
     select = this.select(select);
 
-    if(select.length > 1){
-      const cleanup = select.map(k => this.addListener(k, reinvoke));
-      return () => cleanup.forEach(x => x());
-    }
-
-    return this.addListener(select[0], reinvoke);
+    return this.addListener(select, reinvoke);
   }
 
   public export = (
@@ -189,7 +183,7 @@ export class Dispatch extends Observer {
     if(Array.isArray(select))
       select.forEach(k => super.emit(k))
     else
-      assignSpecific(this.subject, select, this.watched);
+      assignSpecific(this.subject, select, Array.from(this.watched));
   }
 
   public requestUpdate = (

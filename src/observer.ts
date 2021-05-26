@@ -32,11 +32,11 @@ export function metaData(x: Function, set?: GetterInfo){
 
 export class Observer {
   protected getters = new Map<string, Callback>();
-  protected subscribers = {} as BunchOf<Set<Callback>>;
   protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
   public followers = new Set<BunchOf<Callback>>();
+  public watched = new Set<string>();
 
   constructor(
     public subject: {},
@@ -48,10 +48,6 @@ export class Observer {
   }
 
   public pending?: (key: string) => void;
-
-  public get watched(){
-    return keys(this.subscribers);
-  }
 
   private prepareComputed(
     key: string,
@@ -78,7 +74,7 @@ export class Observer {
   }
 
   protected start(){
-    const { state, getters, subscribers } = this;
+    const { followers, getters, state } = this;
     const expected = new Map<string, Callback>();
 
     for(const [k, d] of entriesIn(this.subject))
@@ -90,7 +86,7 @@ export class Observer {
 
       const init = this.monitorComputed(key, compute);
 
-      if(subscribers[key].size)
+      if(Array.from(followers).find(x => key in x))
         expected.set(key, init);
       else
         this.assign(key, {
@@ -114,12 +110,6 @@ export class Observer {
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
-  public register(key: string){
-    return this.subscribers[key] || (
-      this.subscribers[key] = new Set()
-    );
-  }
-
   public monitorValue(
     key: string,
     initial: any,
@@ -128,7 +118,7 @@ export class Observer {
     if(initial !== undefined)
       this.state[key] = initial;
 
-    this.register(key);
+    this.watched.add(key);
     this.assign(key, {
       get: this.getter(key),
       set: this.setter(key, effect)
@@ -192,7 +182,7 @@ export class Observer {
       }
     }
 
-    this.register(key);
+    this.watched.add(key);
 
     traceable(`try ${key}`, refresh);
     traceable(`new ${key}`, create);
@@ -227,23 +217,27 @@ export class Observer {
   }
 
   public addListener(
-    key: string,
+    keys: string[],
     callback: Callback,
     once?: boolean){
 
     type Computed = (early?: boolean) => void;
 
-    const list = this.register(key);
     const handler = once ? () => { done(); callback() } : callback;
-    const done = () => { list.delete(handler) };
+    const done = () => { this.followers.delete(follow) };
+    const follow: BunchOf<Callback> = {};
 
-    const property = getOwnPropertyDescriptor(this.subject, key);
-    const getter = property && property.get as Computed;
+    for(const key of keys){
+      follow[key] = handler;
 
-    if(getter && metaData(getter))
-      getter(true);
+      const property = getOwnPropertyDescriptor(this.subject, key);
+      const getter = property && property.get as Computed;
+  
+      if(getter && metaData(getter))
+        getter(true);
+    }
 
-    list.add(handler);
+    this.followers.add(follow);
 
     return done;
   }
@@ -278,13 +272,13 @@ export class Observer {
 
     const register = (key: string, notify: Callback) => {
       const getter = metaData(notify);
+      const byPriority = (q: Callback) => 
+          metaData(q).priority < getter.priority
 
       if(!getter || getter.on !== this)
         effects.add(notify);
       else {
-        const offset = pending.findIndex(q => 
-          metaData(q).priority < getter.priority
-        );
+        const offset = pending.findIndex(byPriority);
         pending.splice(offset + 1, 0, notify);
       }
     }
@@ -298,9 +292,6 @@ export class Observer {
       for(const group of this.followers)
         if(key in group)
           register(key, group[key]);
-
-      for(const notify of this.subscribers[key] || [])
-        register(key, notify);
     };
   }
 }
