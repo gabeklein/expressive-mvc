@@ -84,7 +84,7 @@ export class Dispatch extends Observer {
         ...keys(this.subject)
       ]);
 
-      return recursiveSelect(available, using);
+      return recursiveSelect(using, available);
     }
 
     if(typeof using == "string")

@@ -155,8 +155,8 @@ function createEffect(callback: EffectCallback<any>){
 }
 
 function recursiveSelect(
-  keys: Iterable<string>,
-  using: Function){
+  using: Function,
+  keys: Iterable<string>){
 
   const found = new Set<string>();
   const spy = {} as Recursive<any>;
