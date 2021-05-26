@@ -9,7 +9,7 @@ describe("observers", () => {
     }
   }
   
-  it('will dispatche changes to observer', async () => {
+  it('will dispatch changes to observer', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
