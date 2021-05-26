@@ -7,7 +7,6 @@ import {
   entriesIn,
   fn,
   getOwnPropertyDescriptor,
-  keys,
   traceable
 } from './util';
 
@@ -21,6 +20,16 @@ export interface GetterInfo {
 
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
+
+function mayComputeEarly(on: {}, key: string){
+  type Compute = (early?: boolean) => void;
+
+  const property = getOwnPropertyDescriptor(on, key);
+  const getter = property && property.get as Compute;
+
+  if(getter && ComputedInit.has(getter))
+    getter(true);
+}
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
@@ -39,56 +48,53 @@ export class Observer {
   public followers = new Set<BunchOf<Callback>>();
   public watched = new Set<string>();
 
-  constructor(
-    public subject: {},
-    base: typeof Controller){
-
-    for(const layer of allEntriesIn(subject, base))
-      for(const [key, { get, set }] of layer)
-        get && this.prepareComputed(key, get, set);
-  }
-
   public pending?: (key: string) => void;
 
-  private prepareComputed(
-    key: string,
-    get: () => any,
-    set?: (v: any) => void){
+  constructor(
+    public subject: {}){
+  }
 
-    if(this.getters.has(key))
-      return;
+  protected prepareComputed(stopAt: typeof Controller){
+    for(const layer of allEntriesIn(this.subject, stopAt))
+      for(let [key, { get, set }] of layer){
+        if(!get)
+          continue;
 
-    if(!set)
-      set = (value: any) => {
-        this.getters.delete(key);
-        this.assign(key, {
-          value,
-          configurable: true,
-          writable: true
-        });
+        if(this.getters.has(key))
+          return;
+
+        if(!set)
+          set = (value: any) => {
+            this.getters.delete(key);
+            this.assign(key, {
+              value,
+              configurable: true,
+              writable: true
+            });
+          }
+
+        traceable(`run ${key}`, get);
+
+        this.getters.set(key, get);
+        this.assign(key, { get, set, configurable: true });
       }
-
-    traceable(`run ${key}`, get);
-
-    this.getters.set(key, get);
-    this.assign(key, { get, set, configurable: true });
   }
 
   protected start(){
-    const { followers, getters, state } = this;
-    const expected = new Map<string, Callback>();
+    const followers = Array.from(this.followers);
+    const required: Callback[] = [];
 
     for(const [k, d] of entriesIn(this.subject))
       this.manageProperty(k, d);
 
-    for(const [key, compute] of getters){
-      if(key in state)
+    for(const [key, compute] of this.getters){
+      if(key in this.state)
         continue;
 
       const init = this.monitorComputed(key, compute);
 
-      if(Array.from(followers).find(x => key in x))
-        expected.set(key, init);
+      if(followers.find(x => key in x))
+        required.push(init);
       else
         this.assign(key, {
           get: init,
@@ -96,8 +102,8 @@ export class Observer {
         })
     }
 
-    expected.forEach(x => x());
-    this.reset([]);
+    required.forEach(x => x());
+    this.reset();
   }
 
   protected manageProperty(
@@ -168,12 +174,16 @@ export class Observer {
       finally {
         sub.listen();
 
-        for(const key of keys(sub.following)){
+        for(const key in sub.following){
           const compute = getters.get(key);
-          const meta = compute && metaData(compute);
 
-          if(meta && meta.priority >= info.priority)
-            info.priority = meta.priority + 1;
+          if(!compute)
+            continue;
+
+          const { priority } = metaData(compute);
+
+          if(info.priority <= priority)
+            info.priority = priority + 1;
         }
 
         this.assign(key, {
@@ -222,20 +232,13 @@ export class Observer {
     callback: Callback,
     once?: boolean){
 
-    type Computed = (early?: boolean) => void;
-
     const handler = once ? () => { done(); callback() } : callback;
     const done = () => { this.followers.delete(follow) };
     const follow: BunchOf<Callback> = {};
 
     for(const key of keys){
+      mayComputeEarly(this.subject, key);
       follow[key] = handler;
-
-      const property = getOwnPropertyDescriptor(this.subject, key);
-      const getter = property && property.get as Computed;
-  
-      if(getter && ComputedInit.has(getter))
-        getter(true);
     }
 
     this.followers.add(follow);
@@ -247,8 +250,9 @@ export class Observer {
     (this.pending || this.sync())(key);
   }
 
-  private reset(frame: string[]){
-    this.waiting.splice(0).forEach(x => x(frame));
+  private reset(frame?: Iterable<string>){
+    const list = frame ? Array.from(frame) : [];
+    this.waiting.splice(0).forEach(x => x(list));
   }
 
   private sync(){
@@ -268,7 +272,7 @@ export class Observer {
       effects.forEach(x => x());
 
       this.pending = undefined;
-      this.reset(Array.from(handled));
+      this.reset(handled);
     }, 0);
 
     const register = (notify: Callback) => {

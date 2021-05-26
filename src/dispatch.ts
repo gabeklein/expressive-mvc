@@ -44,8 +44,10 @@ export class Dispatch extends Observer {
     public subject: {},
     base: typeof Controller){
 
-    super(subject, base);
+    super(subject);
+
     Register.set(subject, this);
+    this.prepareComputed(base);
     this.acceptEarly();
   }
 
