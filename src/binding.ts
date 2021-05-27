@@ -1,9 +1,12 @@
+import type { Controller as Public } from '../types';
 import type { Controller } from "./controller";
 
-import { useEffect, useCallback } from 'react';
-import { entries, define, defineProperty } from './util';
+import { createElement, useCallback, useEffect, useMemo } from 'react';
 
-import Oops from "./issues";
+import Oops from './issues';
+import { Pending } from './directives';
+import { createHocFactory } from './hoc';
+import { define, defineProperty, entries } from './util';
 
 export function createBindAgent(
   requestedBy: Controller){
@@ -24,7 +27,24 @@ export function createBindAgent(
   return bind;
 }
 
-export function useBindRef(
+export function setBoundComponent
+  (Type: Public.Component<{}, HTMLElement>, to: string){
+
+  return Pending.define(({ subject }, key) => {
+    const componentFor = createHocFactory<any>(Type);
+
+    const Component = (props: {}) => {
+      const ref = useBindRef(subject as any, key);
+      const Component = useMemo(() => componentFor(ref), []);
+  
+      return createElement(Component, props);
+    }
+
+    define(subject, key, Component);
+  })
+}
+
+function useBindRef(
   control: Controller, key: string){
 
   let cleanup: Callback | undefined;

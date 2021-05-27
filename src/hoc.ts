@@ -1,26 +1,7 @@
 import type { Controller as Public } from '../types';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
-import { useMemo } from 'react';
-
-import { useBindRef } from './binding';
-import { Controller } from './controller';
 import Oops from './issues';
-
-export function boundRefComponent(
-  control: Controller,
-  property: string,
-  Inner: Public.Component<{}, any>){
-
-  const componentFor = createHocFactory(Inner);
-
-  return (props: {}) => {
-    const ref = useBindRef(control, property);
-    const Component = useMemo(() => componentFor(ref), []);
-
-    return createElement(Component, props);
-  }
-}
 
 export function createHocFactory<T = any, P = {}>(
   Type: Public.Component<P, T>

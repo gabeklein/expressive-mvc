@@ -8,11 +8,14 @@ export {
   setEvent as event,
   setComponent as hoc,
   setParentComponent as wrap,
-  setBoundComponent as bind,
   setMemo as memo,
   setIgnored as lazy,
   setTuple as tuple
 } from './directives';
+
+export {
+  setBoundComponent as bind
+} from './binding';
 
 export {
   Controller,
