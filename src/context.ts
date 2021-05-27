@@ -66,27 +66,18 @@ export function useLookup(){
   return useContext(Context);
 }
 
-function useNewLayer(
+function useIncluding(
   insert: Controller | Array<Model> | BunchOf<Model>,
   dependancy?: any){
 
   const current = useLookup();
 
   return useMemo(() => {
-    const provide =
-      insert instanceof Controller ? [ insert ] :
-      values(insert).map(T => T.create());
+    const provide = insert instanceof Controller
+      ? [ insert ] : values(insert).map(T => T.create());
 
     return current.push(provide);
   }, [ dependancy ])
-}
-
-function createProvider(
-  provide: Lookup, children: ReactNode){
-
-  return createElement(
-    Context.Provider, { value: provide }, children
-  );
 }
 
 interface ConsumerProps {
@@ -94,6 +85,11 @@ interface ConsumerProps {
   get?: (value: Controller) => void;
   has?: (value: Controller) => void;
   children?: (value: Controller) => ReactElement<any, any> | null;
+}
+
+interface ProviderProps {
+  of: Controller | Model | Array<Model> | BunchOf<Model>,
+  children?: ReactNode 
 }
 
 export const Consumer = (props: ConsumerProps) => {
@@ -108,11 +104,6 @@ export const Consumer = (props: ConsumerProps) => {
     callback(Control.get(!!has));
 
   return null;
-}
-
-interface ProviderProps {
-  of: Controller | Model | Array<Model> | BunchOf<Model>,
-  children?: ReactNode 
 }
 
 export function Provider(props: ProviderProps){
@@ -133,32 +124,32 @@ function ParentProvider(
 
   let { children, target, data } = props;
   const instance = target.using(data);
-  const internal = useNewLayer(instance.get, target);
+  const value = useIncluding(instance.get, target);
 
   if(fn(children))
     children = children(instance);
 
-  return createProvider(internal, children); 
+  return createElement(Context.Provider, { value }, children);
 }
 
 function DirectProvider(
   props: PropsWithChildren<{ target: Controller, data: {} }>){
 
-  const { target, data, children } = props;
-  const internal = useNewLayer(target, target);
+  const { children, data, target } = props;
+  const value = useIncluding(target, target);
 
   target.update(data);
 
-  return createProvider(internal, children); 
+  return createElement(Context.Provider, { value }, children);
 }
 
 function MultiProvider(
   props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
 
-  let { children, types } = props;
-  const internal = useNewLayer(types);
+  const { children, types } = props;
+  const value = useIncluding(types);
 
-  useEffect(() => () => internal.pop(), []);
+  useEffect(() => () => value.pop(), []);
 
-  return createProvider(internal, children); 
+  return createElement(Context.Provider, { value }, children);
 }
