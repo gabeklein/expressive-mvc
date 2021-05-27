@@ -60,10 +60,10 @@ export class Lookup {
   }
 }
 
-const Context = createContext(new Lookup());
+const LookupContext = createContext(new Lookup());
 
 export function useLookup(){
-  return useContext(Context);
+  return useContext(LookupContext);
 }
 
 function useIncluding(
@@ -129,7 +129,7 @@ function ParentProvider(
   if(fn(children))
     children = children(instance);
 
-  return createElement(Context.Provider, { value }, children);
+  return createElement(LookupContext.Provider, { value }, children);
 }
 
 function DirectProvider(
@@ -140,7 +140,7 @@ function DirectProvider(
 
   target.update(data);
 
-  return createElement(Context.Provider, { value }, children);
+  return createElement(LookupContext.Provider, { value }, children);
 }
 
 function MultiProvider(
@@ -151,5 +151,5 @@ function MultiProvider(
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(Context.Provider, { value }, children);
+  return createElement(LookupContext.Provider, { value }, children);
 }
