@@ -14,34 +14,7 @@ import { create, define, fn, values } from './util';
 
 import Oops from './issues';
 
-export class Context {
-  static Single = createContext(new Context());
-
-  static useAmbient(){
-    return useContext(this.Single);
-  }
-
-  static createLayer(
-    insert: Controller | Array<Model> | BunchOf<Model>,
-    dependancy?: any){
-
-    const current = this.useAmbient();
-
-    return useMemo(() => {
-      const provide =
-        insert instanceof Controller ? [ insert ] :
-        values(insert).map(T => T.create());
-
-      return current.push(provide);
-    }, [ dependancy ])
-  }
-
-  public createProvider(children: ReactNode){
-    return createElement(
-      Context.Single.Provider, { value: this }, children
-    );
-  }
-
+export class Lookup {
   private table = new Map<Model, symbol>();
 
   private key(T: Model){
@@ -65,7 +38,7 @@ export class Context {
   }
   
   public push(items: Controller | Controller[]){
-    const next = create(this) as Context;
+    const next = create(this) as Lookup;
 
     items = ([] as Controller[]).concat(items);
 
@@ -85,6 +58,35 @@ export class Context {
     for(const c of values<Controller>(this as any))
       c.destroy();
   }
+}
+
+const Context = createContext(new Lookup());
+
+export function useLookup(){
+  return useContext(Context);
+}
+
+function useNewLayer(
+  insert: Controller | Array<Model> | BunchOf<Model>,
+  dependancy?: any){
+
+  const current = useLookup();
+
+  return useMemo(() => {
+    const provide =
+      insert instanceof Controller ? [ insert ] :
+      values(insert).map(T => T.create());
+
+    return current.push(provide);
+  }, [ dependancy ])
+}
+
+function createProvider(
+  provide: Lookup, children: ReactNode){
+
+  return createElement(
+    Context.Provider, { value: provide }, children
+  );
 }
 
 interface ConsumerProps {
@@ -131,33 +133,32 @@ function ParentProvider(
 
   let { children, target, data } = props;
   const instance = target.using(data);
+  const internal = useNewLayer(instance.get, target);
 
   if(fn(children))
     children = children(instance);
 
-  return Context
-    .createLayer(instance.get, target)
-    .createProvider(children); 
+  return createProvider(internal, children); 
 }
 
 function DirectProvider(
   props: PropsWithChildren<{ target: Controller, data: {} }>){
 
   const { target, data, children } = props;
+  const internal = useNewLayer(target, target);
 
   target.update(data);
 
-  return Context
-    .createLayer(target, target)
-    .createProvider(children);
+  return createProvider(internal, children); 
 }
 
 function MultiProvider(
   props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
 
-  const layer = Context.createLayer(props.types);
+  let { children, types } = props;
+  const internal = useNewLayer(types);
 
-  useEffect(() => () => layer.pop(), []);
+  useEffect(() => () => internal.pop(), []);
 
-  return layer.createProvider(props.children); 
+  return createProvider(internal, children); 
 }

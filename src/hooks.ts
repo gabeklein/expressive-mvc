@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Context } from './context';
+import { useLookup } from './context';
 import { Controller, Model } from './controller';
 import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
@@ -100,7 +100,7 @@ const ContextUsed = new WeakMap<Controller, boolean>();
 function usePeerContext(instance: Controller){
   if(ContextUsed.has(instance)){
     if(ContextUsed.get(instance))
-      Context.useAmbient();
+      useLookup();
     return;
   }
 
@@ -111,10 +111,10 @@ function usePeerContext(instance: Controller){
   const hasPeers = pending.length > 0;
 
   if(hasPeers){
-    const ambient = Context.useAmbient();
+    const local = useLookup();
   
     for(const [key, type] of pending)
-      define(instance, key, ambient.get(type));
+      define(instance, key, local.get(type));
   }
 
   ContextUsed.set(instance, hasPeers);

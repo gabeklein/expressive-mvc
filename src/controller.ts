@@ -1,7 +1,7 @@
 import type { Controller as Public } from '../types';
 
 import { createBindAgent } from './binding';
-import { Context } from './context';
+import { useLookup } from './context';
 import { Dispatch } from './dispatch';
 import { useController, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
@@ -115,7 +115,7 @@ export class Controller {
   static find(strict: true): Controller;
   static find(strict?: boolean): Controller | undefined;
   static find(strict?: boolean){
-    return Context.useAmbient().get(this, strict);
+    return useLookup().get(this, strict);
   }
 
   static isTypeof<T extends Model>(
