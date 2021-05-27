@@ -31,7 +31,7 @@ export function setChild<T extends Model>
     define(subject, key, instance);
 
     ParentRelationship.set(instance, subject);
-    Dispatch.for(instance);
+    Dispatch.get(instance);
 
     if(callback)
       callback(instance);

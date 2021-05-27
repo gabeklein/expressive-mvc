@@ -15,7 +15,7 @@ export interface Controller extends Public {};
 export class Controller {
   constructor(){
     const cb = this.didCreate;
-    const dispatch =  Dispatch.create(this, Controller)!;
+    const dispatch =  Dispatch.set(this, Controller)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -42,7 +42,7 @@ export class Controller {
   }
 
   public destroy(){
-    Dispatch.for(this).emit("willDestroy", []);
+    Dispatch.get(this).emit("willDestroy", []);
   }
 
   static create<T extends Model>(
@@ -51,7 +51,7 @@ export class Controller {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Dispatch.for(instance);
+    Dispatch.get(instance);
 
     return instance;
   }
@@ -101,7 +101,7 @@ export class Controller {
 
   static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
-      Dispatch.create(this, Controller);
+      Dispatch.set(this, Controller);
       return this;
     }, path);
   }

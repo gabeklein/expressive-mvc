@@ -21,7 +21,7 @@ const Register = new WeakMap<{}, Dispatch>();
 export class Dispatch extends Observer {
   private ready = false;
 
-  static create(on: {}, base: typeof Controller){
+  static set(on: {}, base: typeof Controller){
     if(Register.has(on))
       return;
 
@@ -33,7 +33,7 @@ export class Dispatch extends Observer {
     return dispatch;
   }
 
-  static for(from: {}){
+  static get(from: {}){
     let dispatch = Register.get(from);
 
     if(!dispatch)

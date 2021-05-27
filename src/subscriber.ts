@@ -16,7 +16,7 @@ export class Subscriber<T = any> {
     private metadata?: GetterInfo){
 
     this.proxy = create(subject as any);
-    this.parent = Dispatch.for(subject);
+    this.parent = Dispatch.get(subject);
 
     for(const key of this.parent.watched){
       const initial = () => {
