@@ -2,6 +2,9 @@ import type { Controller as Public } from '../types';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import Oops from './issues';
+import { withProvider } from './context';
+import { Pending } from './directives';
+import { defineLazy } from './util';
 
 export function createHocFactory<T = any, P = {}>(
   Type: Public.Component<P, T>
@@ -28,4 +31,31 @@ function classTypeHOC<T, P>(Type: ComponentClass<P>){
 function functionHOC<T, P>(Type: FunctionComponent<P>){
   return (inject: T) =>
     (props: P) => Type(props, inject);
+}
+
+export function setComponent
+  (Type: Public.Component<{}>){
+
+  const componentFor = createHocFactory(Type);
+
+  return Pending.define(({ subject }, key) => {
+    defineLazy(subject, key, () =>
+      componentFor(subject as any)
+    )
+  })
+}
+
+export function setParentComponent
+  (Type: Public.Component<{}>){
+
+  const componentFor = createHocFactory(Type);
+
+  return Pending.define((on, key) => {
+    const control = on.subject as any;
+
+    defineLazy(control, key, () => {
+      const Component = componentFor(control);
+      return withProvider(Component, control)
+    })
+  })
 }

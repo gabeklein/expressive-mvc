@@ -1,9 +1,6 @@
-import type { Controller as Public } from '../types';
 import type { Controller, Model } from './controller';
 
-import { withProvider } from './context';
 import { Dispatch } from './dispatch';
-import { createHocFactory } from './hoc';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
 
@@ -98,8 +95,7 @@ export function setEffect<T = any>
   }
 
   return Pending.define((on, key) => {
-    const reset = createEffect(effect!);
-    on.monitorValue(key, value, reset);
+    on.monitorValue(key, value, createEffect(effect!));
   })
 }
 
@@ -128,33 +124,6 @@ export function setMemo
     else
       define(subject, key, get())
   }) 
-}
-
-export function setComponent
-  (Type: Public.Component<{}>){
-
-  const componentFor = createHocFactory(Type);
-
-  return Pending.define(({ subject }, key) => {
-    defineLazy(subject, key, () =>
-      componentFor(subject as any)
-    )
-  })
-}
-
-export function setParentComponent
-  (Type: Public.Component<{}>){
-
-  const componentFor = createHocFactory(Type);
-
-  return Pending.define((on, key) => {
-    const control = on.subject as any;
-
-    defineLazy(control, key, () => {
-      const Component = componentFor(control);
-      return withProvider(Component, control)
-    })
-  })
 }
 
 export function setIgnored(value: any){

@@ -6,8 +6,6 @@ export {
   setRefObject as ref,
   setAction as act,
   setEvent as event,
-  setComponent as hoc,
-  setParentComponent as wrap,
   setMemo as memo,
   setIgnored as lazy,
   setTuple as tuple
@@ -16,6 +14,16 @@ export {
 export {
   setBoundComponent as bind
 } from './binding';
+
+export {
+  setComponent as hoc,
+  setParentComponent as wrap
+} from './hoc';
+
+export {
+  Consumer,
+  Provider
+} from './context';
 
 export {
   Controller,
@@ -27,8 +35,3 @@ export {
   Singleton,
   Singleton as GC
 } from './singleton';
-
-export {
-  Consumer,
-  Provider
-} from './context';
