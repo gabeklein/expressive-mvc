@@ -3,7 +3,7 @@ import type { Controller as Public } from '../types';
 import { createBindAgent } from './binding';
 import { useLookup } from './context';
 import { Dispatch } from './dispatch';
-import { useController, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useController, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
@@ -15,7 +15,7 @@ export interface Controller extends Public {};
 export class Controller {
   constructor(){
     const cb = this.didCreate;
-    const dispatch = new Dispatch(this, Controller);
+    const dispatch =  Dispatch.create(this, Controller)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -60,19 +60,13 @@ export class Controller {
     return useController(this, args);
   }
 
-  static uses(
-    props: BunchOf<any>, 
-    only?: string[]){
-      
+  static uses(props: BunchOf<any>, only?: string[]){
     return useController(this, [], instance => {
       assignSpecific(instance, props, only);
     })
   }
 
-  static using(
-    props: BunchOf<any>, 
-    only?: string[]){
-
+  static using(props: BunchOf<any>, only?: string[]){
     const instance = useController(this, []);
 
     assignSpecific(instance, props, only);
@@ -81,7 +75,7 @@ export class Controller {
   }
 
   static memo(...args: any[]){
-    return useLazy(this, args);
+    return useLazily(this, args);
   }
 
   static get(key?: boolean | string | SelectFunction<any>){
@@ -90,6 +84,10 @@ export class Controller {
 
   static tap(key?: string | SelectFunction<any>){
     return this.find(true).tap(key);
+  }
+
+  static sub(...args: any[]){
+    return this.find(true).sub(...args);
   }
 
   static has(key: string){
@@ -101,13 +99,9 @@ export class Controller {
     return value;
   }
 
-  static sub(...args: any[]){
-    return this.find(true).sub(...args);
-  }
-
   static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
-      Dispatch.ensure(this, Controller);
+      Dispatch.create(this, Controller);
       return this;
     }, path);
   }

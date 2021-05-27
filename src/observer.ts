@@ -54,7 +54,7 @@ export class Observer {
     public subject: {}){
   }
 
-  protected prepareComputed(stopAt: typeof Controller){
+  public prepareComputed(stopAt: typeof Controller){
     for(const layer of allEntriesIn(this.subject, stopAt))
       for(let [key, { get, set }] of layer){
         if(!get)

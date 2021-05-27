@@ -85,7 +85,7 @@ export function useSubscriber(
   return subscription.proxy;
 }
 
-export function useLazy(
+export function useLazily(
   Type: Model, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);

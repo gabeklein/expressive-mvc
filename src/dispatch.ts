@@ -21,9 +21,16 @@ const Register = new WeakMap<{}, Dispatch>();
 export class Dispatch extends Observer {
   private ready = false;
 
-  static ensure(on: {}, base: typeof Controller){
-    if(!Register.has(on))
-      new this(on, base);
+  static create(on: {}, base: typeof Controller){
+    if(Register.has(on))
+      return;
+
+    const dispatch = new this(on);
+
+    Register.set(on, dispatch);
+    dispatch.prepareComputed(base);
+  
+    return dispatch;
   }
 
   static for(from: {}){
@@ -38,16 +45,6 @@ export class Dispatch extends Observer {
     }
 
     return dispatch;
-  }
-
-  constructor(
-    public subject: {},
-    base: typeof Controller){
-
-    super(subject);
-
-    Register.set(subject, this);
-    this.prepareComputed(base);
   }
 
   protected manageProperty(
