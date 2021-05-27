@@ -8,12 +8,14 @@ import { createEffect, define, defineLazy, defineProperty, traceable } from './u
 
 import Oops from './issues';
 
+type DispatchFactory = (on: Dispatch, key: string) => void;
+
 export class Pending {
   constructor(
-    public applyTo: (on: Dispatch, key: string) => void
+    public applyTo: DispatchFactory
   ){}
 
-  static define(init: (on: Dispatch, key: string) => void): any {
+  static define(init: DispatchFactory): any {
     return new Pending(init)
   }
 }
@@ -27,8 +29,8 @@ export function setChild<T extends Model>
     const instance = new Peer() as InstanceOf<T>;
 
     define(subject, key, instance);
-    ParentRelationship.set(instance, subject);
 
+    ParentRelationship.set(instance, subject);
     Dispatch.for(instance);
 
     if(callback)
@@ -70,7 +72,7 @@ export function setPeer<T extends Model>
   })
 }
 
-export function setReference<T = any>
+export function setRefObject<T = any>
   (effect?: EffectCallback<Controller, any>): { current: T } {
 
   return Pending.define((on, key) => {
@@ -211,8 +213,6 @@ export function setTuple<T extends any[]>
 
   })
 }
-
-type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
 export function setAction(action: AsyncFn){
   return Pending.define((on, key) => {

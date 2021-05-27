@@ -3,7 +3,7 @@ export {
   setParent as parent,
   setPeer as tap,
   setEffect as watch,
-  setReference as ref,
+  setRefObject as ref,
   setAction as act,
   setEvent as event,
   setComponent as hoc,
