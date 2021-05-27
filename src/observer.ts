@@ -13,8 +13,8 @@ import {
 import Oops from './issues';
 
 export interface GetterInfo {
-  on: Observer;
   key: string;
+  parent: Observer;
   priority: number;
 }
 
@@ -135,8 +135,8 @@ export class Observer {
   private monitorComputed(
     key: string, compute: () => any){
 
+    const info = { key, parent: this, priority: 1 };
     const { state, subject, getters } = this;
-    const info = { key, on: this, priority: 1 };
 
     const refresh = () => {
       let next;
@@ -155,7 +155,7 @@ export class Observer {
       }
     }
 
-    const create = (early?: boolean) => {
+    const initial = (early?: boolean) => {
       const sub = new Subscriber(subject, refresh, info);
 
       try {
@@ -195,13 +195,13 @@ export class Observer {
 
     this.watched.add(key);
 
+    traceable(`new ${key}`, initial);
     traceable(`try ${key}`, refresh);
-    traceable(`new ${key}`, create);
 
     metaData(compute, info);
-    ComputedInit.add(create);
+    ComputedInit.add(initial);
 
-    return create;
+    return initial;
   }
 
   public getter(key: string){
@@ -260,6 +260,19 @@ export class Observer {
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
+    const include = (notify: Callback) => {
+      const target = metaData(notify);
+
+      if(!target || target.parent !== this)
+        effects.add(notify);
+      else {
+        const offset = pending.findIndex(
+          peer => target.priority > metaData(peer).priority
+        );
+        pending.splice(offset + 1, 0, notify);
+      }
+    }
+
     setTimeout(() => {
       while(pending.length){
         const compute = pending.shift()!;
@@ -275,19 +288,6 @@ export class Observer {
       this.reset(handled);
     }, 0);
 
-    const register = (notify: Callback) => {
-      const target = metaData(notify);
-
-      if(!target || target.on !== this)
-        effects.add(notify);
-      else {
-        const offset = pending.findIndex(
-          peer => target.priority > metaData(peer).priority
-        );
-        pending.splice(offset + 1, 0, notify);
-      }
-    }
-
     return this.pending = (key: string) => {
       if(handled.has(key))
         return;
@@ -296,7 +296,7 @@ export class Observer {
 
       for(const group of this.followers)
         if(key in group)
-          register(group[key]);
+          include(group[key]);
     };
   }
 }
