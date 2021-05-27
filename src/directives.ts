@@ -1,8 +1,9 @@
 import type { Controller as Public } from '../types';
 import type { Controller, Model } from './controller';
 
+import { withProvider } from './context';
 import { Dispatch } from './dispatch';
-import { boundRefComponent, createHocFactory, withProvider } from './hoc';
+import { createHocFactory } from './hoc';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
 
@@ -153,16 +154,6 @@ export function setParentComponent
       const Component = componentFor(control);
       return withProvider(Component, control)
     })
-  })
-}
-
-export function setBoundComponent
-  (Type: Public.Component<{}, HTMLElement>, to: string){
-
-  return Pending.define((on, key) => {
-    const control = on.subject as Controller;
-    const Component = boundRefComponent(control, to, Type);
-    define(control, key, Component);
   })
 }
 

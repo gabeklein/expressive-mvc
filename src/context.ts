@@ -1,4 +1,5 @@
 import {
+  ComponentType,
   createContext,
   createElement,
   PropsWithChildren,
@@ -78,6 +79,16 @@ function useIncluding(
 
     return current.push(provide);
   }, [ dependancy ])
+}
+
+export function withProvider(
+  Component: ComponentType,
+  control: Controller){
+
+  return (props: any) =>
+    createElement(Provider, { of: control }, 
+      createElement(Component, props)
+    );
 }
 
 interface ConsumerProps {
