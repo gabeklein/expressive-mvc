@@ -1,6 +1,5 @@
 import type { Controller } from './controller';
 
-import { Pending } from './directives';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
@@ -16,9 +15,17 @@ import {
 
 import Oops from './issues';
 
+type Factory = (key: string, on: Dispatch) => void;
+
 const Register = new WeakMap<{}, Dispatch>();
+const Pending = new WeakSet<Factory>();
 
 export class Dispatch extends Observer {
+  static define(factory: Factory){
+    Pending.add(factory);
+    return factory as any;
+  }
+
   private ready = false;
 
   static set(on: {}, base: typeof Controller){
@@ -50,8 +57,8 @@ export class Dispatch extends Observer {
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
-    if(desc.value instanceof Pending)
-      desc.value.applyTo(this, key);
+    if(Pending.has(desc.value))
+      desc.value(key, this);
     else
       super.manageProperty(key, desc);
   }

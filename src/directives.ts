@@ -6,24 +6,12 @@ import { createEffect, define, defineLazy, defineProperty, traceable } from './u
 
 import Oops from './issues';
 
-type DispatchFactory = (on: Dispatch, key: string) => void;
-
-export class Pending {
-  constructor(
-    public applyTo: DispatchFactory
-  ){}
-
-  static define(init: DispatchFactory): any {
-    return new Pending(init)
-  }
-}
-
 const ParentRelationship = new WeakMap<{}, {}>();
 
 export function setChild<T extends Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Pending.define(({ subject }, key) => {
+  return Dispatch.define((key, { subject }) => {
     const instance = new Peer() as InstanceOf<T>;
 
     define(subject, key, instance);
@@ -39,7 +27,7 @@ export function setChild<T extends Model>
 export function setParent<T extends Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return Pending.define(({ subject }, key) => {
+  return Dispatch.define((key, { subject }) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
@@ -60,7 +48,7 @@ export function setParent<T extends Model>
 export function setPeer<T extends Model>
   (Peer: T): InstanceOf<T> {
 
-  return Pending.define(({ subject }, key) => {
+  return Dispatch.define((key, { subject }) => {
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, key, () => Peer.find(true));
     else if(subject instanceof Singleton)
@@ -73,7 +61,7 @@ export function setPeer<T extends Model>
 export function setRefObject<T = any>
   (effect?: EffectCallback<Controller, any>): { current: T } {
 
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     on.watched.add(key);
     on.assign(key, {
       value: defineProperty({}, "current", {
@@ -94,7 +82,7 @@ export function setEffect<T = any>
     value = undefined;
   }
 
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     on.monitorValue(key, value, createEffect(effect!));
   })
 }
@@ -102,7 +90,7 @@ export function setEffect<T = any>
 export function setEvent
   (callback?: EffectCallback<Controller>){
 
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     on.watched.add(key);
     on.assign(key, {
       value: () => on.emit(key)
@@ -116,7 +104,7 @@ export function setEvent
 export function setMemo
   (factory: () => any, defer?: boolean){
 
-  return Pending.define(({ subject }, key) => {
+  return Dispatch.define((key, { subject }) => {
     const get = () => factory.call(subject);
 
     if(defer)
@@ -127,7 +115,7 @@ export function setMemo
 }
 
 export function setIgnored(value: any){
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     (on.subject as any)[key] = value;
   })
 }
@@ -140,7 +128,7 @@ export function setTuple<T extends any[]>
   else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     const source = on.state;
 
     const setTuple = (next: any) => {
@@ -175,7 +163,7 @@ export function setTuple<T extends any[]>
 }
 
 export function setAction(action: AsyncFn){
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     let pending = false;
 
     function invoke(...args: any[]){

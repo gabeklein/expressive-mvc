@@ -3,7 +3,7 @@ import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import Oops from './issues';
 import { withProvider } from './context';
-import { Pending } from './directives';
+import { Dispatch } from './dispatch';
 import { defineLazy } from './util';
 
 export function createHocFactory<T = any, P = {}>(
@@ -38,7 +38,7 @@ export function setComponent
 
   const componentFor = createHocFactory(Type);
 
-  return Pending.define(({ subject }, key) => {
+  return Dispatch.define((key, { subject }) => {
     defineLazy(subject, key, () =>
       componentFor(subject as any)
     )
@@ -50,7 +50,7 @@ export function setParentComponent
 
   const componentFor = createHocFactory(Type);
 
-  return Pending.define((on, key) => {
+  return Dispatch.define((key, on) => {
     const control = on.subject as any;
 
     defineLazy(control, key, () => {
