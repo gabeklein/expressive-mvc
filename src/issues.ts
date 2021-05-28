@@ -6,25 +6,23 @@ type Issues<M extends Messages> = {
 }
 
 class Issue extends Error {
-  // delete the first line of stack trace,
-  // hides the lookup step not relevant to error.
-  stack?: string = this.stack!.replace(/\n.+/, "");
+  // drop first line of stack trace, not relevant.
+  stack = this.stack.replace(/\n.+/, "") as string;
 
-  /** Emit this issue as a warning instead. */
   warn = () => console.warn(this.message);
+
+  static factory<O extends Messages>(register: O){
+    const Library = {} as Issues<O>;
+    
+    for(const name in register)
+      (Library[name] as any) = (...args: MessageVariable[]) => 
+        new Issue(register[name].apply(null, args));
+  
+    return Library;
+  }
 }
 
-function Issues<O extends Messages>(register: O): Issues<O> {
-  const Library = {} as any;
-
-  for(const name in register)
-    Library[name] = (...args: MessageVariable[]) => 
-      new Issue(register[name].apply(null, args));
-
-  return Library;
-}
-
-export default Issues({
+export default Issue.factory({
   NothingInContext: (name) =>
     `Couldn't find controller for ${name} in context; did you forget to use a Provider?`,
 
