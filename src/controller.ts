@@ -54,6 +54,13 @@ export class Controller extends Observer {
 
   private ready = false;
 
+  public get tracked(){
+    return [
+      ...this.getters.keys(),
+      ...keys(this.subject)
+    ]
+  }
+
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
@@ -69,8 +76,7 @@ export class Controller extends Observer {
     if(fn(using)){
       const available = new Set([
         ...lifecycleEvents,
-        ...this.getters.keys(),
-        ...keys(this.subject)
+        ...this.tracked
       ]);
 
       return recursiveSelect(using, available);
@@ -156,13 +162,8 @@ export class Controller extends Observer {
       return () => sub.release();
     }
 
-    if(fn(select)){
-      const k = new Set([
-        ...this.getters.keys(),
-        ...keys(this.subject)
-      ]);
-      select = recursiveSelect(select, k)
-    }
+    if(fn(select))
+      select = recursiveSelect(select, this.tracked)
 
     return this.addListener(select, reinvoke);
   }
