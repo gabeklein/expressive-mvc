@@ -266,7 +266,7 @@ export class Observer {
         effects.add(notify);
       else {
         const offset = pending.findIndex(
-          peer => target.priority > metaData(peer).priority
+          sib => target.priority > metaData(sib).priority
         );
         pending.splice(offset + 1, 0, notify);
       }
