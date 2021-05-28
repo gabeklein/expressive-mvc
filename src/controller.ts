@@ -2,7 +2,7 @@ import type Public from '../types';
 
 import { createBindAgent } from './binding';
 import { useLookup } from './context';
-import { Dispatch } from './dispatch';
+import { Controller } from './dispatch';
 import { useModel, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
@@ -13,7 +13,7 @@ export interface Model extends Public {};
 export class Model {
   constructor(){
     const cb = this.didCreate;
-    const dispatch =  Dispatch.set(this, Model)!;
+    const dispatch = Controller.set(this, Model)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -40,7 +40,7 @@ export class Model {
   }
 
   public destroy(){
-    Dispatch.get(this).emit("willDestroy", []);
+    Controller.get(this).emit("willDestroy", []);
   }
 
   static create<T extends typeof Model>(
@@ -49,7 +49,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Dispatch.get(instance);
+    Controller.get(instance);
 
     return instance;
   }
@@ -99,7 +99,7 @@ export class Model {
 
   static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
-      Dispatch.set(this, Model);
+      Controller.set(this, Model);
       return this;
     }, path);
   }

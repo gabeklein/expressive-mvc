@@ -1,6 +1,6 @@
 import type { Model } from './controller';
 
-import { Dispatch } from './dispatch';
+import { Controller } from './dispatch';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
 
@@ -11,13 +11,13 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Dispatch.define((key, { subject }) => {
+  return Controller.define((key, { subject }) => {
     const instance = new Peer() as InstanceOf<T>;
 
     define(subject, key, instance);
 
     ParentRelationship.set(instance, subject);
-    Dispatch.get(instance);
+    Controller.get(instance);
 
     if(callback)
       callback(instance);
@@ -27,7 +27,7 @@ export function setChild<T extends typeof Model>
 export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return Dispatch.define((key, { subject }) => {
+  return Controller.define((key, { subject }) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
@@ -48,7 +48,7 @@ export function setParent<T extends typeof Model>
 export function setPeer<T extends typeof Model>
   (Peer: T): InstanceOf<T> {
 
-  return Dispatch.define((key, { subject }) => {
+  return Controller.define((key, { subject }) => {
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, key, () => Peer.find(true));
     else if(subject instanceof Singleton)
@@ -61,7 +61,7 @@ export function setPeer<T extends typeof Model>
 export function setRefObject<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     on.watched.add(key);
     on.assign(key, {
       value: defineProperty({}, "current", {
@@ -82,7 +82,7 @@ export function setEffect<T = any>
     value = undefined;
   }
 
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     on.monitorValue(key, value, createEffect(effect!));
   })
 }
@@ -90,7 +90,7 @@ export function setEffect<T = any>
 export function setEvent
   (callback?: EffectCallback<Model>){
 
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     on.watched.add(key);
     on.assign(key, {
       value: () => on.emit(key)
@@ -104,7 +104,7 @@ export function setEvent
 export function setMemo
   (factory: () => any, defer?: boolean){
 
-  return Dispatch.define((key, { subject }) => {
+  return Controller.define((key, { subject }) => {
     const get = () => factory.call(subject);
 
     if(defer)
@@ -115,7 +115,7 @@ export function setMemo
 }
 
 export function setIgnored(value: any){
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     (on.subject as any)[key] = value;
   })
 }
@@ -128,7 +128,7 @@ export function setTuple<T extends any[]>
   else if(values.length == 1 && typeof values[0] == "object")
     values = values[0] as any;
   
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     const source = on.state;
 
     const setTuple = (next: any) => {
@@ -163,7 +163,7 @@ export function setTuple<T extends any[]>
 }
 
 export function setAction(action: AsyncFn){
-  return Dispatch.define((key, on) => {
+  return Controller.define((key, on) => {
     let pending = false;
 
     function invoke(...args: any[]){

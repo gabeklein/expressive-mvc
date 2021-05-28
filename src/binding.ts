@@ -4,7 +4,7 @@ import type { Model } from "./controller";
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
 import Oops from './issues';
-import { Dispatch } from './dispatch';
+import { Controller } from './dispatch';
 import { createHocFactory } from './hoc';
 import { define, defineProperty, entries } from './util';
 
@@ -30,7 +30,7 @@ export function createBindAgent(
 export function setBoundComponent
   (Type: Public.Component<{}, HTMLElement>, to: string){
 
-  return Dispatch.define((key, { subject }) => {
+  return Controller.define((key, { subject }) => {
     const componentFor = createHocFactory<any>(Type);
 
     const Component = (props: {}) => {

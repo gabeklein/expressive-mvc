@@ -15,15 +15,15 @@ import {
 
 import Oops from './issues';
 
-type Factory = (key: string, on: Dispatch) => void;
+type Init = (key: string, on: Controller) => void;
 
-const Register = new WeakMap<{}, Dispatch>();
-const Pending = new WeakSet<Factory>();
+const Register = new WeakMap<{}, Controller>();
+const Setup = new WeakSet<Init>();
 
-export class Dispatch extends Observer {
-  static define(factory: Factory){
-    Pending.add(factory);
-    return factory as any;
+export class Controller extends Observer {
+  static define(fn: Init){
+    Setup.add(fn);
+    return fn as any;
   }
 
   private ready = false;
@@ -57,7 +57,7 @@ export class Dispatch extends Observer {
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
-    if(Pending.has(desc.value))
+    if(Setup.has(desc.value))
       desc.value(key, this);
     else
       super.manageProperty(key, desc);

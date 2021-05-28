@@ -1,5 +1,5 @@
 import { Model } from './controller';
-import { Dispatch } from './dispatch';
+import { Controller } from './dispatch';
 import { GetterInfo, metaData } from './observer';
 import { create, defineProperty, traceable } from './util';
 
@@ -7,7 +7,7 @@ export class Subscriber<T = any> {
   private dependant = new Set<Subscriber>();
 
   public following = {} as BunchOf<Callback>;
-  public parent: Dispatch;
+  public parent: Controller;
   public proxy: T;
   
   constructor(
@@ -16,7 +16,7 @@ export class Subscriber<T = any> {
     private metadata?: GetterInfo){
 
     this.proxy = create(subject as any);
-    this.parent = Dispatch.get(subject);
+    this.parent = Controller.get(subject);
 
     for(const key of this.parent.watched){
       const initial = () => {

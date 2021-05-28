@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
 import { Model } from './controller';
-import { Dispatch } from './dispatch';
+import { Controller } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { define, entriesIn, fn } from './util';
@@ -47,7 +47,7 @@ export function useWatcher(
       target = target();
 
     if(fn(path))
-      [ path ] = Dispatch.get(target).select(path);
+      [ path ] = Controller.get(target).select(path);
 
     const sub = new Subscriber(target, trigger);
 
