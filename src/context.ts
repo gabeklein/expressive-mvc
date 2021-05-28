@@ -38,10 +38,8 @@ export class Lookup {
     return instance;
   }
   
-  public push(items: Model | Model[]){
+  public push(items: Model[]){
     const next = create(this) as Lookup;
-
-    items = ([] as Model[]).concat(items);
 
     for(const I of items){
       let T = I.constructor as typeof Model;
@@ -73,12 +71,14 @@ function useIncluding(
 
   const current = useLookup();
 
-  return useMemo(() => {
+  function next(){
     const provide = insert instanceof Model
       ? [ insert ] : values(insert).map(T => T.create());
 
     return current.push(provide);
-  }, [ dependancy ])
+  }
+
+  return useMemo(next, [ dependancy ])
 }
 
 export function withProvider(
@@ -99,8 +99,8 @@ interface ConsumerProps {
 }
 
 interface ProviderProps {
-  of: Model | typeof Model | Array<typeof Model> | BunchOf<typeof Model>,
-  children?: ReactNode 
+  of: Model | typeof Model | Array<typeof Model> | BunchOf<typeof Model>;
+  children?: ReactNode;
 }
 
 export const Consumer = (props: ConsumerProps) => {
