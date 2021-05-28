@@ -1,6 +1,6 @@
 import type Public from '../types';
 
-import { createBindAgent } from './binding';
+import { createBindAgent } from './bind';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { useModel, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';

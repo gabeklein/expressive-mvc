@@ -13,7 +13,7 @@ export {
 
 export {
   setBoundComponent as bind
-} from './binding';
+} from './bind';
 
 export {
   setComponent as hoc,
