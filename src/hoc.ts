@@ -6,9 +6,8 @@ import { withProvider } from './context';
 import { Dispatch } from './dispatch';
 import { defineLazy } from './util';
 
-export function createHocFactory<T = any, P = {}>(
-  Type: Public.Component<P, T>
-): (inject: T) => ComponentType<P> {
+export function createHocFactory<T = any, P = {}>
+  (Type: Public.Component<P, T>): (inject: T) => ComponentType<P> {
 
   if(typeof Type !== "function")
     throw Oops.BadHOCArgument();
@@ -19,7 +18,9 @@ export function createHocFactory<T = any, P = {}>(
     return functionHOC<T, P>(Type as any);
 }
 
-function classTypeHOC<T, P>(Type: ComponentClass<P>){
+function classTypeHOC<T, P>
+  (Type: ComponentClass<P>){
+
   return (inject: T) =>
     class extends Type {
       constructor(props: P){
@@ -28,7 +29,9 @@ function classTypeHOC<T, P>(Type: ComponentClass<P>){
     }
 }
 
-function functionHOC<T, P>(Type: FunctionComponent<P>){
+function functionHOC<T, P>
+  (Type: FunctionComponent<P>){
+
   return (inject: T) =>
     (props: P) => Type(props, inject);
 }
