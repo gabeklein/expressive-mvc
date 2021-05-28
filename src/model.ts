@@ -3,7 +3,7 @@ import type Public from '../types';
 import { createBindAgent } from './bind';
 import { useLookup } from './context';
 import { Controller } from './controller';
-import { useModel, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
@@ -73,7 +73,7 @@ export class Model {
   }
 
   static memo(...args: any[]){
-    return useLazily(this, args);
+    return useLazy(this, args);
   }
 
   static get(key?: boolean | string | SelectFunction<any>){
