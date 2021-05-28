@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
-import { Controller, Model } from './controller';
+import { Controller } from './controller';
 import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
@@ -20,7 +20,7 @@ function useRefresh<T>(
   return state[0];
 }
 
-export function usePassive<T extends Model>(
+export function usePassive<T extends typeof Controller>(
   target: T,
   select?: boolean | string | SelectFunction<any>){
 
@@ -86,7 +86,7 @@ export function useSubscriber(
 }
 
 export function useLazily(
-  Type: Model, args: any[]){
+  Type: typeof Controller, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);
 
@@ -121,7 +121,7 @@ function usePeerContext(instance: Controller){
 }
 
 export function useController(
-  Type: Model, args: any[], 
+  Type: typeof Controller, args: any[], 
   callback?: (instance: Controller) => void){
 
   const subscription = useRefresh(trigger => {

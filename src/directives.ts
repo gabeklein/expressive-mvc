@@ -1,4 +1,4 @@
-import type { Controller, Model } from './controller';
+import type { Controller } from './controller';
 
 import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
@@ -8,7 +8,7 @@ import Oops from './issues';
 
 const ParentRelationship = new WeakMap<{}, {}>();
 
-export function setChild<T extends Model>
+export function setChild<T extends typeof Controller>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {
@@ -24,7 +24,7 @@ export function setChild<T extends Model>
   })
 }
 
-export function setParent<T extends Model>
+export function setParent<T extends typeof Controller>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {
@@ -45,7 +45,7 @@ export function setParent<T extends Model>
   })
 }
 
-export function setPeer<T extends Model>
+export function setPeer<T extends typeof Controller>
   (Peer: T): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {

@@ -8,8 +8,6 @@ import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
-export type Model = typeof Controller;
-
 export interface Controller extends Public {};
 
 export class Controller {
@@ -45,7 +43,7 @@ export class Controller {
     Dispatch.get(this).emit("willDestroy", []);
   }
 
-  static create<T extends Model>(
+  static create<T extends typeof Controller>(
     this: T, ...args: any[]){
 
     const instance: InstanceOf<T> = 
@@ -112,7 +110,7 @@ export class Controller {
     return useLookup().get(this, strict);
   }
 
-  static isTypeof<T extends Model>(
+  static isTypeof<T extends typeof Controller>(
     this: T, maybe: any): maybe is T {
 
     return (
@@ -121,7 +119,7 @@ export class Controller {
     )
   }
 
-  static get inherits(): Model | undefined {
+  static get inherits(): typeof Controller | undefined {
     const I = getPrototypeOf(this);
 
     if(I !== Controller)

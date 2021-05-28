@@ -10,15 +10,15 @@ import {
   useMemo,
 } from 'react';
 
-import { Controller, Model } from './controller';
+import { Controller } from './controller';
 import { create, define, fn, values } from './util';
 
 import Oops from './issues';
 
 export class Lookup {
-  private table = new Map<Model, symbol>();
+  private table = new Map<typeof Controller, symbol>();
 
-  private key(T: Model){
+  private key(T: typeof Controller){
     let key = this.table.get(T);
 
     if(!key){
@@ -29,7 +29,7 @@ export class Lookup {
     return key;
   }
 
-  public get(T: Model, strict?: boolean): Controller | undefined {
+  public get(T: typeof Controller, strict?: boolean): Controller | undefined {
     const instance = (this as any)[this.key(T)];
 
     if(!instance && strict)
@@ -44,7 +44,7 @@ export class Lookup {
     items = ([] as Controller[]).concat(items);
 
     for(const I of items){
-      let T = I.constructor as Model;
+      let T = I.constructor as typeof Controller;
   
       do {
         define(next, this.key(T), I);
@@ -68,7 +68,7 @@ export function useLookup(){
 }
 
 function useIncluding(
-  insert: Controller | Array<Model> | BunchOf<Model>,
+  insert: Controller | Array<typeof Controller> | BunchOf<typeof Controller>,
   dependancy?: any){
 
   const current = useLookup();
@@ -92,14 +92,14 @@ export function withProvider(
 }
 
 interface ConsumerProps {
-  of: Model;
+  of: typeof Controller;
   get?: (value: Controller) => void;
   has?: (value: Controller) => void;
   children?: (value: Controller) => ReactElement<any, any> | null;
 }
 
 interface ProviderProps {
-  of: Controller | Model | Array<Model> | BunchOf<Model>,
+  of: Controller | typeof Controller | Array<typeof Controller> | BunchOf<typeof Controller>,
   children?: ReactNode 
 }
 
@@ -131,7 +131,7 @@ export function Provider(props: ProviderProps){
 }
 
 function ParentProvider(
-  props: PropsWithChildren<{ target: Model, data: {} }>){
+  props: PropsWithChildren<{ target: typeof Controller, data: {} }>){
 
   let { children, target, data } = props;
   const instance = target.using(data);
@@ -155,7 +155,7 @@ function DirectProvider(
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ types: Array<Model> | BunchOf<Model> }>){
+  props: PropsWithChildren<{ types: Array<typeof Controller> | BunchOf<typeof Controller> }>){
 
   const { children, types } = props;
   const value = useIncluding(types);
