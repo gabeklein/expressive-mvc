@@ -1,5 +1,5 @@
-import { Model } from './controller';
-import { Controller } from './dispatch';
+import { Model } from './model';
+import { Controller } from './controller';
 import { GetterInfo, metaData } from './observer';
 import { create, defineProperty, traceable } from './util';
 

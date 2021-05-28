@@ -9,7 +9,7 @@ export {
   setMemo as memo,
   setIgnored as lazy,
   setTuple as tuple
-} from './directives';
+} from './modifiers';
 
 export {
   setBoundComponent as bind
@@ -28,7 +28,7 @@ export {
 export {
   Model,
   Model as default
-} from './controller';
+} from './model';
 
 export {
   Singleton,

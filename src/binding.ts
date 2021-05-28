@@ -1,10 +1,10 @@
 import type Public from '../types';
-import type { Model } from "./controller";
+import type { Model } from "./model";
 
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
 import Oops from './issues';
-import { Controller } from './dispatch';
+import { Controller } from './controller';
 import { createHocFactory } from './hoc';
 import { define, defineProperty, entries } from './util';
 

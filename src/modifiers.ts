@@ -1,6 +1,6 @@
-import type { Model } from './controller';
+import type { Model } from './model';
 
-import { Controller } from './dispatch';
+import { Controller } from './controller';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
 

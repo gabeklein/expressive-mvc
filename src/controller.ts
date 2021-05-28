@@ -1,128 +1,214 @@
-import type Public from '../types';
+import type { Model } from './model';
 
-import { createBindAgent } from './binding';
-import { useLookup } from './context';
-import { Controller } from './dispatch';
-import { useModel, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
-import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
+import { lifecycleEvents } from './lifecycle';
+import { Observer } from './observer';
+import { Subscriber } from './subscriber';
+import {
+  assign,
+  assignSpecific,
+  createEffect,
+  debounce,
+  fn,
+  keys,
+  recursiveSelect
+} from './util';
 
 import Oops from './issues';
 
-export interface Model extends Public {};
+type Init = (key: string, on: Controller) => void;
 
-export class Model {
-  constructor(){
-    const cb = this.didCreate;
-    const dispatch = Controller.set(this, Model)!;
+const Register = new WeakMap<{}, Controller>();
+const Setup = new WeakSet<Init>();
 
-    if(cb)
-      dispatch.requestUpdate(cb.bind(this));
-
-    define(this, { get: this, set: this });
-
-    for(const [key, value] of entries(dispatch))
-      if(fn(value))
-        define(this, key, value);
+export class Controller extends Observer {
+  static define(fn: Init){
+    Setup.add(fn);
+    return fn as any;
   }
 
-  public get bind(){
-    const agent = createBindAgent(this);
-    define(this.get, { bind: agent });
-    return agent as any;
+  private ready = false;
+
+  static set(on: {}, base: typeof Model){
+    if(Register.has(on))
+      return;
+
+    const dispatch = new this(on);
+
+    Register.set(on, dispatch);
+    dispatch.prepareComputed(base);
+  
+    return dispatch;
   }
 
-  public tap(path?: string | SelectFunction<any>){
-    return useWatcher(this, path) as any;
+  static get(from: {}){
+    let dispatch = Register.get(from);
+
+    if(!dispatch)
+      throw Oops.NoObserver(from.constructor.name);
+
+    if(!dispatch.ready){
+      dispatch.ready = true;
+      dispatch.start();
+    }
+
+    return dispatch;
   }
 
-  public sub(...args: any[]){
-    return useSubscriber(this, args) as any;
+  protected manageProperty(
+    key: string, desc: PropertyDescriptor){
+
+    if(Setup.has(desc.value))
+      desc.value(key, this);
+    else
+      super.manageProperty(key, desc);
   }
 
-  public destroy(){
-    Controller.get(this).emit("willDestroy", []);
+  public select(
+    using: string | string[] | QueryFunction<this>){
+
+    if(fn(using)){
+      const available = new Set([
+        ...lifecycleEvents,
+        ...this.getters.keys(),
+        ...keys(this.subject)
+      ]);
+
+      return recursiveSelect(using, available);
+    }
+
+    if(typeof using == "string")
+      return [using];
+
+    return using;
   }
 
-  static create<T extends typeof Model>(
-    this: T, ...args: any[]){
+  protected watch(
+    key: string | QueryFunction<this>,
+    handler: (value: any, key: string) => void,
+    once?: boolean,
+    initial?: boolean){
 
-    const instance: InstanceOf<T> = 
-      new (this as any)(...args);
+    const target = this.select(key);
 
-    Controller.get(instance);
+    const callback = () =>
+      handler.call(this.subject, this.state[target[0]], target[0]);
 
-    return instance;
+    if(initial)
+      callback();
+
+    return this.addListener(target, callback, once);
   }
 
-  static use(...args: any[]){
-    return useModel(this, args);
+  public emit(event: string, args?: any[]){
+    if(args){
+      const { subject } = this as any;
+      const handle = subject[event];
+  
+      if(fn(handle))
+        handle.apply(subject, args);
+    }
+
+    super.emit(event);
   }
 
-  static uses(props: BunchOf<any>, only?: string[]){
-    return useModel(this, [], instance => {
-      assignSpecific(instance, props, only);
-    })
+  public on = (
+    property: string | QueryFunction<this>,
+    listener: UpdateCallback<any, any>,
+    initial?: boolean) => {
+
+    return this.watch(property, listener, false, initial);
   }
 
-  static using(props: BunchOf<any>, only?: string[]){
-    const instance = useModel(this, []);
+  public once = (
+    property: string | QueryFunction<this>,
+    listener?: UpdateCallback<any, any>) => {
 
-    assignSpecific(instance, props, only);
-
-    return instance;
+    if(listener)
+      return this.watch(property, listener, true);
+    else
+      return new Promise(resolve => {
+        this.watch(property, resolve, true)
+      });
   }
 
-  static memo(...args: any[]){
-    return useLazily(this, args);
+  public effect = (
+    callback: EffectCallback<any>,
+    select?: string[] | QueryFunction<this>) => {
+    
+    let { subject } = this;
+    const effect = createEffect(callback);
+    const reinvoke = debounce(() => effect(subject));
+
+    if(!select){
+      let sub: Subscriber;
+
+      const capture = () => {
+        sub = new Subscriber(subject, reinvoke);
+        effect(subject = sub.proxy);
+        sub.listen();
+      }
+
+      if(this.ready)
+        capture();
+      else
+        this.requestUpdate(capture);
+      
+      return () => sub.release();
+    }
+
+    if(fn(select)){
+      const k = new Set([
+        ...this.getters.keys(),
+        ...keys(this.subject)
+      ]);
+      select = recursiveSelect(select, k)
+    }
+
+    return this.addListener(select, reinvoke);
   }
 
-  static get(key?: boolean | string | SelectFunction<any>){
-    return usePassive(this, key);
+  public export = (
+    select?: string[] | QueryFunction<this>) => {
+
+    if(!select)
+      return assign({}, this.state);
+
+    const data = {} as BunchOf<any>;
+
+    select = this.select(select);
+    
+    for(const key of select)
+      data[key] = (this.subject as any)[key];
+
+    return data;
   }
 
-  static tap(key?: string | SelectFunction<any>){
-    return this.find(true).tap(key);
+  public update = (
+    select: string | string[] | QueryFunction<this> | BunchOf<any>) => {
+
+    if(typeof select == "string")
+      select = [select];
+    else if(fn(select))
+      select = this.select(select);
+
+    if(Array.isArray(select))
+      select.forEach(k => super.emit(k))
+    else
+      assignSpecific(this.subject, select, Array.from(this.watched));
   }
 
-  static sub(...args: any[]){
-    return this.find(true).sub(...args);
-  }
+  public requestUpdate = (
+    argument?: RequestCallback | boolean) => {
 
-  static has(key: string){
-    const value = this.tap(key);
+    const { pending, waiting } = this;
 
-    if(value === undefined)
-      throw Oops.HasPropertyUndefined(this.name, key);
-
-    return value;
-  }
-
-  static meta(path: string | SelectFunction<any>): any {
-    return useWatcher(() => {
-      Controller.set(this, Model);
-      return this;
-    }, path);
-  }
-
-  static find(strict: true): Model;
-  static find(strict?: boolean): Model | undefined;
-  static find(strict?: boolean){
-    return useLookup().get(this, strict);
-  }
-
-  static isTypeof<T extends typeof Model>(
-    this: T, maybe: any): maybe is T {
-
-    return (
-      fn(maybe) && 
-      maybe.prototype instanceof this
-    )
-  }
-
-  static get inherits(): typeof Model | undefined {
-    const I = getPrototypeOf(this);
-
-    if(I !== Model)
-      return I;
+    if(fn(argument))
+      waiting.push(argument)
+    else if(!pending === argument)
+      return Promise.reject(Oops.StrictUpdate())
+    else if(pending)
+      return new Promise(cb => waiting.push(cb));
+    else
+      return Promise.resolve(false);
   }
 }

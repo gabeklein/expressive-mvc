@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
-import { Model } from './controller';
-import { Controller } from './dispatch';
+import { Model } from './model';
+import { Controller } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { define, entriesIn, fn } from './util';

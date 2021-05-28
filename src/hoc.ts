@@ -3,7 +3,7 @@ import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import Oops from './issues';
 import { withProvider } from './context';
-import { Controller } from './dispatch';
+import { Controller } from './controller';
 import { defineLazy } from './util';
 
 export function createHocFactory<T = any, P = {}>

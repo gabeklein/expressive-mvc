@@ -1,4 +1,4 @@
-import { Model } from './controller';
+import { Model } from './model';
 
 import Oops from './issues';
 

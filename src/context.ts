@@ -10,7 +10,7 @@ import {
   useMemo,
 } from 'react';
 
-import { Model } from './controller';
+import { Model } from './model';
 import { create, define, fn, values } from './util';
 
 import Oops from './issues';
