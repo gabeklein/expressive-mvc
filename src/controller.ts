@@ -18,15 +18,13 @@ import Oops from './issues';
 type Init = (key: string, on: Controller) => void;
 
 const Register = new WeakMap<{}, Controller>();
-const Setup = new WeakSet<Init>();
+const Pending = new WeakSet<Init>();
 
 export class Controller extends Observer {
   static define(fn: Init){
-    Setup.add(fn);
+    Pending.add(fn);
     return fn as any;
   }
-
-  private ready = false;
 
   static set(on: {}, base: typeof Model){
     if(Register.has(on))
@@ -54,10 +52,12 @@ export class Controller extends Observer {
     return dispatch;
   }
 
+  private ready = false;
+
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
-    if(Setup.has(desc.value))
+    if(Pending.has(desc.value))
       desc.value(key, this);
     else
       super.manageProperty(key, desc);
