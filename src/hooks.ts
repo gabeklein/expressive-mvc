@@ -42,7 +42,7 @@ export function useWatcher(
   target: {} | (() => {}),
   path?: string | SelectFunction<any>){
 
-  const subscription = useRefresh(trigger => {
+  const hook = useRefresh(trigger => {
     if(fn(target))
       target = target();
 
@@ -57,32 +57,32 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(() => subscription.listen(!path), []);
+  useEffect(() => hook.listen(!path), []);
 
-  return subscription.proxy;
+  return hook.proxy;
 }
 
 export function useSubscriber(
   target: Model, args: any[]){
 
-  const subscription = useRefresh(trigger => 
+  const hook = useRefresh(trigger => 
     new Subscriber(target, trigger)
   );
 
   useLifecycleEffect((name) => {
     if(name == Lifecycle.DID_MOUNT)
-      subscription.listen(true);
+      hook.listen(true);
 
     const alias = subscriberEvent(name);
 
     for(const event of [alias, name])
-      subscription.parent.emit(event, args);
+      hook.parent.emit(event, args);
 
     if(name == Lifecycle.WILL_UNMOUNT)
-      subscription.release();
+      hook.release();
   });
   
-  return subscription.proxy;
+  return hook.proxy;
 }
 
 export function useLazily(
@@ -124,7 +124,7 @@ export function useModel(
   Type: typeof Model, args: any[], 
   callback?: (instance: Model) => void){
 
-  const subscription = useRefresh(trigger => {
+  const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
 
     if(callback)
@@ -133,22 +133,22 @@ export function useModel(
     return new Subscriber(instance, trigger);
   });
 
-  usePeerContext(subscription.subject);
+  usePeerContext(hook.subject);
 
   useLifecycleEffect((name) => {
     if(name == Lifecycle.DID_MOUNT)
-      subscription.listen(true);
+      hook.listen(true);
 
     const alias = componentEvent(name);
 
     for(const event of [alias, name])
-      subscription.parent.emit(event, []);
+      hook.parent.emit(event, []);
 
     if(name == Lifecycle.WILL_UNMOUNT){
-      subscription.release();
-      subscription.subject.destroy();
+      hook.release();
+      hook.subject.destroy();
     }
   });
 
-  return subscription.proxy;
+  return hook.proxy;
 }
