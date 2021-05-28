@@ -1,7 +1,7 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("computed", () => {
-  class Parent extends Controller {
+  class Parent extends Model {
     value = 1;
     value2 = 2;
 

@@ -1,11 +1,11 @@
-import { Controller } from './controller';
+import { Model } from './controller';
 
 import Oops from './issues';
 
-export class Singleton extends Controller {
+export class Singleton extends Model {
   static current?: Singleton = undefined;
 
-  static create<T extends typeof Controller>(
+  static create<T extends typeof Model>(
     this: T, ...args: any[]){
 
     const Type = this as unknown as typeof Singleton;

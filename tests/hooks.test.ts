@@ -1,4 +1,4 @@
-import { Controller, Singleton, renderHook } from './adapter';
+import { Model, Singleton, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -8,12 +8,12 @@ describe("tap", () => {
     child = new Child();
   }
   
-  class Child extends Controller {
+  class Child extends Model {
     value = "foo"
     grandchild = new GrandChild();
   }
   
-  class GrandChild extends Controller {
+  class GrandChild extends Model {
     value = "bar"
   }
 
@@ -74,11 +74,11 @@ describe("tap", () => {
 })
 
 describe("meta", () => {
-  class Child extends Controller {
+  class Child extends Model {
     value = "foo";
   }
   
-  class Parent extends Controller {
+  class Parent extends Model {
     static value = "foo";
     static child = new Child();
   }

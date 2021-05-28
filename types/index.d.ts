@@ -1,9 +1,8 @@
 /// <reference path="common.d.ts" />
 
 export {
-    Controller,
-    Controller as VC,
-    Controller as default,
+    Model,
+    Model as default,
     Singleton,
     Singleton as GC
 } from './controller';

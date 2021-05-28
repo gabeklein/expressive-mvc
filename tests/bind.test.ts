@@ -1,7 +1,7 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("bind", () => {
-  class Form extends Controller {
+  class Form extends Model {
     username = "";
     password = "";
     birthday = 0;

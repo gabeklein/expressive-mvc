@@ -5,7 +5,7 @@ import * as Public from "../";
 
 export { default as Issue } from "../src/issues";
 
-export const Controller = Source.Controller as unknown as typeof Public.Controller;
+export const Model = Source.Model as unknown as typeof Public.Model;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
@@ -24,7 +24,7 @@ export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 export { subscribeTo }
 
-function subscribeTo<T extends Public.Controller>(
+function subscribeTo<T extends Public.Model>(
   target: T,
   accessor: (self: T) => void){
 

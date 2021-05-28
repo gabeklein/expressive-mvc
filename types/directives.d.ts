@@ -1,13 +1,13 @@
-import Controller from '.';
+import Model from '.';
 
 declare namespace Directives {
   /**
    * Creates a new child-instance of specified controller.
    * 
-   * @param Peer - Type of Controller to create and apply to host property.
+   * @param Peer - Type of Model to create and apply to host property.
    * @param callback - Fired after controller is created and ready for use.
    */
-  export function setChild <T extends typeof Controller> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
+  export function setChild <T extends typeof Model> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
 
   /**
    * Fetches and assigns the controller which spawned this host.
@@ -17,11 +17,11 @@ declare namespace Directives {
    * @param Expects - Type of controller compatible with this class. 
    * @param required - Throw if controller is created independantly.
    */
-  export function setParent <T extends typeof Controller> (Expects: T, required: true): InstanceOf<T>;
-  export function setParent <T extends typeof Controller> (Expects: T, required?: false): InstanceOf<T> | undefined;
+  export function setParent <T extends typeof Model> (Expects: T, required: true): InstanceOf<T>;
+  export function setParent <T extends typeof Model> (Expects: T, required?: false): InstanceOf<T> | undefined;
   
   /**
-   * Find and attach most applicable instance of Controller via context.
+   * Find and attach most applicable instance of Model via context.
    * 
    * Expects a `<Provider>` of target controller to exist. 
    * Host controller will search element-hierarchy relative to where it spawned.
@@ -127,7 +127,7 @@ declare namespace Directives {
    * 
    * @param component - Component which may recieve host controller as context parameter.
    */
-  export function setComponent <T extends Controller, P> (component: Controller.Component<P, T>): React.ComponentType<P>;
+  export function setComponent <T extends Model, P> (component: Model.Component<P, T>): React.ComponentType<P>;
   
   /**
    * Generates custom `Provider` using specified component.
@@ -137,7 +137,7 @@ declare namespace Directives {
    * 
    * @param component - Component which defines body of custom provider.
    */
-  export function setParentComponent <T extends Controller, P> (component: Controller.Component<P, T>): React.ComponentType<P>;
+  export function setParentComponent <T extends Model, P> (component: Model.Component<P, T>): React.ComponentType<P>;
   
   /**
    * Generates a bound component useable within FC's, using hooked instance of host controller.
@@ -151,7 +151,7 @@ declare namespace Directives {
    * @param Component - Compatible component to which a forwarded ref is accepted.
    * @param to - Property which bound component shall bind to.
    */
-  export function setBoundComponent <P, T = HTMLElement> (Component: Controller.Component<P, T>, to: string): React.ComponentType<P>;
+  export function setBoundComponent <P, T = HTMLElement> (Component: Model.Component<P, T>, to: string): React.ComponentType<P>;
 }
 
 export = Directives;

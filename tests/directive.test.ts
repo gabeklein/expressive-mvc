@@ -1,7 +1,7 @@
-import { act, Controller, event, Issue, ref, set, use } from './adapter';
+import { act, event, Issue, Model, ref, set, use } from './adapter';
 
 describe("set Directive", () => {
-  class Subject extends Controller {
+  class Subject extends Model {
     checkResult?: any = undefined;
   
     test1 = set<number>(value => {
@@ -60,7 +60,7 @@ describe("set Directive", () => {
 describe("use Directive", () => {
   const WORLD = "Hello World!";
 
-  class Parent extends Controller {
+  class Parent extends Model {
     hello?: string = undefined;
 
     child = use(Child as any, (child: any) => {
@@ -68,7 +68,7 @@ describe("use Directive", () => {
     }) as Child;
   }
 
-  class Child extends Controller {
+  class Child extends Model {
     hello = WORLD;
   }
 
@@ -88,7 +88,7 @@ describe("use Directive", () => {
 })
 
 describe("ref Directive", () => {
-  class Subject extends Controller {
+  class Subject extends Model {
     checkValue?: any = undefined;
   
     ref1 = ref<string>();
@@ -143,7 +143,7 @@ describe("event Directive", () => {
   let control: Events;
   let mockCallback: jest.Mock;
 
-  class Events extends Controller {
+  class Events extends Model {
     foo = event();
     bar = event(mockCallback);
     baz = event(() => mockCallback)
@@ -185,7 +185,7 @@ describe("event Directive", () => {
 })
 
 describe("act directive", () => {
-  class Test extends Controller {
+  class Test extends Model {
     test = act(this.wait);
 
     async wait<T>(input?: T){

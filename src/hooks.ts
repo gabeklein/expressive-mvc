@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
-import { Controller } from './controller';
+import { Model } from './controller';
 import { Dispatch } from './dispatch';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Subscriber } from './subscriber';
@@ -20,7 +20,7 @@ function useRefresh<T>(
   return state[0];
 }
 
-export function usePassive<T extends typeof Controller>(
+export function usePassive<T extends typeof Model>(
   target: T,
   select?: boolean | string | SelectFunction<any>){
 
@@ -63,7 +63,7 @@ export function useWatcher(
 }
 
 export function useSubscriber(
-  target: Controller, args: any[]){
+  target: Model, args: any[]){
 
   const subscription = useRefresh(trigger => 
     new Subscriber(target, trigger)
@@ -86,7 +86,7 @@ export function useSubscriber(
 }
 
 export function useLazily(
-  Type: typeof Controller, args: any[]){
+  Type: typeof Model, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);
 
@@ -95,9 +95,9 @@ export function useLazily(
   return instance;
 }
 
-const ContextUsed = new WeakMap<Controller, boolean>();
+const ContextUsed = new WeakMap<Model, boolean>();
 
-function usePeerContext(instance: Controller){
+function usePeerContext(instance: Model){
   if(ContextUsed.has(instance)){
     if(ContextUsed.get(instance))
       useLookup();
@@ -106,7 +106,7 @@ function usePeerContext(instance: Controller){
 
   const pending = entriesIn(instance)
     .map(([key, desc]) => [key, desc.value])
-    .filter(entry => Controller.isTypeof(entry[1]));
+    .filter(entry => Model.isTypeof(entry[1]));
 
   const hasPeers = pending.length > 0;
 
@@ -120,9 +120,9 @@ function usePeerContext(instance: Controller){
   ContextUsed.set(instance, hasPeers);
 }
 
-export function useController(
-  Type: typeof Controller, args: any[], 
-  callback?: (instance: Controller) => void){
+export function useModel(
+  Type: typeof Model, args: any[], 
+  callback?: (instance: Model) => void){
 
   const subscription = useRefresh(trigger => {
     const instance = Type.create(...args);

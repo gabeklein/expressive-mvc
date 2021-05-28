@@ -1,11 +1,11 @@
-import { Controller, Issue, parent, use } from './adapter';
+import { Issue, Model, parent, use } from './adapter';
 
 describe("Parent-Child", () => {
   it("creates parent-child relationship", () => {
-    class Foo extends Controller {
+    class Foo extends Model {
       child = use(Bar as any) as Bar;
     }
-    class Bar extends Controller {
+    class Bar extends Model {
       parent = parent(Foo as any) as Foo;
     }
 
@@ -17,8 +17,8 @@ describe("Parent-Child", () => {
   })
 
   it("throws when required parent is absent :(", () => {
-    class Detatched extends Controller {}
-    class NonStandalone extends Controller {
+    class Detatched extends Model {}
+    class NonStandalone extends Model {
       expects = parent(Detatched, true);
     }
 
@@ -33,11 +33,11 @@ describe("Parent-Child", () => {
   })
 
   it("throws if parent is incorrect type", () => {
-    class Expected extends Controller {}
-    class Unexpected extends Controller {
+    class Expected extends Model {}
+    class Unexpected extends Model {
       child = use(Adopted as any) as Adopted;
     }
-    class Adopted extends Controller {
+    class Adopted extends Model {
       expects = parent(Expected);
     }
 

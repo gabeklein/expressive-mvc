@@ -65,7 +65,7 @@ export default Issues({
     `Strict requestUpdate() did not find pending updates.`,
 
   NoObserver: (className) =>
-    `No observer exists for this instance of ${className}. Is it a Controller?`,
+    `No observer exists for this instance of ${className}. Does it extend Model?`,
 
   ParentRequired: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,

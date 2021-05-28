@@ -1,4 +1,4 @@
-import type { Controller } from './controller';
+import type { Model } from './controller';
 
 import { Dispatch } from './dispatch';
 import { Singleton } from './singleton';
@@ -8,7 +8,7 @@ import Oops from './issues';
 
 const ParentRelationship = new WeakMap<{}, {}>();
 
-export function setChild<T extends typeof Controller>
+export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {
@@ -24,7 +24,7 @@ export function setChild<T extends typeof Controller>
   })
 }
 
-export function setParent<T extends typeof Controller>
+export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {
@@ -45,7 +45,7 @@ export function setParent<T extends typeof Controller>
   })
 }
 
-export function setPeer<T extends typeof Controller>
+export function setPeer<T extends typeof Model>
   (Peer: T): InstanceOf<T> {
 
   return Dispatch.define((key, { subject }) => {
@@ -59,7 +59,7 @@ export function setPeer<T extends typeof Controller>
 }
 
 export function setRefObject<T = any>
-  (effect?: EffectCallback<Controller, any>): { current: T } {
+  (effect?: EffectCallback<Model, any>): { current: T } {
 
   return Dispatch.define((key, on) => {
     on.watched.add(key);
@@ -75,7 +75,7 @@ export function setRefObject<T = any>
 }
 
 export function setEffect<T = any>
-  (value: any, effect?: EffectCallback<Controller, T>): T {
+  (value: any, effect?: EffectCallback<Model, T>): T {
 
   if(!effect){
     effect = value;
@@ -88,7 +88,7 @@ export function setEffect<T = any>
 }
 
 export function setEvent
-  (callback?: EffectCallback<Controller>){
+  (callback?: EffectCallback<Model>){
 
   return Dispatch.define((key, on) => {
     on.watched.add(key);

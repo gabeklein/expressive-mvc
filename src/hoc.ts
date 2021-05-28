@@ -1,4 +1,4 @@
-import type { Controller as Public } from '../types';
+import type Public from '../types';
 import type { ComponentClass, ComponentType, FunctionComponent } from 'react';
 
 import Oops from './issues';

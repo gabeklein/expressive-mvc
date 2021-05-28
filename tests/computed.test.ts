@@ -1,7 +1,7 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("computed", () => {
-  class Subject extends Controller {
+  class Subject extends Model {
     seconds = 0;
   
     get minutes(){
@@ -35,7 +35,7 @@ describe("co-dependant computed", () => {
 
   beforeEach(() => didCompute = []);
 
-  class Test extends Controller {
+  class Test extends Model {
     X = 1;
 
     get A(){
@@ -84,7 +84,7 @@ describe("co-dependant computed", () => {
 })
 
 describe("circular computed", () => {
-  class Test extends Controller {
+  class Test extends Model {
     multiplier = 0;
     previous: any;
 
@@ -124,7 +124,7 @@ describe("circular computed", () => {
 })
 
 describe.skip("recursive computed", () => {
-  class Test extends Controller {
+  class Test extends Model {
     value = 0;
     isEven = true;
 

@@ -1,14 +1,14 @@
 import { ReactElement } from "react";
-import { Controller } from "./controller"
+import { Model } from "./controller"
 
 type ComponentOutput = ReactElement<any, any> | null;
 
 type ProviderOfProps = { of: Class[] | { [key: string]: Class } }
 
 type ProviderForProps<E> = E extends Class
-    ? ({ of: E, children?: React.ReactNode } & Controller.Data<InstanceType<E>>)
-    | ({ of: E, children?: (instance: InstanceType<E>) => React.ReactNode } & Controller.Data<InstanceType<E>>)
-    : ({ of: E, children?: React.ReactNode } & Controller.Data<E>);
+    ? ({ of: E, children?: React.ReactNode } & Model.Data<InstanceType<E>>)
+    | ({ of: E, children?: (instance: InstanceType<E>) => React.ReactNode } & Model.Data<InstanceType<E>>)
+    : ({ of: E, children?: React.ReactNode } & Model.Data<E>);
 
 type ConsumerProps<E extends Class> = 
     | {

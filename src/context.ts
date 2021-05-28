@@ -10,15 +10,15 @@ import {
   useMemo,
 } from 'react';
 
-import { Controller } from './controller';
+import { Model } from './controller';
 import { create, define, fn, values } from './util';
 
 import Oops from './issues';
 
 export class Lookup {
-  private table = new Map<typeof Controller, symbol>();
+  private table = new Map<typeof Model, symbol>();
 
-  private key(T: typeof Controller){
+  private key(T: typeof Model){
     let key = this.table.get(T);
 
     if(!key){
@@ -29,7 +29,7 @@ export class Lookup {
     return key;
   }
 
-  public get(T: typeof Controller, strict?: boolean): Controller | undefined {
+  public get(T: typeof Model, strict?: boolean): Model | undefined {
     const instance = (this as any)[this.key(T)];
 
     if(!instance && strict)
@@ -38,13 +38,13 @@ export class Lookup {
     return instance;
   }
   
-  public push(items: Controller | Controller[]){
+  public push(items: Model | Model[]){
     const next = create(this) as Lookup;
 
-    items = ([] as Controller[]).concat(items);
+    items = ([] as Model[]).concat(items);
 
     for(const I of items){
-      let T = I.constructor as typeof Controller;
+      let T = I.constructor as typeof Model;
   
       do {
         define(next, this.key(T), I);
@@ -56,7 +56,7 @@ export class Lookup {
   }
 
   public pop(){
-    for(const c of values<Controller>(this as any))
+    for(const c of values<Model>(this as any))
       c.destroy();
   }
 }
@@ -68,13 +68,13 @@ export function useLookup(){
 }
 
 function useIncluding(
-  insert: Controller | Array<typeof Controller> | BunchOf<typeof Controller>,
+  insert: Model | Array<typeof Model> | BunchOf<typeof Model>,
   dependancy?: any){
 
   const current = useLookup();
 
   return useMemo(() => {
-    const provide = insert instanceof Controller
+    const provide = insert instanceof Model
       ? [ insert ] : values(insert).map(T => T.create());
 
     return current.push(provide);
@@ -83,7 +83,7 @@ function useIncluding(
 
 export function withProvider(
   Component: ComponentType,
-  control: Controller){
+  control: Model){
 
   return (props: any) =>
     createElement(Provider, { of: control }, 
@@ -92,14 +92,14 @@ export function withProvider(
 }
 
 interface ConsumerProps {
-  of: typeof Controller;
-  get?: (value: Controller) => void;
-  has?: (value: Controller) => void;
-  children?: (value: Controller) => ReactElement<any, any> | null;
+  of: typeof Model;
+  get?: (value: Model) => void;
+  has?: (value: Model) => void;
+  children?: (value: Model) => ReactElement<any, any> | null;
 }
 
 interface ProviderProps {
-  of: Controller | typeof Controller | Array<typeof Controller> | BunchOf<typeof Controller>,
+  of: Model | typeof Model | Array<typeof Model> | BunchOf<typeof Model>,
   children?: ReactNode 
 }
 
@@ -120,9 +120,9 @@ export const Consumer = (props: ConsumerProps) => {
 export function Provider(props: ProviderProps){
   const { of: target, children, ...data } = props;
  
-  if(Controller.isTypeof(target))
+  if(Model.isTypeof(target))
     return createElement(ParentProvider, { target, data }, children);
-  else if(target instanceof Controller)
+  else if(target instanceof Model)
     return createElement(DirectProvider, { target, data }, children);
   else if(typeof target == "object")
     return createElement(MultiProvider, { types: target }, children);
@@ -131,7 +131,7 @@ export function Provider(props: ProviderProps){
 }
 
 function ParentProvider(
-  props: PropsWithChildren<{ target: typeof Controller, data: {} }>){
+  props: PropsWithChildren<{ target: typeof Model, data: {} }>){
 
   let { children, target, data } = props;
   const instance = target.using(data);
@@ -144,7 +144,7 @@ function ParentProvider(
 }
 
 function DirectProvider(
-  props: PropsWithChildren<{ target: Controller, data: {} }>){
+  props: PropsWithChildren<{ target: Model, data: {} }>){
 
   const { children, data, target } = props;
   const value = useIncluding(target, target);
@@ -155,7 +155,7 @@ function DirectProvider(
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ types: Array<typeof Controller> | BunchOf<typeof Controller> }>){
+  props: PropsWithChildren<{ types: Array<typeof Model> | BunchOf<typeof Model> }>){
 
   const { children, types } = props;
   const value = useIncluding(types);

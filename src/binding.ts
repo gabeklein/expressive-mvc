@@ -1,5 +1,5 @@
-import type { Controller as Public } from '../types';
-import type { Controller } from "./controller";
+import type Public from '../types';
+import type { Model } from "./controller";
 
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
@@ -9,7 +9,7 @@ import { createHocFactory } from './hoc';
 import { define, defineProperty, entries } from './util';
 
 export function createBindAgent(
-  requestedBy: Controller){
+  requestedBy: Model){
 
   const instance = requestedBy.get;
   const tracked = entries(instance.export());
@@ -45,7 +45,7 @@ export function setBoundComponent
 }
 
 function useBindRef(
-  control: Controller, key: string){
+  control: Model, key: string){
 
   let cleanup: Callback | undefined;
 
@@ -71,7 +71,7 @@ function useBindRef(
 }
 
 function createOneWayBinding(
-  element: HTMLElement, parent: Controller, key: string){
+  element: HTMLElement, parent: Model, key: string){
 
   return parent.on(key as any, (v) => {
     element.innerHTML = String(v);
@@ -79,7 +79,7 @@ function createOneWayBinding(
 }
 
 function createTwoWayBinding(
-  input: HTMLInputElement, parent: Controller, key: string){
+  input: HTMLInputElement, parent: Model, key: string){
 
   function onUpdate(this: typeof input){
     parent.update({ [key]: this.value });

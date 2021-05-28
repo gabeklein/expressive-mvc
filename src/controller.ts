@@ -1,19 +1,19 @@
-import type { Controller as Public } from '../types';
+import type Public from '../types';
 
 import { createBindAgent } from './binding';
 import { useLookup } from './context';
 import { Dispatch } from './dispatch';
-import { useController, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useModel, useLazily, usePassive, useSubscriber, useWatcher } from './hooks';
 import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
-export interface Controller extends Public {};
+export interface Model extends Public {};
 
-export class Controller {
+export class Model {
   constructor(){
     const cb = this.didCreate;
-    const dispatch =  Dispatch.set(this, Controller)!;
+    const dispatch =  Dispatch.set(this, Model)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -43,7 +43,7 @@ export class Controller {
     Dispatch.get(this).emit("willDestroy", []);
   }
 
-  static create<T extends typeof Controller>(
+  static create<T extends typeof Model>(
     this: T, ...args: any[]){
 
     const instance: InstanceOf<T> = 
@@ -55,17 +55,17 @@ export class Controller {
   }
 
   static use(...args: any[]){
-    return useController(this, args);
+    return useModel(this, args);
   }
 
   static uses(props: BunchOf<any>, only?: string[]){
-    return useController(this, [], instance => {
+    return useModel(this, [], instance => {
       assignSpecific(instance, props, only);
     })
   }
 
   static using(props: BunchOf<any>, only?: string[]){
-    const instance = useController(this, []);
+    const instance = useModel(this, []);
 
     assignSpecific(instance, props, only);
 
@@ -99,18 +99,18 @@ export class Controller {
 
   static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
-      Dispatch.set(this, Controller);
+      Dispatch.set(this, Model);
       return this;
     }, path);
   }
 
-  static find(strict: true): Controller;
-  static find(strict?: boolean): Controller | undefined;
+  static find(strict: true): Model;
+  static find(strict?: boolean): Model | undefined;
   static find(strict?: boolean){
     return useLookup().get(this, strict);
   }
 
-  static isTypeof<T extends typeof Controller>(
+  static isTypeof<T extends typeof Model>(
     this: T, maybe: any): maybe is T {
 
     return (
@@ -119,10 +119,10 @@ export class Controller {
     )
   }
 
-  static get inherits(): typeof Controller | undefined {
+  static get inherits(): typeof Model | undefined {
     const I = getPrototypeOf(this);
 
-    if(I !== Controller)
+    if(I !== Model)
       return I;
   }
 }

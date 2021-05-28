@@ -1,4 +1,4 @@
-import type { Controller } from './controller';
+import type { Model } from './controller';
 
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
@@ -28,7 +28,7 @@ export class Dispatch extends Observer {
 
   private ready = false;
 
-  static set(on: {}, base: typeof Controller){
+  static set(on: {}, base: typeof Model){
     if(Register.has(on))
       return;
 

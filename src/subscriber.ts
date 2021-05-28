@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Model } from './controller';
 import { Dispatch } from './dispatch';
 import { GetterInfo, metaData } from './observer';
 import { create, defineProperty, traceable } from './util';
@@ -22,7 +22,7 @@ export class Subscriber<T = any> {
       const initial = () => {
         let value = (this.subject as any)[key];
 
-        if(value instanceof Controller)
+        if(value instanceof Model)
           return this.recursive(key);
     
         this.follow(key);
@@ -62,7 +62,7 @@ export class Subscriber<T = any> {
     this.watch(key, () => {
       let value = (subject as any)[key];
 
-      if(value instanceof Controller){
+      if(value instanceof Model){
         let child = sub =
           new Subscriber(value, callback);
     
@@ -89,7 +89,7 @@ export class Subscriber<T = any> {
     this.watch(key, () => {
       let value = (this.subject as any)[key];
 
-      if(value instanceof Controller){
+      if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
 
         this.parent.once("didRender", () => child.commit());

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Consumer, Controller, hoc, render, wrap } from './adapter';
+import { Consumer, hoc, Model, render, wrap } from './adapter';
 
 type TestComponentProps = React.PropsWithChildren<{
   got?: (control: any) => void;
@@ -32,7 +32,7 @@ class TestComponentClass
 
 describe("Instance HOC", () => {
   it("will apply instance to function component", () => {
-    class Test extends Controller {
+    class Test extends Model {
       Component = hoc(TestComponentFunction);
     }
 
@@ -46,7 +46,7 @@ describe("Instance HOC", () => {
   it.todo("will still work if component-value changes")
 
   it("will apply instance to class component", () => {
-    class Test extends Controller {
+    class Test extends Model {
       Component = hoc(TestComponentClass);
     }
 
@@ -58,7 +58,7 @@ describe("Instance HOC", () => {
   });
 
   it("will provide instance to children of component", () => {
-    class Test extends Controller {
+    class Test extends Model {
       CustomProvider = wrap(TestComponentClass);
     }
 

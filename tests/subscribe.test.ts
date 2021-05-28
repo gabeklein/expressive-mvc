@@ -1,7 +1,7 @@
-import { Controller, subscribeTo } from './adapter';
+import { Model, subscribeTo } from './adapter';
 
 describe("subscriber", () => {
-  class Subject extends Controller {
+  class Subject extends Model {
     value = 1;
     value2 = 2;
   }
@@ -54,11 +54,11 @@ describe("subscriber", () => {
 })
 
 describe("nested properties", () => {
-  class Child extends Controller {
+  class Child extends Model {
     value = "foo"
   }
   
-  class Parent extends Controller {
+  class Parent extends Model {
     value = "foo";
     child = new Child();
   }

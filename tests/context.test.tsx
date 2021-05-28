@@ -1,11 +1,11 @@
 import React from 'react';
 
-import { Consumer, Controller, Issue, Provider, render, Singleton, tap } from './adapter';
+import { Consumer, Issue, Model, Provider, render, Singleton, tap } from './adapter';
 
-class Foo extends Controller {
+class Foo extends Model {
   value?: string = undefined;
 }
-class Bar extends Controller {}
+class Bar extends Model {}
 class Baz extends Bar {}
 
 describe("Provider", () => {
@@ -152,11 +152,11 @@ describe("Consumer", () => {
 
 describe("Peers", () => {
   it("will attach property via tap directive", () => {
-    class Foo extends Controller {
+    class Foo extends Model {
       bar = tap(Bar);
     }
 
-    class Bar extends Controller {
+    class Bar extends Model {
       value = "bar";
     }
 
@@ -176,7 +176,7 @@ describe("Peers", () => {
   })
 
   it("will attach a singleton via tap directive", () => {
-    class Foo extends Controller {
+    class Foo extends Model {
       bar = tap(Bar);
     }
 
@@ -196,7 +196,7 @@ describe("Peers", () => {
   })
 
   it("will reject from context if a singleton", () => {
-    class Normal extends Controller {}
+    class Normal extends Model {}
     class Global extends Singleton {
       notPossible = tap(Normal);
     }

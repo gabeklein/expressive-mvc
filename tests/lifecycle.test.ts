@@ -1,8 +1,8 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("built-in", () => {
   it('calls `didCreate` when initialized', () => {
-    class Subject extends Controller {
+    class Subject extends Model {
       didCreate(){
         mock(this);
       }
@@ -15,7 +15,7 @@ describe("built-in", () => {
   })
 
   it('calls `willDestroy` will when killed', () => {
-    class Subject extends Controller {
+    class Subject extends Model {
       willDestroy(){
         mock(this);
       }

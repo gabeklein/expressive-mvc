@@ -1,7 +1,7 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("observers", () => {
-  class Subject extends Controller {
+  class Subject extends Model {
     seconds = 0;
   
     get minutes(){
@@ -35,7 +35,7 @@ describe("observers", () => {
 })
 
 describe("effect", () => {
-  class TestValues extends Controller {
+  class TestValues extends Model {
     value1 = 1;
     value2 = 2;
     value3 = 3;
@@ -126,7 +126,7 @@ describe("effect", () => {
 });
 
 describe("requests made before init", () => {
-  class TestValues extends Controller {
+  class TestValues extends Model {
     value1 = 1;
     value2 = 2;
   

@@ -1,6 +1,6 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
-class Subject extends Controller {
+class Subject extends Model {
   value: number;
 
   constructor(initial?: number){
@@ -13,7 +13,7 @@ class Subject extends Controller {
   }
 }
 
-describe("controller", () => {
+describe("basics", () => {
   it('will instantiate from custom class', () => {
     const state = Subject.create();
   

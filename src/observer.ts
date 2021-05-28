@@ -1,5 +1,4 @@
-import type { Controller } from './controller';
-
+import { Model } from './controller';
 import { Subscriber } from './subscriber';
 import {
   allEntriesIn,
@@ -54,7 +53,7 @@ export class Observer {
     public subject: {}){
   }
 
-  public prepareComputed(stopAt: typeof Controller){
+  public prepareComputed(stopAt: typeof Model){
     for(const layer of allEntriesIn(this.subject, stopAt))
       for(let [key, { get, set }] of layer){
         if(!get)

@@ -1,7 +1,7 @@
-import { Controller } from "./adapter";
+import { Model } from "./adapter";
 
 describe("requestUpdate method", () => {
-  class Control extends Controller {
+  class Control extends Model {
     foo = 1;
     bar = 2;
 

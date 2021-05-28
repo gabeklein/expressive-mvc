@@ -1,5 +1,5 @@
 /**
- * Controller-Component Lifecycle
+ * Model-Component Lifecycle
  * 
  * Target contains available lifecycle callbacks. 
  * A controller, when subscribed to within a component, will

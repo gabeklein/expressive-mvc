@@ -26,9 +26,8 @@ export {
 } from './context';
 
 export {
-  Controller,
-  Controller as VC,
-  Controller as default
+  Model,
+  Model as default
 } from './controller';
 
 export {

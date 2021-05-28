@@ -3,21 +3,21 @@ import React from 'react';
 import Dispatch from './dispatch';
 import Lifecycle from './lifecycle';
 
-export namespace Controller {
+export namespace Model {
     /** Subset of `keyof T` excluding keys defined by base controller. */
-    type Fields<T, E = Controller> = Exclude<keyof T, keyof E>;
+    type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
 
     /** Subset of `keyof T` excluding keys defined by base controller besides lifecycle methods. */
-    type Events<T, E = Controller> = Exclude<keyof T, Exclude<keyof E, keyof Lifecycle>>;
+    type Events<T, E = Model> = Exclude<keyof T, Exclude<keyof E, keyof Lifecycle>>;
 
     /** Object containing data to be found in T. */
-    type Entries<T, E = Controller> = Pick<T, Fields<T, E>>;
+    type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
 
     /** Object comperable to data which may be found in T. */
-    type Data<T, E = Controller> = Partial<Entries<T, E>>;
+    type Data<T, E = Model> = Partial<Entries<T, E>>;
 
     /**
-     * Field selector which includes Controller-Lifecycle events.
+     * Field selector which includes Model-Lifecycle events.
      * Can select for any tracked-property on a specified controller.
      * 
      * Function `SelectEvent<T>` is a preferred alterative to string `keyof T`.
@@ -25,18 +25,18 @@ export namespace Controller {
      * ---
      * 
      * ```js
-     * Controller.on(x => x.didMountComponent, cb)
+     * Model.on(x => x.didMountComponent, cb)
      * ```
      * is equivalent to, while also more robust than:
      * ```js
-     * Controller.on(["didMountComponent"], cb)
+     * Model.on(["didMountComponent"], cb)
      * ```
      * 
      * **Note**: Will not select more than one item unlike `SelectFields`
      */
-    type SelectEvent<T> = SelectFunction<T, Omit<Controller, keyof Lifecycle>>;
+    type SelectEvent<T> = SelectFunction<T, Omit<Model, keyof Lifecycle>>;
 
-    type SelectField<T> = SelectFunction<T, Controller>;
+    type SelectField<T> = SelectFunction<T, Model>;
 
     /**
      * Field selector function you provide. Argument is a representation of controller specified.
@@ -50,19 +50,19 @@ export namespace Controller {
      * **Selector used to update specific properties:**
      * 
      * ```js
-     * Controller.update(x => x.foo.bar.baz)
+     * Model.update(x => x.foo.bar.baz)
      * ```
      * 
      * is equivalent to, while more robust than:
      * 
      * ```js
-     * Controller.update(["foo", "bar", "baz"])
+     * Model.update(["foo", "bar", "baz"])
      * ```
      */
-    type SelectFields<T> = QueryFunction<T, Controller>;
+    type SelectFields<T> = QueryFunction<T, Model>;
 
     /** A component which accepts a specified controller. */
-    type Component <P, T = Controller> =
+    type Component <P, T = Model> =
         | FunctionComponent<P, T>
         | ClassComponent<P, T>;
 
@@ -70,19 +70,19 @@ export namespace Controller {
      * A component which accepts a controller as second argument.
      * Injected as a reference would be while useing `forwardRef()`.
      */
-    type FunctionComponent <P, T = Controller> =
+    type FunctionComponent <P, T = Model> =
         (props: P, inject: T) => React.ReactElement<P, any> | React.ReactNode | null;
     
     /** 
      * A class component which accepts a specified controller as second argument.
      */
-    type ClassComponent <P, T = Controller> =
+    type ClassComponent <P, T = Model> =
         new (props: P, inject: T) => React.Component<P, any>;
 }
 
-export interface Controller extends Dispatch, Lifecycle {}
+export interface Model extends Dispatch, Lifecycle {}
 
-export abstract class Controller {
+export abstract class Model {
     /**
      * Circular reference to `this` controller.
      * 
@@ -93,11 +93,11 @@ export abstract class Controller {
      * **Retrieve root object after destructure:**
      * 
      * ```js
-     * const { active, get: instance } = MyController.use();
+     * const { active, get: instance } = MyModel.use();
      * ```
      * Is equivalent to:
      * ```js
-     * const instance = MyController.use();
+     * const instance = MyModel.use();
      * const { active } = instance;
      * ```
      * ---
@@ -150,12 +150,12 @@ export abstract class Controller {
      * For `<input type="text" />` this is a two-way binding,
      * user-input is captured and part of controller's state/event stream.
      */
-    bind: ReplaceAll<Controller.Entries<this>, RefFunction>;
+    bind: ReplaceAll<Model.Entries<this>, RefFunction>;
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
      * 
-     * Implemented by class in-use, see `Controller.willDestroy`.
+     * Implemented by class in-use, see `Model.willDestroy`.
      */
     destroy(): void;
 
@@ -170,10 +170,10 @@ export abstract class Controller {
     tap(): this;
 
     /** Tracks specific key of this controller within a component. */
-    tap <K extends Controller.Fields<this>> (key?: K): this[K];
+    tap <K extends Model.Fields<this>> (key?: K): this[K];
 
     /** Tracks specific key of this controller within a component. */
-    tap <K extends Controller.SelectField<this>> (key?: K): ReturnType<K>;
+    tap <K extends Model.SelectField<this>> (key?: K): ReturnType<K>;
 
     /**
      * **React Hook** - Find and subcribe to applicable controller. 
@@ -195,7 +195,7 @@ export abstract class Controller {
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
      * 
-     * Note: Controller will be destroyed when ambient component unmounts!
+     * Note: Model will be destroyed when ambient component unmounts!
      * 
      * @param args - Arguments passed to constructor of `this`
      */
@@ -235,12 +235,12 @@ export abstract class Controller {
     /**
      * **React Hook** - Fetch specific value from instance of this controller in context.
      */
-    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
+    static get <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
 
     /**
      * **React Hook** - Fetch specific value from instance of this controller in context.
      */
-    static get <T extends Class, I extends InstanceOf<T>, K extends Controller.SelectField<I>> (this: T, key?: K): ReturnType<K>;
+    static get <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K): ReturnType<K>;
     
     /** 
      * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
@@ -250,12 +250,12 @@ export abstract class Controller {
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): I[K];
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
 
     /**
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Controller.SelectField<I>> (this: T, key?: K): ReturnType<K>;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K): ReturnType<K>;
 
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
@@ -263,7 +263,7 @@ export abstract class Controller {
      * Similar to `tap(property)`, however will throw of value is undefined.
      * This makes return type non-nullable and easy to use without optional chaining.
      */
-    static has <T extends Class, I extends InstanceOf<T>, K extends Controller.Fields<I>> (this: T, key: K): Exclude<I[K], undefined>;
+    static has <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): Exclude<I[K], undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
@@ -288,7 +288,7 @@ export abstract class Controller {
      * 
      * Documentation TBD.
      */
-    static meta <T extends Class, K extends Controller.SelectField<T>> (this: T, key?: K): ReturnType<K>;
+    static meta <T extends Class, K extends Model.SelectField<T>> (this: T, key?: K): ReturnType<K>;
 
     /**
      * Produces a turn-key HOC acting as a context consumer for `this`.
@@ -297,7 +297,7 @@ export abstract class Controller {
      * 
      * @param component - Compatible component-type.
      */
-    static hoc <T extends Controller, P> (component: Controller.Component<P, T>): React.FC<P>;
+    static hoc <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
 
     /**
      * Produces a turn-key HOC acting as a context provider for `this`.
@@ -307,7 +307,7 @@ export abstract class Controller {
      * 
      * @param component - Compatible component-type.
      */
-    static wrap <T extends Controller, P> (component: Controller.Component<P, T>): React.FC<P>;
+    static wrap <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
 
     /**
      * **React Hook** - Locate most relevant instance of this type in context.
@@ -331,12 +331,12 @@ export abstract class Controller {
     static isTypeof <T extends Class>(this: T, subject: any): subject is T;
 
     /** 
-     * Retreives parent inherited by this class, unless it is base `Controller`.
+     * Retreives parent inherited by this class, unless it is base `Model`.
      */
-    static inherits: typeof Controller | undefined;
+    static inherits: typeof Model | undefined;
 }
 
-export class Singleton extends Controller {
+export class Singleton extends Model {
     /** Current instance of this controller accessable anywhere. */
     static current?: Singleton;
 }
