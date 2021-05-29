@@ -121,8 +121,10 @@ function usePeerContext(instance: Model){
 }
 
 export function useModel(
-  Type: typeof Model, args: any[], 
-  callback?: (instance: Model) => void){
+  Type: typeof Model,
+  args: any[], 
+  callback?: (instance: Model) => void,
+  withLifecycle?: boolean){
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
@@ -135,20 +137,23 @@ export function useModel(
 
   usePeerContext(hook.subject);
 
-  useLifecycleEffect((name) => {
-    if(name == Lifecycle.DID_MOUNT)
-      hook.listen(true);
+  if(withLifecycle === false)
+    useEffect(() => hook.listen(true), []);
+  else
+    useLifecycleEffect((name) => {
+      if(name == Lifecycle.DID_MOUNT)
+        hook.listen(true);
 
-    const alias = componentEvent(name);
+      const alias = componentEvent(name);
 
-    for(const event of [alias, name])
-      hook.parent.emit(event, []);
+      for(const event of [alias, name])
+        hook.parent.emit(event, []);
 
-    if(name == Lifecycle.WILL_UNMOUNT){
-      hook.release();
-      hook.subject.destroy();
-    }
-  });
+      if(name == Lifecycle.WILL_UNMOUNT){
+        hook.release();
+        hook.subject.destroy();
+      }
+    });
 
   return hook.proxy;
 }
