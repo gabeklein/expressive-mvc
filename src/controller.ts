@@ -55,10 +55,10 @@ export class Controller extends Observer {
   private ready = false;
 
   public get tracked(){
-    return [
+    return Array.from(new Set([
       ...this.getters.keys(),
       ...keys(this.subject)
-    ]
+    ]))
   }
 
   protected manageProperty(
