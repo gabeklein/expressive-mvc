@@ -27,8 +27,8 @@ export function createBindAgent(
   return bind;
 }
 
-export function setBoundComponent
-  (Type: Public.Component<{}, HTMLElement>, to: string){
+export function setBoundComponent(
+  Type: Public.Component<{}, HTMLElement>, to: string){
 
   return Controller.define((key, { subject }) => {
     const componentFor = createHocFactory<any>(Type);

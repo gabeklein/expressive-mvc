@@ -18,7 +18,7 @@ export const lifecycleEvents = [
   ...values(Lifecycle)
 ];
 
-export type LifecycleEvent = Values<typeof Lifecycle>;
+type LifecycleEvent = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){
   const map = new Map<LifecycleEvent, string>();
