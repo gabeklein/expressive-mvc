@@ -4,7 +4,7 @@ import { createBindAgent } from './bind';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { assignSpecific, define, entries, fn, getPrototypeOf } from './util';
+import { define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -60,14 +60,14 @@ export class Model {
 
   static uses(props: BunchOf<any>, only?: string[]){
     return useModel(this, [], instance => {
-      assignSpecific(instance, props, only);
+      instance.import(props, only);
     })
   }
 
   static using(props: BunchOf<any>, only?: string[]){
     const instance = useModel(this, []);
 
-    assignSpecific(instance, props, only);
+    instance.import(props, only);
 
     return instance;
   }

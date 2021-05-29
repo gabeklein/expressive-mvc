@@ -18,11 +18,12 @@ interface Dispatch {
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
   effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;
 
+  import <O extends Model.Data<this>> (via: O, select?: Iterable<string> | QueryFunction<this>): void;
+
   export(): Model.Entries<this>;
   export <P extends Model.Fields<this>> (select: P[]): Pick<this, P>;
   export(select: Model.SelectFields<this>): Model.Data<this>;
 
-  update <O extends Model.Data<this>> (via: O): void;
   update(keys: Model.SelectFields<this>): void;
   update(keys: Model.Fields<this>[]): void;
 

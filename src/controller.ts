@@ -5,7 +5,6 @@ import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import {
   assign,
-  assignSpecific,
   createEffect,
   debounce,
   fn,
@@ -168,15 +167,28 @@ export class Controller extends Observer {
     return this.addListener(select, reinvoke);
   }
 
+  public import = (
+    from: BunchOf<any>,
+    select?: Iterable<string> | QueryFunction<this>) => {
+
+    if(fn(select))
+      select = this.select(select);
+
+    for(const key of select || this.watched)
+      if(key in from)
+        (this.subject as any)[key] = from[key];
+  }
+
   public export = (
-    select?: string[] | QueryFunction<this>) => {
+    select?: Iterable<string> | QueryFunction<this>) => {
 
     if(!select)
       return assign({}, this.state);
 
     const data = {} as BunchOf<any>;
 
-    select = this.select(select);
+    if(fn(select))
+      select = this.select(select);
     
     for(const key of select)
       data[key] = (this.subject as any)[key];
@@ -185,17 +197,10 @@ export class Controller extends Observer {
   }
 
   public update = (
-    select: string | string[] | QueryFunction<this> | BunchOf<any>) => {
+    select: string | string[] | QueryFunction<this>) => {
 
-    if(typeof select == "string")
-      select = [select];
-    else if(fn(select))
-      select = this.select(select);
-
-    if(Array.isArray(select))
-      select.forEach(k => super.emit(k))
-    else
-      assignSpecific(this.subject, select, Array.from(this.watched));
+    for(const key of this.select(select))
+      super.emit(key);
   }
 
   public requestUpdate = (

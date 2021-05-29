@@ -25,7 +25,6 @@ export {
 
 export {
   allEntriesIn,
-  assignSpecific,
   createEffect,
   debounce,
   define,
@@ -89,31 +88,6 @@ function debounce(callback: Callback){
       }, 0)
     }
   }
-}
-
-function assignSpecific(
-  target: InstanceType<Class>,
-  source: BunchOf<any>, 
-  only?: string[]){
-
-  const values = target as any;
-  const proto = target.constructor.prototype;
-  const defer: string[] = [];
-
-  for(const key of only || keys(source)){
-    if(only && !(key in source))
-      continue;
-
-    const descriptor = getOwnPropertyDescriptor(proto, key);
-
-    if(descriptor && descriptor.set)
-      defer.push(key)
-    else if(target.hasOwnProperty(key))
-      values[key] = source[key];
-  }
-
-  for(const key of defer)
-    values[key] = source[key];
 }
 
 type DefineMultiple<T> = { [key: string]: (this: T) => any };

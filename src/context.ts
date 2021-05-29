@@ -149,7 +149,7 @@ function DirectProvider(
   const { children, data, target } = props;
   const value = useIncluding(target, target);
 
-  target.update(data);
+  target.import(data);
 
   return createElement(LookupContext.Provider, { value }, children);
 }

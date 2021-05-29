@@ -82,7 +82,7 @@ function createTwoWayBinding(
   input: HTMLInputElement, parent: Model, key: string){
 
   function onUpdate(this: typeof input){
-    parent.update({ [key]: this.value });
+    (parent as any)[key] = this.value;
   }
 
   const release = 
