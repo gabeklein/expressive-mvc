@@ -5,7 +5,7 @@ export {
     Model as default,
     Singleton,
     Singleton as GC
-} from './controller';
+} from './model';
 
 export {
     Consumer,
@@ -27,4 +27,4 @@ export {
     setValue as def,
     setIgnored as lazy,
     setTuple as tuple
-} from "./directives";
+} from "./modifiers";

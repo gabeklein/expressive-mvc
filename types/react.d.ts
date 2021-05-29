@@ -1,5 +1,5 @@
 import { ReactElement } from "react";
-import { Model } from "./controller"
+import { Model } from "./model"
 
 type ComponentOutput = ReactElement<any, any> | null;
 
