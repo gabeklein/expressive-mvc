@@ -78,5 +78,8 @@ export default Issue.factory({
     `Invoked action ${key} but one is already active.`,
 
   BadProviderProps: () =>
-    `Provider expects either 'of' or 'for' props.`
+    `Provider expects either 'of' or 'for' props.`,
+
+  BindNotAvailable: () =>
+    `Bind proxies are only available from a subscriber. Did you accessnode  outside of a component?`
 });

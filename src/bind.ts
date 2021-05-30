@@ -1,51 +1,31 @@
 import type Public from '../types';
-import type { Model } from "./model";
 
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
 import Oops from './issues';
 import { Controller } from './controller';
 import { createHocFactory } from './hoc';
-import { define, defineProperty, entries } from './util';
-
-export function createBindAgent(
-  requestedBy: Model){
-
-  const instance = requestedBy.get;
-  const tracked = entries(instance.export());
-  const bind = {};
-
-  tracked.forEach(([ name, value ]) => {
-    if(typeof value === "string")
-      defineProperty(bind, name, {
-        get: () => useBindRef(instance, name)
-      });
-  });
-
-  define(instance, { bind });
-
-  return bind;
-}
+import { define } from './util';
 
 export function setBoundComponent(
   Type: Public.Component<{}, HTMLElement>, to: string){
 
-  return Controller.define((key, { subject }) => {
+  return Controller.define((key, on) => {
     const componentFor = createHocFactory<any>(Type);
 
     const Component = (props: {}) => {
-      const ref = useBindRef(subject as any, key);
+      const ref = useBindRef(on, key);
       const Component = useMemo(() => componentFor(ref), []);
   
       return createElement(Component, props);
     }
 
-    define(subject, key, Component);
+    define(on.subject, key, Component);
   })
 }
 
-function useBindRef(
-  control: Model, key: string){
+export function useBindRef(
+  control: Controller, key: string){
 
   let cleanup: Callback | undefined;
 
@@ -71,7 +51,7 @@ function useBindRef(
 }
 
 function createOneWayBinding(
-  element: HTMLElement, parent: Model, key: string){
+  element: HTMLElement, parent: Controller, key: string){
 
   return parent.on(key as any, (v) => {
     element.innerHTML = String(v);
@@ -79,7 +59,7 @@ function createOneWayBinding(
 }
 
 function createTwoWayBinding(
-  input: HTMLInputElement, parent: Model, key: string){
+  input: HTMLInputElement, parent: Controller, key: string){
 
   function onUpdate(this: typeof input){
     (parent as any)[key] = this.value;

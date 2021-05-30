@@ -1,7 +1,8 @@
 import { Model } from './model';
 import { Controller } from './controller';
 import { GetterInfo, metaData } from './observer';
-import { create, defineProperty, traceable } from './util';
+import { create, defineLazy, defineProperty, entries, traceable } from './util';
+import { useBindRef } from './bind';
 
 export class Subscriber<T = any> {
   private dependant = new Set<Subscriber>();
@@ -17,6 +18,10 @@ export class Subscriber<T = any> {
 
     this.proxy = create(subject as any);
     this.parent = Controller.get(subject);
+
+    defineLazy(this.proxy, {
+      bind: () => this.bind()
+    })
 
     for(const key of this.parent.watched){
       const initial = () => {
@@ -35,6 +40,21 @@ export class Subscriber<T = any> {
         configurable: true
       })
     }
+  }
+
+  private bind(){
+    const control = this.parent;
+    const tracked = entries(control.export());
+    const bind = {};
+
+    tracked.forEach(([ name, value ]) => {
+      if(typeof value === "string")
+        defineProperty(bind, name, {
+          get: () => useBindRef(control, name)
+        });
+    });
+
+    return bind;
   }
 
   private follow(key: string, cb?: Callback){
