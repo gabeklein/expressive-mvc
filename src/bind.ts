@@ -42,36 +42,38 @@ export function bindRefFunctions(on: Controller){
 
   let index = 0;
   const gc = new Set<Callback>();
-  const refs = [] as ((e: HTMLElement | null) => void)[];
+  const refs = [] as RefFunction[];
 
-  for(const key in on.export()){
-    function bind(){
-      let cleanup: Callback | undefined;
+  function bind(key: string){
+    let cleanup: Callback | undefined;
 
-      return (e: HTMLElement | null) => {
-        if(cleanup){
-          cleanup();
-          gc.delete(cleanup);
-          cleanup = undefined;
-        }
-        if(e){
-          cleanup = createBinding(e, on, key);
-          gc.add(cleanup);
-        }
+    return (e: HTMLElement | null) => {
+      if(cleanup){
+        cleanup();
+        gc.delete(cleanup);
+        cleanup = undefined;
       }
+      if(e)
+        gc.add(
+          cleanup = createBinding(e, on, key)
+        );
     }
+  }
 
+  for(const key in on.export())
     defineProperty(proxy, key, {
       get(){
-        if(index > refs.length)
-          index = 0;
-  
-        return refs[index++] || (
-          refs[index - 1] = bind()
-        );
+        try {
+          return refs[index] || (
+            refs[index] = bind(key)
+          )
+        }
+        finally {
+          if(++index > refs.length)
+            index = 0;
+        }
       }
     })
-  }
 
   return {
     proxy,
