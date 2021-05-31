@@ -32,6 +32,21 @@ describe("observers", () => {
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
+
+  it('will initialize pending computed value', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on("minutes", callback, true);
+
+    expect(callback).toBeCalledWith(0, "minutes");
+
+    state.seconds = 60;
+
+    await state.requestUpdate();
+  
+    expect(callback).toBeCalledWith(1, "minutes");
+  })
 })
 
 describe("effect", () => {

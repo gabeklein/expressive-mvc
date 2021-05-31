@@ -197,6 +197,15 @@ export class Observer {
     traceable(`new ${key}`, initial);
     traceable(`try ${key}`, refresh);
 
+    defineProperty(this.state, key, {
+      configurable: true,
+      get: initial,
+      set: to => defineProperty(state, key, {
+        writable: true,
+        value: to
+      })
+    })
+
     metaData(compute, info);
     ComputedInit.add(initial);
 
