@@ -2,10 +2,9 @@ import type Public from '../types';
 
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
-import Oops from './issues';
 import { Controller } from './controller';
 import { createHocFactory } from './hoc';
-import { define } from './util';
+import { define, defineProperty } from './util';
 
 export function setBoundComponent(
   Type: Public.Component<{}, HTMLElement>, to: string){
@@ -14,8 +13,20 @@ export function setBoundComponent(
     const componentFor = createHocFactory<any>(Type);
 
     const Component = (props: {}) => {
-      const ref = useBindRef(on, key);
+      let reset: Callback | undefined;
+
+      const ref = useCallback<RefFunction>((e) => {
+        if(reset){
+          reset();
+          reset = undefined;
+        }
+        if(e)
+          reset = createBinding(e, on, to);
+      }, []);
+
       const Component = useMemo(() => componentFor(ref), []);
+
+      useEffect(() => () => reset && reset(), []);
   
       return createElement(Component, props);
     }
@@ -24,30 +35,62 @@ export function setBoundComponent(
   })
 }
 
-export function useBindRef(
-  control: Controller, key: string){
+type RefFunction = (e: HTMLElement | null) => void;
 
-  let cleanup: Callback | undefined;
+export function bindRefFunctions(on: Controller){
+  const proxy: BunchOf<RefFunction> = {};
 
-  const ref = useCallback((e: HTMLElement | null) => {
-    if(cleanup){
-      cleanup();
-      cleanup = undefined;
+  let index = 0;
+  const gc = new Set<Callback>();
+  const refs = [] as ((e: HTMLElement | null) => void)[];
+
+  for(const key in on.export()){
+    function bind(){
+      let cleanup: Callback | undefined;
+
+      return (e: HTMLElement | null) => {
+        if(cleanup){
+          cleanup();
+          gc.delete(cleanup);
+          cleanup = undefined;
+        }
+        if(e){
+          cleanup = createBinding(e, on, key);
+          gc.add(cleanup);
+        }
+      }
     }
-    if(e instanceof HTMLInputElement)
-      cleanup = createTwoWayBinding(e, control, key);
-    else if(e)
-      cleanup = createOneWayBinding(e, control, key);
-  }, []);
 
-  useEffect(() => {
-    if(!cleanup)
-      throw Oops.BindRefNotFound(control.constructor.name, key);
-    else
-      return () => cleanup!();
-  }, []);
+    defineProperty(proxy, key, {
+      get(){
+        if(index > refs.length)
+          index = 0;
+  
+        return refs[index++] || (
+          refs[index - 1] = bind()
+        );
+      }
+    })
+  }
 
-  return ref;
+  return {
+    proxy,
+    listen(){},
+    release(){
+      gc.forEach(x => x());
+    }
+  }
+}
+
+export function createBinding(
+  e: HTMLElement,
+  control: Controller,
+  key: string){
+
+  if(e instanceof HTMLInputElement)
+    return createTwoWayBinding(e, control, key);
+  else
+    return createOneWayBinding(e, control, key);
 }
 
 function createOneWayBinding(
@@ -61,13 +104,16 @@ function createOneWayBinding(
 function createTwoWayBinding(
   input: HTMLInputElement, parent: Controller, key: string){
 
+  let last: any;
+
   function onUpdate(this: typeof input){
-    (parent as any)[key] = this.value;
+    last = (parent.subject as any)[key] = this.value;
   }
 
   const release = 
     parent.on(key as any, (v) => {
-      input.value = String(v);
+      if(v !== last)
+        input.value = String(v);
     }, true);
 
   input.addEventListener("input", onUpdate);

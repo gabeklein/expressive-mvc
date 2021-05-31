@@ -1,11 +1,14 @@
-import { Model } from './model';
+import { bindRefFunctions } from './bind';
 import { Controller } from './controller';
+import { Model } from './model';
 import { GetterInfo, metaData } from './observer';
-import { create, defineLazy, defineProperty, entries, traceable } from './util';
-import { useBindRef } from './bind';
+import { create, defineLazy, defineProperty, traceable } from './util';
 
 export class Subscriber<T = any> {
-  private dependant = new Set<Subscriber>();
+  private dependant = new Set<{
+    listen(): void;
+    release(): void;
+  }>();
 
   public following = {} as BunchOf<Callback>;
   public parent: Controller;
@@ -20,7 +23,11 @@ export class Subscriber<T = any> {
     this.parent = Controller.get(subject);
 
     defineLazy(this.proxy, {
-      bind: () => this.bind()
+      bind: () => {
+        const agent = bindRefFunctions(this.parent);
+        this.dependant.add(agent);
+        return agent.proxy;
+      }
     })
 
     for(const key of this.parent.watched){
@@ -29,7 +36,7 @@ export class Subscriber<T = any> {
 
         if(value instanceof Model)
           return this.recursive(key);
-    
+
         this.follow(key);
         return value;
       }
@@ -40,21 +47,6 @@ export class Subscriber<T = any> {
         configurable: true
       })
     }
-  }
-
-  private bind(){
-    const control = this.parent;
-    const tracked = entries(control.export());
-    const bind = {};
-
-    tracked.forEach(([ name, value ]) => {
-      if(typeof value === "string")
-        defineProperty(bind, name, {
-          get: () => useBindRef(control, name)
-        });
-    });
-
-    return bind;
   }
 
   private follow(key: string, cb?: Callback){
