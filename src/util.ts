@@ -135,7 +135,7 @@ function recursiveSelect(
   const found = new Set<string>();
   const spy = {} as Recursive<any>;
 
-  for(const key of keys)
+  for(const key of new Set(keys))
     defineProperty(spy, key, {
       get(){
         found.add(key);

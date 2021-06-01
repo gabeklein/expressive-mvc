@@ -53,13 +53,6 @@ export class Controller extends Observer {
 
   private ready = false;
 
-  public get tracked(){
-    return Array.from(new Set([
-      ...this.getters.keys(),
-      ...keys(this.subject)
-    ]))
-  }
-
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
@@ -73,12 +66,10 @@ export class Controller extends Observer {
     using: string | string[] | QueryFunction<this>){
 
     if(fn(using)){
-      const available = new Set([
+      return recursiveSelect(using, [
         ...lifecycleEvents,
-        ...this.tracked
+        ...keys(this.subject)
       ]);
-
-      return recursiveSelect(using, available);
     }
 
     if(typeof using == "string")
@@ -162,7 +153,7 @@ export class Controller extends Observer {
     }
 
     if(fn(select))
-      select = recursiveSelect(select, this.tracked)
+      select = recursiveSelect(select, keys(this.subject))
 
     return this.addListener(select, reinvoke);
   }
