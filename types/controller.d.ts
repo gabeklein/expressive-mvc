@@ -1,5 +1,8 @@
 import Model from '.';
 
+type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
+type UpdateCallback<T, P, V> = (this: T, value: V, changed: P) => void;
+
 /**
  * Observable Instance
  * 
@@ -8,12 +11,12 @@ import Model from '.';
  */
 interface Dispatch {
   on <S extends Model.SelectEvent<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>, initial?: boolean): Callback;
-  on <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P>, initial?: boolean): Callback;
+  on <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>, initial?: boolean): Callback;
 
   once <S extends Model.SelectEvent<this>> (via: S): Promise<ReturnType<S>>;
   once <S extends Model.SelectEvent<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>): Callback;
-  once <P extends Model.Events<this>> (property: P): Promise<this[P]>;
-  once <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P>): void;
+  once <P extends Model.Events<this>> (property: P): Promise<IfApplicable<this, P>>;
+  once <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>): void;
 
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
   effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;

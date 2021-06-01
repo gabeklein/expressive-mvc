@@ -232,7 +232,6 @@ describe("requests made before init", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        // @ts-ignore
         this.on("value1", mock);
       }
     }
@@ -250,7 +249,6 @@ describe("requests made before init", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        // @ts-ignore
         this.on("value3", mock);
       }
     }
