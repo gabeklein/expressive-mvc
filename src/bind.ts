@@ -69,7 +69,7 @@ export function bindRefFunctions(on: Controller){
           )
         }
         finally {
-          if(++index > refs.length)
+          if(++index == refs.length)
             index = 0;
         }
       }
