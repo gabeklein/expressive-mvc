@@ -1,10 +1,9 @@
 import type Public from '../types';
 
-import { createBindAgent } from './bind';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { define, entries, fn, getPrototypeOf } from './util';
+import { define, defineProperty, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -18,17 +17,15 @@ export class Model {
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
 
+    defineProperty(this, "bind", {
+      get(){ throw Oops.BindNotAvailable() }
+    })
+
     define(this, { get: this, set: this });
 
     for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
-  }
-
-  public get bind(){
-    const agent = createBindAgent(this);
-    define(this.get, { bind: agent });
-    return agent as any;
   }
 
   public tap(path?: string | SelectFunction<any>){

@@ -1,77 +1,102 @@
 import type Public from '../types';
-import type { Model } from "./model";
 
 import { createElement, useCallback, useEffect, useMemo } from 'react';
 
-import Oops from './issues';
 import { Controller } from './controller';
 import { createHocFactory } from './hoc';
-import { define, defineProperty, entries } from './util';
-
-export function createBindAgent(
-  requestedBy: Model){
-
-  const instance = requestedBy.get;
-  const tracked = entries(instance.export());
-  const bind = {};
-
-  tracked.forEach(([ name, value ]) => {
-    if(typeof value === "string")
-      defineProperty(bind, name, {
-        get: () => useBindRef(instance, name)
-      });
-  });
-
-  define(instance, { bind });
-
-  return bind;
-}
+import { define, defineProperty } from './util';
 
 export function setBoundComponent(
   Type: Public.Component<{}, HTMLElement>, to: string){
 
-  return Controller.define((key, { subject }) => {
+  return Controller.define((key, on) => {
     const componentFor = createHocFactory<any>(Type);
 
     const Component = (props: {}) => {
-      const ref = useBindRef(subject as any, key);
+      let reset: Callback | undefined;
+
+      const ref = useCallback<RefFunction>((e) => {
+        if(reset){
+          reset();
+          reset = undefined;
+        }
+        if(e)
+          reset = createBinding(e, on, to);
+      }, []);
+
       const Component = useMemo(() => componentFor(ref), []);
+
+      useEffect(() => () => reset && reset(), []);
   
       return createElement(Component, props);
     }
 
-    define(subject, key, Component);
+    define(on.subject, key, Component);
   })
 }
 
-function useBindRef(
-  control: Model, key: string){
+type RefFunction = (e: HTMLElement | null) => void;
 
-  let cleanup: Callback | undefined;
+export function bindRefFunctions(on: Controller){
+  const proxy: BunchOf<RefFunction> = {};
 
-  const ref = useCallback((e: HTMLElement | null) => {
-    if(cleanup){
-      cleanup();
-      cleanup = undefined;
+  let index = 0;
+  const gc = new Set<Callback>();
+  const refs = [] as RefFunction[];
+
+  function bind(key: string){
+    let cleanup: Callback | undefined;
+
+    return (e: HTMLElement | null) => {
+      if(cleanup){
+        cleanup();
+        gc.delete(cleanup);
+        cleanup = undefined;
+      }
+      if(e)
+        gc.add(
+          cleanup = createBinding(e, on, key)
+        );
     }
-    if(e instanceof HTMLInputElement)
-      cleanup = createTwoWayBinding(e, control, key);
-    else if(e)
-      cleanup = createOneWayBinding(e, control, key);
-  }, []);
+  }
 
-  useEffect(() => {
-    if(!cleanup)
-      throw Oops.BindRefNotFound(control.constructor.name, key);
-    else
-      return () => cleanup!();
-  }, []);
+  for(const key in on.export())
+    defineProperty(proxy, key, {
+      get(){
+        try {
+          return refs[index] || (
+            refs[index] = bind(key)
+          )
+        }
+        finally {
+          if(++index == refs.length)
+            index = 0;
+        }
+      }
+    })
 
-  return ref;
+  return {
+    proxy,
+    listen(){},
+    release(){
+      gc.forEach(x => x());
+    }
+  }
+}
+
+export function createBinding(
+  e: HTMLElement,
+  control: Controller,
+  key: string){
+
+  if(e instanceof HTMLInputElement)
+    return createTwoWayBinding(e, control, key);
+  else
+    return createOneWayBinding(e, control, key);
 }
 
 function createOneWayBinding(
-  element: HTMLElement, parent: Model, key: string){
+  element: HTMLElement, parent: Controller, key: string){
 
   return parent.on(key as any, (v) => {
     element.innerHTML = String(v);
@@ -79,15 +104,18 @@ function createOneWayBinding(
 }
 
 function createTwoWayBinding(
-  input: HTMLInputElement, parent: Model, key: string){
+  input: HTMLInputElement, parent: Controller, key: string){
+
+  let last: any;
 
   function onUpdate(this: typeof input){
-    (parent as any)[key] = this.value;
+    last = (parent.subject as any)[key] = this.value;
   }
 
   const release = 
     parent.on(key as any, (v) => {
-      input.value = String(v);
+      if(v !== last)
+        input.value = String(v);
     }, true);
 
   input.addEventListener("input", onUpdate);

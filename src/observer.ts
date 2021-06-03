@@ -197,6 +197,15 @@ export class Observer {
     traceable(`new ${key}`, initial);
     traceable(`try ${key}`, refresh);
 
+    defineProperty(this.state, key, {
+      configurable: true,
+      get: initial,
+      set: to => defineProperty(state, key, {
+        writable: true,
+        value: to
+      })
+    })
+
     metaData(compute, info);
     ComputedInit.add(initial);
 
@@ -250,8 +259,8 @@ export class Observer {
   }
 
   private reset(frame?: Iterable<string>){
-    const list = frame ? Array.from(frame) : [];
-    this.waiting.splice(0).forEach(x => x(list));
+    const updated = frame ? Array.from(frame) : [];
+    this.waiting.splice(0).forEach(x => x(updated));
   }
 
   private sync(){

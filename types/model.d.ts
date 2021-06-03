@@ -8,7 +8,7 @@ export namespace Model {
     type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
 
     /** Subset of `keyof T` excluding keys defined by base controller besides lifecycle methods. */
-    type Events<T, E = Model> = Exclude<keyof T, Exclude<keyof E, keyof Lifecycle>>;
+    type Events<T> = keyof T | keyof Lifecycle;
 
     /** Object containing data to be found in T. */
     type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
@@ -34,9 +34,9 @@ export namespace Model {
      * 
      * **Note**: Will not select more than one item unlike `SelectFields`
      */
-    type SelectEvent<T> = SelectFunction<T, Omit<Model, keyof Lifecycle>>;
+    type SelectEvent<T> = SelectFunction<Omit<T, Exclude<keyof Model, keyof Lifecycle>>>;
 
-    type SelectField<T> = SelectFunction<T, Model>;
+    type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
 
     /**
      * Field selector function you provide. Argument is a representation of controller specified.
@@ -62,9 +62,7 @@ export namespace Model {
     type SelectFields<T> = QueryFunction<T, Model>;
 
     /** A component which accepts a specified controller. */
-    type Component <P, T = Model> =
-        | FunctionComponent<P, T>
-        | ClassComponent<P, T>;
+    type Component <P, T = Model> = FunctionComponent<P, T> | ClassComponent<P, T>;
 
     /**
      * A component which accepts a controller as second argument.

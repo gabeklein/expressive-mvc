@@ -53,13 +53,6 @@ export class Controller extends Observer {
 
   private ready = false;
 
-  public get tracked(){
-    return Array.from(new Set([
-      ...this.getters.keys(),
-      ...keys(this.subject)
-    ]))
-  }
-
   protected manageProperty(
     key: string, desc: PropertyDescriptor){
 
@@ -73,12 +66,10 @@ export class Controller extends Observer {
     using: string | string[] | QueryFunction<this>){
 
     if(fn(using)){
-      const available = new Set([
+      return recursiveSelect(using, [
         ...lifecycleEvents,
-        ...this.tracked
+        ...keys(this.subject)
       ]);
-
-      return recursiveSelect(using, available);
     }
 
     if(typeof using == "string")
@@ -88,20 +79,32 @@ export class Controller extends Observer {
   }
 
   protected watch(
-    key: string | QueryFunction<this>,
+    key: string | SelectFunction<this>,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    const target = this.select(key);
+    let select: string;
 
-    const callback = () =>
-      handler.call(this.subject, this.state[target[0]], target[0]);
+    if(fn(key)){
+      const detect = {} as any;
+    
+      for(const key in this.subject)
+        detect[key] = key;
+    
+      select = key(detect);
+    }
+    else
+      select = key;
+
+    const callback = () => handler.call(
+      this.subject, this.state[select], select
+    );
 
     if(initial)
       callback();
 
-    return this.addListener(target, callback, once);
+    return this.addListener([ select ], callback, once);
   }
 
   public emit(event: string, args?: any[]){
@@ -117,7 +120,7 @@ export class Controller extends Observer {
   }
 
   public on = (
-    property: string | QueryFunction<this>,
+    property: string | SelectFunction<this>,
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
@@ -125,7 +128,7 @@ export class Controller extends Observer {
   }
 
   public once = (
-    property: string | QueryFunction<this>,
+    property: string | SelectFunction<this>,
     listener?: UpdateCallback<any, any>) => {
 
     if(listener)
@@ -162,7 +165,7 @@ export class Controller extends Observer {
     }
 
     if(fn(select))
-      select = recursiveSelect(select, this.tracked)
+      select = recursiveSelect(select, keys(this.subject))
 
     return this.addListener(select, reinvoke);
   }

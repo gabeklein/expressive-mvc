@@ -1,4 +1,4 @@
-import { Model } from "./adapter";
+import { Model, Issue, renderHook } from "./adapter";
 
 describe("bind", () => {
   class Form extends Model {
@@ -6,15 +6,20 @@ describe("bind", () => {
     password = "";
     birthday = 0;
   }
+
+  it('will block bind access outside of hooks', ()  => {
+    const attempt = () => Form.create().bind;
+    const expected = Issue.BindNotAvailable();
+    
+    expect(attempt).toThrowError(expected);
+  })
   
-  it('will contains refFunctions cooresponding to values', async () => {
-    const { bind } = Form.create();
+  it('contains ref-functions cooresponding to values', async () => {
+    const { result } = renderHook(() => Form.use());
+    const { bind, get: instance } = result.current;
 
-    expect(bind.hasOwnProperty("username")).toBe(true);
-    expect(bind.hasOwnProperty("password")).toBe(true);
-
-    // ignores non-string values
-    expect(bind.hasOwnProperty("birthday")).toBe(false);
+    for(const key in instance)
+      expect(bind).toHaveProperty(key);
   })
 
   it.todo("will bind element to value of property")

@@ -20,9 +20,11 @@ function useRefresh<T>(
   return state[0];
 }
 
+type Choose = <T>(from: T) => T[keyof T];
+
 export function usePassive<T extends typeof Model>(
   target: T,
-  select?: boolean | string | SelectFunction<any>){
+  select?: boolean | string | Choose){
 
   const instance = target.find(!!select);
 
@@ -46,8 +48,14 @@ export function useWatcher(
     if(fn(target))
       target = target();
 
-    if(fn(path))
-      [ path ] = Controller.get(target).select(path);
+    if(fn(path)){
+      const detect = {} as any;
+
+      for(const key in Controller.get(target).state)
+        detect[key] = key;
+
+      path = path(detect) as string;
+    }
 
     const sub = new Subscriber(target, trigger);
 
@@ -121,8 +129,10 @@ function usePeerContext(instance: Model){
 }
 
 export function useModel(
-  Type: typeof Model, args: any[], 
-  callback?: (instance: Model) => void){
+  Type: typeof Model,
+  args: any[], 
+  callback?: (instance: Model) => void,
+  withLifecycle?: boolean){
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
@@ -135,20 +145,23 @@ export function useModel(
 
   usePeerContext(hook.subject);
 
-  useLifecycleEffect((name) => {
-    if(name == Lifecycle.DID_MOUNT)
-      hook.listen(true);
+  if(withLifecycle === false)
+    useEffect(() => hook.listen(true), []);
+  else
+    useLifecycleEffect((name) => {
+      if(name == Lifecycle.DID_MOUNT)
+        hook.listen(true);
 
-    const alias = componentEvent(name);
+      const alias = componentEvent(name);
 
-    for(const event of [alias, name])
-      hook.parent.emit(event, []);
+      for(const event of [alias, name])
+        hook.parent.emit(event, []);
 
-    if(name == Lifecycle.WILL_UNMOUNT){
-      hook.release();
-      hook.subject.destroy();
-    }
-  });
+      if(name == Lifecycle.WILL_UNMOUNT){
+        hook.release();
+        hook.subject.destroy();
+      }
+    });
 
   return hook.proxy;
 }

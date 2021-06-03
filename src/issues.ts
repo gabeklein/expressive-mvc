@@ -56,9 +56,6 @@ export default Issue.factory({
   BadHOCArgument: () =>
     `Argument for hoc() is not a component.`,
 
-  BindRefNotFound: (parent, property) =>
-    `Ref not found, trying to bind ${parent}.${property} to custom HOC.`,
-
   StrictUpdate: () => 
     `Strict requestUpdate() did not find pending updates.`,
 
@@ -78,5 +75,8 @@ export default Issue.factory({
     `Invoked action ${key} but one is already active.`,
 
   BadProviderProps: () =>
-    `Provider expects either 'of' or 'for' props.`
+    `Provider expects either 'of' or 'for' props.`,
+
+  BindNotAvailable: () =>
+    `Bind proxies are only available from a subscriber. Did you accessnode  outside of a component?`
 });
