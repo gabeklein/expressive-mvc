@@ -1078,7 +1078,7 @@ const InnerBar = () => {
 
 Next chapter, we're going to dive into _ecosystems_ and how to split state and behavior into simple, often reusable chunks and hook (pun not intended) them together.
 
-<br/>
+The ideal purpose of Models, and classes in general, is to "dumb down" the state you have to write. This makes code clear and behavior easy to duplicate. Ideally, we want controllers to be really good at **one** thing, and to cooperate with other systems as complexity grows.
 
 <h1 id="managing-section">Composing your state</h1>
 
