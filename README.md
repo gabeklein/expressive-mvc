@@ -1,3 +1,5 @@
+<br/>
+
 <p align="center">
   <img height="90" src="./assets/logo.svg" alt="Expressive Logo"/>
   <h1 align="center">
