@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
-import { Model } from './model';
 import { Controller } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
+import { Model } from './model';
+import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
-import { define, entriesIn, fn } from './util';
+import { fn, values } from './util';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
@@ -105,24 +106,23 @@ export function useLazy(
 
 const ContextUsed = new WeakMap<Model, boolean>();
 
-function usePeerContext(instance: Model){
+export function usePeerContext(instance: Model){
   if(ContextUsed.has(instance)){
     if(ContextUsed.get(instance))
       useLookup();
     return;
   }
 
-  const pending = entriesIn(instance)
-    .map(([key, desc]) => [key, desc.value])
-    .filter(entry => Model.isTypeof(entry[1]));
+  const pending = values(instance)
+    .filter(x => PendingContext.has(x));
 
   const hasPeers = pending.length > 0;
 
   if(hasPeers){
     const local = useLookup();
   
-    for(const [key, type] of pending)
-      define(instance, key, local.get(type));
+    for(const init of pending)
+      init(local);
   }
 
   ContextUsed.set(instance, hasPeers);

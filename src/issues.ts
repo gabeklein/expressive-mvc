@@ -62,6 +62,9 @@ export default Issue.factory({
   NoObserver: (className) =>
     `No observer exists for this instance of ${className}. Does it extend Model?`,
 
+  AmbientRequired: (requested, requester, key) =>
+    `Attempted to find an instance of ${requested} in context. It is required for ${requester}.${key} but could not be found.`,
+
   ParentRequired: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 

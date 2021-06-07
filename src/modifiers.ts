@@ -1,5 +1,6 @@
 import type { Model } from './model';
 
+import { Lookup } from './context';
 import { Controller } from './controller';
 import { Singleton } from './singleton';
 import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
@@ -45,16 +46,31 @@ export function setParent<T extends typeof Model>
   })
 }
 
+export const PendingContext = new Set<(context: Lookup) => void>();
+
 export function setPeer<T extends typeof Model>
-  (Peer: T): InstanceOf<T> {
+  (Peer: T, required?: boolean): InstanceOf<T> {
 
   return Controller.define((key, { subject }) => {
+    const Self = subject.constructor.name;
+
     if(Singleton.isTypeof(Peer))
       defineLazy(subject, key, () => Peer.find(true));
     else if(subject instanceof Singleton)
       throw Oops.CantAttachGlobal(subject.constructor.name, Peer.name);
-    else
-      define(subject, key, Peer);
+    else {
+      function insert(context: Lookup){
+        const remote = context.get(Peer);
+
+        if(!remote && required)
+          throw Oops.AmbientRequired(Peer.name, Self, key);
+
+        define(subject, key, remote);
+      }
+
+      PendingContext.add(insert);
+      define(subject, key, insert);
+    }
   })
 }
 
