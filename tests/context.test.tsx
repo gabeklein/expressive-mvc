@@ -151,20 +151,18 @@ describe("Consumer", () => {
 });
 
 describe("Peers", () => {
+  class Foo extends Model {
+    bar = tap(Bar);
+  }
+
+  class Bar extends Model {
+    value = "bar";
+  }
+
   it("will attach property via tap directive", () => {
-    class Foo extends Model {
-      bar = tap(Bar);
-    }
-
-    class Bar extends Model {
-      value = "bar";
-    }
-
     const Test = () => {
       const { bar } = Foo.use();
-
       expect(bar.value).toBe("bar");
-
       return null;
     }
 
@@ -175,35 +173,62 @@ describe("Peers", () => {
     );
   })
 
-  it("will attach a singleton via tap directive", () => {
-    class Foo extends Model {
-      bar = tap(Bar);
-    }
-
-    class Bar extends Singleton {
-      value = "bar";
-    }
-
-    Bar.create();
-
+  it("will return undefined if instance not found", () => {
     const Test = () => {
-      const { bar } = Foo.use();
-      expect(bar.value).toBe("bar");
+      const foo = Foo.use();
+      expect(foo.bar).toBeUndefined();
       return null;
     }
 
     render(<Test />);
   })
 
-  it("will reject from context if a singleton", () => {
+  it("will throw if strict tap is undefined", () => {
+    class Foo extends Model {
+      bar = tap(Bar, true);
+    }
+
+    const issue = Issue.AmbientRequired(Bar.name, Foo.name, "bar");
+    const useStrictFooBar = () => Foo.use().bar;
+
+    const TestComponent = () => {
+      expect(useStrictFooBar).toThrow(issue);
+      return null;
+    }
+
+    render(<TestComponent />);
+  })
+
+  it("will attach a singleton via tap directive", () => {
+    class Foo extends Model {
+      global = tap(Global);
+    }
+
+    class Global extends Singleton {
+      value = "bar";
+    }
+
+    Global.create();
+
+    const Test = () => {
+      const { global } = Foo.use();
+      expect(global.value).toBe("bar");
+      return null;
+    }
+
+    render(<Test />);
+  })
+
+  it("will throw if model is tapped by singleton", () => {
     class Normal extends Model {}
     class Global extends Singleton {
       notPossible = tap(Normal);
     }
 
-    expect(() => Global.create()).toThrow(
-      Issue.CantAttachGlobal(Global.name, Normal.name)
-    );
+    const attempt = () => Global.create();
+    const issue = Issue.CantAttachGlobal(Global.name, Normal.name);
+
+    expect(attempt).toThrow(issue);
   })
 
   it.todo("can access peers sharing same provider");

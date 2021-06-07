@@ -25,8 +25,11 @@ declare namespace Directives {
    * 
    * Expects a `<Provider>` of target controller to exist. 
    * Host controller will search element-hierarchy relative to where it spawned.
+   * 
+   * @param Type - Type of controller to attach to property. 
+   * @param required - Throw if instance of Type cannot be found.
    */
-  export function setPeer <T extends Class> (type: T): InstanceOf<T>;
+  export function setPeer <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
   
   /**
    * Sets property to synchronously call an effect upon update (much like a setter).
