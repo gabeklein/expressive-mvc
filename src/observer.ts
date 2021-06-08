@@ -6,6 +6,7 @@ import {
   entriesIn,
   fn,
   getOwnPropertyDescriptor,
+  insertAfter,
   traceable
 } from './util';
 
@@ -102,7 +103,7 @@ export class Observer {
     }
 
     required.forEach(x => x());
-    this.reset();
+    this.reset([]);
   }
 
   protected manageProperty(
@@ -258,30 +259,39 @@ export class Observer {
     (this.pending || this.sync())(key);
   }
 
-  private reset(frame?: Iterable<string>){
-    const updated = frame ? Array.from(frame) : [];
-    this.waiting.splice(0).forEach(x => x(updated));
+  private reset(frame: string[]){
+    this.waiting.splice(0).forEach(x => x(frame));
   }
 
   private sync(){
+    const self = this;
     const effects = new Set<Callback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
-    const include = (notify: Callback) => {
-      const target = metaData(notify);
+    function add(key: string){
+      if(handled.has(key))
+        return;
 
-      if(!target || target.parent !== this)
-        effects.add(notify);
-      else {
-        const offset = pending.findIndex(
-          sib => target.priority > metaData(sib).priority
-        );
-        pending.splice(offset + 1, 0, notify);
-      }
+      handled.add(key);
+      self.followers.forEach(sub => {
+        if(key in sub)
+          include(sub[key]);
+      })
     }
 
-    setTimeout(() => {
+    function include(notify: Callback){
+      const target = metaData(notify);
+
+      if(!target || target.parent !== self)
+        effects.add(notify);
+      else
+        insertAfter(pending, notify,
+          sib => target.priority > metaData(sib).priority
+        )
+    }
+
+    function send(){
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -290,21 +300,15 @@ export class Observer {
           compute();
       }
 
+      const frame = Array.from(handled);
+
       effects.forEach(x => x());
 
-      this.pending = undefined;
-      this.reset(handled);
-    }, 0);
+      self.pending = undefined;
+      self.reset(frame);
+    }
 
-    return this.pending = (key: string) => {
-      if(handled.has(key))
-        return;
-
-      handled.add(key);
-
-      for(const group of this.followers)
-        if(key in group)
-          include(group[key]);
-    };
+    setTimeout(send, 0);
+    return this.pending = add;
   }
 }

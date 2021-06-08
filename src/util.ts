@@ -19,6 +19,7 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
+  insertAfter,
   keys,
   values
 }
@@ -138,4 +139,13 @@ function recursiveSelect(
   using(spy);
 
   return Array.from(found);
+}
+
+function insertAfter<T>(
+  into: T[],
+  item: T,
+  after: (item: T) => boolean){
+
+  const matchIndex = into.findIndex(after);
+  into.splice(matchIndex + 1, 0, item);
 }
