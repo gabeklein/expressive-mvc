@@ -35,8 +35,10 @@ export {
   recursiveSelect
 }
 
-function define(target: {}, kv: string | symbol, value: any){
-  defineProperty(target, kv, { value })
+function define(
+  target: {}, key: string | symbol, value: any){
+
+  defineProperty(target, key, { value })
 }
 
 function fn(x: any): x is Function {
@@ -49,7 +51,9 @@ function alias<T extends Function>(
   return assign(fn, { displayName });
 }
 
-function entriesIn(object: {}): [string, PropertyDescriptor][] {
+function entriesIn(
+  object: {}): [string, PropertyDescriptor][] {
+
   return entries(getOwnPropertyDescriptors(object))
 }
 
@@ -82,7 +86,9 @@ function defineLazy<T>(
   });
 }
 
-function createEffect(callback: EffectCallback<any>){
+function createEffect(
+  callback: EffectCallback<any>){
+
   let unSet: Callback | Promise<any> | void;
 
   return (value: any, callee = value) => {
@@ -120,8 +126,8 @@ function recursiveSelect(
 function insertAfter<T>(
   into: T[],
   item: T,
-  after: (item: T) => boolean){
+  predicate: (item: T) => boolean){
 
-  const matchIndex = into.findIndex(after);
+  const matchIndex = into.findIndex(predicate);
   into.splice(matchIndex + 1, 0, item);
 }
