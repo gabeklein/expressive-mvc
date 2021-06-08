@@ -12,7 +12,7 @@ export interface Model extends Public {};
 export class Model {
   constructor(){
     const cb = this.didCreate;
-    const dispatch = Controller.set(this, Model)!;
+    const dispatch = Controller.set(this)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -96,7 +96,7 @@ export class Model {
 
   static meta(path: string | SelectFunction<any>): any {
     return useWatcher(() => {
-      Controller.set(this, Model);
+      Controller.set(this);
       return this;
     }, path);
   }

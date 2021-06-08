@@ -1,5 +1,3 @@
-import type { Model } from './model';
-
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
@@ -25,14 +23,14 @@ export class Controller extends Observer {
     return fn as any;
   }
 
-  static set(on: {}, base: typeof Model){
+  static set(on: {}){
     if(Register.has(on))
       return;
 
     const dispatch = new this(on);
 
     Register.set(on, dispatch);
-    dispatch.prepareComputed(base);
+    dispatch.prepareComputed();
   
     return dispatch;
   }

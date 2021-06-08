@@ -62,10 +62,10 @@ export class Observer {
     this.reset([]);
   }
 
-  protected prepareComputed(stopAt: typeof Model){
+  protected prepareComputed(){
     for(
       let scan = this.subject;
-      scan !== stopAt && scan.constructor !== stopAt;
+      scan !== Model && scan.constructor !== Model;
       scan = getPrototypeOf(scan)){
 
       for(let [key, { get, set }] of entriesIn(scan)){
