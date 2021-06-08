@@ -91,27 +91,21 @@ export class Observer {
   }
 
   protected initComputed(){
-    const required: Callback[] = [];
+    const expected: Callback[] = [];
 
-    this.getters.forEach((compute, key) => {
+    for(const [key, compute] of this.getters){
       if(key in this.state)
-        return;
+        continue;
 
-      const init = this.monitorComputed(key, compute);
+      const init =
+        this.monitorComputed(key, compute);
 
-      for(const sub of this.followers)
-        if(key in sub){
-          required.push(init);
-          return;
-        }
+      if(init)
+        expected.push(init);
+    }
 
-      this.assign(key, {
-        get: init,
-        set: Oops.AssignToGetter(key).warn
-      })
-    })
-
-    required.forEach(x => x());
+    for(const init of expected)
+      init();
   }
 
   protected manageProperty(
@@ -143,10 +137,11 @@ export class Observer {
   private monitorComputed(
     key: string, compute: () => any){
 
-    const info = { key, parent: this, priority: 1 };
+    const self = this;
     const { state, subject, getters } = this;
+    const info = { key, parent: this, priority: 1 };
 
-    const refresh = () => {
+    function refresh(){
       let next;
 
       try {
@@ -159,11 +154,11 @@ export class Observer {
 
       if(next !== state[key]){
         state[key] = next;
-        this.emit(key);
+        self.emit(key);
       }
     }
 
-    const initial = (early?: boolean) => {
+    function initial(early?: boolean){
       const sub = new Subscriber(subject, refresh, info);
 
       try {
@@ -194,17 +189,23 @@ export class Observer {
             info.priority = priority + 1;
         }
 
-        this.assign(key, {
-          get: this.getter(key),
+        self.assign(key, {
+          get: self.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
       }
     }
 
-    this.watched.add(key);
-
     traceable(`new ${key}`, initial);
     traceable(`try ${key}`, refresh);
+
+    metaData(compute, info);
+    this.watched.add(key);
+    ComputedInit.add(initial);
+
+    for(const sub of this.followers)
+      if(key in sub)
+        return initial;
 
     defineProperty(this.state, key, {
       configurable: true,
@@ -215,10 +216,10 @@ export class Observer {
       })
     })
 
-    metaData(compute, info);
-    ComputedInit.add(initial);
-
-    return initial;
+    this.assign(key, {
+      get: initial,
+      set: Oops.AssignToGetter(key).warn
+    })
   }
 
   public getter(key: string){

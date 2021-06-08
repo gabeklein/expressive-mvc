@@ -630,15 +630,21 @@ class StickySituation extends VC {
   remaining = 60;
   agent = "Bond";
 
-  componentDidMount(){
-    const timer = 
-      setInterval(this.tickTock, 1000);
+  constructor(){
+    super();
+    setup();
+  }
 
-    // here's how-to use watch!
-    this.watch(
-      ["stop", "componentWillUnmount"],
-      () => clearInterval(timer)
-    );
+  setup(){
+    let timer;
+    const done = () => clearInterval(timer);
+
+    this.once("componentWillMount", () => {
+      timer = setInterval(this.tickTock, 1000);
+    });
+
+    this.once("done", done);
+    this.once("componentWillUnmount", done);
   }
 
   tickTock = () => {
