@@ -1,13 +1,13 @@
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import {
+  alias,
   defineProperty,
   entriesIn,
   fn,
   getOwnPropertyDescriptor,
   getPrototypeOf,
-  insertAfter,
-  traceable
+  insertAfter
 } from './util';
 
 import Oops from './issues';
@@ -82,7 +82,7 @@ export class Observer {
             });
           }
 
-        traceable(`run ${key}`, get);
+        alias(get, `run ${key}`);
 
         this.getters.set(key, get);
         this.assign(key, { get, set, configurable: true });
@@ -196,8 +196,8 @@ export class Observer {
       }
     }
 
-    traceable(`new ${key}`, initial);
-    traceable(`try ${key}`, refresh);
+    alias(initial, `new ${key}`);
+    alias(refresh, `try ${key}`);
 
     metaData(compute, info);
     this.watched.add(key);
@@ -223,7 +223,7 @@ export class Observer {
   }
 
   public getter(key: string){
-    return traceable(`get ${key}`, () => this.state[key]);
+    return alias(() => this.state[key], `get ${key}`);
   }
 
   public setter(
@@ -242,7 +242,7 @@ export class Observer {
       this.emit(key);
     }
       
-    return traceable(`set ${key}`, assigned);
+    return alias(assigned, `set ${key}`);
   }
 
   public addListener(

@@ -2,7 +2,7 @@ import { bindRefFunctions } from './bind';
 import { Controller } from './controller';
 import { Model } from './model';
 import { GetterInfo, metaData } from './observer';
-import { create, defineLazy, defineProperty, traceable } from './util';
+import { alias, create, defineLazy, defineProperty } from './util';
 
 export class Subscriber<T = any> {
   private dependant = new Set<{
@@ -40,7 +40,7 @@ export class Subscriber<T = any> {
       }
 
       defineProperty(this.proxy, key, {
-        get: traceable(`tap ${key}`, initial),
+        get: alias(initial, `tap ${key}`),
         set: this.parent.setter(key),
         configurable: true
       })

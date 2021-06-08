@@ -25,14 +25,14 @@ export {
 }
 
 export {
+  alias,
   createEffect,
   debounce,
   define,
   defineLazy,
   entriesIn,
   fn,
-  recursiveSelect,
-  traceable
+  recursiveSelect
 }
 
 function define(target: {}, kv: string | symbol, value: any){
@@ -43,9 +43,10 @@ function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function traceable<T extends Function>(name: string, fn: T){
-  (fn as { displayName?: string }).displayName = name;
-  return fn;
+function alias<T extends Function>(
+  fn: T, displayName: string): T {
+
+  return assign(fn, { displayName });
 }
 
 function entriesIn(object: {}): [string, PropertyDescriptor][] {
