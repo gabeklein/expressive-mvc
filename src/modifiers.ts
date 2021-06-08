@@ -172,6 +172,8 @@ export function setTuple<T extends any[]>
   })
 }
 
+type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
+
 export function setAction(action: AsyncFn){
   return Controller.define((key, on) => {
     let pending = false;

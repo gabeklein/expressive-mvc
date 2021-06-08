@@ -1,6 +1,7 @@
 import Model from '.';
 
 type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
+type ValueCallback<T, V> = (this: T, value: V, updated: keyof T) => void;
 type UpdateCallback<T, P, V> = (this: T, value: V, changed: P) => void;
 
 /**

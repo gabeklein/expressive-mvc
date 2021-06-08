@@ -3,7 +3,13 @@ import React from 'react';
 import Controller from './controller';
 import Lifecycle from './lifecycle';
 
+type RefFunction = (e: HTMLElement | null) => void;
+type Expecting<A extends any[]> = new(...args: A) => any;
+
 export namespace Model {
+    /** Shallow replacement for all entries of T Model */
+    type Overlay<T, R> = { [K in keyof Entries<T>]: R };
+
     /** Subset of `keyof T` excluding keys defined by base controller. */
     type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
 
@@ -148,7 +154,7 @@ export abstract class Model {
      * For `<input type="text" />` this is a two-way binding,
      * user-input is captured and part of controller's state/event stream.
      */
-    bind: ReplaceAll<Model.Entries<this>, RefFunction>;
+    bind: Model.Overlay<this, RefFunction>;
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
