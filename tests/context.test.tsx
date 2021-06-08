@@ -9,7 +9,7 @@ class Bar extends Model {}
 class Baz extends Bar {}
 
 describe("Provider", () => {
-  it("provides an existing instance of controller", () => {
+  it("will provide instance of model", () => {
     const instance = Foo.create();
 
     render(
@@ -19,7 +19,7 @@ describe("Provider", () => {
     );
   })
 
-  it("creates an instance of given class", () => {
+  it("will create instance of given model", () => {
     render(
       <Provider of={Foo}>
         <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
@@ -27,15 +27,21 @@ describe("Provider", () => {
     );
   })
 
-  it("will assign props to controller", () => {
-    render(
-      <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("foobar")} />
+  it("will destroy instance of given model", async () => {
+    const didUnmount = jest.fn();
+
+    const result = render(
+      <Provider of={Foo}>
+        <Consumer of={Foo} has={i => i.willDestroy = didUnmount} />
       </Provider>
     );
-  })
 
-  it("will accept render function on class-type", () => {
+    result.unmount();
+
+    expect(didUnmount).toHaveBeenCalled()
+  });
+
+  it("will accept render function for given model", () => {
     render(
       <Provider of={Foo}>
         {(instance) => {
@@ -50,7 +56,15 @@ describe("Provider", () => {
     );
   })
 
-  it("will not assign foriegn props to controller", () => {
+  it("will assign props to instance", () => {
+    render(
+      <Provider of={Foo} value="foobar">
+        <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("foobar")} />
+      </Provider>
+    );
+  })
+
+  it("will not assign foreign props to controller", () => {
     render(
       // @ts-ignore - type-checking warns against this
       <Provider of={Foo} nonValue="foobar">
@@ -62,7 +76,7 @@ describe("Provider", () => {
     );
   })
 
-  it("provides all instances if `of` is an object", () => {
+  it("will create all models in given object", () => {
     render(
       <Provider of={{ Foo, Bar }}>
         <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
@@ -71,23 +85,18 @@ describe("Provider", () => {
     )
   })
 
-  it("will destroy created instance when unmounts", async () => {
-    const didUnmount = jest.fn();
-
-    const result = render(
-      <Provider of={Foo}>
-        <Consumer of={Foo} has={i => i.willDestroy = didUnmount} />
+  it("will create all models in given array", () => {
+    render(
+      <Provider of={[ Foo, Bar ]}>
+        <Consumer of={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
       </Provider>
-    );
-
-    result.unmount();
-
-    expect(didUnmount).toHaveBeenCalled()
-  });
+    )
+  })
 })
 
 describe("Consumer", () => {
-  it("can handle complex arrangement", () => {
+  it("will handle complex arrangement", () => {
     const instance = Foo.create();
 
     render(
@@ -103,15 +112,14 @@ describe("Consumer", () => {
     )
   })
 
-  it("get prop will pass undefined if not found", () => {
+  it("will pass undefined if not found for get-prop", () => {
     render(
       <Consumer of={Bar} get={i => expect(i).toBeUndefined()} />
     )
   })
 
-  it.skip("has prop will throw if not found", () => {
-    // React throwing error-boundary warning despite assertion.
-
+  // React throwing error-boundary warning despite assertion.
+  it.skip("will throw if not found for has-prop", () => {
     const test = () => render(
       <Consumer of={Bar} has={i => void i} />
     )
@@ -121,7 +129,7 @@ describe("Consumer", () => {
     );
   })
 
-  it("will select extended class if found", () => {
+  it("will eagerly select extension", () => {
     render(
       <Provider of={Baz}>
         <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
@@ -139,7 +147,7 @@ describe("Consumer", () => {
     )
   });
 
-  it("prefers closest match over best match", () => {
+  it("will select closest match over best match", () => {
     render(
       <Provider of={Bar}>
         <Provider of={Baz}>
