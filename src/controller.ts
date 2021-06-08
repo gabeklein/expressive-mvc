@@ -62,18 +62,16 @@ export class Controller extends Observer {
       super.manageProperty(key, desc);
   }
 
-  public select(
-    using: string | string[] | QueryFunction<this>){
-
-    if(fn(using)){
-      return recursiveSelect(using, [
-        ...lifecycleEvents,
-        ...keys(this.subject)
-      ]);
-    }
+  protected select(
+    using: string | Iterable<string> | QueryFunction<this>){
 
     if(typeof using == "string")
-      return [using];
+      return [ using ];
+
+    if(fn(using))
+      return recursiveSelect(using, 
+        keys(this.subject).concat(lifecycleEvents)
+      );
 
     return using;
   }
@@ -145,13 +143,13 @@ export class Controller extends Observer {
     
     let { subject } = this;
     const effect = createEffect(callback);
-    const reinvoke = debounce(() => effect(subject));
+    const invoke = debounce(() => effect(subject));
 
     if(!select){
       let sub: Subscriber;
 
       const capture = () => {
-        sub = new Subscriber(subject, reinvoke);
+        sub = new Subscriber(subject, invoke);
         effect(subject = sub.proxy);
         sub.listen();
       }
@@ -164,20 +162,18 @@ export class Controller extends Observer {
       return () => sub.release();
     }
 
-    if(fn(select))
-      select = recursiveSelect(select, keys(this.subject))
-
-    return this.addListener(select, reinvoke);
+    return this.addListener(this.select(select), invoke);
   }
 
   public import = (
     from: BunchOf<any>,
     select?: Iterable<string> | QueryFunction<this>) => {
 
-    if(fn(select))
-      select = this.select(select);
+    const selected = select
+      ? this.select(select)
+      : this.watched;
 
-    for(const key of select || this.watched)
+    for(const key of selected)
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
@@ -190,10 +186,7 @@ export class Controller extends Observer {
 
     const data = {} as BunchOf<any>;
 
-    if(fn(select))
-      select = this.select(select);
-    
-    for(const key of select)
+    for(const key of this.select(select))
       data[key] = (this.subject as any)[key];
 
     return data;

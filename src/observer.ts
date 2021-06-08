@@ -237,7 +237,7 @@ export class Observer {
   }
 
   public addListener(
-    keys: string[],
+    keys: Iterable<string>,
     callback: Callback,
     once?: boolean){
 
