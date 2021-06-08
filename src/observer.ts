@@ -1,11 +1,11 @@
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import {
-  allEntriesIn,
   defineProperty,
   entriesIn,
   fn,
   getOwnPropertyDescriptor,
+  getPrototypeOf,
   insertAfter,
   traceable
 } from './util';
@@ -54,14 +54,23 @@ export class Observer {
     public subject: {}){
   }
 
-  public prepareComputed(stopAt: typeof Model){
-    for(const layer of allEntriesIn(this.subject, stopAt))
-      for(let [key, { get, set }] of layer){
-        if(!get)
-          continue;
+  protected start(){
+    for(const [k, d] of entriesIn(this.subject))
+      this.manageProperty(k, d);
 
-        if(this.getters.has(key))
-          return;
+    this.initComputed();
+    this.reset([]);
+  }
+
+  protected prepareComputed(stopAt: typeof Model){
+    for(
+      let scan = this.subject;
+      scan !== stopAt && scan.constructor !== stopAt;
+      scan = getPrototypeOf(scan)){
+
+      for(let [key, { get, set }] of entriesIn(scan)){
+        if(!get || this.getters.has(key))
+          continue;
 
         if(!set)
           set = (value: any) => {
@@ -78,32 +87,31 @@ export class Observer {
         this.getters.set(key, get);
         this.assign(key, { get, set, configurable: true });
       }
+    }
   }
 
-  protected start(){
-    const followers = Array.from(this.followers);
+  protected initComputed(){
     const required: Callback[] = [];
 
-    for(const [k, d] of entriesIn(this.subject))
-      this.manageProperty(k, d);
-
-    for(const [key, compute] of this.getters){
+    this.getters.forEach((compute, key) => {
       if(key in this.state)
-        continue;
+        return;
 
       const init = this.monitorComputed(key, compute);
 
-      if(followers.find(x => key in x))
-        required.push(init);
-      else
-        this.assign(key, {
-          get: init,
-          set: Oops.AssignToGetter(key).warn
-        })
-    }
+      for(const sub of this.followers)
+        if(key in sub){
+          required.push(init);
+          return;
+        }
+
+      this.assign(key, {
+        get: init,
+        set: Oops.AssignToGetter(key).warn
+      })
+    })
 
     required.forEach(x => x());
-    this.reset([]);
   }
 
   protected manageProperty(

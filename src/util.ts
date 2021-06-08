@@ -25,7 +25,6 @@ export {
 }
 
 export {
-  allEntriesIn,
   createEffect,
   debounce,
   define,
@@ -57,24 +56,6 @@ function traceable<T extends Function>(name: string, fn: T){
 
 function entriesIn(object: {}): [string, PropertyDescriptor][] {
   return entries(getOwnPropertyDescriptors(object))
-}
-
-function allEntriesIn(object: {}, until: {}){
-  let layer = object;
-
-  return <IterableIterator<[string, PropertyDescriptor][]>>{
-    [Symbol.iterator](){
-      return this;
-    },
-    next(){
-      if(layer === until || layer.constructor === until)
-        return { done: true };
-
-      const value = entriesIn(layer);
-      layer = getPrototypeOf(layer);
-      return { value }; 
-    }
-  }
 }
 
 function debounce(callback: Callback){
