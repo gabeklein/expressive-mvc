@@ -22,12 +22,10 @@ export class Subscriber<T = any> {
     this.proxy = create(subject as any);
     this.parent = Controller.get(subject);
 
-    defineLazy(this.proxy, {
-      bind: () => {
-        const agent = bindRefFunctions(this.parent);
-        this.dependant.add(agent);
-        return agent.proxy;
-      }
+    defineLazy(this.proxy, "bind", () => {
+      const agent = bindRefFunctions(this.parent);
+      this.dependant.add(agent);
+      return agent.proxy;
     })
 
     for(const key of this.parent.watched){

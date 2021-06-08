@@ -90,27 +90,19 @@ function debounce(callback: Callback){
   }
 }
 
-type DefineMultiple<T> = { [key: string]: (this: T) => any };
-
-function defineLazy<T>(object: T, property: string | symbol, init: (this: T) => any): void;
-function defineLazy<T>(object: T, property: DefineMultiple<T>): void;
 function defineLazy<T>(
   object: T, 
-  property: string | symbol | DefineMultiple<T>, 
-  init?: (this: T) => any){
+  property: string | symbol, 
+  init: (this: T) => any){
 
-  if(typeof property === "object")
-    for(const k in property)
-      defineLazy(object, k, property[k]);
-  else
-    defineProperty(object, property, { 
-      configurable: true,
-      get(){
-        const value = init!.call(this);
-        defineProperty(this, property, { value });
-        return value;
-      }
-    });
+  defineProperty(object, property, { 
+    configurable: true,
+    get(){
+      const value = init!.call(this);
+      defineProperty(this, property, { value });
+      return value;
+    }
+  });
 }
 
 function createEffect(callback: EffectCallback<any>){
