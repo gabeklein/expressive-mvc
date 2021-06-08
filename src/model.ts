@@ -17,11 +17,12 @@ export class Model {
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
 
+    define(this, "get", this);
+    define(this, "set", this);
+
     defineProperty(this, "bind", {
       get(){ throw Oops.BindNotAvailable() }
     })
-
-    define(this, { get: this, set: this });
 
     for(const [key, value] of entries(dispatch))
       if(fn(value))

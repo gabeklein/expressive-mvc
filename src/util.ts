@@ -35,14 +35,8 @@ export {
   traceable
 }
 
-function define(target: {}, values: {}): void;
-function define(target: {}, key: string | symbol, value: any): void;
-function define(target: {}, kv: {} | string | symbol, v?: {}){
-  if(typeof kv == "string" || typeof kv == "symbol")
-    defineProperty(target, kv, { value: v })
-  else
-    for(const [key, value] of entries(kv))
-      defineProperty(target, key, { value });
+function define(target: {}, kv: string | symbol, value: any){
+  defineProperty(target, kv, { value })
 }
 
 function fn(x: any): x is Function {
