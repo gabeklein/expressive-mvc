@@ -282,24 +282,24 @@ export class Observer {
         return;
 
       handled.add(key);
-      self.followers.forEach(sub => {
+
+      for(const sub of self.followers)
         if(key in sub)
           include(sub[key]);
-      })
     }
 
     function include(notify: Callback){
       const target = metaData(notify);
 
-      if(!target || target.parent !== self)
-        effects.add(notify);
-      else
+      if(target && target.parent == self)
         insertAfter(pending, notify,
           sib => target.priority > metaData(sib).priority
         )
+      else
+        effects.add(notify);
     }
 
-    function send(){
+    function notify(){
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -316,7 +316,7 @@ export class Observer {
       self.reset(frame);
     }
 
-    setTimeout(send, 0);
+    setTimeout(notify, 0);
     return this.pending = add;
   }
 }
