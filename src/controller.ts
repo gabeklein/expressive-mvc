@@ -76,19 +76,20 @@ export class Controller extends Observer {
   }
 
   protected watch(
-    key: string | Query,
+    target: string | Iterable<string> | Query,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    const select = this.select(key);
+    const select = this.select(target);
 
-    const callback = () => handler.call(
-      this.subject, this.state[select[0]], select[0]
-    );
+    const callback = (frame: Iterable<string>) => {
+      for(const key of frame)
+        handler.call(this.subject, this.state[key], key);
+    }
 
     if(initial)
-      callback();
+      callback(select);
 
     return this.addListener(select, callback, once);
   }
@@ -106,22 +107,22 @@ export class Controller extends Observer {
   }
 
   public on = (
-    property: string | Query,
+    select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
-    return this.watch(property, listener, false, initial);
+    return this.watch(select, listener, false, initial);
   }
 
   public once = (
-    property: string | Query,
+    select: string | Iterable<string> | Query,
     listener?: UpdateCallback<any, any>) => {
 
     if(listener)
-      return this.watch(property, listener, true);
+      return this.watch(select, listener, true);
     else
       return new Promise(resolve => {
-        this.watch(property, resolve, true)
+        this.watch(select, resolve, true)
       });
   }
 

@@ -47,6 +47,10 @@ describe("observers", () => {
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
+
+  it.todo('will watch multiple keys');
+  it.todo('will watch multiple keys using selector');
+  it.todo('will call event for all simultaneous hits');
 })
 
 describe("effect", () => {
