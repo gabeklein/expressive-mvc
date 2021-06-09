@@ -6,7 +6,7 @@ type Issues<M extends Messages> = {
 }
 
 class Issue extends Error {
-  // drop first line of stack trace, not relevant.
+  // drop first line of stack trace; not relevant.
   stack = this.stack.replace(/\n.+/, "") as string;
 
   warn = () => console.warn(this.message);

@@ -34,7 +34,7 @@ export function subscribeTo<T extends Public.Model>(
     didTrigger();
   });
 
-  // ignore initial invocation.
+  // ignore initial scan-phase
   didTrigger.mockReset();
   
   return async (isExpected = true) => {
