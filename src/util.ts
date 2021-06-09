@@ -41,6 +41,21 @@ function define(
   defineProperty(target, key, { value })
 }
 
+function defineLazy<T>(
+  object: T, 
+  property: string | symbol, 
+  init: (this: T) => any){
+
+  defineProperty(object, property, { 
+    configurable: true,
+    get(){
+      const value = init!.call(this);
+      defineProperty(this, property, { value });
+      return value;
+    }
+  });
+}
+
 function fn(x: any): x is Function {
   return typeof x == "function";
 }
@@ -69,21 +84,6 @@ function debounce(callback: Callback){
       }, 0)
     }
   }
-}
-
-function defineLazy<T>(
-  object: T, 
-  property: string | symbol, 
-  init: (this: T) => any){
-
-  defineProperty(object, property, { 
-    configurable: true,
-    get(){
-      const value = init!.call(this);
-      defineProperty(this, property, { value });
-      return value;
-    }
-  });
 }
 
 function createEffect(
