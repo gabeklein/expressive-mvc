@@ -71,36 +71,25 @@ export class Controller extends Observer {
         keys(this.subject).concat(lifecycleEvents)
       );
 
-    return using;
+    return Array.from(using);
   }
 
   protected watch(
-    key: string | SelectFunction<this>,
+    key: string | QueryFunction<this>,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    let select: string;
-
-    if(fn(key)){
-      const detect = {} as any;
-    
-      for(const key in this.subject)
-        detect[key] = key;
-    
-      select = key(detect);
-    }
-    else
-      select = key;
+    const select = this.select(key);
 
     const callback = () => handler.call(
-      this.subject, this.state[select], select
+      this.subject, this.state[select[0]], select[0]
     );
 
     if(initial)
       callback();
 
-    return this.addListener([ select ], callback, once);
+    return this.addListener(select, callback, once);
   }
 
   public emit(event: string, args?: any[]){
@@ -116,7 +105,7 @@ export class Controller extends Observer {
   }
 
   public on = (
-    property: string | SelectFunction<this>,
+    property: string | QueryFunction<this>,
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
@@ -124,7 +113,7 @@ export class Controller extends Observer {
   }
 
   public once = (
-    property: string | SelectFunction<this>,
+    property: string | QueryFunction<this>,
     listener?: UpdateCallback<any, any>) => {
 
     if(listener)
