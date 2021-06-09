@@ -19,29 +19,17 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
-  insertAfter,
   keys,
   values
 }
 
-export {
-  alias,
-  createEffect,
-  debounce,
-  define,
-  defineLazy,
-  entriesIn,
-  fn,
-  recursiveSelect
-}
-
-function define(
+export function define(
   target: {}, key: string | symbol, value: any){
 
   defineProperty(target, key, { value })
 }
 
-function defineLazy<T>(
+export function defineLazy<T>(
   object: T, 
   property: string | symbol, 
   init: (this: T) => any){
@@ -56,23 +44,23 @@ function defineLazy<T>(
   });
 }
 
-function fn(x: any): x is Function {
+export function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function alias<T extends Function>(
+export function alias<T extends Function>(
   fn: T, displayName: string): T {
 
   return assign(fn, { displayName });
 }
 
-function entriesIn(
+export function entriesIn(
   object: {}): [string, PropertyDescriptor][] {
 
   return entries(getOwnPropertyDescriptors(object))
 }
 
-function debounce(callback: Callback){
+export function debounce(callback: Callback){
   let throttle: undefined | boolean;
 
   return () => {
@@ -86,7 +74,7 @@ function debounce(callback: Callback){
   }
 }
 
-function createEffect(
+export function createEffect(
   callback: EffectCallback<any>){
 
   let unSet: Callback | Promise<any> | void;
@@ -103,7 +91,7 @@ function createEffect(
   }
 }
 
-function recursiveSelect(
+export function recursiveSelect(
   using: Function,
   keys: Iterable<string>){
 
@@ -123,7 +111,7 @@ function recursiveSelect(
   return Array.from(found);
 }
 
-function insertAfter<T>(
+export function insertAfter<T>(
   into: T[],
   item: T,
   predicate: (item: T) => boolean){
