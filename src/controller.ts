@@ -13,6 +13,7 @@ import {
 import Oops from './issues';
 
 type Init = (key: string, on: Controller) => void;
+type Query = (select: Recursive<{}>) => void;
 
 const Register = new WeakMap<{}, Controller>();
 const Pending = new WeakSet<Init>();
@@ -61,7 +62,7 @@ export class Controller extends Observer {
   }
 
   protected select(
-    using: string | Iterable<string> | QueryFunction<this>){
+    using: string | Iterable<string> | Query){
 
     if(typeof using == "string")
       return [ using ];
@@ -75,7 +76,7 @@ export class Controller extends Observer {
   }
 
   protected watch(
-    key: string | QueryFunction<this>,
+    key: string | Query,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
@@ -105,7 +106,7 @@ export class Controller extends Observer {
   }
 
   public on = (
-    property: string | QueryFunction<this>,
+    property: string | Query,
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
@@ -113,7 +114,7 @@ export class Controller extends Observer {
   }
 
   public once = (
-    property: string | QueryFunction<this>,
+    property: string | Query,
     listener?: UpdateCallback<any, any>) => {
 
     if(listener)
@@ -126,7 +127,7 @@ export class Controller extends Observer {
 
   public effect = (
     callback: EffectCallback<any>,
-    select?: string[] | QueryFunction<this>) => {
+    select?: string[] | Query) => {
     
     let { subject } = this;
     const effect = createEffect(callback);
@@ -154,7 +155,7 @@ export class Controller extends Observer {
 
   public import = (
     from: BunchOf<any>,
-    select?: Iterable<string> | QueryFunction<this>) => {
+    select?: Iterable<string> | Query) => {
 
     const selected = select
       ? this.select(select)
@@ -166,7 +167,7 @@ export class Controller extends Observer {
   }
 
   public export = (
-    select?: Iterable<string> | QueryFunction<this>) => {
+    select?: Iterable<string> | Query) => {
 
     if(!select)
       return assign({}, this.state);
@@ -180,7 +181,7 @@ export class Controller extends Observer {
   }
 
   public update = (
-    select: string | string[] | QueryFunction<this>) => {
+    select: string | string[] | Query) => {
 
     for(const key of this.select(select))
       super.emit(key);

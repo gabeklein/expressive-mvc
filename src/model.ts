@@ -7,6 +7,8 @@ import { define, defineProperty, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
+type Select = <T>(from: T) => T[keyof T];
+
 export interface Model extends Public {};
 
 export class Model {
@@ -29,7 +31,7 @@ export class Model {
         define(this, key, value);
   }
 
-  public tap(path?: string | SelectFunction<any>){
+  public tap(path?: string | Select){
     return useWatcher(this, path) as any;
   }
 
@@ -74,11 +76,11 @@ export class Model {
     return useLazy(this, args);
   }
 
-  static get(key?: boolean | string | SelectFunction<any>){
+  static get(key?: boolean | string | Select){
     return usePassive(this, key);
   }
 
-  static tap(key?: string | SelectFunction<any>){
+  static tap(key?: string | Select){
     return this.find(true).tap(key);
   }
 
@@ -95,7 +97,7 @@ export class Model {
     return value;
   }
 
-  static meta(path: string | SelectFunction<any>): any {
+  static meta(path: string | Select): any {
     return useWatcher(() => {
       Controller.set(this);
       return this;

@@ -7,6 +7,9 @@ type RefFunction = (e: HTMLElement | null) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
+    type SelectFunction<T, O = {}> = (arg: Omit<Required<T>, keyof O>) => any;
+    type QueryFunction<T, O = {}> = (select: Recursive<Omit<Required<T>, keyof O>>) => void;
+
     /** Shallow replacement for all entries of T Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
 
