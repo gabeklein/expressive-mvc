@@ -116,6 +116,7 @@ export class Observer {
   }
 
   public assign(key: string, desc: PropertyDescriptor){
+    this.watched.add(key);
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
@@ -127,7 +128,6 @@ export class Observer {
     if(initial !== undefined)
       this.state[key] = initial;
 
-    this.watched.add(key);
     this.assign(key, {
       get: this.getter(key),
       set: this.setter(key, effect)

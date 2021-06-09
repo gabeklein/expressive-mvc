@@ -78,7 +78,6 @@ export function setRefObject<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return Controller.define((key, on) => {
-    on.watched.add(key);
     on.assign(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
@@ -105,7 +104,6 @@ export function setEffect<T = any>
 
 export function setEvent(callback?: EffectCallback<Model>){
   return Controller.define((key, on) => {
-    on.watched.add(key);
     on.assign(key, {
       value: () => on.emit(key)
     })
@@ -163,7 +161,6 @@ export function setTuple<T extends any[]>
     };
 
     source[key] = values;
-    on.watched.add(key);
     on.assign(key, {
       get: on.getter(key),
       set: alias(setTuple, `set ${key}`)
@@ -200,7 +197,6 @@ export function setAction(action: AsyncFn){
       get: () => pending
     })
 
-    on.watched.add(key);
     on.assign(key, {
       get: () => invoke,
       set: () => {
