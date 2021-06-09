@@ -44,7 +44,7 @@ export default Issue.factory({
   BadEffectCallback: () =>
     `Callback for property-update may only return a function.`,
 
-  DestroyNotActive: (name) =>
+  DestroyNotPossible: (name) =>
     `${name}.destory() was called on an instance which is not active. This is an antipattern and may caused unexpected behavior.`,
 
   GlobalExists: (type) =>

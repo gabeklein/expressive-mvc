@@ -36,6 +36,6 @@ export class Singleton extends Model {
     if(this === meta.current)
       meta.current = undefined;
     else
-      Oops.DestroyNotActive(meta.name).warn();
+      Oops.DestroyNotPossible(meta.name).warn();
   }
 }
