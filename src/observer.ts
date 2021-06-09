@@ -45,7 +45,7 @@ export class Observer {
   protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
-  public followers = new Set<BunchOf<Callback>>();
+  public followers = new Set<BunchOf<RequestCallback>>();
   public watched = new Set<string>();
 
   public pending?: (key: string) => void;
@@ -247,12 +247,12 @@ export class Observer {
 
   public addListener(
     keys: Iterable<string>,
-    callback: Callback,
+    callback: RequestCallback,
     once?: boolean){
 
-    const handler = once ? () => { done(); callback() } : callback;
-    const done = () => { this.followers.delete(follow) };
-    const follow: BunchOf<Callback> = {};
+    const remove = () => { this.followers.delete(follow) };
+    const handler = once ? (k: string[]) => { remove(); callback(k) } : callback;
+    const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
       runEarlyIfComputed(this.subject, key);
@@ -261,7 +261,7 @@ export class Observer {
 
     this.followers.add(follow);
 
-    return done;
+    return remove;
   }
 
   public emit(key: string){
@@ -274,7 +274,7 @@ export class Observer {
 
   private sync(){
     const self = this;
-    const effects = new Set<Callback>();
+    const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
@@ -289,15 +289,15 @@ export class Observer {
           include(sub[key]);
     }
 
-    function include(notify: Callback){
-      const target = metaData(notify);
+    function include(request: RequestCallback){
+      const target = metaData(request);
 
       if(target && target.parent == self)
-        insertAfter(pending, notify,
+        insertAfter(pending, request,
           sib => target.priority > metaData(sib).priority
         )
       else
-        effects.add(notify);
+        effects.add(request);
     }
 
     function notify(){
@@ -311,7 +311,7 @@ export class Observer {
 
       const frame = Array.from(handled);
 
-      effects.forEach(x => x());
+      effects.forEach(x => x(frame));
 
       self.pending = undefined;
       self.reset(frame);
