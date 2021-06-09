@@ -7,8 +7,8 @@ type RefFunction = (e: HTMLElement | null) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
-    type SelectFunction<T, O = {}> = (arg: Omit<Required<T>, keyof O>) => any;
-    type QueryFunction<T, O = {}> = (select: Recursive<Omit<Required<T>, keyof O>>) => void;
+    type SelectFunction<T> = (arg: Required<T>) => any;
+    type QueryFunction<T> = (select: Recursive<Required<T>>) => void;
 
     /** Shallow replacement for all entries of T Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
@@ -25,6 +25,8 @@ export namespace Model {
     /** Object comperable to data which may be found in T. */
     type Data<T, E = Model> = Partial<Entries<T, E>>;
 
+    type NonLifecycle = Exclude<keyof Model, keyof Lifecycle>;
+
     /**
      * Field selector which includes Model-Lifecycle events.
      * Can select for any tracked-property on a specified controller.
@@ -40,12 +42,8 @@ export namespace Model {
      * ```js
      * Model.on(["didMountComponent"], cb)
      * ```
-     * 
-     * **Note**: Will not select more than one item unlike `SelectFields`
      */
-    type SelectEvent<T> = SelectFunction<Omit<T, Exclude<keyof Model, keyof Lifecycle>>>;
-
-    type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
+    type SelectEvent<T> = SelectFunction<Omit<T, NonLifecycle>>;
 
     /**
      * Field selector function you provide. Argument is a representation of controller specified.
@@ -68,7 +66,9 @@ export namespace Model {
      * Model.update(["foo", "bar", "baz"])
      * ```
      */
-    type SelectFields<T> = QueryFunction<T, Model>;
+    type SelectFields<T> = QueryFunction<Omit<T, keyof Model>>;
+
+    type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
 
     /** A component which accepts a specified controller. */
     type Component <P, T = Model> = FunctionComponent<P, T> | ClassComponent<P, T>;
