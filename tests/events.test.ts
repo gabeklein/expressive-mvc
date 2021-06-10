@@ -51,6 +51,15 @@ describe("observers", () => {
   it.todo('will watch multiple keys');
   it.todo('will watch multiple keys using selector');
   it.todo('will call event for all simultaneous hits');
+
+  it('will return empty promise from once', async () => {
+    const state = Subject.create();
+    const pending = state.once(x => x.seconds);
+
+    state.seconds = 30;
+  
+    await expect(pending).resolves.toBeUndefined();
+  })
 })
 
 describe("effect", () => {

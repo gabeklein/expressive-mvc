@@ -14,9 +14,9 @@ interface Dispatch {
   on <S extends Model.SelectEvent<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>, initial?: boolean): Callback;
   on <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>, initial?: boolean): Callback;
 
-  once <S extends Model.SelectEvent<this>> (via: S): Promise<ReturnType<S>>;
+  once <S extends Model.SelectEvent<this>> (via: S): Promise<void>;
   once <S extends Model.SelectEvent<this>> (via: S, cb: ValueCallback<this, ReturnType<S>>): Callback;
-  once <P extends Model.Events<this>> (property: P): Promise<IfApplicable<this, P>>;
+  once <P extends Model.Events<this>> (property: P): Promise<void>;
   once <P extends Model.Events<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>): void;
 
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
