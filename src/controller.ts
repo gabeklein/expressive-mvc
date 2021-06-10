@@ -85,7 +85,8 @@ export class Controller extends Observer {
 
     const callback = (frame: Iterable<string>) => {
       for(const key of frame)
-        handler.call(this.subject, this.state[key], key);
+        if(select.includes(key))
+          handler.call(this.subject, this.state[key], key);
     }
 
     if(initial)
