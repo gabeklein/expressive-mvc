@@ -85,7 +85,8 @@ export class Controller extends Observer {
 
     const callback = (frame: Iterable<string>) => {
       for(const key of frame)
-        handler.call(this.subject, this.state[key], key);
+        if(select.includes(key))
+          handler.call(this.subject, this.state[key], key);
     }
 
     if(initial)
@@ -120,9 +121,11 @@ export class Controller extends Observer {
 
     if(listener)
       return this.watch(select, listener, true);
-    else
-      return new Promise(resolve => {
-        this.watch(select, resolve, true)
+    else 
+      return new Promise<void>(resolve => {
+        this.addListener(
+          this.select(select), () => resolve(), true
+        );
       });
   }
 

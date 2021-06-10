@@ -1,39 +1,40 @@
 import { Model } from "./adapter";
 
-describe("observers", () => {
+describe("on", () => {
   class Subject extends Model {
     seconds = 0;
+    hours = 0;
   
     get minutes(){
       return Math.floor(this.seconds / 60)
     }
   }
   
-  it('will dispatch changes to observer', async () => {
+  it('will watch for updated value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
     state.on("seconds", callback);
+
     state.seconds = 30;
-  
     await state.requestUpdate();
   
     expect(callback).toBeCalledWith(30, "seconds");
   })
   
-  it('will dispatch changes to computed value', async () => {
+  it('will watch for computed value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
     state.on("minutes", callback);
-    state.seconds = 60;
 
+    state.seconds = 60;
     await state.requestUpdate();
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
 
-  it('will initialize pending computed value', async () => {
+  it('will compute pending value early', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -42,15 +43,110 @@ describe("observers", () => {
     expect(callback).toBeCalledWith(0, "minutes");
 
     state.seconds = 60;
-
     await state.requestUpdate();
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
 
-  it.todo('will watch multiple keys');
-  it.todo('will watch multiple keys using selector');
-  it.todo('will call event for all simultaneous hits');
+  it('will watch values with selector', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on(x => x.seconds, callback, true);
+
+    expect(callback).toBeCalledWith(0, "seconds");
+
+    state.seconds = 30;
+    await state.requestUpdate();
+  
+    expect(callback).toBeCalledWith(30, "seconds");
+  })
+
+  it('will watch multiple keys', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+
+    state.on(x => x.seconds.hours, callback);
+
+    state.seconds = 30;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledTimes(1);
+    expect(callback).toBeCalledWith(30, "seconds");
+
+    state.hours = 2;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledWith(2, "hours");
+  });
+
+  it('will call for all simultaneous', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+
+    state.on(x => x.minutes.seconds, callback);
+
+    state.seconds = 60;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledWith(60, "seconds");
+    expect(callback).toBeCalledWith(1, "minutes");
+  });
+})
+
+describe("once", () => {
+  class Subject extends Model {
+    seconds = 0;
+    hours = 0;
+  
+    get minutes(){
+      return Math.floor(this.seconds / 60)
+    }
+  }
+
+  it('will ignore subsequent events', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+
+    state.once(x => x.seconds, callback);
+
+    state.seconds = 30;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledWith(30, "seconds");
+
+    state.seconds = 45;
+    await state.requestUpdate();
+
+    expect(callback).not.toBeCalledWith(45, "seconds");
+  })
+
+  it('will return empty promise', async () => {
+    const state = Subject.create();
+    const pending = state.once(x => x.seconds);
+
+    state.seconds = 30;
+  
+    await expect(pending).resolves.toBeUndefined();
+  })
+
+  it('will call for all simultaneous', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+
+    state.once(x => x.seconds.minutes, callback);
+
+    state.seconds = 60;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledWith(60, "seconds");
+    expect(callback).toBeCalledWith(1, "minutes");
+
+    state.seconds = 61;
+    await state.requestUpdate();
+
+    expect(callback).not.toBeCalledWith(61, "seconds");
+  })
 })
 
 describe("effect", () => {
@@ -65,72 +161,72 @@ describe("effect", () => {
   }
 
   it('will watch values', async () => {
-    const instance = TestValues.create();
+    const state = TestValues.create();
     const mock = jest.fn();
   
-    instance.effect(mock, [
+    state.effect(mock, [
       "value1",
       "value2",
       "value3",
       "value4",
     ]);
   
-    instance.value1 = 2;
+    state.value1 = 2;
 
     // wait for update event, thus queue flushed
-    await instance.requestUpdate()
+    await state.requestUpdate()
     
-    instance.value2 = 3;
-    instance.value3 = 4;
+    state.value2 = 3;
+    state.value3 = 4;
 
     // wait for update event to flush queue
-    await instance.requestUpdate()
+    await state.requestUpdate()
     
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
 
-  it('will watch values selected via function', async () => {
-    const instance = TestValues.create();
+  it('will watch values with selector', async () => {
+    const state = TestValues.create();
     const mock = jest.fn();
   
-    instance.effect(mock,
+    state.effect(mock,
       $ => $.value1.value2.value3.value4
     );
   
-    instance.value1 = 2;
-    instance.value2 = 3;
+    state.value1 = 2;
+    state.value2 = 3;
 
-    await instance.requestUpdate();
+    await state.requestUpdate();
 
-    instance.value3 = 4;
+    state.value3 = 4;
 
     // expect value4, which relies on 3.
-    await instance.requestUpdate();
+    await state.requestUpdate();
     
     expect(mock).toBeCalledTimes(2);
   })
 
-  it('will reinvoke self-subscribed effect', async () => {
-    const instance = TestValues.create();
+  it('will watch values with subscriber', async () => {
+    const state = TestValues.create();
     let invokedNTimes = 0;
   
-    instance.effect(self => {
+    state.effect(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
       void value1, value2, value3;
       invokedNTimes++;
     });
   
-    instance.value1 = 2;
-    await instance.requestUpdate();
+    state.value1 = 2;
+    await state.requestUpdate();
 
-    instance.value2 = 3;
-    await instance.requestUpdate();
+    state.value2 = 3;
+    await state.requestUpdate();
 
-    instance.value2 = 4;
-    instance.value3 = 4;
-    await instance.requestUpdate();
+    state.value2 = 4;
+    state.value3 = 4;
+    await state.requestUpdate();
   
     /**
      * must invoke once to detect subscription
@@ -144,7 +240,7 @@ describe("effect", () => {
   })
 });
 
-describe("requests made before init", () => {
+describe("will accept before ready", () => {
   class TestValues extends Model {
     value1 = 1;
     value2 = 2;
@@ -153,6 +249,57 @@ describe("requests made before init", () => {
       return this.value2 + 1;
     }
   }
+
+  it('on method', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.on("value1", mock);
+      }
+    }
+
+    const mock = jest.fn();
+    const state = Test.create();
+
+    state.value1++;
+    await state.requestUpdate();
+
+    expect(mock).toBeCalled();
+  })
+
+  it('on method with getter', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.on("value3", mock);
+      }
+    }
+    
+    const mock = jest.fn();
+    const state = Test.create();
+
+    state.value2++;
+    await state.requestUpdate();
+
+    expect(mock).toBeCalled();
+  })
+
+  it('on method with selector', async () => {
+    class Test extends TestValues {
+      constructor(){
+        super();
+        this.on(x => x.value1, mock);
+      }
+    }
+    
+    const mock = jest.fn();
+    const state = Test.create();
+
+    state.value1++;
+    await state.requestUpdate();
+
+    expect(mock).toBeCalled();
+  })
 
   it('effect method', async () => {
     class Test extends TestValues {
@@ -163,15 +310,15 @@ describe("requests made before init", () => {
     }
 
     const mock = jest.fn();
-    const instance = Test.create();
+    const state = Test.create();
 
-    instance.value1++;
-    await instance.requestUpdate();
+    state.value1++;
+    await state.requestUpdate();
 
     expect(mock).toBeCalled();
 
-    instance.value2++;
-    await instance.requestUpdate();
+    state.value2++;
+    await state.requestUpdate();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(2);
@@ -187,21 +334,21 @@ describe("requests made before init", () => {
     }
 
     const mock = jest.fn();
-    const instance = Test.create();
+    const state = Test.create();
 
-    instance.value1++;
-    await instance.requestUpdate();
+    state.value1++;
+    await state.requestUpdate();
 
     expect(mock).toBeCalled();
 
-    instance.value2++;
-    await instance.requestUpdate();
+    state.value2++;
+    await state.requestUpdate();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(2);
   })
 
-  it('effect method with subscription', async () => {
+  it('effect method with subscriber', async () => {
     class Test extends TestValues {
       constructor(){
         super();
@@ -216,70 +363,19 @@ describe("requests made before init", () => {
     }
 
     const mock = jest.fn();
-    const instance = Test.create();
+    const state = Test.create();
 
     // runs immediately to aquire subscription
     expect(mock).toBeCalled();
 
-    instance.value1++;
-    await instance.requestUpdate();
+    state.value1++;
+    await state.requestUpdate();
 
     expect(mock).toBeCalledTimes(2);
 
-    instance.value2++;
-    await instance.requestUpdate();
+    state.value2++;
+    await state.requestUpdate();
 
     expect(mock).toBeCalledTimes(3);
-  })
-
-  it('on method', async () => {
-    class Test extends TestValues {
-      constructor(){
-        super();
-        this.on("value1", mock);
-      }
-    }
-
-    const mock = jest.fn();
-    const instance = Test.create();
-
-    instance.value1++;
-    await instance.requestUpdate();
-
-    expect(mock).toBeCalled();
-  })
-
-  it('on method with getter', async () => {
-    class Test extends TestValues {
-      constructor(){
-        super();
-        this.on("value3", mock);
-      }
-    }
-    
-    const mock = jest.fn();
-    const instance = Test.create();
-
-    instance.value2++;
-    await instance.requestUpdate();
-
-    expect(mock).toBeCalled();
-  })
-
-  it('on method with selector', async () => {
-    class Test extends TestValues {
-      constructor(){
-        super();
-        this.on(x => x.value1, mock);
-      }
-    }
-    
-    const mock = jest.fn();
-    const instance = Test.create();
-
-    instance.value1++;
-    await instance.requestUpdate();
-
-    expect(mock).toBeCalled();
   })
 });
