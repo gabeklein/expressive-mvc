@@ -1,5 +1,3 @@
-import type { Model } from './model';
-
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
@@ -15,6 +13,7 @@ import {
 import Oops from './issues';
 
 type Init = (key: string, on: Controller) => void;
+type Query = (select: Recursive<{}>) => void;
 
 const Register = new WeakMap<{}, Controller>();
 const Pending = new WeakSet<Init>();
@@ -25,14 +24,14 @@ export class Controller extends Observer {
     return fn as any;
   }
 
-  static set(on: {}, base: typeof Model){
+  static set(on: {}){
     if(Register.has(on))
       return;
 
     const dispatch = new this(on);
 
     Register.set(on, dispatch);
-    dispatch.prepareComputed(base);
+    dispatch.prepareComputed();
   
     return dispatch;
   }
@@ -62,49 +61,38 @@ export class Controller extends Observer {
       super.manageProperty(key, desc);
   }
 
-  public select(
-    using: string | string[] | QueryFunction<this>){
-
-    if(fn(using)){
-      return recursiveSelect(using, [
-        ...lifecycleEvents,
-        ...keys(this.subject)
-      ]);
-    }
+  protected select(
+    using: string | Iterable<string> | Query){
 
     if(typeof using == "string")
-      return [using];
+      return [ using ];
 
-    return using;
+    if(fn(using))
+      return recursiveSelect(using, 
+        keys(this.subject).concat(lifecycleEvents)
+      );
+
+    return Array.from(using);
   }
 
   protected watch(
-    key: string | SelectFunction<this>,
+    target: string | Iterable<string> | Query,
     handler: (value: any, key: string) => void,
     once?: boolean,
     initial?: boolean){
 
-    let select: string;
+    const select = this.select(target);
 
-    if(fn(key)){
-      const detect = {} as any;
-    
-      for(const key in this.subject)
-        detect[key] = key;
-    
-      select = key(detect);
+    const callback = (frame: Iterable<string>) => {
+      for(const key of frame)
+        if(select.includes(key))
+          handler.call(this.subject, this.state[key], key);
     }
-    else
-      select = key;
-
-    const callback = () => handler.call(
-      this.subject, this.state[select], select
-    );
 
     if(initial)
-      callback();
+      callback(select);
 
-    return this.addListener([ select ], callback, once);
+    return this.addListener(select, callback, once);
   }
 
   public emit(event: string, args?: any[]){
@@ -120,38 +108,40 @@ export class Controller extends Observer {
   }
 
   public on = (
-    property: string | SelectFunction<this>,
+    select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
-    return this.watch(property, listener, false, initial);
+    return this.watch(select, listener, false, initial);
   }
 
   public once = (
-    property: string | SelectFunction<this>,
+    select: string | Iterable<string> | Query,
     listener?: UpdateCallback<any, any>) => {
 
     if(listener)
-      return this.watch(property, listener, true);
-    else
-      return new Promise(resolve => {
-        this.watch(property, resolve, true)
+      return this.watch(select, listener, true);
+    else 
+      return new Promise<void>(resolve => {
+        this.addListener(
+          this.select(select), () => resolve(), true
+        );
       });
   }
 
   public effect = (
     callback: EffectCallback<any>,
-    select?: string[] | QueryFunction<this>) => {
+    select?: string[] | Query) => {
     
     let { subject } = this;
     const effect = createEffect(callback);
-    const reinvoke = debounce(() => effect(subject));
+    const invoke = debounce(() => effect(subject));
 
     if(!select){
       let sub: Subscriber;
 
       const capture = () => {
-        sub = new Subscriber(subject, reinvoke);
+        sub = new Subscriber(subject, invoke);
         effect(subject = sub.proxy);
         sub.listen();
       }
@@ -164,43 +154,38 @@ export class Controller extends Observer {
       return () => sub.release();
     }
 
-    if(fn(select))
-      select = recursiveSelect(select, keys(this.subject))
-
-    return this.addListener(select, reinvoke);
+    return this.addListener(this.select(select), invoke);
   }
 
   public import = (
     from: BunchOf<any>,
-    select?: Iterable<string> | QueryFunction<this>) => {
+    select?: Iterable<string> | Query) => {
 
-    if(fn(select))
-      select = this.select(select);
+    const selected = select
+      ? this.select(select)
+      : this.watched;
 
-    for(const key of select || this.watched)
+    for(const key of selected)
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
 
   public export = (
-    select?: Iterable<string> | QueryFunction<this>) => {
+    select?: Iterable<string> | Query) => {
 
     if(!select)
       return assign({}, this.state);
 
     const data = {} as BunchOf<any>;
 
-    if(fn(select))
-      select = this.select(select);
-    
-    for(const key of select)
+    for(const key of this.select(select))
       data[key] = (this.subject as any)[key];
 
     return data;
   }
 
   public update = (
-    select: string | string[] | QueryFunction<this>) => {
+    select: string | string[] | Query) => {
 
     for(const key of this.select(select))
       super.emit(key);

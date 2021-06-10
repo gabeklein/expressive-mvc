@@ -1,24 +1,28 @@
-type MessageVariable = string | number | boolean | null;
-type Messages = BunchOf<(...args: MessageVariable[]) => string>;
-type Params<T> = T extends (... args: infer T) => any ? T : never;
+type MessageVar = string | number | boolean | null;
+type ExpectVars<T> = T extends (...args: infer T) => any ? T : never;
+
+type Messages = {
+  [named: string]: (...args: MessageVar[]) => string;
+}
+
 type Issues<M extends Messages> = {
-  readonly [P in keyof M]: (...args: Params<M[P]>) => Issue;
+  readonly [P in keyof M]: (...args: ExpectVars<M[P]>) => Issue;
 }
 
 class Issue extends Error {
-  // drop first line of stack trace, not relevant.
+  // drop first line (error factory) in stack trace.
   stack = this.stack.replace(/\n.+/, "") as string;
 
   warn = () => console.warn(this.message);
 
-  static factory<O extends Messages>(register: O){
-    const Library = {} as Issues<O>;
+  static factory<M extends Messages>(register: M){
+    const Library = {} as any;
     
     for(const name in register)
-      (Library[name] as any) = (...args: MessageVariable[]) => 
-        new Issue(register[name].apply(null, args));
+      Library[name] = (...args: MessageVar[]) => 
+        new this(register[name].apply(null, args));
   
-    return Library;
+    return Library as Issues<M>;
   }
 }
 
@@ -44,7 +48,7 @@ export default Issue.factory({
   BadEffectCallback: () =>
     `Callback for property-update may only return a function.`,
 
-  DestroyNotActive: (name) =>
+  DestroyNotPossible: (name) =>
     `${name}.destory() was called on an instance which is not active. This is an antipattern and may caused unexpected behavior.`,
 
   GlobalExists: (type) =>

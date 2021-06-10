@@ -23,60 +23,44 @@ export {
   values
 }
 
-export {
-  allEntriesIn,
-  createEffect,
-  debounce,
-  define,
-  defineLazy,
-  entriesIn,
-  fn,
-  recursiveSelect,
-  traceable
+export function define(
+  target: {}, key: string | symbol, value: any){
+
+  defineProperty(target, key, { value })
 }
 
-function define(target: {}, values: {}): void;
-function define(target: {}, key: string | symbol, value: any): void;
-function define(target: {}, kv: {} | string | symbol, v?: {}){
-  if(typeof kv == "string" || typeof kv == "symbol")
-    defineProperty(target, kv, { value: v })
-  else
-    for(const [key, value] of entries(kv))
-      defineProperty(target, key, { value });
+export function defineLazy<T>(
+  object: T, 
+  property: string | symbol, 
+  init: (this: T) => any){
+
+  defineProperty(object, property, { 
+    configurable: true,
+    get(){
+      const value = init!.call(this);
+      defineProperty(this, property, { value });
+      return value;
+    }
+  });
 }
 
-function fn(x: any): x is Function {
+export function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-function traceable<T extends Function>(name: string, fn: T){
-  (fn as { displayName?: string }).displayName = name;
-  return fn;
+export function alias<T extends Function>(
+  fn: T, displayName: string): T {
+
+  return assign(fn, { displayName });
 }
 
-function entriesIn(object: {}): [string, PropertyDescriptor][] {
+export function entriesIn(
+  object: {}): [string, PropertyDescriptor][] {
+
   return entries(getOwnPropertyDescriptors(object))
 }
 
-function allEntriesIn(object: {}, until: {}){
-  let layer = object;
-
-  return <IterableIterator<[string, PropertyDescriptor][]>>{
-    [Symbol.iterator](){
-      return this;
-    },
-    next(){
-      if(layer === until || layer.constructor === until)
-        return { done: true };
-
-      const value = entriesIn(layer);
-      layer = getPrototypeOf(layer);
-      return { value }; 
-    }
-  }
-}
-
-function debounce(callback: Callback){
+export function debounce(callback: Callback){
   let throttle: undefined | boolean;
 
   return () => {
@@ -90,30 +74,9 @@ function debounce(callback: Callback){
   }
 }
 
-type DefineMultiple<T> = { [key: string]: (this: T) => any };
+export function createEffect(
+  callback: EffectCallback<any>){
 
-function defineLazy<T>(object: T, property: string | symbol, init: (this: T) => any): void;
-function defineLazy<T>(object: T, property: DefineMultiple<T>): void;
-function defineLazy<T>(
-  object: T, 
-  property: string | symbol | DefineMultiple<T>, 
-  init?: (this: T) => any){
-
-  if(typeof property === "object")
-    for(const k in property)
-      defineLazy(object, k, property[k]);
-  else
-    defineProperty(object, property, { 
-      configurable: true,
-      get(){
-        const value = init!.call(this);
-        defineProperty(this, property, { value });
-        return value;
-      }
-    });
-}
-
-function createEffect(callback: EffectCallback<any>){
   let unSet: Callback | Promise<any> | void;
 
   return (value: any, callee = value) => {
@@ -128,7 +91,7 @@ function createEffect(callback: EffectCallback<any>){
   }
 }
 
-function recursiveSelect(
+export function recursiveSelect(
   using: Function,
   keys: Iterable<string>){
 
@@ -146,4 +109,13 @@ function recursiveSelect(
   using(spy);
 
   return Array.from(found);
+}
+
+export function insertAfter<T>(
+  into: T[],
+  item: T,
+  predicate: (item: T) => boolean){
+
+  const matchIndex = into.findIndex(predicate);
+  into.splice(matchIndex + 1, 0, item);
 }

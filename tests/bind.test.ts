@@ -22,6 +22,7 @@ describe("bind", () => {
       expect(bind).toHaveProperty(key);
   })
 
+  // how do I actually test this?
   it.todo("will bind element to value of property")
   it.todo("will bind input to value of property")
 })

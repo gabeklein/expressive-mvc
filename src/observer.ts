@@ -1,12 +1,13 @@
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import {
-  allEntriesIn,
+  alias,
   defineProperty,
   entriesIn,
   fn,
   getOwnPropertyDescriptor,
-  traceable
+  getPrototypeOf,
+  insertAfter
 } from './util';
 
 import Oops from './issues';
@@ -20,14 +21,14 @@ export interface GetterInfo {
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
 
-function mayComputeEarly(on: {}, key: string){
-  type Compute = (early?: boolean) => void;
+function runEarlyIfComputed(on: {}, key: string){
+  type Initialize = (early?: boolean) => void;
 
-  const property = getOwnPropertyDescriptor(on, key);
-  const getter = property && property.get as Compute;
+  const desc = getOwnPropertyDescriptor(on, key);
+  const getter = desc && desc.get;
 
-  if(getter && ComputedInit.has(getter))
-    getter(true);
+  if(ComputedInit.has(getter!))
+    (getter as Initialize)(true);
 }
 
 export function metaData(x: Function): GetterInfo;
@@ -44,7 +45,7 @@ export class Observer {
   protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
-  public followers = new Set<BunchOf<Callback>>();
+  public followers = new Set<BunchOf<RequestCallback>>();
   public watched = new Set<string>();
 
   public pending?: (key: string) => void;
@@ -53,14 +54,23 @@ export class Observer {
     public subject: {}){
   }
 
-  public prepareComputed(stopAt: typeof Model){
-    for(const layer of allEntriesIn(this.subject, stopAt))
-      for(let [key, { get, set }] of layer){
-        if(!get)
-          continue;
+  protected start(){
+    for(const [k, d] of entriesIn(this.subject))
+      this.manageProperty(k, d);
 
-        if(this.getters.has(key))
-          return;
+    this.initComputed();
+    this.reset([]);
+  }
+
+  protected prepareComputed(){
+    for(
+      let scan = this.subject;
+      scan !== Model && scan.constructor !== Model;
+      scan = getPrototypeOf(scan)){
+
+      for(let [key, { get, set }] of entriesIn(scan)){
+        if(!get || this.getters.has(key))
+          continue;
 
         if(!set)
           set = (value: any) => {
@@ -72,37 +82,30 @@ export class Observer {
             });
           }
 
-        traceable(`run ${key}`, get);
+        alias(get, `run ${key}`);
 
         this.getters.set(key, get);
         this.assign(key, { get, set, configurable: true });
       }
+    }
   }
 
-  protected start(){
-    const followers = Array.from(this.followers);
-    const required: Callback[] = [];
-
-    for(const [k, d] of entriesIn(this.subject))
-      this.manageProperty(k, d);
+  protected initComputed(){
+    const expected: Callback[] = [];
 
     for(const [key, compute] of this.getters){
       if(key in this.state)
         continue;
 
-      const init = this.monitorComputed(key, compute);
+      const init =
+        this.monitorComputed(key, compute);
 
-      if(followers.find(x => key in x))
-        required.push(init);
-      else
-        this.assign(key, {
-          get: init,
-          set: Oops.AssignToGetter(key).warn
-        })
+      if(init)
+        expected.push(init);
     }
 
-    required.forEach(x => x());
-    this.reset();
+    for(const init of expected)
+      init();
   }
 
   protected manageProperty(
@@ -113,6 +116,7 @@ export class Observer {
   }
 
   public assign(key: string, desc: PropertyDescriptor){
+    this.watched.add(key);
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
@@ -124,7 +128,6 @@ export class Observer {
     if(initial !== undefined)
       this.state[key] = initial;
 
-    this.watched.add(key);
     this.assign(key, {
       get: this.getter(key),
       set: this.setter(key, effect)
@@ -134,10 +137,11 @@ export class Observer {
   private monitorComputed(
     key: string, compute: () => any){
 
-    const info = { key, parent: this, priority: 1 };
+    const self = this;
     const { state, subject, getters } = this;
+    const info = { key, parent: this, priority: 1 };
 
-    const refresh = () => {
+    function refresh(){
       let next;
 
       try {
@@ -150,11 +154,11 @@ export class Observer {
 
       if(next !== state[key]){
         state[key] = next;
-        this.emit(key);
+        self.emit(key);
       }
     }
 
-    const initial = (early?: boolean) => {
+    function initial(early?: boolean){
       const sub = new Subscriber(subject, refresh, info);
 
       try {
@@ -185,17 +189,23 @@ export class Observer {
             info.priority = priority + 1;
         }
 
-        this.assign(key, {
-          get: this.getter(key),
+        self.assign(key, {
+          get: self.getter(key),
           set: Oops.AssignToGetter(key).warn
         })
       }
     }
 
-    this.watched.add(key);
+    alias(initial, `new ${key}`);
+    alias(refresh, `try ${key}`);
 
-    traceable(`new ${key}`, initial);
-    traceable(`try ${key}`, refresh);
+    metaData(compute, info);
+    this.watched.add(key);
+    ComputedInit.add(initial);
+
+    for(const sub of this.followers)
+      if(key in sub)
+        return initial;
 
     defineProperty(this.state, key, {
       configurable: true,
@@ -206,14 +216,14 @@ export class Observer {
       })
     })
 
-    metaData(compute, info);
-    ComputedInit.add(initial);
-
-    return initial;
+    this.assign(key, {
+      get: initial,
+      set: Oops.AssignToGetter(key).warn
+    })
   }
 
   public getter(key: string){
-    return traceable(`get ${key}`, () => this.state[key]);
+    return alias(() => this.state[key], `get ${key}`);
   }
 
   public setter(
@@ -232,56 +242,65 @@ export class Observer {
       this.emit(key);
     }
       
-    return traceable(`set ${key}`, assigned);
+    return alias(assigned, `set ${key}`);
   }
 
   public addListener(
-    keys: string[],
-    callback: Callback,
+    keys: Iterable<string>,
+    callback: RequestCallback,
     once?: boolean){
 
-    const handler = once ? () => { done(); callback() } : callback;
-    const done = () => { this.followers.delete(follow) };
-    const follow: BunchOf<Callback> = {};
+    const remove = () => { this.followers.delete(follow) };
+    const handler = once ? (k: string[]) => { remove(); callback(k) } : callback;
+    const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
-      mayComputeEarly(this.subject, key);
+      runEarlyIfComputed(this.subject, key);
       follow[key] = handler;
     }
 
     this.followers.add(follow);
 
-    return done;
+    return remove;
   }
 
   public emit(key: string){
     (this.pending || this.sync())(key);
   }
 
-  private reset(frame?: Iterable<string>){
-    const updated = frame ? Array.from(frame) : [];
-    this.waiting.splice(0).forEach(x => x(updated));
+  private reset(frame: string[]){
+    this.waiting.splice(0).forEach(x => x(frame));
   }
 
   private sync(){
-    const effects = new Set<Callback>();
+    const self = this;
+    const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
-    const include = (notify: Callback) => {
-      const target = metaData(notify);
+    function add(key: string){
+      if(handled.has(key))
+        return;
 
-      if(!target || target.parent !== this)
-        effects.add(notify);
-      else {
-        const offset = pending.findIndex(
-          sib => target.priority > metaData(sib).priority
-        );
-        pending.splice(offset + 1, 0, notify);
-      }
+      handled.add(key);
+
+      for(const sub of self.followers)
+        if(key in sub)
+          include(sub[key]);
     }
 
-    setTimeout(() => {
+    function include(request: RequestCallback){
+      const target = metaData(request);
+
+      if(target && target.parent == self)
+        insertAfter(pending, request,
+          sib => target.priority > metaData(sib).priority
+        )
+      else
+        effects.add(request);
+    }
+
+    function notify(){
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -290,21 +309,15 @@ export class Observer {
           compute();
       }
 
-      effects.forEach(x => x());
+      const frame = Array.from(handled);
 
-      this.pending = undefined;
-      this.reset(handled);
-    }, 0);
+      effects.forEach(x => x(frame));
 
-    return this.pending = (key: string) => {
-      if(handled.has(key))
-        return;
+      self.pending = undefined;
+      self.reset(frame);
+    }
 
-      handled.add(key);
-
-      for(const group of this.followers)
-        if(key in group)
-          include(group[key]);
-    };
+    setTimeout(notify, 0);
+    return this.pending = add;
   }
 }

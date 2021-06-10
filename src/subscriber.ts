@@ -2,7 +2,7 @@ import { bindRefFunctions } from './bind';
 import { Controller } from './controller';
 import { Model } from './model';
 import { GetterInfo, metaData } from './observer';
-import { create, defineLazy, defineProperty, traceable } from './util';
+import { alias, create, defineLazy, defineProperty } from './util';
 
 export class Subscriber<T = any> {
   private dependant = new Set<{
@@ -22,12 +22,10 @@ export class Subscriber<T = any> {
     this.proxy = create(subject as any);
     this.parent = Controller.get(subject);
 
-    defineLazy(this.proxy, {
-      bind: () => {
-        const agent = bindRefFunctions(this.parent);
-        this.dependant.add(agent);
-        return agent.proxy;
-      }
+    defineLazy(this.proxy, "bind", () => {
+      const agent = bindRefFunctions(this.parent);
+      this.dependant.add(agent);
+      return agent.proxy;
     })
 
     for(const key of this.parent.watched){
@@ -42,7 +40,7 @@ export class Subscriber<T = any> {
       }
 
       defineProperty(this.proxy, key, {
-        get: traceable(`tap ${key}`, initial),
+        get: alias(initial, `tap ${key}`),
         set: this.parent.setter(key),
         configurable: true
       })

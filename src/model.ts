@@ -7,28 +7,31 @@ import { define, defineProperty, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
+type Select = <T>(from: T) => T[keyof T];
+
 export interface Model extends Public {};
 
 export class Model {
   constructor(){
     const cb = this.didCreate;
-    const dispatch = Controller.set(this, Model)!;
+    const dispatch = Controller.set(this)!;
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
 
+    define(this, "get", this);
+    define(this, "set", this);
+
     defineProperty(this, "bind", {
       get(){ throw Oops.BindNotAvailable() }
     })
-
-    define(this, { get: this, set: this });
 
     for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
   }
 
-  public tap(path?: string | SelectFunction<any>){
+  public tap(path?: string | Select){
     return useWatcher(this, path) as any;
   }
 
@@ -73,11 +76,11 @@ export class Model {
     return useLazy(this, args);
   }
 
-  static get(key?: boolean | string | SelectFunction<any>){
+  static get(key?: boolean | string | Select){
     return usePassive(this, key);
   }
 
-  static tap(key?: string | SelectFunction<any>){
+  static tap(key?: string | Select){
     return this.find(true).tap(key);
   }
 
@@ -94,9 +97,9 @@ export class Model {
     return value;
   }
 
-  static meta(path: string | SelectFunction<any>): any {
+  static meta(path: string | Select): any {
     return useWatcher(() => {
-      Controller.set(this, Model);
+      Controller.set(this);
       return this;
     }, path);
   }

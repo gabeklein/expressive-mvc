@@ -3,6 +3,9 @@ import * as Source from "../src";
 // public type definitions
 import * as Public from "../";
 
+export { renderHook } from '@testing-library/react-hooks';
+export { create as render } from "react-test-renderer";
+
 export { default as Issue } from "../src/issues";
 
 export const Model = Source.Model as unknown as typeof Public.Model;
@@ -20,11 +23,7 @@ export const act = Source.act as typeof Public.act;
 export const event = Source.event as typeof Public.event;
 export const parent = Source.parent as typeof Public.parent;
 
-export { renderHook } from '@testing-library/react-hooks';
-export { create as render } from "react-test-renderer";
-export { subscribeTo }
-
-function subscribeTo<T extends Public.Model>(
+export function subscribeTo<T extends Public.Model>(
   target: T,
   accessor: (self: T) => void){
 
@@ -35,7 +34,7 @@ function subscribeTo<T extends Public.Model>(
     didTrigger();
   });
 
-  // ignore initial invocation.
+  // ignore initial scan-phase
   didTrigger.mockReset();
   
   return async (isExpected = true) => {

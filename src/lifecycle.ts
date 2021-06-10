@@ -18,6 +18,7 @@ export const lifecycleEvents = [
   ...values(Lifecycle)
 ];
 
+type Values<T> = T[keyof T];
 type LifecycleEvent = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){

@@ -3,7 +3,7 @@ import type { Model } from './model';
 import { Lookup } from './context';
 import { Controller } from './controller';
 import { Singleton } from './singleton';
-import { createEffect, define, defineLazy, defineProperty, traceable } from './util';
+import { alias, createEffect, define, defineLazy, defineProperty } from './util';
 
 import Oops from './issues';
 
@@ -78,7 +78,6 @@ export function setRefObject<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return Controller.define((key, on) => {
-    on.watched.add(key);
     on.assign(key, {
       value: defineProperty({}, "current", {
         get: on.getter(key),
@@ -103,11 +102,8 @@ export function setEffect<T = any>
   })
 }
 
-export function setEvent
-  (callback?: EffectCallback<Model>){
-
+export function setEvent(callback?: EffectCallback<Model>){
   return Controller.define((key, on) => {
-    on.watched.add(key);
     on.assign(key, {
       value: () => on.emit(key)
     })
@@ -117,9 +113,7 @@ export function setEvent
   })
 }
 
-export function setMemo
-  (factory: () => any, defer?: boolean){
-
+export function setMemo(factory: () => any, defer?: boolean){
   return Controller.define((key, { subject }) => {
     const get = () => factory.call(subject);
 
@@ -166,17 +160,16 @@ export function setTuple<T extends any[]>
         on.emit(key);
     };
 
-    traceable(`set ${key}`, setTuple);
-
     source[key] = values;
-    on.watched.add(key);
     on.assign(key, {
       get: on.getter(key),
-      set: setTuple
+      set: alias(setTuple, `set ${key}`)
     });
 
   })
 }
+
+type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
 export function setAction(action: AsyncFn){
   return Controller.define((key, on) => {
@@ -199,12 +192,11 @@ export function setAction(action: AsyncFn){
         })
     };
 
-    traceable(`run ${key}`, invoke);
+    alias(invoke, `run ${key}`);
     defineProperty(invoke, "active", {
       get: () => pending
     })
 
-    on.watched.add(key);
     on.assign(key, {
       get: () => invoke,
       set: () => {

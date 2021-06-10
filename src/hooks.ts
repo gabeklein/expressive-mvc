@@ -21,11 +21,11 @@ function useRefresh<T>(
   return state[0];
 }
 
-type Choose = <T>(from: T) => T[keyof T];
+type Select = <T>(from: T) => T[keyof T];
 
 export function usePassive<T extends typeof Model>(
   target: T,
-  select?: boolean | string | Choose){
+  select?: boolean | string | Select){
 
   const instance = target.find(!!select);
 
@@ -43,7 +43,7 @@ export function usePassive<T extends typeof Model>(
 
 export function useWatcher(
   target: {} | (() => {}),
-  path?: string | SelectFunction<any>){
+  path?: string | Select){
 
   const hook = useRefresh(trigger => {
     if(fn(target))
