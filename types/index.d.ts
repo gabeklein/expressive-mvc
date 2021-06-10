@@ -28,3 +28,7 @@ export {
     setIgnored as lazy,
     setTuple as tuple
 } from "./modifiers";
+
+export {
+    Selector
+} from './selector'

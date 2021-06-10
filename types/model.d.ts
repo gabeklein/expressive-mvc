@@ -1,6 +1,7 @@
 import React from 'react';
 
 import Controller from './controller';
+import { Selector } from './selector';
 import Lifecycle from './lifecycle';
 
 type RefFunction = (e: HTMLElement | null) => void;
@@ -8,24 +9,23 @@ type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
     type SelectFunction<T> = (arg: Required<T>) => any;
-    type QueryFunction<T> = (select: Recursive<Required<T>>) => void;
 
-    /** Shallow replacement for all entries of T Model */
+    /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
 
-    /** Subset of `keyof T` excluding keys defined by base controller. */
+    /** Subset of `keyof T` excluding keys defined by base Model */
     type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
 
-    /** Subset of `keyof T` excluding keys defined by base controller besides lifecycle methods. */
-    type Events<T> = keyof T | keyof Lifecycle;
-
-    /** Object containing data to be found in T. */
+    /** Object containing data found in T. */
     type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
 
     /** Object comperable to data which may be found in T. */
     type Data<T, E = Model> = Partial<Entries<T, E>>;
 
-    type NonLifecycle = Exclude<keyof Model, keyof Lifecycle>;
+    /** Subset of `keyof T` excluding keys defined by base Model, except lifecycle. */
+    type Events<T> = Omit<T, Exclude<keyof Model, keyof Lifecycle>>;
+
+    type EventsCompat<T> = keyof T | keyof Lifecycle;
 
     /**
      * Field selector which includes Model-Lifecycle events.
@@ -36,14 +36,14 @@ export namespace Model {
      * ---
      * 
      * ```js
-     * Model.on(x => x.didMountComponent, cb)
+     * Model.on(x => x.foo.bar.didMountComponent, cb)
      * ```
      * is equivalent to, while also more robust than:
      * ```js
-     * Model.on(["didMountComponent"], cb)
+     * Model.on(["foo", "bar", "didMountComponent"], cb)
      * ```
      */
-    type SelectEvent<T> = SelectFunction<Omit<T, NonLifecycle>>;
+    type SelectEvents<T> = Selector.Function<Events<T>>;
 
     /**
      * Field selector function you provide. Argument is a representation of controller specified.
@@ -66,7 +66,7 @@ export namespace Model {
      * Model.update(["foo", "bar", "baz"])
      * ```
      */
-    type SelectFields<T> = QueryFunction<Omit<T, keyof Model>>;
+    type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
     type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
 
@@ -109,13 +109,13 @@ export abstract class Model {
      * ```
      * ---
      * 
-     * **Access values without implying should be watched:**
+     * **Access values without watch:**
      * 
-     * Also useful to "peek" values without implying you
-     * want them watched, when accessed from a built-in hook.
+     * Also useful to "peek" values without indicating you
+     * want them watched, via built-in hook.
      * 
      * ```js
-     * const { get, firstName } = Hello.use();
+     * const { firstName, get } = Hello.use();
      * 
      * return (
      *   <div onClick={() => {
@@ -131,7 +131,7 @@ export abstract class Model {
     get: this;
 
     /**
-     * Circular reference to `this` controller (similar as `get`).
+     * Circular reference to `this` controller.
      * 
      * Useful mnemonic to update values on a controller from within a component.
      * 
@@ -154,8 +154,8 @@ export abstract class Model {
      * 
      * Matched ref-functions automatically bind between receiving element and live value of field.
      * 
-     * For `<input type="text" />` this is a two-way binding,
-     * user-input is captured and part of controller's state/event stream.
+     * For `<input type="text" />` this is a two-way binding.
+     * User input is captured and part of controller's state/event stream.
      */
     bind: Model.Overlay<this, RefFunction>;
 
