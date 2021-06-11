@@ -13,12 +13,12 @@ type CallbackFor<S extends Selector.Function<any>, T> = (this: T, value: Selecto
  */
 interface Dispatch {
   on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, initial?: boolean): Callback;
-  on <P extends Model.EventsCompat<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>, initial?: boolean): Callback;
+  on <P extends Model.EventsCompat<this>> (property: P | P[], listener: UpdateCallback<this, P, IfApplicable<this, P>>, initial?: boolean): Callback;
 
   once <S extends Model.SelectEvents<this>> (via: S): Promise<void>;
   once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>): Callback;
-  once <P extends Model.EventsCompat<this>> (property: P): Promise<void>;
-  once <P extends Model.EventsCompat<this>> (property: P, listener: UpdateCallback<this, P, IfApplicable<this, P>>): void;
+  once <P extends Model.EventsCompat<this>> (property: P | P[]): Promise<void>;
+  once <P extends Model.EventsCompat<this>> (property: P | P[], listener: UpdateCallback<this, P, IfApplicable<this, P>>): void;
 
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
   effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;
