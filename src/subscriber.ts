@@ -30,7 +30,7 @@ export class Subscriber<T = any> {
 
     for(const key of this.parent.watched){
       const initial = () => {
-        let value = (this.subject as any)[key];
+        let value = (subject as any)[key];
 
         if(value instanceof Model)
           return this.recursive(key);

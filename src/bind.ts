@@ -60,7 +60,7 @@ export function bindRefFunctions(on: Controller){
     }
   }
 
-  for(const key in on.export())
+  for(const key in on.state)
     defineProperty(proxy, key, {
       get(){
         try {
