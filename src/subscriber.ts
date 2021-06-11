@@ -1,7 +1,7 @@
 import { bindRefFunctions } from './bind';
 import { Controller } from './controller';
 import { Model } from './model';
-import { GetterInfo, metaData } from './observer';
+import { GetterInfo, metaData, Observer } from './observer';
 import { alias, create, defineLazy, defineProperty } from './util';
 
 export class Subscriber<T = any> {
@@ -11,7 +11,7 @@ export class Subscriber<T = any> {
   }>();
 
   public following = {} as BunchOf<Callback>;
-  public parent: Controller;
+  public parent: Observer;
   public proxy: T;
   
   constructor(
@@ -76,10 +76,10 @@ export class Subscriber<T = any> {
         let child = sub =
           new Subscriber(value, callback);
     
-        parent.once("didRender", () => {
+        parent.watch("didRender", () => {
           child.commit();
           this.commit(key);
-        });
+        }, true);
 
         defineProperty(proxy, key, {
           get: () => child.proxy,
@@ -102,7 +102,7 @@ export class Subscriber<T = any> {
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
 
-        this.parent.once("didRender", () => child.commit());
+        this.parent.watch("didRender", () => child.commit(), true);
         this.proxy = child.proxy as any;
 
         return child;
