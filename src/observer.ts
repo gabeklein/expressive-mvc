@@ -245,6 +245,22 @@ export class Observer {
     return alias(assigned, `set ${key}`);
   }
 
+  public watch(
+    target: string | string[],
+    handler: (value: any, key: string) => void,
+    once?: boolean){
+
+    const keys = ([] as string[]).concat(target);
+
+    const callback = (frame: Iterable<string>) => {
+      for(const key of frame)
+        if(keys.includes(key))
+          handler.call(this.subject, this.state[key], key);
+    }
+
+    return this.addListener(keys, callback, once);
+  }
+
   public addListener(
     keys: Iterable<string>,
     callback: RequestCallback,

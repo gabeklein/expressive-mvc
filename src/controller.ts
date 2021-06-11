@@ -75,26 +75,6 @@ export class Controller extends Observer {
     return Array.from(using);
   }
 
-  protected watch(
-    target: string | Iterable<string> | Query,
-    handler: (value: any, key: string) => void,
-    once?: boolean,
-    initial?: boolean){
-
-    const select = this.select(target);
-
-    const callback = (frame: Iterable<string>) => {
-      for(const key of frame)
-        if(select.includes(key))
-          handler.call(this.subject, this.state[key], key);
-    }
-
-    if(initial)
-      callback(select);
-
-    return this.addListener(select, callback, once);
-  }
-
   public emit(event: string, args?: any[]){
     if(args){
       const { subject } = this as any;
@@ -112,20 +92,25 @@ export class Controller extends Observer {
     listener: UpdateCallback<any, any>,
     initial?: boolean) => {
 
-    return this.watch(select, listener, false, initial);
+    const target = this.select(select);
+
+    if(initial)
+      listener.call(this.subject, undefined, undefined);
+
+    return this.watch(target, listener, false);
   }
 
   public once = (
     select: string | Iterable<string> | Query,
     listener?: UpdateCallback<any, any>) => {
 
+    const target = this.select(select);
+
     if(listener)
-      return this.watch(select, listener, true);
+      return this.watch(target, listener, true);
     else 
       return new Promise<void>(resolve => {
-        this.addListener(
-          this.select(select), () => resolve(), true
-        );
+        this.addListener(target, () => resolve(), true);
       });
   }
 
