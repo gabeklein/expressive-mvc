@@ -33,7 +33,7 @@ export class Subscriber<T = any> {
         let value = (subject as any)[key];
 
         if(value instanceof Model)
-          return this.recursive(key);
+          return this.delegate(key);
 
         this.follow(key);
         return value;
@@ -65,7 +65,7 @@ export class Subscriber<T = any> {
       delete (this.proxy as any)[key];
   }
 
-  private recursive(key: string){
+  private delegate(key: string){
     const { subject, callback, parent, proxy } = this;
     let sub: Subscriber | undefined;
 
