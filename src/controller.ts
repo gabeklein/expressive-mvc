@@ -89,15 +89,9 @@ export class Controller extends Observer {
 
   public on = (
     select: string | Iterable<string> | Query,
-    listener: UpdateCallback<any, any>,
-    initial?: boolean) => {
+    listener: UpdateCallback<any, any>) => {
 
-    const target = this.select(select);
-
-    if(initial)
-      listener.call(this.subject, undefined, undefined);
-
-    return this.watch(target, listener, false);
+    return this.watch(this.select(select), listener);
   }
 
   public once = (

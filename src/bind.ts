@@ -96,15 +96,23 @@ export function createBinding(
 }
 
 function createOneWayBinding(
-  element: HTMLElement, parent: Controller, key: string){
+  element: HTMLElement,
+  parent: Controller,
+  key: string){
 
-  return parent.on(key as any, (v) => {
-    element.innerHTML = String(v);
-  }, true)
+  function sync(to: any){
+    element.innerHTML = String(to);
+  }
+
+  sync(parent.state[key]);
+
+  return parent.watch(key, sync)
 }
 
 function createTwoWayBinding(
-  input: HTMLInputElement, parent: Controller, key: string){
+  input: HTMLInputElement,
+  parent: Controller,
+  key: string){
 
   let last: any;
 
@@ -112,11 +120,14 @@ function createTwoWayBinding(
     last = (parent.subject as any)[key] = this.value;
   }
 
-  const release = 
-    parent.on(key as any, (v) => {
-      if(v !== last)
-        input.value = String(v);
-    }, true);
+  function sync(to: any){
+    if(to !== last)
+      input.value = String(to);
+  }
+
+  sync(parent.state[key]);
+
+  const release = parent.watch(key, sync);
 
   input.addEventListener("input", onUpdate);
 

@@ -38,9 +38,7 @@ describe("on", () => {
     const state = Subject.create();
     const callback = jest.fn();
   
-    state.on("minutes", callback, true);
-
-    expect(callback).toBeCalledWith(0, "minutes");
+    state.on("minutes", callback);
 
     state.seconds = 60;
     await state.requestUpdate();
@@ -52,9 +50,7 @@ describe("on", () => {
     const state = Subject.create();
     const callback = jest.fn();
   
-    state.on(x => x.seconds, callback, true);
-
-    expect(callback).toBeCalledWith(0, "seconds");
+    state.on(x => x.seconds, callback);
 
     state.seconds = 30;
     await state.requestUpdate();
