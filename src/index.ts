@@ -5,7 +5,6 @@ export {
   setEffect as watch,
   setRefObject as ref,
   setAction as act,
-  setEvent as event,
   setMemo as memo,
   setIgnored as lazy,
   setTuple as tuple

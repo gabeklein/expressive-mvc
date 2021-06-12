@@ -102,17 +102,6 @@ export function setEffect<T = any>
   })
 }
 
-export function setEvent(callback?: EffectCallback<Model>){
-  return Controller.define((key, on) => {
-    on.assign(key, {
-      value: () => on.emit(key)
-    })
-
-    if(callback)
-      on.effect(callback, [key]);
-  })
-}
-
 export function setMemo(factory: () => any, defer?: boolean){
   return Controller.define((key, { subject }) => {
     const get = () => factory.call(subject);
