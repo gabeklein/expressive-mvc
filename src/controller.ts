@@ -24,7 +24,6 @@ export class Controller extends Observer {
     const dispatch = new this(on);
 
     Register.set(on, dispatch);
-    dispatch.prepareComputed();
   
     return dispatch;
   }

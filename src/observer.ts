@@ -58,8 +58,8 @@ export class Observer {
     return fn as any;
   }
 
-  constructor(
-    public subject: {}){
+  constructor(public subject: {}){
+    this.prepareComputed();
   }
 
   protected start(){
@@ -73,7 +73,7 @@ export class Observer {
     this.reset([]);
   }
 
-  protected prepareComputed(){
+  private prepareComputed(){
     for(
       let scan = this.subject;
       scan !== Model && scan.constructor !== Model;
