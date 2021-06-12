@@ -3,7 +3,7 @@ import type Public from '../types';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { define, defineProperty, entries, fn, getPrototypeOf } from './util';
+import { define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -22,13 +22,13 @@ export class Model {
     define(this, "get", this);
     define(this, "set", this);
 
-    defineProperty(this, "bind", {
-      get(){ throw Oops.BindNotAvailable() }
-    })
-
     for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
+  }
+
+  get bind(): never {
+    throw Oops.BindNotAvailable();
   }
 
   public tap(path?: string | Select){
