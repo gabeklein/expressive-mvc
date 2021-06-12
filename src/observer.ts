@@ -142,7 +142,7 @@ export class Observer {
     key: string, compute: () => any){
 
     const self = this;
-    const { state, subject, getters } = this;
+    const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
 
     function refresh(){
@@ -182,7 +182,7 @@ export class Observer {
         sub.listen();
 
         for(const key in sub.following){
-          const compute = getters.get(key);
+          const compute = self.getters.get(key);
 
           if(!compute)
             continue;
@@ -204,14 +204,14 @@ export class Observer {
     alias(refresh, `try ${key}`);
 
     metaData(compute, info);
-    this.watched.add(key);
+    self.watched.add(key);
     ComputedInit.add(initial);
 
-    for(const sub of this.followers)
+    for(const sub of self.followers)
       if(key in sub)
         return initial;
 
-    defineProperty(this.state, key, {
+    defineProperty(state, key, {
       configurable: true,
       get: initial,
       set: to => defineProperty(state, key, {
