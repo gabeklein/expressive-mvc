@@ -145,25 +145,25 @@ export class Observer {
     const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
 
-    function refresh(){
-      let next;
+    function next(){
+      let output;
 
       try {
-        next = compute.call(subject);
+        output = compute.call(subject);
       }
       catch(err){
         Oops.ComputeFailed(subject.constructor.name, key, false).warn();
         throw err;
       }
 
-      if(next !== state[key]){
-        state[key] = next;
+      if(output !== state[key]){
+        state[key] = output;
         self.emit(key);
       }
     }
 
-    function initial(early?: boolean){
-      const sub = new Subscriber(subject, refresh, info);
+    function init(early?: boolean){
+      const sub = new Subscriber(subject, next, info);
 
       try {
         defineProperty(sub.proxy, key, { value: undefined });
@@ -200,20 +200,20 @@ export class Observer {
       }
     }
 
-    alias(initial, `new ${key}`);
-    alias(refresh, `try ${key}`);
+    alias(init, `new ${key}`);
+    alias(next, `try ${key}`);
 
     metaData(compute, info);
     self.watched.add(key);
-    ComputedInit.add(initial);
+    ComputedInit.add(init);
 
     for(const sub of self.followers)
       if(key in sub)
-        return initial;
+        return init;
 
     defineProperty(state, key, {
       configurable: true,
-      get: initial,
+      get: init,
       set: to => defineProperty(state, key, {
         writable: true,
         value: to
@@ -221,7 +221,7 @@ export class Observer {
     })
 
     this.assign(key, {
-      get: initial,
+      get: init,
       set: Oops.AssignToGetter(key).warn
     })
   }
