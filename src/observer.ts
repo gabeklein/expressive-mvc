@@ -270,7 +270,7 @@ export class Observer {
     callback: RequestCallback,
     once?: boolean){
 
-    const remove = () => { this.followers.delete(follow) };
+    const remove = () => this.followers.delete(follow);
     const handler = once ? (k: string[]) => { remove(); callback(k) } : callback;
     const follow: BunchOf<RequestCallback> = {};
 
