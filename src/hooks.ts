@@ -1,15 +1,51 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model } from './model';
 import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
-import { fn, values } from './util';
+import { defineLazy, fn, values } from './util';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
+
+class ReactSubscriber<T> extends Subscriber<T> {
+  constructor(subject: T, callback: Callback){
+    super(subject, callback);
+
+    defineLazy(this.proxy, "bind", () => {
+      const agent = bindRefFunctions(this.parent);
+      this.dependant.add(agent);
+      return agent.proxy;
+    });
+  }
+
+  public focus(key: string){
+    this.watch(key, () => {
+      let value = (this.subject as any)[key];
+
+      if(value instanceof Model)
+        return this.forward(value);
+
+      this.proxy = value;
+    });
+  }
+
+  forward(from: Model){
+    const child = new Subscriber(from, this.callback);
+
+    this.parent.watch("didRender", () => {
+      child.commit();
+    }, true);
+
+    this.proxy = child.proxy as any;
+
+    return child;
+  }
+}
 
 function useRefresh<T>(
   init: (trigger: Callback) => T){
@@ -58,7 +94,7 @@ export function useWatcher(
       path = path(detect) as string;
     }
 
-    const sub = new Subscriber(target, trigger);
+    const sub = new ReactSubscriber(target, trigger);
 
     if(path)
       sub.focus(path);
@@ -75,7 +111,7 @@ export function useSubscriber(
   target: Model, args: any[]){
 
   const hook = useRefresh(trigger => 
-    new Subscriber(target, trigger)
+    new ReactSubscriber(target, trigger)
   );
 
   useLifecycleEffect((name) => {
@@ -146,7 +182,7 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    return new Subscriber(instance, trigger);
+    return new ReactSubscriber(instance, trigger);
   });
 
   usePeerContext(hook.subject);
