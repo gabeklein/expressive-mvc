@@ -4,6 +4,7 @@ import { createElement, useCallback, useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { createHocFactory } from './hoc';
+import { Observer } from './observer';
 import { define, defineProperty } from './util';
 
 export function setBoundComponent(
@@ -37,7 +38,7 @@ export function setBoundComponent(
 
 type RefFunction = (e: HTMLElement | null) => void;
 
-export function bindRefFunctions(on: Controller){
+export function bindRefFunctions(on: Observer){
   const proxy: BunchOf<RefFunction> = {};
 
   let index = 0;
@@ -86,7 +87,7 @@ export function bindRefFunctions(on: Controller){
 
 export function createBinding(
   e: HTMLElement,
-  control: Controller,
+  control: Observer,
   key: string){
 
   if(e instanceof HTMLInputElement)
@@ -97,7 +98,7 @@ export function createBinding(
 
 function createOneWayBinding(
   element: HTMLElement,
-  parent: Controller,
+  parent: Observer,
   key: string){
 
   function sync(to: any){
@@ -111,7 +112,7 @@ function createOneWayBinding(
 
 function createTwoWayBinding(
   input: HTMLInputElement,
-  parent: Controller,
+  parent: Observer,
   key: string){
 
   let last: any;
