@@ -87,10 +87,6 @@ export class Model {
     return this.find(true).tap(key);
   }
 
-  static sub(...args: any[]){
-    return this.find(true).sub(...args);
-  }
-
   static has(key: string){
     const value = this.tap(key);
 
@@ -98,6 +94,10 @@ export class Model {
       throw Oops.HasPropertyUndefined(this.name, key);
 
     return value;
+  }
+
+  static sub(...args: any[]){
+    return this.find(true).sub(...args);
   }
 
   static meta(path: string | Select): any {
