@@ -84,8 +84,14 @@ export function useSubscriber(
 
     const alias = subscriberEvent(name);
 
-    for(const event of [alias, name])
-      hook.parent.emit(event, args);
+    for(const event of [alias, name]){
+      const on = hook.subject;
+
+      const handle = (on as any)[event];
+      handle && handle.apply(on, args);
+
+      hook.parent.emit(event);
+    }
 
     if(name == Lifecycle.WILL_UNMOUNT)
       hook.release();
@@ -154,8 +160,14 @@ export function useModel(
 
       const alias = componentEvent(name);
 
-      for(const event of [alias, name])
-        hook.parent.emit(event, []);
+      for(const event of [alias, name]){
+        const on = hook.subject;
+        const handle = (on as any)[event];
+  
+        handle && handle.apply(on, args);
+
+        hook.parent.emit(event);
+      }
 
       if(name == Lifecycle.WILL_UNMOUNT){
         hook.release();

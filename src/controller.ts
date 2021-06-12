@@ -59,18 +59,6 @@ export class Controller extends Observer {
     return Array.from(using);
   }
 
-  public emit(event: string, args?: any[]){
-    if(args){
-      const { subject } = this as any;
-      const handle = subject[event];
-  
-      if(fn(handle))
-        handle.apply(subject, args);
-    }
-
-    super.emit(event);
-  }
-
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,

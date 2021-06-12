@@ -40,7 +40,10 @@ export class Model {
   }
 
   public destroy(){
-    Controller.get(this).emit("willDestroy", []);
+    Controller.get(this);
+
+    if(this.willDestroy)
+      this.willDestroy();
   }
 
   static create<T extends typeof Model>(
