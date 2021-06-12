@@ -47,6 +47,7 @@ export class Observer {
   protected getters = new Map<string, Callback>();
   protected waiting = [] as RequestCallback[];
 
+  public active = false;
   public state = {} as BunchOf<any>;
   public followers = new Set<BunchOf<RequestCallback>>();
   public watched = new Set<string>();
@@ -63,6 +64,8 @@ export class Observer {
   }
 
   protected start(){
+    this.active = true;
+
     for(const [key, { value, enumerable }] of entriesIn(this.subject))
       if(Pending.has(value))
         value(key, this);

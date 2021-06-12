@@ -34,15 +34,12 @@ export class Controller extends Observer {
     if(!dispatch)
       throw Oops.NoObserver(from.constructor.name);
 
-    if(!dispatch.ready){
-      dispatch.ready = true;
+    if(!dispatch.active)
       dispatch.start();
-    }
 
     return dispatch;
   }
 
-  private ready = false;
 
   protected select(
     using: string | Iterable<string> | Query){
@@ -97,7 +94,7 @@ export class Controller extends Observer {
         sub.listen();
       }
 
-      if(this.ready)
+      if(this.active)
         capture();
       else
         this.requestUpdate(capture);
