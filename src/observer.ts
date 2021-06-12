@@ -18,8 +18,11 @@ export interface GetterInfo {
   priority: number;
 }
 
+type Init = (key: string, on: Observer) => void;
+
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
+const Pending = new WeakSet<Init>();
 
 function runEarlyIfComputed(on: {}, key: string){
   type Initialize = (early?: boolean) => void;
@@ -50,13 +53,21 @@ export class Observer {
 
   public pending?: (key: string) => void;
 
+  static define(fn: Init){
+    Pending.add(fn);
+    return fn as any;
+  }
+
   constructor(
     public subject: {}){
   }
 
   protected start(){
-    for(const [k, d] of entriesIn(this.subject))
-      this.manageProperty(k, d);
+    for(const [key, { value, enumerable }] of entriesIn(this.subject))
+      if(Pending.has(value))
+        value(key, this);
+      else if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+        this.monitorValue(key, value);
 
     this.initComputed();
     this.reset([]);
@@ -106,13 +117,6 @@ export class Observer {
 
     for(const init of expected)
       init();
-  }
-
-  protected manageProperty(
-    key: string, { value, enumerable }: PropertyDescriptor){
-
-    if(enumerable && !fn(value) || /^[A-Z]/.test(key))
-      this.monitorValue(key, value);
   }
 
   public assign(key: string, desc: PropertyDescriptor){

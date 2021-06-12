@@ -12,18 +12,11 @@ import {
 
 import Oops from './issues';
 
-type Init = (key: string, on: Controller) => void;
 type Query = (select: Recursive<{}>) => void;
 
 const Register = new WeakMap<{}, Controller>();
-const Pending = new WeakSet<Init>();
 
 export class Controller extends Observer {
-  static define(fn: Init){
-    Pending.add(fn);
-    return fn as any;
-  }
-
   static set(on: {}){
     if(Register.has(on))
       return;
@@ -51,15 +44,6 @@ export class Controller extends Observer {
   }
 
   private ready = false;
-
-  protected manageProperty(
-    key: string, desc: PropertyDescriptor){
-
-    if(Pending.has(desc.value))
-      desc.value(key, this);
-    else
-      super.manageProperty(key, desc);
-  }
 
   protected select(
     using: string | Iterable<string> | Query){
