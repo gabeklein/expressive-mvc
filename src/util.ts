@@ -91,7 +91,7 @@ export function createEffect(
   }
 }
 
-export function recursiveSelect(
+export function selectRecursive(
   using: Function,
   keys: Iterable<string>){
 

@@ -7,7 +7,7 @@ import {
   debounce,
   fn,
   keys,
-  recursiveSelect
+  selectRecursive
 } from './util';
 
 import Oops from './issues';
@@ -48,7 +48,7 @@ export class Controller extends Observer {
       return [ using ];
 
     if(fn(using))
-      return recursiveSelect(using, 
+      return selectRecursive(using, 
         keys(this.subject).concat(lifecycleEvents)
       );
 
