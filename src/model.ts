@@ -1,7 +1,7 @@
 import type Public from '../types';
 
 import { useLookup } from './context';
-import { Controller } from './controller';
+import { Controllable, Controller, DISPATCH } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { define, entries, fn, getPrototypeOf } from './util';
 
@@ -12,9 +12,14 @@ type Select = <T>(from: T) => T[keyof T];
 export interface Model extends Public {};
 
 export class Model {
+  [DISPATCH]: Controller;
+  static [DISPATCH]?: Controller;
+  
   constructor(){
     const cb = this.didCreate;
-    const dispatch = Controller.set(this)!;
+
+    const dispatch = this[DISPATCH] =
+      new Controller(this);
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -40,8 +45,6 @@ export class Model {
   }
 
   public destroy(){
-    Controller.get(this);
-
     if(this.willDestroy)
       this.willDestroy();
   }
@@ -52,7 +55,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Controller.get(instance);
+    instance[DISPATCH].start();
 
     return instance;
   }
@@ -93,8 +96,10 @@ export class Model {
 
   static meta(path: string | Select): any {
     return useWatcher(() => {
-      Controller.set(this);
-      return this;
+      if(!this[DISPATCH])
+        this[DISPATCH] = new Controller(this);
+
+      return this as Controllable;
     }, path);
   }
 

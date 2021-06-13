@@ -63,7 +63,7 @@ export class Observer {
     this.prepareComputed();
   }
 
-  protected start(){
+  public start(){
     this.active = true;
 
     for(const [key, { value, enumerable }] of entriesIn(this.subject))

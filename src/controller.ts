@@ -12,34 +12,25 @@ import {
 
 import Oops from './issues';
 
+export const DISPATCH = Symbol("controller");
+
 type Query = (select: Recursive<{}>) => void;
 
-const Register = new WeakMap<{}, Controller>();
+export type Controllable = {
+  [DISPATCH]: Controller
+}
 
 export class Controller extends Observer {
-  static set(on: {}){
-    if(Register.has(on))
-      return;
+  static key = DISPATCH;
 
-    const dispatch = new this(on);
-
-    Register.set(on, dispatch);
-  
-    return dispatch;
-  }
-
-  static get(from: {}){
-    let dispatch = Register.get(from);
-
-    if(!dispatch)
-      throw Oops.NoObserver(from.constructor.name);
+  static get(from: Controllable){
+    let dispatch = from[DISPATCH];
 
     if(!dispatch.active)
       dispatch.start();
 
     return dispatch;
   }
-
 
   protected select(
     using: string | Iterable<string> | Query){

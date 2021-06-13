@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
-import { Controller } from './controller';
+import { Controller, Controllable } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model } from './model';
 import { PendingContext } from './modifiers';
@@ -85,7 +85,7 @@ export function usePassive<T extends typeof Model>(
 }
 
 export function useWatcher(
-  target: {} | (() => {}),
+  target: Controllable | (() => Controllable),
   path?: string | Select,
   expected?: boolean){
 

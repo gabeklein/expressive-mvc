@@ -63,9 +63,6 @@ export default Issue.factory({
   StrictUpdate: () => 
     `Strict requestUpdate() did not find pending updates.`,
 
-  NoObserver: (className) =>
-    `No observer exists for this instance of ${className}. Does it extend Model?`,
-
   AmbientRequired: (requested, requester, key) =>
     `Attempted to find an instance of ${requested} in context. It is required for ${requester}.${key} but could not be found.`,
 
