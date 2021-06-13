@@ -31,8 +31,8 @@ export class Model {
     throw Oops.BindNotAvailable();
   }
 
-  public tap(path?: string | Select){
-    return useWatcher(this, path) as any;
+  public tap(path?: string | Select, expect?: boolean){
+    return useWatcher(this, path, expect) as any;
   }
 
   public sub(...args: any[]){
@@ -83,17 +83,8 @@ export class Model {
     return usePassive(this, key);
   }
 
-  static tap(key?: string | Select){
-    return this.find(true).tap(key);
-  }
-
-  static has(key: string){
-    const value = this.tap(key);
-
-    if(value === undefined)
-      throw Oops.HasPropertyUndefined(this.name, key);
-
-    return value;
+  static tap(key?: string | Select, expect?: boolean){
+    return this.find(true).tap(key, expect);
   }
 
   static sub(...args: any[]){

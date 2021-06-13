@@ -1,10 +1,11 @@
-import { Model, Singleton, renderHook } from './adapter';
+import { Issue, Model, renderHook, Singleton } from './adapter';
 
 const opts = { timeout: 100 };
 
 describe("tap", () => {
   class Parent extends Singleton {
     value = "foo";
+    empty = undefined;
     child = new Child();
   }
   
@@ -37,7 +38,14 @@ describe("tap", () => {
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
   })
-  
+
+  it('will throw if undefined in expect-mode', () => {
+    const hook = renderHook(() => Parent.tap("empty", true));
+    const expected = Issue.HasPropertyUndefined(Parent.name, "empty");
+    
+    expect(() => hook.result.current).toThrowError(expected);
+  })
+
   it('select subvalue directly', async () => {
     const { result, waitForNextUpdate } = renderHook(() => {
       return Parent.tap(x => x.value);

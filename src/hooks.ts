@@ -9,6 +9,8 @@ import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
 import { defineLazy, fn, values } from './util';
 
+import Oops from './issues';
+
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
@@ -23,12 +25,17 @@ class ReactSubscriber<T> extends Subscriber<T> {
     });
   }
 
-  public focus(key: string){
+  public focus(key: string, expect?: boolean){
+    const source: any = this.subject;
+
     this.watch(key, () => {
-      let value = (this.subject as any)[key];
+      let value = source[key];
 
       if(value instanceof Model)
         return this.forward(value);
+
+      if(value === undefined && expect)
+        throw Oops.HasPropertyUndefined(source.constructor.name, key);
 
       this.proxy = value;
     });
@@ -79,7 +86,8 @@ export function usePassive<T extends typeof Model>(
 
 export function useWatcher(
   target: {} | (() => {}),
-  path?: string | Select){
+  path?: string | Select,
+  expected?: boolean){
 
   const hook = useRefresh(trigger => {
     if(fn(target))
@@ -97,7 +105,7 @@ export function useWatcher(
     const sub = new ReactSubscriber(target, trigger);
 
     if(path)
-      sub.focus(path);
+      sub.focus(path, expected);
 
     return sub;
   });

@@ -257,20 +257,17 @@ export abstract class Model {
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
-
-    /**
-     * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
-     */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K): ReturnType<K>;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K, expect?: boolean): ReturnType<K>;
 
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      * 
-     * Similar to `tap(property)`, however will throw of value is undefined.
-     * This makes return type non-nullable and easy to use without optional chaining.
+     * **(In Expect Mode)** - Will throw of value is undefined.
+     * This makes return type non-nullable and convenient to use without optional chaining.
      */
-    static has <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): Exclude<I[K], undefined>;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key: K, expect: true): Exclude<ReturnType<K>, undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
