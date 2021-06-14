@@ -19,20 +19,11 @@ export interface GetterInfo {
 }
 
 type Init = (key: string, on: Observer) => void;
+type InitCompute = (early?: boolean) => void;
 
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
 const Pending = new WeakSet<Init>();
-
-function runEarlyIfComputed(on: {}, key: string){
-  type Initialize = (early?: boolean) => void;
-
-  const desc = getOwnPropertyDescriptor(on, key);
-  const getter = desc && desc.get;
-
-  if(ComputedInit.has(getter!))
-    (getter as Initialize)(true);
-}
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
@@ -278,7 +269,12 @@ export class Observer {
     const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
-      runEarlyIfComputed(this.subject, key);
+      const desc = getOwnPropertyDescriptor(this.subject, key);
+      const getter = desc && desc.get;
+
+      if(ComputedInit.has(getter!))
+        (getter as InitCompute)(true);
+
       follow[key] = handler;
     }
 
