@@ -81,28 +81,6 @@ declare namespace Directives {
   export function setMemo <T> (compute: () => T, lazy?: boolean): T;
   
   /**
-   * Spawns read-only array/object of specified shape.
-   * 
-   * Updates to property are compared to existing value.
-   * Will squash update if all fields are strict-equal, or either old-new values are undefined.
-   * 
-   * @param initial - Starting value of property. May be an object or array.
-   */
-  export function setTuple <T extends readonly any[] = []> (): Readonly<T> | undefined;
-  export function setTuple <T extends readonly any[]> (initial: T): Readonly<T>;
-  export function setTuple <T extends {}> (initial: T): Readonly<T>;
-
-  /**
-   * Spawns read-only array/object of specified shape.
-   * 
-   * Updates to property are compared to existing value.
-   * Will squash update if all fields are strict-equal, or either old-new values are undefined.
-   * 
-   * @param values - Arguments are set to initial array's values.
-   */
-  export function setTuple <T extends readonly any[]> (...values: T): Readonly<T>;
-  
-  /**
    * Flag property as not to be tracked. Useful if changes often with no real-time impact.
    * 
    * @param value - starting value of property.

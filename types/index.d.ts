@@ -23,8 +23,7 @@ export {
     setParentComponent as wrap,
     setBoundComponent as bind,
     setMemo as memo,
-    setIgnored as lazy,
-    setTuple as tuple
+    setIgnored as lazy
 } from "./modifiers";
 
 export {

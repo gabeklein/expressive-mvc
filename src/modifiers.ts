@@ -120,45 +120,6 @@ export function setIgnored(value: any){
   })
 }
 
-export function setTuple<T extends any[]>
-  (...values: T): T {
-
-  if(values.length == 0)
-    values = undefined as any;
-  else if(values.length == 1 && typeof values[0] == "object")
-    values = values[0] as any;
-  
-  return Observer.define((key, on) => {
-    const source = on.state;
-
-    const setTuple = (next: any) => {
-      const current: any = source[key];
-      let update = false;
-
-      if(!current){
-        update = true;
-        source[key] = current;
-      }
-      else 
-        for(const k in current)
-          if(current[k] !== next[k]){
-            current[k] = next[k];
-            update = true;
-          }
-
-      if(update)
-        on.update(key);
-    };
-
-    source[key] = values;
-    on.assign(key, {
-      get: on.getter(key),
-      set: alias(setTuple, `set ${key}`)
-    });
-
-  })
-}
-
 type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
 export function setAction(action: AsyncFn){

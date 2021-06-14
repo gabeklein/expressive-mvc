@@ -6,8 +6,7 @@ export {
   setRefObject as ref,
   setAction as act,
   setMemo as memo,
-  setIgnored as lazy,
-  setTuple as tuple
+  setIgnored as lazy
 } from './modifiers';
 
 export {
