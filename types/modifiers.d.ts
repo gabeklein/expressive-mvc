@@ -70,16 +70,7 @@ declare namespace Directives {
    * @param action - Action to fire when resulting property is invoked.
    */
   export function setAction <T extends Async>(action: T): T & { active: boolean };
-  
-  /**
-   * Assigns a shortcut to trigger host-property event.
-   * Calls to function will invoke optional callback,
-   * then force-emit key, emulating a normal update.
-   * 
-   * @param callback - Effect callback when event is triggered.
-   */
-  export function setEvent (callback?: EffectCallback<any>): Callback;
-  
+
   /**
    * Memoized value. Computes and stores a value returned by provided factory. 
    * Equivalent to a getter, sans the automatic updates.

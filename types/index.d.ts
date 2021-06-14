@@ -19,7 +19,6 @@ export {
     setEffect as watch,
     setReference as ref,
     setAction as act,
-    setEvent as event,
     setComponent as hoc,
     setParentComponent as wrap,
     setBoundComponent as bind,

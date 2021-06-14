@@ -7,58 +7,29 @@ import {
   debounce,
   fn,
   keys,
-  recursiveSelect
+  selectRecursive
 } from './util';
 
 import Oops from './issues';
 
-type Init = (key: string, on: Controller) => void;
+export const DISPATCH = Symbol("controller");
+
 type Query = (select: Recursive<{}>) => void;
 
-const Register = new WeakMap<{}, Controller>();
-const Pending = new WeakSet<Init>();
+export type Controllable = {
+  [DISPATCH]: Controller
+}
 
 export class Controller extends Observer {
-  static define(fn: Init){
-    Pending.add(fn);
-    return fn as any;
-  }
+  static key = DISPATCH;
 
-  static set(on: {}){
-    if(Register.has(on))
-      return;
+  static get(from: Controllable){
+    let dispatch = from[DISPATCH];
 
-    const dispatch = new this(on);
-
-    Register.set(on, dispatch);
-    dispatch.prepareComputed();
-  
-    return dispatch;
-  }
-
-  static get(from: {}){
-    let dispatch = Register.get(from);
-
-    if(!dispatch)
-      throw Oops.NoObserver(from.constructor.name);
-
-    if(!dispatch.ready){
-      dispatch.ready = true;
+    if(!dispatch.active)
       dispatch.start();
-    }
 
     return dispatch;
-  }
-
-  private ready = false;
-
-  protected manageProperty(
-    key: string, desc: PropertyDescriptor){
-
-    if(Pending.has(desc.value))
-      desc.value(key, this);
-    else
-      super.manageProperty(key, desc);
   }
 
   protected select(
@@ -68,64 +39,32 @@ export class Controller extends Observer {
       return [ using ];
 
     if(fn(using))
-      return recursiveSelect(using, 
+      return selectRecursive(using, 
         keys(this.subject).concat(lifecycleEvents)
       );
 
     return Array.from(using);
   }
 
-  protected watch(
-    target: string | Iterable<string> | Query,
-    handler: (value: any, key: string) => void,
-    once?: boolean,
-    initial?: boolean){
-
-    const select = this.select(target);
-
-    const callback = (frame: Iterable<string>) => {
-      for(const key of frame)
-        if(select.includes(key))
-          handler.call(this.subject, this.state[key], key);
-    }
-
-    if(initial)
-      callback(select);
-
-    return this.addListener(select, callback, once);
-  }
-
-  public emit(event: string, args?: any[]){
-    if(args){
-      const { subject } = this as any;
-      const handle = subject[event];
-  
-      if(fn(handle))
-        handle.apply(subject, args);
-    }
-
-    super.emit(event);
-  }
-
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
-    initial?: boolean) => {
+    squash?: boolean,
+    once?: boolean) => {
 
-    return this.watch(select, listener, false, initial);
+    return this.watch(this.select(select), listener, squash, once);
   }
 
   public once = (
     select: string | Iterable<string> | Query,
-    listener?: UpdateCallback<any, any>) => {
+    listener?: UpdateCallback<any, any>,
+    squash?: boolean) => {
 
     if(listener)
-      return this.watch(select, listener, true);
+      return this.on(select, listener, squash, true);
     else 
       return new Promise<void>(resolve => {
-        this.addListener(
-          this.select(select), () => resolve(), true
-        );
+        this.on(select, resolve, true, true);
       });
   }
 
@@ -146,7 +85,7 @@ export class Controller extends Observer {
         sub.listen();
       }
 
-      if(this.ready)
+      if(this.active)
         capture();
       else
         this.requestUpdate(capture);
@@ -188,7 +127,7 @@ export class Controller extends Observer {
     select: string | string[] | Query) => {
 
     for(const key of this.select(select))
-      super.emit(key);
+      super.update(key);
   }
 
   public requestUpdate = (

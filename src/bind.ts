@@ -4,6 +4,7 @@ import { createElement, useCallback, useEffect, useMemo } from 'react';
 
 import { Controller } from './controller';
 import { createHocFactory } from './hoc';
+import { Observer } from './observer';
 import { define, defineProperty } from './util';
 
 export function setBoundComponent(
@@ -37,7 +38,7 @@ export function setBoundComponent(
 
 type RefFunction = (e: HTMLElement | null) => void;
 
-export function bindRefFunctions(on: Controller){
+export function bindRefFunctions(on: Observer){
   const proxy: BunchOf<RefFunction> = {};
 
   let index = 0;
@@ -60,7 +61,7 @@ export function bindRefFunctions(on: Controller){
     }
   }
 
-  for(const key in on.export())
+  for(const key in on.state)
     defineProperty(proxy, key, {
       get(){
         try {
@@ -86,7 +87,7 @@ export function bindRefFunctions(on: Controller){
 
 export function createBinding(
   e: HTMLElement,
-  control: Controller,
+  control: Observer,
   key: string){
 
   if(e instanceof HTMLInputElement)
@@ -96,15 +97,23 @@ export function createBinding(
 }
 
 function createOneWayBinding(
-  element: HTMLElement, parent: Controller, key: string){
+  element: HTMLElement,
+  parent: Observer,
+  key: string){
 
-  return parent.on(key as any, (v) => {
-    element.innerHTML = String(v);
-  }, true)
+  function sync(to: any){
+    element.innerHTML = String(to);
+  }
+
+  sync(parent.state[key]);
+
+  return parent.watch(key, sync)
 }
 
 function createTwoWayBinding(
-  input: HTMLInputElement, parent: Controller, key: string){
+  input: HTMLInputElement,
+  parent: Observer,
+  key: string){
 
   let last: any;
 
@@ -112,11 +121,14 @@ function createTwoWayBinding(
     last = (parent.subject as any)[key] = this.value;
   }
 
-  const release = 
-    parent.on(key as any, (v) => {
-      if(v !== last)
-        input.value = String(v);
-    }, true);
+  function sync(to: any){
+    if(to !== last)
+      input.value = String(to);
+  }
+
+  sync(parent.state[key]);
+
+  const release = parent.watch(key, sync);
 
   input.addEventListener("input", onUpdate);
 

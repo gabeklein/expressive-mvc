@@ -1,9 +1,9 @@
 import type Public from '../types';
 
 import { useLookup } from './context';
-import { Controller } from './controller';
+import { Controllable, Controller, DISPATCH } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { define, defineProperty, entries, fn, getPrototypeOf } from './util';
+import { define, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
@@ -12,9 +12,14 @@ type Select = <T>(from: T) => T[keyof T];
 export interface Model extends Public {};
 
 export class Model {
+  [DISPATCH]: Controller;
+  static [DISPATCH]?: Controller;
+  
   constructor(){
     const cb = this.didCreate;
-    const dispatch = Controller.set(this)!;
+
+    const dispatch = this[DISPATCH] =
+      new Controller(this);
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));
@@ -22,17 +27,17 @@ export class Model {
     define(this, "get", this);
     define(this, "set", this);
 
-    defineProperty(this, "bind", {
-      get(){ throw Oops.BindNotAvailable() }
-    })
-
     for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
   }
 
-  public tap(path?: string | Select){
-    return useWatcher(this, path) as any;
+  get bind(): never {
+    throw Oops.BindNotAvailable();
+  }
+
+  public tap(path?: string | Select, expect?: boolean){
+    return useWatcher(this, path, expect) as any;
   }
 
   public sub(...args: any[]){
@@ -40,7 +45,8 @@ export class Model {
   }
 
   public destroy(){
-    Controller.get(this).emit("willDestroy", []);
+    if(this.willDestroy)
+      this.willDestroy();
   }
 
   static create<T extends typeof Model>(
@@ -49,7 +55,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Controller.get(instance);
+    instance[DISPATCH].start();
 
     return instance;
   }
@@ -80,27 +86,20 @@ export class Model {
     return usePassive(this, key);
   }
 
-  static tap(key?: string | Select){
-    return this.find(true).tap(key);
+  static tap(key?: string | Select, expect?: boolean){
+    return this.find(true).tap(key, expect);
   }
 
   static sub(...args: any[]){
     return this.find(true).sub(...args);
   }
 
-  static has(key: string){
-    const value = this.tap(key);
-
-    if(value === undefined)
-      throw Oops.HasPropertyUndefined(this.name, key);
-
-    return value;
-  }
-
   static meta(path: string | Select): any {
     return useWatcher(() => {
-      Controller.set(this);
-      return this;
+      if(!this[DISPATCH])
+        this[DISPATCH] = new Controller(this);
+
+      return this as Controllable;
     }, path);
   }
 

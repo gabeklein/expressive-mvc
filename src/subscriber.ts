@@ -1,50 +1,46 @@
-import { bindRefFunctions } from './bind';
 import { Controller } from './controller';
 import { Model } from './model';
-import { GetterInfo, metaData } from './observer';
-import { alias, create, defineLazy, defineProperty } from './util';
+import { GetterInfo, metaData, Observer } from './observer';
+import { alias, create, defineProperty } from './util';
 
 export class Subscriber<T = any> {
-  private dependant = new Set<{
+  protected dependant = new Set<{
     listen(): void;
     release(): void;
   }>();
 
   public following = {} as BunchOf<Callback>;
-  public parent: Controller;
+  public parent: Observer;
   public proxy: T;
   
   constructor(
     public subject: T,
-    private callback: Callback,
-    private metadata?: GetterInfo){
+    protected callback: Callback,
+    protected metadata?: GetterInfo){
 
     this.proxy = create(subject as any);
     this.parent = Controller.get(subject);
 
-    defineLazy(this.proxy, "bind", () => {
-      const agent = bindRefFunctions(this.parent);
-      this.dependant.add(agent);
-      return agent.proxy;
-    })
+    for(const key of this.parent.watched)
+      this.spyOn(key);
+  }
 
-    for(const key of this.parent.watched){
-      const initial = () => {
-        let value = (this.subject as any)[key];
+  private spyOn(key: string){
+    const access = () => {
+      let value = (this.subject as any)[key];
 
-        if(value instanceof Model)
-          return this.recursive(key);
+      if(value instanceof Model)
+        return this.delegate(key);
 
-        this.follow(key);
-        return value;
-      }
-
-      defineProperty(this.proxy, key, {
-        get: alias(initial, `tap ${key}`),
-        set: this.parent.setter(key),
-        configurable: true
-      })
+      this.follow(key);
+      return value;
     }
+
+    defineProperty(this.proxy, key, {
+      get: alias(access, `tap ${key}`),
+      set: this.parent.setter(key),
+      configurable: true
+    })
   }
 
   private follow(key: string, cb?: Callback){
@@ -65,53 +61,34 @@ export class Subscriber<T = any> {
       delete (this.proxy as any)[key];
   }
 
-  private recursive(key: string){
-    const { subject, callback, parent, proxy } = this;
+  private delegate(key: string){
     let sub: Subscriber | undefined;
 
     this.watch(key, () => {
-      let value = (subject as any)[key];
+      let value = (this.subject as any)[key];
 
-      if(value instanceof Model){
-        let child = sub =
-          new Subscriber(value, callback);
-    
-        parent.once("didRender", () => {
-          child.commit();
-          this.commit(key);
-        });
-
-        defineProperty(proxy, key, {
-          get: () => child.proxy,
-          set: it => (subject as any)[key] = it,
-          configurable: true,
-          enumerable: true
-        })
-
-        return child;
-      }
+      if(value instanceof Model)
+        return sub = this.forwardTo(key, value);
     });
 
     return sub && sub.proxy;
   }
 
-  public focus(key: string){
-    this.watch(key, () => {
-      let value = (this.subject as any)[key];
+  forwardTo(key: string, from: Model){
+    let child = new Subscriber(from, this.callback);
 
-      if(value instanceof Model){
-        const child = new Subscriber(value, this.callback);
+    this.parent.watch("didRender", () => {
+      child.commit();
+      this.commit(key);
+    }, true);
 
-        this.parent.once("didRender", () => child.commit());
-        this.proxy = child.proxy as any;
+    defineProperty(this.proxy, key, {
+      get: () => child.proxy,
+      set: it => (this.subject as any)[key] = it,
+      configurable: true
+    })
 
-        return child;
-      }
-
-      this.proxy = value;
-    });
-
-    return this;
+    return child;
   }
 
   public listen(commit?: boolean){
@@ -138,13 +115,12 @@ export class Subscriber<T = any> {
     const start = (mounted?: boolean) => {
       child = subscribe();
 
-      if(!child)
-        return;
-
-      this.dependant.add(child);
-
-      if(mounted)
-        child.listen();
+      if(child){
+        this.dependant.add(child);
+  
+        if(mounted)
+          child.listen();
+      }
     }
 
     this.follow(key, () => {

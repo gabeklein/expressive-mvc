@@ -18,18 +18,19 @@ export interface GetterInfo {
   priority: number;
 }
 
+/**
+ * *Placeholder Type.*
+ * 
+ * Depending on `squash` parameter, will by default accept
+ * value+key or expect no parameters if set to true.
+ **/
+type EventCallback = Function;
+type Init = (key: string, on: Observer) => void;
+type InitCompute = (early?: boolean) => void;
+
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
-
-function runEarlyIfComputed(on: {}, key: string){
-  type Initialize = (early?: boolean) => void;
-
-  const desc = getOwnPropertyDescriptor(on, key);
-  const getter = desc && desc.get;
-
-  if(ComputedInit.has(getter!))
-    (getter as Initialize)(true);
-}
+const Pending = new WeakSet<Init>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
@@ -44,25 +45,36 @@ export class Observer {
   protected getters = new Map<string, Callback>();
   protected waiting = [] as RequestCallback[];
 
+  public active = false;
   public state = {} as BunchOf<any>;
   public followers = new Set<BunchOf<RequestCallback>>();
   public watched = new Set<string>();
 
   public pending?: (key: string) => void;
 
-  constructor(
-    public subject: {}){
+  static define(fn: Init){
+    Pending.add(fn);
+    return fn as any;
   }
 
-  protected start(){
-    for(const [k, d] of entriesIn(this.subject))
-      this.manageProperty(k, d);
+  constructor(public subject: {}){
+    this.prepareComputed();
+  }
+
+  public start(){
+    this.active = true;
+
+    for(const [key, { value, enumerable }] of entriesIn(this.subject))
+      if(Pending.has(value))
+        value(key, this);
+      else if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+        this.monitorValue(key, value);
 
     this.initComputed();
     this.reset([]);
   }
 
-  protected prepareComputed(){
+  private prepareComputed(){
     for(
       let scan = this.subject;
       scan !== Model && scan.constructor !== Model;
@@ -108,13 +120,6 @@ export class Observer {
       init();
   }
 
-  protected manageProperty(
-    key: string, { value, enumerable }: PropertyDescriptor){
-
-    if(enumerable && !fn(value) || /^[A-Z]/.test(key))
-      this.monitorValue(key, value);
-  }
-
   public assign(key: string, desc: PropertyDescriptor){
     this.watched.add(key);
     defineProperty(this.subject, key, { enumerable: true, ...desc });
@@ -138,28 +143,28 @@ export class Observer {
     key: string, compute: () => any){
 
     const self = this;
-    const { state, subject, getters } = this;
+    const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
 
-    function refresh(){
-      let next;
+    function next(){
+      let output;
 
       try {
-        next = compute.call(subject);
+        output = compute.call(subject);
       }
       catch(err){
         Oops.ComputeFailed(subject.constructor.name, key, false).warn();
         throw err;
       }
 
-      if(next !== state[key]){
-        state[key] = next;
-        self.emit(key);
+      if(output !== state[key]){
+        state[key] = output;
+        self.update(key);
       }
     }
 
-    function initial(early?: boolean){
-      const sub = new Subscriber(subject, refresh, info);
+    function init(early?: boolean){
+      const sub = new Subscriber(subject, next, info);
 
       try {
         defineProperty(sub.proxy, key, { value: undefined });
@@ -178,7 +183,7 @@ export class Observer {
         sub.listen();
 
         for(const key in sub.following){
-          const compute = getters.get(key);
+          const compute = self.getters.get(key);
 
           if(!compute)
             continue;
@@ -196,20 +201,20 @@ export class Observer {
       }
     }
 
-    alias(initial, `new ${key}`);
-    alias(refresh, `try ${key}`);
+    alias(init, `new ${key}`);
+    alias(next, `try ${key}`);
 
     metaData(compute, info);
-    this.watched.add(key);
-    ComputedInit.add(initial);
+    self.watched.add(key);
+    ComputedInit.add(init);
 
-    for(const sub of this.followers)
+    for(const sub of self.followers)
       if(key in sub)
-        return initial;
+        return init;
 
-    defineProperty(this.state, key, {
+    defineProperty(state, key, {
       configurable: true,
-      get: initial,
+      get: init,
       set: to => defineProperty(state, key, {
         writable: true,
         value: to
@@ -217,7 +222,7 @@ export class Observer {
     })
 
     this.assign(key, {
-      get: initial,
+      get: init,
       set: Oops.AssignToGetter(key).warn
     })
   }
@@ -230,7 +235,7 @@ export class Observer {
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    const assigned = (value: any) => {
+    const assign = (value: any) => {
       if(this.state[key] == value)
         return;
 
@@ -239,10 +244,29 @@ export class Observer {
       if(effect)
         effect(value, this.subject);
 
-      this.emit(key);
+      this.update(key);
     }
       
-    return alias(assigned, `set ${key}`);
+    return alias(assign, `set ${key}`);
+  }
+
+  public watch(
+    target: string | string[],
+    handler: EventCallback,
+    squash?: boolean,
+    once?: boolean){
+
+    const keys = ([] as string[]).concat(target);
+
+    const callback = squash
+      ? handler.bind(this.subject)
+      : (frame: string[]) => {
+        for(const key of frame)
+          if(keys.includes(key))
+            handler.call(this.subject, this.state[key], key);
+      }
+
+    return this.addListener(keys, callback, once);
   }
 
   public addListener(
@@ -250,12 +274,17 @@ export class Observer {
     callback: RequestCallback,
     once?: boolean){
 
-    const remove = () => { this.followers.delete(follow) };
+    const remove = () => this.followers.delete(follow);
     const handler = once ? (k: string[]) => { remove(); callback(k) } : callback;
     const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
-      runEarlyIfComputed(this.subject, key);
+      const desc = getOwnPropertyDescriptor(this.subject, key);
+      const getter = desc && desc.get;
+
+      if(ComputedInit.has(getter!))
+        (getter as InitCompute)(true);
+
       follow[key] = handler;
     }
 
@@ -264,7 +293,7 @@ export class Observer {
     return remove;
   }
 
-  public emit(key: string){
+  public update(key: string){
     (this.pending || this.sync())(key);
   }
 
@@ -273,7 +302,7 @@ export class Observer {
   }
 
   private sync(){
-    const self = this;
+    const local = this;
     const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
@@ -284,17 +313,17 @@ export class Observer {
 
       handled.add(key);
 
-      for(const sub of self.followers)
+      for(const sub of local.followers)
         if(key in sub)
           include(sub[key]);
     }
 
     function include(request: RequestCallback){
-      const target = metaData(request);
+      const self = metaData(request);
 
-      if(target && target.parent == self)
+      if(self && self.parent == local)
         insertAfter(pending, request,
-          sib => target.priority > metaData(sib).priority
+          sib => self.priority > metaData(sib).priority
         )
       else
         effects.add(request);
@@ -313,8 +342,8 @@ export class Observer {
 
       effects.forEach(x => x(frame));
 
-      self.pending = undefined;
-      self.reset(frame);
+      local.pending = undefined;
+      local.reset(frame);
     }
 
     setTimeout(notify, 0);

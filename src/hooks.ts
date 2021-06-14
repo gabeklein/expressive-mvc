@@ -1,15 +1,58 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
-import { Controller } from './controller';
+import { Controller, Controllable } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model } from './model';
 import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
-import { fn, values } from './util';
+import { defineLazy, fn, values } from './util';
+
+import Oops from './issues';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
+
+class ReactSubscriber<T> extends Subscriber<T> {
+  constructor(subject: T, callback: Callback){
+    super(subject, callback);
+
+    defineLazy(this.proxy, "bind", () => {
+      const agent = bindRefFunctions(this.parent);
+      this.dependant.add(agent);
+      return agent.proxy;
+    });
+  }
+
+  public focus(key: string, expect?: boolean){
+    const source: any = this.subject;
+
+    this.watch(key, () => {
+      let value = source[key];
+
+      if(value instanceof Model)
+        return this.forward(value);
+
+      if(value === undefined && expect)
+        throw Oops.HasPropertyUndefined(source.constructor.name, key);
+
+      this.proxy = value;
+    });
+  }
+
+  forward(from: Model){
+    const child = new Subscriber(from, this.callback);
+
+    this.parent.watch("didRender", () => {
+      child.commit();
+    }, true);
+
+    this.proxy = child.proxy as any;
+
+    return child;
+  }
+}
 
 function useRefresh<T>(
   init: (trigger: Callback) => T){
@@ -42,8 +85,9 @@ export function usePassive<T extends typeof Model>(
 }
 
 export function useWatcher(
-  target: {} | (() => {}),
-  path?: string | Select){
+  target: Controllable | (() => Controllable),
+  path?: string | Select,
+  expected?: boolean){
 
   const hook = useRefresh(trigger => {
     if(fn(target))
@@ -58,10 +102,10 @@ export function useWatcher(
       path = path(detect) as string;
     }
 
-    const sub = new Subscriber(target, trigger);
+    const sub = new ReactSubscriber(target, trigger);
 
     if(path)
-      sub.focus(path);
+      sub.focus(path, expected);
 
     return sub;
   });
@@ -75,7 +119,7 @@ export function useSubscriber(
   target: Model, args: any[]){
 
   const hook = useRefresh(trigger => 
-    new Subscriber(target, trigger)
+    new ReactSubscriber(target, trigger)
   );
 
   useLifecycleEffect((name) => {
@@ -84,8 +128,14 @@ export function useSubscriber(
 
     const alias = subscriberEvent(name);
 
-    for(const event of [alias, name])
-      hook.parent.emit(event, args);
+    for(const event of [alias, name]){
+      const on = hook.subject;
+
+      const handle = (on as any)[event];
+      handle && handle.apply(on, args);
+
+      hook.parent.update(event);
+    }
 
     if(name == Lifecycle.WILL_UNMOUNT)
       hook.release();
@@ -140,7 +190,7 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    return new Subscriber(instance, trigger);
+    return new ReactSubscriber(instance, trigger);
   });
 
   usePeerContext(hook.subject);
@@ -154,8 +204,14 @@ export function useModel(
 
       const alias = componentEvent(name);
 
-      for(const event of [alias, name])
-        hook.parent.emit(event, []);
+      for(const event of [alias, name]){
+        const on = hook.subject;
+        const handle = (on as any)[event];
+  
+        handle && handle.apply(on, args);
+
+        hook.parent.update(event);
+      }
 
       if(name == Lifecycle.WILL_UNMOUNT){
         hook.release();

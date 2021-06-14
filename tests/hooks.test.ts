@@ -1,10 +1,11 @@
-import { Model, Singleton, renderHook } from './adapter';
+import { Issue, Model, renderHook, Singleton } from './adapter';
 
 const opts = { timeout: 100 };
 
 describe("tap", () => {
   class Parent extends Singleton {
     value = "foo";
+    empty = undefined;
     child = new Child();
   }
   
@@ -27,9 +28,8 @@ describe("tap", () => {
   });
   
   it('access subvalue directly', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return Parent.tap("value");
-    })
+    const { result, waitForNextUpdate } =
+      renderHook(() => Parent.tap("value"))
   
     expect(result.current).toBe("foo");
   
@@ -37,11 +37,17 @@ describe("tap", () => {
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
   })
-  
+
+  it('will throw if undefined in expect-mode', () => {
+    const hook = renderHook(() => Parent.tap("empty", true));
+    const expected = Issue.HasPropertyUndefined(Parent.name, "empty");
+    
+    expect(() => hook.result.current).toThrowError(expected);
+  })
+
   it('select subvalue directly', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return Parent.tap(x => x.value);
-    });
+    const { result, waitForNextUpdate } =
+      renderHook(() => Parent.tap(x => x.value));
   
     expect(result.current).toBe("foo");
 
@@ -51,9 +57,8 @@ describe("tap", () => {
   })
   
   it('access child controller', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return Parent.tap("child");
-    })
+    const { result, waitForNextUpdate } =
+      renderHook(() => Parent.tap("child"))
   
     expect(result.current.value).toBe("foo");
   
@@ -99,10 +104,8 @@ describe("meta", () => {
   })
   
   it.skip('will track specific values', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
-      const meta = Parent.meta(x => x.value);
-      return meta;
-    });
+    const { result, waitForNextUpdate } =
+      renderHook(() => Parent.meta(x => x.value));
 
     expect(result.current).toBe("foo");
 
