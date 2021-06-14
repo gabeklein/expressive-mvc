@@ -87,15 +87,9 @@ This behavior combines with actions, computed properties, events, and the compon
   &ensp; •&nbsp; [Child Controllers](#concept-child-model) <br/>
   &ensp; •&nbsp; [Parent Controller](#concept-parent-model) <br/>
 
-**Attached HOCs** <br/>
-  &ensp; •&nbsp; [Bound HOC](#concept-ref-hoc) <br/>
-
-<!--
-**Extension** <br/>
-  &ensp; •&nbsp; [Extending Custom Models](#concept-extension) <br/>
-  &ensp; •&nbsp; [Impact on Context](#concept-extension-context) <br/>
-  &ensp; •&nbsp; [Using Meta](#concept-meta) <br/>
--->
+<!-- **Attached HOCs** <br/>
+  &ensp; •&nbsp; [Custom HOCs](#concept-custom-hoc) <br/>
+  &ensp; •&nbsp; [Bind HOC](#concept-ref-hoc) <br/>
 
 **Element Control** <br/>
   &ensp; •&nbsp; [Ref Properties](#concept-ref-property) <br/>
@@ -103,10 +97,11 @@ This behavior combines with actions, computed properties, events, and the compon
   &ensp; •&nbsp; [Custom Elements](#concept-ref-hoc) <br/>
 
 **Customizing** <br/>
+  &ensp; •&nbsp; [Extending Custom Models](#concept-extension) <br/>
+  &ensp; •&nbsp; [Impact on Context](#concept-extension-context) <br/>
   &ensp; •&nbsp; [Modifiers](#concept-modifier) <br/>
   &ensp; •&nbsp; [Custom Hooks](#concept-custom-hooks) <br/>
-  &ensp; •&nbsp; [Custom HOCs](#concept-custom-c) <br/>
-  &ensp; •&nbsp; [Using Meta](#concept-meta) <br/>
+  &ensp; •&nbsp; [Using Meta](#concept-meta) <br/> -->
 
 **Best Practices** <br/>
   &ensp; •&nbsp; [Documenting and Types](#concept-typescript) <br/>
@@ -179,14 +174,16 @@ const KitchenCounter = () => {
 
 <h1 id="started-section">Getting Started</h1>
 
-Ultimately the workflow is pretty simple. If you know [MobX](https://mobx.js.org/README.html) this will look familiar, but also refreshingly simple.
+Ultimately the workflow is pretty simple.
 
 1. Create a class and fill it with the values, getters, and methods you'll need.
-2. Extend `Model` (or any derivative, for that matter) to make it "observable".
+2. Extend `Model` (or any derivative, for that matter) to make it reactive.
 3. Within a component, use built-in methods as you would a normal hook.
 4. Destructure the values, needed by a particular component, to subscribe.
 5. Update those values on demand. Components keep sync automagically. ✨
-<br/><br/>
+<br/>
+
+<br/>
 
 ### Glossary
 
@@ -195,14 +192,14 @@ Here's some library jargon which will be good to know.
 
  - **Model**: Any class you'll write extending `Model`. Your definition for a type of state.
  - **Controller**: An instance of your model, containing its state and behavior.
- - **State**: The state belonging to a controller; values on instance as defined by model. 
+ - **State**: The values tracked by a controller, as defined by the model. 
  - **Subscriber**: A hook, or otherwise special callback, responding to updates.
  - **View**: A function-component which can accept hooks, to contain some controller.
  - **Element**: Instance of a component/view, actively mounted with its own state and lifecycle.
 
 <br/>
 
-OK, let's go :clap:
+Let's go :clap:
 <br/><br/>
 
 <h2 id="concept-simple">Simplest use-case</h2>
@@ -236,7 +233,7 @@ const KitchenCounter = () => {
 ```
 <!-- <a href="https://codesandbox.io/s/deep-state-simple-e3xcf"><sup>View in CodeSandbox</sup></a> -->
  
-One of the static-methods on your class will be `use`. This is a hook; to create a new instance of model, and attach it to the component.
+One of the static-methods on your class will be `use`. This is a hook; to create a new instance of your model and attach it to the component.
 
 Now, we can "edit" the instance properties as we see fit. When values change, our hook calls for a refresh, as needed.
 
@@ -246,13 +243,13 @@ Now, we can "edit" the instance properties as we see fit. When values change, ou
 
 [Model hooks are lazy](#concept-lazy), and will only update for values seen to be in-use. 
 
-A good idea is to destructure the values needed. This keeps intent clear, and avoids unexpected behavior.
+A good idea is to destructure values as needed. This keeps intent clear, and avoids unexpected behavior.
 
-After destructuring though, we'll often still need access to full state. Covering for this, a `get` and `set` property are always defined (not to be confused with keywords).
+After destructuring though, we'll sometimes need access to the full state. For this, a `get` and `set` property are defined as a "loop-back" to state.
 
 ### `set`
 
-From the destructure, we have `set` to assign new values to state.
+We have `set` to assign new values to state.
 
 ```jsx
 const KitchenCounter = () => {
@@ -273,21 +270,20 @@ const KitchenCounter = () => {
 
 ### `get`
 
-Same, but for other purposes. Most of the time, it'll be to get stuff without also implying you want updates. <br/>
-
-> Usually, when an observable value is accessed, the controller assumes a refresh is needed anytime that property changes. In plenty of situations, this isn't the case, so `get` serves as an escape-hatch.
-
+Usually, when an observable value is accessed, the controller assumes a refresh is needed anytime that property changes. In plenty of situations, this isn't the case, so `get` serves as an escape-hatch.
 
 ```js
-const { get: instance, value } = Model.use();
+const { get: state, value } = Model.use();
 ```
-> Is sort-of a nicer (and more stable) way of saying:
+> Is a nicer (and more stable) way of saying:
 ```js
-const instance = Model.use();
-const { value } = instance;
+const state = Model.use();
+const { value } = state;
 ```
+<br/>
 
-Worth mentioning, you can use it for bracket-notation too (i.e. `get["property"]`), and generally to avoid clutter. 
+> **Good to know:** <br/>
+> Reason this works is because returned `state` a proxy, there to "spy" on property access. On the other hand, `get` and `set` are direct references to state. 
 
 <br/>
 
@@ -305,9 +301,7 @@ class Counter extends Model {
   decrement = () => { this.current-- };
 }
 ```
-
-
-> While obviously cleaner, this is also subtly more efficient than inline-functions. Not only do actions have names, we avoid new closures for every render. This can save _a lot_ of unnecessary rendering downstream, for seemingly "new" callbacks. 😬
+With this you can write even the most complex components, all while maintaining key benefits of a functional-component. Much easier on the eyeballs.
 
 ```jsx
 const KitchenCounter = () => {
@@ -322,15 +316,17 @@ const KitchenCounter = () => {
   )
 }
 ```
-<!-- <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup> -->
+<br/>
 
-With this you can write even the most complex components, all while maintaining key benefits of a functional-component. Much easier on the eyeballs.
+> **Good to know:** <br/>
+> While obviously cleaner, this is also more efficient than inline-functions. Not only do actions have names, we avoid new closures for every render. This can save _a lot_ of unnecessary rendering downstream, for seemingly "new" callbacks. 😬
+<!-- <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup> -->
 
 <br/>
 
-<h2 id="concept-getters">Can we get some getters?</h2>
+<h2 id="concept-getters">Computed Values</h2>
 
-A strong equivalent to *computed* properties, simply define get-methods, to be managed by controller. 
+State can contain derivative values too, simply define get-methods on your model. They will be managed by the controller automatically. 
 
 Through the same mechanism as hooks, getters know when the specific properties they accessed are updated. Whenever that happens, they rerun. If a new value is returned, the update is paid forward.
 
@@ -355,22 +351,19 @@ class Timer extends Model {
   }
 
   get format(){
-    const { seconds } = this;
-    const hr = floor(seconds / 3600);
-    const min = floor(seconds / 60) % 60;
-    const sec = seconds % 60;
+    const hrs = this.hours;
+    const min = this.minutes % 60;
+    const sec = this.seconds % 60;
 
-    return `${hr}:${min}:${sec}`;
+    return `${hrs}:${min}:${sec}`;
   }
 }
 ```
 
-### Good to know:
+A getter's value is cached, facing the user. It will only run when a dependency changes, and **not upon access** as you might expect. However, getters are also lazy, so first access is the exception.
 
-A getter's value is cached, facing the user. It will only run when a dependency changes, and **not** upon access as you might expect.
-
-However, getters are also lazy, so first access is an exception. After that, they run whenever the controller thinks they *could* change, so make sure to design them with these guiding principles:
-- Getters should be *deterministic*. Only expect a change where inputs have changed.
+Because getters run whenever the controller thinks they *could* change, make sure to design them with these guiding principles:
+- Getters should be deterministic. Only expect a change where inputs have changed.
 - Avoid computing from values which change a lot, but don't change output as often.
 - [Goes without saying](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are an anti-pattern** and can cause infinite loops.
 
@@ -378,7 +371,7 @@ However, getters are also lazy, so first access is an exception. After that, the
 
 <h2 id="concept-constructor">Constructor arguments</h2>
 
-The method `use(...)`, while building an instance, will pass its arguments to the constructor. This makes it easy to reuse, and customize initial state.
+The method `use(...)`, while building an instance, will pass its arguments to its constructor. This helps to reuse models, by customizing initial state.
 
 > Typescript 
 ```ts
@@ -449,7 +442,7 @@ const HappyBirthday = (props) => {
   );
 }
 ```
-Now, we can easily define those props.
+Now, we can just define those props.
 ```jsx
 const SayHello = () => (
   <HappyBirthday
@@ -464,20 +457,20 @@ This method is naturally picky and will only capture values already defined (as 
 const state = Model.uses({ ... }, ["name", "birthday"]);
 ```
 
-This way, objects containing _more_ than required info are usable without polluting state.
+This way, objects containing _more_ than required info may be given without collisions or either-way polluting state.
 
 <!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
 <br/>
 
 ### ✅ Level 1 Clear!
-> In this chapter we learned the basics of how to create and utilize a custom state. For most people who just want smarter components, this could be enough! However, we could go well beyond making just a fancy hook.
+> In this chapter we learned the basics of how to create and utilize a custom state. For most people who just want smarter components, this could be enough! However, we can go well beyond making just a fancy hook.
 
 <br/>
 
 <h1 id="managing-section">Creating a dynamic state</h1>
 
-So far, all examples have been passive. Now we'll give models a bigger roll, to update without direct UI.
+So far, all examples have been passive. Now we'll give models a bigger roll, to evolve state without user input.
 
 Because state is a portable object, we can do whatever to values, but more-crucially, whenever. This makes asynchronous coding pretty low maintenance. You implement business-logic; controllers will handle the rest.
 
@@ -519,30 +512,39 @@ You can see all available lifecycle methods **[here](#lifecycle-api)**.
 <h2 id="concept-events">Event Handling</h2>
 
 Aside watching for state change, what a subscriber really cares about is events. *Updates are just one source for an event.* When any property gains a new value, subscribers are simply notified and act accordingly.
-<br />
+
+> **Good to know:** <br/>
+> All changes to state occure in batches, called frames. Whenever state receives a new value, a zero-second timer starts. Anything to update before it the commit-phase is considered "reasonably syncronous" and also included. After events are then fired, and the controller resets for the next event.
+
 <br />
 
 <h3 id="concept-listen-event">Listening for events manually</h3>
 
 ```js
-const callback = (value, key) => {
+const normalCallback = (value, key) => {
   console.log(`${key} was updated with ${value}!`)
+}
+
+const squashCallback = (keys) => {
+  console.log(`Update did occure for: ${keys}!`)
 }
 ```
 
-#### `state.on(key, callback) => remove`
+> By default, callbacks are run once for every key/value update, even if multiple happen at the same time. If you'd rather know when an event happens for *any* chosen key, squash will fire once for a given frame, with a list of keys updated.
+
+#### `state.on(key, callback, squash?, once?) => remove`
 
 Register a new listener on given key(s). `callback` will be fired when `state[key]` updates, or a synthetic event is sent.
 
 The method also returns a callback; use to stop subscribing. 
 
-#### `state.once(key, callback) => cancel`
+#### `state.once(key, callback, squash?) => cancel`
 
 Will expire also when triggered. May be cancelled with the returned callback.
 
-#### `state.once(key) => Promise<void>`
+#### `state.once(key) => Promise<keys[]>`
 
-If `callback` is not provided, will return a Promise.
+If `callback` is not provided, will return a Promise of keys watched/updated.
 
 <br />
 <h3 id="concept-listen-effect">Define effect for one or more values</h3>
@@ -982,7 +984,7 @@ Singletons are not be useable until they're init in one of three ways
 
 ### Method 1: `Singleton.create(...)`
 
-A method on all Models, `create` on a Singleton also promotes the new instance, while avoiding collisions. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
+A method on all Models, `create` on a Singleton also promotes the new instance, while also avoiding collisions. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
 
 ```js
 window.addEventListener("load", () => {
@@ -1049,7 +1051,7 @@ Models make getting an instance you need super easy. On every model, there are t
 
 The most straight-forward, `get` will find and return the nearest `instanceof this` within context. When passed a key it will 'drill', either returning a value (if found) or `undefined`.
 
-<h3 id="method-tap"><code>tap(key?)</code></h3>
+<h3 id="method-tap"><code>tap(key?, expect?)</code></h3>
 
 In addition to fetching instance, `tap` will subscribe to values on that instance much like `use` will. With this, children sharing a mutual state can affect eachother's state. 
 
@@ -1078,9 +1080,7 @@ const InnerBar = () => {
 }
 ```
 
-<h3 id="method-has"><code>has(key)</code></h3>
-
-Similar to tap, has will throw if chosen property is undefined at time of use. This is useful because output is cast as non-nullable. This way, value may be destructured without assertions (or complaints from type-check).
+With the `expect` flag, tap will throw if chosen property is undefined at time of use. This is useful because output is cast as non-nullable. This way, value may be destructured without assertions (or complaints from type-check).
 
 <br/>
 
