@@ -177,7 +177,10 @@ export abstract class Model {
     tap(): this;
 
     /** Tracks specific key of this controller within a component. */
-    tap <K extends Model.Fields<this>> (key?: K): this[K];
+    tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
+
+    /** Tracks specific key of this controller within a component. */
+    tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
     /** Tracks specific key of this controller within a component. */
     tap <K extends Model.SelectField<this>> (key?: K): ReturnType<K>;
