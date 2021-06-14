@@ -14,7 +14,7 @@ import Oops from './issues';
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-class ReactSubscriber<T> extends Subscriber<T> {
+class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
   constructor(subject: T, callback: Callback){
     super(subject, callback);
 

@@ -1,9 +1,9 @@
-import { Controller } from './controller';
+import { Controllable, Controller } from './controller';
 import { Model } from './model';
 import { GetterInfo, metaData, Observer } from './observer';
 import { alias, create, defineProperty } from './util';
 
-export class Subscriber<T = any> {
+export class Subscriber<T extends Controllable = any> {
   protected dependant = new Set<{
     listen(): void;
     release(): void;

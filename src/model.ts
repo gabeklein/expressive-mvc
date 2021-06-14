@@ -13,7 +13,6 @@ export interface Model extends Public {};
 
 export class Model {
   [DISPATCH]: Controller;
-  static [DISPATCH]?: Controller;
   
   constructor(){
     const cb = this.didCreate;
@@ -94,12 +93,16 @@ export class Model {
     return this.find(true).sub(...args);
   }
 
+  static [DISPATCH]?: Controller;
+
   static meta(path: string | Select): any {
     return useWatcher(() => {
-      if(!this[DISPATCH])
-        this[DISPATCH] = new Controller(this);
+      const self = this as Controllable;
 
-      return this as Controllable;
+      if(!this[DISPATCH])
+        this[DISPATCH] = new Controller(self);
+
+      return self;
     }, path);
   }
 

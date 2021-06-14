@@ -1,3 +1,4 @@
+import { Controllable } from './controller';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import {
@@ -57,7 +58,7 @@ export class Observer {
     return fn as any;
   }
 
-  constructor(public subject: {}){
+  constructor(public subject: Controllable){
     this.prepareComputed();
   }
 
