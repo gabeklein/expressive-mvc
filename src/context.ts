@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { Model } from './model';
-import { create, define, fn, values } from './util';
+import { assign, create, define, fn, values } from './util';
 
 import Oops from './issues';
 
@@ -125,7 +125,8 @@ export const Consumer = (props: ConsumerProps) => {
 }
 
 export function Provider(props: ProviderProps){
-  const { of: target, children, ...data } = props;
+  const { children, of: target } = props;
+  const data = assign({}, props, { children: null, of: null });
  
   if(Model.isTypeof(target))
     return createElement(ParentProvider, { target, data }, children);
