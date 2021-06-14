@@ -159,7 +159,7 @@ export class Observer {
 
       if(output !== state[key]){
         state[key] = output;
-        self.emit(key);
+        self.update(key);
       }
     }
 
@@ -235,7 +235,7 @@ export class Observer {
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    const assigned = (value: any) => {
+    const assign = (value: any) => {
       if(this.state[key] == value)
         return;
 
@@ -244,10 +244,10 @@ export class Observer {
       if(effect)
         effect(value, this.subject);
 
-      this.emit(key);
+      this.update(key);
     }
       
-    return alias(assigned, `set ${key}`);
+    return alias(assign, `set ${key}`);
   }
 
   public watch(
@@ -293,7 +293,7 @@ export class Observer {
     return remove;
   }
 
-  public emit(key: string){
+  public update(key: string){
     (this.pending || this.sync())(key);
   }
 

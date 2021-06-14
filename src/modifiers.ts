@@ -147,7 +147,7 @@ export function setTuple<T extends any[]>
           }
 
       if(update)
-        on.emit(key);
+        on.update(key);
     };
 
     source[key] = values;
@@ -172,13 +172,13 @@ export function setAction(action: AsyncFn){
         )
 
       pending = true;
-      on.emit(key);
+      on.update(key);
 
       return action
         .apply(on.subject, args)
         .finally(() => {
           pending = false;
-          on.emit(key);
+          on.update(key);
         })
     };
 

@@ -127,7 +127,7 @@ export class Controller extends Observer {
     select: string | string[] | Query) => {
 
     for(const key of this.select(select))
-      super.emit(key);
+      super.update(key);
   }
 
   public requestUpdate = (

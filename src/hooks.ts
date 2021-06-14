@@ -134,7 +134,7 @@ export function useSubscriber(
       const handle = (on as any)[event];
       handle && handle.apply(on, args);
 
-      hook.parent.emit(event);
+      hook.parent.update(event);
     }
 
     if(name == Lifecycle.WILL_UNMOUNT)
@@ -210,7 +210,7 @@ export function useModel(
   
         handle && handle.apply(on, args);
 
-        hook.parent.emit(event);
+        hook.parent.update(event);
       }
 
       if(name == Lifecycle.WILL_UNMOUNT){
