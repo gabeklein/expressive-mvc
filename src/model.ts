@@ -34,9 +34,11 @@ export class Model {
   get bind(): never {
     throw Oops.BindNotAvailable();
   }
-
-  public tap(path?: string | Select, expect?: boolean){
-    return useWatcher(this, path, expect) as any;
+  
+  // TODO: reconsile public types; extremely uncooperative.
+  public tap(path?: string | Select, expect?: boolean): never {
+    // @ts-ignore
+    return useWatcher(this, path, expect);
   }
 
   public sub(...args: any[]){
@@ -85,7 +87,7 @@ export class Model {
     return usePassive(this, key);
   }
 
-  static tap(key?: string | Select, expect?: boolean){
+  static tap(key?: string | Select, expect?: boolean): any {
     return this.find(true).tap(key, expect);
   }
 

@@ -20,6 +20,7 @@ describe("tap", () => {
 
   it('access subvalue directly', async () => {
     const parent = Parent.create();
+
     const { result, waitForNextUpdate } =
       renderHook(() => parent.tap("value"))
   

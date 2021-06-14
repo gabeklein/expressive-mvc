@@ -8,8 +8,6 @@ type RefFunction = (e: HTMLElement | null) => void;
 type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
-    type SelectFunction<T> = (arg: Required<T>) => any;
-
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
 
@@ -68,7 +66,7 @@ export namespace Model {
      */
     type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
-    type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
+    type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
 
     /** A component which accepts a specified controller. */
     type Component <P, T = Model> = FunctionComponent<P, T> | ClassComponent<P, T>;
@@ -178,12 +176,10 @@ export abstract class Model {
 
     /** Tracks specific key of this controller within a component. */
     tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
-
-    /** Tracks specific key of this controller within a component. */
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
-    /** Tracks specific key of this controller within a component. */
-    tap <K extends Model.SelectField<this>> (key?: K): ReturnType<K>;
+    tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
+    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>
 
     /**
      * **React Hook** - Find and subcribe to applicable controller. 
