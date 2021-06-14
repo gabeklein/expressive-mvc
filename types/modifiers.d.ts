@@ -103,15 +103,6 @@ declare namespace Directives {
   export function setTuple <T extends readonly any[]> (...values: T): Readonly<T>;
   
   /**
-   * Default value of property.
-   * 
-   * This, unlike naked instance-properties, allows an inheritor's getter to override this value.
-   * 
-   * @param value
-   */
-  export function setValue <T> (value: T): T; 
-  
-  /**
    * Flag property as not to be tracked. Useful if changes often with no real-time impact.
    * 
    * @param value - starting value of property.
