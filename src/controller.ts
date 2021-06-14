@@ -49,22 +49,22 @@ export class Controller extends Observer {
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
+    squash?: boolean,
     once?: boolean) => {
 
-    return this.watch(this.select(select), listener, once);
+    return this.watch(this.select(select), listener, squash, once);
   }
 
   public once = (
     select: string | Iterable<string> | Query,
-    listener?: UpdateCallback<any, any>) => {
+    listener?: UpdateCallback<any, any>,
+    squash?: boolean) => {
 
     if(listener)
-      return this.on(select, listener, true);
+      return this.on(select, listener, squash, true);
     else 
       return new Promise<void>(resolve => {
-        this.addListener(
-          this.select(select), () => resolve(), true
-        );
+        this.on(select, resolve, true, true);
       });
   }
 

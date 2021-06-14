@@ -18,6 +18,13 @@ export interface GetterInfo {
   priority: number;
 }
 
+/**
+ * *Placeholder Type.*
+ * 
+ * Depending on `squash` parameter, will by default accept
+ * value+key or expect no parameters if set to true.
+ **/
+type EventCallback = Function;
 type Init = (key: string, on: Observer) => void;
 type InitCompute = (early?: boolean) => void;
 
@@ -245,16 +252,19 @@ export class Observer {
 
   public watch(
     target: string | string[],
-    handler: (value: any, key: string) => void,
+    handler: EventCallback,
+    squash?: boolean,
     once?: boolean){
 
     const keys = ([] as string[]).concat(target);
 
-    const callback = (frame: Iterable<string>) => {
-      for(const key of frame)
-        if(keys.includes(key))
-          handler.call(this.subject, this.state[key], key);
-    }
+    const callback = squash
+      ? handler.bind(this.subject)
+      : (frame: string[]) => {
+        for(const key of frame)
+          if(keys.includes(key))
+            handler.call(this.subject, this.state[key], key);
+      }
 
     return this.addListener(keys, callback, once);
   }

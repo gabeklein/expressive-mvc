@@ -74,7 +74,7 @@ describe("on", () => {
     await state.requestUpdate();
 
     expect(callback).toBeCalledWith(2, "hours");
-  });
+  })
 
   it('will call for all simultaneous', async () => {
     const state = Subject.create();
@@ -87,7 +87,19 @@ describe("on", () => {
 
     expect(callback).toBeCalledWith(60, "seconds");
     expect(callback).toBeCalledWith(1, "minutes");
-  });
+  })
+
+  it('will call once for simultaneous in squash-mode', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+
+    state.on(x => x.seconds.minutes, callback, true);
+
+    state.seconds = 60;
+    await state.requestUpdate();
+
+    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+  })
 })
 
 describe("once", () => {
@@ -117,13 +129,13 @@ describe("once", () => {
     expect(callback).not.toBeCalledWith(45, "seconds");
   })
 
-  it('will return empty promise', async () => {
+  it('will return promise with update keys', async () => {
     const state = Subject.create();
     const pending = state.once(x => x.seconds);
 
     state.seconds = 30;
   
-    await expect(pending).resolves.toBeUndefined();
+    await expect(pending).resolves.toMatchObject(["seconds"]);
   })
 
   it('will call for all simultaneous', async () => {

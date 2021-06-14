@@ -2,8 +2,35 @@ import { Model } from './model';
 import { Selector } from './selector';
 
 type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
-type UpdateCallback<T, P, V> = (this: T, value: V, changed: P) => void;
-type CallbackFor<S extends Selector.Function<any>, T> = (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void
+type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+type CallbackFor<S extends Selector.Function<any>, T> = (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void;
+
+interface EventDispatch {
+  // Explicit all
+  on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false, once?: boolean): Callback;
+  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
+
+  once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false): Callback;
+  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
+
+  // Explicit squash
+  on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
+  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+
+  once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
+  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+
+  // Implicit squash
+  once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
+  once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
+
+  // Unknown squash
+  on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
+  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
+
+  once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
+  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
+}
 
 /**
  * Observable Instance
@@ -11,15 +38,7 @@ type CallbackFor<S extends Selector.Function<any>, T> = (this: T, value: Selecto
  * Implements internal value tracking. 
  * Able to be subscribed to, per-value to know when updated.
  */
-interface Dispatch {
-  on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>): Callback;
-  on <P extends Model.EventsCompat<this>> (property: P | P[], listener: UpdateCallback<this, P, IfApplicable<this, P>>): Callback;
-
-  once <S extends Model.SelectEvents<this>> (via: S): Promise<void>;
-  once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>): Callback;
-  once <P extends Model.EventsCompat<this>> (property: P | P[]): Promise<void>;
-  once <P extends Model.EventsCompat<this>> (property: P | P[], listener: UpdateCallback<this, P, IfApplicable<this, P>>): void;
-
+interface Dispatch extends EventDispatch {
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
   effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;
 
