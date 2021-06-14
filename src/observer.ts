@@ -296,7 +296,7 @@ export class Observer {
   }
 
   private sync(){
-    const self = this;
+    const local = this;
     const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
@@ -307,17 +307,17 @@ export class Observer {
 
       handled.add(key);
 
-      for(const sub of self.followers)
+      for(const sub of local.followers)
         if(key in sub)
           include(sub[key]);
     }
 
     function include(request: RequestCallback){
-      const target = metaData(request);
+      const self = metaData(request);
 
-      if(target && target.parent == self)
+      if(self && self.parent == local)
         insertAfter(pending, request,
-          sib => target.priority > metaData(sib).priority
+          sib => self.priority > metaData(sib).priority
         )
       else
         effects.add(request);
@@ -336,8 +336,8 @@ export class Observer {
 
       effects.forEach(x => x(frame));
 
-      self.pending = undefined;
-      self.reset(frame);
+      local.pending = undefined;
+      local.reset(frame);
     }
 
     setTimeout(notify, 0);
