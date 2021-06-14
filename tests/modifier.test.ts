@@ -1,20 +1,20 @@
-import { act, Issue, Model, ref, set, use } from './adapter';
+import { act, Issue, Model, ref, on, use } from './adapter';
 
 describe("set Directive", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
-    test1 = set<number>(value => {
+    test1 = on<number>(value => {
       this.checkResult = value + 1;
     });
   
-    test2 = set<number>(value => {
+    test2 = on<number>(value => {
       return () => {
         this.checkResult = true;
       }
     });
   
-    test3 = set("foo", value => {
+    test3 = on("foo", value => {
       this.checkResult = value;
     });
   }

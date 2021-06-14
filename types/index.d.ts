@@ -16,7 +16,7 @@ export {
     setChild as use,
     setParent as parent,
     setPeer as tap,
-    setEffect as watch,
+    setEffect as on,
     setReference as ref,
     setAction as act,
     setComponent as hoc,
