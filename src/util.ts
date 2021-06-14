@@ -91,6 +91,8 @@ export function createEffect(
   }
 }
 
+export type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
+
 export function selectRecursive(
   using: Function,
   keys: Iterable<string>){

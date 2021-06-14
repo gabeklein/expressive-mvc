@@ -7,6 +7,7 @@ import {
   debounce,
   fn,
   keys,
+  Recursive,
   selectRecursive
 } from './util';
 
