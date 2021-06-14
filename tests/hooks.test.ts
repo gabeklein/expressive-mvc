@@ -1,9 +1,9 @@
-import { Issue, Model, renderHook, Singleton } from './adapter';
+import { Issue, Model, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
 describe("tap", () => {
-  class Parent extends Singleton {
+  class Parent extends Model {
     value = "foo";
     empty = undefined;
     child = new Child();
@@ -18,60 +18,51 @@ describe("tap", () => {
     value = "bar"
   }
 
-  let singleton!: Parent;
-
-  beforeEach(() => {
-    if(Parent.current)
-      singleton.destroy();
-
-    singleton = Parent.create();
-  });
-  
   it('access subvalue directly', async () => {
+    const parent = Parent.create();
     const { result, waitForNextUpdate } =
-      renderHook(() => Parent.tap("value"))
+      renderHook(() => parent.tap("value"))
   
     expect(result.current).toBe("foo");
   
-    singleton.value = "bar";
+    parent.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
   })
 
   it('will throw if undefined in expect-mode', () => {
-    const hook = renderHook(() => Parent.tap("empty", true));
+    const parent = Parent.create();
+    const hook = renderHook(() => parent.tap("empty", true));
     const expected = Issue.HasPropertyUndefined(Parent.name, "empty");
     
     expect(() => hook.result.current).toThrowError(expected);
   })
 
   it('select subvalue directly', async () => {
+    const parent = Parent.create();
     const { result, waitForNextUpdate } =
-      renderHook(() => Parent.tap(x => x.value));
+      renderHook(() => parent.tap(x => x.value));
   
     expect(result.current).toBe("foo");
 
-    singleton.value = "bar";
+    parent.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
   })
   
   it('access child controller', async () => {
+    const parent = Parent.create();
     const { result, waitForNextUpdate } =
-      renderHook(() => Parent.tap("child"))
+      renderHook(() => parent.tap("child"))
   
     expect(result.current.value).toBe("foo");
   
     result.current.value = "bar"
-  
     await waitForNextUpdate(opts);
-  
     expect(result.current.value).toBe("bar");
   
-    singleton.child = new Child();
-  
+    parent.child = new Child();
     await waitForNextUpdate(opts);
-
     expect(result.current.value).toBe("foo");
   })
   
