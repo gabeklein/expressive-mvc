@@ -29,13 +29,13 @@ export class Lookup {
     return key;
   }
 
-  public get(T: typeof Model, strict?: boolean): Model | undefined {
+  public get(T: typeof Model, strict?: boolean){
     const instance = (this as any)[this.key(T)];
 
     if(!instance && strict)
       throw Oops.NothingInContext(T.name);
 
-    return instance;
+    return instance as Model | undefined;
   }
   
   public push(items: Model[]){
@@ -59,21 +59,28 @@ export class Lookup {
   }
 }
 
+type ProvideCollection =
+  | Array<Model | typeof Model>
+  | BunchOf<Model | typeof Model>;
+
 const LookupContext = createContext(new Lookup());
+const LookupProvider = LookupContext.Provider;
 
 export function useLookup(){
   return useContext(LookupContext);
 }
 
 function useIncluding(
-  insert: Model | Array<typeof Model> | BunchOf<typeof Model>,
+  insert: Model | ProvideCollection,
   dependancy?: any){
 
   const current = useLookup();
 
   function next(){
     const provide = insert instanceof Model
-      ? [ insert ] : values(insert).map(T => T.create());
+      ? [ insert ] : values(insert).map(T =>
+        Model.isTypeof(T) ? T.create() : T
+      );
 
     return current.push(provide);
   }
@@ -99,7 +106,7 @@ interface ConsumerProps {
 }
 
 interface ProviderProps {
-  of: Model | typeof Model | Array<typeof Model> | BunchOf<typeof Model>;
+  of: Model | typeof Model | ProvideCollection;
   children?: ReactNode;
 }
 
@@ -140,7 +147,7 @@ function ParentProvider(
   if(fn(children))
     children = children(instance);
 
-  return createElement(LookupContext.Provider, { value }, children);
+  return createElement(LookupProvider, { value }, children);
 }
 
 function DirectProvider(
@@ -151,16 +158,16 @@ function DirectProvider(
 
   target.import(data);
 
-  return createElement(LookupContext.Provider, { value }, children);
+  return createElement(LookupProvider, { value }, children);
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ types: Array<typeof Model> | BunchOf<typeof Model> }>){
+  props: PropsWithChildren<{ types: ProvideCollection }>){
 
   const { children, types } = props;
   const value = useIncluding(types);
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(LookupContext.Provider, { value }, children);
+  return createElement(LookupProvider, { value }, children);
 }

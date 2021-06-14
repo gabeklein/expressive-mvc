@@ -93,6 +93,17 @@ describe("Provider", () => {
       </Provider>
     )
   })
+
+  it("will provide a mix of state and models", () => {
+    const foo = Foo.create();
+
+    render(
+      <Provider of={{ foo, Bar }}>
+        <Consumer of={Foo} get={i => expect(i).toStrictEqual(foo)} />
+        <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+      </Provider>
+    )
+  })
 })
 
 describe("Consumer", () => {
