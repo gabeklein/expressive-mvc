@@ -19,9 +19,6 @@ export {
     setEffect as on,
     setReference as ref,
     setAction as act,
-    setComponent as hoc,
-    setParentComponent as wrap,
-    setBoundComponent as bind,
     setMemo as memo,
     setIgnored as lazy
 } from "./modifiers";

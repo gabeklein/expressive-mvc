@@ -10,15 +10,6 @@ export {
 } from './modifiers';
 
 export {
-  setBoundComponent as bind
-} from './bind';
-
-export {
-  setComponent as hoc,
-  setParentComponent as wrap
-} from './hoc';
-
-export {
   Consumer,
   Provider
 } from './context';

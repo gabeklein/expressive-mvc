@@ -86,37 +86,6 @@ declare namespace Directives {
    * @param value - starting value of property.
    */
   export function setIgnored <T> (value?: T): T;
-  
-  /**
-   * Generate custom HOC to which host controller is provided.
-   * 
-   * @param component - Component which may recieve host controller as context parameter.
-   */
-  export function setComponent <T extends Model, P> (component: Model.Component<P, T>): React.ComponentType<P>;
-  
-  /**
-   * Generates custom `Provider` using specified component.
-   * Component receives instance of host under its context parameter.
-   * 
-   * **Note:** Props forwarded rather than sent to host controller, as with built-in.
-   * 
-   * @param component - Component which defines body of custom provider.
-   */
-  export function setParentComponent <T extends Model, P> (component: Model.Component<P, T>): React.ComponentType<P>;
-  
-  /**
-   * Generates a bound component useable within FC's, using hooked instance of host controller.
-   * 
-   * Updates to property will *directly affect resulting element in real-time*,
-   * and ***does not trigger a render*** of the component where used.
-   * 
-   * This makes it easy to present data points which may change extremely often,
-   * while also avoiding an expensive render-cycle.
-   * 
-   * @param Component - Compatible component to which a forwarded ref is accepted.
-   * @param to - Property which bound component shall bind to.
-   */
-  export function setBoundComponent <P, T = HTMLElement> (Component: Model.Component<P, T>, to: string): React.ComponentType<P>;
 }
 
 export = Directives;

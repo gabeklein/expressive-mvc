@@ -17,8 +17,6 @@ export const tap = Source.tap as typeof Public.tap;
 export const on = Source.on as typeof Public.on;
 export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;
-export const hoc = Source.hoc as typeof Public.hoc;
-export const wrap = Source.wrap as typeof Public.wrap;
 export const act = Source.act as typeof Public.act;
 export const parent = Source.parent as typeof Public.parent;
 
