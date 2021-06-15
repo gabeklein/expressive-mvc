@@ -81,7 +81,7 @@ export function setRefObject<T = any>
   return Observer.define((key, on) => {
     on.assign(key, {
       value: defineProperty({}, "current", {
-        get: on.getter(key),
+        get: () => on.state[key],
         set: on.setter(key,
           effect && createEffect(effect)
         )

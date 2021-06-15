@@ -121,9 +121,8 @@ export class Observer {
     effect?: (value: any, callee?: any) => void){
 
     this.state[key] = initial;
-
     this.assign(key, {
-      get: this.getter(key),
+      get: () => this.state[key],
       set: this.setter(key, effect)
     });
   }
@@ -178,7 +177,7 @@ export class Observer {
         }
 
         self.assign(key, {
-          get: self.getter(key),
+          get: () => self.state[key],
           set: Oops.AssignToGetter(key).warn
         })
       }
@@ -210,15 +209,11 @@ export class Observer {
     })
   }
 
-  public getter(key: string){
-    return alias(() => this.state[key], `get ${key}`);
-  }
-
   public setter(
     key: string,
     effect?: (next: any, callee?: any) => void){
 
-    const assign = (value: any) => {
+    return (value: any) => {
       if(this.state[key] == value)
         return;
 
@@ -229,8 +224,6 @@ export class Observer {
 
       this.update(key);
     }
-      
-    return alias(assign, `set ${key}`);
   }
 
   public watch(
