@@ -91,8 +91,6 @@ export class Observer {
             });
           }
 
-        alias(get, `run ${key}`);
-
         this.state[key] = undefined;
         this.getters.set(key, get);
         this.assign(key, { get, set, configurable: true });
@@ -131,16 +129,16 @@ export class Observer {
   }
 
   private monitorComputed(
-    key: string, compute: () => any){
+    key: string, getter: () => any){
 
     const self = this;
     const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
     const set = this.setter(key);
 
-    function next(){
+    function update(){
       try {
-        set(compute.call(subject));
+        set(getter.call(subject));
       }
       catch(err){
         Oops.ComputeFailed(subject.constructor.name, key, false).warn();
@@ -148,13 +146,13 @@ export class Observer {
       }
     }
 
-    function init(early?: boolean){
-      const sub = new Subscriber(subject, next, info);
+    function create(early?: boolean){
+      const sub = new Subscriber(subject, update, info);
 
       try {
         defineProperty(sub.proxy, key, { value: undefined });
 
-        return state[key] = compute.call(sub.proxy);
+        return state[key] = getter.call(sub.proxy);
       }
       catch(e){
         Oops.ComputeFailed(subject.constructor.name, key, true).warn();
@@ -186,19 +184,20 @@ export class Observer {
       }
     }
 
-    alias(init, `new ${key}`);
-    alias(next, `try ${key}`);
+    alias(create, `new ${key}`);
+    alias(update, `try ${key}`);
+    alias(getter, `run ${key}`);
 
-    metaData(compute, info);
-    ComputedInit.add(init);
+    metaData(getter, info);
+    ComputedInit.add(create);
 
     for(const sub of self.followers)
       if(key in sub)
-        return init;
+        return create;
 
     defineProperty(state, key, {
       configurable: true,
-      get: init,
+      get: create,
       set: to => defineProperty(state, key, {
         writable: true,
         value: to
@@ -206,7 +205,7 @@ export class Observer {
     })
 
     this.assign(key, {
-      get: init,
+      get: create,
       set: Oops.AssignToGetter(key).warn
     })
   }
