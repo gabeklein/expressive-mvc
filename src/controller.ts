@@ -47,23 +47,27 @@ export class Controller extends Observer {
     return Array.from(using);
   }
 
+  private defer(fn: () => Callback){
+    let release: Callback;
+    const run = () => release = fn();
+
+    if(this.active)
+      run()
+    else
+      this.requestUpdate(run);
+
+    return () => release;
+  }
+
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
     squash?: boolean,
     once?: boolean) => {
 
-    let release: Callback;
-    const start = () => {
-      release = this.watch(this.select(select), listener, squash, once);
-    }
-
-    if(this.active)
-      start();
-    else
-      this.requestUpdate(start);
-
-    return () => release();
+    return this.defer(() => 
+      this.watch(this.select(select), listener, squash, once)
+    )
   }
 
   public once = (
@@ -83,28 +87,20 @@ export class Controller extends Observer {
     callback: EffectCallback<any>,
     select?: string[] | Query) => {
     
-    let release: Callback;
     let { subject } = this;
 
     const effect = createEffect(callback);
     const invoke = debounce(() => effect(subject));
     const capture = select
-      ? () => {
-        release = this.addListener(this.select(select), invoke);
-      }
+      ? () => this.addListener(this.select(select), invoke)
       : () => {
         const sub = new Subscriber(subject, invoke);
         effect(subject = sub.proxy);
         sub.listen();
-        release = () => sub.release();
+        return () => sub.release();
       }
 
-    if(this.active)
-      capture();
-    else
-      this.requestUpdate(capture);
-
-    return () => release();
+    return this.defer(capture);
   }
 
   public import = (
