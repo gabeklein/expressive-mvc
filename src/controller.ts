@@ -27,10 +27,29 @@ export class Controller extends Observer {
   static get(from: Controllable){
     let dispatch = from[DISPATCH];
 
-    if(!dispatch.active)
+    if(dispatch.hasOwnProperty("defer"))
       dispatch.start();
 
     return dispatch;
+  }
+
+  constructor(subject: Controllable){
+    super(subject);
+
+    this.defer = (fn: () => Callback) => {
+      let release: Callback;
+      this.requestUpdate(() => release = fn());
+      return () => release();
+    }
+  }
+
+  public start(){
+    delete (this as any).defer;
+    super.start();
+  }
+
+  protected defer(fn: () => Callback){
+    return fn();
   }
 
   protected select(
@@ -45,18 +64,6 @@ export class Controller extends Observer {
       );
 
     return Array.from(using);
-  }
-
-  private defer(fn: () => Callback){
-    let release: Callback;
-    const run = () => release = fn();
-
-    if(this.active)
-      run()
-    else
-      this.requestUpdate(run);
-
-    return () => release;
   }
 
   public on = (
