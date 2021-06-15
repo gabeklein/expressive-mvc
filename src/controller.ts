@@ -66,15 +66,27 @@ export class Controller extends Observer {
     return Array.from(using);
   }
 
+  public watch(
+    target: string | Iterable<string> | Query,
+    handler: any,
+    squash?: boolean,
+    once?: boolean){
+
+    return this.defer(() => 
+      super.watch(
+        this.select(target),
+        handler, squash, once
+      )
+    );
+  }
+
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
     squash?: boolean,
     once?: boolean) => {
 
-    return this.defer(() => 
-      this.watch(this.select(select), listener, squash, once)
-    )
+    return this.watch(select, listener, squash, once)
   }
 
   public once = (
@@ -83,10 +95,10 @@ export class Controller extends Observer {
     squash?: boolean) => {
 
     if(listener)
-      return this.on(select, listener, squash, true);
+      return this.watch(select, listener, squash, true);
     else 
       return new Promise<void>(resolve => {
-        this.on(select, resolve, true, true);
+        this.watch(select, resolve, true, true);
       });
   }
 
@@ -98,16 +110,16 @@ export class Controller extends Observer {
 
     const effect = createEffect(callback);
     const invoke = debounce(() => effect(subject));
-    const capture = select
-      ? () => this.addListener(this.select(select), invoke)
-      : () => {
-        const sub = new Subscriber(subject, invoke);
-        effect(subject = sub.proxy);
-        sub.listen();
-        return () => sub.release();
-      }
 
-    return this.defer(capture);
+    if(select)
+      return this.watch(select, invoke, true);
+
+    return this.defer(() => {
+      const sub = new Subscriber(subject, invoke);
+      effect(subject = sub.proxy);
+      sub.listen();
+      return () => sub.release();
+    });
   }
 
   public import = (
