@@ -41,7 +41,7 @@ export class Controller extends Observer {
 
     if(fn(using))
       return selectRecursive(using, 
-        keys(this.subject).concat(lifecycleEvents)
+        keys(this.state).concat(lifecycleEvents)
       );
 
     return Array.from(using);
@@ -53,7 +53,17 @@ export class Controller extends Observer {
     squash?: boolean,
     once?: boolean) => {
 
-    return this.watch(this.select(select), listener, squash, once);
+    let release: Callback;
+    const start = () => {
+      release = this.watch(this.select(select), listener, squash, once);
+    }
+
+    if(this.active)
+      start();
+    else
+      this.requestUpdate(start);
+
+    return () => release();
   }
 
   public once = (
@@ -73,28 +83,28 @@ export class Controller extends Observer {
     callback: EffectCallback<any>,
     select?: string[] | Query) => {
     
+    let release: Callback;
     let { subject } = this;
+
     const effect = createEffect(callback);
     const invoke = debounce(() => effect(subject));
-
-    if(!select){
-      let sub: Subscriber;
-
-      const capture = () => {
-        sub = new Subscriber(subject, invoke);
+    const capture = select
+      ? () => {
+        release = this.addListener(this.select(select), invoke);
+      }
+      : () => {
+        const sub = new Subscriber(subject, invoke);
         effect(subject = sub.proxy);
         sub.listen();
+        release = () => sub.release();
       }
 
-      if(this.active)
-        capture();
-      else
-        this.requestUpdate(capture);
-      
-      return () => sub.release();
-    }
+    if(this.active)
+      capture();
+    else
+      this.requestUpdate(capture);
 
-    return this.addListener(this.select(select), invoke);
+    return () => release();
   }
 
   public import = (
@@ -103,7 +113,7 @@ export class Controller extends Observer {
 
     const selected = select
       ? this.select(select)
-      : this.watched;
+      : keys(this.state);
 
     for(const key of selected)
       if(key in from)

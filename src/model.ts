@@ -16,9 +16,7 @@ export class Model {
   
   constructor(){
     const cb = this.didCreate;
-
-    const dispatch = this[DISPATCH] =
-      new Controller(this);
+    const dispatch = this[DISPATCH] = new Controller(this);
 
     if(cb)
       dispatch.requestUpdate(cb.bind(this));

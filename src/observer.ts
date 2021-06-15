@@ -97,6 +97,7 @@ export class Observer {
 
         alias(get, `run ${key}`);
 
+        this.state[key] = undefined;
         this.getters.set(key, get);
         this.assign(key, { get, set, configurable: true });
       }
@@ -107,18 +108,13 @@ export class Observer {
     const expected: Callback[] = [];
 
     for(const [key, compute] of this.getters){
-      if(key in this.state)
-        continue;
-
-      const init =
-        this.monitorComputed(key, compute);
+      const init = this.monitorComputed(key, compute);
 
       if(init)
         expected.push(init);
     }
 
-    for(const init of expected)
-      init();
+    expected.forEach(x => x());
   }
 
   public assign(key: string, desc: PropertyDescriptor){
@@ -131,8 +127,7 @@ export class Observer {
     initial: any,
     effect?: (value: any, callee?: any) => void){
 
-    if(initial !== undefined)
-      this.state[key] = initial;
+    this.state[key] = initial;
 
     this.assign(key, {
       get: this.getter(key),
