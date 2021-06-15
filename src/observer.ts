@@ -49,7 +49,6 @@ export class Observer {
   public active = false;
   public state = {} as BunchOf<any>;
   public followers = new Set<BunchOf<RequestCallback>>();
-  public watched = new Set<string>();
 
   public pending?: (key: string) => void;
 
@@ -118,7 +117,6 @@ export class Observer {
   }
 
   public assign(key: string, desc: PropertyDescriptor){
-    this.watched.add(key);
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
@@ -201,7 +199,6 @@ export class Observer {
     alias(next, `try ${key}`);
 
     metaData(compute, info);
-    self.watched.add(key);
     ComputedInit.add(init);
 
     for(const sub of self.followers)

@@ -116,7 +116,12 @@ export function setMemo(factory: () => any, defer?: boolean){
 
 export function setIgnored(value: any){
   return Observer.define((key, on) => {
-    (on.subject as any)[key] = value;
+    const real = on.subject as any;
+
+    real[key] = value;
+    define(on.state, key, {
+      get: () => real[key]
+    });
   })
 }
 

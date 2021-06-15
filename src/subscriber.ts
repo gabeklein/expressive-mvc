@@ -1,7 +1,7 @@
 import { Controllable, Controller } from './controller';
 import { Model } from './model';
 import { GetterInfo, metaData, Observer } from './observer';
-import { alias, create, defineProperty } from './util';
+import { alias, create, defineProperty, keys } from './util';
 
 export class Subscriber<T extends Controllable = any> {
   protected dependant = new Set<{
@@ -18,10 +18,12 @@ export class Subscriber<T extends Controllable = any> {
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    this.proxy = create(subject as any);
-    this.parent = Controller.get(subject);
+    const { state } = this.parent =
+      Controller.get(subject);
 
-    for(const key of this.parent.watched)
+    this.proxy = create(subject as any);
+
+    for(const key in state)
       this.spyOn(key);
   }
 
@@ -55,7 +57,7 @@ export class Subscriber<T extends Controllable = any> {
 
   public commit(key?: string){
     const remove = key
-      ? [key] : this.parent.watched;
+      ? [key] : keys(this.parent.state);
 
     for(const key of remove)
       delete (this.proxy as any)[key];
