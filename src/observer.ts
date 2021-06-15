@@ -136,21 +136,15 @@ export class Observer {
     const self = this;
     const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
+    const set = this.setter(key);
 
     function next(){
-      let output;
-
       try {
-        output = compute.call(subject);
+        set(compute.call(subject));
       }
       catch(err){
         Oops.ComputeFailed(subject.constructor.name, key, false).warn();
         throw err;
-      }
-
-      if(output !== state[key]){
-        state[key] = output;
-        self.update(key);
       }
     }
 
