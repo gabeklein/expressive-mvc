@@ -58,58 +58,54 @@ export class Observer {
   }
 
   constructor(public subject: Controllable){
-    this.prepareComputed();
+    let scan = subject;
+
+    while(scan !== Model && scan.constructor !== Model){
+      for(let [key, desc] of entriesIn(scan))
+        this.prepareComputed(key, desc);
+
+      scan = getPrototypeOf(scan)
+    }
   }
 
   public start(){
+    const expected: (Callback | undefined)[] = [];
+
     for(const [key, { value, enumerable }] of entriesIn(this.subject))
       if(Pending.has(value))
         value(key, this);
       else if(enumerable && !fn(value) || /^[A-Z]/.test(key))
         this.monitorValue(key, value);
 
-    this.initComputed();
+    for(const [key, compute] of this.getters)
+      expected.push(
+        this.monitorComputed(key, compute)
+      );
+
+    expected.forEach(x => x && x());
     this.reset([]);
   }
 
-  private prepareComputed(){
-    for(
-      let scan = this.subject;
-      scan !== Model && scan.constructor !== Model;
-      scan = getPrototypeOf(scan)){
+  protected prepareComputed(
+    key: string,
+    { get, set }: PropertyDescriptor){
 
-      for(let [key, { get, set }] of entriesIn(scan)){
-        if(!get || this.getters.has(key))
-          continue;
+    if(!get || this.getters.has(key))
+      return;
 
-        if(!set)
-          set = (value: any) => {
-            this.getters.delete(key);
-            this.assign(key, {
-              value,
-              configurable: true,
-              writable: true
-            });
-          }
-
-        this.state[key] = undefined;
-        this.getters.set(key, get);
-        this.assign(key, { get, set, configurable: true });
+    if(!set)
+      set = (value: any) => {
+        this.getters.delete(key);
+        this.assign(key, {
+          value,
+          configurable: true,
+          writable: true
+        });
       }
-    }
-  }
 
-  protected initComputed(){
-    const expected: Callback[] = [];
-
-    for(const [key, compute] of this.getters){
-      const init = this.monitorComputed(key, compute);
-
-      if(init)
-        expected.push(init);
-    }
-
-    expected.forEach(x => x());
+    this.state[key] = undefined;
+    this.getters.set(key, get);
+    this.assign(key, { get, set, configurable: true });
   }
 
   public assign(key: string, desc: PropertyDescriptor){
