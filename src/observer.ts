@@ -3,6 +3,7 @@ import { Model } from './model';
 import { Subscriber } from './subscriber';
 import {
   alias,
+  createEffect,
   defineProperty,
   entriesIn,
   fn,
@@ -118,7 +119,7 @@ export class Observer {
   public monitorValue(
     key: string,
     initial: any,
-    effect?: (value: any, callee?: any) => void){
+    effect?: EffectCallback<any, any>){
 
     this.state[key] = initial;
     this.assign(key, {
@@ -211,7 +212,10 @@ export class Observer {
 
   public setter(
     key: string,
-    effect?: (next: any, callee?: any) => void){
+    effect?: EffectCallback<any, any>){
+
+    const callback =
+      effect && createEffect(effect);
 
     return (value: any) => {
       if(this.state[key] == value)
@@ -219,8 +223,8 @@ export class Observer {
 
       this.state[key] = value;
 
-      if(effect)
-        effect(value, this.subject);
+      if(callback)
+        callback(value, this.subject);
 
       this.update(key);
     }

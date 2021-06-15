@@ -4,7 +4,7 @@ import { Lookup } from './context';
 import { Controller } from './controller';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
-import { alias, createEffect, define, defineLazy, defineProperty } from './util';
+import { alias, define, defineLazy, defineProperty } from './util';
 
 import Oops from './issues';
 
@@ -82,9 +82,7 @@ export function setRefObject<T = any>
     on.assign(key, {
       value: defineProperty({}, "current", {
         get: () => on.state[key],
-        set: on.setter(key,
-          effect && createEffect(effect)
-        )
+        set: on.setter(key, effect)
       })
     });
   })
@@ -93,13 +91,13 @@ export function setRefObject<T = any>
 export function setEffect<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
-  if(!effect){
-    effect = value;
-    value = undefined;
-  }
-
   return Observer.define((key, on) => {
-    on.monitorValue(key, value, createEffect(effect!));
+    if(!effect){
+      effect = value;
+      value = undefined;
+    }
+
+    on.monitorValue(key, value, effect);
   })
 }
 
