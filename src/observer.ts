@@ -88,14 +88,7 @@ export class Observer {
       return;
 
     if(!set)
-      set = (value: any) => {
-        this.getters.delete(key);
-        this.override(key, {
-          value,
-          configurable: true,
-          writable: true
-        });
-      }
+      set = Oops.AssignToGetter(key).warn;
     
     const info: GetterInfo = {
       key,
