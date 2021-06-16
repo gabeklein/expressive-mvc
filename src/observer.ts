@@ -145,17 +145,17 @@ export class Observer {
     function create(early?: boolean){
       const sub = new Subscriber(subject, update, info);
 
+      defineProperty(state, key, {
+        value: undefined,
+        writable: true
+      })
+
+      self.assign(key, {
+        get: () => state[key],
+        set: Oops.AssignToGetter(key).warn
+      })
+
       try {
-        defineProperty(state, key, {
-          value: undefined,
-          writable: true
-        })
-
-        self.assign(key, {
-          get: () => state[key],
-          set: Oops.AssignToGetter(key).warn
-        })
-
         return state[key] = getter.call(sub.proxy);
       }
       catch(e){
