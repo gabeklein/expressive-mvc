@@ -31,26 +31,19 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
     this.watch(key, () => {
       let value = source[key];
 
-      if(value instanceof Model)
-        return this.forward(value);
+      if(value instanceof Model){
+        const child = new Subscriber(value, this.callback);
+    
+        this.proxy = child.proxy as any;
+    
+        return child;
+      }
 
       if(value === undefined && expect)
         throw Oops.HasPropertyUndefined(source.constructor.name, key);
 
       this.proxy = value;
     });
-  }
-
-  forward(from: Model){
-    const child = new Subscriber(from, this.callback);
-
-    this.parent.watch("didRender", () => {
-      child.commit();
-    }, true);
-
-    this.proxy = child.proxy as any;
-
-    return child;
   }
 }
 
@@ -110,7 +103,7 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(() => hook.listen(!path), []);
+  useEffect(() => hook.listen(), []);
 
   return hook.proxy;
 }
@@ -124,7 +117,7 @@ export function useSubscriber(
 
   useLifecycleEffect((name) => {
     if(name == Lifecycle.DID_MOUNT)
-      hook.listen(true);
+      hook.listen();
 
     const alias = subscriberEvent(name);
 
@@ -196,11 +189,11 @@ export function useModel(
   usePeerContext(hook.subject);
 
   if(withLifecycle === false)
-    useEffect(() => hook.listen(true), []);
+    useEffect(() => hook.listen(), []);
   else
     useLifecycleEffect((name) => {
       if(name == Lifecycle.DID_MOUNT)
-        hook.listen(true);
+        hook.listen();
 
       const alias = componentEvent(name);
 

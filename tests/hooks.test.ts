@@ -65,6 +65,10 @@ describe("tap", () => {
     parent.child = new Child();
     await waitForNextUpdate(opts);
     expect(result.current.value).toBe("foo");
+  
+    result.current.value = "bar"
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
   })
   
   it.todo('access nested controllers')

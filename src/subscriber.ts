@@ -1,12 +1,13 @@
 import { Controllable, Controller } from './controller';
 import { Model } from './model';
 import { GetterInfo, metaData, Observer } from './observer';
-import { alias, create, defineProperty, keys } from './util';
+import { alias, create, defineProperty } from './util';
 
 export class Subscriber<T extends Controllable = any> {
   protected dependant = new Set<{
     listen(): void;
     release(): void;
+    commit?(): void;
   }>();
 
   public following = {} as BunchOf<Callback>;
@@ -57,50 +58,36 @@ export class Subscriber<T extends Controllable = any> {
     this.following[key] = cb;
   }
 
-  public commit(key?: string){
-    const remove = key
-      ? [key] : keys(this.parent.state);
-
-    for(const key of remove)
-      delete (this.proxy as any)[key];
-  }
-
   private delegate(key: string){
     let sub: Subscriber | undefined;
 
     this.watch(key, () => {
       let value = (this.subject as any)[key];
 
-      if(value instanceof Model)
-        return sub = this.forwardTo(key, value);
+      if(value instanceof Model){
+        let child = sub = new Subscriber(
+          value, this.callback, this.metadata
+        );
+
+        defineProperty(this.proxy, key, {
+          get: () => child.proxy,
+          set: it => (this.subject as any)[key] = it,
+          configurable: true
+        })
+
+        return child;
+      }
     });
 
     return sub && sub.proxy;
   }
 
-  forwardTo(key: string, from: Model){
-    let child = new Subscriber(from, this.callback);
-
-    this.parent.watch("didRender", () => {
-      child.commit();
-      this.commit(key);
-    }, true);
-
-    defineProperty(this.proxy, key, {
-      get: () => child.proxy,
-      set: it => (this.subject as any)[key] = it,
-      configurable: true
-    })
-
-    return child;
-  }
-
-  public listen(commit?: boolean){
+  public listen(){
     this.dependant.forEach(x => x.listen());
     this.parent.followers.add(this.following);
 
-    if(commit)
-      this.commit();
+    // for(const key in this.proxy)
+    //   delete this.proxy[key];
 
     return () => this.release();
   }

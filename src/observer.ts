@@ -4,6 +4,7 @@ import { Subscriber } from './subscriber';
 import {
   alias,
   createEffect,
+  debounce,
   defineProperty,
   entriesIn,
   fn,
@@ -130,11 +131,19 @@ export class Observer {
     const self = this;
     const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
-    const set = this.setter(key);
+    let sub: Subscriber;
 
-    function update(){
+    function update(initial?: true){
       try {
-        set(getter.call(subject));
+        const value = getter.call(sub.proxy);
+
+        if(state[key] == value)
+          return;
+
+        if(!initial)
+          self.update(key);
+
+        return state[key] = value;
       }
       catch(err){
         Oops.ComputeFailed(subject.constructor.name, key, false).warn();
@@ -143,7 +152,8 @@ export class Observer {
     }
 
     function create(early?: boolean){
-      const sub = new Subscriber(subject, update, info);
+      const callback = debounce(update);
+      sub = new Subscriber(subject, callback, info);
 
       defineProperty(state, key, {
         value: undefined,
@@ -156,11 +166,9 @@ export class Observer {
       })
 
       try {
-        return state[key] = getter.call(sub.proxy);
+        return update(true);
       }
       catch(e){
-        Oops.ComputeFailed(subject.constructor.name, key, true).warn();
-
         if(early)
           Oops.ComputedEarly(key).warn();
 
@@ -250,7 +258,7 @@ export class Observer {
     once?: boolean){
 
     const remove = () => { this.followers.delete(follow) };
-    const handler = once ? (k: string[]) => { remove(); callback(k) } : callback;
+    const handler = once ? (k?: string[]) => { remove(); callback(k) } : callback;
     const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
@@ -293,15 +301,17 @@ export class Observer {
           include(sub[key]);
     }
 
-    function include(request: RequestCallback){
-      const self = metaData(request);
+    function include(request: Callback){
+      const compute = metaData(request);
 
-      if(self && self.parent == local)
-        insertAfter(pending, request,
-          sib => self.priority > metaData(sib).priority
-        )
-      else
+      if(!compute)
         effects.add(request);
+      else if(compute.parent !== local)
+        request();
+      else
+        insertAfter(pending, request,
+          sib => compute.priority > metaData(sib).priority
+        )
     }
 
     function notify(){
