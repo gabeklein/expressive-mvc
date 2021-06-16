@@ -22,19 +22,9 @@ export type GetterInfo = {
   priority: number;
 }
 
-/**
- * *Placeholder Type.*
- * 
- * Depending on `squash` parameter, will by default accept
- * value+key or expect no parameters if set to true.
- **/
-type EventCallback = Function;
-type Init = (key: string, on: Observer) => void;
-type InitCompute = (early?: boolean) => void;
-
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedInit = new WeakSet<Function>();
-const Pending = new WeakSet<Init>();
+const Pending = new WeakSet<Function>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
@@ -54,7 +44,9 @@ export class Observer {
 
   public pending?: (key: string) => void;
 
-  static define(fn: Init){
+  static define(
+    fn: (key: string, on: Observer) => void){
+
     Pending.add(fn);
     return fn as any;
   }
@@ -237,7 +229,7 @@ export class Observer {
 
   public watch(
     target: string | string[],
-    handler: EventCallback,
+    handler: Function,
     squash?: boolean,
     once?: boolean){
 
@@ -264,11 +256,13 @@ export class Observer {
     const follow: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
+      type Initial = (early?: boolean) => void;
+
       const desc = getOwnPropertyDescriptor(this.subject, key);
       const getter = desc && desc.get;
 
       if(ComputedInit.has(getter!))
-        (getter as InitCompute)(true);
+        (getter as Initial)(true);
 
       follow[key] = handler;
     }
