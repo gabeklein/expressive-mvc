@@ -19,7 +19,7 @@ describe("set Directive", () => {
     });
   }
   
-  it('invokes callback of set property', async () => {
+  it('will invoke callback on property set', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -33,7 +33,7 @@ describe("set Directive", () => {
     expect(callback).toBeCalledWith(1, "test1");
   })
   
-  it('invokes callback on property overwrite', async () => {
+  it('will invoke return-callback on overwrite', async () => {
     const state = Subject.create();
   
     state.test2 = 1;
@@ -46,7 +46,7 @@ describe("set Directive", () => {
     expect(state.checkResult).toBe(true);
   })
   
-  it('may assign a default value', async () => {
+  it('will assign a default value', async () => {
     const state = Subject.create();
   
     expect(state.test3).toBe("foo");
@@ -78,11 +78,11 @@ describe("use Directive", () => {
     parent = Parent.create();
   })
 
-  it('created instance of child', () => {
+  it('will create instance of child', () => {
     expect(parent.child).toBeInstanceOf(Child);
   })
 
-  it('ran child callback on create', () => {
+  it('will run child callback on create', () => {
     expect(parent.hello).toBe(WORLD);
   })
 })
@@ -104,7 +104,7 @@ describe("ref Directive", () => {
     })
   }
   
-  it('watches "current" of ref property', async () => {
+  it('will watch "current" of property', async () => {
     const state = Subject.create();
     const callback = jest.fn()
   
@@ -114,7 +114,7 @@ describe("ref Directive", () => {
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
-  it('updates "current" when property invoked', async () => {
+  it('will update "current" when property invoked', async () => {
     const state = Subject.create();
     const callback = jest.fn()
   
@@ -124,7 +124,7 @@ describe("ref Directive", () => {
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
-  it('invokes callback of ref property', async () => {
+  it('will invoke callback if exists', async () => {
     const state = Subject.create();
     const targetValue = Symbol("inserted object");
     const callback = jest.fn();
@@ -137,7 +137,7 @@ describe("ref Directive", () => {
     expect(callback).toBeCalledWith(targetValue, "ref2");
   })
   
-  it('invokes callback on ref overwrite', async () => {
+  it('will invoke return-callback on overwrite', async () => {
     const state = Subject.create();
   
     state.ref3.current = 1;
@@ -160,7 +160,7 @@ describe("act directive", () => {
     }
   }
 
-  it("passes arguments to wrapped function", async () => {
+  it("will pass arguments to wrapped function", async () => {
     const control = Test.create();
     const input = Symbol("unique");
     const output = control.test(input);
@@ -168,7 +168,7 @@ describe("act directive", () => {
     await expect(output).resolves.toBe(input);
   });
 
-  it("sets active to true for run-duration", async () => {
+  it("will set active to true for run-duration", async () => {
     const { test } = Test.create();
 
     expect(test.active).toBe(false);
@@ -200,7 +200,7 @@ describe("act directive", () => {
     expect(update).toContain("test");
   });
 
-  it("throws immediately if already in-progress", () => {
+  it("will throw immediately if already in-progress", () => {
     const { test } = Test.create();
     const expected = Issue.DuplicateAction("test");
 
