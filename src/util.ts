@@ -54,9 +54,7 @@ export function alias<T extends Function>(
   return assign(fn, { displayName });
 }
 
-export function entriesIn(
-  object: {}): [string, PropertyDescriptor][] {
-
+export function entriesIn(object: {}){
   return entries(getOwnPropertyDescriptors(object))
 }
 

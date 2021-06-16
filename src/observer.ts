@@ -180,8 +180,8 @@ export class Observer {
       }
     }
 
-    alias(create, `new ${key}`);
     alias(update, `try ${key}`);
+    alias(create, `new ${key}`);
 
     ComputedInit.add(create);
 
