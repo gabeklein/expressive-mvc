@@ -320,11 +320,10 @@ export class Observer {
           compute();
       }
 
-      const frame = Array.from(handled);
-
-      effects.forEach(x => x(frame));
-
       this.pending = undefined;
+
+      const frame = Array.from(handled);
+      effects.forEach(x => x(frame));
       this.reset(frame);
     }
 
