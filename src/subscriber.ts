@@ -35,9 +35,8 @@ export class Subscriber<T extends Controllable = any> {
       if(value instanceof Model)
         return this.delegate(key);
 
-      this.follow(key);
+      this.follow(key, () => this.callback());
       delete (this.proxy as any)[key];
-
       return value;
     }
 
@@ -48,10 +47,7 @@ export class Subscriber<T extends Controllable = any> {
     })
   }
 
-  private follow(key: string, cb?: Callback){
-    if(!cb)
-      cb = () => this.callback();
-
+  private follow(key: string, cb: Callback){
     if(this.metadata)
       metaData(cb, this.metadata);
 
@@ -114,7 +110,7 @@ export class Subscriber<T extends Controllable = any> {
       }
     }
 
-    this.follow(key, () => {
+    const reset = () => {
       if(child){
         child.release();
         this.dependant.delete(child);
@@ -122,8 +118,9 @@ export class Subscriber<T extends Controllable = any> {
 
       start(true);
       this.callback();
-    });
+    }
 
+    this.follow(key, reset);
     start();
   }
 }

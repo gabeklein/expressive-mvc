@@ -84,7 +84,7 @@ export class Observer {
       );
 
     expected.forEach(x => x && x());
-    this.reset([]);
+    this.reset();
   }
 
   protected prepareComputed(
@@ -128,12 +128,11 @@ export class Observer {
   private monitorComputed(
     key: string, getter: () => any){
 
-    const self = this;
+    let sub: Subscriber;
     const { state, subject } = this;
     const info = { key, parent: this, priority: 1 };
-    let sub: Subscriber;
 
-    function update(initial?: true){
+    const update = (initial?: true) => {
       try {
         const value = getter.call(sub.proxy);
 
@@ -141,7 +140,7 @@ export class Observer {
           return;
 
         if(!initial)
-          self.update(key);
+          this.update(key);
 
         return state[key] = value;
       }
@@ -151,16 +150,15 @@ export class Observer {
       }
     }
 
-    function create(early?: boolean){
-      const callback = debounce(update);
-      sub = new Subscriber(subject, callback, info);
+    const create = (early?: boolean) => {
+      sub = new Subscriber(subject, debounce(update), info);
 
       defineProperty(state, key, {
         value: undefined,
         writable: true
       })
 
-      self.assign(key, {
+      this.assign(key, {
         get: () => state[key],
         set: Oops.AssignToGetter(key).warn
       })
@@ -178,7 +176,7 @@ export class Observer {
         sub.listen();
 
         for(const key in sub.following){
-          const compute = self.getters.get(key);
+          const compute = this.getters.get(key);
 
           if(!compute)
             continue;
@@ -198,7 +196,7 @@ export class Observer {
     metaData(getter, info);
     ComputedInit.add(create);
 
-    for(const sub of self.followers)
+    for(const sub of this.followers)
       if(key in sub)
         return create;
 
@@ -280,7 +278,7 @@ export class Observer {
     (this.pending || this.sync())(key);
   }
 
-  private reset(frame: string[]){
+  private reset(frame?: string[]){
     this.waiting.splice(0).forEach(x => x(frame));
   }
 
@@ -296,25 +294,23 @@ export class Observer {
 
       handled.add(key);
 
-      for(const sub of local.followers)
-        if(key in sub)
-          include(sub[key]);
+      for(const subscription of local.followers)
+        if(key in subscription){
+          const request = subscription[key];
+          const compute = metaData(request);
+    
+          if(!compute)
+            effects.add(request);
+          else if(compute.parent !== local)
+            request();
+          else
+            insertAfter(pending, request,
+              sib => compute.priority > metaData(sib).priority
+            )
+        }
     }
 
-    function include(request: Callback){
-      const compute = metaData(request);
-
-      if(!compute)
-        effects.add(request);
-      else if(compute.parent !== local)
-        request();
-      else
-        insertAfter(pending, request,
-          sib => compute.priority > metaData(sib).priority
-        )
-    }
-
-    function notify(){
+    function send(){
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -331,7 +327,7 @@ export class Observer {
       local.reset(frame);
     }
 
-    setTimeout(notify, 0);
+    setTimeout(send, 0);
     return this.pending = add;
   }
 }

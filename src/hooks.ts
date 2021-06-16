@@ -26,16 +26,14 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
   }
 
   public focus(key: string, expect?: boolean){
-    const source: any = this.subject;
+    const source = this.subject as any;
 
     this.watch(key, () => {
       let value = source[key];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
-    
         this.proxy = child.proxy as any;
-    
         return child;
       }
 
@@ -50,11 +48,11 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
 function useRefresh<T>(
   init: (trigger: Callback) => T){
 
-  const [ state, update ] = useState((): T[] => [
+  const [ state, update ] = useState(() => [
     init(() => update(state.concat()))
   ]);
 
-  return state[0];
+  return state[0] as T;
 }
 
 type Select = <T>(from: T) => T[keyof T];
@@ -123,10 +121,9 @@ export function useSubscriber(
 
     for(const event of [alias, name]){
       const on = hook.subject;
-
       const handle = (on as any)[event];
-      handle && handle.apply(on, args);
 
+      handle && handle.apply(on, args);
       hook.parent.update(event);
     }
 
@@ -141,9 +138,7 @@ export function useLazy(
   Type: typeof Model, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);
-
   useEffect(() => () => instance.destroy(), []);
-
   return instance;
 }
 
