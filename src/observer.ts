@@ -15,8 +15,9 @@ import {
 
 import Oops from './issues';
 
-export interface GetterInfo {
+export type GetterInfo = {
   key: string;
+  getter: () => any;
   parent: Observer;
   priority: number;
 }
@@ -45,7 +46,7 @@ export function metaData(x: Function, set?: GetterInfo){
 }
 
 export class Observer {
-  protected getters = new Map<string, Callback>();
+  protected getters = new Map<string, GetterInfo>();
   protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
@@ -103,9 +104,18 @@ export class Observer {
           writable: true
         });
       }
+    
+    const info: GetterInfo = {
+      key,
+      getter: get,
+      parent: this,
+      priority: 1
+    };
 
+    alias(get, `run ${key}`);
+
+    this.getters.set(key, info);
     this.state[key] = undefined;
-    this.getters.set(key, get);
     this.override(key, {
       get, set, configurable: true
     });
@@ -128,15 +138,14 @@ export class Observer {
   }
 
   private monitorComputed(
-    key: string, getter: () => any){
+    key: string, info: GetterInfo){
 
     let sub: Subscriber;
     const { state, subject } = this;
-    const info = { key, parent: this, priority: 1 };
 
     const update = (initial?: true) => {
       try {
-        const value = getter.call(sub.proxy);
+        const value = info.getter.call(sub.proxy);
 
         if(state[key] == value)
           return;
@@ -180,22 +189,15 @@ export class Observer {
         for(const key in sub.following){
           const compute = this.getters.get(key);
 
-          if(!compute)
-            continue;
-
-          const { priority } = metaData(compute);
-
-          if(info.priority <= priority)
-            info.priority = priority + 1;
+          if(compute && compute.priority >= info.priority)
+            info.priority = compute.priority + 1;
         }
       }
     }
 
     alias(create, `new ${key}`);
     alias(update, `try ${key}`);
-    alias(getter, `run ${key}`);
 
-    metaData(getter, info);
     ComputedInit.add(create);
 
     for(const sub of this.followers)
