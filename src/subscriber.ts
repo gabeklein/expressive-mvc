@@ -35,6 +35,8 @@ export class Subscriber<T extends Controllable = any> {
         return this.delegate(key);
 
       this.follow(key);
+      delete (this.proxy as any)[key];
+
       return value;
     }
 
