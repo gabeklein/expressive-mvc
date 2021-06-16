@@ -74,15 +74,19 @@ export function setPeer<T extends typeof Model>
   })
 }
 
-export function setRefObject<T = any>
+export function setRefMediator<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return Observer.define((key, on) => {
+    const refObjectFunction = on.setter(key, effect);
+
+    defineProperty(refObjectFunction, "current", {
+      set: refObjectFunction,
+      get: () => on.state[key]
+    })
+
     on.assign(key, {
-      value: defineProperty({}, "current", {
-        get: () => on.state[key],
-        set: on.setter(key, effect)
-      })
+      value: refObjectFunction
     });
   })
 }

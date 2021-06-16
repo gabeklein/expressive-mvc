@@ -3,7 +3,7 @@ export {
   setParent as parent,
   setPeer as tap,
   setEffect as on,
-  setRefObject as ref,
+  setRefMediator as ref,
   setAction as act,
   setMemo as memo,
   setIgnored as lazy

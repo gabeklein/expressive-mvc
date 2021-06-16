@@ -52,12 +52,14 @@ declare namespace Directives {
   export function setEffect <T = any> (starting: T, callback: EffectCallback<T>): T;
   
   /**
-   * Creates a ref-object for use with components.
-   * Will persist value, and updates to this ref are part of controller event-stream.
+   * Creates a ref-compatible property for use with components.
+   * Will persist value, and updates to this are made part of controller event-stream.
+   * 
+   * *Output is simultaneously a ref-function and ref-object, use as needed.*
    * 
    * @param callback - Optional callback to synchronously fire when reference is first set or does update.
    */
-  export function setReference <T = HTMLElement> (callback?: EffectCallback<T>): { current: T | null };
+  export function setReference <T = HTMLElement> (callback?: EffectCallback<T>): ((next: T) => void) & { current: T | null };
   
   /**
    * Sets an exotic method with managed ready-state. Property accepts an async function.

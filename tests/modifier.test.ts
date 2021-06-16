@@ -109,9 +109,19 @@ describe("ref Directive", () => {
     const callback = jest.fn()
   
     state.once("ref1", callback);
-    state.ref1.current = "value1";
+    state.ref1.current = "foobar";
     await state.requestUpdate(true);
-    expect(callback).toBeCalledWith("value1", "ref1");
+    expect(callback).toBeCalledWith("foobar", "ref1");
+  })
+  
+  it('updates "current" when property invoked', async () => {
+    const state = Subject.create();
+    const callback = jest.fn()
+  
+    state.once("ref1", callback);
+    state.ref1("foobar");
+    await state.requestUpdate(true);
+    expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
   it('invokes callback of ref property', async () => {
