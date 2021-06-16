@@ -285,25 +285,24 @@ export class Observer {
   }
 
   private sync(){
-    const local = this;
     const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
     const pending = [] as Callback[];
 
-    function add(key: string){
+    const add = (key: string) => {
       if(handled.has(key))
         return;
 
       handled.add(key);
 
-      for(const subscription of local.followers)
+      for(const subscription of this.followers)
         if(key in subscription){
           const request = subscription[key];
           const compute = metaData(request);
     
           if(!compute)
             effects.add(request);
-          else if(compute.parent !== local)
+          else if(compute.parent !== this)
             request();
           else
             insertAfter(pending, request,
@@ -312,7 +311,7 @@ export class Observer {
         }
     }
 
-    function send(){
+    const send = () => {
       while(pending.length){
         const compute = pending.shift()!;
         const { key } = metaData(compute);
@@ -325,8 +324,8 @@ export class Observer {
 
       effects.forEach(x => x(frame));
 
-      local.pending = undefined;
-      local.reset(frame);
+      this.pending = undefined;
+      this.reset(frame);
     }
 
     setTimeout(send, 0);
