@@ -13,12 +13,11 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Observer.define((key, { subject }) => {
+  return Observer.define((key, on) => {
     const instance = new Peer() as InstanceOf<T>;
 
-    define(subject, key, instance);
-
-    ParentRelationship.set(instance, subject);
+    on.monitorValue(key, instance);
+    ParentRelationship.set(instance, on.subject);
     Controller.get(instance);
 
     if(callback)
