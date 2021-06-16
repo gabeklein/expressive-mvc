@@ -126,6 +126,7 @@ export class Observer {
     key: string, info: GetterInfo){
 
     let sub: Subscriber;
+    const set = Oops.AssignToGetter(key).warn;
     const { state, subject } = this;
 
     const update = (initial?: true) => {
@@ -155,8 +156,7 @@ export class Observer {
       })
 
       this.override(key, {
-        get: () => state[key],
-        set: Oops.AssignToGetter(key).warn
+        set, get: () => state[key]
       })
 
       try {
@@ -194,10 +194,7 @@ export class Observer {
       configurable: true
     })
 
-    this.override(key, {
-      get: create,
-      set: Oops.AssignToGetter(key).warn
-    })
+    this.override(key, { get: create, set })
   }
 
   public setter(
