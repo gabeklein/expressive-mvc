@@ -183,11 +183,11 @@ export class Observer {
     alias(update, `try ${key}`);
     alias(create, `new ${key}`);
 
-    ComputedInit.add(create);
-
     for(const sub of this.followers)
       if(key in sub)
         return create;
+
+    ComputedInit.add(create);
 
     defineProperty(state, key, {
       get: create,
