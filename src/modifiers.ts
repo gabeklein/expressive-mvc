@@ -85,7 +85,7 @@ export function setRefMediator<T = any>
       get: () => on.state[key]
     })
 
-    on.assign(key, {
+    on.override(key, {
       value: refObjectFunction
     });
   })
@@ -154,7 +154,7 @@ export function setAction(action: AsyncFn){
       get: () => pending
     })
 
-    on.assign(key, {
+    on.override(key, {
       get: () => invoke,
       set: () => {
         throw Oops.SetActionProperty(key);

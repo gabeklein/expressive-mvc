@@ -97,7 +97,7 @@ export class Observer {
     if(!set)
       set = (value: any) => {
         this.getters.delete(key);
-        this.assign(key, {
+        this.override(key, {
           value,
           configurable: true,
           writable: true
@@ -106,10 +106,12 @@ export class Observer {
 
     this.state[key] = undefined;
     this.getters.set(key, get);
-    this.assign(key, { get, set, configurable: true });
+    this.override(key, {
+      get, set, configurable: true
+    });
   }
 
-  public assign(key: string, desc: PropertyDescriptor){
+  public override(key: string, desc: PropertyDescriptor){
     defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
@@ -119,7 +121,7 @@ export class Observer {
     effect?: EffectCallback<any, any>){
 
     this.state[key] = initial;
-    this.assign(key, {
+    this.override(key, {
       get: () => this.state[key],
       set: this.setter(key, effect)
     });
@@ -158,7 +160,7 @@ export class Observer {
         writable: true
       })
 
-      this.assign(key, {
+      this.override(key, {
         get: () => state[key],
         set: Oops.AssignToGetter(key).warn
       })
@@ -205,7 +207,7 @@ export class Observer {
       configurable: true
     })
 
-    this.assign(key, {
+    this.override(key, {
       get: create,
       set: Oops.AssignToGetter(key).warn
     })
