@@ -35,7 +35,7 @@ export class Subscriber<T extends Controllable = any> {
       if(value instanceof Model)
         return this.delegate(key);
 
-      this.follow(key, () => this.callback());
+      this.follow(key, this.callback);
       delete (this.proxy as any)[key];
       return value;
     }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
-import { Controller, Controllable } from './controller';
+import { Controllable } from './controller';
 import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model } from './model';
 import { PendingContext } from './modifiers';
@@ -23,6 +23,16 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
       this.dependant.add(agent);
       return agent.proxy;
     });
+  }
+
+  public event(name: string, alias: string){
+    for(const event of [alias, name]){
+      const on: any = this.subject;
+      const handle = on[event];
+
+      handle && handle.call(on);
+      this.parent.update(event);
+    }
   }
 
   public focus(key: string, expect?: boolean){
@@ -87,7 +97,7 @@ export function useWatcher(
     if(fn(path)){
       const detect = {} as any;
 
-      for(const key in Controller.get(target).state)
+      for(const key in target)
         detect[key] = key;
 
       path = path(detect) as string;
@@ -117,15 +127,7 @@ export function useSubscriber(
     if(name == Lifecycle.DID_MOUNT)
       hook.listen();
 
-    const alias = subscriberEvent(name);
-
-    for(const event of [alias, name]){
-      const on = hook.subject;
-      const handle = (on as any)[event];
-
-      handle && handle.apply(on, args);
-      hook.parent.update(event);
-    }
+    hook.event(name, subscriberEvent(name));
 
     if(name == Lifecycle.WILL_UNMOUNT)
       hook.release();
@@ -190,16 +192,7 @@ export function useModel(
       if(name == Lifecycle.DID_MOUNT)
         hook.listen();
 
-      const alias = componentEvent(name);
-
-      for(const event of [alias, name]){
-        const on = hook.subject;
-        const handle = (on as any)[event];
-  
-        handle && handle.apply(on, args);
-
-        hook.parent.update(event);
-      }
+      hook.event(name, componentEvent(name));
 
       if(name == Lifecycle.WILL_UNMOUNT){
         hook.release();
