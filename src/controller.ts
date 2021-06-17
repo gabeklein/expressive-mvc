@@ -27,29 +27,29 @@ export class Controller extends Observer {
   static get(from: Controllable){
     let dispatch = from[DISPATCH];
 
-    if(dispatch.hasOwnProperty("defer"))
+    if(!dispatch.active)
       dispatch.start();
 
     return dispatch;
   }
 
+  active?: boolean;
+
   constructor(subject: Controllable){
     super(subject);
 
-    this.defer = (fn: () => Callback) => {
-      let release: Callback;
-      this.requestUpdate(() => release = fn());
-      return () => release();
-    }
-  }
-
-  public start(){
-    delete (this as any).defer;
-    super.start();
+    this.requestUpdate(() => {
+      this.active = true;
+    })
   }
 
   protected defer(fn: () => Callback){
-    return fn();
+    if(this.active)
+      return fn();
+
+    let release: Callback;
+    this.requestUpdate(() => release = fn());
+    return () => release();
   }
 
   protected select(
@@ -114,12 +114,14 @@ export class Controller extends Observer {
     if(select)
       return this.watch(select, invoke, true);
 
-    return this.defer(() => {
+    const subscribe = () => {
       const sub = new Subscriber(subject, invoke);
       effect(subject = sub.proxy);
       sub.listen();
       return () => sub.release();
-    });
+    }
+
+    return this.defer(subscribe);
   }
 
   public import = (
