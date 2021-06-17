@@ -33,6 +33,15 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
       handle && handle.call(on);
       this.parent.update(event);
     }
+
+    switch(name){
+      case Lifecycle.DID_MOUNT:
+        this.listen();
+      break;
+
+      case Lifecycle.WILL_UNMOUNT:
+        this.release();
+    }
   }
 
   public focus(key: string, expect?: boolean){
@@ -111,7 +120,7 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(() => hook.listen(), []);
+  useEffect(hook.listen, []);
 
   return hook.proxy;
 }
@@ -124,13 +133,7 @@ export function useSubscriber(
   );
 
   useLifecycleEffect((name) => {
-    if(name == Lifecycle.DID_MOUNT)
-      hook.listen();
-
     hook.event(name, subscriberEvent(name));
-
-    if(name == Lifecycle.WILL_UNMOUNT)
-      hook.release();
   });
   
   return hook.proxy;
@@ -186,18 +189,13 @@ export function useModel(
   usePeerContext(hook.subject);
 
   if(withLifecycle === false)
-    useEffect(() => hook.listen(), []);
+    useEffect(hook.listen, []);
   else
     useLifecycleEffect((name) => {
-      if(name == Lifecycle.DID_MOUNT)
-        hook.listen();
-
       hook.event(name, componentEvent(name));
 
-      if(name == Lifecycle.WILL_UNMOUNT){
-        hook.release();
+      if(name == Lifecycle.WILL_UNMOUNT)
         hook.subject.destroy();
-      }
     });
 
   return hook.proxy;

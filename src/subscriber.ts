@@ -78,7 +78,7 @@ export class Subscriber<T extends Controllable = any> {
     return sub && sub.proxy;
   }
 
-  public listen(){
+  public listen = () => {
     this.dependant.forEach(x => x.listen());
     this.parent.followers.add(this.following);
 
