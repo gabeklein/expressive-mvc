@@ -74,14 +74,12 @@ class ElementSubscriber extends HookSubscriber {
     super(subject, callback, !key);
 
     if(key)
-      this.bind(key, expect);
+      this.bind(subject, key, expect);
   }
 
-  bind(key: string, expect?: boolean){
-    const from = this.subject as any;
-
+  bind(on: any, key: string, expect?: boolean){
     this.watch(key, () => {
-      let value = from[key];
+      let value = on[key];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
@@ -90,7 +88,7 @@ class ElementSubscriber extends HookSubscriber {
       }
 
       if(value === undefined && expect)
-        throw Oops.HasPropertyUndefined(from.constructor.name, key);
+        throw Oops.HasPropertyUndefined(on.constructor.name, key);
 
       this.proxy = value;
     });
