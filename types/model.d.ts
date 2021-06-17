@@ -171,6 +171,11 @@ export abstract class Model {
      */
     didCreate?(): void;
 
+    /**
+     * Callback for when a controller is about to expire.
+     */
+    willDestroy?(): void;
+
     /** Attaches this controller to a component. */
     tap(): this;
 
