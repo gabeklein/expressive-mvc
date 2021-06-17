@@ -14,8 +14,8 @@ import Oops from './issues';
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
-  constructor(subject: T, callback: Callback){
+class ReactSubscriber extends Subscriber {
+  constructor(subject: Controllable, callback: Callback){
     super(subject, callback);
 
     defineLazy(this.proxy, "bind", () => {
@@ -43,7 +43,16 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
         this.release();
     }
   }
+}
 
+class ComponentSubscriber extends ReactSubscriber {
+  release(){
+    super.release();
+    this.subject.destroy();
+  }
+}
+
+class ElementSubscriber extends ReactSubscriber {
   public focus(key: string, expect?: boolean){
     const source = this.subject as any;
 
@@ -112,7 +121,7 @@ export function useWatcher(
       path = path(detect) as string;
     }
 
-    const sub = new ReactSubscriber(target, trigger);
+    const sub = new ElementSubscriber(target, trigger);
 
     if(path)
       sub.focus(path, expected);
@@ -183,7 +192,7 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    return new ReactSubscriber(instance, trigger);
+    return new ComponentSubscriber(instance, trigger);
   });
 
   usePeerContext(hook.subject);
@@ -193,9 +202,6 @@ export function useModel(
   else
     useLifecycleEffect((name) => {
       hook.event(name, componentEvent(name));
-
-      if(name == Lifecycle.WILL_UNMOUNT)
-        hook.subject.destroy();
     });
 
   return hook.proxy;
