@@ -48,11 +48,11 @@ class ReactSubscriber<T extends Controllable> extends Subscriber<T> {
 function useRefresh<T>(
   init: (trigger: Callback) => T){
 
-  const [ state, update ] = useState(() => [
+  const [ state, update ] = useState((): T[] => [
     init(() => update(state.concat()))
   ]);
 
-  return state[0] as T;
+  return state[0];
 }
 
 type Select = <T>(from: T) => T[keyof T];
