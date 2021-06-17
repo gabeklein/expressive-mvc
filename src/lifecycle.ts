@@ -17,10 +17,10 @@ export const lifecycleEvents = [
 ];
 
 type Values<T> = T[keyof T];
-type LifecycleEvent = Values<typeof Lifecycle>;
+type Event = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){
-  const map = new Map<LifecycleEvent, string>();
+  const map = new Map<Event, string>();
 
   for(const name of values(Lifecycle)){
     const alias = prefix + name[0].toUpperCase() + name.slice(1);
@@ -29,21 +29,20 @@ export function forAlias(prefix: string){
     map.set(name, alias);
   }
 
-  return (name: LifecycleEvent) =>
-    map.get(name) as LifecycleEvent;
+  return (name: Event) => map.get(name) as Event;
 }
 
 export function useLifecycleEffect(
-  onEvent: (name: LifecycleEvent) => void){
+  onEvent: (name: Event) => void){
 
-  let isFirstRender: true | undefined;
+  let WILL_SOMETHING = Lifecycle.WILL_UPDATE as Event;
 
   const event = useMemo(() => {
-    isFirstRender = true;
+    WILL_SOMETHING = Lifecycle.WILL_MOUNT;
     return onEvent;
   }, []);
 
-  event(isFirstRender ? Lifecycle.WILL_MOUNT : Lifecycle.WILL_UPDATE);
+  event(WILL_SOMETHING);
   event(Lifecycle.WILL_RENDER);
 
   useEffect(() => {
