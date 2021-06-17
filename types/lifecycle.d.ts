@@ -7,9 +7,7 @@
  */
 interface Lifecycle {
   didMount?(...args: any[]): void;
-  didRender?(...args: any[]): void;
   willRender?(...args: any[]): void;
-  willReset?(...args: any[]): void;
   willUpdate?(...args: any[]): void;
   willMount?(...args: any[]): void;
   willUnmount?(...args: any[]): void;
