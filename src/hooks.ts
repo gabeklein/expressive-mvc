@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
 import { Controllable } from './controller';
-import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
+import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model } from './model';
 import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
@@ -14,7 +14,7 @@ import Oops from './issues';
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-class ReactSubscriber extends Subscriber {
+class HookSubscriber extends Subscriber {
   constructor(subject: Controllable, callback: Callback){
     super(subject, callback);
 
@@ -25,14 +25,11 @@ class ReactSubscriber extends Subscriber {
     });
   }
 
-  public event(name: string, alias: string){
-    for(const event of [alias, name]){
-      const on: any = this.subject;
-      const handle = on[event];
+  alias = subscriberEvent;
 
-      handle && handle.call(on);
-      this.parent.update(event);
-    }
+  event = (name: Event) => {
+    this.declare(name);
+    this.declare(this.alias(name));
 
     switch(name){
       case Lifecycle.DID_MOUNT:
@@ -43,16 +40,26 @@ class ReactSubscriber extends Subscriber {
         this.release();
     }
   }
+
+  declare(name: Event){
+    const on: any = this.subject;
+    const handle = on[name];
+
+    handle && handle.call(on);
+    this.parent.update(name);
+  }
 }
 
-class ComponentSubscriber extends ReactSubscriber {
+class ComponentSubscriber extends HookSubscriber {
+  alias = componentEvent;
+  
   release(){
     super.release();
     this.subject.destroy();
   }
 }
 
-class ElementSubscriber extends ReactSubscriber {
+class ElementSubscriber extends HookSubscriber {
   public focus(key: string, expect?: boolean){
     const source = this.subject as any;
 
@@ -138,12 +145,10 @@ export function useSubscriber(
   target: Model, args: any[]){
 
   const hook = useRefresh(trigger => 
-    new ReactSubscriber(target, trigger)
+    new HookSubscriber(target, trigger)
   );
 
-  useLifecycleEffect((name) => {
-    hook.event(name, subscriberEvent(name));
-  });
+  useLifecycleEffect(hook.event);
   
   return hook.proxy;
 }
@@ -200,9 +205,7 @@ export function useModel(
   if(withLifecycle === false)
     useEffect(hook.listen, []);
   else
-    useLifecycleEffect((name) => {
-      hook.event(name, componentEvent(name));
-    });
+    useLifecycleEffect(hook.event);
 
   return hook.proxy;
 }

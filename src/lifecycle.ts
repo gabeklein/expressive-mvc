@@ -17,7 +17,7 @@ export const lifecycleEvents = [
 ];
 
 type Values<T> = T[keyof T];
-type Event = Values<typeof Lifecycle>;
+export type Event = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){
   const map = new Map<Event, string>();
