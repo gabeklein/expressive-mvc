@@ -15,17 +15,22 @@ const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
 class HookSubscriber extends Subscriber {
-  constructor(subject: Controllable, callback: Callback){
+  alias = subscriberEvent;
+
+  constructor(
+    subject: Controllable,
+    callback: Callback,
+    bindable?: boolean){
+
     super(subject, callback);
 
-    defineLazy(this.proxy, "bind", () => {
-      const agent = bindRefFunctions(this.parent);
-      this.dependant.add(agent);
-      return agent.proxy;
-    });
+    if(bindable !== false)
+      defineLazy(this.proxy, "bind", () => {
+        const agent = bindRefFunctions(this.parent);
+        this.dependant.add(agent);
+        return agent.proxy;
+      });
   }
-
-  alias = subscriberEvent;
 
   event = (name: Event) => {
     this.declare(name);
@@ -60,11 +65,23 @@ class ComponentSubscriber extends HookSubscriber {
 }
 
 class ElementSubscriber extends HookSubscriber {
-  public focus(key: string, expect?: boolean){
-    const source = this.subject as any;
+  constructor(
+    subject: Controllable,
+    callback: Callback,
+    key?: string,
+    expect?: boolean){
+
+    super(subject, callback, !key);
+
+    if(key)
+      this.bind(key, expect);
+  }
+
+  bind(key: string, expect?: boolean){
+    const from = this.subject as any;
 
     this.watch(key, () => {
-      let value = source[key];
+      let value = from[key];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
@@ -73,7 +90,7 @@ class ElementSubscriber extends HookSubscriber {
       }
 
       if(value === undefined && expect)
-        throw Oops.HasPropertyUndefined(source.constructor.name, key);
+        throw Oops.HasPropertyUndefined(from.constructor.name, key);
 
       this.proxy = value;
     });
@@ -128,12 +145,9 @@ export function useWatcher(
       path = path(detect) as string;
     }
 
-    const sub = new ElementSubscriber(target, trigger);
-
-    if(path)
-      sub.focus(path, expected);
-
-    return sub;
+    return new ElementSubscriber(
+      target, trigger, path, expected
+    );
   });
 
   useEffect(hook.listen, []);
@@ -163,12 +177,13 @@ export function useLazy(
   return instance;
 }
 
-const ContextUsed = new WeakMap<Model, boolean>();
+const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
-  if(ContextUsed.has(instance)){
-    if(ContextUsed.get(instance))
+  if(ContextWasUsed.has(instance)){
+    if(ContextWasUsed.get(instance))
       useLookup();
+
     return;
   }
 
@@ -184,7 +199,7 @@ export function usePeerContext(instance: Model){
       init(local);
   }
 
-  ContextUsed.set(instance, hasPeers);
+  ContextWasUsed.set(instance, hasPeers);
 }
 
 export function useModel(
