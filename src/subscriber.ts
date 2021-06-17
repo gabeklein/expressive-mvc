@@ -28,6 +28,21 @@ export class Subscriber<T extends Controllable = any> {
       this.spyOn(key);
   }
 
+  public listen = () => {
+    this.dependant.forEach(x => x.listen());
+    this.parent.followers.add(this.following);
+
+    // for(const key in this.proxy)
+    //   delete this.proxy[key];
+
+    return () => this.release();
+  }
+
+  public release(){
+    this.dependant.forEach(x => x.release());
+    this.parent.followers.delete(this.following);
+  }
+
   private spyOn(key: string){
     const access = () => {
       let value = (this.subject as any)[key];
@@ -52,45 +67,6 @@ export class Subscriber<T extends Controllable = any> {
       metaData(cb, this.metadata);
 
     this.following[key] = cb;
-  }
-
-  private delegate(key: string){
-    let sub: Subscriber | undefined;
-
-    this.watch(key, () => {
-      let value = (this.subject as any)[key];
-
-      if(value instanceof Model){
-        let child = sub = new Subscriber(
-          value, this.callback, this.metadata
-        );
-
-        defineProperty(this.proxy, key, {
-          get: () => child.proxy,
-          set: it => (this.subject as any)[key] = it,
-          configurable: true
-        })
-
-        return child;
-      }
-    });
-
-    return sub && sub.proxy;
-  }
-
-  public listen = () => {
-    this.dependant.forEach(x => x.listen());
-    this.parent.followers.add(this.following);
-
-    // for(const key in this.proxy)
-    //   delete this.proxy[key];
-
-    return () => this.release();
-  }
-
-  public release(){
-    this.dependant.forEach(x => x.release());
-    this.parent.followers.delete(this.following);
   }
 
   public watch(
@@ -122,5 +98,29 @@ export class Subscriber<T extends Controllable = any> {
 
     this.follow(key, reset);
     start();
+  }
+
+  private delegate(key: string){
+    let sub: Subscriber | undefined;
+
+    this.watch(key, () => {
+      let value = (this.subject as any)[key];
+
+      if(value instanceof Model){
+        let child = sub = new Subscriber(
+          value, this.callback, this.metadata
+        );
+
+        defineProperty(this.proxy, key, {
+          get: () => child.proxy,
+          set: it => (this.subject as any)[key] = it,
+          configurable: true
+        })
+
+        return child;
+      }
+    });
+
+    return sub && sub.proxy;
   }
 }
