@@ -61,11 +61,20 @@ class HookSubscriber extends Subscriber {
 }
 
 class ElementSubscriber extends HookSubscriber {
-  focus(key: string, expect?: boolean){
-    const on = this.subject;
+  focus(select: string | Select, expect?: boolean){
+    const source = this.subject;
 
-    this.watch(key, () => {
-      let value = on[key];
+    if(fn(select)){
+      const keys = {} as BunchOf<string>;
+
+      for(const key in source)
+        keys[key] = key;
+
+      select = select(keys);
+    }
+
+    this.watch(select, () => {
+      let value = source[select as string];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
@@ -75,7 +84,7 @@ class ElementSubscriber extends HookSubscriber {
 
       if(value === undefined && expect)
         throw Oops.HasPropertyUndefined(
-          on.constructor.name, key
+          source.constructor.name, select as string
         );
 
       this.proxy = value;
@@ -126,15 +135,6 @@ export function useWatcher(
   expected?: boolean){
 
   const hook = useRefresh(trigger => {
-    if(fn(path)){
-      const detect = {} as any;
-
-      for(const key in target)
-        detect[key] = key;
-
-      path = path(detect) as string;
-    }
-
     const sub = new ElementSubscriber(target, trigger);
 
     if(path)
