@@ -1,5 +1,5 @@
 import { Lookup } from './context';
-import { Model, DISPATCH } from './model';
+import { Model, CONTROL } from './model';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { alias, define, defineLazy, defineProperty } from './util';
@@ -16,7 +16,7 @@ export function setChild<T extends typeof Model>
 
     on.monitorValue(key, instance);
     ParentRelationship.set(instance, on.subject);
-    instance[DISPATCH];
+    instance[CONTROL];
 
     if(callback)
       callback(instance);

@@ -1,4 +1,4 @@
-import { DISPATCH, Model, Stateful } from './model';
+import { CONTROL, Model, Stateful } from './model';
 import { GetterInfo, metaData, Observer } from './observer';
 import { alias, create, defineProperty } from './util';
 
@@ -18,7 +18,7 @@ export class Subscriber<T extends Stateful = any> {
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    const { state } = this.parent = subject[DISPATCH];
+    const { state } = this.parent = subject[CONTROL];
 
     this.proxy = create(subject as any);
 

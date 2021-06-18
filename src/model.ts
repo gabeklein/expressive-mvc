@@ -9,34 +9,34 @@ import Oops from './issues';
 
 type Select = <T>(from: T) => T[keyof T];
 
-export const DISPATCH = Symbol("controller");
-export type Stateful = { [DISPATCH]: Controller };
+export const CONTROL = Symbol("controller");
+export type Stateful = { [CONTROL]: Controller };
 
 export interface Model extends Public {};
 export class Model {
-  [DISPATCH]: Controller;
+  [CONTROL]: Controller;
   
   constructor(){
-    const dispatch = new Controller(this);
+    const control = new Controller(this);
 
-    for(const [key, value] of entries(dispatch))
+    for(const [key, value] of entries(control))
       if(fn(value))
         define(this, key, value);
 
-    dispatch.do = (fn: () => Callback) => {
+    control.do = (fn: () => Callback) => {
       let release: Callback;
       this.requestUpdate(() => release = fn());
       return () => release();
     }
 
-    defineLazy(this, DISPATCH, () => {
-      delete (dispatch as any).do;
-      dispatch.start();
+    defineLazy(this, CONTROL, () => {
+      delete (control as any).do;
+      control.start();
 
       if(this.didCreate)
         this.didCreate();
 
-      return dispatch;
+      return control;
     })
 
     define(this, "get", this);
@@ -68,7 +68,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    instance[DISPATCH];
+    instance[CONTROL];
 
     return instance;
   }
@@ -107,7 +107,7 @@ export class Model {
     return this.find(true).sub(...args);
   }
 
-  static [DISPATCH]: Controller;
+  static [CONTROL]: Controller;
 
   static meta(path: string | Select): any {
     return useWatcher(this, path);
@@ -136,7 +136,7 @@ export class Model {
   }
 }
 
-defineLazy(Model, DISPATCH, function(){
+defineLazy(Model, CONTROL, function(){
   const dispatch = new Controller(this);
   dispatch.start();
   return dispatch;
