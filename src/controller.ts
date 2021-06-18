@@ -20,7 +20,7 @@ export class Controller extends Observer {
     return fn();
   }
 
-  protected select(
+  public select(
     using: string | Iterable<string> | Query){
 
     if(typeof using == "string")
