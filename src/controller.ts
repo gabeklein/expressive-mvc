@@ -16,20 +16,8 @@ import Oops from './issues';
 type Query = (select: Recursive<{}>) => void;
 
 export class Controller extends Observer {
-  active?: boolean;
-
-  start(){
-    super.start();
-    this.active = true;
-  }
-
-  protected defer(fn: () => Callback){
-    if(this.active)
-      return fn();
-
-    let release: Callback;
-    this.requestUpdate(() => release = fn());
-    return () => release();
+  public do(fn: () => Callback){
+    return fn();
   }
 
   protected select(
@@ -52,8 +40,8 @@ export class Controller extends Observer {
     squash?: boolean,
     once?: boolean){
 
-    return this.defer(() => 
-      super.watch(
+    return this.do(
+      () => super.watch(
         this.select(target),
         handler, squash, once
       )
@@ -86,22 +74,18 @@ export class Controller extends Observer {
     callback: EffectCallback<any>,
     select?: string[] | Query) => {
     
-    let { subject } = this;
-
+    let target = this.subject;
     const effect = createEffect(callback);
-    const invoke = debounce(() => effect(subject));
+    const invoke = debounce(() => effect(target));
 
     if(select)
       return this.watch(select, invoke, true);
 
-    const subscribe = () => {
-      const sub = new Subscriber(subject, invoke);
-      effect(subject = sub.proxy);
-      sub.listen();
-      return () => sub.release();
-    }
-
-    return this.defer(subscribe);
+    return this.do(() => {
+      const sub = new Subscriber(target, invoke);
+      effect(target = sub.proxy);
+      return sub.listen();
+    });
   }
 
   public import = (

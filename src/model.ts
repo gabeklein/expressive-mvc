@@ -23,7 +23,14 @@ export class Model {
       if(fn(value))
         define(this, key, value);
 
+    dispatch.do = (fn: () => Callback) => {
+      let release: Callback;
+      this.requestUpdate(() => release = fn());
+      return () => release();
+    }
+
     defineLazy(this, DISPATCH, () => {
+      delete (dispatch as any).do;
       dispatch.start();
 
       if(this.didCreate)
