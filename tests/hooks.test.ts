@@ -74,6 +74,25 @@ describe("tap", () => {
   it.todo('access nested controllers')
 })
 
+describe("tag", () => {
+  class Test extends Model {
+    value = "foo";
+  }
+
+  it("will subscribe to instance", async () => {
+    const control = Test.create();
+
+    const { result, waitForNextUpdate } =
+      renderHook(() => control.tag("value"));
+
+    expect(result.current.value).toBe("foo");
+  
+    control.value = "bar";
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
+  })
+})
+
 describe("meta", () => {
   class Child extends Model {
     value = "foo";

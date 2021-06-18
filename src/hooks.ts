@@ -17,6 +17,14 @@ class HookSubscriber extends Subscriber {
   alias = subscriberEvent;
   isMounted = false;
 
+  constructor(
+    public subject: any,
+    protected callback: Callback,
+    protected tag?: Key){
+
+    super(subject, callback);
+  }
+
   event = (name: Event) => {
     this.declare(name);
 
@@ -54,7 +62,7 @@ class HookSubscriber extends Subscriber {
       const on: any = this.subject;
       const handle = on[key];
   
-      handle && handle.call(on);
+      handle && handle.call(on, this.tag);
       this.parent.update(key);
     }
   }
@@ -150,9 +158,13 @@ export function useWatcher(
   return hook.proxy;
 }
 
-export function useSubscriber(target: Model){
-  const hook = useRefresh(trigger => 
-    new HookSubscriber(target, trigger)
+export function useSubscriber<T extends Stateful>(
+  target: T, tag?: Key | ((target: T) => Key)){
+
+  const hook = useRefresh(trigger =>
+    new HookSubscriber(
+      target, trigger, fn(tag) ? tag(target) : tag
+    )  
   );
 
   useLifecycleEffect(hook.event);

@@ -3,7 +3,7 @@ import React from 'react';
 import Controller from './controller';
 import Lifecycle from './lifecycle';
 import { Selector } from './selector';
-import { Class, InstanceOf } from './types';
+import { Class, InstanceOf, Key } from './types';
 
 type RefFunction = (e: HTMLElement | null) => void;
 
@@ -191,7 +191,7 @@ export abstract class Model {
      * 
      * Distinct from `tap()` as this method fill fire lifecycle events on given controller.
     */
-    sub(): this;
+    tag(id: Key | ((on: this) => Key)): this;
 
     /**
      * Creates a new instance of this controller.
@@ -205,7 +205,7 @@ export abstract class Model {
     /**
      * **React Hook** - Spawn and maintain a controller from within a component.
      * 
-     * Differs from `use()` being without a subscription and lifecycle events.
+     * Differs from `use()` in lacking subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
      */
     static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
@@ -283,11 +283,11 @@ export abstract class Model {
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
      * 
-     * Distinct from `tap()` as this method will fire lifecycle events on given controller.
+     * This method will fire lifecycle events on given controller.
      * 
-     * @param args - Arguments passed to controller-lifecycle methods.
+     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static sub <T extends Class> (this: T): InstanceOf<T>;
+    static tag <T extends Class> (this: T, id: Key | ((on: InstanceOf<T>) => Key)): InstanceOf<T>;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.

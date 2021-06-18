@@ -1,6 +1,7 @@
 type BunchOf<T> = { [key: string]: T };
 type ValuesOf<T> = T[keyof T];
 
+type Key = string | symbol;
 type Class = new (...args: any[]) => any;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 

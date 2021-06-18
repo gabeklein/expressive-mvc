@@ -51,8 +51,8 @@ export class Model {
     return useWatcher(this, path, expect);
   }
 
-  public sub(){
-    return useSubscriber(this) as any;
+  public tag(id: Key | ((target: Model) => Key)){
+    return useSubscriber(this, id);
   }
 
   public destroy(){
@@ -101,8 +101,8 @@ export class Model {
     return useWatcher(this.find(true), key, expect);
   }
 
-  static tag(){
-    return useSubscriber(this.find(true));
+  static tag(id: Key | ((target: Model) => Key)){
+    return useSubscriber(this.find(true), id);
   }
 
   static [CONTROL]: Controller;
