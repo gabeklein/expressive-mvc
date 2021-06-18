@@ -89,7 +89,7 @@ export class Model {
     return instance;
   }
 
-  static memo(...args: any[]){
+  static new(...args: any[]){
     return useLazy(this, args);
   }
 
