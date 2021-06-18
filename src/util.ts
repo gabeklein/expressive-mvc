@@ -23,6 +23,8 @@ export {
   values
 }
 
+export type Values<T> = T[keyof T];
+
 export function define(
   target: {}, key: string | symbol, value: any){
 

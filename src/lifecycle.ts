@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 
-import { values } from './util';
+import { values, Values } from './util';
 
 export const Lifecycle = {
   WILL_RENDER: "willRender",
@@ -10,14 +10,13 @@ export const Lifecycle = {
   DID_MOUNT: "didMount"
 } as const;
 
+export type Event = Values<typeof Lifecycle>;
+
 export const lifecycleEvents = [
   "didCreate",
   "willDestroy",
   ...values(Lifecycle)
 ];
-
-type Values<T> = T[keyof T];
-export type Event = Values<typeof Lifecycle>;
 
 export function forAlias(prefix: string){
   const map = new Map<Event, string>();
@@ -33,16 +32,8 @@ export function forAlias(prefix: string){
 }
 
 export function useLifecycleEffect(
-  onEvent: (name: Event) => void){
+  event: (name: Event) => void){
 
-  let WILL_SOMETHING = Lifecycle.WILL_UPDATE as Event;
-
-  const event = useMemo(() => {
-    WILL_SOMETHING = Lifecycle.WILL_MOUNT;
-    return onEvent;
-  }, []);
-
-  event(WILL_SOMETHING);
   event(Lifecycle.WILL_RENDER);
 
   useLayoutEffect(() => {

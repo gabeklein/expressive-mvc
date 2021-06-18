@@ -15,6 +15,7 @@ const componentEvent = forAlias("component");
 
 class HookSubscriber extends Subscriber {
   alias = subscriberEvent;
+  isMounted = false;
 
   constructor(
     subject: Stateful,
@@ -33,10 +34,18 @@ class HookSubscriber extends Subscriber {
 
   event = (name: Event) => {
     this.declare(name);
-    this.declare(this.alias(name));
 
     switch(name){
+      case Lifecycle.WILL_RENDER:
+        this.declare(
+          this.isMounted
+          ? Lifecycle.WILL_UPDATE
+          : Lifecycle.WILL_MOUNT
+        )
+      break;
+
       case Lifecycle.DID_MOUNT:
+        this.isMounted = true;
         this.listen();
       break;
 
@@ -46,11 +55,15 @@ class HookSubscriber extends Subscriber {
   }
 
   declare(name: Event){
-    const on: any = this.subject;
-    const handle = on[name];
+    const also = this.alias(name);
 
-    handle && handle.call(on);
-    this.parent.update(name);
+    for(const key of [name, also]){
+      const on: any = this.subject;
+      const handle = on[key];
+  
+      handle && handle.call(on);
+      this.parent.update(key);
+    }
   }
 }
 
@@ -87,7 +100,9 @@ class ElementSubscriber extends HookSubscriber {
       }
 
       if(value === undefined && expect)
-        throw Oops.HasPropertyUndefined(on.constructor.name, key);
+        throw Oops.HasPropertyUndefined(
+          on.constructor.name, key
+        );
 
       this.proxy = value;
     });
