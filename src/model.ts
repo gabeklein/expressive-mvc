@@ -1,32 +1,39 @@
 import type Public from '../types';
 
 import { useLookup } from './context';
-import { Controllable, Controller, DISPATCH } from './controller';
+import { Controller } from './controller';
 import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { define, entries, fn, getPrototypeOf } from './util';
+import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
 type Select = <T>(from: T) => T[keyof T];
 
-export interface Model extends Public {};
+export const DISPATCH = Symbol("controller");
+export type Stateful = { [DISPATCH]: Controller };
 
+export interface Model extends Public {};
 export class Model {
   [DISPATCH]: Controller;
   
   constructor(){
-    const cb = this.didCreate;
-    const dispatch = this[DISPATCH] = new Controller(this);
-
-    if(cb)
-      dispatch.requestUpdate(cb.bind(this));
-
-    define(this, "get", this);
-    define(this, "set", this);
+    const dispatch = new Controller(this);
 
     for(const [key, value] of entries(dispatch))
       if(fn(value))
         define(this, key, value);
+
+    defineLazy(this, DISPATCH, () => {
+      dispatch.start();
+
+      if(this.didCreate)
+        this.didCreate();
+
+      return dispatch;
+    })
+
+    define(this, "get", this);
+    define(this, "set", this);
   }
 
   get bind(): never {
@@ -54,7 +61,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    instance[DISPATCH].start();
+    instance[DISPATCH];
 
     return instance;
   }
@@ -93,17 +100,10 @@ export class Model {
     return this.find(true).sub(...args);
   }
 
-  static [DISPATCH]?: Controller;
+  static [DISPATCH]: Controller;
 
   static meta(path: string | Select): any {
-    return useWatcher(() => {
-      const self = this as Controllable;
-
-      if(!this[DISPATCH])
-        this[DISPATCH] = new Controller(self);
-
-      return self;
-    }, path);
+    return useWatcher(this, path);
   }
 
   static find(strict: true): Model;
@@ -128,3 +128,9 @@ export class Model {
       return I;
   }
 }
+
+defineLazy(Model, DISPATCH, function(){
+  const dispatch = new Controller(this);
+  dispatch.start();
+  return dispatch;
+})

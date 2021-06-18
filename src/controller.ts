@@ -13,34 +13,14 @@ import {
 
 import Oops from './issues';
 
-export const DISPATCH = Symbol("controller");
-
 type Query = (select: Recursive<{}>) => void;
 
-export type Controllable = {
-  [DISPATCH]: Controller
-}
-
 export class Controller extends Observer {
-  static key = DISPATCH;
-
-  static get(from: Controllable){
-    let dispatch = from[DISPATCH];
-
-    if(!dispatch.active)
-      dispatch.start();
-
-    return dispatch;
-  }
-
   active?: boolean;
 
-  constructor(subject: Controllable){
-    super(subject);
-
-    this.requestUpdate(() => {
-      this.active = true;
-    })
+  start(){
+    super.start();
+    this.active = true;
   }
 
   protected defer(fn: () => Callback){

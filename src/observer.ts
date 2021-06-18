@@ -1,5 +1,4 @@
-import { Controllable } from './controller';
-import { Model } from './model';
+import { Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import {
   alias,
@@ -51,7 +50,7 @@ export class Observer {
     return fn as any;
   }
 
-  constructor(public subject: Controllable){
+  constructor(public subject: Stateful){
     let scan = subject;
 
     while(scan !== Model && scan.constructor !== Model){
@@ -65,10 +64,10 @@ export class Observer {
   public start(){
     const expected: (Callback | undefined)[] = [];
 
-    for(const [key, { value, enumerable }] of entriesIn(this.subject))
+    for(const [key, { value, get, enumerable }] of entriesIn(this.subject))
       if(Pending.has(value))
         value(key, this);
-      else if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+      else if(enumerable && !get && !fn(value) || /^[A-Z]/.test(key))
         this.monitorValue(key, value);
 
     for(const [key, compute] of this.getters)
@@ -102,7 +101,8 @@ export class Observer {
     this.getters.set(key, info);
     this.state[key] = undefined;
     this.override(key, {
-      get, set, configurable: true
+      get, set, 
+      configurable: true
     });
   }
 

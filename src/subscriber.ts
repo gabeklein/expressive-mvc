@@ -1,9 +1,8 @@
-import { Controllable, Controller } from './controller';
-import { Model } from './model';
+import { DISPATCH, Model, Stateful } from './model';
 import { GetterInfo, metaData, Observer } from './observer';
 import { alias, create, defineProperty } from './util';
 
-export class Subscriber<T extends Controllable = any> {
+export class Subscriber<T extends Stateful = any> {
   protected dependant = new Set<{
     listen(): void;
     release(): void;
@@ -19,8 +18,7 @@ export class Subscriber<T extends Controllable = any> {
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    const { state } = this.parent =
-      Controller.get(subject);
+    const { state } = this.parent = subject[DISPATCH];
 
     this.proxy = create(subject as any);
 

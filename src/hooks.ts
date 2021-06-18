@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
-import { Controllable } from './controller';
 import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
-import { Model } from './model';
+import { Model, Stateful } from './model';
 import { PendingContext } from './modifiers';
 import { Subscriber } from './subscriber';
 import { defineLazy, fn, values } from './util';
@@ -18,7 +17,7 @@ class HookSubscriber extends Subscriber {
   alias = subscriberEvent;
 
   constructor(
-    subject: Controllable,
+    subject: Stateful,
     callback: Callback,
     bindable?: boolean){
 
@@ -66,7 +65,7 @@ class ComponentSubscriber extends HookSubscriber {
 
 class ElementSubscriber extends HookSubscriber {
   constructor(
-    subject: Controllable,
+    subject: Stateful,
     callback: Callback,
     key?: string,
     expect?: boolean){
@@ -126,14 +125,11 @@ export function usePassive<T extends typeof Model>(
 }
 
 export function useWatcher(
-  target: Controllable | (() => Controllable),
+  target: Stateful,
   path?: string | Select,
   expected?: boolean){
 
   const hook = useRefresh(trigger => {
-    if(fn(target))
-      target = target();
-
     if(fn(path)){
       const detect = {} as any;
 
