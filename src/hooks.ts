@@ -17,21 +17,6 @@ class HookSubscriber extends Subscriber {
   alias = subscriberEvent;
   isMounted = false;
 
-  constructor(
-    subject: Stateful,
-    callback: Callback,
-    bindable?: boolean){
-
-    super(subject, callback);
-
-    if(bindable !== false)
-      defineLazy(this.proxy, "bind", () => {
-        const agent = bindRefFunctions(this.parent);
-        this.dependant.add(agent);
-        return agent.proxy;
-      });
-  }
-
   event = (name: Event) => {
     this.declare(name);
 
@@ -52,6 +37,14 @@ class HookSubscriber extends Subscriber {
       case Lifecycle.WILL_UNMOUNT:
         this.release();
     }
+  }
+
+  addRefs(){
+    defineLazy(this.proxy, "bind", () => {
+      const agent = bindRefFunctions(this.parent);
+      this.dependant.add(agent);
+      return agent.proxy;
+    });
   }
 
   declare(name: Event){
@@ -77,19 +70,9 @@ class ComponentSubscriber extends HookSubscriber {
 }
 
 class ElementSubscriber extends HookSubscriber {
-  constructor(
-    subject: Stateful,
-    callback: Callback,
-    key?: string,
-    expect?: boolean){
+  focus(key: string, expect?: boolean){
+    const on = this.subject;
 
-    super(subject, callback, !key);
-
-    if(key)
-      this.bind(subject, key, expect);
-  }
-
-  bind(on: any, key: string, expect?: boolean){
     this.watch(key, () => {
       let value = on[key];
 
@@ -152,9 +135,14 @@ export function useWatcher(
       path = path(detect) as string;
     }
 
-    return new ElementSubscriber(
-      target, trigger, path, expected
-    );
+    const sub = new ElementSubscriber(target, trigger);
+
+    if(path)
+      sub.focus(path, expected)
+    else
+      sub.addRefs();
+
+    return sub;
   });
 
   useEffect(hook.listen, []);
@@ -214,11 +202,14 @@ export function useModel(
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
+    const sub = new ComponentSubscriber(instance, trigger);
 
     if(callback)
       callback(instance);
 
-    return new ComponentSubscriber(instance, trigger);
+    sub.addRefs();
+
+    return sub;
   });
 
   usePeerContext(hook.subject);
