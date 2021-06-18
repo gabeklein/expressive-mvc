@@ -98,11 +98,11 @@ export class Model {
   }
 
   static tap(key?: string | Select, expect?: boolean): any {
-    return this.find(true).tap(key, expect);
+    return useWatcher(this.find(true), key, expect);
   }
 
-  static sub(){
-    return this.find(true).sub();
+  static tag(){
+    return useSubscriber(this.find(true));
   }
 
   static [CONTROL]: Controller;
