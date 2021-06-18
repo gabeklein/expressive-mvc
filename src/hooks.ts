@@ -212,8 +212,7 @@ export function usePeerContext(instance: Model){
 export function useModel(
   Type: typeof Model,
   args: any[], 
-  callback?: (instance: Model) => void,
-  withLifecycle?: boolean){
+  callback?: (instance: Model) => void){
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
@@ -225,11 +224,7 @@ export function useModel(
   });
 
   usePeerContext(hook.subject);
-
-  if(withLifecycle === false)
-    useEffect(hook.listen, []);
-  else
-    useLifecycleEffect(hook.event);
+  useLifecycleEffect(hook.event);
 
   return hook.proxy;
 }
