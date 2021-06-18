@@ -60,15 +60,6 @@ class HookSubscriber extends Subscriber {
   }
 }
 
-class ComponentSubscriber extends HookSubscriber {
-  alias = componentEvent;
-  
-  release(){
-    super.release();
-    this.subject.destroy();
-  }
-}
-
 class ElementSubscriber extends HookSubscriber {
   focus(key: string, expect?: boolean){
     const on = this.subject;
@@ -89,6 +80,15 @@ class ElementSubscriber extends HookSubscriber {
 
       this.proxy = value;
     });
+  }
+}
+
+class ComponentSubscriber extends HookSubscriber {
+  alias = componentEvent;
+  
+  release(){
+    super.release();
+    this.subject.destroy();
   }
 }
 
@@ -170,6 +170,29 @@ export function useLazy(
   return instance;
 }
 
+export function useModel(
+  Type: typeof Model,
+  args: any[], 
+  callback?: (instance: Model) => void){
+
+  const hook = useRefresh(trigger => {
+    const instance = Type.create(...args);
+    const sub = new ComponentSubscriber(instance, trigger);
+
+    if(callback)
+      callback(instance);
+
+    sub.addRefs();
+
+    return sub;
+  });
+
+  usePeerContext(hook.subject);
+  useLifecycleEffect(hook.event);
+
+  return hook.proxy;
+}
+
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
@@ -193,27 +216,4 @@ export function usePeerContext(instance: Model){
   }
 
   ContextWasUsed.set(instance, hasPeers);
-}
-
-export function useModel(
-  Type: typeof Model,
-  args: any[], 
-  callback?: (instance: Model) => void){
-
-  const hook = useRefresh(trigger => {
-    const instance = Type.create(...args);
-    const sub = new ComponentSubscriber(instance, trigger);
-
-    if(callback)
-      callback(instance);
-
-    sub.addRefs();
-
-    return sub;
-  });
-
-  usePeerContext(hook.subject);
-  useLifecycleEffect(hook.event);
-
-  return hook.proxy;
 }
