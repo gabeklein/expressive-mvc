@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useLayoutEffect } from 'react';
 
 import { values } from './util';
 
@@ -45,7 +45,7 @@ export function useLifecycleEffect(
   event(WILL_SOMETHING);
   event(Lifecycle.WILL_RENDER);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     event(Lifecycle.DID_MOUNT);
     return () => event(Lifecycle.WILL_UNMOUNT);
   }, [])
