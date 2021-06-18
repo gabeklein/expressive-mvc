@@ -7,8 +7,6 @@ import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
 
-type Select = <T>(from: T) => T[keyof T];
-
 export const CONTROL = Symbol("controller");
 export type Stateful = { [CONTROL]: Controller };
 

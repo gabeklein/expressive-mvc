@@ -23,8 +23,6 @@ export {
   values
 }
 
-export type Values<T> = T[keyof T];
-
 export function define(
   target: {}, key: string | symbol, value: any){
 
@@ -90,8 +88,6 @@ export function createEffect(
       throw Oops.BadEffectCallback()
   }
 }
-
-export type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
 
 export function selectRecursive(
   using: Function,

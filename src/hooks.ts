@@ -119,8 +119,6 @@ function useRefresh<T>(
   return state[0];
 }
 
-type Select = <T>(from: T) => T[keyof T];
-
 export function usePassive<T extends typeof Model>(
   target: T,
   select?: boolean | string | Select){

@@ -1,8 +1,7 @@
 import Model from '.';
+import { Async, Class, EffectCallback, InstanceOf } from './types';
 
 declare namespace Directives {
-  type Async = (...args: any[]) => Promise<any>;
-
   /**
    * Creates a new child-instance of specified controller.
    * 

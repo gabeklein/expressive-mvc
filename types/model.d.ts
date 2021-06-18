@@ -1,8 +1,9 @@
 import React from 'react';
 
 import Controller from './controller';
-import { Selector } from './selector';
 import Lifecycle from './lifecycle';
+import { Selector } from './selector';
+import { Class, InstanceOf } from './types';
 
 type RefFunction = (e: HTMLElement | null) => void;
 

@@ -7,13 +7,10 @@ import {
   debounce,
   fn,
   keys,
-  Recursive,
   selectRecursive
 } from './util';
 
 import Oops from './issues';
-
-type Query = (select: Recursive<{}>) => void;
 
 export class Controller extends Observer {
   public do(fn: () => Callback){

@@ -1,5 +1,3 @@
-/// <reference path="common.d.ts" />
-
 export {
     Model,
     Model as default,

@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 
-import { values, Values } from './util';
+import { values } from './util';
 
 export const Lifecycle = {
   WILL_RENDER: "willRender",
@@ -10,7 +10,7 @@ export const Lifecycle = {
   DID_MOUNT: "didMount"
 } as const;
 
-export type Event = Values<typeof Lifecycle>;
+export type Event = ValuesOf<typeof Lifecycle>;
 
 export const lifecycleEvents = [
   "didCreate",
