@@ -299,25 +299,6 @@ export abstract class Model {
     static meta <T extends Class, K extends Model.SelectField<T>> (this: T, key?: K): ReturnType<K>;
 
     /**
-     * Produces a turn-key HOC acting as a context consumer for `this`.
-     * 
-     * Mainly for use with class-components which cannot access controllers via hooks.
-     * 
-     * @param component - Compatible component-type.
-     */
-    static hoc <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
-
-    /**
-     * Produces a turn-key HOC acting as a context provider for `this`.
-     * Will create instance of controller automatically, consuming props of resulting HOC. 
-     * 
-     * Will also inject created instance to given component via `context` parameter.
-     * 
-     * @param component - Compatible component-type.
-     */
-    static wrap <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
-
-    /**
      * **React Hook** - Locate most relevant instance of this type in context.
      */
     static find <T extends Class>(this: T): InstanceOf<T>;
