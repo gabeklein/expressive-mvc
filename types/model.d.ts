@@ -5,7 +5,6 @@ import { Selector } from './selector';
 import Lifecycle from './lifecycle';
 
 type RefFunction = (e: HTMLElement | null) => void;
-type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
     /** Shallow replacement given all entries of Model */
@@ -194,12 +193,21 @@ export abstract class Model {
     sub(): this;
 
     /**
+     * Creates a new instance of this controller.
+     * 
+     * Beyond `new this(...)`, method will activate managed-state.
+     * 
+     * @param args - arguments sent to constructor
+     */
+    static create <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
+
+    /**
      * **React Hook** - Spawn and maintain a controller from within a component.
      * 
      * Differs from `use()` being without a subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
      */
-    static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
+    static memo <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
@@ -208,7 +216,7 @@ export abstract class Model {
      * 
      * @param args - Arguments passed to constructor of `this`
      */
-    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
+    static use <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Similarly to `use`, will instanciate a controller bound to ambient component.
@@ -300,15 +308,6 @@ export abstract class Model {
      * **React Hook** - Locate most relevant instance of this type in context.
      */
     static find <T extends Class>(this: T): InstanceOf<T>;
-
-    /**
-     * Creates a new instance of this controller.
-     * 
-     * Beyond `new this(...)`, method will activate managed-state.
-     * 
-     * @param args - arguments sent to constructor
-     */
-    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
     /**
      * Static equivalent of `x instanceof this`.
