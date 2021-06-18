@@ -53,8 +53,8 @@ export class Model {
     return useWatcher(this, path, expect);
   }
 
-  public sub(...args: any[]){
-    return useSubscriber(this, args) as any;
+  public sub(){
+    return useSubscriber(this) as any;
   }
 
   public destroy(){
@@ -103,8 +103,8 @@ export class Model {
     return this.find(true).tap(key, expect);
   }
 
-  static sub(...args: any[]){
-    return this.find(true).sub(...args);
+  static sub(){
+    return this.find(true).sub();
   }
 
   static [CONTROL]: Controller;

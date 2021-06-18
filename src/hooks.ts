@@ -164,9 +164,7 @@ export function useWatcher(
   return hook.proxy;
 }
 
-export function useSubscriber(
-  target: Model, args: any[]){
-
+export function useSubscriber(target: Model){
   const hook = useRefresh(trigger => 
     new HookSubscriber(target, trigger)
   );

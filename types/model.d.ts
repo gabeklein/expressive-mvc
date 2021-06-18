@@ -190,10 +190,8 @@ export abstract class Model {
      * **React Hook** - Find and subcribe to applicable controller. 
      * 
      * Distinct from `tap()` as this method fill fire lifecycle events on given controller.
-     * 
-     * @param args - Arguments passed to controller-lifecycle methods.
     */
-    sub(...args: any[]): this;
+    sub(): this;
 
     /**
      * **React Hook** - Spawn and maintain a controller from within a component.
@@ -280,7 +278,7 @@ export abstract class Model {
      * 
      * @param args - Arguments passed to controller-lifecycle methods.
      */
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceOf<T>;
+    static sub <T extends Class> (this: T): InstanceOf<T>;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.
