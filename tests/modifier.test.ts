@@ -1,6 +1,6 @@
 import { act, Issue, Model, ref, on, use } from './adapter';
 
-describe("set Directive", () => {
+describe("set modifier", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
@@ -57,7 +57,7 @@ describe("set Directive", () => {
   })
 })
 
-describe("use Directive", () => {
+describe("use modifier", () => {
   const WORLD = "Hello World!";
 
   class Parent extends Model {
@@ -87,7 +87,7 @@ describe("use Directive", () => {
   })
 })
 
-describe("ref Directive", () => {
+describe("ref modifier", () => {
   class Subject extends Model {
     checkValue?: any = undefined;
   
@@ -149,7 +149,7 @@ describe("ref Directive", () => {
   })
 })
 
-describe("act directive", () => {
+describe("act modifier", () => {
   class Test extends Model {
     test = act(this.wait);
 
@@ -207,4 +207,11 @@ describe("act directive", () => {
     test();
     expect(() => test()).rejects.toThrowError(expected);
   })
+})
+
+describe("lazy modifier", () => {
+  it.todo("will include value in state");
+  it.todo("will not include in subscriber");
+  it.todo("will include key on import");
+  it.todo("will include value on export");
 })
