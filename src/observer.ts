@@ -106,22 +106,6 @@ export class Observer {
     });
   }
 
-  public override(key: string, desc: PropertyDescriptor){
-    defineProperty(this.subject, key, { enumerable: true, ...desc });
-  }
-
-  public monitorValue(
-    key: string,
-    initial: any,
-    effect?: EffectCallback<any, any>){
-
-    this.state[key] = initial;
-    this.override(key, {
-      get: () => this.state[key],
-      set: this.setter(key, effect)
-    });
-  }
-
   private monitorComputed(
     key: string, info: GetterInfo){
 
@@ -195,6 +179,25 @@ export class Observer {
     })
 
     this.override(key, { get: create, set })
+  }
+
+  public monitorValue(
+    key: string,
+    initial: any,
+    effect?: EffectCallback<any, any>){
+
+    this.state[key] = initial;
+    this.override(key, {
+      get: () => this.state[key],
+      set: this.setter(key, effect)
+    });
+  }
+
+  public override(
+    key: string,
+    desc: PropertyDescriptor){
+
+    defineProperty(this.subject, key, { enumerable: true, ...desc });
   }
 
   public setter(
