@@ -62,20 +62,18 @@ export class Observer {
   }
 
   public start(){
-    const expected: (Callback | undefined)[] = [];
+    for(const [key, desc] of entriesIn(this.subject)){
+      const { value, get, enumerable } = desc;
 
-    for(const [key, { value, get, enumerable }] of entriesIn(this.subject))
       if(Pending.has(value))
         value(key, this);
       else if(enumerable && !get && !fn(value) || /^[A-Z]/.test(key))
         this.monitorValue(key, value);
+    }
 
     for(const [key, compute] of this.getters)
-      expected.push(
-        this.monitorComputed(key, compute)
-      );
+      this.monitorComputed(key, compute);
 
-    expected.forEach(x => x && x());
     this.reset();
   }
 
@@ -168,8 +166,10 @@ export class Observer {
     alias(create, `new ${key}`);
 
     for(const sub of this.followers)
-      if(key in sub)
-        return create;
+      if(key in sub){
+        this.waiting.push(() => create());
+        return;
+      }
 
     ComputedInit.add(create);
 
