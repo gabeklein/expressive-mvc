@@ -30,13 +30,13 @@ export class Observer {
       if(Pending.has(value))
         value(key, this);
       else if(enumerable && !get && (!fn(value) || /^[A-Z]/.test(key)))
-        this.monitorValue(key, value);
+        this.register(key, value);
     }
 
     this.emit();
   }
 
-  public monitorValue(
+  public register(
     key: string,
     initial: any,
     effect?: EffectCallback<any, any>){

@@ -14,7 +14,7 @@ export function setChild<T extends typeof Model>
   return Observer.define((key, on) => {
     const instance = new Peer() as InstanceOf<T>;
 
-    on.monitorValue(key, instance);
+    on.register(key, instance);
     ParentRelationship.set(instance, on.subject);
     instance[CONTROL];
 
@@ -98,7 +98,7 @@ export function setEffect<T = any>
       value = undefined;
     }
 
-    on.monitorValue(key, value, effect);
+    on.register(key, value, effect);
   })
 }
 
