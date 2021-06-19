@@ -1,8 +1,7 @@
 export {
     Model,
     Model as default,
-    Singleton,
-    Singleton as GC
+    Singleton
 } from './model';
 
 export {

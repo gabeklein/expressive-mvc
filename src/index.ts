@@ -20,6 +20,5 @@ export {
 } from './model';
 
 export {
-  Singleton,
-  Singleton as GC
+  Singleton
 } from './singleton';
