@@ -1,6 +1,7 @@
-import { act, Issue, Model, ref, on, use } from './adapter';
+import { renderHook } from '@testing-library/react-hooks';
+import { act, Issue, Model, ref, on, use, lazy } from './adapter';
 
-describe("set modifier", () => {
+describe("on modifier", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
@@ -180,7 +181,7 @@ describe("act modifier", () => {
     expect(test.active).toBe(false);
   });
 
-  // non-deterministic; may fail due to race condition.
+  // non-deterministic; occasionally fails due to race condition.
   it.skip("emits method key before/after activity", async () => {
     let update: string[] | false;
     const { test, requestUpdate } = Test.create();
