@@ -33,7 +33,7 @@ export class Observer {
         this.monitorValue(key, value);
     }
 
-    this.reset();
+    this.emit();
   }
 
   public monitorValue(
@@ -126,18 +126,21 @@ export class Observer {
     (this.pending || this.sync())(key);
   }
 
-  private reset(frame?: string[]){
-    this.waiting.splice(0).forEach(x => x(frame));
+  private emit(frame?: string[]){
+    const { waiting } = this;
+
+    this.waiting = [];
+    this.pending = undefined;
+    waiting.forEach(x => x(frame));
   }
 
   private sync(){
-    const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
 
     const { isComputed, flushComputed } =
       computeContext(this, handled);
 
-    const add = (key: string) => {
+    const include = (key: string) => {
       if(handled.has(key))
         return;
 
@@ -147,21 +150,16 @@ export class Observer {
         if(key in subscription){
           const request = subscription[key];
           
-          isComputed(request) || effects.add(request);
+          isComputed(request) || this.waiting.push(request);
         }
     }
 
-    const send = () => {
+    const close = () => {
       flushComputed();
-
-      this.pending = undefined;
-
-      const frame = Array.from(handled);
-      effects.forEach(x => x(frame));
-      this.reset(frame);
+      this.emit(Array.from(handled));
     }
 
-    setTimeout(send, 0);
-    return this.pending = add;
+    setTimeout(close, 0);
+    return this.pending = include;
   }
 }
