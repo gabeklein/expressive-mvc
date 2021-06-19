@@ -194,6 +194,24 @@ export abstract class Model {
     tag(id: Key | ((on: this) => Key)): this;
 
     /**
+     * **React Hook** - Attach to instance of this controller within ambient component.
+     * 
+     * This method will fire lifecycle events on given controller.
+     * 
+     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
+     */
+     tag(id?: Key): this;
+
+     /**
+      * **React Hook** - Attach to instance of this controller within ambient component.
+      * 
+      * This method will fire lifecycle events on given controller.
+      * 
+      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
+      */
+     tag(id: (on: this) => Key | void): this;
+
+    /**
      * Creates a new instance of this controller.
      * 
      * Beyond `new this(...)`, method will activate managed-state.
@@ -287,7 +305,7 @@ export abstract class Model {
      * 
      * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static tag <T extends Class> (this: T, id: Key): InstanceOf<T>;
+    static tag <T extends Class> (this: T, id?: Key): InstanceOf<T>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
@@ -296,7 +314,7 @@ export abstract class Model {
      * 
      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
      */
-    static tag <T extends Class> (this: T, id: (on: InstanceOf<T>) => Key): InstanceOf<T>;
+    static tag <T extends Class> (this: T, id: (on: InstanceOf<T>) => Key | void): InstanceOf<T>;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.

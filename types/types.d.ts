@@ -1,4 +1,4 @@
-export type Key = string | symbol;
+export type Key = string | symbol | number;
 export type Async = (...args: any[]) => Promise<any>;
 export type BunchOf<T> = { [key: string]: T };
 

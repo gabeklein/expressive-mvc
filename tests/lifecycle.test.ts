@@ -52,11 +52,11 @@ describe("lifecycle", () => {
   }
 
   function expectToBeCalled(
-    as: string | symbol | false | undefined,
+    as: string | symbol | false | number | undefined,
     methods: jest.Mock<any, any>[]){
 
     for(const mock of methods)
-      if(as == false)
+      if(as === false)
         expect(mock).not.toBeCalled();
       else
         expect(mock).toBeCalledWith(as);
@@ -275,6 +275,13 @@ describe("lifecycle", () => {
       renderHook(() => test.tag(factory));
   
       expectToBeCalled(identifier, [ test.willRender ]);
+    })
+
+    it("will default to 0-key if not provided", () => {
+      const test = Test.create();
+      renderHook(() => test.tag());
+
+      expectToBeCalled(0, [ test.willRender ]);
     })
   })
 })

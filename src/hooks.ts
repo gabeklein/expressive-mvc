@@ -161,11 +161,10 @@ export function useWatcher(
 export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | ((target: T) => Key)){
 
-  const hook = useRefresh(trigger =>
-    new HookSubscriber(
-      target, trigger, fn(tag) ? tag(target) : tag
-    )  
-  );
+  const hook = useRefresh(trigger => {
+    const key = fn(tag) ? tag(target) : tag || 0;
+    return new HookSubscriber(target, trigger, key)  
+  });
 
   useLifecycleEffect(hook.event);
   
