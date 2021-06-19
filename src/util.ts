@@ -6,6 +6,7 @@ const {
   defineProperty,
   entries,
   getPrototypeOf,
+  getOwnPropertyNames,
   getOwnPropertyDescriptor,
   getOwnPropertyDescriptors,
   keys,
@@ -19,6 +20,7 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
+  getOwnPropertyNames,
   keys,
   values
 }

@@ -1,14 +1,7 @@
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import {
-  assign,
-  createEffect,
-  debounce,
-  fn,
-  keys,
-  selectRecursive
-} from './util';
+import { createEffect, debounce, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 import Oops from './issues';
 
@@ -18,14 +11,19 @@ export class Controller extends Observer {
   }
 
   public select(
-    using: string | Iterable<string> | Query){
+    using?: string | Iterable<string> | Query){
+
+    const keys = getOwnPropertyNames(this.state);
+
+    if(!using)
+      return keys;
 
     if(typeof using == "string")
       return [ using ];
 
     if(fn(using))
-      return selectRecursive(using, 
-        keys(this.state).concat(lifecycleEvents)
+      return selectRecursive(using,
+        keys.concat(lifecycleEvents)
       );
 
     return Array.from(using);
@@ -89,11 +87,9 @@ export class Controller extends Observer {
     from: BunchOf<any>,
     select?: Iterable<string> | Query) => {
 
-    const selected = select
-      ? this.select(select)
-      : keys(this.state);
+    const keys = this.select(select);
 
-    for(const key of selected)
+    for(const key of keys)
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
@@ -101,12 +97,10 @@ export class Controller extends Observer {
   public export = (
     select?: Iterable<string> | Query) => {
 
-    if(!select)
-      return assign({}, this.state);
-
+    const keys = this.select(select);
     const data = {} as BunchOf<any>;
 
-    for(const key of this.select(select))
+    for(const key of keys)
       data[key] = (this.subject as any)[key];
 
     return data;
