@@ -158,8 +158,10 @@ export function useWatcher(
   return hook.proxy;
 }
 
+export type KeyFactory<T> = (target: T) => Key | undefined;
+
 export function useSubscriber<T extends Stateful>(
-  target: T, tag?: Key | ((target: T) => Key)){
+  target: T, tag?: Key | KeyFactory<T>){
 
   const hook = useRefresh(trigger => {
     const key = fn(tag) ? tag(target) : tag || 0;

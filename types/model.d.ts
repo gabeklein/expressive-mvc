@@ -168,14 +168,7 @@ export abstract class Model {
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
     tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
-    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>
-
-    /**
-     * **React Hook** - Find and subcribe to applicable controller. 
-     * 
-     * Distinct from `tap()` as lifecycle events will occure on given controller.
-    */
-    tag(id: Key | ((on: this) => Key)): this;
+    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
@@ -289,7 +282,7 @@ export abstract class Model {
      * 
      * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static tag <T extends Class> (this: T, id?: Key): InstanceOf<T>;
+    static tag <T extends Class, I extends InstanceOf<T>> (this: T, id?: Key | ((on: I) => Key | void)): I;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.

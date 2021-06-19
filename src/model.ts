@@ -2,7 +2,7 @@ import type Public from '../types';
 
 import { useLookup } from './context';
 import { Controller } from './controller';
-import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
+import { KeyFactory, useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
 import Oops from './issues';
@@ -45,17 +45,22 @@ export class Model {
     throw Oops.BindNotAvailable();
   }
   
-  // TODO: reconsile public types; extremely uncooperative.
-  public tap(path?: string | Select, expect?: boolean): never {
-    // @ts-ignore
+  tap(): this;
+  tap <K extends keyof this> (key: K, expect?: boolean): this[K];
+  tap <K extends keyof this> (key: K, expect: true): Exclude<this[K], undefined>;
+  tap <K extends Select> (key: K, expect?: boolean): ReturnType<K>;
+  tap <K extends Select> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+  tap(path?: string | Select, expect?: boolean) {
     return useWatcher(this, path, expect);
   }
 
-  public tag(id: Key | ((target: Model) => Key)){
-    return useSubscriber(this, id);
+  tag(id?: Key): this;
+  tag(id: KeyFactory<this>): this;
+  tag(id?: Key | KeyFactory<this>){
+    return useSubscriber(this, id) as this;
   }
 
-  public destroy(){
+  destroy(){
     if(this.willDestroy)
       this.willDestroy();
   }
@@ -101,7 +106,7 @@ export class Model {
     return useWatcher(this.find(true), key, expect);
   }
 
-  static tag(id: Key | ((target: Model) => Key)){
+  static tag(id?: Key | ((target: Model) => Key | undefined)){
     return useSubscriber(this.find(true), id);
   }
 
