@@ -120,7 +120,7 @@ export function prepareComputed(
   defined.set(key, info);
   this.state[key] = undefined;
 
-  for(const sub of this.followers)
+  for(const sub of this.listeners)
     if(key in sub){
       this.waiting.push(() => create());
       return;

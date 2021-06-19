@@ -5,10 +5,9 @@ import { createEffect, defineProperty, entriesIn, fn, getOwnPropertyDescriptor }
 const Pending = new WeakSet<Function>();
 
 export class Observer {
-  protected waiting = [] as RequestCallback[];
-
   public state = {} as BunchOf<any>;
-  public followers = new Set<BunchOf<RequestCallback>>();
+  public listeners = new Set<BunchOf<RequestCallback>>();
+  public waiting = [] as RequestCallback[];
 
   public pending?: (key: string) => void;
 
@@ -101,9 +100,9 @@ export class Observer {
     callback: RequestCallback,
     once?: boolean){
 
-    const remove = () => { this.followers.delete(follow) };
+    const remove = () => { this.listeners.delete(listener) };
     const handler = once ? (k?: string[]) => { remove(); callback(k) } : callback;
-    const follow: BunchOf<RequestCallback> = {};
+    const listener: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
       type Initial = (early?: boolean) => void;
@@ -114,10 +113,10 @@ export class Observer {
       if(ComputedInit.has(getter!))
         (getter as Initial)(true);
 
-      follow[key] = handler;
+      listener[key] = handler;
     }
 
-    this.followers.add(follow);
+    this.listeners.add(listener);
 
     return remove;
   }
@@ -126,7 +125,7 @@ export class Observer {
     (this.pending || this.sync())(key);
   }
 
-  private emit(frame?: string[]){
+  public emit(frame?: string[]){
     const { waiting } = this;
 
     this.waiting = [];
@@ -134,7 +133,7 @@ export class Observer {
     waiting.forEach(x => x(frame));
   }
 
-  private sync(){
+  public sync(){
     const handled = new Set<string>();
 
     const { isComputed, flushComputed } =
@@ -146,7 +145,7 @@ export class Observer {
 
       handled.add(key);
 
-      for(const subscription of this.followers)
+      for(const subscription of this.listeners)
         if(key in subscription){
           const request = subscription[key];
           

@@ -29,7 +29,7 @@ export class Subscriber<T extends Stateful = any> {
 
   public listen = () => {
     this.dependant.forEach(x => x.listen());
-    this.parent.followers.add(this.following);
+    this.parent.listeners.add(this.following);
 
     // for(const key in this.proxy)
     //   delete this.proxy[key];
@@ -39,7 +39,7 @@ export class Subscriber<T extends Stateful = any> {
 
   public release(){
     this.dependant.forEach(x => x.release());
-    this.parent.followers.delete(this.following);
+    this.parent.listeners.delete(this.following);
   }
 
   private spyOn(key: string){
