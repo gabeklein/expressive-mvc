@@ -67,49 +67,33 @@ export class Observer {
 
       if(Pending.has(value))
         value(key, this);
-      else if(enumerable && !get && !fn(value) || /^[A-Z]/.test(key))
+      else if(enumerable && !get && (!fn(value) || /^[A-Z]/.test(key)))
         this.monitorValue(key, value);
     }
-
-    for(const [key, compute] of this.getters)
-      this.monitorComputed(key, compute);
 
     this.reset();
   }
 
   protected prepareComputed(
     key: string,
-    { get, set }: PropertyDescriptor){
+    desc: PropertyDescriptor){
 
-    if(!get || this.getters.has(key))
+    let sub: Subscriber;
+    let { get: getter, set: setter } = desc;
+    const { state, subject } = this;
+
+    if(!getter || this.getters.has(key))
       return;
 
-    if(!set)
-      set = Oops.AssignToGetter(key).warn;
+    if(!setter)
+      setter = Oops.AssignToGetter(key).warn;
     
     const info: GetterInfo = {
       key,
-      getter: get,
+      getter: getter,
       parent: this,
       priority: 1
     };
-
-    alias(get, `run ${key}`);
-
-    this.getters.set(key, info);
-    this.state[key] = undefined;
-    this.override(key, {
-      get, set, 
-      configurable: true
-    });
-  }
-
-  private monitorComputed(
-    key: string, info: GetterInfo){
-
-    let sub: Subscriber;
-    const set = Oops.AssignToGetter(key).warn;
-    const { state, subject } = this;
 
     const update = (initial?: true) => {
       try {
@@ -138,7 +122,7 @@ export class Observer {
       })
 
       this.override(key, {
-        set, get: () => state[key]
+        set: setter, get: () => state[key]
       })
 
       try {
@@ -164,6 +148,10 @@ export class Observer {
 
     alias(update, `try ${key}`);
     alias(create, `new ${key}`);
+    alias(getter, `run ${key}`);
+
+    this.getters.set(key, info);
+    this.state[key] = undefined;
 
     for(const sub of this.followers)
       if(key in sub){
@@ -178,7 +166,11 @@ export class Observer {
       configurable: true
     })
 
-    this.override(key, { get: create, set })
+    this.override(key, {
+      get: create,
+      set: setter,
+      configurable: true
+    })
   }
 
   public monitorValue(
@@ -197,7 +189,9 @@ export class Observer {
     key: string,
     desc: PropertyDescriptor){
 
-    defineProperty(this.subject, key, { enumerable: true, ...desc });
+    defineProperty(this.subject, key, {
+      enumerable: true, ...desc
+    });
   }
 
   public setter(
