@@ -189,7 +189,7 @@ export abstract class Model {
     /**
      * **React Hook** - Find and subcribe to applicable controller. 
      * 
-     * Distinct from `tap()` as this method fill fire lifecycle events on given controller.
+     * Distinct from `tap()` as lifecycle events will occure on given controller.
     */
     tag(id: Key | ((on: this) => Key)): this;
 
@@ -220,7 +220,7 @@ export abstract class Model {
     static use <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
-     * **React Hook** - Similarly to `use`, will instanciate a controller bound to ambient component.
+     * **React Hook** - Similar to `use`, will instanciate a controller bound to ambient component.
      * Accepts an object of values which are injected into controller prior to activation.
      * 
      * @param data - Data to be applied to controller upon creation.
@@ -237,7 +237,7 @@ export abstract class Model {
     static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
 
     /**
-     * **React Hook** - Fetch most instance of this controller from context, if exists.
+     * **React Hook** - Fetch most instance of this controller from context, if it exists.
      * 
      * @param expect - If true, will throw where controller cannot be found. Otherwise, may return undefined.
      */
@@ -287,7 +287,16 @@ export abstract class Model {
      * 
      * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static tag <T extends Class> (this: T, id: Key | ((on: InstanceOf<T>) => Key)): InstanceOf<T>;
+    static tag <T extends Class> (this: T, id: Key): InstanceOf<T>;
+
+    /**
+     * **React Hook** - Attach to instance of this controller within ambient component.
+     * 
+     * This method will fire lifecycle events on given controller.
+     * 
+     * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
+     */
+    static tag <T extends Class> (this: T, id: (on: InstanceOf<T>) => Key): InstanceOf<T>;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.
