@@ -67,22 +67,6 @@ export namespace Model {
     type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
-
-    /** A component which accepts a specified controller. */
-    type Component <P, T = Model> = FunctionComponent<P, T> | ClassComponent<P, T>;
-
-    /**
-     * A component which accepts a controller as second argument.
-     * Injected as a reference would be while useing `forwardRef()`.
-     */
-    type FunctionComponent <P, T = Model> =
-        (props: P, inject: T) => React.ReactElement<P, any> | React.ReactNode | null;
-    
-    /** 
-     * A class component which accepts a specified controller as second argument.
-     */
-    type ClassComponent <P, T = Model> =
-        new (props: P, inject: T) => React.Component<P, any>;
 }
 
 export interface Model extends Controller, Lifecycle {}
