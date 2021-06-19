@@ -1,5 +1,6 @@
+import { GetterInfo, metaData } from "./compute";
 import { CONTROL, Model, Stateful } from './model';
-import { GetterInfo, metaData, Observer } from './observer';
+import { Observer } from './observer';
 import { alias, create, defineProperty } from './util';
 
 export class Subscriber<T extends Stateful = any> {

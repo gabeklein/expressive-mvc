@@ -1,41 +1,10 @@
-import { Model, Stateful } from './model';
-import { Subscriber } from './subscriber';
-import {
-  alias,
-  createEffect,
-  debounce,
-  defineProperty,
-  entriesIn,
-  fn,
-  getOwnPropertyDescriptor,
-  getPrototypeOf,
-  insertAfter
-} from './util';
+import { computeContext, ComputedInit, implementGetters } from './compute';
+import { Stateful } from './model';
+import { createEffect, defineProperty, entriesIn, fn, getOwnPropertyDescriptor } from './util';
 
-import Oops from './issues';
-
-export type GetterInfo = {
-  key: string;
-  getter: () => any;
-  parent: Observer;
-  priority: number;
-}
-
-const ComputedInfo = new WeakMap<Function, GetterInfo>();
-const ComputedInit = new WeakSet<Function>();
 const Pending = new WeakSet<Function>();
 
-export function metaData(x: Function): GetterInfo;
-export function metaData(x: Function, set: GetterInfo): typeof ComputedInfo;
-export function metaData(x: Function, set?: GetterInfo){
-  if(set)
-    return ComputedInfo.set(x, set);
-  else
-    return ComputedInfo.get(x);
-}
-
 export class Observer {
-  protected getters = new Map<string, GetterInfo>();
   protected waiting = [] as RequestCallback[];
 
   public state = {} as BunchOf<any>;
@@ -51,14 +20,7 @@ export class Observer {
   }
 
   constructor(public subject: Stateful){
-    let scan = subject;
-
-    while(scan !== Model && scan.constructor !== Model){
-      for(let [key, desc] of entriesIn(scan))
-        this.prepareComputed(key, desc);
-
-      scan = getPrototypeOf(scan)
-    }
+    implementGetters(this, subject);
   }
 
   public start(){
@@ -72,105 +34,6 @@ export class Observer {
     }
 
     this.reset();
-  }
-
-  protected prepareComputed(
-    key: string,
-    desc: PropertyDescriptor){
-
-    let sub: Subscriber;
-    let { get: getter, set: setter } = desc;
-    const { state, subject } = this;
-
-    if(!getter || this.getters.has(key))
-      return;
-
-    if(!setter)
-      setter = Oops.AssignToGetter(key).warn;
-    
-    const info: GetterInfo = {
-      key,
-      getter: getter,
-      parent: this,
-      priority: 1
-    };
-
-    const update = (initial?: true) => {
-      try {
-        const value = info.getter.call(sub.proxy);
-
-        if(state[key] == value)
-          return;
-
-        if(!initial)
-          this.update(key);
-
-        return state[key] = value;
-      }
-      catch(err){
-        Oops.ComputeFailed(subject.constructor.name, key, false).warn();
-        throw err;
-      }
-    }
-
-    const create = (early?: boolean) => {
-      sub = new Subscriber(subject, debounce(update), info);
-
-      defineProperty(state, key, {
-        value: undefined,
-        writable: true
-      })
-
-      this.override(key, {
-        set: setter, get: () => state[key]
-      })
-
-      try {
-        return update(true);
-      }
-      catch(e){
-        if(early)
-          Oops.ComputedEarly(key).warn();
-
-        throw e;
-      }
-      finally {
-        sub.listen();
-
-        for(const key in sub.following){
-          const compute = this.getters.get(key);
-
-          if(compute && compute.priority >= info.priority)
-            info.priority = compute.priority + 1;
-        }
-      }
-    }
-
-    alias(update, `try ${key}`);
-    alias(create, `new ${key}`);
-    alias(getter, `run ${key}`);
-
-    this.getters.set(key, info);
-    this.state[key] = undefined;
-
-    for(const sub of this.followers)
-      if(key in sub){
-        this.waiting.push(() => create());
-        return;
-      }
-
-    ComputedInit.add(create);
-
-    defineProperty(state, key, {
-      get: create,
-      configurable: true
-    })
-
-    this.override(key, {
-      get: create,
-      set: setter,
-      configurable: true
-    })
   }
 
   public monitorValue(
@@ -270,7 +133,9 @@ export class Observer {
   private sync(){
     const effects = new Set<RequestCallback>();
     const handled = new Set<string>();
-    const pending = [] as Callback[];
+
+    const { isComputed, flushComputed } =
+      computeContext(this, handled);
 
     const add = (key: string) => {
       if(handled.has(key))
@@ -281,27 +146,13 @@ export class Observer {
       for(const subscription of this.followers)
         if(key in subscription){
           const request = subscription[key];
-          const compute = metaData(request);
-    
-          if(!compute)
-            effects.add(request);
-          else if(compute.parent !== this)
-            request();
-          else
-            insertAfter(pending, request,
-              sib => compute.priority > metaData(sib).priority
-            )
+          
+          isComputed(request) || effects.add(request);
         }
     }
 
     const send = () => {
-      while(pending.length){
-        const compute = pending.shift()!;
-        const { key } = metaData(compute);
-
-        if(!handled.has(key))
-          compute();
-      }
+      flushComputed();
 
       this.pending = undefined;
 
