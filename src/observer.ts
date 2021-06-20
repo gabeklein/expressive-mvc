@@ -1,6 +1,6 @@
-import { computeContext, ComputedInit, implementGetters } from './compute';
+import { computeContext, ensureValue, implementGetters } from './compute';
 import { Stateful } from './model';
-import { createEffect, defineProperty, entriesIn, fn, getOwnPropertyDescriptor } from './util';
+import { createEffect, defineProperty, entriesIn, fn } from './util';
 
 const Pending = new WeakSet<Function>();
 
@@ -105,13 +105,7 @@ export class Observer {
     const listener: BunchOf<RequestCallback> = {};
 
     for(const key of keys){
-      type Initial = (early?: boolean) => void;
-
-      const desc = getOwnPropertyDescriptor(this.subject, key);
-      const getter = desc && desc.get;
-
-      if(ComputedInit.has(getter!))
-        (getter as Initial)(true);
+      ensureValue(this.subject, key);
 
       listener[key] = handler;
     }

@@ -1,7 +1,7 @@
-import { Observer } from "./observer";
-import { Model, Stateful } from "./model";
-import { Subscriber } from "./subscriber";
-import { alias, debounce, defineProperty, entriesIn, getPrototypeOf, insertAfter } from "./util";
+import { Model, Stateful } from './model';
+import { Observer } from './observer';
+import { Subscriber } from './subscriber';
+import { alias, debounce, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter } from './util';
 
 import Oops from './issues';
 
@@ -138,6 +138,16 @@ export function prepareComputed(
     set: setter,
     configurable: true
   })
+}
+
+export function ensureValue(on: {}, key: string){
+  type Initial = (early?: boolean) => void;
+
+  const desc = getOwnPropertyDescriptor(on, key);
+  const getter = desc && desc.get;
+
+  if(ComputedInit.has(getter!))
+    (getter as Initial)(true);
 }
 
 export function computeContext(
