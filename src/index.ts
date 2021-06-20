@@ -8,7 +8,7 @@ export {
   setComputed as from,
   setMemo as memo,
   setIgnored as lazy
-} from './modifiers';
+} from './instructions';
 
 export {
   Consumer,

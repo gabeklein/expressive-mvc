@@ -4,7 +4,7 @@ import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
 import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model, Stateful } from './model';
-import { PendingContext } from './modifiers';
+import { PendingContext } from './instructions';
 import { Subscriber } from './subscriber';
 import { defineLazy, fn, values } from './util';
 

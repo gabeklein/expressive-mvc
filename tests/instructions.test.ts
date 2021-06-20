@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react-hooks';
 
 import { act, from, Issue, lazy, Model, on, ref, use } from './adapter';
 
-describe("on modifier", () => {
+describe("on instruction", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
@@ -59,7 +59,7 @@ describe("on modifier", () => {
   })
 })
 
-describe("use modifier", () => {
+describe("use instruction", () => {
   const WORLD = "Hello World!";
 
   class Parent extends Model {
@@ -89,7 +89,7 @@ describe("use modifier", () => {
   })
 })
 
-describe("ref modifier", () => {
+describe("ref instruction", () => {
   class Subject extends Model {
     checkValue?: any = undefined;
   
@@ -151,7 +151,7 @@ describe("ref modifier", () => {
   })
 })
 
-describe("act modifier", () => {
+describe("act instruction", () => {
   class Test extends Model {
     test = act(this.wait);
 
@@ -211,7 +211,7 @@ describe("act modifier", () => {
   })
 })
 
-describe("lazy modifier", () => {
+describe("lazy instruction", () => {
   class Test extends Model {
     lazy = lazy("foo");
     eager = "bar";
@@ -273,7 +273,7 @@ describe("lazy modifier", () => {
   });
 })
 
-describe("from modifier", () => {
+describe("from instruction", () => {
   class Hello extends Model {
     friend = "World";
 
