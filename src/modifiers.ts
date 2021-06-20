@@ -1,3 +1,4 @@
+import { prepareComputed } from './compute';
 import { Lookup } from './context';
 import { Model, CONTROL } from './model';
 import { Observer } from './observer';
@@ -158,5 +159,11 @@ export function setAction(action: AsyncFn){
         throw Oops.SetActionProperty(key);
       }
     });
+  })
+}
+
+export function setComputed(fn: (on?: Model) => any){
+  return Observer.define((key, on) => {
+    prepareComputed(on, key, fn);
   })
 }

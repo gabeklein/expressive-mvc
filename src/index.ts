@@ -5,6 +5,7 @@ export {
   setEffect as on,
   setRefMediator as ref,
   setAction as act,
+  setComputed as from,
   setMemo as memo,
   setIgnored as lazy
 } from './modifiers';

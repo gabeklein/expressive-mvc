@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react-hooks';
-import { act, Issue, Model, ref, on, use, lazy } from './adapter';
+
+import { act, from, Issue, lazy, Model, on, ref, use } from './adapter';
 
 describe("on modifier", () => {
   class Subject extends Model {
@@ -270,4 +271,27 @@ describe("lazy modifier", () => {
     expect(subscriberOverlay).not.toContain("lazy");
     expect(subscriberOverlay).toContain("eager");
   });
+})
+
+describe("from modifier", () => {
+  class Hello extends Model {
+    friend = "World";
+
+    greeting = from(this.generateGreeting);
+
+    generateGreeting(){
+      return `Hello ${this.friend}!`;
+    }
+  }
+
+  it("will create a computed property", async () => {
+    const test = Hello.create();
+
+    expect(test.greeting).toBe("Hello World!");
+
+    test.friend = "Foo";
+    await test.requestUpdate(true);
+
+    expect(test.greeting).toBe("Hello Foo!");
+  })
 })

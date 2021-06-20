@@ -16,6 +16,7 @@ export {
     setEffect as on,
     setReference as ref,
     setAction as act,
+    setComputed as from,
     setMemo as memo,
     setIgnored as lazy
 } from "./modifiers";
