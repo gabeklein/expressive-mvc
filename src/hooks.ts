@@ -119,6 +119,16 @@ function useRefresh<T>(
   return state[0];
 }
 
+export function useLazy(
+  Type: typeof Model, args: any[]){
+
+  const instance = useMemo(() => Type.create(...args), []);
+
+  useEffect(() => () => instance.destroy(), []);
+
+  return instance;
+}
+
 export function usePassive<T extends typeof Model>(
   target: T,
   select?: boolean | string | Select){
@@ -171,16 +181,6 @@ export function useSubscriber<T extends Stateful>(
   useLifecycleEffect(hook.event);
   
   return hook.proxy;
-}
-
-export function useLazy(
-  Type: typeof Model, args: any[]){
-
-  const instance = useMemo(() => Type.create(...args), []);
-
-  useEffect(() => () => instance.destroy(), []);
-
-  return instance;
 }
 
 export function useModel(
