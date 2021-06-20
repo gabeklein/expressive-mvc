@@ -33,21 +33,21 @@ export function implementGetters(
 
   while(scan !== Model && scan.constructor !== Model){
     for(let [key, desc] of entriesIn(scan))
-      prepareComputed.call(on, key, desc, defined)
+      prepareComputed(on, key, desc, defined)
 
     scan = getPrototypeOf(scan)
   }
 }
 
 export function prepareComputed(
-  this: Observer,
+  on: Observer,
   key: string,
   desc: PropertyDescriptor,
   defined: Map<string, GetterInfo>){
 
   let sub: Subscriber;
   let { get: getter, set: setter } = desc;
-  const { state, subject } = this;
+  const { state, subject } = on;
 
   if(!getter || defined.has(key))
     return;
@@ -58,9 +58,12 @@ export function prepareComputed(
   const info: GetterInfo = {
     key,
     getter: getter,
-    parent: this,
+    parent: on,
     priority: 1
   };
+
+  defined.set(key, info);
+  on.state[key] = undefined;
 
   const update = (initial?: true) => {
     try {
@@ -70,7 +73,7 @@ export function prepareComputed(
         return;
 
       if(!initial)
-        this.update(key);
+        on.update(key);
 
       return state[key] = value;
     }
@@ -88,8 +91,9 @@ export function prepareComputed(
       writable: true
     })
 
-    this.override(key, {
-      set: setter, get: () => state[key]
+    on.override(key, {
+      get: () => state[key],
+      set: setter
     })
 
     try {
@@ -117,12 +121,9 @@ export function prepareComputed(
   alias(create, `new ${key}`);
   alias(getter, `run ${key}`);
 
-  defined.set(key, info);
-  this.state[key] = undefined;
-
-  for(const sub of this.listeners)
+  for(const sub of on.listeners)
     if(key in sub){
-      this.waiting.push(() => create());
+      on.waiting.push(() => create());
       return;
     }
 
@@ -133,7 +134,7 @@ export function prepareComputed(
     configurable: true
   })
 
-  this.override(key, {
+  on.override(key, {
     get: create,
     set: setter,
     configurable: true
