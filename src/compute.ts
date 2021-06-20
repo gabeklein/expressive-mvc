@@ -7,14 +7,13 @@ import Oops from './issues';
 
 export type GetterInfo = {
   key: string;
-  getter: () => any;
   parent: Observer;
   priority: number;
 }
 
-export const ComputedInfo = new WeakMap<Function, GetterInfo>();
-export const ComputedFor = new WeakMap<Observer, Map<string, GetterInfo>>();
-export const ComputedInit = new WeakSet<Function>();
+const ComputedInfo = new WeakMap<Function, GetterInfo>();
+const ComputedFor = new WeakMap<Observer, Map<string, GetterInfo>>();
+const ComputedInit = new WeakSet<Function>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): void;
@@ -28,46 +27,50 @@ export function metaData(x: Function, set?: GetterInfo){
 export function implementGetters(
   on: Observer, subject: Stateful){
   
-  const defined = new Map<string, GetterInfo>();
   let scan = subject;
 
   while(scan !== Model && scan.constructor !== Model){
-    for(let [key, desc] of entriesIn(scan))
-      prepareComputed(on, key, desc, defined)
+    for(let [key, { get, set }] of entriesIn(scan))
+      if(get)
+        prepareComputed(on, key, get, set);
 
     scan = getPrototypeOf(scan)
   }
 }
 
+function getRegister(on: Observer){
+  let defined = ComputedFor.get(on)!;
+  
+  if(!defined)
+    ComputedFor.set(on, defined = new Map());
+
+  return defined;
+}
+
 export function prepareComputed(
   on: Observer,
   key: string,
-  desc: PropertyDescriptor,
-  defined: Map<string, GetterInfo>){
+  getter: (on?: any) => any,
+  setter?: (to: any) => void){
 
   let sub: Subscriber;
-  let { get: getter, set: setter } = desc;
+  const defined = getRegister(on);
   const { state, subject } = on;
 
-  if(!getter || defined.has(key))
+  if(defined.has(key))
     return;
 
-  if(!setter)
-    setter = Oops.AssignToGetter(key).warn;
-  
   const info: GetterInfo = {
     key,
-    getter: getter,
     parent: on,
     priority: 1
   };
 
   defined.set(key, info);
-  on.state[key] = undefined;
 
   const update = (initial?: true) => {
     try {
-      const value = info.getter.call(sub.proxy);
+      const value = getter.call(sub.proxy, sub.proxy);
 
       if(state[key] == value)
         return;
@@ -121,6 +124,9 @@ export function prepareComputed(
   alias(create, `new ${key}`);
   alias(getter, `run ${key}`);
 
+  if(!setter)
+    setter = Oops.AssignToGetter(key).warn;
+
   for(const sub of on.listeners)
     if(key in sub){
       on.waiting.push(() => create());
@@ -131,7 +137,8 @@ export function prepareComputed(
 
   defineProperty(state, key, {
     get: create,
-    configurable: true
+    configurable: true,
+    enumerable: true
   })
 
   on.override(key, {
