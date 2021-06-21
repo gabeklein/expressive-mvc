@@ -19,7 +19,7 @@
   "main": "lib/index.js",
   "types": "types/index.d.ts",
   "files": [
-    "lib/index.js",
+    "lib",
     "types"
   ],
   "scripts": {
