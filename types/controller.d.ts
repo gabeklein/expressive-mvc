@@ -1,9 +1,9 @@
 import { Model } from './model';
 import { Selector } from './selector';
+import { Callback, EffectCallback, UpdateCallback } from './types';
 
-type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
-type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
-type CallbackFor<S extends Selector.Function<any>, T> = (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void;
+type CallbackFor<S extends Selector.Function<any>, T> =
+  (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void;
 
 interface EventDispatch {
   // Explicit all

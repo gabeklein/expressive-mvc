@@ -1,15 +1,13 @@
 import React from 'react';
 
 import Controller from './controller';
-import { Selector } from './selector';
 import Lifecycle from './lifecycle';
+import { Selector } from './selector';
+import { Class, InstanceOf, Key } from './types';
 
 type RefFunction = (e: HTMLElement | null) => void;
-type Expecting<A extends any[]> = new(...args: A) => any;
 
 export namespace Model {
-    type SelectFunction<T> = (arg: Required<T>) => any;
-
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
 
@@ -68,23 +66,7 @@ export namespace Model {
      */
     type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
-    type SelectField<T> = SelectFunction<Omit<T, keyof Model>>;
-
-    /** A component which accepts a specified controller. */
-    type Component <P, T = Model> = FunctionComponent<P, T> | ClassComponent<P, T>;
-
-    /**
-     * A component which accepts a controller as second argument.
-     * Injected as a reference would be while useing `forwardRef()`.
-     */
-    type FunctionComponent <P, T = Model> =
-        (props: P, inject: T) => React.ReactElement<P, any> | React.ReactNode | null;
-    
-    /** 
-     * A class component which accepts a specified controller as second argument.
-     */
-    type ClassComponent <P, T = Model> =
-        new (props: P, inject: T) => React.Component<P, any>;
+    type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
 }
 
 export interface Model extends Controller, Lifecycle {}
@@ -173,31 +155,55 @@ export abstract class Model {
      */
     didCreate?(): void;
 
+    /**
+     * Callback for when a controller is about to expire.
+     */
+    willDestroy?(): void;
+
     /** Attaches this controller to a component. */
     tap(): this;
 
     /** Tracks specific key of this controller within a component. */
-    tap <K extends Model.Fields<this>> (key?: K): this[K];
+    tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
+    tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
-    /** Tracks specific key of this controller within a component. */
-    tap <K extends Model.SelectField<this>> (key?: K): ReturnType<K>;
+    tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
+    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
 
     /**
-     * **React Hook** - Find and subcribe to applicable controller. 
+     * **React Hook** - Attach to instance of this controller within ambient component.
      * 
-     * Distinct from `tap()` as this method fill fire lifecycle events on given controller.
+     * This method will fire lifecycle events on given controller.
      * 
-     * @param args - Arguments passed to controller-lifecycle methods.
-    */
-    sub(...args: any[]): this;
+     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
+     */
+     tag(id?: Key): this;
+
+     /**
+      * **React Hook** - Attach to instance of this controller within ambient component.
+      * 
+      * This method will fire lifecycle events on given controller.
+      * 
+      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
+      */
+     tag(id: (on: this) => Key | void): this;
+
+    /**
+     * Creates a new instance of this controller.
+     * 
+     * Beyond `new this(...)`, method will activate managed-state.
+     * 
+     * @param args - arguments sent to constructor
+     */
+    static create <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Spawn and maintain a controller from within a component.
      * 
-     * Differs from `use()` being without a subscription and lifecycle events.
+     * Differs from `use()` in lacking subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
      */
-    static memo <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
+    static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
@@ -206,10 +212,10 @@ export abstract class Model {
      * 
      * @param args - Arguments passed to constructor of `this`
      */
-    static use <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
+    static use <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
-     * **React Hook** - Similarly to `use`, will instanciate a controller bound to ambient component.
+     * **React Hook** - Similar to `use`, will instanciate a controller bound to ambient component.
      * Accepts an object of values which are injected into controller prior to activation.
      * 
      * @param data - Data to be applied to controller upon creation.
@@ -226,7 +232,7 @@ export abstract class Model {
     static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
 
     /**
-     * **React Hook** - Fetch most instance of this controller from context, if exists.
+     * **React Hook** - Fetch most instance of this controller from context, if it exists.
      * 
      * @param expect - If true, will throw where controller cannot be found. Otherwise, may return undefined.
      */
@@ -272,11 +278,20 @@ export abstract class Model {
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
      * 
-     * Distinct from `tap()` as this method will fire lifecycle events on given controller.
+     * This method will fire lifecycle events on given controller.
      * 
-     * @param args - Arguments passed to controller-lifecycle methods.
+     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static sub <T extends Class> (this: T, ...args: any[]): InstanceOf<T>;
+    static tag <T extends Class, I extends InstanceOf<T>> (this: T, id?: Key | ((on: I) => Key | void)): I;
+
+    /**
+     * **React Hook** - Attach to instance of this controller within ambient component.
+     * 
+     * This method will fire lifecycle events on given controller.
+     * 
+     * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
+     */
+    static tag <T extends Class> (this: T, id: (on: InstanceOf<T>) => Key | void): InstanceOf<T>;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.
@@ -295,37 +310,9 @@ export abstract class Model {
     static meta <T extends Class, K extends Model.SelectField<T>> (this: T, key?: K): ReturnType<K>;
 
     /**
-     * Produces a turn-key HOC acting as a context consumer for `this`.
-     * 
-     * Mainly for use with class-components which cannot access controllers via hooks.
-     * 
-     * @param component - Compatible component-type.
-     */
-    static hoc <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
-
-    /**
-     * Produces a turn-key HOC acting as a context provider for `this`.
-     * Will create instance of controller automatically, consuming props of resulting HOC. 
-     * 
-     * Will also inject created instance to given component via `context` parameter.
-     * 
-     * @param component - Compatible component-type.
-     */
-    static wrap <T extends Model, P> (component: Model.Component<P, T>): React.FC<P>;
-
-    /**
      * **React Hook** - Locate most relevant instance of this type in context.
      */
     static find <T extends Class>(this: T): InstanceOf<T>;
-
-    /**
-     * Creates a new instance of this controller.
-     * 
-     * Beyond `new this(...)`, method will activate managed-state.
-     * 
-     * @param args - arguments sent to constructor
-     */
-    static create <A extends any[], T extends Expecting<A>> (this: T, ...args: A): InstanceOf<T>;
 
     /**
      * Static equivalent of `x instanceof this`.

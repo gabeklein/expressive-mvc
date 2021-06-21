@@ -1,10 +1,9 @@
-import type { Model } from './model';
-
+import { prepareComputed } from './compute';
 import { Lookup } from './context';
-import { Controller } from './controller';
+import { Model, CONTROL } from './model';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
-import { alias, createEffect, define, defineLazy, defineProperty } from './util';
+import { alias, define, defineLazy, defineProperty } from './util';
 
 import Oops from './issues';
 
@@ -13,13 +12,12 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Observer.define((key, { subject }) => {
+  return Observer.define((key, on) => {
     const instance = new Peer() as InstanceOf<T>;
 
-    define(subject, key, instance);
-
-    ParentRelationship.set(instance, subject);
-    Controller.get(instance);
+    on.register(key, instance);
+    ParentRelationship.set(instance, on.subject);
+    instance[CONTROL];
 
     if(callback)
       callback(instance);
@@ -75,17 +73,19 @@ export function setPeer<T extends typeof Model>
   })
 }
 
-export function setRefObject<T = any>
+export function setRefMediator<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return Observer.define((key, on) => {
-    on.assign(key, {
-      value: defineProperty({}, "current", {
-        get: on.getter(key),
-        set: on.setter(key,
-          effect && createEffect(effect)
-        )
-      })
+    const refObjectFunction = on.setter(key, effect);
+
+    defineProperty(refObjectFunction, "current", {
+      set: refObjectFunction,
+      get: () => on.state[key]
+    })
+
+    on.override(key, {
+      value: refObjectFunction
     });
   })
 }
@@ -93,13 +93,13 @@ export function setRefObject<T = any>
 export function setEffect<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
-  if(!effect){
-    effect = value;
-    value = undefined;
-  }
-
   return Observer.define((key, on) => {
-    on.monitorValue(key, value, createEffect(effect!));
+    if(!effect){
+      effect = value;
+      value = undefined;
+    }
+
+    on.register(key, value, effect);
   })
 }
 
@@ -116,46 +116,12 @@ export function setMemo(factory: () => any, defer?: boolean){
 
 export function setIgnored(value: any){
   return Observer.define((key, on) => {
-    (on.subject as any)[key] = value;
-  })
-}
+    const real = on.subject as any;
 
-export function setTuple<T extends any[]>
-  (...values: T): T {
-
-  if(values.length == 0)
-    values = undefined as any;
-  else if(values.length == 1 && typeof values[0] == "object")
-    values = values[0] as any;
-  
-  return Observer.define((key, on) => {
-    const source = on.state;
-
-    const setTuple = (next: any) => {
-      const current: any = source[key];
-      let update = false;
-
-      if(!current){
-        update = true;
-        source[key] = current;
-      }
-      else 
-        for(const k in current)
-          if(current[k] !== next[k]){
-            current[k] = next[k];
-            update = true;
-          }
-
-      if(update)
-        on.update(key);
-    };
-
-    source[key] = values;
-    on.assign(key, {
-      get: on.getter(key),
-      set: alias(setTuple, `set ${key}`)
+    real[key] = value;
+    define(on.state, key, {
+      get: () => real[key]
     });
-
   })
 }
 
@@ -187,11 +153,17 @@ export function setAction(action: AsyncFn){
       get: () => pending
     })
 
-    on.assign(key, {
+    on.override(key, {
       get: () => invoke,
       set: () => {
         throw Oops.SetActionProperty(key);
       }
     });
+  })
+}
+
+export function setComputed(fn: (on?: Model) => any){
+  return Observer.define((key, on) => {
+    prepareComputed(on, key, fn);
   })
 }

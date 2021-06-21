@@ -1,3 +1,5 @@
+import { Key } from "./types";
+
 /**
  * Model-Component Lifecycle
  * 
@@ -6,26 +8,23 @@
  * call these respectively to that component's lifecycle.
  */
 interface Lifecycle {
-  didMount?(...args: any[]): void;
-  didRender?(...args: any[]): void;
-  willRender?(...args: any[]): void;
-  willReset?(...args: any[]): void;
-  willUpdate?(...args: any[]): void;
-  willMount?(...args: any[]): void;
-  willUnmount?(...args: any[]): void;
-  willDestroy?(): void;
+  didMount?(tag?: Key): void;
+  willRender?(tag?: Key): void;
+  willUpdate?(tag?: Key): void;
+  willMount?(tag?: Key): void;
+  willUnmount?(tag?: Key): void;
 
-  elementDidMount?(...args: any[]): void;
-  elementWillRender?(...args: any[]): void;
-  elementWillUpdate?(...args: any[]): void;
-  elementWillMount?(...args: any[]): void;
-  elementWillUnmount?(...args: any[]): void;
+  elementDidMount?(tag: Key): void;
+  elementWillRender?(tag: Key): void;
+  elementWillUpdate?(tag: Key): void;
+  elementWillMount?(tag: Key): void;
+  elementWillUnmount?(tag: Key): void;
 
-  componentDidMount?(...args: any[]): void;
-  componentWillRender?(...args: any[]): void;
-  componentWillUpdate?(...args: any[]): void;
-  componentWillMount?(...args: any[]): void;
-  componentWillUnmount?(...args: any[]): void;
+  componentDidMount?(): void;
+  componentWillRender?(): void;
+  componentWillUpdate?(): void;
+  componentWillMount?(): void;
+  componentWillUnmount?(): void;
 }
 
 export = Lifecycle;

@@ -6,6 +6,7 @@ const {
   defineProperty,
   entries,
   getPrototypeOf,
+  getOwnPropertyNames,
   getOwnPropertyDescriptor,
   getOwnPropertyDescriptors,
   keys,
@@ -19,6 +20,7 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
+  getOwnPropertyNames,
   keys,
   values
 }
@@ -49,14 +51,12 @@ export function fn(x: any): x is Function {
 }
 
 export function alias<T extends Function>(
-  fn: T, displayName: string): T {
+  fn: T, displayName: string){
 
-  return assign(fn, { displayName });
+  assign(fn, { displayName });
 }
 
-export function entriesIn(
-  object: {}): [string, PropertyDescriptor][] {
-
+export function entriesIn(object: {}){
   return entries(getOwnPropertyDescriptors(object))
 }
 

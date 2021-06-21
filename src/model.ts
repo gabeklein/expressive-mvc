@@ -1,50 +1,69 @@
 import type Public from '../types';
 
+import { createBindings } from './binding';
 import { useLookup } from './context';
-import { Controllable, Controller, DISPATCH } from './controller';
-import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
-import { define, entries, fn, getPrototypeOf } from './util';
+import { Controller } from './controller';
+import { KeyFactory, useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
+import { LOCAL, Subscriber } from './subscriber';
+import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
-import Oops from './issues';
-
-type Select = <T>(from: T) => T[keyof T];
+export const CONTROL = Symbol("controller");
+export type Stateful = { [CONTROL]: Controller };
 
 export interface Model extends Public {};
-
 export class Model {
-  [DISPATCH]: Controller;
-  static [DISPATCH]?: Controller;
+  [CONTROL]: Controller;
+  [LOCAL]?: Subscriber;
   
   constructor(){
-    const cb = this.didCreate;
+    const control = new Controller(this);
 
-    const dispatch = this[DISPATCH] =
-      new Controller(this);
+    for(const [key, value] of entries(control))
+      if(fn(value))
+        define(this, key, value);
 
-    if(cb)
-      dispatch.requestUpdate(cb.bind(this));
+    control.do = (fn: () => Callback) => {
+      let release: Callback;
+      this.requestUpdate(() => release = fn());
+      return () => release();
+    }
+
+    defineLazy(this, CONTROL, () => {
+      delete (control as any).do;
+      control.start();
+
+      if(this.didCreate)
+        this.didCreate();
+
+      return control;
+    })
 
     define(this, "get", this);
     define(this, "set", this);
-
-    for(const [key, value] of entries(dispatch))
-      if(fn(value))
-        define(this, key, value);
   }
 
-  get bind(): never {
-    throw Oops.BindNotAvailable();
+  get bind(){
+    const proxy = createBindings(this);
+    define(this, "bind", proxy);
+    return proxy as any;
+  }
+  
+  tap(): this;
+  tap <K extends keyof this> (key: K, expect?: boolean): this[K];
+  tap <K extends keyof this> (key: K, expect: true): Exclude<this[K], undefined>;
+  tap <K extends Select> (key: K, expect?: boolean): ReturnType<K>;
+  tap <K extends Select> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+  tap(path?: string | Select, expect?: boolean) {
+    return useWatcher(this, path, expect);
   }
 
-  public tap(path?: string | Select, expect?: boolean){
-    return useWatcher(this, path, expect) as any;
+  tag(id?: Key): this;
+  tag(id: KeyFactory<this>): this;
+  tag(id?: Key | KeyFactory<this>){
+    return useSubscriber(this, id) as this;
   }
 
-  public sub(...args: any[]){
-    return useSubscriber(this, args) as any;
-  }
-
-  public destroy(){
+  destroy(){
     if(this.willDestroy)
       this.willDestroy();
   }
@@ -55,7 +74,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    instance[DISPATCH].start();
+    instance[CONTROL];
 
     return instance;
   }
@@ -78,7 +97,7 @@ export class Model {
     return instance;
   }
 
-  static memo(...args: any[]){
+  static new(...args: any[]){
     return useLazy(this, args);
   }
 
@@ -86,21 +105,18 @@ export class Model {
     return usePassive(this, key);
   }
 
-  static tap(key?: string | Select, expect?: boolean){
-    return this.find(true).tap(key, expect);
+  static tap(key?: string | Select, expect?: boolean): any {
+    return useWatcher(this.find(true), key, expect);
   }
 
-  static sub(...args: any[]){
-    return this.find(true).sub(...args);
+  static tag(id?: Key | ((target: Model) => Key | undefined)){
+    return useSubscriber(this.find(true), id);
   }
+
+  static [CONTROL]: Controller;
 
   static meta(path: string | Select): any {
-    return useWatcher(() => {
-      if(!this[DISPATCH])
-        this[DISPATCH] = new Controller(this);
-
-      return this as Controllable;
-    }, path);
+    return useWatcher(this, path);
   }
 
   static find(strict: true): Model;
@@ -125,3 +141,9 @@ export class Model {
       return I;
   }
 }
+
+defineLazy(Model, CONTROL, function(){
+  const dispatch = new Controller(this);
+  dispatch.start();
+  return dispatch;
+})

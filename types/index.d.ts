@@ -1,10 +1,7 @@
-/// <reference path="common.d.ts" />
-
 export {
     Model,
     Model as default,
-    Singleton,
-    Singleton as GC
+    Singleton
 } from './model';
 
 export {
@@ -16,17 +13,13 @@ export {
     setChild as use,
     setParent as parent,
     setPeer as tap,
-    setEffect as watch,
+    setEffect as on,
     setReference as ref,
     setAction as act,
-    setComponent as hoc,
-    setParentComponent as wrap,
-    setBoundComponent as bind,
+    setComputed as from,
     setMemo as memo,
-    setValue as def,
-    setIgnored as lazy,
-    setTuple as tuple
-} from "./modifiers";
+    setIgnored as lazy
+} from "./instructions";
 
 export {
     Selector

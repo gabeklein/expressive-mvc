@@ -1,25 +1,27 @@
-import { act, Issue, Model, ref, set, use } from './adapter';
+import { renderHook } from '@testing-library/react-hooks';
 
-describe("set Directive", () => {
+import { act, from, Issue, lazy, Model, on, ref, use } from './adapter';
+
+describe("on instruction", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
-    test1 = set<number>(value => {
+    test1 = on<number>(value => {
       this.checkResult = value + 1;
     });
   
-    test2 = set<number>(value => {
+    test2 = on<number>(value => {
       return () => {
         this.checkResult = true;
       }
     });
   
-    test3 = set("foo", value => {
+    test3 = on("foo", value => {
       this.checkResult = value;
     });
   }
   
-  it('invokes callback of set property', async () => {
+  it('will invoke callback on property set', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -33,7 +35,7 @@ describe("set Directive", () => {
     expect(callback).toBeCalledWith(1, "test1");
   })
   
-  it('invokes callback on property overwrite', async () => {
+  it('will invoke return-callback on overwrite', async () => {
     const state = Subject.create();
   
     state.test2 = 1;
@@ -46,7 +48,7 @@ describe("set Directive", () => {
     expect(state.checkResult).toBe(true);
   })
   
-  it('may assign a default value', async () => {
+  it('will assign a default value', async () => {
     const state = Subject.create();
   
     expect(state.test3).toBe("foo");
@@ -57,7 +59,7 @@ describe("set Directive", () => {
   })
 })
 
-describe("use Directive", () => {
+describe("use instruction", () => {
   const WORLD = "Hello World!";
 
   class Parent extends Model {
@@ -78,16 +80,16 @@ describe("use Directive", () => {
     parent = Parent.create();
   })
 
-  it('created instance of child', () => {
+  it('will create instance of child', () => {
     expect(parent.child).toBeInstanceOf(Child);
   })
 
-  it('ran child callback on create', () => {
+  it('will run child callback on create', () => {
     expect(parent.hello).toBe(WORLD);
   })
 })
 
-describe("ref Directive", () => {
+describe("ref instruction", () => {
   class Subject extends Model {
     checkValue?: any = undefined;
   
@@ -104,17 +106,27 @@ describe("ref Directive", () => {
     })
   }
   
-  it('watches "current" of ref property', async () => {
+  it('will watch "current" of property', async () => {
     const state = Subject.create();
     const callback = jest.fn()
   
     state.once("ref1", callback);
-    state.ref1.current = "value1";
+    state.ref1.current = "foobar";
     await state.requestUpdate(true);
-    expect(callback).toBeCalledWith("value1", "ref1");
+    expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
-  it('invokes callback of ref property', async () => {
+  it('will update "current" when property invoked', async () => {
+    const state = Subject.create();
+    const callback = jest.fn()
+  
+    state.once("ref1", callback);
+    state.ref1("foobar");
+    await state.requestUpdate(true);
+    expect(callback).toBeCalledWith("foobar", "ref1");
+  })
+  
+  it('will invoke callback if exists', async () => {
     const state = Subject.create();
     const targetValue = Symbol("inserted object");
     const callback = jest.fn();
@@ -127,7 +139,7 @@ describe("ref Directive", () => {
     expect(callback).toBeCalledWith(targetValue, "ref2");
   })
   
-  it('invokes callback on ref overwrite', async () => {
+  it('will invoke return-callback on overwrite', async () => {
     const state = Subject.create();
   
     state.ref3.current = 1;
@@ -139,7 +151,7 @@ describe("ref Directive", () => {
   })
 })
 
-describe("act directive", () => {
+describe("act instruction", () => {
   class Test extends Model {
     test = act(this.wait);
 
@@ -150,7 +162,7 @@ describe("act directive", () => {
     }
   }
 
-  it("passes arguments to wrapped function", async () => {
+  it("will pass arguments to wrapped function", async () => {
     const control = Test.create();
     const input = Symbol("unique");
     const output = control.test(input);
@@ -158,7 +170,7 @@ describe("act directive", () => {
     await expect(output).resolves.toBe(input);
   });
 
-  it("sets active to true for run-duration", async () => {
+  it("will set active to true for run-duration", async () => {
     const { test } = Test.create();
 
     expect(test.active).toBe(false);
@@ -170,7 +182,7 @@ describe("act directive", () => {
     expect(test.active).toBe(false);
   });
 
-  // non-deterministic; may fail due to race condition.
+  // non-deterministic; occasionally fails due to race condition.
   it.skip("emits method key before/after activity", async () => {
     let update: string[] | false;
     const { test, requestUpdate } = Test.create();
@@ -190,11 +202,96 @@ describe("act directive", () => {
     expect(update).toContain("test");
   });
 
-  it("throws immediately if already in-progress", () => {
+  it("will throw immediately if already in-progress", () => {
     const { test } = Test.create();
     const expected = Issue.DuplicateAction("test");
 
     test();
     expect(() => test()).rejects.toThrowError(expected);
+  })
+})
+
+describe("lazy instruction", () => {
+  class Test extends Model {
+    lazy = lazy("foo");
+    eager = "bar";
+  }
+
+  it("will set starting value", async () => {
+    const state = Test.create();
+
+    expect(state.lazy).toBe("foo");
+  });
+
+  it("will ignore updates", async () => {
+    const state = Test.create();
+
+    expect(state.lazy).toBe("foo");
+    
+    state.lazy = "bar";
+    await state.requestUpdate(false);
+
+    expect(state.lazy).toBe("bar");
+    
+    state.eager = "foo";
+    await state.requestUpdate(true);
+  });
+
+  it("will include key on import", () => {
+    const state = Test.create();
+    const assign = {
+      lazy: "bar",
+      eager: "foo"
+    };
+    
+    state.import(assign);
+    expect(state).toMatchObject(assign);
+  });
+
+  it("will include value on export", async () => {
+    const state = Test.create();
+    const values = state.export();
+
+    expect(values).toMatchObject({
+      lazy: "foo",
+      eager: "bar"
+    })
+  });
+
+  it("will not include in subscriber", async () => {
+    const element = renderHook(() => Test.use());
+    const proxy = element.result.current;
+    const subscriberOverlay =
+      Object.getOwnPropertyNames(proxy);
+
+    // lazy should be still be visible
+    expect(proxy.lazy).toBe("foo");
+
+    // there should be no spy getter however
+    expect(subscriberOverlay).not.toContain("lazy");
+    expect(subscriberOverlay).toContain("eager");
+  });
+})
+
+describe("from instruction", () => {
+  class Hello extends Model {
+    friend = "World";
+
+    greeting = from(this.generateGreeting);
+
+    generateGreeting(){
+      return `Hello ${this.friend}!`;
+    }
+  }
+
+  it("will create a computed property", async () => {
+    const test = Hello.create();
+
+    expect(test.greeting).toBe("Hello World!");
+
+    test.friend = "Foo";
+    await test.requestUpdate(true);
+
+    expect(test.greeting).toBe("Hello Foo!");
   })
 })

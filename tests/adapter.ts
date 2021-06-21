@@ -14,12 +14,12 @@ export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 
 export const tap = Source.tap as typeof Public.tap;
-export const set = Source.watch as typeof Public.watch;
+export const on = Source.on as typeof Public.on;
 export const ref = Source.ref as typeof Public.ref;
 export const use = Source.use as typeof Public.use;
-export const hoc = Source.hoc as typeof Public.hoc;
-export const wrap = Source.wrap as typeof Public.wrap;
 export const act = Source.act as typeof Public.act;
+export const lazy = Source.lazy as typeof Public.lazy;
+export const from = Source.from as typeof Public.from;
 export const parent = Source.parent as typeof Public.parent;
 
 export function subscribeTo<T extends Public.Model>(

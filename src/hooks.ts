@@ -1,56 +1,102 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { bindRefFunctions } from './bind';
 import { useLookup } from './context';
-import { Controller, Controllable } from './controller';
-import { forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
-import { Model } from './model';
-import { PendingContext } from './modifiers';
+import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
+import { Model, Stateful } from './model';
+import { PendingContext } from './instructions';
 import { Subscriber } from './subscriber';
-import { defineLazy, fn, values } from './util';
+import { fn, values } from './util';
 
 import Oops from './issues';
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-class ReactSubscriber<T> extends Subscriber<T> {
-  constructor(subject: T, callback: Callback){
-    super(subject, callback);
+class HookSubscriber extends Subscriber {
+  alias = subscriberEvent;
+  isMounted = false;
 
-    defineLazy(this.proxy, "bind", () => {
-      const agent = bindRefFunctions(this.parent);
-      this.dependant.add(agent);
-      return agent.proxy;
-    });
+  constructor(
+    public subject: any,
+    protected callback: Callback,
+    protected tag?: Key){
+
+    super(subject, callback);
   }
 
-  public focus(key: string, expect?: boolean){
-    const source: any = this.subject;
+  event = (name: Event) => {
+    this.declare(name);
 
-    this.watch(key, () => {
-      let value = source[key];
+    switch(name){
+      case Lifecycle.WILL_RENDER:
+        this.declare(
+          this.isMounted
+          ? Lifecycle.WILL_UPDATE
+          : Lifecycle.WILL_MOUNT
+        )
+      break;
 
-      if(value instanceof Model)
-        return this.forward(value);
+      case Lifecycle.DID_MOUNT:
+        this.isMounted = true;
+        this.listen();
+      break;
+
+      case Lifecycle.WILL_UNMOUNT:
+        this.release();
+    }
+  }
+
+  declare(name: Event){
+    const also = this.alias(name);
+
+    for(const key of [name, also]){
+      const on: any = this.subject;
+      const handle = on[key];
+  
+      handle && handle.call(on, this.tag);
+      this.parent.update(key);
+    }
+  }
+}
+
+class ElementSubscriber extends HookSubscriber {
+  focus(key: string | Select, expect?: boolean){
+    const source = this.subject;
+
+    if(fn(key)){
+      const available = {} as BunchOf<string>;
+
+      for(const key in source)
+        available[key] = key;
+
+      key = key(available);
+    }
+
+    this.recursive(key, () => {
+      let value = source[key as string];
+
+      if(value instanceof Model){
+        const child = new Subscriber(value, this.callback);
+        this.proxy = child.proxy as any;
+        return child;
+      }
 
       if(value === undefined && expect)
-        throw Oops.HasPropertyUndefined(source.constructor.name, key);
+        throw Oops.HasPropertyUndefined(
+          source.constructor.name, key as string
+        );
 
       this.proxy = value;
     });
   }
+}
 
-  forward(from: Model){
-    const child = new Subscriber(from, this.callback);
-
-    this.parent.watch("didRender", () => {
-      child.commit();
-    }, true);
-
-    this.proxy = child.proxy as any;
-
-    return child;
+class ComponentSubscriber extends HookSubscriber {
+  alias = componentEvent;
+  
+  release(){
+    super.release();
+    this.subject.destroy();
   }
 }
 
@@ -64,7 +110,15 @@ function useRefresh<T>(
   return state[0];
 }
 
-type Select = <T>(from: T) => T[keyof T];
+export function useLazy(
+  Type: typeof Model, args: any[]){
+
+  const instance = useMemo(() => Type.create(...args), []);
+
+  useEffect(() => () => instance.destroy(), []);
+
+  return instance;
+}
 
 export function usePassive<T extends typeof Model>(
   target: T,
@@ -85,24 +139,12 @@ export function usePassive<T extends typeof Model>(
 }
 
 export function useWatcher(
-  target: Controllable | (() => Controllable),
+  target: Stateful,
   path?: string | Select,
   expected?: boolean){
 
   const hook = useRefresh(trigger => {
-    if(fn(target))
-      target = target();
-
-    if(fn(path)){
-      const detect = {} as any;
-
-      for(const key in Controller.get(target).state)
-        detect[key] = key;
-
-      path = path(detect) as string;
-    }
-
-    const sub = new ReactSubscriber(target, trigger);
+    const sub = new ElementSubscriber(target, trigger);
 
     if(path)
       sub.focus(path, expected);
@@ -110,56 +152,54 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(() => hook.listen(!path), []);
+  useEffect(hook.listen, []);
 
   return hook.proxy;
 }
 
-export function useSubscriber(
-  target: Model, args: any[]){
+export type KeyFactory<T> = (target: T) => Key | undefined;
 
-  const hook = useRefresh(trigger => 
-    new ReactSubscriber(target, trigger)
-  );
+export function useSubscriber<T extends Stateful>(
+  target: T, tag?: Key | KeyFactory<T>){
 
-  useLifecycleEffect((name) => {
-    if(name == Lifecycle.DID_MOUNT)
-      hook.listen(true);
-
-    const alias = subscriberEvent(name);
-
-    for(const event of [alias, name]){
-      const on = hook.subject;
-
-      const handle = (on as any)[event];
-      handle && handle.apply(on, args);
-
-      hook.parent.update(event);
-    }
-
-    if(name == Lifecycle.WILL_UNMOUNT)
-      hook.release();
+  const hook = useRefresh(trigger => {
+    const key = fn(tag) ? tag(target) : tag || 0;
+    return new HookSubscriber(target, trigger, key)  
   });
+
+  useLifecycleEffect(hook.event);
   
   return hook.proxy;
 }
 
-export function useLazy(
-  Type: typeof Model, args: any[]){
+export function useModel(
+  Type: typeof Model,
+  args: any[], 
+  callback?: (instance: Model) => void){
 
-  const instance = useMemo(() => Type.create(...args), []);
+  const hook = useRefresh(trigger => {
+    const instance = Type.create(...args);
+    const sub = new ComponentSubscriber(instance, trigger);
 
-  useEffect(() => () => instance.destroy(), []);
+    if(callback)
+      callback(instance);
 
-  return instance;
+    return sub;
+  });
+
+  usePeerContext(hook.subject);
+  useLifecycleEffect(hook.event);
+
+  return hook.proxy;
 }
 
-const ContextUsed = new WeakMap<Model, boolean>();
+const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
-  if(ContextUsed.has(instance)){
-    if(ContextUsed.get(instance))
+  if(ContextWasUsed.has(instance)){
+    if(ContextWasUsed.get(instance))
       useLookup();
+
     return;
   }
 
@@ -175,49 +215,5 @@ export function usePeerContext(instance: Model){
       init(local);
   }
 
-  ContextUsed.set(instance, hasPeers);
-}
-
-export function useModel(
-  Type: typeof Model,
-  args: any[], 
-  callback?: (instance: Model) => void,
-  withLifecycle?: boolean){
-
-  const hook = useRefresh(trigger => {
-    const instance = Type.create(...args);
-
-    if(callback)
-      callback(instance);
-
-    return new ReactSubscriber(instance, trigger);
-  });
-
-  usePeerContext(hook.subject);
-
-  if(withLifecycle === false)
-    useEffect(() => hook.listen(true), []);
-  else
-    useLifecycleEffect((name) => {
-      if(name == Lifecycle.DID_MOUNT)
-        hook.listen(true);
-
-      const alias = componentEvent(name);
-
-      for(const event of [alias, name]){
-        const on = hook.subject;
-        const handle = (on as any)[event];
-  
-        handle && handle.apply(on, args);
-
-        hook.parent.update(event);
-      }
-
-      if(name == Lifecycle.WILL_UNMOUNT){
-        hook.release();
-        hook.subject.destroy();
-      }
-    });
-
-  return hook.proxy;
+  ContextWasUsed.set(instance, hasPeers);
 }

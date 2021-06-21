@@ -1,15 +1,24 @@
-import { Model } from "./adapter";
+import { Model, use } from "./adapter";
 
 describe("computed", () => {
   class Subject extends Model {
+    child = use(Child);
     seconds = 0;
   
     get minutes(){
       return Math.floor(this.seconds / 60)
     }
+
+    get nested(){
+      return this.child.value;
+    }
+  }
+
+  class Child extends Model {
+    value = "foo";
   }
   
-  it('triggers computed value when input values change', async () => {
+  it('will trigger compute when input value changes', async () => {
     const state = Subject.create();
   
     state.seconds = 30;
@@ -27,6 +36,22 @@ describe("computed", () => {
   
     expect(state.seconds).toEqual(60);
     expect(state.minutes).toEqual(1);
+  })
+
+  it('will trigger compute when nested value changes', async () => {
+    const state = Subject.create();
+
+    expect(state.nested).toBe("foo");
+  
+    state.child.value = "bar";
+    await state.requestUpdate(true);
+
+    expect(state.nested).toBe("bar");
+
+    state.child = new Child();
+    await state.requestUpdate(true);
+
+    expect(state.nested).toBe("foo");
   })
 })
 
@@ -148,4 +173,3 @@ describe.skip("recursive computed", () => {
     expect(test.format).toBe("Value 1 is odd");
   })
 })
-

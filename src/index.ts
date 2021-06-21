@@ -2,22 +2,13 @@ export {
   setChild as use,
   setParent as parent,
   setPeer as tap,
-  setEffect as watch,
-  setRefObject as ref,
+  setEffect as on,
+  setRefMediator as ref,
   setAction as act,
+  setComputed as from,
   setMemo as memo,
-  setIgnored as lazy,
-  setTuple as tuple
-} from './modifiers';
-
-export {
-  setBoundComponent as bind
-} from './bind';
-
-export {
-  setComponent as hoc,
-  setParentComponent as wrap
-} from './hoc';
+  setIgnored as lazy
+} from './instructions';
 
 export {
   Consumer,
@@ -30,6 +21,5 @@ export {
 } from './model';
 
 export {
-  Singleton,
-  Singleton as GC
+  Singleton
 } from './singleton';

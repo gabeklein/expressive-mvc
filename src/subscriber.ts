@@ -1,28 +1,49 @@
-import { Controller } from './controller';
-import { Model } from './model';
-import { GetterInfo, metaData, Observer } from './observer';
-import { alias, create, defineProperty } from './util';
+import { GetterInfo, metaData } from "./compute";
+import { CONTROL, Model, Stateful } from './model';
+import { Observer } from './observer';
+import { alias, create, define, defineProperty } from './util';
 
-export class Subscriber<T = any> {
-  protected dependant = new Set<{
+export const LOCAL = Symbol("current_subscriber");
+
+export class Subscriber<T extends Stateful = any> {
+  public dependant = new Set<{
     listen(): void;
     release(): void;
+    commit?(): void;
   }>();
 
   public following = {} as BunchOf<Callback>;
   public parent: Observer;
-  public proxy: T;
+  public proxy: T & { [LOCAL]: Subscriber };
   
   constructor(
     public subject: T,
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    this.proxy = create(subject as any);
-    this.parent = Controller.get(subject);
+    const { state } = this.parent = subject[CONTROL];
 
-    for(const key of this.parent.watched)
+    this.proxy = create(subject as any);
+
+    define(this.proxy, LOCAL, this);
+
+    for(const key in state)
       this.spyOn(key);
+  }
+
+  public listen = () => {
+    this.dependant.forEach(x => x.listen());
+    this.parent.listeners.add(this.following);
+
+    // for(const key in this.proxy)
+    //   delete this.proxy[key];
+
+    return () => this.release();
+  }
+
+  public release(){
+    this.dependant.forEach(x => x.release());
+    this.parent.listeners.delete(this.following);
   }
 
   private spyOn(key: string){
@@ -32,88 +53,34 @@ export class Subscriber<T = any> {
       if(value instanceof Model)
         return this.delegate(key);
 
-      this.follow(key);
+      this.follow(key, this.callback);
+      delete (this.proxy as any)[key];
       return value;
     }
 
+    alias(access, `tap ${key}`)
     defineProperty(this.proxy, key, {
-      get: alias(access, `tap ${key}`),
+      get: access,
       set: this.parent.setter(key),
       configurable: true
     })
   }
 
-  private follow(key: string, cb?: Callback){
-    if(!cb)
-      cb = () => this.callback();
-
+  private follow(key: string, cb: Callback){
     if(this.metadata)
       metaData(cb, this.metadata);
 
     this.following[key] = cb;
   }
 
-  public commit(key?: string){
-    const remove = key
-      ? [key] : this.parent.watched;
-
-    for(const key of remove)
-      delete (this.proxy as any)[key];
-  }
-
-  private delegate(key: string){
-    let sub: Subscriber | undefined;
-
-    this.watch(key, () => {
-      let value = (this.subject as any)[key];
-
-      if(value instanceof Model)
-        return sub = this.forwardTo(key, value);
-    });
-
-    return sub && sub.proxy;
-  }
-
-  forwardTo(key: string, from: Model){
-    let child = new Subscriber(from, this.callback);
-
-    this.parent.watch("didRender", () => {
-      child.commit();
-      this.commit(key);
-    }, true);
-
-    defineProperty(this.proxy, key, {
-      get: () => child.proxy,
-      set: it => (this.subject as any)[key] = it,
-      configurable: true
-    })
-
-    return child;
-  }
-
-  public listen(commit?: boolean){
-    this.dependant.forEach(x => x.listen());
-    this.parent.followers.add(this.following);
-
-    if(commit)
-      this.commit();
-
-    return () => this.release();
-  }
-
-  public release(){
-    this.dependant.forEach(x => x.release());
-    this.parent.followers.delete(this.following);
-  }
-
-  public watch(
+  public recursive(
     key: string,
-    subscribe: () => Subscriber | undefined){
+    onUpdate: () => Subscriber | undefined){
 
     let child: Subscriber | undefined;
 
     const start = (mounted?: boolean) => {
-      child = subscribe();
+      child = onUpdate();
 
       if(child){
         this.dependant.add(child);
@@ -123,7 +90,7 @@ export class Subscriber<T = any> {
       }
     }
 
-    this.follow(key, () => {
+    const reset = () => {
       if(child){
         child.release();
         this.dependant.delete(child);
@@ -131,8 +98,33 @@ export class Subscriber<T = any> {
 
       start(true);
       this.callback();
+    }
+
+    this.follow(key, reset);
+    start();
+  }
+
+  private delegate(key: string){
+    let sub: Subscriber | undefined;
+
+    this.recursive(key, () => {
+      let value = (this.subject as any)[key];
+
+      if(value instanceof Model){
+        let child = sub = new Subscriber(
+          value, this.callback, this.metadata
+        );
+
+        defineProperty(this.proxy, key, {
+          get: () => child.proxy,
+          set: it => (this.subject as any)[key] = it,
+          configurable: true
+        })
+
+        return child;
+      }
     });
 
-    start();
+    return sub && sub.proxy;
   }
 }

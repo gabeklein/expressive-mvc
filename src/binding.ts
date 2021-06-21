@@ -1,42 +1,25 @@
-import type Public from '../types';
-
-import { createElement, useCallback, useEffect, useMemo } from 'react';
-
-import { Controller } from './controller';
-import { createHocFactory } from './hoc';
+import { Model } from './model';
 import { Observer } from './observer';
-import { define, defineProperty } from './util';
+import { LOCAL } from './subscriber';
+import { defineProperty } from './util';
 
-export function setBoundComponent(
-  Type: Public.Component<{}, HTMLElement>, to: string){
-
-  return Controller.define((key, on) => {
-    const componentFor = createHocFactory<any>(Type);
-
-    const Component = (props: {}) => {
-      let reset: Callback | undefined;
-
-      const ref = useCallback<RefFunction>((e) => {
-        if(reset){
-          reset();
-          reset = undefined;
-        }
-        if(e)
-          reset = createBinding(e, on, to);
-      }, []);
-
-      const Component = useMemo(() => componentFor(ref), []);
-
-      useEffect(() => () => reset && reset(), []);
-  
-      return createElement(Component, props);
-    }
-
-    define(on.subject, key, Component);
-  })
-}
+import Oops from './issues';
 
 type RefFunction = (e: HTMLElement | null) => void;
+
+export function createBindings(on: Model){
+  const subscriber = on[LOCAL];
+
+  if(!subscriber)
+    throw Oops.BindNotAvailable();
+
+  const agent =
+    bindRefFunctions(subscriber.parent);
+
+  subscriber.dependant.add(agent);
+
+  return agent.proxy;
+}
 
 export function bindRefFunctions(on: Observer){
   const proxy: BunchOf<RefFunction> = {};
