@@ -27,9 +27,9 @@
 
 <h1 id="overview-section">Overview</h1>
 
-Expressive allows classes to define state and logic for components, via hooks.
+Expressive lets classes define state and logic for components, via built-in hooks.
 
-When the methods on a **Model** are used within a component **(a View)**, an instance is either created or found for its use. By watching what values are accessed first render, the hook itself **(a Controller)** can keep sync with them.
+When the methods on a **Model** are called inside a component **(a View)**, an instance is either created or found for its use. By watching what values are accessed on render, the hook itself **(a Controller)** can refresh to keep sync with them.
 
 This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller pattern within React.
 
@@ -69,7 +69,7 @@ This behavior combines with actions, computed properties, events, and the compon
 
 **Globals** <br/>
   &ensp; •&nbsp; [Singletons](#section-global) <br/>
-  &ensp; •&nbsp; [Register](#section-singleton-activate) <br/>
+  &ensp; •&nbsp; [Initialize](#section-singleton-activate) <br/>
 
 **Consuming** <br/>
   &ensp; •&nbsp; [Hooks](#concept-consumer-hooks) <br/>
@@ -87,19 +87,10 @@ This behavior combines with actions, computed properties, events, and the compon
   &ensp; •&nbsp; [Child Controllers](#concept-child-model) <br/>
   &ensp; •&nbsp; [Parent Controller](#concept-parent-model) <br/>
 
-<!-- **Attached HOCs** <br/>
-  &ensp; •&nbsp; [Custom HOCs](#concept-custom-hoc) <br/>
-  &ensp; •&nbsp; [Bind HOC](#concept-ref-hoc) <br/>
-
-**Element Control** <br/>
-  &ensp; •&nbsp; [Ref Properties](#concept-ref-property) <br/>
-  &ensp; •&nbsp; [Defining Effects](#concept-ref-effect) <br/>
-  &ensp; •&nbsp; [Custom Elements](#concept-ref-hoc) <br/>
-
-**Customizing** <br/>
+<!-- **Customizing** <br/>
   &ensp; •&nbsp; [Extending Custom Models](#concept-extension) <br/>
   &ensp; •&nbsp; [Impact on Context](#concept-extension-context) <br/>
-  &ensp; •&nbsp; [Modifiers](#concept-modifier) <br/>
+  &ensp; •&nbsp; [Instructions](#concept-instruction) <br/>
   &ensp; •&nbsp; [Custom Hooks](#concept-custom-hooks) <br/>
   &ensp; •&nbsp; [Using Meta](#concept-meta) <br/> -->
 
@@ -134,7 +125,7 @@ import Model from "@expressive/mvc";
 
 <br/>
 
-<h1 id="good-start">A good example</h1>
+<h1 id="good-start">First Steps</h1>
 
 ### Step 1
 
@@ -174,13 +165,13 @@ const KitchenCounter = () => {
 
 <h1 id="started-section">Getting Started</h1>
 
-Ultimately the workflow is pretty simple.
+Ultimately, the workflow is simple.
 
-1. Create a class and fill it with the values, getters, and methods you'll need.
+1. Create a class. Fill it with the values, getters, and methods you'll need.
 2. Extend `Model` (or any derivative, for that matter) to make it reactive.
-3. Within a component, use built-in methods as you would a normal hook.
-4. Destructure the values, needed by a particular component, to subscribe.
-5. Update those values on demand. Components keep sync automagically. ✨
+3. Within a component, use built-in methods as you would any normal hook.
+4. Destructure the values, used by a component, to subscribe.
+5. Update those values on demand. Component will sync automagically. ✨
 <br/>
 
 <br/>
@@ -233,9 +224,9 @@ const KitchenCounter = () => {
 ```
 <!-- <a href="https://codesandbox.io/s/deep-state-simple-e3xcf"><sup>View in CodeSandbox</sup></a> -->
  
-One of the static-methods on your class will be `use`. This is a hook; to create a new instance of your model and attach it to the component.
+One of the static-methods on your class will be `use`. This is a hook; it will create a new instance of your model and attach it to component.
 
-Now, we can "edit" the instance properties as we see fit. When values change, our hook calls for a refresh, as needed.
+Now, we may edit instance properties as we see fit. When values change, our hook calls for a refresh as needed.
 
 <br/>
 
@@ -243,9 +234,9 @@ Now, we can "edit" the instance properties as we see fit. When values change, ou
 
 [Model hooks are lazy](#concept-lazy), and will only update for values seen to be in-use. 
 
-A good idea is to destructure values as needed. This keeps intent clear, and avoids unexpected behavior.
+A good idea is to destructure values. This keeps intent clear, and avoids unexpected behavior.
 
-After destructuring though, we'll sometimes need access to the full state. For this, a `get` and `set` property are defined as a "loop-back" to state.
+After destructuring though, we might still need access to full state. For this, a `get` and `set` property are defined as a loop-back.
 
 ### `set`
 
@@ -270,7 +261,7 @@ const KitchenCounter = () => {
 
 ### `get`
 
-Usually, when an observable value is accessed, the controller assumes a refresh is needed anytime that property changes. In plenty of situations, this isn't the case, so `get` serves as an escape-hatch.
+When an observable value is accessed, the controller assumes a refresh is needed anytime that property changes. In plenty of situations, this isn't the case, so `get` serves as an escape-hatch.
 
 ```js
 const { get: state, value } = Model.use();
@@ -283,13 +274,13 @@ const { value } = state;
 <br/>
 
 > **Good to know:** <br/>
-> Reason this works is because returned `state` a proxy, there to "spy" on property access. On the other hand, `get` and `set` are direct references to state. 
+> Reason this works is because returned `state` is a proxy, there to spy on property access. On the other hand, `get` and `set` are direct references to state. 
 
 <br/>
 
 <h2 id="concept-method">Adding methods</h2>
 
-What's a class without methods? Defining "actions" can help abstract state-change.
+What's a class without methods? Defining "actions" can help delineate state-change.
 
 ```jsx
 class Counter extends Model {
@@ -301,7 +292,7 @@ class Counter extends Model {
   decrement = () => { this.current-- };
 }
 ```
-With this you can write even the most complex components, all while maintaining key benefits of a functional-component. Much easier on the eyeballs.
+With this, you can write even the most complex components, all while maintaining key benefits of a functional-component. Much easier on the eyeballs.
 
 ```jsx
 const KitchenCounter = () => {
@@ -319,14 +310,14 @@ const KitchenCounter = () => {
 <br/>
 
 > **Good to know:** <br/>
-> While obviously cleaner, this is also more efficient than inline-functions. Not only do actions have names, we avoid new closures for every render. This can save _a lot_ of unnecessary rendering downstream, for seemingly "new" callbacks. 😬
+> While obviously cleaner, this is also more efficient than inline-functions. Not only do actions have names, we avoid having new closures for every render. This can save _a lot_ of unnecessary rendering downstream, for assumed "new" callbacks. 😬
 <!-- <sup><a href="https://codesandbox.io/s/example-actions-1dyxg">View in CodeSandbox</a></sup> -->
 
 <br/>
 
 <h2 id="concept-getters">Computed Values</h2>
 
-State can contain derivative values too, simply define get-methods on your model. They will be managed by the controller automatically. 
+State can have dynamic values too, just define get-methods on your model. They will be managed by the controller automatically. 
 
 Through the same mechanism as hooks, getters know when the specific properties they accessed are updated. Whenever that happens, they rerun. If a new value is returned, the update is paid forward.
 
@@ -360,7 +351,7 @@ class Timer extends Model {
 }
 ```
 
-A getter's value is cached, facing the user. It will only run when a dependency changes, and **not upon access** as you might expect. However, getters are also lazy, so first access is the exception.
+A getter's value is cached, facing the user. It will only run when a dependency changes, and **not upon access** as you might expect. However, getters are also lazy, so first access is one exception.
 
 Because getters run whenever the controller thinks they *could* change, make sure to design them with these guiding principles:
 - Getters should be deterministic. Only expect a change where inputs have changed.
@@ -371,7 +362,7 @@ Because getters run whenever the controller thinks they *could* change, make sur
 
 <h2 id="concept-constructor">Constructor arguments</h2>
 
-The method `use(...)`, while building an instance, will pass its arguments to its constructor. This helps to reuse models, by customizing initial state.
+The method `use(...)`, while building an instance, will pass its arguments to the constructor. This helps to reuse models, by customizing initial state.
 
 > Typescript 
 ```ts
@@ -390,7 +381,7 @@ class Greetings extends Model {
 }
 ```
 ```jsx
-const MyComponent = ({ fullName }) => {
+const SayHello = ({ fullName }) => {
   const { firstName } = Greetings.use(fullName);
 
   return <b>Hello {firstName}!</b>;
@@ -404,7 +395,7 @@ const MyComponent = ({ fullName }) => {
 
 Besides `use`, similar methods can assign values after a controller is created. This is a great alternative to a manual setup, as we did previously.
 
-<h3 id="method-uses"><code>Model.uses(source, specific?)</code></h3>
+<h3 id="method-uses"><code>Model.uses(source, keys?)</code></h3>
 
 ```js
 class Greetings extends Model {
@@ -426,7 +417,7 @@ class Greetings extends Model {
   }
 }
 ```
-Greetings defines *firstName* & *isBirthday*; however that depends on *name* and *birthday*, which start out undefined. Pass in the `props` object to help with that.
+Greetings defines *firstName* & *isBirthday*; however those will depend on *name* and *birthday*, which start out undefined. Pass in the `props` object to help with that.
 
 ```jsx
 const HappyBirthday = (props) => {
@@ -451,13 +442,13 @@ const SayHello = () => (
   />
 )
 ```
-This method is naturally picky and will only capture values already defined (as `undefined` or otherwise). You can however, specify the properties to pull from, like so:
+This method is naturally picky and will only capture values already defined (as `undefined` or otherwise). You can however, specify properties to pull from, like so:
 
 ```js
 const state = Model.uses({ ... }, ["name", "birthday"]);
 ```
 
-This way, objects containing _more_ than required info may be given without collisions or either-way polluting state.
+This way, objects containing _more_ than required info may be used, without collisions or polluting state.
 
 <!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
@@ -511,10 +502,10 @@ You can see all available lifecycle methods **[here](#lifecycle-api)**.
 
 <h2 id="concept-events">Event Handling</h2>
 
-Aside watching for state change, what a subscriber really cares about is events. *Updates are just one source for an event.* When any property gains a new value, subscribers are simply notified and act accordingly.
+Besides state change, what a subscriber really cares about is events. *Updates are just one source for an event.* When any property gains a new value, subscribers are simply notified and act accordingly.
 
 > **Good to know:** <br/>
-> All changes to state occure in batches, called frames. Whenever state receives a new value, a zero-second timer starts. Anything to update before it the commit-phase is considered "reasonably syncronous" and also included. After events are then fired, and the controller resets for the next event.
+> All changes to state occure in batches, called frames. Whenever state receives a new value, a zero-second timer starts. Anything to update before it the commit-phase is considered "reasonably syncronous" and included. After that, events are fired, and the controller resets for the next event.
 
 <br />
 
@@ -540,7 +531,7 @@ The method also returns a callback; use to stop subscribing.
 
 #### `state.once(key, callback, squash?) => cancel`
 
-Will expire also when triggered. May be cancelled with the returned callback.
+Will also expire when triggered. May be cancelled with the returned callback.
 
 #### `state.once(key) => Promise<keys[]>`
 
@@ -550,8 +541,8 @@ If `callback` is not provided, will return a Promise of keys watched/updated.
 <h3 id="concept-listen-effect">Define effect for one or more values</h3>
 
 ```js
-function effectCallback(target){
-  this === target; // true
+function effectCallback(state){
+  this === state; // true
 
   console.log(`Update did occure in one or more watched values.`)
 
@@ -560,9 +551,27 @@ function effectCallback(target){
 }
 ```
 
-#### `state.effect(effectCallback, keys) => onDone`
+#### `state.effect(effectCallback, keys) => remove`
 
 A more versatile method used to monitor one or more properties with the same callback. Optionally, that callback may return a handler to clean-up, when process repeats.
+
+<br/>
+
+```js
+function subscribedCallback(state){
+  const { name } = state;
+
+  console.log(`Hello ${name}`)
+
+  return () =>
+    console.log(`Goodbye ${name}`)
+}
+```
+#### `state.effect(subscribedCallback) => remove`
+
+If no explicit `keys` are given, effect callback will self-subscribe. Just like a hook, it will detect values touched and automatically update for new ones.
+
+> Note: In order to scan for property access, the effect will always run at-least once.
 
 <br />
 <h3 id="concept-push-event">Pushing your own events</h3>
@@ -634,13 +643,13 @@ class TickTockClock extends Model {
 
 <h2 id="concept-external">Watching external values</h2>
 
-Sometimes, you may want to see changes coming from outside, usually via props. Observing any value will require that you integrate it, however there is a good helper for this.
+Sometimes, you might want to see changes coming from outside, usually coming in via props. Observing any value will require that you integrate it, however after that, consuming is easy.
 
 <h3 id="method-using"><code>Model.using(source, keys?)</code></h3>
 
 > Roughly equivalent to [`uses()`](#concept-passing-props)
 
-This method helps "watch" props by assigning argument properties on *every render*. Because controller will already react to new values, this makes for a simple way to watch props. Combine this with getters and event-listeners, to do things when inputs change.
+This method helps "watch" props by assigning argument properties on *every render*. Because controller only reacts to new values, this makes for a simple way to watch props. Combine this with getters and event-listeners, to do things when inputs change.
 
 <br />
 
@@ -674,7 +683,7 @@ const DetectActivity = (props) => {
 }
 ```
 
-> **Note:** Method is also picky (ala `uses`), and will ignore values which don't exist on controller.
+> **Note:** Method is also picky (ala `uses`), and will ignore values which don't already exist in state.
 
 ```jsx
 const Activate = () => {
@@ -697,32 +706,30 @@ Because dispatch is taken care of, we can focus and edit values however we need 
 
 ```ts
 class StickySituation extends Model {
-  remaining = 60;
   agent = "Bond";
+  remaining = 60;
 
   constructor(){
     super();
-    setup();
+    
+    this.once("componentWillMount", this.missionStart);
   }
 
-  setup(){
-    let timer;
+  missionStart(){
+    const timer = setInterval(this.tickTock, 1000);
 
-    this.once("componentWillMount", () => {
-      timer = setInterval(this.tickTock, 1000);
-    });
-
-    // we can wait for more than one
-    this.once(["componentWillUnmount", "done"], () => {
+    // events can be any string or symbol
+    // we can even wait for more than one!
+    this.once(["componentWillUnmount", "oh no!"], () => {
       clearInterval(timer);
     });
   }
 
   tickTock = () => {
-    const timeLeft = --this.remaining;
+    const timeLeft = this.remaining -= 1;
 
     if(timeLeft === 0)
-      this.update("done");
+      this.update("oh no!");
   }
 
   getSomebodyElse = async () => {
@@ -765,7 +772,7 @@ const ActionSequence = () => {
 ```
 <sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
 
-> Notice how our components can remain completely independent from the logic. It's a pretty big deal. 
+> Notice how our components can remain completely independent from the logic.
 >
 > If we want to modify or even duplicate our `ActionSequence`, with a new aesthetic or different verbiage, we don't need to copy or edit any of these behaviors. 🤯
 
@@ -773,10 +780,9 @@ const ActionSequence = () => {
 
 ### 👾 Level 2 Clear!
 
-
 > Nice, we're able to create full-blown experiences, while keeping the number of hooks in a component to a minimum (namely one). That's good, because being able to separate this stuff promotes better patterns. Reduce, reuse, recycle!
 >
-> However we can keep going, because with Models, _sharing_ logic more than just reusing.
+> However we can keep going, because with Models, _sharing_ logic means more than just reusing.
 
 <br/>
 <h1 id="sharing-section">Sharing state</h1>
@@ -800,7 +806,7 @@ export class FooBar extends Model {
 ```
 
 ### Step 2
-Into a new, creatively-named `Provider` component, create and pass an instance of your state to `of` prop. 
+Into a shiny new, creatively-named `Provider` component, create and pass an instance of your state to its `of` prop. 
 
 ```jsx
 import { Provider } from "@expressive/mvc";
@@ -848,7 +854,7 @@ Using the class itself, we have a convenient way to "select" what type of state 
 
 Let's first create and cast a state, for use by components and peers. In the [next chapter](#access-section), we'll expand on how to consume them.
 
-By default, `Model` uses [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) to find others from upstream.
+By default, `Model` uses [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) to find instances upstream.
 
 There are several ways, however, to create a controller and provide it. Nothing special is needed on a model to make it work though.
 
@@ -861,7 +867,7 @@ export class FooBar extends Model {
 
 > Emphesis on `export` here.
 > 
-> No need to keep a Model and it's respective consumers in the same file, let alone module. Want to publish a reusable controller? This can make for a consumer-friendly solution. ☝️😑
+> No need to keep a Model and it's respective consumers in the same file, let alone module. Want to publish a reusable controller? This is a pro-consumer solution. ☝️😑
 
 <!-- <sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup>  -->
 
@@ -871,7 +877,7 @@ export class FooBar extends Model {
 
 Here, pass a controller through to `of` prop. For any children, it will be available, accessible via the respective class.
 
-> Unlike a normal `Context.Provider`, `Provider` is universal and good for any (or many) different states.
+> Unlike a normal `Context.Provider`, `Provider` is generic and good for any (or many) different states.
 
 ```jsx
 import { Provider } from "@expressive/mvc";
@@ -891,7 +897,7 @@ export const App = () => {
 
 <h2 id="concept-provider-spawning">Spawning an instance</h2>
 
-Assuming no arguments, creating an instance just to provide it can be an unnecessary step. Pass a Model itself, and you can both create and provide an instance in one sitting.
+Assuming no constructor-arguments, creating an instance just to provide it can be an unnecessary step. Pass a Model itself, and you can both create and provide an instance in one sitting.
 ```jsx
 export const App = () => {
   return (
@@ -905,7 +911,7 @@ export const App = () => {
 
 <h2 id="concept-provider-props">Spawning with props</h2>
 
-Remember [`Model.using()`](#concept-external) right? When a Model is passed to `of` prop, Provider has this same feature. Any other props are forwarded to state and likewise watched.
+Remember [`Model.using()`](#concept-external) right? When a Model is passed to `of` prop, Provider has the same behavior. All other props are forwarded to state and likewise watched.
 
 ```jsx
 const MockFooBar = (props) => {
@@ -917,8 +923,9 @@ const MockFooBar = (props) => {
 }
 ```
 
-> Now we can even tweak values seen by consumers. A big help for quick mock-up during development.
+> Now, consumers can be aware of props which only the parent has access to!
 
+<br/>
 <h2 id="concept-provider-multi">Providing Multiple</h2>
 
 Finally, the `of` prop will accept an object or array of models and/or state objects. Mix and match as needed to ensure a dry, readible root.
@@ -939,17 +946,17 @@ const MockFooBar = () => {
 
 <h1 id="section-global">Global Models</h1>
 
-While context helps with contextual-isolation, we may want one controller serving a particular purpose for an entire app. Think concepts like login, routes, and interaction with external APIs.
+While context helps with contextual-isolation, sometimes we'll want one controller to serve a particular purpose for an entire app. Think concepts like login, routes, and interaction with external APIs.
 
 <!-- > For instance, if ever used [react-router](https://github.com/ReactTraining/react-router), you'll know `<BrowserRouter>` is really only needed for its Provider. You won't have more than one at a time. -->
 
-For this, we have `Singleton`, to create and share state while ignoring placement. Hooks are the same as `Model` counterparts, except under the hood they always retrieve a single, promoted instance.
+For this, we have `Singleton`, to create and share state, components not withstanding. Hooks are the same as `Model` counterparts, except under the hood they always retrieve a single, promoted instance.
 
 <br/>
 
 ## Defining a Singleton
 
-Simply extend `Singleton` instead, behavior carries over.
+Simply extend `Singleton` instead, a variant of `Model`.
 
 ```js
 import { Singleton } from "@expressive/mvc";
@@ -979,12 +986,12 @@ class Login extends Singleton {
 
 <h2 id="#section-singleton-activate">Activating a Singleton</h2>
 
-Singletons are not be useable until they're init in one of three ways
+Singletons are not be useable until they initialize in one of three ways:
 
 
 ### Method 1: `Singleton.create(...)`
 
-A method on all Models, `create` on a Singleton also promotes the new instance, while also avoiding collisions. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
+A method on all Models, `create` on a Singleton will promote the new instance, while avoiding collisions. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
 
 ```js
 window.addEventListener("load", () => {
@@ -998,7 +1005,7 @@ window.addEventListener("load", () => {
 
 ### Method 2: `Singleton.use()`
 
-Create an instance with one of the use-hooks.
+Create an instance with standard use-methods.
 
   ```jsx
   const LoginGate = () => {
@@ -1009,8 +1016,8 @@ Create an instance with one of the use-hooks.
       : <Prompt onClick={() => login.resumeSession()} />
   }
   ```
-> Login instance is available after `use()` returns. <br/> 
-> **Note:** Instance likewise will be unavailable if `LoginPrompt` does unmount. If it mounts again, any newly rendered dependents get the latest instance.
+> Login instance is available immediately after `use()` returns. <br/> 
+> **However,** instance will then become unavailable if `LoginPrompt` does unmount. If it mounts again, any newly rendered dependents get the latest instance.
 
 ### Method 3: `<Provider of={Singleton}>`
 
@@ -1026,7 +1033,7 @@ export const App = () => {
 ```
 > This will have no bearing on context, it will simply be "provided" to everyone. Wrapping children, in this case, is doable but optional.
 > 
-> The active instance is destroyed when its Provider unmounts. You'll most likely use this to limit the side-effects of a Singleton, to when a particular UI is on-screen.
+> The active instance is destroyed when its Provider unmounts. You'll most likely use this to limit the existence of a Singleton (and its side-effects), to when a particular UI is on-screen.
 
 <br/>
 
@@ -1053,7 +1060,7 @@ The most straight-forward, `get` will find and return the nearest `instanceof th
 
 <h3 id="method-tap"><code>tap(key?, expect?)</code></h3>
 
-In addition to fetching instance, `tap` will subscribe to values on that instance much like `use` will. With this, children sharing a mutual state can affect eachother's state. 
+In addition to fetching instance, `tap` will subscribe to values on that instance much like `use` will. With this, children sharing a mutual state can affect _eachother's_ state. 
 
 ```jsx
 const InnerFoo = () => {
@@ -1080,7 +1087,7 @@ const InnerBar = () => {
 }
 ```
 
-With the `expect` flag, tap will throw if chosen property is undefined at time of use. This is useful because output is cast as non-nullable. This way, value may be destructured without assertions (or complaints from type-check).
+With the `expect` flag, tap will throw if chosen property is undefined at time of use. This is useful because output is cast as non-nullable. This way, value may be destructured without assertions (or complaints from your linter).
 
 <br/>
 
@@ -1094,7 +1101,7 @@ There are a number of options, to get info with or without a typical subscriptio
 
 When a function is passed as a child, returned elements will replace the Consumer. The function recieves state as its first argument, and subscribed updates will trigger new renders.
 
-> If you spread `props` directly, _all_ possible values will be subscribed to.
+> Note: If you spread `props` directly, _all_ possible values will be subscribed to.
 
 ```jsx
 const CustomConsumer = () => {
@@ -1110,8 +1117,8 @@ Consumers can drive classical components easily, assuming the values on state ma
 
 <h3 id="consumer-tap"><code>tap</code> Prop</h3>
 
-If rendered output is not needed, you can pass a function into `tap` prop. This is great for side-effects, more specific to a UI than controller itself. 
-> Also allows for `async`, since return value (thusly a `Promise`) can be ignored.
+If rendered output is not needed, you can pass a function to the `tap` prop. This is better for side-effects, more specific to a UI than controller itself. 
+> Also allows for `async`, since return value (a `Promise`) can just be ignored.
 
 ```jsx
 const ActiveConsumer = () => {
@@ -1188,13 +1195,13 @@ Nothing prevents the use of more than one state per component. Take advantage of
 <br/>
 <h2 id="concept-child-model">Child Controllers</h2>
 
-While above works fine, what if we need it cleaner or more reusable? Fortunately, we can "wrap" these models into another, and use that one instead. Think of it like building a custom hook out of smaller (or the core React) hooks.
+While above works fine, what if we want something cleaner or more reusable? Fortunately, we can "wrap" these models into another, and use that one instead. Think of it like building a custom hook out of smaller (or the core React) hooks.
 
 ### `use(Type, callback?)`
 
 Import `use` to wrap another Model, to attach a new instance.
 
-> [This is a modifier](#concept-directives), in-short a factory function. It tells the controller, while initializing: the defined property has special behavior, run logic to set that up.
+> [This is an instruction](#concept-directives), in-short a factory function. It tells the controller, while initializing: the defined property has special behavior, run some logic to set that up.
 
 ```js
 import Model, { use } from "@expressive/mvc";
@@ -1203,16 +1210,16 @@ class FooBar extends Model {
   foo = use(Foo);
   bar = use(Bar);
 
-  get sum(){
+  get value(){
     return this.foo.value + this.bar.value;
   }
 
-  plusFoo = () => this.bar.value = this.sum;
-  plusBar = () => this.foo.value = this.sum;
+  plusFoo = () => this.bar.value = this.value;
+  plusBar = () => this.foo.value = this.value;
 }
 ```
 
-Now, we have a good way to mix controllers. More importantly though, we have a place to put _mutually-inclusive_ stuff, which before had to live in the component. This brings us right back to dumb-component paradise. 🏝
+> Now, we have a good way to mixin controllers. More importantly though, we have a place to put _mutually-inclusive_ stuff, before which had to live in component. This brings us back to dumb-component paradise. 🏝
 
 ```js
 const FibonacciApp = () => {
@@ -1239,7 +1246,7 @@ const FibonacciApp = () => {
 <br/>
 <h2 id="concept-parent-model">Parent Controller</h2>
 
-While separating concerns, there will be times designing a Model to serve another makes sense, and a reference to that parent may be desirable. For this we have the `parent` modifier.
+While separating concerns, there will be times designing a Model expressly to help another makes sense, and a reference to that parent is desirable. For this we have the `parent` instruction.
 
 ### `parent(Type, required?)`
 
@@ -1260,7 +1267,7 @@ class Dependant extends Model {
 <br/>
 <h2 id="concept-ambient">Ambient Controller</h2>
 
-Ofcourse, controllers can also access others, via the context of component where used. You probably saw it coming: for the we have the `tap` modifier!
+Ofcourse, controllers can also access others via context, within the component where used. You probably saw it coming: for this we have a `tap` instruction!
 
 ### `tap(Type, required?)`
 
@@ -1279,7 +1286,7 @@ class Greet extends Model {
   }
 }
 ```
-First define a controller which itself defines a peer-property. Controller will fetch requested model from the context of component to which it belongs.
+First define a controller which itself defines a peer-property. Controller will fetch requested model from context of the component to which it belongs.
 ```js
 import { Provider } from "@expressive/mvc";
 
@@ -1322,11 +1329,12 @@ const SayHi = () => {
 Good things to keep in mind of as you build with MVC patters in your apps. Naturally, just suggestions, but these are design principles to be supported as this library evolves.
 
 <br/>
+<br/>
 <h2 id="concept-typescript">Models & Typescript</h2>
 
-Remember to code responsibly. Typescript is your friend and Expressive is built laregely to facilitate its use within React apps.
+Typescript is your friend and Expressive is built laregely to facilitate its use within React apps.
 
-A ton of focus has been put in to make sure _all_ features of Expressive are in-line with what Typescript lanaguage supports. Transparency is key for a great developer experience, and MVC's are designed to fail-fast in static analysis.
+A ton of focus has been put in to make sure _all_ features of Expressive are in-line with what Typescript lanaguage supports. Transparency is key for a great developer experience, and MVC's are designed to infer often and fail-fast in static analysis.
 
 ```ts
 import Model from "@expressive/mvc";
@@ -1352,7 +1360,6 @@ class FunActivity extends Model {
   }
 }
 ```
-
 ```jsx
 const PaintDrying = ({ alreadyMinutes }) => {
   /* Your IDE will know `alreadyMinutes` is supposed to be a number */
@@ -1512,4 +1519,4 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 # License
 
-MIT license. <br/>
+MIT license.
