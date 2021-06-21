@@ -1303,21 +1303,6 @@ const SayHi = () => {
 ```
 > Here *SayHi*, without direct access to *Hello*, can still get what it needs. The actionable `greeting` comes from *Greet*, which itself touches data on *Hello*. This ends up superior scope-control, leading to code that's more robust and more secure (in theory 😅) overall.
 
-<!-- <br/>
-<br/>
-<h1 id="sharing-section">Extending & Reuse</h1>
-
-<h2 id="managing-section">Extending Controllers</h2>
-<h2 id="concept-extension-context">Impacts on Context</h2>
-
-<br/>
-<br/>
-<h1 id="sharing-section">Special Properties</h1>
-
-<h2 id="managing-section">Built In Modifiers</h2>
-<h2 id="concept-extension-context">Your Own Modifiers</h2>
-<h2 id="managing-section">Using Meta</h2> -->
-
 <br/>
 <br/>
 <h1>Best Practices</h1>
@@ -1500,17 +1485,6 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 #### `componentWillUpdate(): void`
 - Called every subsequent render of the same component.
-
-<!--
-
-#### `willRefresh(didUpdate: Updates): void | false | Updates`
-- Called before `Controller` requests a render. <br/>
-  Passed as an argument is an object with values which triggered the refresh. <br/>
-  - If nothing is returned, update will proceed.
-  - If a new object with updates is returned, new state will reflect only those changes, and any others will be discarded.
-  - If `false` is returned the update will be canceled.
-
--->
 
 <br/>
 <br/>
