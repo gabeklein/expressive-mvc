@@ -53,7 +53,7 @@ export function bindRefFunctions(on: Observer){
           )
         }
         finally {
-          if(++index == refs.length)
+          if(++index > refs.length)
             index = 0;
         }
       }
