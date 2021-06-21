@@ -26,7 +26,7 @@
     "build": "rollup --config",
     "watch": "rollup --config --sourcemap --watch",
     "prebuild": "rm -rf lib/",
-    "publish:beta": "npm version prerelease --preid=rc",
+    "publish:pre": "npm version prerelease --preid=rc",
     "preversion": "jest",
     "postversion": "npm run build; npm publish",
     "postpublish": "git push; git push --tags; rm -rf lib",
