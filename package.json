@@ -1,6 +1,6 @@
 {
-  "name": "@expressive/react",
-  "version": "1.0.0-rc.1",
+  "name": "@expressive/mvc",
+  "version": "1.0.0-beta.0",
   "description": "Easy to use state controllers using classes and hooks",
   "author": {
     "name": "Gabe Klein",
@@ -26,7 +26,7 @@
     "build": "rollup --config",
     "watch": "rollup --config --sourcemap --watch",
     "prebuild": "rm -rf lib/",
-    "publish:pre": "npm version prerelease --preid=rc",
+    "publish:pre": "npm version prerelease --preid=beta",
     "preversion": "jest",
     "postversion": "npm run build; npm publish",
     "postpublish": "git push; git push --tags; rm -rf lib",

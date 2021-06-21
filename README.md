@@ -12,8 +12,8 @@
 </h4>
  
 <p align="center">
-  <a href="https://www.npmjs.com/package/@expressive/react"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Freact.svg"></a>
-  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/@expressive/react.svg"></a>
+  <a href="https://www.npmjs.com/package/@expressive/mvc"><img alt="NPM" src="https://badge.fury.io/js/%40expressive%2Freact.svg"></a>
+  <a href=""><img alt="Build" src="https://shields-staging.herokuapp.com/npm/types/@expressive/mvc.svg"></a>
 </p>
 
 <p align="center">
@@ -114,13 +114,13 @@ This behavior combines with actions, computed properties, events, and the compon
 
 Install with your preferred package manager
 ```bash
-npm install --save @expressive/react
+npm install --save @expressive/mvc
 ```
 
 Import and use in your react apps
 
 ```js
-import Model from "@expressive/react";
+import Model from "@expressive/mvc";
 ```
 
 <br/>
@@ -193,7 +193,7 @@ Here's some library jargon which will be good to know.
 Start with a bare minimum:
 
 ```jsx
-import Model from "@expressive/react";
+import Model from "@expressive/mvc";
 
 class Counter extends Model {
   number = 1
@@ -804,7 +804,7 @@ export class FooBar extends Model {
 Into a shiny new, creatively-named `Provider` component, create and pass an instance of your state to its `of` prop. 
 
 ```jsx
-import { Provider } from "@expressive/react";
+import { Provider } from "@expressive/mvc";
 
 const Example = () => {
   const foobar = FooBar.use();
@@ -875,7 +875,7 @@ Here, pass a controller through to `of` prop. For any children, it will be avail
 > Unlike a normal `Context.Provider`, `Provider` is generic and good for any (or many) different states.
 
 ```jsx
-import { Provider } from "@expressive/react";
+import { Provider } from "@expressive/mvc";
 import { FooBar } from "./controller";
 
 export const App = () => {
@@ -954,7 +954,7 @@ For this, we have `Singleton`, to create and share state, components not withsta
 Simply extend `Singleton` instead, a variant of `Model`.
 
 ```js
-import { Singleton } from "@expressive/react";
+import { Singleton } from "@expressive/mvc";
 import { getCookies } from "./monster";
 
 class Login extends Singleton {
@@ -1199,7 +1199,7 @@ Import `use` to wrap another Model, to attach a new instance.
 > [This is an instruction](#concept-directives), in-short a factory function. It tells the controller, while initializing: the defined property has special behavior, run some logic to set that up.
 
 ```js
-import Model, { use } from "@expressive/react";
+import Model, { use } from "@expressive/mvc";
 
 class FooBar extends Model {
   foo = use(Foo);
@@ -1248,7 +1248,7 @@ While separating concerns, there will be times designing a Model expressly to he
 Returns a reference to controller to which `this` is a child. Optional `required` parameter will throw if child model is created without that parent, otherwise returning `undefined`.
 
 ```js
-import Model, { use, parent } from "@expressive/react";
+import Model, { use, parent } from "@expressive/mvc";
 
 class Control extends Model {
   child = use(Dependant);
@@ -1267,7 +1267,7 @@ Ofcourse, controllers can also access others via context, within the component w
 ### `tap(Type, required?)`
 
 ```js
-import Model, { tap } from "@expressive/react";
+import Model, { tap } from "@expressive/mvc";
 
 class Hello extends Model {
   to = "World";
@@ -1283,7 +1283,7 @@ class Greet extends Model {
 ```
 First define a controller which itself defines a peer-property. Controller will fetch requested model from context of the component to which it belongs.
 ```js
-import { Provider } from "@expressive/react";
+import { Provider } from "@expressive/mvc";
 
 const App = () => {
   return (
@@ -1317,7 +1317,7 @@ Typescript is your friend and Expressive is built laregely to facilitate its use
 A ton of focus has been put in to make sure _all_ features of Expressive are in-line with what Typescript lanaguage supports. Transparency is key for a great developer experience, and MVC's are designed to infer often and fail-fast in static analysis.
 
 ```ts
-import Model from "@expressive/react";
+import Model from "@expressive/mvc";
 
 class FunActivity extends Model {
   /** Interval identifier for cleaning up */
