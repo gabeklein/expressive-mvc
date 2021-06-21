@@ -186,7 +186,7 @@ export abstract class Model {
       * 
       * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
       */
-     tag(id: (on: this) => Key | void): this;
+     tag(idFactory: (idFactory: this) => Key | void): this;
 
     /**
      * Creates a new instance of this controller.
@@ -282,7 +282,7 @@ export abstract class Model {
      * 
      * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    static tag <T extends Class, I extends InstanceOf<T>> (this: T, id?: Key | ((on: I) => Key | void)): I;
+    static tag <T extends Class, I extends InstanceOf<T>> (this: T, id?: Key): I;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
@@ -291,7 +291,7 @@ export abstract class Model {
      * 
      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
      */
-    static tag <T extends Class> (this: T, id: (on: InstanceOf<T>) => Key | void): InstanceOf<T>;
+    static tag <T extends Class, I extends InstanceOf<T>> (this: T, idFactory: (on: I) => Key | void): I;
 
     /** 
      * **React Hook** - Fetch and subscribe to *class itself* within a component.
