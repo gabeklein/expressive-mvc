@@ -60,16 +60,14 @@ This behavior combines with actions, computed properties, events, and the compon
   &ensp; •&nbsp; [Monitored Externals](#concept-external) <br/>
   &ensp; •&nbsp; [Async and callbacks](#concept-async) <br/>
 
-**Sharing** <br/>
+**Shared State** <br/>
   &ensp; •&nbsp; [Basics](#concept-sharing) <br/>
   &ensp; •&nbsp; [Provider](#concept-provider) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [Spawning](#concept-provider-spawning) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [With props](#concept-provider-props) <br/>
   &ensp;&ensp;&ensp; ◦&nbsp; [Multiple](#concept-provider-multi) <br/>
-
-**Globals** <br/>
-  &ensp; •&nbsp; [Singletons](#section-global) <br/>
-  &ensp; •&nbsp; [Initialize](#section-singleton-activate) <br/>
+  &ensp; •&nbsp; [Globals](#section-global) <br/>
+  &ensp;&ensp;&ensp; ◦&nbsp; [Setup](#section-singleton-activate) <br/>
 
 **Consuming** <br/>
   &ensp; •&nbsp; [Hooks](#concept-consumer-hooks) <br/>
@@ -149,17 +147,17 @@ const KitchenCounter = () => {
   const { current, increment, decrement } = Counter.use();
 
   return (
-    <Row>
-      <Button onClick={decrement}>{"-"}</Button>
-      <Box>{current}</Box>
-      <Button onClick={increment}>{"+"}</Button>
-    </Row>
+    <div>
+      <button onClick={decrement}>{"-"}</button>
+      <pre>{current}</pre>
+      <button onClick={increment}>{"+"}</button>
+    </div>
   )
 }
 ```
 
 ### Step 3
-[See it in action]() 🚀  You've already got something usable!
+[See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀  You've already got something usable!
 
 <br/>
 
@@ -217,7 +215,6 @@ const KitchenCounter = () => {
   )
 }
 ```
-<!-- <a href="https://codesandbox.io/s/deep-state-simple-e3xcf"><sup>View in CodeSandbox</sup></a> -->
  
 One of the static-methods on your class will be `use`. This is a hook; it will create a new instance of your model and attach it to component.
 
@@ -345,6 +342,7 @@ class Timer extends Model {
   }
 }
 ```
+<sup><a href="https://codesandbox.io/s/example-timer-torjc">View in CodeSandbox</a></sup>
 
 A getter's value is cached, facing the user. It will only run when a dependency changes, and **not upon access** as you might expect. However, getters are also lazy, so first access is one exception.
 
