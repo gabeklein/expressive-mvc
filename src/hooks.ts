@@ -69,20 +69,20 @@ class HookSubscriber extends Subscriber {
 }
 
 class ElementSubscriber extends HookSubscriber {
-  focus(select: string | Select, expect?: boolean){
+  focus(key: string | Select, expect?: boolean){
     const source = this.subject;
 
-    if(fn(select)){
-      const keys = {} as BunchOf<string>;
+    if(fn(key)){
+      const available = {} as BunchOf<string>;
 
       for(const key in source)
-        keys[key] = key;
+        available[key] = key;
 
-      select = select(keys);
+      key = key(available);
     }
 
-    this.watch(select, () => {
-      let value = source[select as string];
+    this.recursive(key, () => {
+      let value = source[key as string];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
@@ -92,7 +92,7 @@ class ElementSubscriber extends HookSubscriber {
 
       if(value === undefined && expect)
         throw Oops.HasPropertyUndefined(
-          source.constructor.name, select as string
+          source.constructor.name, key as string
         );
 
       this.proxy = value;

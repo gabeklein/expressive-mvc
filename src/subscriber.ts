@@ -68,14 +68,14 @@ export class Subscriber<T extends Stateful = any> {
     this.following[key] = cb;
   }
 
-  public watch(
+  public recursive(
     key: string,
-    subscribe: () => Subscriber | undefined){
+    onUpdate: () => Subscriber | undefined){
 
     let child: Subscriber | undefined;
 
     const start = (mounted?: boolean) => {
-      child = subscribe();
+      child = onUpdate();
 
       if(child){
         this.dependant.add(child);
@@ -102,7 +102,7 @@ export class Subscriber<T extends Stateful = any> {
   private delegate(key: string){
     let sub: Subscriber | undefined;
 
-    this.watch(key, () => {
+    this.recursive(key, () => {
       let value = (this.subject as any)[key];
 
       if(value instanceof Model){
