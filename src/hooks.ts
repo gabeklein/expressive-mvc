@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { bindRefFunctions } from './bind';
+import { bindRefFunctions } from './binding';
 import { useLookup } from './context';
 import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model, Stateful } from './model';
