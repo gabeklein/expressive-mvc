@@ -17,9 +17,9 @@ export function setChild<T extends typeof Model>
 
     on.register(key, instance);
     ParentRelationship.set(instance, on.subject);
-    instance[CONTROL];
 
-    if(callback)
+    // evaluating CONTROL to force inclusion by compiler
+    if(instance[CONTROL] && callback)
       callback(instance);
   })
 }
