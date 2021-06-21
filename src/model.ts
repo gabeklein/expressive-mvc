@@ -1,11 +1,11 @@
 import type Public from '../types';
 
+import { createBindings } from './binding';
 import { useLookup } from './context';
 import { Controller } from './controller';
 import { KeyFactory, useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
+import { LOCAL, Subscriber } from './subscriber';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
-
-import Oops from './issues';
 
 export const CONTROL = Symbol("controller");
 export type Stateful = { [CONTROL]: Controller };
@@ -13,6 +13,7 @@ export type Stateful = { [CONTROL]: Controller };
 export interface Model extends Public {};
 export class Model {
   [CONTROL]: Controller;
+  [LOCAL]?: Subscriber;
   
   constructor(){
     const control = new Controller(this);
@@ -41,8 +42,10 @@ export class Model {
     define(this, "set", this);
   }
 
-  get bind(): never {
-    throw Oops.BindNotAvailable();
+  get bind(){
+    const proxy = createBindings(this);
+    define(this, "bind", proxy);
+    return proxy as any;
   }
   
   tap(): this;

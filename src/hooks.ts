@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { bindRefFunctions } from './binding';
 import { useLookup } from './context';
 import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
 import { Model, Stateful } from './model';
 import { PendingContext } from './instructions';
 import { Subscriber } from './subscriber';
-import { defineLazy, fn, values } from './util';
+import { fn, values } from './util';
 
 import Oops from './issues';
 
@@ -45,14 +44,6 @@ class HookSubscriber extends Subscriber {
       case Lifecycle.WILL_UNMOUNT:
         this.release();
     }
-  }
-
-  addRefs(){
-    defineLazy(this.proxy, "bind", () => {
-      const agent = bindRefFunctions(this.parent);
-      this.dependant.add(agent);
-      return agent.proxy;
-    });
   }
 
   declare(name: Event){
@@ -156,9 +147,7 @@ export function useWatcher(
     const sub = new ElementSubscriber(target, trigger);
 
     if(path)
-      sub.focus(path, expected)
-    else
-      sub.addRefs();
+      sub.focus(path, expected);
 
     return sub;
   });
@@ -194,8 +183,6 @@ export function useModel(
 
     if(callback)
       callback(instance);
-
-    sub.addRefs();
 
     return sub;
   });

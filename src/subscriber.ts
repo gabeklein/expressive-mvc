@@ -1,10 +1,12 @@
 import { GetterInfo, metaData } from "./compute";
 import { CONTROL, Model, Stateful } from './model';
 import { Observer } from './observer';
-import { alias, create, defineProperty } from './util';
+import { alias, create, define, defineProperty } from './util';
+
+export const LOCAL = Symbol("current_subscriber");
 
 export class Subscriber<T extends Stateful = any> {
-  protected dependant = new Set<{
+  public dependant = new Set<{
     listen(): void;
     release(): void;
     commit?(): void;
@@ -12,7 +14,7 @@ export class Subscriber<T extends Stateful = any> {
 
   public following = {} as BunchOf<Callback>;
   public parent: Observer;
-  public proxy: T;
+  public proxy: T & { [LOCAL]: Subscriber };
   
   constructor(
     public subject: T,
@@ -22,6 +24,8 @@ export class Subscriber<T extends Stateful = any> {
     const { state } = this.parent = subject[CONTROL];
 
     this.proxy = create(subject as any);
+
+    define(this.proxy, LOCAL, this);
 
     for(const key in state)
       this.spyOn(key);
