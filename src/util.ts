@@ -51,9 +51,9 @@ export function fn(x: any): x is Function {
 }
 
 export function alias<T extends Function>(
-  fn: T, displayName: string): T {
+  fn: T, displayName: string){
 
-  return assign(fn, { displayName });
+  assign(fn, { displayName });
 }
 
 export function entriesIn(object: {}){

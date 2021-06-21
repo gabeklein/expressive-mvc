@@ -58,8 +58,9 @@ export class Subscriber<T extends Stateful = any> {
       return value;
     }
 
+    alias(access, `tap ${key}`)
     defineProperty(this.proxy, key, {
-      get: alias(access, `tap ${key}`),
+      get: access,
       set: this.parent.setter(key),
       configurable: true
     })
