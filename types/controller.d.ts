@@ -5,7 +5,13 @@ import { Callback, EffectCallback, UpdateCallback } from './types';
 type CallbackFor<S extends Selector.Function<any>, T> =
   (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void;
 
-interface EventDispatch {
+/**
+ * Observable Instance
+ * 
+ * Implements internal value tracking. 
+ * Able to be subscribed to, per-value to know when updated.
+ */
+interface Dispatch {
   // Explicit all
   on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false, once?: boolean): Callback;
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
@@ -30,15 +36,7 @@ interface EventDispatch {
 
   once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
   once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
-}
 
-/**
- * Observable Instance
- * 
- * Implements internal value tracking. 
- * Able to be subscribed to, per-value to know when updated.
- */
-interface Dispatch extends EventDispatch {
   effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
   effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;
 

@@ -74,9 +74,9 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    instance[CONTROL];
-
-    return instance;
+    // evaluating CONTROL prevents compiler from dropping it.
+    // Triggering get required to properly initialize state.
+    return instance[CONTROL] && instance;
   }
 
   static use(...args: any[]){
