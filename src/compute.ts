@@ -24,6 +24,15 @@ export function metaData(x: Function, set?: GetterInfo){
     return ComputedInfo.get(x);
 }
 
+function getRegister(on: Observer){
+  let defined = ComputedFor.get(on)!;
+  
+  if(!defined)
+    ComputedFor.set(on, defined = new Map());
+
+  return defined;
+}
+
 export function implementGetters(
   on: Observer, subject: Stateful){
   
@@ -36,15 +45,6 @@ export function implementGetters(
 
     scan = getPrototypeOf(scan)
   }
-}
-
-function getRegister(on: Observer){
-  let defined = ComputedFor.get(on)!;
-  
-  if(!defined)
-    ComputedFor.set(on, defined = new Map());
-
-  return defined;
 }
 
 export function prepareComputed(
