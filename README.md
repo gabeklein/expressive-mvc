@@ -174,8 +174,6 @@ Ultimately, the workflow is simple.
 5. Update those values on demand. Component will sync automagically. ✨
 <br/>
 
-<br/>
-
 ### Glossary
 
 The following is a crash-course to help get you up to speed.<br/>
@@ -189,10 +187,7 @@ Here's some library jargon which will be good to know.
  - **Element**: Instance of a component/view, actively mounted with its own state and lifecycle.
 
 <br/>
-
-Let's go :clap:
-<br/><br/>
-
+<br/>
 <h2 id="concept-simple">Simplest use-case</h2>
 
 Start with a bare minimum:
@@ -1489,19 +1484,22 @@ While standard practice is for `use` to take all methods (and bind them), all pr
 
 <h2 id="lifecycle-api">Lifecycle</h2>
 
-#### `didMount`
-- `use()` will call this while internally running `useEffect(fn, [])` for itself.
+> Lifecycle methods are called syncronously, via `useLayoutEffect` and thus may block or intercept a render. If you prefer to run side-effects rather, use corresponding events or define your method as `async`. 
 
-#### `willUnmount`
+#### `componentDidMount`
+- `use()` will call this while internally mounting for the first time.
+
+#### `componentWillUnmount`
 - `use()` will call this before starting to clean up.
 
-#### `willRender(): void`
-- Called every render. A way to pipe data in from other hooks.
+#### `componentWillRender(): void`
+- Called every render.
 
-#### `willHook(): void`
-- Called every render. However `this` references actual state only on first render, otherwise is a dummy. <br/>
-  Useful for grabbing data without re-evaluating the properties you set in this callback every render. <br/> 
-  (e.g. things from `useContext`)
+#### `componentWillMount(): void`
+- Called on first render, prior to component being drawn on-screen.
+
+#### `componentWillUpdate(): void`
+- Called every subsequent render of the same component.
 
 <!--
 
