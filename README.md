@@ -381,7 +381,6 @@ const SayHello = ({ fullName }) => {
   return <b>Hello {firstName}!</b>;
 }
 ```
-<!-- <sup><a href="https://codesandbox.io/s/example-constructor-params-22lqu">View in CodeSandbox</a></sup> -->
 
 <br/>
 
@@ -411,7 +410,7 @@ class Greetings extends Model {
   }
 }
 ```
-Greetings defines *firstName* & *isBirthday*; however they themselves depend on *name* and *birthday*, which start out as undefined. We can pass in `props` to help with that.
+Greetings defines *firstName* & *isBirthday*; however they themselves depend on *name* and *birthday*, which start out undefined. We can pass in `props` to help with that.
 
 ```jsx
 const HappyBirthday = (props) => {
@@ -429,7 +428,7 @@ const HappyBirthday = (props) => {
 };
 ```
 
-Now, we simply define those props from outside!
+Now, we can define these props from outside!
 ```jsx
 const SayHello = () => (
   <HappyBirthday
@@ -459,7 +458,7 @@ This way, objects containing _more_ than expect data may be used, without collis
 
 So far, all our examples have been passive. Models can serve a bigger roll, however, to evolve state even without user input.
 
-Because state is jsut a portable object, we can modify it from anywhere, and more-crucially whenever. This makes async stuff pretty low maintenance. You implement the business-logic, controllers will handle the rest.
+Because state is a portable object, we can modify it from anywhere, and more-crucially whenever. This makes async things pretty low maintenance. You implement the business-logic, controllers will handle the rest.
 
 Here are a few ways to smarten up your controllers:
 
