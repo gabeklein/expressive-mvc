@@ -454,27 +454,30 @@ This way, objects containing _more_ than required info may be used, without coll
 
 <h1 id="managing-section">Creating a dynamic state</h1>
 
-So far, all examples have been passive. Now we'll give models a bigger roll, to evolve state without user input.
+So far, all examples have been passive. Models can serve a bigger roll, however, to evolve state even without user input.
 
-Because state is a portable object, we can do whatever to values, but more-crucially, whenever. This makes asynchronous coding pretty low maintenance. You implement business-logic; controllers will handle the rest.
+Because state is a portable object, we can modify them from anywhere, and more-crucially whenever. This makes asynchronous coding pretty low maintenance. You implement business-logic; controllers will handle the rest.
 
-Here are a few concrete ways though, to smarten up your models:<br/><br/>
+Here are a few ways to smarten up your models:
 
+<br/>
 <h2 id="concept-lifecycle">Lifecycle</h2>
 
-Built-in hooks will call a number of "special methods" you define on your model, to handle certain "special events" of their parent component.
+Built-in hooks, besides receiving updates, can dispatch events related the component they're a part of. On the model, reserved methods may be defined to handle these events. 
 
 ```jsx
 class TimerControl extends Model {
+  interval = undefined;
   elapsed = 1;
 
   componentDidMount(){
-    this.timer = setInterval(() => this.elapsed++, 1000);
+    const inc = () => this.elapsed++;
+
+    this.interval = setInterval(inc, 1000);
   }
 
   componentWillUnmount(){
-    /** remember to cleanup ♻ */
-    clearInterval(this.timer);
+    clearInterval(this.interval);
   }
 }
 ```
@@ -487,9 +490,9 @@ const MyTimer = () => {
 }
 ```
 
-You can see all available lifecycle methods **[here](#lifecycle-api)**.
-
 <!-- <sup><a href="https://codesandbox.io/s/example-counter-8cmd3">View in CodeSandbox</a></sup> -->
+
+> We will [learn more](#lifecycle-api) about Lifecycle events in a later section.
 
 <br />
 
@@ -638,7 +641,7 @@ class TickTockClock extends Model {
 
 Sometimes, you might want to see changes coming from outside, usually coming in via props. Observing any value will require that you integrate it, however after that, consuming is easy.
 
-<h3 id="method-using"><code>Model.using(source, keys?)</code></h3>
+<h4 id="method-using"><code>Model.using(source, keys?)</code></h4>
 
 > Roughly equivalent to [`uses()`](#concept-passing-props)
 
@@ -763,7 +766,7 @@ const ActionSequence = () => {
   )
 }
 ```
-<sup><a href="https://codesandbox.io/s/example-async-effbq">View in CodeSandbox</a></sup>
+<sup><a href="https://codesandbox.io/s/async-example-inmk4">View in CodeSandbox</a></sup>
 
 > Notice how our components can remain completely independent from the logic.
 >
@@ -799,7 +802,7 @@ export class FooBar extends Model {
 ```
 
 ### Step 2
-Into a shiny new, creatively-named `Provider` component, create and pass an instance of your state to its `of` prop. 
+Import the creatively-named `Provider` component, then pass an instance of state to its `of` prop. 
 
 ```jsx
 import { Provider } from "@expressive/mvc";
@@ -816,7 +819,7 @@ const Example = () => {
 }
 ```
 ### Step 3
-Just as `FooBar.use()` creates an instance of `FooBar`, `FooBar.get()` can find an *existing* instance of `FooBar`. 
+Where `FooBar.use()` will create an instance of `FooBar`, `FooBar.get()` will fetch an *existing* instance of `FooBar`. 
 
 ```jsx
 const Foo = () => {
@@ -835,6 +838,7 @@ const Bar = () => {
   )
 }
 ```
+
 Using the class itself, we have a convenient way to "select" what type of state we want, assuming it's in context.
 
 > There's another big benefit here: *types are preserved.*
@@ -849,7 +853,7 @@ Let's first create and cast a state, for use by components and peers. In the [ne
 
 By default, `Model` uses [React Context](https://frontarm.com/james-k-nelson/usecontext-react-hook/) to find instances upstream.
 
-There are several ways, however, to create a controller and provide it. Nothing special is needed on a model to make it work though.
+There are several ways to provide a controller. Nothing special, on the model, is required.
 
 ```ts
 export class FooBar extends Model {
@@ -858,9 +862,9 @@ export class FooBar extends Model {
 };
 ```
 
-> Emphesis on `export` here.
+> Note the `export` here.
 > 
-> No need to keep a Model and it's respective consumers in the same file, let alone module. Want to publish a reusable controller? This is a pro-consumer solution. ☝️😑
+> Models and their consumers don't need to live in same file, let alone module. Want to publish a reusable controller? This can make for a pro-consumer solution. ☝️😑
 
 <!-- <sup><a href="https://codesandbox.io/s/example-multiple-accessors-79j0m">View in CodeSandbox</a></sup>  -->
 
@@ -868,9 +872,9 @@ export class FooBar extends Model {
 
 <h2 id="concept-provider">Providing an instance</h2>
 
-Here, pass a controller through to `of` prop. For any children, it will be available, accessible via the respective class.
+Here, pass a controller through to `of` prop. For any children, it will be available, accessible via its class.
 
-> Unlike a normal `Context.Provider`, `Provider` is generic and good for any (or many) different states.
+> Unlike a normal `Context.Provider`, a `Provider` is generic and good for any (or many) different states.
 
 ```jsx
 import { Provider } from "@expressive/mvc";
@@ -890,7 +894,7 @@ export const App = () => {
 
 <h2 id="concept-provider-spawning">Spawning an instance</h2>
 
-Assuming no constructor-arguments, creating an instance just to provide it can be an unnecessary step. Pass a Model itself, and you can both create and provide an instance in one sitting.
+Without constructor-arguments, creating the instance separately can be an unnecessary step. Pass a Model itself, and you can both create and provide your state in one sitting.
 ```jsx
 export const App = () => {
   return (
@@ -904,24 +908,24 @@ export const App = () => {
 
 <h2 id="concept-provider-props">Spawning with props</h2>
 
-Remember [`Model.using()`](#concept-external) right? When a Model is passed to `of` prop, Provider has the same behavior. All other props are forwarded to state and likewise watched.
+When a Model is passed to `of` prop directly, the Provider will behave similar to [`Model.using()`](#concept-external). All other props are forwarded to state and likewise watched.
 
 ```jsx
-const MockFooBar = (props) => {
+const FancyFooBar = (props) => {
   return (
-    <Provider of={FooBar} foo={5} bar={10}>
+    <Provider of={FooBar} foo={props.foo} bar={10}>
       {props.children}
     </Provider>
   )
 }
 ```
 
-> Now, consumers can be aware of props which only the parent has access to!
+> Now, consumers can see incoming-data, which only the parent has access to!
 
 <br/>
 <h2 id="concept-provider-multi">Providing Multiple</h2>
 
-Finally, the `of` prop will accept an object or array of models and/or state objects. Mix and match as needed to ensure a dry, readible root.
+Finally, the `of` prop can accept a collection of models and/or state objects. Mix and match as needed to ensure a dry, readible root.
 
 ```jsx
 const MockFooBar = () => {
@@ -939,17 +943,17 @@ const MockFooBar = () => {
 
 <h1 id="section-global">Global Models</h1>
 
-While context helps with contextual-isolation, sometimes we'll want one controller to serve a particular purpose for an entire app. Think concepts like login, routes, and interaction with external APIs.
+While context is nice for contextual-isolation, sometimes we'll want just one controller to serve a purpose for an entire app. Think concepts like login, routes, and interacting with external stuff.
 
 <!-- > For instance, if ever used [react-router](https://github.com/ReactTraining/react-router), you'll know `<BrowserRouter>` is really only needed for its Provider. You won't have more than one at a time. -->
 
-For this, we have `Singleton`, to create and share state, components not withstanding. Hooks are the same as `Model` counterparts, except under the hood they always retrieve a single, promoted instance.
+For this we have `Singleton`, to create and share state, components not withstanding. Hooks are the same as their `Model` counterparts, except under the hood will always retrieve a single, promoted instance.
 
 <br/>
 
 ## Defining a Singleton
 
-Simply extend `Singleton` instead, a variant of `Model`.
+Extend `Singleton` instead, a variant of `Model`.
 
 ```js
 import { Singleton } from "@expressive/mvc";
@@ -979,12 +983,12 @@ class Login extends Singleton {
 
 <h2 id="#section-singleton-activate">Activating a Singleton</h2>
 
-Singletons are not be useable until they initialize in one of three ways:
+Singletons will not be useable, until they initialize in one of three ways:
 
 
 ### Method 1: `Singleton.create(...)`
 
-A method on all Models, `create` on a Singleton will promote the new instance, while avoiding collisions. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
+A method on all Models, `create` on a Singleton will also promote the new instance. This can be done anytime, as long as it's before a dependant (component or peer) tries to pull data from it.
 
 ```js
 window.addEventListener("load", () => {
@@ -998,7 +1002,7 @@ window.addEventListener("load", () => {
 
 ### Method 2: `Singleton.use()`
 
-Create an instance with standard use-methods.
+Create an instance with the standard use-methods.
 
   ```jsx
   const LoginGate = () => {
@@ -1010,7 +1014,7 @@ Create an instance with standard use-methods.
   }
   ```
 > Login instance is available immediately after `use()` returns. <br/> 
-> **However,** instance will then become unavailable if `LoginPrompt` does unmount. If it mounts again, any newly rendered dependents get the latest instance.
+> **However,** instance will also become unavailable if `LoginPrompt` does unmount. If it mounts again, any _new_ subscribers get the latest version.
 
 ### Method 3: `<Provider of={Singleton}>`
 
@@ -1026,7 +1030,7 @@ export const App = () => {
 ```
 > This will have no bearing on context, it will simply be "provided" to everyone. Wrapping children, in this case, is doable but optional.
 > 
-> The active instance is destroyed when its Provider unmounts. You'll most likely use this to limit the existence of a Singleton (and its side-effects), to when a particular UI is on-screen.
+> The active instance is likewise destroyed when its Provider unmounts. You'll most likely use this to limit the existence of a Singleton (and its side-effects), to when a particular UI is on-screen.
 
 <br/>
 
@@ -1045,13 +1049,13 @@ export class FooBar extends Model {
 
 <h2 id="concept-consumer-hooks">Hooks Methods</h2>
 
-Models make getting an instance you need super easy. On every model, there are three `useContext` like methods. They find, return and maintain references to a nearest instance of class they belong to.
+Models make fetching an instance super easy. On every model, there are three `useContext` like methods. They find, return and maintain a nearest instance of the class they belong to.
 
-<h3 id="method-get"><code>get(key?)</code></h3>
+<h4 id="method-get"><code>.get(key?)</code></h4>
 
-The most straight-forward, `get` will find and return the nearest `instanceof this` within context. When passed a key it will 'drill', either returning a value (if found) or `undefined`.
+The most straight-forward, `get` simple gets the nearest `instanceof this` within context. If given a key it will 'drill', either returning a value (if found) or `undefined`. Will not respond to updates.
 
-<h3 id="method-tap"><code>tap(key?, expect?)</code></h3>
+<h4 id="method-tap"><code>.tap(key?, expect?)</code></h4>
 
 In addition to fetching instance, `tap` will subscribe to values on that instance much like `use` will. With this, children sharing a mutual state can affect _eachother's_ state. 
 
@@ -1079,8 +1083,13 @@ const InnerBar = () => {
   )
 }
 ```
+<sup><a href="https://codesandbox.io/s/provider-example-5vvtr">View in CodeSandbox</a></sup>
 
 With the `expect` flag, tap will throw if chosen property is undefined at time of use. This is useful because output is cast as non-nullable. This way, value may be destructured without assertions (or complaints from your linter).
+
+<h4 id="method-tap"><code>.tag(id)</code> / <code>.tag(idFactory)</code></h4>
+
+Covered in a [later section](#concept-lifecycle), `tag` will also report lifecycle-events to its parent controller. An `id` argument is used to identify the source for such updates.
 
 <br/>
 
@@ -1094,7 +1103,7 @@ There are a number of options, to get info with or without a typical subscriptio
 
 When a function is passed as a child, returned elements will replace the Consumer. The function recieves state as its first argument, and subscribed updates will trigger new renders.
 
-> Note: If you spread `props` directly, _all_ possible values will be subscribed to.
+> Note: If you spread in `props` directly, _all_ possible values will be subscribed to.
 
 ```jsx
 const CustomConsumer = () => {
@@ -1110,8 +1119,8 @@ Consumers can drive classical components easily, assuming the values on state ma
 
 <h3 id="consumer-tap"><code>tap</code> Prop</h3>
 
-If rendered output is not needed, you can pass a function to the `tap` prop. This is better for side-effects, more specific to a UI than controller itself. 
-> Also allows for `async`, since return value (a `Promise`) can just be ignored.
+If rendered output isn't needed, you can pass a function to the `tap` prop. This is better for side-effects, more specific to a UI than a controller itself. 
+> Allows for `async`, since return value (a promise) can be ignored.
 
 ```jsx
 const ActiveConsumer = () => {
@@ -1299,14 +1308,18 @@ const SayHi = () => {
   )
 }
 ```
-> Here *SayHi*, without direct access to *Hello*, can still get what it needs. The actionable `greeting` comes from *Greet*, which itself touches data on *Hello*. This ends up superior scope-control, leading to code that's more robust and more secure (in theory 😅) overall.
+Here *SayHi*, without direct access to the *Hello* controller, can still get what it needs. The actionable value `greeting` comes from *Greet*, which gets the actual data on *Hello*. This is an example of scope-control, allowing code to be needs-based. Generally speaking, this often makes a program more robust and maintainable.
 
 <br/>
+
+### 🧱 Level 4 Complete! 
+
+> Here we've learned how Models allow controllers to cooperate and play off of eachother. They allow us to break-up behavior into smaller pieces, building blocks if you will. With that, we have an easy way to separate concerns, freeing up focus for added nuance and features.
+
 <br/>
 <h1>Best Practices</h1>
 Good things to keep in mind of as you build with MVC patters in your apps. Naturally, just suggestions, but these are design principles to be supported as this library evolves.
 
-<br/>
 <br/>
 <h2 id="concept-typescript">Models & Typescript</h2>
 
