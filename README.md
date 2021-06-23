@@ -24,7 +24,6 @@
 </p>
 
 <br/>
-
 <h1 id="overview-section">Overview</h1>
 
 Expressive lets classes define state and logic for components, via built-in hooks.
@@ -34,6 +33,43 @@ When the methods on a **Model** are called inside a component **(a View)**, an i
 This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller pattern within React.
 
 <br/>
+<h1 id="good-start">How to use</h1>
+
+### Step 1
+
+Create a class to extend `Model` and shape it to your liking.
+
+```js
+class Counter extends Model {
+  current = 1
+
+  increment = () => { this.current++ };
+  decrement = () => { this.current-- };
+}
+```
+
+### Step 2
+
+Pick a built-in hook, such as `use()`, to make your component stateful.
+
+```jsx
+const KitchenCounter = () => {
+  const { current, increment, decrement } = Counter.use();
+
+  return (
+    <div>
+      <button onClick={decrement}>{"-"}</button>
+      <pre>{current}</pre>
+      <button onClick={increment}>{"+"}</button>
+    </div>
+  )
+}
+```
+
+### Step 3
+[See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀  You've already got something usable!
+
+<br/>
 
 # Contents 
 
@@ -41,7 +77,6 @@ This behavior combines with actions, computed properties, events, and the compon
 
 ### Introductions
   &ensp; •&nbsp; **[Install and Import](#install-section)** <br/>
-  &ensp; •&nbsp; [A Simple Example](#good-start) <br/>
 
 **Getting Started** <br/>
   &ensp; •&nbsp; [The basics](#concept-simple) <br/>
@@ -121,46 +156,7 @@ Import and use in your react apps
 import Model from "@expressive/mvc";
 ```
 
-<br/>
-
-<h1 id="good-start">First Steps</h1>
-
-### Step 1
-
-Create a class to extend `Model` and shape it to your liking.
-
-```js
-class Counter extends Model {
-  current = 1
-
-  increment = () => { this.current++ };
-  decrement = () => { this.current-- };
-}
-```
-
-### Step 2
-
-Pick a built-in hook, such as `use()`, to make your component stateful.
-
-```jsx
-const KitchenCounter = () => {
-  const { current, increment, decrement } = Counter.use();
-
-  return (
-    <div>
-      <button onClick={decrement}>{"-"}</button>
-      <pre>{current}</pre>
-      <button onClick={increment}>{"+"}</button>
-    </div>
-  )
-}
-```
-
-### Step 3
-[See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀  You've already got something usable!
-
-<br/>
-
+<br/><br/>
 <h1 id="started-section">Getting Started</h1>
 
 Ultimately, the workflow is simple.
@@ -185,8 +181,7 @@ Here's some library jargon which will be good to know.
  - **Element**: Instance of a component/view, actively mounted with its own state and lifecycle.
 
 <br/>
-<br/>
-<h2 id="concept-simple">Simplest use-case</h2>
+<h2 id="concept-simple">First Steps</h2>
 
 Start with a bare minimum:
 
@@ -1248,7 +1243,7 @@ While the above works fine, what if we want something more organized and reusabl
 
 #### `use(Type, callback?)`
 
-Import another instruction, `use` and pass it a Model to attach an instance.
+Import another instruction, `use` and pass it a Model to attach a child-instance upon creation.
 
 ```js
 import Model, { use } from "@expressive/mvc";
@@ -1317,6 +1312,11 @@ class Dependant extends Model {
 ### 🧱 Level 4 Complete! 
 
 > Here we've learned how Models allow controllers to cooperate and play off of eachother. They allow us to break-up behavior into smaller pieces, building-blocks if you will. With that, we have an easy way to separate concerns, freeing up focus for more added nuance and features.
+
+<br/>
+<br/>
+
+### :construction: More Docs are on the way! 🏗
 
 <br/>
 <h1>Best Practices</h1>
