@@ -461,8 +461,8 @@ So far, all our examples have been passive. Models can serve a bigger roll, howe
 Because state is a portable object, we can modify it from anywhere, and more-crucially whenever. This makes async things pretty low maintenance. You implement the business-logic, controllers will handle the rest.
 
 Here are a few ways to smarten up your controllers:
+<br/><br/>
 
-<br/>
 <h2 id="concept-lifecycle">Lifecycle</h2>
 
 Built-in hooks, besides receiving updates, can dispatch events related the component they're a part of. On the model, reserved methods may be defined to handle these events. 
@@ -587,7 +587,7 @@ Controllers will emit lifecycle events for a bound component (depending on the h
 
 > Often lifecycle is critical to a controller's correct behavior. While we do have lifecycle-methods, it's recommended to use events where able. This way, if your class is extended and redefines a handler, yours is not at the mercy of a `super[event]()` call.
 
-Lifecycle events share names with respective methods, [listed here](#lifecycle-api).
+Lifecycle events share names with their respective methods, [listed here](#lifecycle-api).
 <br /><br />
 
 ### Event handling in-practice:
@@ -638,16 +638,15 @@ class TickTockClock extends Model {
 > We saved not only two methods, but kept interval in scope, rather than a property. Pretty clean!
 
 <br />
+<h2 id="concept-external">Observing Props</h2>
 
-<h2 id="concept-external">Watching external values</h2>
-
-Sometimes, we want to react to changes coming from outside, usually via props. Observing any value requires that you integrate it, however after that, consumption is easy.
+Sometimes, we want to react to changes coming from outside, usually via props. Observing a value requires that you integrate it, however after that, consumption is easy.
 
 <h4 id="method-using"><code>Model.using(source, keys?)</code></h4>
 
 > Roughly equivalent to [`uses()`](#concept-passing-props)
 
-This method helps watch an object by running [`assign`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign) on it *every render*. Because controllers only react to new values, this makes for a simple way to watch props. Combine this with getters and event-listeners, to do things when inputs change.
+This method helps watch an object by running [`assign`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign) on it *every render*. Because controllers only react to new values, this makes for a simple way to watch externals. Combine this with getters and event-listeners, to do things when inputs change.
 
 <br />
 
@@ -700,7 +699,6 @@ With this, we can interact with all different sorts of state!
 > **Note:** Method is also picky (ala `uses`), and will ignore values which don't already exist in state.
 
 <br />
-
 <h2 id="concept-async">Working with async and callbacks</h2>
 
 Because dispatch is taken care of, we can focus on just editing values as we need to. This makes the async stuff like timeouts, promises, callbacks, and even [Ajax](https://www.w3schools.com/xml/ajax_xmlhttprequest_send.asp) a piece of cake.
@@ -829,6 +827,7 @@ const Foo = () => {
   const { foo } = FooBar.get();
 
   return <p>The value of foo is {foo}!</p>
+}
 
 const Bar = () => {
   const { bar } = FooBar.get();
@@ -918,7 +917,6 @@ const FancyFooBar = (props) => {
 
 > Now, consumers can see incoming-data, which only the parent has access to!
 
-<br/>
 <h2 id="concept-provider-multi">Providing Multiple</h2>
 
 Finally, `of` can accept a collection of models and/or state objects. Mix and match as needed to ensure a DRY, readible root.
@@ -1033,7 +1031,7 @@ This will have no bearing on context, it will simply be "provided" to everyone. 
 
 <br/>
 
-<h1 id="access-section">Consume a shared state</h1>
+<h1 id="access-section">Consuming shared state</h1>
 
 Whether a state extends `Model` or `Singleton` won't matter; they both present the same.<br/>
 
@@ -1045,7 +1043,6 @@ export class FooBar extends Model {
 ```
 
 <br/>
-
 <h2 id="concept-consumer-hooks">Hooks Methods</h2>
 
 Models make fetching a state super easy. On every model, there are defined three `useContext` like methods. They find, return and maintain the nearest instance of class they belong to.
@@ -1148,6 +1145,55 @@ const LazyConsumer = () => {
 
 > Use `<Consumer />` to intregrate traditional components, almost as easily as modern function-components!
 
+<br />
+<h2 id="concept-ambient">Peer Consumers</h2>
+
+While context is great for components, controllers can use it too, that of the component where used. This is helped by importing a helper function, likewise called `tap`.
+> [This is an instruction](#concept-instruction), in-short a factory function. It tells the controller while initializing: the defined property is special, run some logic to set that up.
+
+On your Model, assign a property with the value of `tap(Model)`, passing in the type of state you're interested in.
+
+As a new controller spawns, it will try and fetch the requested instance. If found, the peer will be accessible to methods, accessors, etc. via that property.
+
+#### `tap(Type, required?)`
+
+```js
+import Model, { tap } from "@expressive/mvc";
+
+class Hello extends Model {
+  to = "World";
+}
+
+class Greet extends Model {
+  hello = tap(Hello);
+
+  get greeting(){
+    return `Hello ${this.hello.to}`;
+  }
+}
+```
+Create a controller which taps another one. Make sure it's wrapped by proper `Provider`, and controller will fetch that instance from context.
+```js
+import { Provider } from "@expressive/mvc";
+
+const App = () => {
+  return (
+    <Provider of={Hello}>
+      <SayHi />
+    </Provider>
+  )
+}
+
+const SayHi = () => {
+  const { greeting } = Greet.tap()
+
+  return (
+    <p>{greeting}!</p>
+  )
+}
+```
+Here *SayHi*, without direct access to the *Hello* controller, can still get what it needs. The actionable value `greeting` comes from *Greet*, which itself gets data from *Hello*. This is an example of scope-control, allowing code to written as needs-based. Generally speaking, this often makes a program more robust and maintainable.
+
 <br/>
 
 ### 🎮 Level 3 Complete! 
@@ -1202,9 +1248,7 @@ While the above works fine, what if we want something more organized and reusabl
 
 #### `use(Type, callback?)`
 
-Import `use` to wrap another Model, attaching a new instance.
-
-> [This is an instruction](#concept-directives), in-short a factory function. It tells the controller, while initializing: the defined property has special behavior, run some logic to set that up.
+Import another instruction, `use` and pass it a Model to attach an instance.
 
 ```js
 import Model, { use } from "@expressive/mvc";
@@ -1267,50 +1311,6 @@ class Dependant extends Model {
   parent = parent(Control, true);
 }
 ```
-
-<br/>
-<h2 id="concept-ambient">Ambient Controller</h2>
-
-Ofcourse, controllers can also access via context, within the component where used. You probably saw it coming: here we have a `tap` instruction!
-
-#### `tap(Type, required?)`
-
-```js
-import Model, { tap } from "@expressive/mvc";
-
-class Hello extends Model {
-  to = "World";
-}
-
-class Greet extends Model {
-  hello = tap(Hello);
-
-  get greeting(){
-    return `Hello ${this.hello.to}`;
-  }
-}
-```
-First define a controller which itself defines a peer-property. Controller will fetch requested model from the context of component which it belongs it.
-```js
-import { Provider } from "@expressive/mvc";
-
-const App = () => {
-  return (
-    <Provider of={Hello}>
-      <SayHi />
-    </Provider>
-  )
-}
-
-const SayHi = () => {
-  const { greeting } = Greet.tap()
-
-  return (
-    <p>{greeting}!</p>
-  )
-}
-```
-Here *SayHi*, without direct access to the *Hello* controller, can still get what it needs. The actionable value `greeting` comes from *Greet*, which itself gets data from *Hello*. This is an example of scope-control, allowing code to written as needs-based. Generally speaking, this often makes a program more robust and maintainable.
 
 <br/>
 
