@@ -25,8 +25,8 @@ class HookSubscriber extends Subscriber {
   }
 
   useLifecycle = () => {
-    this.declare(Cycle.WILL_RENDER);
-    this.declare(this.isMounted
+    this.at(Cycle.WILL_RENDER);
+    this.at(this.isMounted
       ? Cycle.WILL_UPDATE
       : Cycle.WILL_MOUNT  
     )
@@ -34,16 +34,16 @@ class HookSubscriber extends Subscriber {
     useLayoutEffect(() => {
       this.listen();
       this.isMounted = true;
-      this.declare(Cycle.DID_MOUNT);
+      this.at(Cycle.DID_MOUNT);
 
       return () => {
-        this.declare(Cycle.WILL_UNMOUNT);
+        this.at(Cycle.WILL_UNMOUNT);
         this.release();
       }
     })
   }
 
-  declare(name: Event){
+  at(name: Event){
     const also = this.alias(name);
 
     for(const key of [name, also]){
