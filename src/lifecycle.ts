@@ -1,5 +1,3 @@
-import { useLayoutEffect } from 'react';
-
 import { values } from './util';
 
 export const Lifecycle = {
@@ -29,15 +27,4 @@ export function forAlias(prefix: string){
   }
 
   return (name: Event) => map.get(name) as Event;
-}
-
-export function useLifecycleEffect(
-  event: (name: Event) => void){
-
-  event(Lifecycle.WILL_RENDER);
-
-  useLayoutEffect(() => {
-    event(Lifecycle.DID_MOUNT);
-    return () => event(Lifecycle.WILL_UNMOUNT);
-  }, [])
 }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './context';
-import { Event, forAlias, Lifecycle, useLifecycleEffect } from './lifecycle';
+import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
 import { Model, Stateful } from './model';
 import { PendingContext } from './instructions';
 import { Subscriber } from './subscriber';
@@ -24,26 +24,23 @@ class HookSubscriber extends Subscriber {
     super(subject, callback);
   }
 
-  event = (name: Event) => {
-    this.declare(name);
+  useLifecycle = () => {
+    this.declare(Cycle.WILL_RENDER);
+    this.declare(this.isMounted
+      ? Cycle.WILL_UPDATE
+      : Cycle.WILL_MOUNT  
+    )
 
-    switch(name){
-      case Lifecycle.WILL_RENDER:
-        this.declare(
-          this.isMounted
-          ? Lifecycle.WILL_UPDATE
-          : Lifecycle.WILL_MOUNT
-        )
-      break;
+    useLayoutEffect(() => {
+      this.listen();
+      this.isMounted = true;
+      this.declare(Cycle.DID_MOUNT);
 
-      case Lifecycle.DID_MOUNT:
-        this.isMounted = true;
-        this.listen();
-      break;
-
-      case Lifecycle.WILL_UNMOUNT:
+      return () => {
+        this.declare(Cycle.WILL_UNMOUNT);
         this.release();
-    }
+      }
+    })
   }
 
   declare(name: Event){
@@ -167,7 +164,7 @@ export function useSubscriber<T extends Stateful>(
     return new HookSubscriber(target, trigger, key)  
   });
 
-  useLifecycleEffect(hook.event);
+  hook.useLifecycle();
   
   return hook.proxy;
 }
@@ -188,7 +185,7 @@ export function useModel(
   });
 
   usePeerContext(hook.subject);
-  useLifecycleEffect(hook.event);
+  hook.useLifecycle();
 
   return hook.proxy;
 }
