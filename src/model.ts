@@ -3,7 +3,7 @@ import type Public from '../types';
 import { createBindings } from './binding';
 import { useLookup } from './context';
 import { Controller } from './controller';
-import { KeyFactory, useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useModel, useLazy, usePassive, useSubscriber, useWatcher } from './hooks';
 import { LOCAL, Subscriber } from './subscriber';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 

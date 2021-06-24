@@ -1,11 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
-import { useLookup } from './context';
 import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
 import { Model, Stateful } from './model';
-import { PendingContext } from './instructions';
+import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { fn, values } from './util';
+import { fn } from './util';
 
 import Oops from './issues';
 
@@ -154,8 +153,6 @@ export function useWatcher(
   return hook.proxy;
 }
 
-export type KeyFactory<T> = (target: T) => Key | undefined;
-
 export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
@@ -184,33 +181,8 @@ export function useModel(
     return sub;
   });
 
-  usePeerContext(hook.subject);
+  usePeers(hook.subject);
   hook.useLifecycle();
 
   return hook.proxy;
-}
-
-const ContextWasUsed = new WeakMap<Model, boolean>();
-
-export function usePeerContext(instance: Model){
-  if(ContextWasUsed.has(instance)){
-    if(ContextWasUsed.get(instance))
-      useLookup();
-
-    return;
-  }
-
-  const pending = values(instance)
-    .filter(x => PendingContext.has(x));
-
-  const hasPeers = pending.length > 0;
-
-  if(hasPeers){
-    const local = useLookup();
-  
-    for(const init of pending)
-      init(local);
-  }
-
-  ContextWasUsed.set(instance, hasPeers);
 }

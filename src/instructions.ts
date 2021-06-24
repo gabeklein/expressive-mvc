@@ -1,8 +1,6 @@
 import { prepareComputed } from './compute';
-import { Lookup } from './context';
 import { Model, CONTROL } from './model';
 import { Observer } from './observer';
-import { Singleton } from './singleton';
 import { alias, define, defineLazy, defineProperty } from './util';
 
 import Oops from './issues';
@@ -42,34 +40,6 @@ export function setParent<T extends typeof Model>
     }
 
     define(subject, key, parent);
-  })
-}
-
-export const PendingContext = new Set<(context: Lookup) => void>();
-
-export function setPeer<T extends typeof Model>
-  (Peer: T, required?: boolean): InstanceOf<T> {
-
-  return Observer.define((key, { subject }) => {
-    const Self = subject.constructor.name;
-
-    if(Singleton.isTypeof(Peer))
-      defineLazy(subject, key, () => Peer.find(true));
-    else if(subject instanceof Singleton)
-      throw Oops.CantAttachGlobal(subject.constructor.name, Peer.name);
-    else {
-      function insert(context: Lookup){
-        const remote = context.get(Peer);
-
-        if(!remote && required)
-          throw Oops.AmbientRequired(Peer.name, Self, key);
-
-        define(subject, key, remote);
-      }
-
-      PendingContext.add(insert);
-      define(subject, key, insert);
-    }
   })
 }
 
