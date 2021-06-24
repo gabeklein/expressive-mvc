@@ -17,8 +17,7 @@
 </p>
 
 <p align="center">
-  Easy-to-<code>use()</code> classes to help
-  power your UI. <br/>
+  Define classes to power UI, by extending <code>Model</code>.<br/>
   Builtin hooks will manage renders, as needed, for any data.<br/>
   When properties change, your components will too.<br/>
 </p>
@@ -26,14 +25,15 @@
 <br/>
 <h1 id="overview-section">Overview</h1>
 
-Expressive lets classes define state and logic for components, via built-in hooks.
+By extending `Model`, classes can contain state and logic for components. Models are easy to define, use and even provide. They limit complexity, and help make components dumber without sacrificing features. 
 
-When the methods on a **Model** are called inside a component **(a View)**, an instance is either created or found for its use. By watching what values are accessed on render, the hook itself **(a Controller)** can refresh to keep sync with them.
+When a static-methods are used in a component, an instance is found or created for its use. By watching what values are accessed on render, the hook itself will refresh and keep sync with them.
 
-This behavior combines with actions, computed properties, events, and the component itself allowing for a [(real this time)](https://stackoverflow.com/a/10596138) **M**odel-**V**iew-**C**ontroller pattern within React.
+This behavior combines with actions, computed properties, events, and components themselves to facilitate a **M**odel-**V**iew-**C**ontroller pattern in React.
 
 <br/>
-<h1 id="good-start">How to use</h1>
+
+## How to use
 
 ### Step 1
 
@@ -70,6 +70,159 @@ const KitchenCounter = () => {
 [See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀  You've already got something usable!
 
 <br/>
+<h1 id="good-start">Things you can do</h1>
+
+### Combine any number of `useState` values
+Place any data in your model. Updating any value will trigger a render.
+
+```jsx
+class State extends Model {
+  a = 1;
+  b = 2;
+  c = 3;
+}
+
+const MyComponent = () => {
+  const { a, b, c } = State.use();
+
+  return <div>...</div>
+}
+```
+
+### Refresh using simple assignment
+Reserved `set` loops back to instance, to update from inside a component.
+
+```jsx
+class Hello extends Model {
+  name = "World";
+}
+
+const MyComponent = () => {
+  const { name, set } = Hello.use();
+
+  return (
+    <p onClick={() => set.name = "Foobar"}>
+      Hello {name}!
+    </p>
+  )
+}
+```
+
+### Share state via context
+Models can provide and consume state with static methods. Classes themselves act as a key.
+
+```jsx
+import Model, { Provider } from "@expressive/mvc";
+
+class Shared extends Model {
+  foo = 1;
+  bar = 2;
+}
+
+const Parent = () => (
+  <Provider of={Shared}>
+    <Foo />
+    <Bar />
+  </Provider>
+)
+
+const Foo = () => {
+  const { foo } = Shared.tap();
+
+  return (
+    <p>Value of shared foo is {foo}!</p>
+  )
+}
+```
+
+### Respond to component lifecycle
+Hooks are aware of lifecycle and will call method-handlers you define.
+
+```jsx
+class Timer extends Model {
+  interval = undefined;
+  elapsed = 1;
+
+  componentDidMount(){
+    const inc = () => this.elapsed++;
+
+    this.interval = setInterval(inc, 1000);
+  }
+
+  componentWillUnmount(){
+    clearInterval(this.interval);
+  }
+}
+
+const MyTimer = () => {
+  const { elapsed } = Timer.use();
+
+  return <pre>I've existed for { elapsed } seconds!</pre>;
+}
+```
+
+### Control components with `async`
+
+```jsx
+class Greetings extends Model {
+  response = undefined;
+  thinking = false;
+  error = false;
+
+  sayHello = async () => {
+    this.thinking = true;
+
+    try {
+      const res = await fetch("https://my.api/hello");
+      this.response = await res.text();
+    }
+    catch(){
+      this.error = true;
+    }
+  }
+}
+
+const MyComponent = () => {
+  const { error, response, thinking, sayHello } = Greetings.use();
+
+  if(response)
+    return <p>Server said: {response}</p>
+
+  if(error)
+    return <p>There was an issue saying hello :(</p>
+
+  if(thinking)
+    return <p>Sent! Waiting on response...</p>
+
+  return (
+    <a onClick={sayHello}>Say hello to server!</a>
+  )
+}
+```
+
+### Extend and reuse logic
+Custom models can be extended, to add features or to set required properties. This makes reusable logic is easy to store, document and share. 
+
+```ts
+abstract class About extends Model {
+  abstract name: string;
+  abstract birthday: Date;
+
+  happyBirthday(){
+    // ...
+  }
+}
+
+class AboutMe extends About {
+  name = "John Doe";
+  birthday = new Date("January 1");
+  wants = "PS5";
+}
+```
+
+#### ... and plenty more.
+
+</br>
 
 # Contents 
 
