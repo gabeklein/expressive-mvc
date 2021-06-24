@@ -1,4 +1,4 @@
-import { Model, Stateful } from './model';
+import { Model } from './model';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { alias, debounce, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter } from './util';
@@ -24,19 +24,8 @@ export function metaData(x: Function, set?: GetterInfo){
     return ComputedInfo.get(x);
 }
 
-function getRegister(on: Observer){
-  let defined = ComputedFor.get(on)!;
-  
-  if(!defined)
-    ComputedFor.set(on, defined = new Map());
-
-  return defined;
-}
-
-export function implementGetters(
-  on: Observer, subject: Stateful){
-  
-  let scan = subject;
+export function implementGetters(on: Observer){
+  let scan = on.subject;
 
   while(scan !== Model && scan.constructor !== Model){
     for(let [key, { get, set }] of entriesIn(scan))
@@ -54,11 +43,17 @@ export function prepareComputed(
   setter?: (to: any) => void){
 
   let sub: Subscriber;
-  const defined = getRegister(on);
-  const { state, subject } = on;
+  let defined = ComputedFor.get(on)!;
+  
+  if(!defined)
+    ComputedFor.set(on,
+      defined = new Map()
+    );
 
   if(defined.has(key))
     return;
+
+  const { state, subject } = on;
 
   const info: GetterInfo = {
     key,
@@ -148,10 +143,10 @@ export function prepareComputed(
   })
 }
 
-export function ensureValue(on: {}, key: string){
+export function ensureValue(from: {}, key: string){
   type Initial = (early?: boolean) => void;
 
-  const desc = getOwnPropertyDescriptor(on, key);
+  const desc = getOwnPropertyDescriptor(from, key);
   const getter = desc && desc.get;
 
   if(ComputedInit.has(getter!))

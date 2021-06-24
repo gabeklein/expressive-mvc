@@ -19,7 +19,7 @@ export class Observer {
   }
 
   constructor(public subject: Stateful){
-    implementGetters(this, subject);
+    implementGetters(this);
   }
 
   public start(){
