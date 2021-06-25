@@ -25,9 +25,9 @@
 <br/>
 <h1 id="overview-section">Overview</h1>
 
-By extending `Model`, classes can contain state and logic for components. Models are easy to define, use and even provide. They limit complexity, and help make components dumber without sacrificing features. 
+By extending `Model`, classes you define will manage state and logic for components. Models are easy to define, use and even provide. They limit complexity, and help to write simpler components conveniently. 
 
-When a static-methods are used in a component, an instance is found or created for its use. By watching what values are accessed on render, the hook itself will refresh and keep sync with them.
+When a static-methods are used in a component, an instance is found or created for its use. By watching values accessed on render, the hook itself will refresh and keep sync with them.
 
 This behavior combines with actions, computed properties, events, and components themselves to facilitate a **M**odel-**V**iew-**C**ontroller pattern in React.
 
@@ -70,10 +70,10 @@ const KitchenCounter = () => {
 [See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀  You've already got something usable!
 
 <br/>
-<h1 id="good-start">Things you can do</h1>
+<h2 id="good-start">Things you can do</h2>
 
 ### Combine any number of `useState` values
-Place any data in your model. Updating any value will trigger a render.
+Place together as much as you like. Updating any value will trigger a render.
 
 ```jsx
 class State extends Model {
@@ -115,22 +115,20 @@ Models can provide and consume state with static methods. Classes themselves act
 import Model, { Provider } from "@expressive/mvc";
 
 class Shared extends Model {
-  foo = 1;
-  bar = 2;
+  value = 1;
 }
 
 const Parent = () => (
   <Provider of={Shared}>
-    <Foo />
-    <Bar />
+    <Child />
   </Provider>
 )
 
-const Foo = () => {
-  const { foo } = Shared.tap();
+const Child = () => {
+  const { value } = Shared.tap();
 
   return (
-    <p>Value of shared foo is {foo}!</p>
+    <p>Provided value is {value}!</p>
   )
 }
 ```
@@ -157,7 +155,7 @@ class Timer extends Model {
 const MyTimer = () => {
   const { elapsed } = Timer.use();
 
-  return <pre>I've existed for { elapsed } seconds!</pre>;
+  return <p>I've existed for { elapsed } seconds!</p>;
 }
 ```
 
@@ -220,7 +218,7 @@ class AboutMe extends About {
 }
 ```
 
-#### ... and plenty more.
+#### ... and plenty more
 
 </br>
 
