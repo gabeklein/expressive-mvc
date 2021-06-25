@@ -17,19 +17,19 @@
 </p>
 
 <p align="center">
-  Define classes to power UI, by extending <code>Model</code>.<br/>
+  Define classes to power UI by extending <code>Model</code>.<br/>
   Builtin hooks will manage renders, as needed, for any data.<br/>
   When properties change, your components will too.<br/>
 </p>
 
 <br/>
-<h1 id="overview-section">Overview</h1>
+<h1 id="overview-section"></h1>
 
-By extending `Model`, classes you define will manage state and logic for components. Models are easy to define, use and even provide. They limit complexity, and help to write simpler components conveniently. 
+Classes which extend `Model` can manage state and logic for components. Custom models are easy to define, use and even provide. Hooks are great, but state and logic are not a part of well-formed components. Models help wrap that stuff in robust, portable controllers instead.
 
-When a static-methods are used in a component, an instance is found or created for its use. By watching values accessed on render, the hook itself will refresh and keep sync with them.
+When a Model's hook-methods are used, an instance is created or found. By watching values accessed on-render, the hook will refresh to keep sync with them.
 
-This behavior combines with actions, computed properties, events, and components themselves to facilitate a **M**odel-**V**iew-**C**ontroller pattern in React.
+This behavior combines with actions, events, and components themselves to allow **M**odel-**V**iew-**C**ontroller based development in React.
 
 <br/>
 
@@ -72,8 +72,8 @@ const KitchenCounter = () => {
 <br/>
 <h2 id="good-start">Things you can do</h2>
 
-### Combine any number of `useState` values
-Place together as much as you like. Updating any value will trigger a render.
+### Track any number of values
+Put together as many as you like. Updating any value will trigger a render.
 
 ```jsx
 class State extends Model {
@@ -88,6 +88,7 @@ const MyComponent = () => {
   return <div>...</div>
 }
 ```
+<br/>
 
 ### Refresh using simple assignment
 Reserved `set` loops back to instance, to update from inside a component.
@@ -107,9 +108,10 @@ const MyComponent = () => {
   )
 }
 ```
+<br/>
 
 ### Share state via context
-Models can provide and consume state with static methods. Classes themselves act as a key.
+Models can be provided and consumed, with simple methods. Classes themselves act as a key.
 
 ```jsx
 import Model, { Provider } from "@expressive/mvc";
@@ -132,9 +134,10 @@ const Child = () => {
   )
 }
 ```
+<br/>
 
-### Respond to component lifecycle
-Hooks are aware of lifecycle and will call method-handlers you define.
+### Respond to lifecycle
+Hooks aware of lifecycle will call method-handlers you define.
 
 ```jsx
 class Timer extends Model {
@@ -158,6 +161,7 @@ const MyTimer = () => {
   return <p>I've existed for { elapsed } seconds!</p>;
 }
 ```
+<br/>
 
 ### Control components with `async`
 
@@ -197,9 +201,10 @@ const MyComponent = () => {
   )
 }
 ```
+<br/>
 
 ### Extend and reuse logic
-Custom models can be extended, to add features or to set required properties. This makes reusable logic is easy to store, document and share. 
+Custom models can be extended, to add features or set required properties. This makes reusable logic is easy to store, document and share. 
 
 ```ts
 abstract class About extends Model {
@@ -218,7 +223,9 @@ class AboutMe extends About {
 }
 ```
 
-#### ... and plenty more
+</br>
+
+#### ... and more, all with type safety and code-assist, out of the box.
 
 </br>
 
@@ -286,11 +293,11 @@ class AboutMe extends About {
   &ensp; •&nbsp; [Auto Debounce](#concept-debounce) <br/>
   <!-- &ensp; •&nbsp; [Selectors](#concept-selectors) <br/> -->
 
-### API
+<!-- ### API
   &ensp; •&nbsp; [Model](#api-controller) <br/>
   &ensp; •&nbsp; [Singleton](#api-singleton) <br/>
   &ensp; •&nbsp; [Reserved](#api-reserved) <br/>
-  &ensp; •&nbsp; [Lifecycle](#api-lifecycle) <br/>
+  &ensp; •&nbsp; [Lifecycle](#api-lifecycle) <br/> -->
 
 <br/>
 
@@ -319,10 +326,9 @@ Ultimately, the workflow is simple.
 5. Update those values on demand. Component will sync automagically. ✨
 <br/>
 
-### Glossary
+> You may recognize this as similar to approach pioneered by [MobX](https://mobx.js.org/README.html). Here though, we avoid using decorators, and other boilerplate.
 
-The following is a crash-course to help get you up to speed.<br/>
-Here's some library jargon which will be good to know.
+### Glossary
 
  - **Model**: Any class you'll write extending `Model`. Your definition for a type of state.
  - **Controller**: An instance of your model, containing its state and behavior.
