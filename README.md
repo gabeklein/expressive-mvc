@@ -27,10 +27,6 @@
 
 Classes which extend `Model` can manage state and logic for components. Custom models are easy to define, use and even provide. Hooks are great, but state and logic are not a part of well-formed components. Models help wrap that stuff in robust, portable controllers instead.
 
-When a Model's hook-methods are used, an instance is created or found. By watching values accessed on-render, the hook will refresh to keep sync with them.
-
-This behavior combines with actions, events, and components themselves to allow **M**odel-**V**iew-**C**ontroller based development in React.
-
 <br/>
 
 ## How to use
@@ -73,7 +69,7 @@ const KitchenCounter = () => {
 <h2 id="good-start">Things you can do</h2>
 
 ### Track any number of values
-Put together as many as you like. Updating any value will trigger a render.
+Updating any of them will trigger a render.
 
 ```jsx
 class State extends Model {
@@ -111,7 +107,7 @@ const MyComponent = () => {
 <br/>
 
 ### Share state via context
-Models can be provided and consumed, with simple methods. Classes themselves act as a key.
+Easy to provide and consume with simple methods. Classes are their own key.
 
 ```jsx
 import Model, { Provider } from "@expressive/mvc";
@@ -191,7 +187,7 @@ const MyComponent = () => {
     return <p>Server said: {response}</p>
 
   if(error)
-    return <p>There was an issue saying hello :(</p>
+    return <p>There was an issue saying hello</p>
 
   if(thinking)
     return <p>Sent! Waiting on response...</p>
@@ -203,13 +199,15 @@ const MyComponent = () => {
 ```
 <br/>
 
-### Extend and reuse logic
-Custom models can be extended, to add features or set required properties. This makes reusable logic is easy to store, document and share. 
+### Extend to configure
+Custom models may be extended to set required properties.
+This makes reusable logic is easy to implement, document and share. 
 
 ```ts
 abstract class About extends Model {
   abstract name: string;
   abstract birthday: Date;
+  abstract wants: any;
 
   happyBirthday(){
     // ...
@@ -219,7 +217,7 @@ abstract class About extends Model {
 class AboutMe extends About {
   name = "John Doe";
   birthday = new Date("January 1");
-  wants = "PS5";
+  wants = "a PS5";
 }
 ```
 
