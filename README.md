@@ -123,7 +123,7 @@ const Parent = () => (
 )
 
 const Child = () => {
-  const { value } = Shared.tap();
+  const { value } = Shared.get();
 
   return (
     <p>Shared value is: {value}!</p>
@@ -163,11 +163,11 @@ const MyTimer = () => {
 ```jsx
 class Greetings extends Model {
   response = undefined;
-  thinking = false;
+  waiting = false;
   error = false;
 
   sayHello = async () => {
-    this.thinking = true;
+    this.waiting = true;
 
     try {
       const res = await fetch("https://my.api/hello");
@@ -180,7 +180,7 @@ class Greetings extends Model {
 }
 
 const MyComponent = () => {
-  const { error, response, thinking, sayHello } = Greetings.use();
+  const { error, response, waiting, sayHello } = Greetings.use();
 
   if(response)
     return <p>Server said: {response}</p>
@@ -188,7 +188,7 @@ const MyComponent = () => {
   if(error)
     return <p>There was an issue saying hello</p>
 
-  if(thinking)
+  if(waiting)
     return <p>Sent! Waiting on response...</p>
 
   return (
