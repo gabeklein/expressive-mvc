@@ -129,16 +129,6 @@ export abstract class Model {
      */
     set: this;
 
-    /**
-     * Plug-n-Play references for properties of this controller.
-     * 
-     * Matched ref-functions automatically bind between receiving element and live value of field.
-     * 
-     * For `<input type="text" />` this is a two-way binding.
-     * User input is captured and part of controller's state/event stream.
-     */
-    bind: Model.Overlay<this, RefFunction>;
-
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
      * 

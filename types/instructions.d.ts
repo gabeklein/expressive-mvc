@@ -61,9 +61,12 @@ declare namespace Directives {
   export function setReference <T = HTMLElement> (callback?: EffectCallback<T>): ((next: T) => void) & { current: T | null };
   
   /**
-   * Ref-functions for all properties of your state. Will bind elements to the current values.
+   * Create Plug-n-Play references for properties of this controller.
    * 
-   * For `<input />` elements, this is two-way binding.
+   * Matched ref-functions automatically bind between receiving element and value of field.
+   * 
+   * For `<input type="text" />` this is a two-way binding.
+   * User input is captured and part of controller's state/event stream.
    */
   export function setBindings <T extends Model> (from: T): Model.Overlay<T, RefFunction>;
   
