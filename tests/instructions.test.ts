@@ -3,7 +3,7 @@ import { Oops } from '../src/instructions';
 
 import { act, from, lazy, Model, on, ref, use } from './adapter';
 
-describe("on instruction", () => {
+describe("on", () => {
   class Subject extends Model {
     checkResult?: any = undefined;
   
@@ -60,7 +60,7 @@ describe("on instruction", () => {
   })
 })
 
-describe("use instruction", () => {
+describe("use", () => {
   const WORLD = "Hello World!";
 
   class Parent extends Model {
@@ -90,7 +90,7 @@ describe("use instruction", () => {
   })
 })
 
-describe("ref instruction", () => {
+describe("ref", () => {
   class Subject extends Model {
     checkValue?: any = undefined;
   
@@ -152,7 +152,7 @@ describe("ref instruction", () => {
   })
 })
 
-describe("act instruction", () => {
+describe("act", () => {
   class Test extends Model {
     test = act(this.wait);
 
@@ -212,7 +212,7 @@ describe("act instruction", () => {
   })
 })
 
-describe("lazy instruction", () => {
+describe("lazy", () => {
   class Test extends Model {
     lazy = lazy("foo");
     eager = "bar";
@@ -274,7 +274,7 @@ describe("lazy instruction", () => {
   });
 })
 
-describe("from instruction", () => {
+describe("from", () => {
   class Hello extends Model {
     friend = "World";
 
