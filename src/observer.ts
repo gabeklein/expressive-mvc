@@ -1,5 +1,5 @@
 import { computeContext, ensureValue, implementGetters } from './compute';
-import { Stateful } from './model';
+import { Stateful } from './controller';
 import { createEffect, defineProperty, entriesIn, fn } from './util';
 
 const Pending = new WeakSet<Function>();

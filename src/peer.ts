@@ -1,14 +1,16 @@
 import { Lookup, useLookup } from './context';
+import { Stateful } from './controller';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
-import { define, defineLazy, values } from './util';
+import { define, defineLazy } from './util';
 
 import Oops from './issues';
 
 type Peer = typeof Model | typeof Singleton;
+type ApplyPeer = (context: Lookup) => void;
 
-const PendingContext = new Set<(context: Lookup) => void>();
+const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function setPeer<T extends Peer>
@@ -22,6 +24,11 @@ export function setPeer<T extends Peer>
     else if("current" in subject.constructor)
       throw Oops.CantAttachGlobal(subject.constructor.name, type.name);
     else {
+      let pending = PendingContext.get(subject);
+
+      if(!pending)
+        PendingContext.set(subject, pending = []);
+
       function insert(context: Lookup){
         const remote = context.get(type);
 
@@ -31,8 +38,7 @@ export function setPeer<T extends Peer>
         define(subject, key, remote);
       }
 
-      PendingContext.add(insert);
-      define(subject, key, insert);
+      pending.push(insert);
     }
   })
 }
@@ -45,17 +51,16 @@ export function usePeers(subject: Model){
     return;
   }
 
-  const pending = values(subject)
-    .filter(x => PendingContext.has(x));
+  const pending = PendingContext.get(subject);
 
-  const hasPeers = pending.length > 0;
-
-  if(hasPeers){
+  if(pending){
     const local = useLookup();
   
     for(const init of pending)
       init(local);
+
+    PendingContext.delete(subject);
   }
 
-  ContextWasUsed.set(subject, hasPeers);
+  ContextWasUsed.set(subject, !!pending);
 }

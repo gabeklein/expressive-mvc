@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
+import { Stateful } from './controller';
 import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
-import { Model, Stateful } from './model';
+import { Model } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
 import { fn } from './util';

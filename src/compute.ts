@@ -11,9 +11,9 @@ export type GetterInfo = {
   priority: number;
 }
 
+const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Observer, Map<string, GetterInfo>>();
-const ComputedInit = new WeakSet<Function>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): void;
@@ -130,17 +130,15 @@ export function prepareComputed(
 
   ComputedInit.add(create);
 
-  defineProperty(state, key, {
-    get: create,
-    configurable: true,
-    enumerable: true
-  })
-
-  on.override(key, {
+  const initial = {
     get: create,
     set: setter,
-    configurable: true
-  })
+    configurable: true,
+    enumerable: true
+  }
+
+  defineProperty(state, key, initial);
+  defineProperty(subject, key, initial);
 }
 
 export function ensureValue(from: {}, key: string){

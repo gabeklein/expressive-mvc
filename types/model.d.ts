@@ -3,9 +3,7 @@ import React from 'react';
 import Controller from './controller';
 import Lifecycle from './lifecycle';
 import { Selector } from './selector';
-import { Class, InstanceOf, Key } from './types';
-
-type RefFunction = (e: HTMLElement | null) => void;
+import { Class, InstanceOf, Key, RefFunction } from './types';
 
 export namespace Model {
     /** Shallow replacement given all entries of Model */

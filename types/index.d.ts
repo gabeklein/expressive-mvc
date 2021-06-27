@@ -15,6 +15,7 @@ export {
     setPeer as tap,
     setEffect as on,
     setReference as ref,
+    setBindings as binds,
     setAction as act,
     setComputed as from,
     setMemo as memo,

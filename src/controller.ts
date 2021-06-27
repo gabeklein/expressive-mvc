@@ -1,11 +1,22 @@
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
-import { Subscriber } from './subscriber';
+import { Subscriber, LOCAL } from './subscriber';
 import { createEffect, debounce, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 import Oops from './issues';
 
+export const CONTROL = Symbol("controller");
+
+export interface Stateful {
+  [CONTROL]: Controller
+  [LOCAL]?: Subscriber;
+};
+
 export class Controller extends Observer {
+  static get(from: Stateful){
+    return from[CONTROL];
+  }
+
   public do(fn: () => Callback){
     return fn();
   }
