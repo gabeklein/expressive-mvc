@@ -4,24 +4,6 @@ export {
     Singleton
 } from './model';
 
-export {
-    Consumer,
-    Provider
-} from './react';
-
-export {
-    setChild as use,
-    setParent as parent,
-    setPeer as tap,
-    setEffect as on,
-    setReference as ref,
-    setBindings as binds,
-    setAction as act,
-    setComputed as from,
-    setMemo as memo,
-    setIgnored as lazy
-} from "./instructions";
-
-export {
-    Selector
-} from './selector'
+export * from './instructions';
+export * from './react';
+export * from './selector';
