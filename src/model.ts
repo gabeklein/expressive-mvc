@@ -1,6 +1,5 @@
 import type Public from '../types';
 
-import { createBindings } from './binding';
 import { useLookup } from './context';
 import { CONTROL, Controller, Stateful } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
@@ -35,12 +34,6 @@ export class Model {
     define(this, "set", this);
   }
 
-  get bind(){
-    const proxy = createBindings(this);
-    define(this, "bind", proxy);
-    return proxy as any;
-  }
-  
   tap(): this;
   tap <K extends keyof this> (key: K, expect?: boolean): this[K];
   tap <K extends keyof this> (key: K, expect: true): Exclude<this[K], undefined>;

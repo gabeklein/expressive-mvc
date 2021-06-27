@@ -1,5 +1,5 @@
 import Model from '.';
-import { Async, Class, EffectCallback, InstanceOf } from './types';
+import { Async, Class, EffectCallback, InstanceOf, RefFunction } from './types';
 
 declare namespace Directives {
   /**
@@ -59,6 +59,13 @@ declare namespace Directives {
    * @param callback - Optional callback to synchronously fire when reference is first set or does update.
    */
   export function setReference <T = HTMLElement> (callback?: EffectCallback<T>): ((next: T) => void) & { current: T | null };
+  
+  /**
+   * Ref-functions for all properties of your state. Will bind elements to the current values.
+   * 
+   * For `<input />` elements, this is two-way binding.
+   */
+  export function setBindings <T extends Model> (from: T): Model.Overlay<T, RefFunction>;
   
   /**
    * Sets an exotic method with managed ready-state. Property accepts an async function.

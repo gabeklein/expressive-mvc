@@ -1,27 +1,30 @@
-import { Model } from './model';
+import { Stateful } from './controller';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import { defineProperty } from './util';
+import { defineLazy, defineProperty } from './util';
 
 import Oops from './issues';
 
 type RefFunction = (e: HTMLElement | null) => void;
 
-export function createBindings(on: Model){
-  const subscriber = Subscriber.current(on)
-
-  if(!subscriber)
-    throw Oops.BindNotAvailable();
-
-  const agent =
-    bindRefFunctions(subscriber.parent);
-
-  subscriber.dependant.add(agent);
-
-  return agent.proxy;
+export function setBindings(target: Stateful){
+  return Observer.define((key, on) => {
+    defineLazy(target, key, function(){
+      const subscriber = Subscriber.current(this);
+    
+      if(!subscriber)
+        throw Oops.BindNotAvailable();
+    
+      const agent = bindRefFunctions(on);
+    
+      subscriber.dependant.add(agent);
+    
+      return agent.proxy;
+    })
+  })
 }
 
-export function bindRefFunctions(on: Observer){
+function bindRefFunctions(on: Observer){
   const proxy: BunchOf<RefFunction> = {};
 
   let index = 0;
