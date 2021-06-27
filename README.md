@@ -25,7 +25,7 @@
 <br/>
 <h1 id="overview-section"></h1>
 
-Classes which extend `Model` can manage state and logic for components. Custom models are easy to define, use and even provide. Hooks are great, but state and logic are not a part of well-formed components. Models help wrap that stuff in robust, portable controllers instead.
+Classes which extend `Model` can manage behavior for components. Custom models are easy to define, use and even provide. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, portable controllers instead.
 
 <br/>
 
@@ -33,7 +33,7 @@ Classes which extend `Model` can manage state and logic for components. Custom m
 
 ### Step 1
 
-Create a class to extend `Model` and shape it to your liking.
+Create a class, extending `Model`, and shape it to your liking.
 
 ```js
 class Counter extends Model {
@@ -87,7 +87,7 @@ const MyComponent = () => {
 <br/>
 
 ### Refresh using simple assignment
-Reserved `set` loops back to instance, to update from inside a component.
+Reserved `set` loops back to the instance, to update from inside a component.
 
 ```jsx
 class Hello extends Model {
@@ -199,7 +199,7 @@ const MyComponent = () => {
 <br/>
 
 ### Extend to configure
-Custom models may be extended to set needed properties.
+Use class extension to set needed properties.
 Reusable logic is easy to implement, document and share. 
 
 ```ts
@@ -496,10 +496,10 @@ class Timer extends Model {
 
 A getter's value is cached, facing the user. It will only run when a dependency changes, and **not upon access** as you might expect. However, getters are also lazy, so first access is one exception.
 
-Because getters run whenever a controller thinks they *could* change, make sure to design them along these principles:
+Getters run whenever a controller thinks they *could* change. Make sure to design them along these lines:
 - Getters should be deterministic. Only expect a change where inputs have changed.
 - Avoid computing from values which change a lot, but don't change output as often.
-- [Goes without saying](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are an anti-pattern** and can cause infinite loops.
+- [Goes without saying](https://www.youtube.com/watch?v=0i0IlSKn0sE "Goes Without Saying") but, **side-effects are an anti-pattern** and may cause infinite loops.
 
 <br/>
 
@@ -535,7 +535,7 @@ const SayHello = ({ fullName }) => {
 
 <h2 id="concept-passing-props">Assigning props to state</h2>
 
-Besides `use`, similar methods will assign values after a controller is created. This is a great alternative to a manual setup, as done previously.
+Besides `use`, similar methods will assign values after a controller is created. Good alternative to a manual setup.
 
 <h4 id="method-uses"><code>Model.uses(source, keys?)</code></h4>
 
@@ -797,8 +797,6 @@ Sometimes, we want to react to changes coming from outside, usually via props. O
 
 This method helps watch an object by running [`assign`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign) on it *every render*. Because controllers only react to new values, this makes for a simple way to watch externals. Combine this with getters and event-listeners, to do things when inputs change.
 
-<br />
-
 ```ts
 class ActivityTracker extends Model {
   active = undefined;
@@ -842,8 +840,6 @@ const Activate = () => {
 ```
 
 <sup><a href="https://codesandbox.io/s/example-using-method-wvrtu">View in CodeSandbox</a></sup>
-
-With this, we can interact with all different sorts of state!
 
 > **Note:** Method is also picky (ala `uses`), and will ignore values which don't already exist in state.
 
@@ -1323,7 +1319,7 @@ class Greet extends Model {
   }
 }
 ```
-Create a controller which taps another one. Make sure it's wrapped by proper `Provider`, and controller will fetch that instance from context.
+Create a controller which taps another one. Make sure it's wrapped by proper `Provider`, and the controller will fetch that instance from context.
 ```js
 import { Provider } from "@expressive/mvc";
 
@@ -1412,8 +1408,8 @@ class FooBar extends Model {
     return this.foo.value + this.bar.value;
   }
 
-  plusFoo = () => this.bar.value = this.value;
-  plusBar = () => this.foo.value = this.value;
+  addFoo = () => this.bar.value = this.value;
+  addBar = () => this.foo.value = this.value;
 }
 ```
 
@@ -1421,17 +1417,17 @@ class FooBar extends Model {
 
 ```js
 const FibonacciApp = () => {
-  const { foo, bar, value, plusFoo, plusBar } = FooBar.use();
+  const { foo, bar, value, addFoo, addBar } = FooBar.use();
 
   return (
     <div>
       <div>
         Foo + Bar = {value}
       </div>
-      <div onClick={plusBar}>
+      <div onClick={addBar}>
         Foo's value is ${foo.value}, click to add in bar!
       </div>
-      <div onClick={plusFoo}>
+      <div onClick={addFoo}>
         Bar's value is ${bar.value}, click to add in foo!
       </div>
     </div>
