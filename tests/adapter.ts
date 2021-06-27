@@ -1,12 +1,8 @@
-// source code
-import * as Source from "../src";
-// public type definitions
-import * as Public from "../";
+import * as Public from '../';
+import * as Source from '../src';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
-
-export { default as Issue } from "../src/issues";
 
 export const Model = Source.Model as unknown as typeof Public.Model;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;

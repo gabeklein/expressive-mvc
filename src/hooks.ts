@@ -1,13 +1,17 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import { Stateful } from './controller';
+import { issues } from './issues';
 import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
 import { Model } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
 import { fn } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  HasPropertyUndefined: (control, property) =>
+    `${control}.${property} is marked as required for this render.`
+})
 
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");

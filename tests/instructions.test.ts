@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react-hooks';
+import { Oops } from '../src/instructions';
 
-import { act, from, Issue, lazy, Model, on, ref, use } from './adapter';
+import { act, from, lazy, Model, on, ref, use } from './adapter';
 
 describe("on instruction", () => {
   class Subject extends Model {
@@ -204,7 +205,7 @@ describe("act instruction", () => {
 
   it("will throw immediately if already in-progress", () => {
     const { test } = Test.create();
-    const expected = Issue.DuplicateAction("test");
+    const expected = Oops.DuplicateAction("test");
 
     test();
     expect(() => test()).rejects.toThrowError(expected);

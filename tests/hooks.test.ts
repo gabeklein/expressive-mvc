@@ -1,4 +1,5 @@
-import { Issue, Model, renderHook } from './adapter';
+import { Oops } from '../src/hooks';
+import { Model, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -34,7 +35,7 @@ describe("tap", () => {
   it('will throw if undefined in expect-mode', () => {
     const parent = Parent.create();
     const hook = renderHook(() => parent.tap("empty", true));
-    const expected = Issue.HasPropertyUndefined(Parent.name, "empty");
+    const expected = Oops.HasPropertyUndefined(Parent.name, "empty");
     
     expect(() => hook.result.current).toThrowError(expected);
   })

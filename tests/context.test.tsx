@@ -1,6 +1,7 @@
 import React from 'react';
+import { Oops } from '../src/context';
 
-import { Consumer, Issue, Model, Provider, render } from './adapter';
+import { Consumer, Model, Provider, render } from './adapter';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -136,7 +137,7 @@ describe("Consumer", () => {
     )
 
     expect(test).toThrow(
-      Issue.NothingInContext(Bar.name)
+      Oops.NothingInContext(Bar.name)
     );
   })
 

@@ -1,10 +1,23 @@
 import { prepareComputed } from './compute';
 import { Controller } from './controller';
+import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { alias, define, defineLazy, defineProperty } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  ParentRequired: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
+
+  UnexpectedParent: (expects, child, got) =>
+    `New ${child} created as child of ${got} but must be instanceof ${expects}`,
+
+  SetActionProperty: (key) =>
+    `Attempted assignment of ${key}. This is not allowed because an action-property.`,
+
+  DuplicateAction: (key) =>
+    `Invoked action ${key} but one is already active.`
+})
 
 const ParentRelationship = new WeakMap<{}, {}>();
 

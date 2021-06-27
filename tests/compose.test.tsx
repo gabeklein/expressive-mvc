@@ -1,6 +1,8 @@
 import React from 'react';
 
-import { Issue, Model, parent, Provider, render, Singleton, tap, use } from './adapter';
+import { Oops as Instruct } from '../src/instructions';
+import { Oops as Peers } from '../src/Peer';
+import { Model, parent, Provider, render, Singleton, tap, use } from './adapter';
 
 describe("Parent-Child", () => {
   it("creates parent-child relationship", () => {
@@ -27,7 +29,7 @@ describe("Parent-Child", () => {
     const attempt = () => 
       NonStandalone.create();
 
-    const error = Issue.ParentRequired(
+    const error = Instruct.ParentRequired(
       Detatched.name, NonStandalone.name
     )
 
@@ -46,7 +48,7 @@ describe("Parent-Child", () => {
     const attempt = () => 
       Unexpected.create();
 
-    const error = Issue.UnexpectedParent(
+    const error = Instruct.UnexpectedParent(
       Expected.name, Adopted.name, Unexpected.name
     )
 
@@ -92,7 +94,7 @@ describe("Peers", () => {
       bar = tap(Bar, true);
     }
 
-    const issue = Issue.AmbientRequired(Bar.name, Foo.name, "bar");
+    const issue = Peers.AmbientRequired(Bar.name, Foo.name, "bar");
     const useStrictFooBar = () => Foo.use().bar;
 
     const TestComponent = () => {
@@ -130,7 +132,7 @@ describe("Peers", () => {
     }
 
     const attempt = () => Global.create();
-    const issue = Issue.CantAttachGlobal(Global.name, Normal.name);
+    const issue = Peers.CantAttachGlobal(Global.name, Normal.name);
 
     expect(attempt).toThrow(issue);
   })

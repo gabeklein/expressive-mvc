@@ -1,9 +1,13 @@
+import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
-import { Subscriber, LOCAL } from './subscriber';
+import { LOCAL, Subscriber } from './subscriber';
 import { createEffect, debounce, fn, getOwnPropertyNames, selectRecursive } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  StrictUpdate: () => 
+    `Strict requestUpdate() did not find pending updates.`
+})
 
 export const CONTROL = Symbol("controller");
 

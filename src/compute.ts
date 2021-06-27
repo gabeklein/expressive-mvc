@@ -1,9 +1,19 @@
+import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { alias, debounce, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  AssignToGetter: (name) => 
+  `Property ${name} is a getter only. Assignment was skipped.`,
+
+  ComputeFailed: (parent, property, initial) =>
+    `An exception was thrown while ${initial ? "getting initial value of" : "refreshing"} ${parent}.${property}. Property will be skipped.`,
+
+  ComputedEarly: (property) => 
+    `Note: Computed values are usually only calculated after first access, except where accessed implicitly by "on" or "export". Your '${property}' getter may have run earlier than intended because of that.`
+})
 
 export type GetterInfo = {
   key: string;

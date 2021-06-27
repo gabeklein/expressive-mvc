@@ -10,10 +10,17 @@ import {
   useMemo,
 } from 'react';
 
+import { issues } from './issues';
 import { Model } from './model';
 import { assign, create, define, fn, values } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  NothingInContext: (name) =>
+    `Couldn't find controller for ${name} in context; did you forget to use a Provider?`,
+
+  BadProviderProps: () =>
+    `Provider expects either 'of' or 'for' props.`
+})
 
 export class Lookup {
   private table = new Map<typeof Model, symbol>();

@@ -1,11 +1,18 @@
 import { Lookup, useLookup } from './context';
 import { Stateful } from './controller';
+import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Singleton } from './singleton';
 import { define, defineLazy } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  CantAttachGlobal: (parent, child) =>
+    `Singleton '${parent}' attempted to attach '${child}'. This is not possible because '${child}' is not also a singleton.`,
+
+  AmbientRequired: (requested, requester, key) =>
+    `Attempted to find an instance of ${requested} in context. It is required for ${requester}.${key} but could not be found.`
+})
 
 type Peer = typeof Model | typeof Singleton;
 type ApplyPeer = (context: Lookup) => void;

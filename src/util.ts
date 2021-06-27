@@ -1,4 +1,9 @@
-import Oops from './issues';
+import { issues } from './issues';
+
+export const Oops = issues({
+  BadEffectCallback: () =>
+    `Callback for property-update may only return a function.`
+})
 
 const {
   assign,

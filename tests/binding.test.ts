@@ -1,4 +1,6 @@
-import { Model, Issue, renderHook, binds } from "./adapter";
+import { Oops } from "../src/binding";
+
+import { Model, renderHook, binds } from "./adapter";
 
 describe("bind", () => {
   class Form extends Model {
@@ -11,7 +13,7 @@ describe("bind", () => {
 
   it('will block bind access outside of hooks', ()  => {
     const attempt = () => Form.create().ref;
-    const expected = Issue.BindNotAvailable();
+    const expected = Oops.BindNotAvailable();
     
     expect(attempt).toThrowError(expected);
   })

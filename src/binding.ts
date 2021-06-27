@@ -1,9 +1,13 @@
 import { Controller, Stateful } from './controller';
+import { issues } from './issues';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty } from './util';
 
-import Oops from './issues';
+export const Oops = issues({
+  BindNotAvailable: () =>
+    `Bind proxies are only available from a subscriber. Did you accessnode  outside of a component?`
+})
 
 type RefFunction = (e: HTMLElement | null) => void;
 
