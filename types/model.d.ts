@@ -318,4 +318,7 @@ export abstract class Model {
 export class Singleton extends Model {
     /** Current instance of this controller accessable anywhere. */
     static current?: Singleton;
+
+    /** Destroy current instance of Singleton, if it exists. */
+    static reset(): void;
 }

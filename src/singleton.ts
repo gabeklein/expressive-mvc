@@ -6,7 +6,7 @@ export const Oops = issues({
     `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
     
   GlobalExists: (name) =>
-    `Shared instance of ${name} already exists! '${name}.use(...)' may only be mounted once at any one time.`
+    `Shared instance of ${name} already exists! Consider unmounting existing instance, or use ${name}.reset() to delete.`
 })
 
 export class Singleton extends Model {
@@ -33,6 +33,13 @@ export class Singleton extends Model {
       throw Oops.GlobalDoesNotExist(this.name);
     else
       return current;
+  }
+
+  static reset(){
+    let instance = this.current;
+
+    if(instance)
+      instance.destroy();
   }
 
   destroy(){

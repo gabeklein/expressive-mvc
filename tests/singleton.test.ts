@@ -22,6 +22,14 @@ it("will find existing instance", () => {
 })
 
 it("will complain if not initialized", () => {
+  Global.create();
+  expect(Global.current).toBeDefined();
+
+  Global.reset();
+  expect(Global.current).toBeUndefined();
+})
+
+it("will destroy active instance on reset", () => {
   const hook = renderHook(() => Global.tap());
   const expected = Oops.GlobalDoesNotExist(Global.name);
   
