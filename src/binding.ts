@@ -1,4 +1,4 @@
-import { Stateful } from './controller';
+import { Controller, Stateful } from './controller';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty } from './util';
@@ -9,13 +9,14 @@ type RefFunction = (e: HTMLElement | null) => void;
 
 export function setBindings(target: Stateful){
   return Observer.define((key, on) => {
-    defineLazy(target, key, function(){
+    defineLazy(on.subject, key, function(){
       const subscriber = Subscriber.current(this);
     
       if(!subscriber)
         throw Oops.BindNotAvailable();
     
-      const agent = bindRefFunctions(on);
+      const source = Controller.get(target);
+      const agent = bindRefFunctions(source);
     
       subscriber.dependant.add(agent);
     

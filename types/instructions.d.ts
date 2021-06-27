@@ -60,7 +60,7 @@ import { Async, Class, EffectCallback, InstanceOf, RefFunction } from './types';
  export function ref <T = HTMLElement> (callback?: EffectCallback<T>): ((next: T) => void) & { current: T | null };
  
  /**
-  * Create Plug-n-Play references for properties of this controller.
+  * Create Plug-n-Play references for properties of given state.
   * 
   * Matched ref-functions automatically bind between receiving element and value of field.
   * 
