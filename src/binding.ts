@@ -1,6 +1,6 @@
 import { Model } from './model';
 import { Observer } from './observer';
-import { LOCAL } from './subscriber';
+import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
 
 import Oops from './issues';
@@ -8,7 +8,7 @@ import Oops from './issues';
 type RefFunction = (e: HTMLElement | null) => void;
 
 export function createBindings(on: Model){
-  const subscriber = on[LOCAL];
+  const subscriber = Subscriber.current(on)
 
   if(!subscriber)
     throw Oops.BindNotAvailable();

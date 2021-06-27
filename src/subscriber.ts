@@ -1,11 +1,17 @@
-import { GetterInfo, metaData } from "./compute";
-import { CONTROL, Model, Stateful } from './model';
+import { GetterInfo, metaData } from './compute';
+import { Controller, Stateful } from './controller';
+import { Model } from './model';
 import { Observer } from './observer';
 import { alias, create, define, defineProperty } from './util';
 
 export const LOCAL = Symbol("current_subscriber");
 
 export class Subscriber<T extends Stateful = any> {
+  /** Assuming argument is actually a proxy, get the current subscription. */
+  static current(on: Stateful){
+    return on[LOCAL];
+  }
+
   public dependant = new Set<{
     listen(): void;
     release(): void;
@@ -21,7 +27,7 @@ export class Subscriber<T extends Stateful = any> {
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    const { state } = this.parent = subject[CONTROL];
+    const { state } = this.parent = Controller.get(subject);
 
     this.proxy = create(subject as any);
 

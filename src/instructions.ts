@@ -1,5 +1,6 @@
 import { prepareComputed } from './compute';
-import { Model, CONTROL } from './model';
+import { Controller } from './controller';
+import { Model } from './model';
 import { Observer } from './observer';
 import { alias, define, defineLazy, defineProperty } from './util';
 
@@ -16,8 +17,9 @@ export function setChild<T extends typeof Model>
     on.register(key, instance);
     ParentRelationship.set(instance, on.subject);
 
-    // evaluating CONTROL to force inclusion by compiler
-    if(instance[CONTROL] && callback)
+    Controller.get(instance);
+
+    if(callback)
       callback(instance);
   })
 }
