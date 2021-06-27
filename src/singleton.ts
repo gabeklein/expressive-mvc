@@ -2,9 +2,6 @@ import { issues } from './issues';
 import { Model } from './model';
 
 export const Oops = issues({
-  DestroyNotPossible: (name) =>
-    `${name}.destory() was called on an instance which is not active. This is an antipattern and may caused unexpected behavior.`,
-
   GlobalDoesNotExist: (name) =>
     `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
     
@@ -45,7 +42,5 @@ export class Singleton extends Model {
 
     if(this === meta.current)
       meta.current = undefined;
-    else
-      Oops.DestroyNotPossible(meta.name).warn();
   }
 }
