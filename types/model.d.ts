@@ -1,11 +1,15 @@
-import React from 'react';
-
 import Controller from './controller';
 import Lifecycle from './lifecycle';
 import { Selector } from './selector';
-import { Class, InstanceOf, Key, RefFunction } from './types';
+import { Class, InstanceOf, Key } from './types';
 
 export namespace Model {
+    /** Exotic value, actual value is contained. */
+    interface Ref<T = any> {
+        (next: T): void;
+        current: T | null;
+    }
+
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
 
@@ -14,6 +18,14 @@ export namespace Model {
 
     /** Object containing data found in T. */
     type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
+
+    /** Actual value stored in state. */
+    type Value<R> = R extends Ref<infer T> ? T : R;
+
+    /** Values from current state of given controller. */
+    type State<T, K extends keyof T = Fields<T, Model>> = {
+        [P in K]: Value<T[P]>;
+    }
 
     /** Object comperable to data which may be found in T. */
     type Data<T, E = Model> = Partial<Entries<T, E>>;

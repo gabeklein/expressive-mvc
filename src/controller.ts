@@ -116,7 +116,7 @@ export class Controller extends Observer {
     const data = {} as BunchOf<any>;
 
     for(const key of keys)
-      data[key] = (this.subject as any)[key];
+      data[key] = (this.state as any)[key];
 
     return data;
   }

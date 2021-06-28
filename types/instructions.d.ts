@@ -57,7 +57,7 @@ import { Async, Class, EffectCallback, InstanceOf, RefFunction } from './types';
   * 
   * @param callback - Optional callback to synchronously fire when reference is first set or does update.
   */
- export function ref <T = HTMLElement> (callback?: EffectCallback<T>): ((next: T) => void) & { current: T | null };
+ export function ref <T = HTMLElement> (callback?: EffectCallback<T>): Model.Ref<T>;
  
  /**
   * Create Plug-n-Play references for properties of given state.

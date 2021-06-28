@@ -42,9 +42,9 @@ interface Dispatch {
 
   import <O extends Model.Data<this>> (via: O, select?: string[] | Model.SelectFields<this>): void;
 
-  export(): Model.Entries<this>;
-  export <P extends Model.Fields<this>> (select: P[]): Pick<this, P>;
-  export <S extends Model.SelectFields<this>> (select: S): Pick<this, Selector.From<S>>;
+  export(): Model.State<this>;
+  export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
+  export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
   update(keys: Model.SelectFields<this>): void;
   update(keys: Model.Fields<this>[]): void;
