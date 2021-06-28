@@ -1,8 +1,8 @@
-node_modules/
-
-/lib
-/examples/public/bundle.js*
-/examples/yarn.lock
-/examples/package-lock.json
-
 .DS_Store
+
+coverage/
+examples/public/bundle.js*
+examples/yarn.lock
+examples/package-lock.json
+lib/
+node_modules/
