@@ -1,5 +1,4 @@
 import {
-  ComponentType,
   createContext,
   createElement,
   PropsWithChildren,
@@ -93,16 +92,6 @@ function useIncluding(
   }
 
   return useMemo(next, [ dependancy ])
-}
-
-export function withProvider(
-  Component: ComponentType,
-  control: Model){
-
-  return (props: any) =>
-    createElement(Provider, { of: control }, 
-      createElement(Component, props)
-    );
 }
 
 interface ConsumerProps {
