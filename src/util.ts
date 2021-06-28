@@ -14,6 +14,7 @@ const {
   getOwnPropertyNames,
   getOwnPropertyDescriptor,
   getOwnPropertyDescriptors,
+  getOwnPropertySymbols,
   keys,
   values
 } = Object;
@@ -26,6 +27,7 @@ export {
   getPrototypeOf,
   getOwnPropertyDescriptor,
   getOwnPropertyNames,
+  getOwnPropertySymbols,
   keys,
   values
 }

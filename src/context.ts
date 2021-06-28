@@ -5,13 +5,13 @@ import {
   ReactElement,
   ReactNode,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
 } from 'react';
 
 import { issues } from './issues';
 import { Model } from './model';
-import { assign, create, define, fn, values } from './util';
+import { assign, create, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
 
 export const Oops = issues({
   NothingInContext: (name) =>
@@ -44,14 +44,27 @@ export class Lookup {
     return instance as Model | undefined;
   }
   
-  public push(items: Model[]){
+  public push(items: (Model | typeof Model)[]){
     const next = create(this) as Lookup;
 
-    for(const I of items){
-      let T = I.constructor as typeof Model;
-  
+    for(let I of items){
+      let managed = true;
+      let T: typeof Model;
+
+      if(I instanceof Model){
+        managed = false;
+        T = I.constructor as typeof Model;
+      }
+      else {
+        T = I;
+        I = I.create();
+      }
+
       do {
-        define(next, this.key(T), I);
+        defineProperty(next, this.key(T), {
+          value: I,
+          writable: managed
+        });
       }
       while(T = T.inherits!);
     }
@@ -60,8 +73,12 @@ export class Lookup {
   }
 
   public pop(){
-    for(const c of values<Model>(this as any))
-      c.destroy();
+    for(const key of getOwnPropertySymbols(this)){
+      const desc = getOwnPropertyDescriptor(this, key)!;
+
+      if(desc.writable)
+        desc.value!.destroy();
+    }
   }
 }
 
@@ -81,15 +98,9 @@ function useIncluding(
   dependancy?: any){
 
   const current = useLookup();
-
-  function next(){
-    const provide = insert instanceof Model
-      ? [ insert ] : values(insert).map(T =>
-        Model.isTypeof(T) ? T.create() : T
-      );
-
-    return current.push(provide);
-  }
+  const next = () => current.push(
+    insert instanceof Model ? [ insert ] : values(insert)
+  );
 
   return useMemo(next, [ dependancy ])
 }
@@ -164,7 +175,7 @@ function MultiProvider(
   const { children, types } = props;
   const value = useIncluding(types);
 
-  useEffect(() => () => value.pop(), []);
+  useLayoutEffect(() => () => value.pop(), []);
 
   return createElement(LookupProvider, { value }, children);
 }
