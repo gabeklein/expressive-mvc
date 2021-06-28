@@ -86,6 +86,60 @@ describe("Provider", () => {
     )
   })
 
+  it("will destroy created model on unmount", () => {
+    const didDestroy = jest.fn();
+
+    class Test extends Model {
+      destroy = didDestroy
+    }
+
+    const rendered = render(
+      <Provider of={Test}>
+        <Consumer of={Test} get={i => expect(i).toBeInstanceOf(Test)} />
+      </Provider>
+    );
+
+    rendered.unmount();
+    expect(didDestroy).toBeCalled();
+  })
+
+  it("will destroy multiple created on unmount", () => {
+    const didDestroy = jest.fn();
+
+    class Test extends Model {
+      willDestroy = didDestroy;
+    }
+
+    const rendered = render(
+      <Provider of={{ Test }}>
+        <Consumer of={Test} get={i => expect(i).toBeInstanceOf(Test)} />
+      </Provider>
+    );
+
+    rendered.unmount();
+    expect(didDestroy).toBeCalled();
+  })
+
+  it("will not destroy multiple passed on unmount", () => {
+    const didDestroy = jest.fn();
+
+    class Test extends Model {
+      willDestroy = didDestroy;
+    }
+
+    const instance = Test.create();
+
+    const rendered = render(
+      <Provider of={{ instance }}>
+        <Consumer of={Test} get={i => expect(i).toStrictEqual(instance)} />
+      </Provider>
+    );
+
+    rendered.unmount();
+    expect(didDestroy).not.toBeCalled();
+  })
+
+
   it("will create all models in given array", () => {
     render(
       <Provider of={[ Foo, Bar ]}>
@@ -104,6 +158,13 @@ describe("Provider", () => {
         <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
       </Provider>
     )
+  })
+
+  it("will throw if no `of` or `for` prop given", () => {
+    // @ts-ignore
+    const test = () => render(<Provider />);
+
+    expect(test).toThrow(Oops.BadProviderProps());
   })
 })
 
@@ -124,14 +185,38 @@ describe("Consumer", () => {
     )
   })
 
+  it("will render with instance for child-function", async () => {
+    class Test extends Model {
+      value = "foobar";
+    }
+
+    const instance = Test.create();
+    const didRender = jest.fn();
+
+    function onRender(instance: Test){
+      const { value } = instance;
+      didRender(value);
+      return <span>{value}</span>;
+    }
+
+    render(
+      <Provider of={instance}>
+        <Consumer of={Test}>
+          {onRender}
+        </Consumer>
+      </Provider>
+    )
+
+    expect(didRender).toBeCalledWith("foobar");
+  })
+
   it("will pass undefined if not found for get-prop", () => {
     render(
       <Consumer of={Bar} get={i => expect(i).toBeUndefined()} />
     )
   })
 
-  // React throwing error-boundary warning despite assertion.
-  it.skip("will throw if not found for has-prop", () => {
+  it("will throw if not found for has-prop", () => {
     const test = () => render(
       <Consumer of={Bar} has={i => void i} />
     )
