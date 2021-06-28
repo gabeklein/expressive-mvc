@@ -1,7 +1,61 @@
-import { Oops } from '../src/hooks';
-import { Model, renderHook } from './adapter';
+import { Oops as Hooks } from '../src/hooks';
+import { Oops as Global } from '../src/singleton';
+import { Model, Singleton, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
+
+describe("get", () => {
+  class Test extends Singleton {
+    value = 1;
+  }
+
+  beforeEach(() => Test.reset());
+
+  it("will get instance", () => {
+    const instance = Test.create();
+    const { result } = renderHook(() => Test.get());
+
+    expect(result.current).toStrictEqual(instance);
+    expect(result.current!.value).toBe(1);
+  })
+
+  it("will get instance value", () => {
+    Test.create();
+    const { result } = renderHook(() => Test.get("value"));
+
+    expect(result.current).toBe(1);
+  })
+
+  it("will complain if not-found in expect mode", () => {
+    const { result } = renderHook(() => Test.get(true));
+    const expected = Global.GlobalDoesNotExist(Test.name);
+
+    expect(() => result.current).toThrowError(expected);
+  })
+})
+
+describe("new", () => {
+  class Test extends Model {
+    value = 1;
+    destroy = jest.fn();
+  }
+
+  it("will get instance value", () => {
+    const { result } = renderHook(() => Test.new());
+
+    expect(result.current).toBeInstanceOf(Test);
+  });
+
+  it("will destroy on unmount", () => {
+    const { result, unmount } = renderHook(() => Test.new());
+    const { destroy } = result.current!;
+
+    expect(result.current).toBeInstanceOf(Test);
+    unmount();
+
+    expect(destroy).toBeCalled();
+  })
+})
 
 describe("tap", () => {
   class Parent extends Model {
@@ -35,7 +89,7 @@ describe("tap", () => {
   it('will throw if undefined in expect-mode', () => {
     const parent = Parent.create();
     const hook = renderHook(() => parent.tap("empty", true));
-    const expected = Oops.HasPropertyUndefined(Parent.name, "empty");
+    const expected = Hooks.HasPropertyUndefined(Parent.name, "empty");
     
     expect(() => hook.result.current).toThrowError(expected);
   })
