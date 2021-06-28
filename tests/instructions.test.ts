@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-hooks';
 import { Oops } from '../src/instructions';
 
-import { act, from, lazy, Model, on, ref, use } from './adapter';
+import { act, from, lazy, Model, on, ref, use, memo } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -294,5 +294,38 @@ describe("from", () => {
     await test.requestUpdate(true);
 
     expect(test.greeting).toBe("Hello Foo!");
+  })
+})
+
+describe("memo", () => {
+  class Test extends Model {
+    ranMemo = jest.fn();
+    ranLazyMemo = jest.fn();
+
+    memoized = memo(() => {
+      this.ranMemo();
+      return "foobar";
+    });
+
+    memoLazy = memo(() => {
+      this.ranLazyMemo();
+      return "foobar";
+    }, true);
+  }
+
+  it("will run memoize on create", () => {
+    const state = Test.create();
+
+    expect(state.memoized).toBe("foobar");
+    expect(state.ranMemo).toBeCalled();
+  })
+
+  it("will run memoLazy on first access", () => {
+    const state = Test.create();
+
+    expect(state.ranLazyMemo).not.toBeCalled();
+
+    expect(state.memoLazy).toBe("foobar");
+    expect(state.ranLazyMemo).toBeCalled();
   })
 })
