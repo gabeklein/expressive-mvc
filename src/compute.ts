@@ -86,7 +86,7 @@ export function prepareComputed(
       return state[key] = value;
     }
     catch(err){
-      Oops.ComputeFailed(subject.constructor.name, key, false).warn();
+      Oops.ComputeFailed(subject.constructor.name, key, !!initial).warn();
       throw err;
     }
   }
