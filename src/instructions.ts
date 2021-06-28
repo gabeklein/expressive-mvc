@@ -104,7 +104,7 @@ export function setIgnored(value: any){
     const real = on.subject as any;
 
     real[key] = value;
-    define(on.state, key, {
+    defineProperty(on.state, key, {
       get: () => real[key]
     });
   })
