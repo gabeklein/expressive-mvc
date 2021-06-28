@@ -54,6 +54,8 @@ export class Model {
       this.willDestroy();
   }
 
+  static [CONTROL]: Controller;
+
   static create<T extends typeof Model>(
     this: T, ...args: any[]){
 
@@ -98,8 +100,6 @@ export class Model {
   static tag(id?: Key | ((target: Model) => Key | undefined)){
     return useSubscriber(this.find(true), id);
   }
-
-  static [CONTROL]: Controller;
 
   static meta(path: string | Select): any {
     return useWatcher(this, path);
