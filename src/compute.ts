@@ -132,12 +132,6 @@ export function prepareComputed(
   if(!setter)
     setter = Oops.AssignToGetter(key).warn;
 
-  for(const sub of on.listeners)
-    if(key in sub){
-      on.waiting.push(() => create());
-      return;
-    }
-
   ComputedInit.add(create);
 
   const initial = {
