@@ -6,7 +6,7 @@ import { defineLazy, defineProperty } from './util';
 
 export const Oops = issues({
   BindNotAvailable: () =>
-    `Bind proxies are only available from a subscriber. Did you accessnode  outside of a component?`
+    `Bind proxies are only available from a subscriber. Did you access this outside of a component?`
 })
 
 type RefFunction = (e: HTMLElement | null) => void;
