@@ -106,7 +106,6 @@ export class Observer {
 
     for(const key of keys){
       ensureValue(this.subject, key);
-
       listener[key] = handler;
     }
 
@@ -120,11 +119,14 @@ export class Observer {
   }
 
   public emit(frame?: string[]){
-    const { waiting } = this;
+    const current = this.waiting;
 
     this.waiting = [];
     this.pending = undefined;
-    waiting.forEach(x => x(frame));
+
+    for(const handle of current)
+      try { handle(frame) }
+      catch(e){}
   }
 
   public sync(){
