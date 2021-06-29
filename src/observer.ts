@@ -130,7 +130,7 @@ export class Observer {
   public sync(){
     const handled = new Set<string>();
 
-    const { isComputed, flushComputed } =
+    const { queueComputed, flushComputed } =
       computeContext(this, handled);
 
     const include = (key: string) => {
@@ -142,8 +142,11 @@ export class Observer {
       for(const subscription of this.listeners)
         if(key in subscription){
           const request = subscription[key];
-          
-          isComputed(request) || this.waiting.push(request);
+
+          if(queueComputed(request))
+            continue;
+
+          this.waiting.push(request);
         }
     }
 

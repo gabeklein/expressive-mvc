@@ -161,7 +161,7 @@ export function computeContext(
 
   const pending = [] as Callback[];
 
-  function isComputed(request: RequestCallback){
+  function queueComputed(request: RequestCallback){
     const compute = metaData(request);
 
     if(!compute)
@@ -188,7 +188,7 @@ export function computeContext(
   }
 
   return {
-    isComputed,
+    queueComputed,
     flushComputed
   }
 }
