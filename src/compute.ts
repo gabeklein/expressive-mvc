@@ -73,21 +73,30 @@ export function prepareComputed(
 
   defined.set(key, info);
 
-  const update = (initial?: true) => {
+  const compute = (initial?: boolean) => {
     try {
-      const value = getter.call(sub.proxy, sub.proxy);
-
-      if(state[key] == value)
-        return;
-
-      if(!initial)
-        on.update(key);
-
-      return state[key] = value;
+      return getter.call(sub.proxy, sub.proxy);
     }
     catch(err){
       Oops.ComputeFailed(subject.constructor.name, key, !!initial).warn();
       throw err;
+    }
+  }
+
+  const update = () => {
+    let value;
+
+    try {
+      value = compute(false);
+    }
+    catch(e){
+      console.error(e);
+    }
+    finally {
+      if(state[key] !== value){
+        on.update(key);
+        return state[key] = value;
+      }
     }
   }
 
@@ -105,7 +114,7 @@ export function prepareComputed(
     })
 
     try {
-      return update(true);
+      return state[key] = compute(true);
     }
     catch(e){
       if(early)
