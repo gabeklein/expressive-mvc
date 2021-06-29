@@ -2,7 +2,7 @@ import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import { alias, debounce, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter } from './util';
+import { alias, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter } from './util';
 
 export const Oops = issues({
   AssignToGetter: (name) => 
@@ -92,7 +92,7 @@ export function prepareComputed(
   }
 
   const create = (early?: boolean) => {
-    sub = new Subscriber(subject, debounce(update), info);
+    sub = new Subscriber(subject, update, info);
 
     defineProperty(state, key, {
       value: undefined,
