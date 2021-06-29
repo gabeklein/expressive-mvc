@@ -18,7 +18,10 @@ export const Oops = issues({
     `Couldn't find controller for ${name} in context; did you forget to use a Provider?`,
 
   BadProviderProps: () =>
-    `Provider expects either 'of' or 'for' props.`
+    `Provider expects either 'of' or 'for' props.`,
+
+  BadConsumerProps: () =>
+    `Provider expects either a render function, 'get' or 'has' props.`
 })
 
 export class Lookup {
@@ -127,6 +130,8 @@ export const Consumer = (props: ConsumerProps) => {
 
   if(fn(callback))
     callback(Control.get(!!has));
+  else
+    throw Oops.BadConsumerProps()
 
   return null;
 }
