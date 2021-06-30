@@ -1,17 +1,22 @@
 import { GetterInfo, metaData } from './compute';
-import { Controller, Stateful } from './controller';
+import { Controller, Stateful, setup } from './controller';
 import { Model } from './model';
 import { Observer } from './observer';
-import { alias, create, define, defineProperty } from './util';
+import { alias, create, define, defineLazy, defineProperty } from './util';
 
 export const LOCAL = Symbol("current_subscriber");
 
-export class Subscriber<T extends Stateful = any> {
-  /** Assuming argument is actually a proxy, get the current subscription. */
-  static current(on: Stateful){
-    return on[LOCAL];
-  }
+type SetupLocal = <T>(key: string, on: Observer, within?: Subscriber) => T;
 
+export function local(fn: SetupLocal){
+  return setup((key, on) => {
+    defineLazy(on.subject, key, function(){
+      return fn(key, on, this[LOCAL]);
+    })
+  })
+}
+
+export class Subscriber<T extends Stateful = any> {
   public dependant = new Set<{
     listen(): void;
     release(): void;
