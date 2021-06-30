@@ -9,6 +9,14 @@ export const Oops = issues({
     `Strict requestUpdate() did not find pending updates.`
 })
 
+const Pending = new WeakSet<Function>();
+type Setup = (key: string, on: Observer) => void;
+
+export function setup(fn: Setup){
+  Pending.add(fn);
+  return fn as any;
+}
+
 export const CONTROL = Symbol("controller");
 
 export interface Stateful {
@@ -23,6 +31,16 @@ export class Controller extends Observer {
 
   public do(fn: () => Callback){
     return fn();
+  }
+
+  public setup(
+    key: string,
+    desc: PropertyDescriptor){
+
+    if(Pending.has(desc.value))
+      desc.value(key, this);
+    else
+      super.setup(key, desc);
   }
 
   public select(

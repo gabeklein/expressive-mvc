@@ -2,8 +2,6 @@ import { computeContext, ensureValue, implementGetters } from './compute';
 import { Stateful } from './controller';
 import { createEffect, defineProperty, entriesIn, fn } from './util';
 
-const Pending = new WeakSet<Function>();
-
 export class Observer {
   public state = {} as BunchOf<any>;
   public listeners = new Set<BunchOf<RequestCallback>>();
@@ -11,28 +9,22 @@ export class Observer {
 
   public pending?: (key: string) => void;
 
-  static define(
-    fn: (key: string, on: Observer) => void){
-
-    Pending.add(fn);
-    return fn as any;
-  }
-
   constructor(public subject: Stateful){
     implementGetters(this);
   }
 
   public start(){
-    for(const [key, desc] of entriesIn(this.subject)){
-      const { value, get, enumerable } = desc;
-
-      if(Pending.has(value))
-        value(key, this);
-      else if(enumerable && !get && (!fn(value) || /^[A-Z]/.test(key)))
-        this.register(key, value);
-    }
+    for(const [key, desc] of entriesIn(this.subject))
+      this.setup(key, desc);
 
     this.emit();
+  }
+
+  public setup(key: string, desc: PropertyDescriptor){
+    const { value, get, enumerable } = desc;
+
+    if(enumerable && !get && (!fn(value) || /^[A-Z]/.test(key)))
+      this.register(key, value);
   }
 
   public register(

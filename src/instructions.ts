@@ -1,8 +1,7 @@
 import { prepareComputed } from './compute';
-import { Controller } from './controller';
+import { Controller, setup } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { Observer } from './observer';
 import { alias, define, defineLazy, defineProperty } from './util';
 
 export const Oops = issues({
@@ -24,7 +23,7 @@ const ParentRelationship = new WeakMap<{}, {}>();
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     const instance = new Peer() as InstanceOf<T>;
 
     on.register(key, instance);
@@ -40,7 +39,7 @@ export function setChild<T extends typeof Model>
 export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return Observer.define((key, { subject }) => {
+  return setup((key, { subject }) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
@@ -61,7 +60,7 @@ export function setParent<T extends typeof Model>
 export function setRefMediator<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     const refObjectFunction = on.setter(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -78,7 +77,7 @@ export function setRefMediator<T = any>
 export function setEffect<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -89,7 +88,7 @@ export function setEffect<T = any>
 }
 
 export function setMemo(factory: () => any, defer?: boolean){
-  return Observer.define((key, { subject }) => {
+  return setup((key, { subject }) => {
     const get = () => factory.call(subject);
 
     if(defer)
@@ -100,7 +99,7 @@ export function setMemo(factory: () => any, defer?: boolean){
 }
 
 export function setIgnored(value: any){
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     const real = on.subject as any;
 
     real[key] = value;
@@ -113,7 +112,7 @@ export function setIgnored(value: any){
 type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
 export function setAction(action: AsyncFn){
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -148,7 +147,7 @@ export function setAction(action: AsyncFn){
 }
 
 export function setComputed(fn: (on?: Model) => any){
-  return Observer.define((key, on) => {
+  return setup((key, on) => {
     prepareComputed(on, key, fn);
   })
 }
