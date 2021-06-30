@@ -10,10 +10,6 @@ export {
 } from './instructions';
 
 export {
-  setBindings as binds
-} from './binding';
-
-export {
   setPeer as tap
 } from './peer';
 

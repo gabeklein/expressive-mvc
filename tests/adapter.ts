@@ -12,7 +12,6 @@ export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 export const tap = Source.tap as typeof Public.tap;
 export const on = Source.on as typeof Public.on;
 export const ref = Source.ref as typeof Public.ref;
-export const binds = Source.binds as typeof Public.binds;
 export const use = Source.use as typeof Public.use;
 export const memo = Source.memo as typeof Public.memo;
 export const act = Source.act as typeof Public.act;

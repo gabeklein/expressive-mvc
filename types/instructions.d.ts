@@ -58,17 +58,7 @@ import { Async, Class, EffectCallback, InstanceOf, RefFunction } from './types';
   * @param callback - Optional callback to synchronously fire when reference is first set or does update.
   */
  export function ref <T = HTMLElement> (callback?: EffectCallback<T>): Model.Ref<T>;
- 
- /**
-  * Create Plug-n-Play references for properties of given state.
-  * 
-  * Matched ref-functions automatically bind between receiving element and value of field.
-  * 
-  * For `<input type="text" />` this is a two-way binding.
-  * User input is captured and part of controller's state/event stream.
-  */
- export function binds <T extends Model> (from: T): Model.Overlay<T, RefFunction>;
- 
+
  /**
   * Sets an exotic method with managed ready-state. Property accepts an async function.
   * 
