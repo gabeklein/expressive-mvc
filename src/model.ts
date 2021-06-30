@@ -62,7 +62,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Controller.get(instance);
+    Controller.ensure(instance);
 
     return instance;
   }

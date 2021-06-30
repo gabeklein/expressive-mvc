@@ -25,7 +25,7 @@ export interface Stateful {
 };
 
 export class Controller extends Observer {
-  static get(from: Stateful){
+  static ensure(from: Stateful){
     return from[CONTROL];
   }
 

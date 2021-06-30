@@ -29,7 +29,7 @@ export function setChild<T extends typeof Model>
     on.register(key, instance);
     ParentRelationship.set(instance, on.subject);
 
-    Controller.get(instance);
+    Controller.ensure(instance);
 
     if(callback)
       callback(instance);

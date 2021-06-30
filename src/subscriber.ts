@@ -27,7 +27,7 @@ export class Subscriber<T extends Stateful = any> {
     protected callback: Callback,
     protected metadata?: GetterInfo){
 
-    const { state } = this.parent = Controller.get(subject);
+    const { state } = this.parent = Controller.ensure(subject);
 
     this.proxy = create(subject as any);
 
