@@ -1,7 +1,8 @@
 import { renderHook } from '@testing-library/react-hooks';
-import { Oops } from '../src/instructions';
 
-import { act, from, lazy, Model, on, ref, use, memo } from './adapter';
+import { Oops } from '../src/instructions';
+import { Subscriber } from '../src/subscriber';
+import { act, from, lazy, local, memo, Model, on, ref, setup, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -361,4 +362,67 @@ describe("memo", () => {
     expect(state.memoLazy).toBe("foobar");
     expect(state.ranLazyMemo).toBeCalled();
   })
+})
+
+describe("setup", () => {
+  class Test extends Model {
+    didRunInstruction = jest.fn();
+
+    special = setup((key, _controller) => {
+      this.didRunInstruction(key);
+    })
+  }
+
+  it("will run instruction on create", () => {
+    const { didRunInstruction: ran } = Test.create();
+
+    expect(ran).toBeCalledWith("special");
+  })
+})
+
+describe("local", () => {
+  class Test extends Model {
+    didRunInstruction = jest.fn();
+    didGetSubscriber = jest.fn();
+
+    special = local((key, _controller, subscriber) => {
+      this.didRunInstruction(key);
+      this.didGetSubscriber(subscriber);
+
+      return "foobar";
+    })
+  }
+
+  it("will run instruction on access", () => {
+    const { didRunInstruction: ran, get } = Test.create();
+
+    expect(ran).not.toBeCalled();
+    expect(get.special).toBe("foobar");
+    expect(ran).toBeCalledWith("special");
+  })
+
+  it("will pass undefined for subscriber", () => {
+    const { didGetSubscriber: got, get } = Test.create();
+
+    expect(get.special).toBe("foobar");
+    expect(got).toBeCalledWith(undefined);
+  })
+
+  it("will pass undefined for subscriber", () => {
+    const { didGetSubscriber: got, get } = Test.create();
+
+    expect(get.special).toBe("foobar");
+    expect(got).toBeCalledWith(undefined);
+  })
+
+  it("will pass subscriber if within one", () => {
+    const state = Test.create();
+    const got = state.didGetSubscriber;
+
+    state.effect(own => {
+      expect(own.special).toBe("foobar");
+    });
+
+    expect(got).toBeCalledWith(expect.any(Subscriber));
+  });
 })

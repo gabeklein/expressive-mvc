@@ -17,6 +17,14 @@ export {
 } from './peer';
 
 export {
+  setup
+} from './controller';
+
+export {
+  local
+} from './subscriber';
+
+export {
   Consumer,
   Provider
 } from './context';

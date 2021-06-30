@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Oops as Instruct } from '../src/instructions';
+import { Oops as Compose } from '../src/compose';
 import { Oops as Peers } from '../src/Peer';
 import { Model, parent, Provider, render, Singleton, tap, use } from './adapter';
 
@@ -29,7 +29,7 @@ describe("Parent-Child", () => {
     const attempt = () => 
       NonStandalone.create();
 
-    const error = Instruct.ParentRequired(
+    const error = Compose.ParentRequired(
       Detatched.name, NonStandalone.name
     )
 
@@ -57,7 +57,7 @@ describe("Parent-Child", () => {
     }
 
     const attempt = () => Unexpected.create();
-    const error = Instruct.UnexpectedParent(
+    const error = Compose.UnexpectedParent(
       Expected.name, Adopted.name, Unexpected.name
     )
 

@@ -1,12 +1,21 @@
 import Model from '.';
-import { Async, Class, EffectCallback, InstanceOf, RefFunction } from './types';
+import { Async, Class, EffectCallback, InstanceOf } from './types';
+
+type Setup<T> = (key: string, on: any) => void;
+type SetupLocal<T> = (key: string, on: any, within?: any) => T;
+
+/** Run instruction on controller init. */
+export function setup<T>(instruction: Setup<T>): T;
+
+/** Run instruction at time of access, with access to subscriber context. */
+export function local<T>(instruction: SetupLocal<T>): T;
 
 /**
-   * Creates a new child-instance of specified controller.
-   * 
-   * @param Peer - Type of Model to create and apply to host property.
-   * @param callback - Fired after controller is created and ready for use.
-   */
+ * Creates a new child-instance of specified controller.
+ * 
+ * @param Peer - Type of Model to create and apply to host property.
+ * @param callback - Fired after controller is created and ready for use.
+ */
  export function use <T extends typeof Model> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
 
  /**
