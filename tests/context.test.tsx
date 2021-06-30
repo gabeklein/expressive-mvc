@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { act } from 'react-test-renderer';
 import { Oops } from '../src/context';
 
-import { Consumer, Model, Provider, render } from './adapter';
+import { Consumer, Model, Provider, render, tap } from './adapter';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -18,6 +19,18 @@ describe("Provider", () => {
         <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
       </Provider>
     );
+  })
+
+  it("will throw if incorrect props", () => {
+    const instance = Foo.create();
+    const attempt = () => render(
+      <Provider of={instance}>
+        { /* @ts-ignore */}
+        <Consumer of={Foo} />
+      </Provider>
+    );
+
+    expect(attempt).toThrowError();
   })
 
   it("will create instance of given model", () => {
@@ -254,3 +267,78 @@ describe("Consumer", () => {
     )
   })
 });
+
+describe("Peers", () => {
+  class Shared extends Model {
+    value = 1;
+  };
+
+  class Consumer extends Model {
+    shared = tap(Shared);
+  };
+
+  it("will assign peer-properties from context", async () => {
+    const parent = Shared.create();
+    let consumer!: Consumer;
+
+    const Inner = () => {
+      consumer = Consumer.use();
+      return null;
+    }
+
+    render(
+      <Provider of={parent}>
+        <Inner />
+      </Provider>
+    );
+
+    expect(consumer.shared).toStrictEqual(parent);
+  })
+
+  it("will assign multiple peers from context", async () => {
+    class AlsoShared extends Model {
+      value = 1;
+    };
+
+    class Multiple extends Consumer {
+      also = tap(AlsoShared);
+    };
+
+    let consumer!: Multiple;
+
+    const Inner = () => {
+      consumer = Multiple.use();
+      return null;
+    }
+
+    render(
+      <Provider of={{ Shared, AlsoShared }}>
+        <Inner />
+      </Provider>
+    );
+
+    expect(consumer.shared).toBeInstanceOf(Shared);
+    expect(consumer.also).toBeInstanceOf(AlsoShared);
+  })
+
+  it("will maintain useContext hook", async () => {
+    let refresh!: (x: any) => void;
+
+    const didRender = jest.fn();
+    const Inner = () => {
+      Consumer.use();
+      refresh = useState()[1];
+      didRender();
+      return null;
+    }
+
+    render(
+      <Provider of={Shared}>
+        <Inner />
+      </Provider>
+    );
+
+    act(() => refresh(true));
+    expect(didRender).toBeCalledTimes(2);
+  })
+})

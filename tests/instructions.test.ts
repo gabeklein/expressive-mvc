@@ -106,6 +106,14 @@ describe("ref", () => {
       }
     })
   }
+
+  it('will fetch value from ref-object', async () => {
+    const state = Subject.create();
+
+    state.ref1.current = "foobar";
+    await state.requestUpdate(true);
+    expect(state.ref1.current).toBe("foobar");
+  })
   
   it('will watch "current" of property', async () => {
     const state = Subject.create();
@@ -149,6 +157,23 @@ describe("ref", () => {
     state.ref3.current = 2;
     await state.requestUpdate();
     expect(state.checkValue).toBe(true);
+  })
+
+  it('will export value of ref-properties', () => {
+    const test = Subject.create();
+    const values = {
+      ref1: "foobar",
+      ref2: Symbol("foobar"),
+      ref3: 69420
+    }
+
+    test.ref1(values.ref1);
+    test.ref2(values.ref2);
+    test.ref3(values.ref3);
+
+    const state = test.export();
+
+    expect(state).toMatchObject(values);
   })
 })
 
@@ -210,6 +235,14 @@ describe("act", () => {
     test();
     expect(() => test()).rejects.toThrowError(expected);
   })
+
+  it("will complain if property is redefined", () => {
+    const state = Test.create();
+    const expected = Oops.SetActionProperty("test");
+    const assign = () => state.test = 0 as any;
+
+    expect(assign).toThrowError(expected);
+  })
 })
 
 describe("lazy", () => {
@@ -246,7 +279,7 @@ describe("lazy", () => {
     };
     
     state.import(assign);
-    expect(state).toMatchObject(assign);
+    expect(assign).toMatchObject(state);
   });
 
   it("will include value on export", async () => {

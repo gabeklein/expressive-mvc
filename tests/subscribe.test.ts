@@ -104,4 +104,36 @@ describe("nested properties", () => {
     await update();
     expect(state.child.value).toBe("bar");
   })
+  
+  it('will reset if child becomes undefined', async () => {
+    class Parent extends Model {
+      value = "foo";
+      child?: Child = new Child();
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+
+      if(it.child)
+        void it.child.value;
+    })
+  
+    // Will refresh on sub-value change.
+    state.child!.value = "bar";
+    await update();
+  
+    // Will refresh on undefined.
+    state.child = undefined;
+    await update();
+    expect(state.child).toBeUndefined();
+  
+    // Will refresh on repalcement.
+    state.child = new Child();
+    await update();
+  
+    // New subscription does still work.
+    state.child.value = "bar";
+    await update();
+  })
 })

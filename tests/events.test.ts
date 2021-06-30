@@ -1,3 +1,4 @@
+import { Oops } from "../src/util";
 import { Model } from "./adapter";
 
 describe("on", () => {
@@ -242,9 +243,29 @@ describe("effect", () => {
      * invokes three more times:
      * - value 1
      * - value 2
-     * - value 2 & 3 (squashed since syncronous)
+     * - value 2 & 3 (squashed)
      */
     expect(invokedNTimes).toBe(4);
+  })
+
+  it("will throw if effect returns non-function", () => {
+    const state = TestValues.create();
+    const expected = Oops.BadEffectCallback();
+    const attempt = () => {
+      // @ts-ignore
+      state.effect(() => "foobar");
+    }
+
+    expect(attempt).toThrowError(expected);
+  })
+
+  it("will not throw if effect returns promise", () => {
+    const state = TestValues.create();
+    const attempt = () => {
+      state.effect(async () => {});
+    }
+
+    expect(attempt).not.toThrowError();
   })
 });
 
@@ -307,6 +328,29 @@ describe("will accept before ready", () => {
     await state.requestUpdate();
 
     expect(mock).toBeCalled();
+  })
+
+  it('on method using cancel', async () => {
+    class Test extends TestValues {
+      cancel = this.on("value1", mock);
+    }
+
+    const mock = jest.fn();
+    const state = Test.create();
+
+    state.value1++;
+    await state.requestUpdate(true);
+    expect(mock).toBeCalledTimes(1);
+
+    state.value1++;
+    await state.requestUpdate(true);
+    expect(mock).toBeCalledTimes(2);
+
+    state.cancel();
+
+    state.value1++;
+    await state.requestUpdate(true);
+    expect(mock).toBeCalledTimes(2);
   })
 
   it('effect method', async () => {

@@ -36,6 +36,15 @@ describe("basics", () => {
 
     expect(state.value).toBe(2);
   })
+
+  it('will not update if value is same', async () => {
+    const state = Subject.create();
+    
+    expect(state.value).toBe(1);
+
+    state.value = 1
+    await state.requestUpdate(false);
+  })
   
   it('accepts update from within a method', async () => {
     const state = Subject.create();

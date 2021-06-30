@@ -1,8 +1,30 @@
+import React from 'react';
+
 import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
-import { Model, Singleton, renderHook } from './adapter';
+import { Model, Provider, render, renderHook, Singleton } from './adapter';
 
 const opts = { timeout: 100 };
+
+describe("uses", () => {
+  class Test extends Model {
+    foo?: string = undefined;
+    bar?: string = undefined;
+  }
+
+  it("will apply values", () => {
+    const mockExternal = {
+      foo: "foo",
+      bar: "bar"
+    }
+
+    const { result } = renderHook(() => {
+      return Test.uses(mockExternal);
+    });
+
+    expect(result.current).toMatchObject(mockExternal);
+  })
+})
 
 describe("get", () => {
   class Test extends Singleton {
@@ -21,7 +43,18 @@ describe("get", () => {
 
   it("will get instance value", () => {
     Test.create();
-    const { result } = renderHook(() => Test.get("value"));
+    const { result } = renderHook(() => {
+      return Test.get("value");
+    });
+
+    expect(result.current).toBe(1);
+  })
+
+  it("will get value using selector", () => {
+    Test.create();
+    const { result } = renderHook(() => {
+      return Test.get(x => x.value);
+    });
 
     expect(result.current).toBe(1);
   })
@@ -145,6 +178,28 @@ describe("tag", () => {
     control.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current.value).toBe("bar");
+  })
+
+  it("will subscribe to instance", async () => {
+    const mock = jest.fn();
+
+    class Test extends Model {
+      value = "foo";
+      willMount = mock;
+    }
+    
+    const Inner = () => {
+      Test.tag("foobar");
+      return null;
+    }
+    
+    render(
+      <Provider of={Test}>
+        <Inner />
+      </Provider>
+    )
+
+    expect(mock).toBeCalledWith("foobar");
   })
 })
 

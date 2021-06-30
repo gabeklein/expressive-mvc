@@ -36,6 +36,17 @@ describe("Parent-Child", () => {
     expect(attempt).toThrowError(error);
   })
 
+  it("retuns undefined if expected not set", () => {
+    class MaybeParent extends Model {}
+    class StandAlone extends Model {
+      maybe = parent(MaybeParent);
+    }
+
+    const instance = StandAlone.create();
+
+    expect(instance.maybe).toBeUndefined();
+  })
+
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
@@ -45,9 +56,7 @@ describe("Parent-Child", () => {
       expects = parent(Expected);
     }
 
-    const attempt = () => 
-      Unexpected.create();
-
+    const attempt = () => Unexpected.create();
     const error = Instruct.UnexpectedParent(
       Expected.name, Adopted.name, Unexpected.name
     )
