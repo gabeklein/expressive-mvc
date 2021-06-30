@@ -33,7 +33,7 @@ Classes which extend `Model` can manage behavior for components. Custom models a
 
 ### Step 1
 
-Create a class, extending `Model`, and shape it to your liking.
+Create a class to extend `Model` and shape it to your liking.
 
 ```js
 class Counter extends Model {
