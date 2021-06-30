@@ -9,10 +9,10 @@ export const Oops = issues({
   `Property ${name} is a getter only. Assignment was skipped.`,
 
   ComputeFailed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "getting initial value of" : "refreshing"} ${parent}.${property}. Property will be skipped.`,
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
 
   ComputedEarly: (property) => 
-    `Note: Computed values are usually only calculated after first access, except where accessed implicitly by "on" or "export". Your '${property}' getter may have run earlier than intended because of that.`
+    `Note: Computed values don't run until accessed, except when subscribed to. Your '${property}' getter may have run earlier than intended.`
 })
 
 export type GetterInfo = {
