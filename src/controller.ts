@@ -5,8 +5,8 @@ import { LOCAL, Subscriber } from './subscriber';
 import { createEffect, debounce, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const Oops = issues({
-  StrictUpdate: () => 
-    `Strict requestUpdate() did not find pending updates.`
+  StrictUpdate: (expected) => 
+    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
 })
 
 const Pending = new WeakSet<Function>();
@@ -154,7 +154,7 @@ export class Controller extends Observer {
     if(fn(argument))
       waiting.push(argument)
     else if(!pending === argument)
-      return Promise.reject(Oops.StrictUpdate())
+      return Promise.reject(Oops.StrictUpdate(argument))
     else if(pending)
       return new Promise(cb => waiting.push(cb));
     else

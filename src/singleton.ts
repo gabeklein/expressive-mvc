@@ -3,10 +3,10 @@ import { Model } from './model';
 
 export const Oops = issues({
   GlobalDoesNotExist: (name) =>
-    `Tried to access singleton ${name} but one does not exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() here instead.`,
+    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() instead.`,
     
   GlobalExists: (name) =>
-    `Shared instance of ${name} already exists! Consider unmounting existing instance, or use ${name}.reset() to delete.`
+    `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
 const Register = new WeakMap<typeof Singleton, Singleton>();

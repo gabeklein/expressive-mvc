@@ -7,10 +7,10 @@ import { define, defineLazy } from './util';
 
 export const Oops = issues({
   CantAttachGlobal: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}'. This is not possible because '${child}' is not also a singleton.`,
+    `Singleton '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
 
   AmbientRequired: (requested, requester, key) =>
-    `Attempted to find an instance of ${requested} in context. It is required for ${requester}.${key} but could not be found.`
+    `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
 })
 
 type Peer = typeof Model | typeof Singleton;

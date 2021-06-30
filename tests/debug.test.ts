@@ -1,3 +1,4 @@
+import { Oops } from "../src/controller";
 import { Model } from "./adapter";
 
 describe("requestUpdate method", () => {
@@ -50,8 +51,9 @@ describe("requestUpdate method", () => {
   it('rejects if no update pending in strict mode', async () => {
     const control = Control.create();
     const update = control.requestUpdate(true);
+    const expected = Oops.StrictUpdate(true);
     
-    await expect(update).rejects.toBeInstanceOf(Error);
+    await expect(update).rejects.toThrowError(expected);
   })
 
   it('rejects if update not expected in strict mode', async () => {
@@ -60,8 +62,9 @@ describe("requestUpdate method", () => {
     control.foo = 2;
 
     const update = control.requestUpdate(false);
+    const expected = Oops.StrictUpdate(false);
     
-    await expect(update).rejects.toBeInstanceOf(Error);
+    await expect(update).rejects.toThrowError(expected);
   })
 
   it("includes getters in batch which trigger them", async () => {

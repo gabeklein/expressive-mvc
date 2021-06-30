@@ -103,11 +103,11 @@ describe("Peers", () => {
       bar = tap(Bar, true);
     }
 
-    const issue = Peers.AmbientRequired(Bar.name, Foo.name, "bar");
+    const expected = Peers.AmbientRequired(Bar.name, Foo.name, "bar");
     const useStrictFooBar = () => Foo.use().bar;
 
     const TestComponent = () => {
-      expect(useStrictFooBar).toThrow(issue);
+      expect(useStrictFooBar).toThrowError(expected);
       return null;
     }
 
@@ -143,7 +143,7 @@ describe("Peers", () => {
     const attempt = () => Global.create();
     const issue = Peers.CantAttachGlobal(Global.name, Normal.name);
 
-    expect(attempt).toThrow(issue);
+    expect(attempt).toThrowError(issue);
   })
 
   it.todo("can access peers sharing same provider");

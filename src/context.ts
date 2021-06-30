@@ -15,7 +15,7 @@ import { assign, create, defineProperty, fn, getOwnPropertyDescriptor, getOwnPro
 
 export const Oops = issues({
   NothingInContext: (name) =>
-    `Couldn't find controller for ${name} in context; did you forget to use a Provider?`,
+    `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
   BadProviderProps: () =>
     `Provider expects either 'of' or 'for' props.`,

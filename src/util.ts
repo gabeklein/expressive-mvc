@@ -2,7 +2,7 @@ import { issues } from './issues';
 
 export const Oops = issues({
   BadEffectCallback: () =>
-    `Callback for property-update may only return a function.`
+    `Callback for effect-callback may only return a function.`
 })
 
 const {

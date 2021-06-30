@@ -234,7 +234,7 @@ describe("Consumer", () => {
       <Consumer of={Bar} has={i => void i} />
     )
 
-    expect(test).toThrow(
+    expect(test).toThrowError(
       Oops.NothingInContext(Bar.name)
     );
   })

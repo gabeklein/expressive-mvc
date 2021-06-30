@@ -6,13 +6,13 @@ import { alias, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototyp
 
 export const Oops = issues({
   AssignToGetter: (name) => 
-  `Property ${name} is a getter only. Assignment was skipped.`,
+    `Property ${name} is only a getter. Ignoring assignment.`,
 
   ComputeFailed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
 
   ComputedEarly: (property) => 
-    `Note: Computed values don't run until accessed, except when subscribed to. Your '${property}' getter may have run earlier than intended.`
+    `Note: Computed values don't run until accessed, except when subscribed to. '${property}' getter may have run earlier than intended.`
 })
 
 export type GetterInfo = {
