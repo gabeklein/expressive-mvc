@@ -1,61 +1,16 @@
 import { prepareComputed } from './compute';
-import { Controller, setup } from './controller';
+import { setup } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { alias, define, defineLazy, defineProperty } from './util';
 
 export const Oops = issues({
-  ParentRequired: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
-
-  UnexpectedParent: (expects, child, got) =>
-    `New ${child} created as child of ${got} but must be instanceof ${expects}`,
-
   SetActionProperty: (key) =>
     `Attempted assignment of ${key}. This is not allowed because an action-property.`,
 
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
 })
-
-const ParentRelationship = new WeakMap<{}, {}>();
-
-export function setChild<T extends typeof Model>
-  (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
-
-  return setup((key, on) => {
-    const instance = new Peer() as InstanceOf<T>;
-
-    on.register(key, instance);
-    ParentRelationship.set(instance, on.subject);
-
-    Controller.ensure(instance);
-
-    if(callback)
-      callback(instance);
-  })
-}
-
-export function setParent<T extends typeof Model>
-  (Expects: T, required?: boolean): InstanceOf<T> {
-
-  return setup((key, { subject }) => {
-    const expectsType = Expects.name;
-    const onType = subject.constructor.name;
-    const parent = ParentRelationship.get(subject);
-
-    if(!parent){
-      if(required)
-        throw Oops.ParentRequired(expectsType, onType);
-    }
-    else if(!(parent instanceof Expects)){
-      const gotType = parent.constructor.name;
-      throw Oops.UnexpectedParent(expectsType, onType, gotType);
-    }
-
-    define(subject, key, parent);
-  })
-}
 
 export function setRefMediator<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {

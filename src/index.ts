@@ -1,6 +1,4 @@
 export {
-  setChild as use,
-  setParent as parent,
   setEffect as on,
   setRefMediator as ref,
   setAction as act,
@@ -8,6 +6,11 @@ export {
   setMemo as memo,
   setIgnored as lazy
 } from './instructions';
+
+export {
+  setChild as use,
+  setParent as parent
+} from './compose';
 
 export {
   setPeer as tap
