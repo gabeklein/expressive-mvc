@@ -1,0 +1,9 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "coverageReporters": ["json-summary"],
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "/src/index.ts"
+  ]
+}
