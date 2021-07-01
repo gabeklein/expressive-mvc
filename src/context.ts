@@ -115,12 +115,7 @@ interface ConsumerProps {
   children?: (value: Model) => ReactElement<any, any> | null;
 }
 
-interface ProviderProps {
-  of: Model | typeof Model | ProvideCollection;
-  children?: ReactNode;
-}
-
-export const Consumer = (props: ConsumerProps) => {
+export function Consumer(props: ConsumerProps){
   const { get, has, children: render, of: Control } = props;
 
   if(fn(render))
@@ -134,6 +129,11 @@ export const Consumer = (props: ConsumerProps) => {
     throw Oops.BadConsumerProps()
 
   return null;
+}
+
+interface ProviderProps {
+  of: Model | typeof Model | ProvideCollection;
+  children?: ReactNode;
 }
 
 export function Provider(props: ProviderProps){
