@@ -124,8 +124,10 @@ export class Observer {
   public sync(){
     const handled = new Set<string>();
 
-    const { queueComputed, flushComputed } =
-      computeContext(this, handled);
+    const {
+      queue: queueComputed,
+      flush: flushComputed
+    } = computeContext(this, handled);
 
     const include = (key: string) => {
       if(handled.has(key))

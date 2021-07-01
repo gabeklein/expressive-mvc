@@ -170,34 +170,30 @@ export function computeContext(
 
   const pending = [] as Callback[];
 
-  function queueComputed(request: RequestCallback){
-    const compute = metaData(request);
-
-    if(!compute)
-      return false;
-
-    if(compute.parent !== parent)
-      request();
-    else
-      insertAfter(pending, request,
-        sib => compute.priority > metaData(sib).priority
-      )
-
-    return true;
-  }
-
-  function flushComputed(){
-    while(pending.length){
-      const compute = pending.shift()!;
-      const { key } = metaData(compute);
-
-      if(!handled.has(key))
-        compute();
-    }
-  }
-
   return {
-    queueComputed,
-    flushComputed
+    queue(request: RequestCallback){
+      const compute = metaData(request);
+  
+      if(!compute)
+        return false;
+  
+      if(compute.parent !== parent)
+        request();
+      else
+        insertAfter(pending, request,
+          sib => compute.priority > metaData(sib).priority
+        )
+  
+      return true;
+    },
+    flush(){
+      while(pending.length){
+        const compute = pending.shift()!;
+        const { key } = metaData(compute);
+  
+        if(!handled.has(key))
+          compute();
+      }
+    }
   }
 }
