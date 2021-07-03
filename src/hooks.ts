@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { Stateful } from './controller';
 import { issues } from './issues';
@@ -116,7 +116,7 @@ export function useLazy(
 
   const instance = useMemo(() => Type.create(...args), []);
 
-  useEffect(() => () => instance.destroy(), []);
+  useLayoutEffect(() => () => instance.destroy(), []);
 
   return instance;
 }
@@ -153,7 +153,7 @@ export function useWatcher(
     return sub;
   });
 
-  useEffect(hook.listen, []);
+  useLayoutEffect(hook.listen, []);
 
   return hook.proxy;
 }
