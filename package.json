@@ -30,6 +30,7 @@
     "preversion": "jest",
     "postversion": "npm run build; npm publish",
     "postpublish": "git push; git push --tags; rm -rf lib",
+    "coverage": "jest --collectCoverage",
     "test": "jest --watchAll"
   },
   "peerDependencies": {
