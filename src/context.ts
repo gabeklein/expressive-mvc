@@ -47,8 +47,11 @@ export class Lookup {
     return instance as Model | undefined;
   }
   
-  public push(items: (Model | typeof Model)[]){
+  public push(items: Model | ProvideCollection){
     const next = create(this) as Lookup;
+
+    items = items instanceof Model
+      ? [ items ] : values(items);
 
     for(let I of items){
       let managed = true;
@@ -100,10 +103,8 @@ function useIncluding(
   insert: Model | ProvideCollection,
   dependancy?: any){
 
-  const current = useLookup();
-  const next = () => current.push(
-    insert instanceof Model ? [ insert ] : values(insert)
-  );
+  const current = useContext(LookupContext);
+  const next = () => current.push(insert);
 
   return useMemo(next, [ dependancy ])
 }
