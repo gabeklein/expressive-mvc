@@ -11,14 +11,14 @@ import {
 
 import { issues } from './issues';
 import { Model } from './model';
-import { assign, create, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
+import { create, defineProperty, keys, fn, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
 
 export const Oops = issues({
   NothingInContext: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
-  BadProviderProps: () =>
-    `Provider expects either 'of' or 'for' props.`,
+  BadProviderType: () =>
+    `Provider 'of' prop must be Model, typeof Model or a collection of them.`,
 
   BadConsumerProps: () =>
     `Provider expects either a render function, 'get' or 'has' props.`
@@ -99,14 +99,18 @@ export function useLookup(){
   return useContext(LookupContext);
 }
 
-function useIncluding(
-  insert: Model | ProvideCollection,
+function useProviderWith(
+  layer: Model | ProvideCollection,
+  children?: ReactNode,
   dependancy?: any){
 
   const current = useContext(LookupContext);
-  const next = () => current.push(insert);
+  const value = useMemo(() => current.push(layer), [ dependancy ]);
 
-  return useMemo(next, [ dependancy ])
+  if(!dependancy)
+    useLayoutEffect(() => () => value.pop(), []);
+
+  return createElement(LookupProvider, { value }, children);
 }
 
 interface ConsumerProps {
@@ -137,51 +141,57 @@ interface ProviderProps {
   children?: ReactNode;
 }
 
+function otherKeys(from: any){
+  return keys(from).filter(k => ["of", "children"].indexOf(k) < 0);
+}
+
 export function Provider(props: ProviderProps){
-  const { children, of: target } = props;
-  const data = assign({}, props, { children: null, of: null });
- 
-  if(Model.isTypeof(target))
-    return createElement(ParentProvider, { target, data }, children);
-  else if(target instanceof Model)
-    return createElement(DirectProvider, { target, data }, children);
-  else if(typeof target == "object")
-    return createElement(MultiProvider, { types: target }, children);
-  else
-    throw Oops.BadProviderProps();
+  const Type: any = useMemo(() => {
+    const { of: target } = props;
+
+    if(Model.isTypeof(target))
+      return ParentProvider;
+
+     if(target instanceof Model)
+      return DirectProvider;
+
+     if(typeof target == "object")
+      return MultiProvider;
+
+    throw Oops.BadProviderType();
+  }, []);
+
+  return createElement(Type, props);
 }
 
 function ParentProvider(
-  props: PropsWithChildren<{ target: typeof Model, data: {} }>){
+  props: PropsWithChildren<{ of: typeof Model }>){
 
-  let { children, target, data } = props;
-  const instance = target.using(data);
-  const value = useIncluding(instance.get, target);
+  let { children, of: target } = props;
+  const instance = target.use(props);
+  const rest = useMemo(() => otherKeys(instance), []);
+
+  instance.import(props, rest);
 
   if(fn(children))
     children = children(instance);
 
-  return createElement(LookupProvider, { value }, children);
+  return useProviderWith(instance.get, children, target);
 }
 
 function DirectProvider(
-  props: PropsWithChildren<{ target: Model, data: {} }>){
+  props: PropsWithChildren<{ of: Model }>){
 
-  const { children, data, target } = props;
-  const value = useIncluding(target, target);
+  const { of: target } = props;
+  const rest = useMemo(() => otherKeys(target), []);
 
-  target.import(data);
+  target.import(props as any, rest)
 
-  return createElement(LookupProvider, { value }, children);
+  return useProviderWith(target, props.children, target);
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ types: ProvideCollection }>){
+  props: PropsWithChildren<{ of: ProvideCollection }>){
 
-  const { children, types } = props;
-  const value = useIncluding(types);
-
-  useLayoutEffect(() => () => value.pop(), []);
-
-  return createElement(LookupProvider, { value }, children);
+  return useProviderWith(props.of, props.children);
 }

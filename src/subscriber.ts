@@ -73,7 +73,8 @@ export class Subscriber<T extends Stateful = any> {
     defineProperty(this.proxy, key, {
       get: access,
       set: this.parent.setter(key),
-      configurable: true
+      configurable: true,
+      enumerable: true
     })
   }
 
