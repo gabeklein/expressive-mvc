@@ -26,6 +26,34 @@ describe("uses", () => {
   })
 })
 
+describe("using", () => {
+  class Test extends Model {
+    foo?: string = undefined;
+    bar?: string = undefined;
+  }
+
+  it("will apply values per-render", async () => {
+    let instance!: Test;
+
+    const TestComponent = (props: any) => {
+      ({ get: instance } = Test.using(props));
+      return null;
+    }
+
+    const rendered = render(<TestComponent />);
+
+    expect(instance).toBeInstanceOf(Test);
+
+    const update = instance.requestUpdate();
+
+    rendered.update(<TestComponent foo="foo" bar="bar" />);
+
+    expect(await update).toEqual(
+      expect.arrayContaining(["foo", "bar"])
+    );
+  })
+})
+
 describe("get", () => {
   class Test extends Singleton {
     value = 1;
