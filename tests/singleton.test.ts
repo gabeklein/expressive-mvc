@@ -16,7 +16,7 @@ it("will find existing instance", () => {
   const instance = Global.create();
   const found = Global.find();
 
-  expect(found).toStrictEqual(instance);
+  expect(found).toBe(instance);
   
   instance.destroy();
 })

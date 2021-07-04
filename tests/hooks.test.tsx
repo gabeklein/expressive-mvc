@@ -37,7 +37,7 @@ describe("get", () => {
     const instance = Test.create();
     const { result } = renderHook(() => Test.get());
 
-    expect(result.current).toStrictEqual(instance);
+    expect(result.current).toBe(instance);
     expect(result.current!.value).toBe(1);
   })
 

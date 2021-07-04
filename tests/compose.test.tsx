@@ -17,7 +17,7 @@ describe("Parent-Child", () => {
     const bar = foo.child;
 
     expect(bar).toBeInstanceOf(Bar);
-    expect(bar.parent).toStrictEqual(foo);
+    expect(bar.parent).toBe(foo);
   })
 
   it("throws when required parent is absent :(", () => {

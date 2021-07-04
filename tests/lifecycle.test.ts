@@ -268,7 +268,7 @@ describe("lifecycle", () => {
       const test = Test.create();
       const identifier = Symbol("foobar");
       const factory = (on: Test) => {
-        expect(on).toStrictEqual(test);
+        expect(on).toBe(test);
         return identifier;
       }
   

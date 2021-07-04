@@ -16,7 +16,7 @@ describe("Provider", () => {
 
     render(
       <Provider of={instance}>
-        <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
+        <Consumer of={Foo} get={i => expect(i).toBe(instance)} />
       </Provider>
     );
   })
@@ -61,9 +61,9 @@ describe("Provider", () => {
         {(instance) => {
           return <Consumer of={Foo} get={i => {
             // instance injected should be a subscribe-clone.
-            expect(i).not.toStrictEqual(instance);
+            expect(instance).not.toBe(i);
             // get actual instance via circular-get property.
-            expect(i).toStrictEqual(instance.get);
+            expect(instance.get).toBe(i);
           }} />
         }}
       </Provider>
@@ -73,7 +73,9 @@ describe("Provider", () => {
   it("will assign props to instance", () => {
     render(
       <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("foobar")} />
+        <Consumer of={Foo} has={i => {
+          expect(i.value).toBe("foobar");
+        }} />
       </Provider>
     );
   })
@@ -144,7 +146,7 @@ describe("Provider", () => {
 
     const rendered = render(
       <Provider of={{ instance }}>
-        <Consumer of={Test} get={i => expect(i).toStrictEqual(instance)} />
+        <Consumer of={Test} get={i => expect(i).toBe(instance)} />
       </Provider>
     );
 
@@ -167,7 +169,7 @@ describe("Provider", () => {
 
     render(
       <Provider of={{ foo, Bar }}>
-        <Consumer of={Foo} get={i => expect(i).toStrictEqual(foo)} />
+        <Consumer of={Foo} get={i => expect(i).toBe(foo)} />
         <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
       </Provider>
     )
@@ -177,7 +179,7 @@ describe("Provider", () => {
     // @ts-ignore
     const test = () => render(<Provider />);
 
-    expect(test).toThrow(Oops.BadProviderProps());
+    expect(test).toThrow(Oops.BadProviderType());
   })
 })
 
@@ -189,7 +191,7 @@ describe("Consumer", () => {
       <Provider of={instance}>
         <Provider of={Baz}>
           <Provider of={{ Bar }}>
-            <Consumer of={Foo} get={i => expect(i).toStrictEqual(instance)} />
+            <Consumer of={Foo} get={i => expect(i).toBe(instance)} />
             <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
             <Consumer of={Baz} get={i => expect(i).toBeInstanceOf(Baz)} />
           </Provider>
@@ -251,7 +253,7 @@ describe("Consumer", () => {
     render(
       <Provider of={Foo} value="outer">
         <Provider of={Foo} value="inner">
-          <Consumer of={Foo} has={i => expect(i.value).toStrictEqual("inner")} />
+          <Consumer of={Foo} has={i => expect(i.value).toBe("inner")} />
         </Provider>
       </Provider>
     )
@@ -292,7 +294,7 @@ describe("Peers", () => {
       </Provider>
     );
 
-    expect(consumer.shared).toStrictEqual(parent);
+    expect(consumer.shared).toBe(parent);
   })
 
   it("will assign multiple peers from context", async () => {
