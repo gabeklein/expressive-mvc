@@ -35,16 +35,14 @@ export function setPeer<T extends Peer>
       if(!pending)
         PendingContext.set(subject, pending = []);
 
-      function insert(context: Lookup){
+      pending.push((context: Lookup) => {
         const remote = context.get(type);
 
         if(!remote && required)
           throw Oops.AmbientRequired(type.name, Self, key);
 
         define(subject, key, remote);
-      }
-
-      pending.push(insert);
+      });
     }
   })
 }

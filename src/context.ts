@@ -99,20 +99,6 @@ export function useLookup(){
   return useContext(LookupContext);
 }
 
-function useProviderWith(
-  layer: Model | ProvideCollection,
-  children?: ReactNode,
-  dependancy?: any){
-
-  const current = useContext(LookupContext);
-  const value = useMemo(() => current.push(layer), [ dependancy ]);
-
-  if(!dependancy)
-    useLayoutEffect(() => () => value.pop(), []);
-
-  return createElement(LookupProvider, { value }, children);
-}
-
 interface ConsumerProps {
   of: typeof Model;
   get?: (value: Model) => void;
@@ -136,13 +122,61 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
+function useProviderWith(
+  layer: Model | ProvideCollection,
+  children?: ReactNode,
+  dependancy?: any){
+
+  const current = useContext(LookupContext);
+  const value = useMemo(() => current.push(layer), [ dependancy ]);
+
+  if(!dependancy)
+    useLayoutEffect(() => () => value.pop(), []);
+
+  return createElement(LookupProvider, { value }, children);
+}
+
+function importFrom(props: any, to: Model){
+  const transferable = useMemo(() =>
+    keys(to).filter(k => k != "of" && k != "children"), [ to ]
+  );
+
+  to.import(props, transferable);
+}
+
+function ParentProvider(
+  props: PropsWithChildren<{ of: typeof Model }>){
+
+  let { children, of: target } = props;
+  const instance = target.use();
+
+  importFrom(props, instance);
+
+  if(fn(children))
+    children = children(instance);
+
+  return useProviderWith(instance.get, children, target);
+}
+
+function DirectProvider(
+  props: PropsWithChildren<{ of: Model }>){
+
+  const { of: instance, children } = props;
+
+  importFrom(props, instance);
+
+  return useProviderWith(instance, children, instance);
+}
+
+function MultiProvider(
+  props: PropsWithChildren<{ of: ProvideCollection }>){
+
+  return useProviderWith(props.of, props.children);
+}
+
 interface ProviderProps {
   of: Model | typeof Model | ProvideCollection;
   children?: ReactNode;
-}
-
-function otherKeys(from: any){
-  return keys(from).filter(k => ["of", "children"].indexOf(k) < 0);
 }
 
 export function Provider(props: ProviderProps){
@@ -162,36 +196,4 @@ export function Provider(props: ProviderProps){
   }, []);
 
   return createElement(Type, props);
-}
-
-function ParentProvider(
-  props: PropsWithChildren<{ of: typeof Model }>){
-
-  let { children, of: target } = props;
-  const instance = target.use(props);
-  const rest = useMemo(() => otherKeys(instance), []);
-
-  instance.import(props, rest);
-
-  if(fn(children))
-    children = children(instance);
-
-  return useProviderWith(instance.get, children, target);
-}
-
-function DirectProvider(
-  props: PropsWithChildren<{ of: Model }>){
-
-  const { of: target } = props;
-  const rest = useMemo(() => otherKeys(target), []);
-
-  target.import(props as any, rest)
-
-  return useProviderWith(target, props.children, target);
-}
-
-function MultiProvider(
-  props: PropsWithChildren<{ of: ProvideCollection }>){
-
-  return useProviderWith(props.of, props.children);
 }
