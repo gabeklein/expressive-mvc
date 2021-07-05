@@ -126,55 +126,44 @@ export function Consumer(props: ConsumerProps){
 }
 
 function useProviderWith(
-  layer: Model | ProvideCollection,
-  children?: ReactNode,
-  dependancy?: any){
+  instance: Model,
+  props: PropsWithChildren<{ of: Model | typeof Model }>){
 
   const current = useContext(LookupContext);
-  const value = useMemo(() => current.push(layer), [ dependancy ]);
+  const { watch, next } = useMemo(() => ({
+    watch: keys(instance).filter(k => k != "of" && k != "children"),
+    next: current.push(instance.get)
+  }), [ props.of ]);
 
-  if(!dependancy)
-    useLayoutEffect(() => () => value.pop(), []);
+  instance.import(props as any, watch);
 
-  return createElement(LookupProvider, { value }, children);
+  let render = props.children;
+
+  if(fn(render))
+    render = render(instance);
+
+  return createElement(LookupProvider, { value: next }, render);
 }
 
-function importFrom(props: any, to: Model){
-  const transferable = useMemo(() =>
-    keys(to).filter(k => k != "of" && k != "children"), [ to ]
-  );
+function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
+  const instance = props.of.use();
 
-  to.import(props, transferable);
+  return useProviderWith(instance, props);
 }
 
-function ParentProvider(
-  props: PropsWithChildren<{ of: typeof Model }>){
-
-  let { children, of: target } = props;
-  const instance = target.use();
-
-  importFrom(props, instance);
-
-  if(fn(children))
-    children = children(instance);
-
-  return useProviderWith(instance.get, children, target);
-}
-
-function DirectProvider(
-  props: PropsWithChildren<{ of: Model }>){
-
-  const { of: instance, children } = props;
-
-  importFrom(props, instance);
-
-  return useProviderWith(instance, children, instance);
+function DirectProvider(props: PropsWithChildren<{ of: Model }>){
+  return useProviderWith(props.of, props);
 }
 
 function MultiProvider(
   props: PropsWithChildren<{ of: ProvideCollection }>){
 
-  return useProviderWith(props.of, props.children);
+  const current = useContext(LookupContext);
+  const value = useMemo(() => current.push(props.of), []);
+
+  useLayoutEffect(() => () => value.pop(), []);
+
+  return createElement(LookupProvider, { value }, props.children);
 }
 
 interface ProviderProps {
