@@ -21,18 +21,6 @@ describe("Provider", () => {
     );
   })
 
-  it("will throw if incorrect props", () => {
-    const instance = Foo.create();
-    const attempt = () => render(
-      <Provider of={instance}>
-        { /* @ts-ignore */}
-        <Consumer of={Foo} />
-      </Provider>
-    );
-
-    expect(attempt).toThrowError();
-  })
-
   it("will create instance of given model", () => {
     render(
       <Provider of={Foo}>
@@ -55,7 +43,7 @@ describe("Provider", () => {
     expect(didUnmount).toHaveBeenCalled()
   });
 
-  it("will accept render function for given model", () => {
+  it("will accept render function when model given", () => {
     render(
       <Provider of={Foo}>
         {(instance) => {
@@ -135,7 +123,7 @@ describe("Provider", () => {
     expect(didDestroy).toBeCalled();
   })
 
-  it("will not destroy multiple passed on unmount", () => {
+  it("will not destroy given instance on unmount", () => {
     const didDestroy = jest.fn();
 
     class Test extends Model {
@@ -224,6 +212,19 @@ describe("Consumer", () => {
 
     expect(didRender).toBeCalledWith("foobar");
   })
+
+  it("will throw if expected-prop missing", () => {
+    const instance = Foo.create();
+    const attempt = () => render(
+      <Provider of={instance}>
+        { /* @ts-ignore */}
+        <Consumer of={Foo} />
+      </Provider>
+    );
+
+    expect(attempt).toThrowError();
+  })
+
 
   it("will pass undefined if not found for get-prop", () => {
     render(
