@@ -53,29 +53,32 @@ export class Lookup {
     items = items instanceof Model
       ? [ items ] : values(items);
 
-    for(let I of items){
-      let managed = true;
-      let T: typeof Model;
-
-      if(I instanceof Model){
-        managed = false;
-        T = I.constructor as typeof Model;
-      }
-      else {
-        T = I;
-        I = I.create();
-      }
-
-      do {
-        defineProperty(next, this.key(T), {
-          value: I,
-          writable: managed
-        });
-      }
-      while(T = T.inherits!);
-    }
+    for(let I of items)
+      next.register(I);
 
     return next;
+  }
+
+  public register(I: Model | typeof Model){
+    let managed = true;
+    let T: typeof Model;
+
+    if(I instanceof Model){
+      T = I.constructor as typeof Model;
+      managed = false;
+    }
+    else {
+      T = I;
+      I = I.create();
+    }
+
+    do {
+      defineProperty(this, this.key(T), {
+        value: I,
+        writable: managed
+      });
+    }
+    while(T = T.inherits!);
   }
 
   public pop(){
