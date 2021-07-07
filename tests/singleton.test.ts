@@ -36,11 +36,12 @@ it("will destroy active instance on reset", () => {
   expect(() => hook.result.current).toThrowError(expected);
 })
 
-it.skip("will access values from found global", () => {
-  const instance = Global.use();
-  const hook = renderHook(() => Global.get("value"));
+it("will access values from found global", () => {
+  const instance = Global.create();
+  const rendered = renderHook(() => Global.get("value"));
 
-  expect(() => hook.result.current).toReturnWith(1);
+  expect(rendered.result.current).toBe(1);
+
   instance.destroy();
 })
 
