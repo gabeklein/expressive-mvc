@@ -1,8 +1,8 @@
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
-import { LOCAL, Subscriber } from './subscriber';
-import { createEffect, debounce, fn, getOwnPropertyNames, selectRecursive } from './util';
+import { extracts, LOCAL, Subscriber } from './subscriber';
+import { createEffect, debounce, defineLazy, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -10,11 +10,20 @@ export const Oops = issues({
 })
 
 const Pending = new WeakSet<Function>();
-type Setup = (key: string, on: Observer) => void;
+type Sets = (key: string, on: Observer) => void;
+type Gets = (key: string, on: Observer, within?: Subscriber) => void;
 
-export function set(fn: Setup){
-  Pending.add(fn);
-  return fn as any;
+export function set(instruction: Sets){
+  Pending.add(instruction);
+  return instruction as any;
+}
+
+export function get(instruction: Gets){
+  return set((key, on) => {
+    defineLazy(on.subject, key, 
+      extracts(sub => instruction(key, on, sub))  
+    );
+  })
 }
 
 export const CONTROL = Symbol("controller");

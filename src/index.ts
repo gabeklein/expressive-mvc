@@ -17,12 +17,9 @@ export {
 } from './peer';
 
 export {
-  set
+  set,
+  get
 } from './controller';
-
-export {
-  setLocal as local
-} from './subscriber';
 
 export {
   Consumer,
