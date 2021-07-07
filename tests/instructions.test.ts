@@ -202,31 +202,33 @@ describe("act", () => {
 
     expect(test.active).toBe(false);
 
-    const result = test();
+    const result = test("foobar");
     expect(test.active).toBe(true);
 
-    await result;
+    const output = await result;
+
+    expect(output).toBe("foobar");
     expect(test.active).toBe(false);
   });
 
-  // non-deterministic; occasionally fails due to race condition.
-  it.skip("emits method key before/after activity", async () => {
+  it("emits method key before/after activity", async () => {
     let update: string[] | false;
     const { test, requestUpdate } = Test.create();
 
     expect(test.active).toBe(false);
 
-    const result = test();
+    const result = test("foobar");
     update = await requestUpdate(true);
 
     expect(test.active).toBe(true);
     expect(update).toContain("test");
 
-    await result;
+    const output = await result;
     update = await requestUpdate(true);
 
     expect(test.active).toBe(false);
     expect(update).toContain("test");
+    expect(output).toBe("foobar");
   });
 
   it("will throw immediately if already in-progress", () => {
@@ -368,7 +370,7 @@ describe("set", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
 
-    special = set((key, _controller) => {
+    property = set((key, _controller) => {
       this.didRunInstruction(key);
     })
   }
@@ -376,7 +378,7 @@ describe("set", () => {
   it("will run instruction on create", () => {
     const { didRunInstruction: ran } = Test.create();
 
-    expect(ran).toBeCalledWith("special");
+    expect(ran).toBeCalledWith("property");
   })
 })
 
@@ -385,7 +387,7 @@ describe("local", () => {
     didRunInstruction = jest.fn();
     didGetSubscriber = jest.fn();
 
-    special = local((key, _controller, subscriber) => {
+    property = local((key, _controller, subscriber) => {
       this.didRunInstruction(key);
       this.didGetSubscriber(subscriber);
 
@@ -397,21 +399,21 @@ describe("local", () => {
     const { didRunInstruction: ran, get } = Test.create();
 
     expect(ran).not.toBeCalled();
-    expect(get.special).toBe("foobar");
-    expect(ran).toBeCalledWith("special");
+    expect(get.property).toBe("foobar");
+    expect(ran).toBeCalledWith("property");
   })
 
   it("will pass undefined for subscriber", () => {
     const { didGetSubscriber: got, get } = Test.create();
 
-    expect(get.special).toBe("foobar");
+    expect(get.property).toBe("foobar");
     expect(got).toBeCalledWith(undefined);
   })
 
   it("will pass undefined for subscriber", () => {
     const { didGetSubscriber: got, get } = Test.create();
 
-    expect(get.special).toBe("foobar");
+    expect(get.property).toBe("foobar");
     expect(got).toBeCalledWith(undefined);
   })
 
@@ -420,7 +422,7 @@ describe("local", () => {
     const got = state.didGetSubscriber;
 
     state.effect(own => {
-      expect(own.special).toBe("foobar");
+      expect(own.property).toBe("foobar");
     });
 
     expect(got).toBeCalledWith(expect.any(Subscriber));
