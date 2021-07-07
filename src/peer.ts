@@ -1,5 +1,5 @@
 import { Lookup, useLookup } from './context';
-import { Stateful, setup } from './controller';
+import { Stateful, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { Singleton } from './singleton';
@@ -22,7 +22,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
 export function setPeer<T extends Peer>
   (type: T, required?: boolean): InstanceOf<T> {
 
-  return setup((key, { subject }) => {
+  return set((key, { subject }) => {
     const Self = subject.constructor.name;
 
     if("current" in type)

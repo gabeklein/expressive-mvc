@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react-hooks';
 
 import { Oops } from '../src/instructions';
 import { Subscriber } from '../src/subscriber';
-import { act, from, lazy, local, memo, Model, on, ref, setup, use } from './adapter';
+import { act, from, lazy, local, memo, Model, on, ref, set, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -364,11 +364,11 @@ describe("memo", () => {
   })
 })
 
-describe("setup", () => {
+describe("set", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
 
-    special = setup((key, _controller) => {
+    special = set((key, _controller) => {
       this.didRunInstruction(key);
     })
   }

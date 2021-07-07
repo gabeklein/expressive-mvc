@@ -1,5 +1,5 @@
 import { GetterInfo, metaData } from './compute';
-import { Controller, Stateful, setup } from './controller';
+import { Controller, Stateful, set } from './controller';
 import { Model } from './model';
 import { Observer } from './observer';
 import { alias, create, define, defineLazy, defineProperty } from './util';
@@ -8,8 +8,8 @@ export const LOCAL = Symbol("current_subscriber");
 
 type SetupLocal = <T>(key: string, on: Observer, within?: Subscriber) => T;
 
-export function local(fn: SetupLocal){
-  return setup((key, on) => {
+export function setLocal(fn: SetupLocal){
+  return set((key, on) => {
     defineLazy(on.subject, key, function(){
       return fn(key, on, this[LOCAL]);
     })

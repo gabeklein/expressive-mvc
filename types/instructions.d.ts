@@ -5,7 +5,7 @@ type Setup<T> = (key: string, on: any) => void;
 type SetupLocal<T> = (key: string, on: any, within?: any) => T;
 
 /** Run instruction on controller init. */
-export function setup<T>(instruction: Setup<T>): T;
+export function set<T>(instruction: Setup<T>): T;
 
 /** Run instruction at time of access, with access to subscriber context. */
 export function local<T>(instruction: SetupLocal<T>): T;

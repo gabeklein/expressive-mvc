@@ -12,7 +12,7 @@ export const Oops = issues({
 const Pending = new WeakSet<Function>();
 type Setup = (key: string, on: Observer) => void;
 
-export function setup(fn: Setup){
+export function set(fn: Setup){
   Pending.add(fn);
   return fn as any;
 }

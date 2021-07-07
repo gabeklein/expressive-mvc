@@ -1,4 +1,4 @@
-import { Controller, setup } from './controller';
+import { Controller, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { define } from './util';
@@ -16,7 +16,7 @@ export const Oops = issues({
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return setup((key, on) => {
+  return set((key, on) => {
     const instance = new Peer() as InstanceOf<T>;
 
     on.register(key, instance);
@@ -32,7 +32,7 @@ export function setChild<T extends typeof Model>
 export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return setup((key, { subject }) => {
+  return set((key, { subject }) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);

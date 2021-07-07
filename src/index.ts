@@ -17,11 +17,11 @@ export {
 } from './peer';
 
 export {
-  setup
+  set
 } from './controller';
 
 export {
-  local
+  setLocal as local
 } from './subscriber';
 
 export {

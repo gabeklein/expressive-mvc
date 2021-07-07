@@ -1,5 +1,5 @@
 import { prepareComputed } from './compute';
-import { setup } from './controller';
+import { set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { alias, define, defineLazy, defineProperty } from './util';
@@ -15,7 +15,7 @@ export const Oops = issues({
 export function setRefMediator<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
-  return setup((key, on) => {
+  return set((key, on) => {
     const refObjectFunction = on.setter(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -32,7 +32,7 @@ export function setRefMediator<T = any>
 export function setEffect<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
-  return setup((key, on) => {
+  return set((key, on) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -43,7 +43,7 @@ export function setEffect<T = any>
 }
 
 export function setMemo(factory: () => any, defer?: boolean){
-  return setup((key, { subject }) => {
+  return set((key, { subject }) => {
     const get = () => factory.call(subject);
 
     if(defer)
@@ -54,7 +54,7 @@ export function setMemo(factory: () => any, defer?: boolean){
 }
 
 export function setIgnored(value: any){
-  return setup((key, on) => {
+  return set((key, on) => {
     const real = on.subject as any;
 
     real[key] = value;
@@ -67,7 +67,7 @@ export function setIgnored(value: any){
 type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
 export function setAction(action: AsyncFn){
-  return setup((key, on) => {
+  return set((key, on) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -102,7 +102,7 @@ export function setAction(action: AsyncFn){
 }
 
 export function setComputed(fn: (on?: Model) => any){
-  return setup((key, on) => {
+  return set((key, on) => {
     prepareComputed(on, key, fn);
   })
 }
