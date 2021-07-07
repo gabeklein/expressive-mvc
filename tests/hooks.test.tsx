@@ -186,8 +186,6 @@ describe("tap", () => {
     await waitForNextUpdate(opts);
     expect(result.current.value).toBe("bar");
   })
-  
-  it.todo('access nested controllers')
 })
 
 describe("tag", () => {
@@ -238,35 +236,41 @@ describe("meta", () => {
   
   class Parent extends Model {
     static value = "foo";
+    static value2 = "bar";
     static child = new Child();
   }
 
-  beforeEach(() => Parent.value = "foo")
+  beforeEach(() => Parent.value = "foo");
   
   it('will track static values', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
+    const render = renderHook(() => {
       const meta = Parent.meta();
       return meta.value;
     });
 
-    expect(result.current).toBe("foo");
+    expect(render.result.current).toBe("foo");
 
     Parent.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
+    await render.waitForNextUpdate(opts);
+    expect(render.result.current).toBe("bar");
+
+    Parent.value = "baz";
+    await render.waitForNextUpdate(opts);
+    expect(render.result.current).toBe("baz");
   })
   
-  it.skip('will track specific values', async () => {
-    const { result, waitForNextUpdate } =
-      renderHook(() => Parent.meta(x => x.value));
+  it('will track specific value', async () => {
+    const render = renderHook(() => {
+      return Parent.meta(x => x.value2);
+    });
 
-    expect(result.current).toBe("foo");
+    expect(render.result.current).toBe("bar");
 
-    Parent.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
+    Parent.value2 = "foo";
+    await render.waitForNextUpdate(opts);
+    expect(render.result.current).toBe("foo");
   })
-  
+
   it('will track child controller values', async () => {
     const { result: { current }, waitForNextUpdate } = renderHook(() => {
       const meta = Parent.meta();
