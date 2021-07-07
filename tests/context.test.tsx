@@ -58,6 +58,29 @@ describe("Provider", () => {
     );
   })
 
+  it("will refresh render function as a subscriber", async () => {
+    const didRender = jest.fn();
+    const test = Foo.create();
+
+    render(
+      <Provider of={test}>
+        {({ value }) => {
+          didRender(value);
+          return null;
+        }}
+      </Provider>
+    );
+
+    expect(didRender).toBeCalledWith(undefined);
+
+    await act(async () => {
+      test.value = "foobar";
+      await test.requestUpdate(true);
+    })
+    
+    expect(didRender).toBeCalledWith("foobar");
+  })
+
   it("will assign props to instance", () => {
     render(
       <Provider of={Foo} value="foobar">

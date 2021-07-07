@@ -9,9 +9,10 @@ import {
   useMemo,
 } from 'react';
 
+import { useWatcher } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
-import { create, defineProperty, keys, fn, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
+import { create, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertySymbols, keys, values } from './util';
 
 export const Oops = issues({
   NothingInContext: (name) =>
@@ -60,12 +61,12 @@ export class Lookup {
   }
 
   public register(I: Model | typeof Model){
-    let managed = true;
+    let writable = true;
     let T: typeof Model;
 
     if(I instanceof Model){
-      T = I.constructor as typeof Model;
-      managed = false;
+      T = I.constructor as any;
+      writable = false;
     }
     else {
       T = I;
@@ -75,7 +76,7 @@ export class Lookup {
     do {
       defineProperty(this, this.key(T), {
         value: I,
-        writable: managed
+        writable
       });
     }
     while(T = T.inherits!);
@@ -83,10 +84,11 @@ export class Lookup {
 
   public pop(){
     for(const key of getOwnPropertySymbols(this)){
-      const desc = getOwnPropertyDescriptor(this, key)!;
+      const { writable, value: instance } =
+        getOwnPropertyDescriptor(this, key)!;
 
-      if(desc.writable)
-        desc.value!.destroy();
+      if(writable)
+        instance.destroy();
     }
   }
 }
@@ -140,13 +142,22 @@ function useProviderWith(
   let render = props.children;
 
   if(fn(render))
-    render = render(instance);
+    render = createElement(RenderProvider, { instance, render });
 
   return createElement(LookupProvider, { value: next }, render);
 }
 
+interface RenderProviderProps {
+  instance: Model;
+  render: Function
+}
+
+function RenderProvider(props: RenderProviderProps){
+  return props.render(useWatcher(props.instance));
+}
+
 function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
-  const instance = props.of.use();
+  const instance = props.of.new();
 
   return useProviderWith(instance, props);
 }

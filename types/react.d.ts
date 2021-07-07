@@ -2,12 +2,16 @@ import { ReactElement } from "react";
 import { Model } from "./model"
 import { Class } from "./types";
 
+type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 type ComponentOutput = ReactElement<any, any> | null;
 
-type ProviderForProps<E> = E extends Class
-    ? ({ of: E, children?: React.ReactNode } & Model.Data<InstanceType<E>>)
-    | ({ of: E, children?: (instance: InstanceType<E>) => React.ReactNode } & Model.Data<InstanceType<E>>)
-    : ({ of: E, children?: React.ReactNode } & Model.Data<E>);
+type ProvideCollection =
+    | (Model | typeof Model)[]
+    | { [key: string]: Model | typeof Model }
+
+type ProviderProps<E, I = Instance<E>> = 
+    | ({ of: E, children: React.ReactNode | ((instance: I) => React.ReactNode) } & Model.Data<I>)
+    | ({ of: ProvideCollection, children?: React.ReactNode })
 
 type ConsumerProps<E extends Class> = 
     | {
@@ -37,10 +41,7 @@ type ConsumerProps<E extends Class> =
         children: (value: InstanceType<E>) => ComponentOutput;
     }
 
-// type ProvideCollection = Array<Model | typeof Model> | BunchOf<Model | typeof Model>;
-// declare function Provider(props: ProviderOfProps): ComponentOutput;
-
-declare function Provider<T>(props: ProviderForProps<T>): ComponentOutput;
+declare function Provider<T>(props: ProviderProps<T>): ComponentOutput;
 declare function Consumer<T extends Class>(props: ConsumerProps<T>): ComponentOutput;
 
 export { Consumer, Provider };
