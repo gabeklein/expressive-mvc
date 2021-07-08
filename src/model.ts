@@ -20,6 +20,9 @@ export class Model {
       return () => release();
     }
 
+    define(this, "get", this);
+    define(this, "set", this);
+
     defineLazy(this, CONTROL, () => {
       delete (control as any).do;
       control.start();
@@ -29,9 +32,6 @@ export class Model {
 
       return control;
     })
-
-    define(this, "get", this);
-    define(this, "set", this);
   }
 
   tap(): this;
@@ -39,7 +39,7 @@ export class Model {
   tap <K extends keyof this> (key: K, expect: true): Exclude<this[K], undefined>;
   tap <K extends Select> (key: K, expect?: boolean): ReturnType<K>;
   tap <K extends Select> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
-  tap(path?: string | Select, expect?: boolean) {
+  tap(path?: string | Select, expect?: boolean){
     return useWatcher(this, path, expect);
   }
 
@@ -79,9 +79,7 @@ export class Model {
 
   static using(props: BunchOf<any>, only?: string[]){
     const instance = useModel(this, []);
-
     instance.import(props, only);
-
     return instance;
   }
 
@@ -129,7 +127,7 @@ export class Model {
 }
 
 defineLazy(Model, CONTROL, function(){
-  const dispatch = new Controller(this);
-  dispatch.start();
-  return dispatch;
+  const control = new Controller(this);
+  control.start();
+  return control;
 })

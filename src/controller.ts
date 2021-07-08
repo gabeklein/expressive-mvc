@@ -10,6 +10,7 @@ export const Oops = issues({
 })
 
 const Pending = new WeakSet<Function>();
+
 type Sets = (key: string, on: Observer) => void;
 type Gets = (key: string, on: Observer, within?: Subscriber) => void;
 
@@ -77,8 +78,8 @@ export class Controller extends Observer {
     squash?: boolean,
     once?: boolean){
 
-    return this.do(
-      () => super.watch(
+    return this.do(() =>
+      super.watch(
         this.select(target),
         handler, squash, once
       )
