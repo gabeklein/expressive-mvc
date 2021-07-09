@@ -26,9 +26,9 @@ export function setPeer<T extends Peer>
     const Self = subject.constructor.name;
 
     if("current" in type)
-      defineLazy(subject, key, () => type.current);
+      defineLazy(subject, key, () => (type as typeof Singleton).current);
     else if("current" in subject.constructor)
-      throw Oops.CantAttachGlobal(subject.constructor.name, type.name);
+      throw Oops.CantAttachGlobal(Self, type.name);
     else {
       let pending = PendingContext.get(subject);
 
