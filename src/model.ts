@@ -1,6 +1,6 @@
 import type Public from '../types';
 
-import { useLookup } from './context';
+import { useFromContext } from './context';
 import { CONTROL, Controller, Stateful } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
@@ -106,7 +106,7 @@ export class Model {
   static find(strict: true): Model;
   static find(strict?: boolean): Model | undefined;
   static find(strict?: boolean){
-    return useLookup().get(this, strict);
+    return useFromContext(this, strict);
   }
 
   static isTypeof<T extends typeof Model>(
