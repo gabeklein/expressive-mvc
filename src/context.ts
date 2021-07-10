@@ -31,10 +31,10 @@ export class Lookup {
   private key(T: typeof Model){
     let key = this.table.get(T);
 
-    if(!key){
-      key = Symbol(T.name);
-      this.table.set(T, key);
-    }
+    if(!key)
+      this.table.set(T, 
+        key = Symbol(T.name)
+      );
 
     return key;
   }
@@ -48,7 +48,7 @@ export class Lookup {
     return instance as Model | undefined;
   }
   
-  public push(items: Model | ProvideCollection){
+  public push(items: Model | Collection){
     const next = create(this) as Lookup;
 
     items = items instanceof Model
@@ -93,7 +93,7 @@ export class Lookup {
   }
 }
 
-type ProvideCollection =
+type Collection =
   | Array<Model | typeof Model>
   | BunchOf<Model | typeof Model>;
 
@@ -127,15 +127,24 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
+interface RenderProviderProps {
+  instance: Model;
+  render: Function
+}
+
+function RenderProvider(props: RenderProviderProps){
+  return props.render(useWatcher(props.instance));
+}
+
 function useProviderWith(
   instance: Model,
   props: PropsWithChildren<{ of: Model | typeof Model }>){
 
   const current = useContext(LookupContext);
-  const { watch, next } = useMemo(() => ({
-    watch: keys(instance).filter(k => k != "of" && k != "children"),
-    next: current.push(instance.get)
-  }), [ props.of ]);
+  const [ watch, next ] = useMemo(() => [
+    keys(instance).filter(k => k != "of" && k != "children"),
+    current.push(instance.get)
+  ], [ props.of ]);
 
   instance.import(props as any, watch);
 
@@ -147,19 +156,8 @@ function useProviderWith(
   return createElement(LookupProvider, { value: next }, render);
 }
 
-interface RenderProviderProps {
-  instance: Model;
-  render: Function
-}
-
-function RenderProvider(props: RenderProviderProps){
-  return props.render(useWatcher(props.instance));
-}
-
 function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
-  const instance = props.of.new();
-
-  return useProviderWith(instance, props);
+  return useProviderWith(props.of.new(), props);
 }
 
 function DirectProvider(props: PropsWithChildren<{ of: Model }>){
@@ -167,7 +165,7 @@ function DirectProvider(props: PropsWithChildren<{ of: Model }>){
 }
 
 function MultiProvider(
-  props: PropsWithChildren<{ of: ProvideCollection }>){
+  props: PropsWithChildren<{ of: Collection }>){
 
   const current = useContext(LookupContext);
   const value = useMemo(() => current.push(props.of), []);
@@ -178,13 +176,13 @@ function MultiProvider(
 }
 
 interface ProviderProps {
-  of: Model | typeof Model | ProvideCollection;
+  of: Model | typeof Model | Collection;
   children?: ReactNode;
 }
 
 export function Provider(props: ProviderProps){
   const Type: any = useMemo(() => {
-    const { of: target } = props;
+    const target = props.of;
 
     if(Model.isTypeof(target))
       return ParentProvider;
