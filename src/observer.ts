@@ -21,10 +21,9 @@ export class Observer {
   }
 
   public setup(key: string, desc: PropertyDescriptor){
-    const { value, get, enumerable } = desc;
-
-    if(enumerable && !get && (!fn(value) || /^[A-Z]/.test(key)))
-      this.register(key, value);
+    if("value" in desc && desc.enumerable)
+      if(!fn(desc.value) || /^[A-Z]/.test(key))
+        this.register(key, desc.value);
   }
 
   public register(

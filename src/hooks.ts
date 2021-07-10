@@ -73,7 +73,7 @@ class ElementSubscriber extends HookSubscriber {
       key = key(available);
     }
 
-    this.recursive(key, () => {
+    this.on(key, () => {
       let value = source[key as string];
 
       if(value instanceof Model){

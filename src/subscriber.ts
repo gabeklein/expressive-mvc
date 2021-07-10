@@ -83,31 +83,32 @@ export class Subscriber<T extends Stateful = any> {
     this.following[key] = cb;
   }
 
-  public recursive(
+  public on(
     key: string,
     onUpdate: () => Subscriber | undefined){
 
+    const { dependant, callback } = this;
     let child: Subscriber | undefined;
 
-    const start = (mounted?: boolean) => {
+    function start(mounted?: boolean){
       child = onUpdate();
 
       if(child){
-        this.dependant.add(child);
+        dependant.add(child);
   
         if(mounted)
           child.listen();
       }
     }
 
-    const reset = () => {
+    function reset(){
       if(child){
         child.release();
-        this.dependant.delete(child);
+        dependant.delete(child);
       }
 
       start(true);
-      this.callback();
+      callback();
     }
 
     this.follow(key, reset);
@@ -117,7 +118,7 @@ export class Subscriber<T extends Stateful = any> {
   private delegate(key: string){
     let sub: Subscriber | undefined;
 
-    this.recursive(key, () => {
+    this.on(key, () => {
       let value = (this.subject as any)[key];
 
       if(value instanceof Model){
