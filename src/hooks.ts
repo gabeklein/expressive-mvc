@@ -21,14 +21,26 @@ class HookSubscriber extends Subscriber {
   isMounted = false;
 
   constructor(
-    public subject: any,
-    protected callback: Callback,
+    subject: any,
+    callback: Callback,
     protected tag?: Key){
 
     super(subject, callback);
   }
 
-  useLifecycle = () => {
+  at(name: Event){
+    const also = this.alias(name);
+
+    for(const key of [name, also]){
+      const on: any = this.subject;
+      const handle = on[key];
+  
+      handle && handle.call(on, this.tag);
+      this.parent.update(key);
+    }
+  }
+
+  useLifecycle(){
     this.at(Cycle.WILL_RENDER);
     this.at(this.isMounted
       ? Cycle.WILL_UPDATE
@@ -46,18 +58,6 @@ class HookSubscriber extends Subscriber {
       }
     })
   }
-
-  at(name: Event){
-    const also = this.alias(name);
-
-    for(const key of [name, also]){
-      const on: any = this.subject;
-      const handle = on[key];
-  
-      handle && handle.call(on, this.tag);
-      this.parent.update(key);
-    }
-  }
 }
 
 class ElementSubscriber extends HookSubscriber {
@@ -73,7 +73,7 @@ class ElementSubscriber extends HookSubscriber {
       key = key(available);
     }
 
-    this.on(key, () => {
+    this.watch(key, () => {
       let value = source[key as string];
 
       if(value instanceof Model){
@@ -163,6 +163,7 @@ export function useSubscriber<T extends Stateful>(
 
   const hook = useRefresh(trigger => {
     const key = fn(tag) ? tag(target) : tag || 0;
+
     return new HookSubscriber(target, trigger, key)  
   });
 

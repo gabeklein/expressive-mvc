@@ -37,7 +37,7 @@ export class Subscriber<T extends Stateful = any> {
     define(this.proxy, LOCAL, this);
 
     for(const key in state)
-      this.spyOn(key);
+      this.spy(key);
   }
 
   public listen = () => {
@@ -55,7 +55,7 @@ export class Subscriber<T extends Stateful = any> {
     this.parent.listeners.delete(this.following);
   }
 
-  private spyOn(key: string){
+  private spy(key: string){
     const access = () => {
       let value = (this.subject as any)[key];
 
@@ -83,42 +83,42 @@ export class Subscriber<T extends Stateful = any> {
     this.following[key] = cb;
   }
 
-  public on(
+  public watch(
     key: string,
-    onUpdate: () => Subscriber | undefined){
+    init: () => Subscriber | undefined){
 
-    const { dependant, callback } = this;
-    let child: Subscriber | undefined;
+    const { dependant } = this;
+    let stop: Callback;
 
     function start(mounted?: boolean){
-      child = onUpdate();
+      const child = init();
 
       if(child){
-        dependant.add(child);
-  
         if(mounted)
           child.listen();
+        
+        dependant.add(child);
+  
+        stop = () => {
+          child.release();
+          dependant.delete(child);
+        }
       }
     }
 
-    function reset(){
-      if(child){
-        child.release();
-        dependant.delete(child);
-      }
-
-      start(true);
-      callback();
-    }
-
-    this.follow(key, reset);
     start();
+
+    this.follow(key, () => {
+      stop && stop();
+      start(true);
+      this.callback();
+    });
   }
 
   private delegate(key: string){
     let sub: Subscriber | undefined;
 
-    this.on(key, () => {
+    this.watch(key, () => {
       let value = (this.subject as any)[key];
 
       if(value instanceof Model){
