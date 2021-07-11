@@ -56,20 +56,39 @@ export class Subscriber<T extends Stateful = any> {
   }
 
   private spy(key: string){
-    const access = () => {
-      let value = (this.subject as any)[key];
+    const { callback, subject, proxy, metadata } = this as any;
 
-      if(value instanceof Model)
-        return this.delegate(key);
+    const intercept = () => {
+      let sub: Subscriber | undefined;
 
-      this.follow(key, this.callback);
-      delete (this.proxy as any)[key];
-      return value;
+      this.watch(key, () => {
+        let value = subject[key];
+  
+        if(value instanceof Model){
+          sub = new Subscriber(value, callback, metadata);
+
+          defineProperty(proxy, key, {
+            get: () => sub!.proxy,
+            set: it => subject[key] = it,
+            configurable: true
+          })
+
+          return sub;
+        }
+      });
+
+      if(sub)
+        return sub.proxy;
+      else {
+        this.follow(key, callback);
+        delete proxy[key];
+        return subject[key];
+      }
     }
 
-    alias(access, `tap ${key}`)
+    alias(intercept, `tap ${key}`);
     defineProperty(this.proxy, key, {
-      get: access,
+      get: intercept,
       set: this.parent.setter(key),
       configurable: true,
       enumerable: true
@@ -85,13 +104,13 @@ export class Subscriber<T extends Stateful = any> {
 
   public watch(
     key: string,
-    init: () => Subscriber | undefined){
+    setup: () => Subscriber | undefined){
 
     const { dependant } = this;
-    let stop: Callback;
+    let stop: Callback | undefined;
 
     function start(mounted?: boolean){
-      const child = init();
+      const child = setup();
 
       if(child){
         if(mounted)
@@ -102,6 +121,7 @@ export class Subscriber<T extends Stateful = any> {
         stop = () => {
           child.release();
           dependant.delete(child);
+          stop = undefined;
         }
       }
     }
@@ -113,29 +133,5 @@ export class Subscriber<T extends Stateful = any> {
       start(true);
       this.callback();
     });
-  }
-
-  private delegate(key: string){
-    let sub: Subscriber | undefined;
-
-    this.watch(key, () => {
-      let value = (this.subject as any)[key];
-
-      if(value instanceof Model){
-        let child = sub = new Subscriber(
-          value, this.callback, this.metadata
-        );
-
-        defineProperty(this.proxy, key, {
-          get: () => child.proxy,
-          set: it => (this.subject as any)[key] = it,
-          configurable: true
-        })
-
-        return child;
-      }
-    });
-
-    return sub && sub.proxy;
   }
 }
