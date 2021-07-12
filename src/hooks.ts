@@ -21,13 +21,12 @@ class Hook extends Subscriber {
   tag?: Key;
 
   at(name: Event){
-    const also = this.alias(name);
-
-    for(const key of [name, also]){
-      const on: any = this.subject;
-      const handle = on[key];
+    for(const key of [name, this.alias(name)]){
+      const handle = this.subject[key];
   
-      handle && handle.call(on, this.tag);
+      if(handle)
+        handle.call(this.subject, this.tag);
+
       this.parent.update(key);
     }
   }
@@ -103,16 +102,11 @@ export function usePassive<T extends typeof Model>(
 
   const instance = target.find(!!select);
 
-  if(!instance)
-    return;
-
-  if(fn(select))
-    return select(instance);
-
-  if(typeof select == "string")
-    return (instance as any)[select];
-  
-  return instance;
+  return (
+    fn(select) ? select(instance) :
+    typeof select == "string" ? (instance as any)[select] :
+    instance
+  )
 }
 
 export function useWatcher(
