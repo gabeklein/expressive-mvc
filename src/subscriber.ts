@@ -36,14 +36,23 @@ export class Subscriber<T extends Stateful = any> {
 
     define(this.proxy, LOCAL, this);
 
-    for(const key in state)
-      this.spy(key);
+    for(const key in state){
+      const intercept = this.spy(key);
+
+      alias(intercept, `tap ${key}`);
+      defineProperty(this.proxy, key, {
+        get: intercept,
+        set: this.parent.setter(key),
+        configurable: true,
+        enumerable: true
+      })
+    }
   }
 
   private spy(key: string){
-    const { callback, subject, proxy } = this as any;
+    let { callback, subject, proxy } = this as any;
 
-    const intercept = () => {
+    return () => {
       let sub: Subscriber | undefined;
 
       const setup = () => {
@@ -62,24 +71,18 @@ export class Subscriber<T extends Stateful = any> {
         }
       }
 
-      this.watch(key, setup);
+      const reset = this.watch(setup);
 
-      if(sub)
+      if(sub){
+        this.follow(key, reset);
         return sub.proxy;
+      }
       else {
         this.follow(key, callback);
         delete proxy[key];
         return subject[key];
       }
     }
-
-    alias(intercept, `tap ${key}`);
-    defineProperty(this.proxy, key, {
-      get: intercept,
-      set: this.parent.setter(key),
-      configurable: true,
-      enumerable: true
-    })
   }
 
   public listen = () => {
@@ -106,35 +109,32 @@ export class Subscriber<T extends Stateful = any> {
   }
 
   public watch(
-    key: string,
     setup: () => Subscriber | undefined){
 
-    const { dependant, callback } = this;
     let sub: Subscriber | undefined;
 
-    function start(mounted?: boolean){
+    const start = (mounted?: boolean) => {
       sub = setup();
 
       if(sub){
-        dependant.add(sub);
+        this.dependant.add(sub);
 
         if(mounted)
           sub.listen();
       }
     }
 
-    function reset(){
+    start();
+
+    return () => {
       if(sub){
         sub.release();
-        dependant.delete(sub);
+        this.dependant.delete(sub);
         sub = undefined;
       }
 
       start(true);
-      callback();
-    }
-
-    start();
-    this.follow(key, reset);
+      this.callback();
+    };
   }
 }
