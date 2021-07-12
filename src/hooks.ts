@@ -6,7 +6,7 @@ import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
 import { Model } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { fn } from './util';
+import { fn, defineProperty } from './util';
 
 export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
@@ -50,25 +50,30 @@ class Hook extends Subscriber {
     })
   }
 
-  focus(key: string, expect?: boolean){
-    const source = this.subject;
+  focus(key: string | Select, expect?: boolean){
+    const { proxy, subject } = this;
 
-    this.watch(key, () => {
-      let value = source[key];
+    if(fn(key)){
+      const available: BunchOf<string> = {};
 
-      if(value instanceof Model){
-        const child = new Subscriber(value, this.callback);
-        this.proxy = child.proxy as any;
-        return child;
+      for(const key in subject)
+        available[key] = key;
+
+      key = key(available);
+    }
+
+    defineProperty(this, "proxy", {
+      get(){
+        const value = proxy[key as string];
+
+        if(expect && value === undefined)
+          throw Oops.HasPropertyUndefined(
+            subject.constructor.name, key as string
+          );
+
+        return value;
       }
-
-      if(expect && value === undefined)
-        throw Oops.HasPropertyUndefined(
-          source.constructor.name, key
-        );
-
-      this.proxy = value;
-    });
+    })
   }
 }
 
@@ -117,15 +122,6 @@ export function useWatcher(
 
   const hook = useRefresh(trigger => {
     const sub = new Hook(target, trigger);
-
-    if(fn(path)){
-      const available: BunchOf<string> = {};
-
-      for(const key in target)
-        available[key] = key;
-
-      path = path(available);
-    }
 
     if(path)
       sub.focus(path, expected);
