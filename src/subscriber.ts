@@ -108,29 +108,28 @@ export class Subscriber<T extends Stateful = any> {
     setup: () => Subscriber | undefined){
 
     const { dependant } = this;
-    let stop: Callback | undefined;
+    let sub: Subscriber | undefined;
 
     function start(mounted?: boolean){
-      const child = setup();
+      sub = setup();
 
-      if(child){
+      if(sub){
+        dependant.add(sub);
+
         if(mounted)
-          child.listen();
-        
-        dependant.add(child);
-  
-        stop = () => {
-          child.release();
-          dependant.delete(child);
-          stop = undefined;
-        }
+          sub.listen();
       }
     }
 
     start();
 
     this.follow(key, () => {
-      stop && stop();
+      if(sub){
+        sub.release();
+        dependant.delete(sub);
+        sub = undefined;
+      }
+
       start(true);
       this.callback();
     });
