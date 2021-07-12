@@ -16,7 +16,7 @@ export const Oops = issues({
 const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
-class HookSubscriber extends Subscriber {
+class Hook extends Subscriber {
   alias!: (from: Event) => Event;
   isMounted?: boolean;
   tag?: Key;
@@ -127,7 +127,7 @@ export function useWatcher(
   expected?: boolean){
 
   const hook = useRefresh(trigger => {
-    const sub = new HookSubscriber(target, trigger);
+    const sub = new Hook(target, trigger);
 
     if(path)
       sub.focus(path, expected);
@@ -144,7 +144,7 @@ export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
   const hook = useRefresh(trigger => {
-    const sub = new HookSubscriber(target, trigger);
+    const sub = new Hook(target, trigger);
 
     sub.alias = subscriberEvent;
     sub.tag = fn(tag) ? tag(target) : tag || 0;
@@ -164,16 +164,16 @@ export function useModel(
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
-    const sub = new HookSubscriber(instance, trigger);
+    const sub = new Hook(instance, trigger);
 
     sub.alias = componentEvent;
+
+    if(callback)
+      callback(instance);
 
     instance.on("willUnmount", () => {
       instance.destroy();
     });
-
-    if(callback)
-      callback(instance);
 
     return sub;
   });

@@ -15,10 +15,9 @@ export function extracts(fn: HandleSubscriber){
 }
 
 export class Subscriber<T extends Stateful = any> {
-  public dependant = new Set<{
+  private dependant = new Set<{
     listen(): void;
     release(): void;
-    commit?(): void;
   }>();
 
   public following = {} as BunchOf<Callback>;
@@ -41,7 +40,7 @@ export class Subscriber<T extends Stateful = any> {
   }
 
   private spy(key: string){
-    const { callback, subject, proxy, metadata } = this as any;
+    const { callback, subject, proxy } = this as any;
 
     const intercept = () => {
       let sub: Subscriber | undefined;
@@ -50,7 +49,7 @@ export class Subscriber<T extends Stateful = any> {
         let value = subject[key];
   
         if(value instanceof Model){
-          sub = new Subscriber(value, callback, metadata);
+          sub = new Subscriber(value, callback, this.metadata);
 
           defineProperty(proxy, key, {
             get: () => sub!.proxy,
