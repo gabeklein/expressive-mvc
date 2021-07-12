@@ -6,6 +6,10 @@ class Global extends Singleton {
   value = 1;
 }
 
+afterEach(() => {
+  Global.reset();
+})
+
 it("will access values from create global", () => {
   const hook = renderHook(() => Global.use());
 
@@ -17,8 +21,6 @@ it("will find existing instance", () => {
   const found = Global.find();
 
   expect(found).toBe(instance);
-  
-  instance.destroy();
 })
 
 it("will complain if not initialized", () => {
@@ -37,19 +39,15 @@ it("will destroy active instance on reset", () => {
 })
 
 it("will access values from found global", () => {
-  const instance = Global.create();
+  Global.create();
   const rendered = renderHook(() => Global.get("value"));
 
   expect(rendered.result.current).toBe(1);
-
-  instance.destroy();
 })
 
 it("will complain already exists", () => {
+  Global.create();
   const expected = Oops.GlobalExists(Global.name);
-  const instance = Global.create();
   
   expect(() => Global.create()).toThrowError(expected);
-
-  instance.destroy();
 })
