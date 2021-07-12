@@ -50,20 +50,11 @@ class Hook extends Subscriber {
     })
   }
 
-  focus(key: string | Select, expect?: boolean){
+  focus(key: string, expect?: boolean){
     const source = this.subject;
 
-    if(fn(key)){
-      const available = {} as BunchOf<string>;
-
-      for(const key in source)
-        available[key] = key;
-
-      key = key(available);
-    }
-
     this.watch(key, () => {
-      let value = source[key as string];
+      let value = source[key];
 
       if(value instanceof Model){
         const child = new Subscriber(value, this.callback);
@@ -71,9 +62,9 @@ class Hook extends Subscriber {
         return child;
       }
 
-      if(value === undefined && expect)
+      if(expect && value === undefined)
         throw Oops.HasPropertyUndefined(
-          source.constructor.name, key as string
+          source.constructor.name, key
         );
 
       this.proxy = value;
@@ -126,6 +117,15 @@ export function useWatcher(
 
   const hook = useRefresh(trigger => {
     const sub = new Hook(target, trigger);
+
+    if(fn(path)){
+      const available: BunchOf<string> = {};
+
+      for(const key in target)
+        available[key] = key;
+
+      path = path(available);
+    }
 
     if(path)
       sub.focus(path, expected);
