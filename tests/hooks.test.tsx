@@ -19,7 +19,7 @@ describe("uses", () => {
     }
 
     const { result } = renderHook(() => {
-      return Test.uses(mockExternal);
+      return Test.uses(mockExternal).export();
     });
 
     expect(result.current).toMatchObject(mockExternal);
@@ -169,22 +169,23 @@ describe("tap", () => {
   
   it('access child controller', async () => {
     const parent = Parent.create();
-    const { result, waitForNextUpdate } =
-      renderHook(() => parent.tap("child"))
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return parent.tap("child").value;
+    })
   
-    expect(result.current.value).toBe("foo");
+    expect(result.current).toBe("foo");
   
-    result.current.value = "bar"
+    parent.child.value = "bar"
     await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("bar");
+    expect(result.current).toBe("bar");
   
     parent.child = new Child();
     await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("foo");
+    expect(result.current).toBe("foo");
   
-    result.current.value = "bar"
+    parent.child.value = "bar"
     await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("bar");
+    expect(result.current).toBe("bar");
   })
 })
 
