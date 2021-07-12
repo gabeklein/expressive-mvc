@@ -40,21 +40,6 @@ export class Subscriber<T extends Stateful = any> {
       this.spy(key);
   }
 
-  public listen = () => {
-    this.dependant.forEach(x => x.listen());
-    this.parent.listeners.add(this.following);
-
-    // for(const key in this.proxy)
-    //   delete this.proxy[key];
-
-    return () => this.release();
-  }
-
-  public release(){
-    this.dependant.forEach(x => x.release());
-    this.parent.listeners.delete(this.following);
-  }
-
   private spy(key: string){
     const { callback, subject, proxy, metadata } = this as any;
 
@@ -93,6 +78,21 @@ export class Subscriber<T extends Stateful = any> {
       configurable: true,
       enumerable: true
     })
+  }
+
+  public listen = () => {
+    this.dependant.forEach(x => x.listen());
+    this.parent.listeners.add(this.following);
+
+    // for(const key in this.proxy)
+    //   delete this.proxy[key];
+
+    return () => this.release();
+  }
+
+  public release(){
+    this.dependant.forEach(x => x.release());
+    this.parent.listeners.delete(this.following);
   }
 
   private follow(key: string, cb: Callback){

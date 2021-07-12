@@ -17,16 +17,9 @@ const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
 class HookSubscriber extends Subscriber {
-  alias = subscriberEvent;
-  isMounted = false;
-
-  constructor(
-    subject: any,
-    callback: Callback,
-    protected tag?: Key){
-
-    super(subject, callback);
-  }
+  alias!: (from: Event) => Event;
+  isMounted?: boolean;
+  tag?: Key;
 
   at(name: Event){
     const also = this.alias(name);
@@ -58,9 +51,7 @@ class HookSubscriber extends Subscriber {
       }
     })
   }
-}
 
-class ElementSubscriber extends HookSubscriber {
   focus(key: string | Select, expect?: boolean){
     const source = this.subject;
 
@@ -89,15 +80,6 @@ class ElementSubscriber extends HookSubscriber {
 
       this.proxy = value;
     });
-  }
-}
-
-class ComponentSubscriber extends HookSubscriber {
-  alias = componentEvent;
-  
-  release(){
-    super.release();
-    this.subject.destroy();
   }
 }
 
@@ -145,7 +127,7 @@ export function useWatcher(
   expected?: boolean){
 
   const hook = useRefresh(trigger => {
-    const sub = new ElementSubscriber(target, trigger);
+    const sub = new HookSubscriber(target, trigger);
 
     if(path)
       sub.focus(path, expected);
@@ -162,9 +144,12 @@ export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
   const hook = useRefresh(trigger => {
-    const key = fn(tag) ? tag(target) : tag || 0;
+    const sub = new HookSubscriber(target, trigger);
 
-    return new HookSubscriber(target, trigger, key)  
+    sub.alias = subscriberEvent;
+    sub.tag = fn(tag) ? tag(target) : tag || 0;
+
+    return sub;
   });
 
   hook.useLifecycle();
@@ -179,7 +164,13 @@ export function useModel(
 
   const hook = useRefresh(trigger => {
     const instance = Type.create(...args);
-    const sub = new ComponentSubscriber(instance, trigger);
+    const sub = new HookSubscriber(instance, trigger);
+
+    sub.alias = componentEvent;
+
+    instance.on("willUnmount", () => {
+      instance.destroy();
+    });
 
     if(callback)
       callback(instance);
