@@ -18,7 +18,6 @@ const componentEvent = forAlias("component");
 
 class Hook extends Subscriber {
   alias!: (from: Event) => Event;
-  isMounted?: boolean;
   tag?: Key;
 
   at(name: Event){
@@ -35,14 +34,13 @@ class Hook extends Subscriber {
 
   useLifecycle(){
     this.at(Cycle.WILL_RENDER);
-    this.at(this.isMounted
+    this.at(this.active
       ? Cycle.WILL_UPDATE
       : Cycle.WILL_MOUNT  
     )
 
     useLayoutEffect(() => {
       this.listen();
-      this.isMounted = true;
       this.at(Cycle.DID_MOUNT);
 
       return () => {

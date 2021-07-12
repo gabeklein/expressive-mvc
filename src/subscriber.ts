@@ -20,6 +20,7 @@ export class Subscriber<T extends Stateful = any> {
     release(): void;
   }>();
 
+  public active = false;
   public following = {} as BunchOf<Callback>;
   public parent: Observer;
   public proxy: T & { [LOCAL]: Subscriber };
@@ -80,6 +81,7 @@ export class Subscriber<T extends Stateful = any> {
   }
 
   public listen = () => {
+    this.active = true;
     this.dependant.forEach(x => x.listen());
     this.parent.listeners.add(this.following);
 
