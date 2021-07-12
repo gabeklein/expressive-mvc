@@ -46,7 +46,7 @@ export class Subscriber<T extends Stateful = any> {
     const intercept = () => {
       let sub: Subscriber | undefined;
 
-      this.watch(key, () => {
+      const setup = () => {
         let value = subject[key];
   
         if(value instanceof Model){
@@ -60,7 +60,9 @@ export class Subscriber<T extends Stateful = any> {
 
           return sub;
         }
-      });
+      }
+
+      this.watch(key, setup);
 
       if(sub)
         return sub.proxy;
@@ -107,7 +109,7 @@ export class Subscriber<T extends Stateful = any> {
     key: string,
     setup: () => Subscriber | undefined){
 
-    const { dependant } = this;
+    const { dependant, callback } = this;
     let sub: Subscriber | undefined;
 
     function start(mounted?: boolean){
@@ -121,9 +123,7 @@ export class Subscriber<T extends Stateful = any> {
       }
     }
 
-    start();
-
-    this.follow(key, () => {
+    function reset(){
       if(sub){
         sub.release();
         dependant.delete(sub);
@@ -131,7 +131,10 @@ export class Subscriber<T extends Stateful = any> {
       }
 
       start(true);
-      this.callback();
-    });
+      callback();
+    }
+
+    start();
+    this.follow(key, reset);
   }
 }
