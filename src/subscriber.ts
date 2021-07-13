@@ -62,6 +62,7 @@ export class Subscriber<T extends Stateful = any> {
         if(value instanceof Model){
           const update = this.callback;
           const sub = new Subscriber(value, update, this.metadata);
+          const reset = sub.attach(this);
 
           defineProperty(proxy, key, {
             get: () => sub.proxy,
@@ -69,16 +70,9 @@ export class Subscriber<T extends Stateful = any> {
             configurable: true
           })
 
-          this.dependant.add(sub);
-
-          if(this.active)
-            sub.listen();
-
           value = sub.proxy;
           onUpdate = () => {
-            sub.release();
-            this.dependant.delete(sub);
-
+            reset();
             setup();
             update();
           }
@@ -91,6 +85,18 @@ export class Subscriber<T extends Stateful = any> {
       this.follow(key, () => onUpdate());
 
       return value;
+    }
+  }
+
+  public attach(to: Subscriber){
+    to.dependant.add(this);
+
+    if(to.active)
+      this.listen();
+
+    return () => {
+      this.release();
+      to.dependant.delete(this);
     }
   }
 
