@@ -50,38 +50,47 @@ export class Subscriber<T extends Stateful = any> {
   }
 
   private spy(key: string){
-    let { callback, subject, proxy } = this as any;
+    let { proxy, subject } = this as any;
 
     return () => {
-      let sub: Subscriber | undefined;
+      let onUpdate = this.callback;
+      let value: any;
 
       const setup = () => {
-        let value = subject[key];
+        value = subject[key];
   
         if(value instanceof Model){
-          sub = new Subscriber(value, callback, this.metadata);
+          const update = this.callback;
+          const sub = new Subscriber(value, update, this.metadata);
 
           defineProperty(proxy, key, {
-            get: () => sub!.proxy,
+            get: () => sub.proxy,
             set: it => subject[key] = it,
             configurable: true
           })
 
-          return sub;
+          this.dependant.add(sub);
+
+          if(this.active)
+            sub.listen();
+
+          value = sub.proxy;
+          onUpdate = () => {
+            sub.release();
+            this.dependant.delete(sub);
+
+            setup();
+            update();
+          }
         }
+        else
+          delete proxy[key];
       }
+  
+      setup();
+      this.follow(key, () => onUpdate());
 
-      const reset = this.watch(setup);
-
-      if(sub){
-        this.follow(key, reset);
-        return sub.proxy;
-      }
-      else {
-        this.follow(key, callback);
-        delete proxy[key];
-        return subject[key];
-      }
+      return value;
     }
   }
 
@@ -106,35 +115,5 @@ export class Subscriber<T extends Stateful = any> {
       metaData(cb, this.metadata);
 
     this.following[key] = cb;
-  }
-
-  public watch(
-    setup: () => Subscriber | undefined){
-
-    let sub: Subscriber | undefined;
-
-    const start = (mounted?: boolean) => {
-      sub = setup();
-
-      if(sub){
-        this.dependant.add(sub);
-
-        if(mounted)
-          sub.listen();
-      }
-    }
-
-    start();
-
-    return () => {
-      if(sub){
-        sub.release();
-        this.dependant.delete(sub);
-        sub = undefined;
-      }
-
-      start(true);
-      this.callback();
-    };
   }
 }
