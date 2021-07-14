@@ -24,9 +24,18 @@
 </p>
 
 <br/>
-<h1 id="overview-section"></h1>
+<p align="center">
+  <b>Have suggestions, need help or just want to discuss?</b><br/><br/>
+  <a href="https://join.slack.com/t/expressivejs/shared_invite/zt-s2j5cdhz-gffKn3bTATMbXf~iq4pvHg" alt="Join Slack">
+    <img src="https://img.shields.io/badge/Slack-Come%20say%20hi!-blueviolet" />  
+  </a>
+</p>
+
+<br/>
+<h1 id="overview-section">Overview</h1>
 
 Classes which extend `Model` can manage behavior for components. Custom models are easy to define, use and even provide. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, portable controllers instead.
+
 
 <br/>
 
