@@ -76,7 +76,7 @@ class Hook extends Subscriber {
   }
 }
 
-function useRefresh<T>(
+function useManaged<T>(
   init: (trigger: Callback) => T){
 
   const [ state, update ] = useState((): T[] => [
@@ -114,8 +114,8 @@ export function useWatcher(
   path?: string | Select,
   expected?: boolean){
 
-  const hook = useRefresh(trigger => {
-    const sub = new Hook(target, trigger);
+  const hook = useManaged(update => {
+    const sub = new Hook(target, update);
 
     if(path)
       sub.focus(path, expected);
@@ -131,8 +131,8 @@ export function useWatcher(
 export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
-  const hook = useRefresh(trigger => {
-    const sub = new Hook(target, trigger);
+  const hook = useManaged(update => {
+    const sub = new Hook(target, update);
 
     sub.alias = subscriberEvent;
     sub.tag = fn(tag) ? tag(target) : tag || 0;
@@ -150,9 +150,9 @@ export function useModel(
   args: any[], 
   callback?: (instance: Model) => void){
 
-  const hook = useRefresh(trigger => {
+  const hook = useManaged(update => {
     const instance = Type.create(...args);
-    const sub = new Hook(instance, trigger);
+    const sub = new Hook(instance, update);
 
     sub.alias = componentEvent;
 
