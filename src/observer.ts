@@ -15,12 +15,12 @@ export class Observer {
 
   public start(){
     for(const [key, desc] of entriesIn(this.subject))
-      this.setup(key, desc);
+      this.add(key, desc);
 
     this.emit();
   }
 
-  public setup(key: string, desc: PropertyDescriptor){
+  public add(key: string, desc: PropertyDescriptor){
     if("value" in desc && desc.enumerable)
       if(!fn(desc.value) || /^[A-Z]/.test(key))
         this.register(key, desc.value);

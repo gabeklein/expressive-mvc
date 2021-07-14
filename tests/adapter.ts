@@ -19,7 +19,6 @@ export const lazy = Source.lazy as typeof Public.lazy;
 export const from = Source.from as typeof Public.from;
 export const parent = Source.parent as typeof Public.parent;
 export const set = Source.set as typeof Public.set;
-export const get = Source.get as typeof Public.get;
 
 export function subscribeTo<T extends Public.Model>(
   target: T,

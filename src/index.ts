@@ -17,8 +17,7 @@ export {
 } from './peer';
 
 export {
-  set,
-  get
+  set
 } from './controller';
 
 export {

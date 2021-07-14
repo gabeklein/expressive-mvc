@@ -1,14 +1,11 @@
 import Model from '.';
 import { Async, Class, EffectCallback, InstanceOf } from './types';
 
-type Setup<T> = (key: string, on: any) => void;
-type SetupLocal<T> = (key: string, on: any, within?: any) => T;
-
-/** Run instruction on controller init. */
-export function set <T> (instruction: Setup<T>): T;
-
-/** Run instruction at time of access, with access to subscriber context. */
-export function get <T> (instruction: SetupLocal<T>): T;
+/**
+ * Run instruction as controller sets itself up.
+ * This will specialize the behavior of a given property.
+ **/
+export function set <T> (instruction: Model.Instruction<T>): T;
 
 /**
  * Creates a new child-instance of specified controller.

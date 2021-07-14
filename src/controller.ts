@@ -1,3 +1,5 @@
+import type Public from '../types';
+
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
@@ -11,20 +13,23 @@ export const Oops = issues({
 
 const Pending = new WeakSet<Function>();
 
-type Sets = (key: string, on: Observer) => void;
-type Gets = (key: string, on: Observer, within?: Subscriber) => void;
+type Sets = <T>(key: string, on: Observer) =>
+  void | ((within?: Subscriber) => T);
 
-export function set(instruction: Sets){
+export function set(instruction: Public.Instruction<any>){
   Pending.add(instruction);
   return instruction as any;
 }
 
-export function get(instruction: Gets){
-  return set((key, on) => {
+export function setup(
+  key: string, on: Controller, using: Sets){
+
+  const onAccess = using(key, on);
+
+  if(onAccess)
     defineLazy(on.subject, key, 
-      extracts(sub => instruction(key, on, sub))  
+      extracts(sub => onAccess(sub))  
     );
-  })
 }
 
 export const CONTROL = Symbol("controller");
@@ -43,14 +48,14 @@ export class Controller extends Observer {
     return fn();
   }
 
-  public setup(
+  public add(
     key: string,
     desc: PropertyDescriptor){
 
     if(Pending.has(desc.value))
-      desc.value(key, this);
+      setup(key, this, desc.value);
     else
-      super.setup(key, desc);
+      super.add(key, desc);
   }
 
   public select(
