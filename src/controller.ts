@@ -23,7 +23,7 @@ export function setup(
   on: Controller,
   using: Public.Instruction<any>){
 
-  const onAccess = using(key, on);
+  const onAccess = using(on, key);
 
   if(onAccess){
     const cache = {};

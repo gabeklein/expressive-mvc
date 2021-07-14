@@ -23,7 +23,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
 export function setPeer<T extends Peer>
   (type: T, required?: boolean): InstanceOf<T> {
 
-  return set((key, { subject }) => {
+  return set(({ subject }, key) => {
     const Self = subject.constructor.name;
 
     if("current" in type)

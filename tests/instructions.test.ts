@@ -370,7 +370,7 @@ describe("set", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
 
-    property = set((key, _controller) => {
+    property = set((_on, key) => {
       this.didRunInstruction(key);
     })
   }
@@ -387,9 +387,9 @@ describe("get", () => {
     didRunInstruction = jest.fn();
     didGetSubscriber = jest.fn();
 
-    property = set((key) => (subscriber) => {
+    property = set((_on, key) => (sub) => {
       this.didRunInstruction(key);
-      this.didGetSubscriber(subscriber);
+      this.didGetSubscriber(sub);
 
       return "foobar";
     })

@@ -14,7 +14,7 @@ export namespace Model {
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (key: string, on: any) =>
+    type Instruction<T> = (on: any, key: string) =>
         void | ((within: any, cache: any) => T);
 
     /** Shallow replacement given all entries of Model */

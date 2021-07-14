@@ -16,7 +16,7 @@ export const Oops = issues({
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return set((key, on) => {
+  return set((on, key) => {
     const instance = new Peer() as InstanceOf<T>;
 
     on.register(key, instance);
@@ -33,7 +33,7 @@ export function setChild<T extends typeof Model>
 export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return set((key, { subject }) => {
+  return set(({ subject }, key) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
