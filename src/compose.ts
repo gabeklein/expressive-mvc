@@ -25,6 +25,8 @@ export function setChild<T extends typeof Model>
 
     if(callback)
       callback(instance);
+
+    // return () => instance;
   })
 }
 

@@ -6,14 +6,6 @@ import { alias, create, define, defineProperty } from './util';
 
 export const LOCAL = Symbol("current_subscriber");
 
-type HandleSubscriber = (subscriber?: Subscriber) => void;
-
-export function extracts(fn: HandleSubscriber){
-  return function(this: Stateful){
-    return fn(this[LOCAL]);
-  }
-}
-
 export class Subscriber<T extends Stateful = any> {
   private dependant = new Set<{
     listen(): void;

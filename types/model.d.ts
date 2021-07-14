@@ -14,7 +14,8 @@ export namespace Model {
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (key: string, on: any) => void | ((within?: any) => T);
+    type Instruction<T> = (key: string, on: any) =>
+        void | ((within: any, cache: any) => T);
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };

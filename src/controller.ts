@@ -3,8 +3,8 @@ import type Public from '../types';
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
-import { extracts, LOCAL, Subscriber } from './subscriber';
-import { createEffect, debounce, defineLazy, fn, getOwnPropertyNames, selectRecursive } from './util';
+import { LOCAL, Subscriber } from './subscriber';
+import { createEffect, debounce, defineProperty, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -13,23 +13,27 @@ export const Oops = issues({
 
 const Pending = new WeakSet<Function>();
 
-type Sets = <T>(key: string, on: Observer) =>
-  void | ((within?: Subscriber) => T);
-
 export function set(instruction: Public.Instruction<any>){
   Pending.add(instruction);
   return instruction as any;
 }
 
 export function setup(
-  key: string, on: Controller, using: Sets){
+  key: string,
+  on: Controller,
+  using: Public.Instruction<any>){
 
   const onAccess = using(key, on);
 
-  if(onAccess)
-    defineLazy(on.subject, key, 
-      extracts(sub => onAccess(sub))  
-    );
+  if(onAccess){
+    const cache = {};
+
+    defineProperty(on.subject, key, {
+      get(this: Stateful){
+        return onAccess(this[LOCAL], cache);
+      }
+    })
+  }
 }
 
 export const CONTROL = Symbol("controller");
