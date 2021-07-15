@@ -4,7 +4,7 @@ import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Observer } from './observer';
 import { LOCAL, Subscriber } from './subscriber';
-import { createEffect, debounce, defineProperty, fn, getOwnPropertyNames, selectRecursive } from './util';
+import { createEffect, debounce, defineProperty, fn, getOwnPropertyNames, selectRecursive, getOwnPropertyDescriptor, assign } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -23,31 +23,33 @@ export function setup(
   on: Controller,
   using: Public.Instruction<any>){
 
-  let descriptor = using(on, key);
+  delete (on.subject as any)[key];
 
-  if(typeof descriptor == "function")
-    descriptor = local(descriptor, new Map());
+  let describe = using(on, key);
 
-  if(descriptor)
-    defineProperty(on.subject, key, descriptor);
+  if(fn(describe)){
+    const get = localGetter(describe, new Map());
+    const current = getOwnPropertyDescriptor(on.subject, key);
+
+     describe = assign({}, current, { get });
+  }
+
+  if(describe)
+    defineProperty(on.subject, key, describe);
 }
 
-function local(
+function localGetter(
   getter: (within: any, cache: any) => any,
   cache: Map<any, any>){
 
-  return {
-    get(this: Stateful){
-      const sub = this[LOCAL];
-      let local = cache.get(sub);
+  return function(this: Stateful){
+    const sub = this[LOCAL];
+    let local = cache.get(sub);
 
-      if(!local){
-        local = {};
-        cache.set(sub, local)
-      }
+    if(!local)
+      cache.set(sub, local = {});
 
-      return getter(sub, cache);
-    }
+    return getter(sub, cache);
   }
 }
 

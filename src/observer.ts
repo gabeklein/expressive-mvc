@@ -43,7 +43,9 @@ export class Observer {
     desc: PropertyDescriptor){
 
     defineProperty(this.subject, key, {
-      enumerable: true, ...desc
+      enumerable: true,
+      configurable: true,
+      ...desc
     });
   }
 
