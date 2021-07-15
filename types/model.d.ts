@@ -3,6 +3,15 @@ import Lifecycle from './lifecycle';
 import { Selector } from './selector';
 import { Class, InstanceOf, Key } from './types';
 
+interface PropertyDescriptor<T> {
+    configurable?: boolean;
+    enumerable?: boolean;
+    value?: T;
+    writable?: boolean;
+    get?(): T;
+    set?(v: T): void;
+}
+
 export namespace Model {
     /** Exotic value, actual value is contained. */
     interface Ref<T = any> {
@@ -15,7 +24,7 @@ export namespace Model {
      * Optional returned callback will run when once upon first access.
     */
     type Instruction<T> = (on: any, key: string) =>
-        void | ((within: any, cache: any) => T);
+        void | ((within: any, cache: any) => T) | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };

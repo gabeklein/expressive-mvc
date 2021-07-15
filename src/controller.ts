@@ -23,16 +23,31 @@ export function setup(
   on: Controller,
   using: Public.Instruction<any>){
 
-  const onAccess = using(on, key);
+  let descriptor = using(on, key);
 
-  if(onAccess){
-    const cache = {};
+  if(typeof descriptor == "function")
+    descriptor = local(descriptor, new Map());
 
-    defineProperty(on.subject, key, {
-      get(this: Stateful){
-        return onAccess(this[LOCAL], cache);
+  if(descriptor)
+    defineProperty(on.subject, key, descriptor);
+}
+
+function local(
+  getter: (within: any, cache: any) => any,
+  cache: Map<any, any>){
+
+  return {
+    get(this: Stateful){
+      const sub = this[LOCAL];
+      let local = cache.get(sub);
+
+      if(!local){
+        local = {};
+        cache.set(sub, local)
       }
-    })
+
+      return getter(sub, cache);
+    }
   }
 }
 
