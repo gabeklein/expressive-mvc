@@ -5,9 +5,6 @@ import { Model } from './model';
 import { alias, define, defineLazy, defineProperty } from './util';
 
 export const Oops = issues({
-  SetActionProperty: (key) =>
-    `Attempted assignment of ${key}. Action properties do not allow this.`,
-
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
 })
@@ -23,9 +20,9 @@ export function setRefMediator<T = any>
       get: () => on.state[key]
     })
 
-    on.override(key, {
+    return {
       value: refObjectFunction
-    });
+    };
   })
 }
 
@@ -53,13 +50,11 @@ export function setMemo(factory: () => any, defer?: boolean){
   }) 
 }
 
-export function setIgnored(value: any){
-  return set((on, key) => {
-    const real = on.subject as any;
-
-    real[key] = value;
-    defineProperty(on.state, key, {
-      get: () => real[key]
+export function setLazy(value: any){
+  return set(({ state, subject }, key) => {
+    subject[key] = value;
+    defineProperty(state, key, {
+      get: () => subject[key]
     });
   })
 }
@@ -92,12 +87,10 @@ export function setAction(action: AsyncFn){
       get: () => pending
     })
 
-    on.override(key, {
-      get: () => invoke,
-      set: () => {
-        throw Oops.SetActionProperty(key);
-      }
-    });
+    return {
+      value: invoke,
+      writable: false
+    };
   })
 }
 

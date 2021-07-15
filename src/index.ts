@@ -4,7 +4,7 @@ export {
   setAction as act,
   setComputed as from,
   setMemo as memo,
-  setIgnored as lazy
+  setLazy as lazy
 } from './instructions';
 
 export {

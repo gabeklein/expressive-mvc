@@ -241,10 +241,9 @@ describe("act", () => {
 
   it("will complain if property is redefined", () => {
     const state = Test.create();
-    const expected = Oops.SetActionProperty("test");
     const assign = () => state.test = 0 as any;
 
-    expect(assign).toThrowError(expected);
+    expect(assign).toThrowError();
   })
 })
 
