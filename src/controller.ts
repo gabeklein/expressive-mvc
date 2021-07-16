@@ -49,7 +49,7 @@ function localGetter(
     if(!local)
       cache.set(sub, local = {});
 
-    return getter(sub, cache);
+    return getter(sub, local);
   }
 }
 
