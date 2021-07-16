@@ -1,7 +1,7 @@
 import { Controller, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { define } from './util';
+import { Subscriber } from './subscriber';
 
 const ParentRelationship = new WeakMap<{}, {}>();
 
@@ -17,23 +17,69 @@ export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   return set((on, key) => {
-    const instance = new Peer() as InstanceOf<T>;
+    let instance = new Peer() as InstanceOf<T>;
 
-    on.register(key, instance);
-    ParentRelationship.set(instance, on.subject);
-    Controller.ensure(instance);
+    function init(current: InstanceOf<T>){
+      if(instance = current){
+        ParentRelationship.set(instance, on.subject);
+        Controller.ensure(instance);
+    
+        if(callback)
+          callback(instance);
+      }
+    }
 
-    if(callback)
-      callback(instance);
+    init(instance);
+    on.register(key, instance, init);
 
-    // return () => instance;
+    return (sub, cached) => {
+      if(!sub)
+        return instance;
+
+      if("proxy" in cached)
+        return cached.proxy;
+
+      const update = sub.callback;
+      let reset: Callback | undefined;
+
+      function setup(){
+        const child =
+          new Subscriber(instance, update, sub.metadata);
+
+        sub.dependant.add(child);
+
+        if(sub.active)
+          child.listen();
+
+        reset = () => {
+          child.release();
+          sub.dependant.delete(child);
+          reset = undefined;
+        }
+
+        cached.proxy = child.proxy;
+      }
+
+      setup();
+      sub.follow(key, () => {
+        if(reset)
+          reset();
+        
+        if(instance)
+          setup();
+
+        update();
+      });
+
+      return cached.proxy;
+    }
   })
 }
 
 export function setParent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return set(({ subject }, key) => {
+  return set(({ subject }) => {
     const expectsType = Expects.name;
     const onType = subject.constructor.name;
     const parent = ParentRelationship.get(subject);
@@ -47,6 +93,6 @@ export function setParent<T extends typeof Model>
       throw Oops.UnexpectedParent(expectsType, onType, gotType);
     }
 
-    define(subject, key, parent);
+    return { value: parent };
   })
 }

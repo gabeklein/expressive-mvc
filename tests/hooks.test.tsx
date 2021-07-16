@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
-import { Model, Provider, render, renderHook, Singleton } from './adapter';
+import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -122,7 +122,7 @@ describe("tap", () => {
   class Parent extends Model {
     value = "foo";
     empty = undefined;
-    child = new Child();
+    child = use(Child);
   }
   
   class Child extends Model {
@@ -238,7 +238,7 @@ describe("meta", () => {
   class Parent extends Model {
     static value = "foo";
     static value2 = "bar";
-    static child = new Child();
+    static child = use(Child);
   }
 
   beforeEach(() => Parent.value = "foo");

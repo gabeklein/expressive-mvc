@@ -211,7 +211,7 @@ describe("act", () => {
     expect(test.active).toBe(false);
   });
 
-  it("emits method key before/after activity", async () => {
+  it("will emit method key before/after activity", async () => {
     let update: string[] | false;
     const { test, requestUpdate } = Test.create();
 

@@ -1,6 +1,5 @@
 import { GetterInfo, metaData } from './compute';
 import { Controller, Stateful } from './controller';
-import { Model } from './model';
 import { Observer } from './observer';
 import { alias, create, define, defineProperty } from './util';
 
@@ -24,12 +23,17 @@ export class Subscriber<T extends Stateful = any> {
 
     const { state } = this.parent = Controller.ensure(subject);
 
-    this.proxy = create(subject as any);
+    const proxy = this.proxy = create(subject as any);
 
     define(this.proxy, LOCAL, this);
 
     for(const key in state){
-      const intercept = this.spy(key);
+      const intercept = () => {
+        delete proxy[key];
+        this.follow(key, this.callback);
+  
+        return proxy[key];
+      }
 
       alias(intercept, `tap ${key}`);
       defineProperty(this.proxy, key, {
@@ -38,57 +42,6 @@ export class Subscriber<T extends Stateful = any> {
         configurable: true,
         enumerable: true
       })
-    }
-  }
-
-  private spy(key: string){
-    let { proxy, subject } = this as any;
-
-    return () => {
-      let onUpdate = this.callback;
-      let value: any;
-
-      const setup = () => {
-        value = subject[key];
-  
-        if(value instanceof Model){
-          const update = this.callback;
-          const sub = new Subscriber(value, update, this.metadata);
-          const reset = sub.attach(this);
-
-          defineProperty(proxy, key, {
-            get: () => sub.proxy,
-            set: it => subject[key] = it,
-            configurable: true
-          })
-
-          value = sub.proxy;
-          onUpdate = () => {
-            reset();
-            setup();
-            update();
-          }
-        }
-        else
-          delete proxy[key];
-      }
-  
-      setup();
-      this.follow(key, () => onUpdate());
-
-      return value;
-    }
-  }
-
-  public attach(to: Subscriber){
-    to.dependant.add(this);
-
-    if(to.active)
-      this.listen();
-
-    return () => {
-      this.release();
-      to.dependant.delete(this);
     }
   }
 

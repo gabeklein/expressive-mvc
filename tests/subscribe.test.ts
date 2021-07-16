@@ -1,4 +1,4 @@
-import { Model, subscribeTo } from './adapter';
+import { Model, subscribeTo, use } from './adapter';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -60,7 +60,7 @@ describe("nested properties", () => {
   
   class Parent extends Model {
     value = "foo";
-    child = new Child();
+    child = use(Child);
   }
   
   it('are be tracked recursively', async () => {
@@ -108,7 +108,7 @@ describe("nested properties", () => {
   it('will reset if child becomes undefined', async () => {
     class Parent extends Model {
       value = "foo";
-      child?: Child = new Child();
+      child = use(Child);
     }
 
     const state = Parent.create();
@@ -124,7 +124,7 @@ describe("nested properties", () => {
     await update();
   
     // Will refresh on undefined.
-    state.child = undefined;
+    state.child = undefined as any;
     await update();
     expect(state.child).toBeUndefined();
   
