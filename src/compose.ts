@@ -40,12 +40,11 @@ export function setChild<T extends typeof Model>
       if("proxy" in cached)
         return cached.proxy;
 
-      const update = sub.callback;
       let reset: Callback | undefined;
 
       function setup(){
         const child =
-          new Subscriber(instance, update, sub.info);
+          new Subscriber(instance, sub.callback, sub.info);
 
         sub.dependant.add(child);
 
@@ -58,10 +57,9 @@ export function setChild<T extends typeof Model>
           reset = undefined;
         }
 
-        cached.proxy = child.proxy;
+        return cached.proxy = child.proxy;
       }
 
-      setup();
       sub.follow(key, () => {
         if(reset)
           reset();
@@ -69,10 +67,10 @@ export function setChild<T extends typeof Model>
         if(instance)
           setup();
 
-        update();
+        sub.callback();
       });
 
-      return cached.proxy;
+      return setup();
     }
   })
 }
