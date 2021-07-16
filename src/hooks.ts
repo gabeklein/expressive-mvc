@@ -6,7 +6,7 @@ import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
 import { Model } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { fn, defineProperty } from './util';
+import { fn, defineProperty, name } from './util';
 
 export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
@@ -67,7 +67,7 @@ class Hook extends Subscriber {
 
         if(expect && value === undefined)
           throw Oops.HasPropertyUndefined(
-            subject.constructor.name, key as string
+            name(subject), key as string
           );
 
         return value;

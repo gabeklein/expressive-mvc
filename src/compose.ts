@@ -2,6 +2,7 @@ import { Controller, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
+import { name } from './util';
 
 const ParentRelationship = new WeakMap<{}, {}>();
 
@@ -81,17 +82,15 @@ export function setParent<T extends typeof Model>
 
   return set(({ subject }) => {
     const expectsType = Expects.name;
-    const onType = subject.constructor.name;
+    const onType = name(subject);
     const parent = ParentRelationship.get(subject);
 
     if(!parent){
       if(required)
         throw Oops.ParentRequired(expectsType, onType);
     }
-    else if(!(parent instanceof Expects)){
-      const gotType = parent.constructor.name;
-      throw Oops.UnexpectedParent(expectsType, onType, gotType);
-    }
+    else if(!(parent instanceof Expects))
+      throw Oops.UnexpectedParent(expectsType, onType, name(parent));
 
     return { value: parent };
   })
