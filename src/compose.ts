@@ -33,7 +33,7 @@ export function setChild<T extends typeof Model>
     init(instance);
     on.register(key, instance, init);
 
-    return (sub, cached) => {
+    return (sub: Subscriber, cached: any) => {
       if(!sub)
         return instance;
 
@@ -45,7 +45,7 @@ export function setChild<T extends typeof Model>
 
       function setup(){
         const child =
-          new Subscriber(instance, update, sub.metadata);
+          new Subscriber(instance, update, sub.info);
 
         sub.dependant.add(child);
 
