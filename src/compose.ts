@@ -14,7 +14,7 @@ export const Oops = issues({
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`
 })
 
-export function setChild<T extends typeof Model>
+export function use<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   type Cache = { proxy?: any };
@@ -77,7 +77,7 @@ export function setChild<T extends typeof Model>
   })
 }
 
-export function setParent<T extends typeof Model>
+export function parent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
   return set(({ subject }) => {

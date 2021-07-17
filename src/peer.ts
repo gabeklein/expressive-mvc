@@ -20,7 +20,7 @@ type ApplyPeer = (context: Lookup) => void;
 const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
-export function setPeer<T extends Peer>
+export function tap<T extends Peer>
   (type: T, required?: boolean): InstanceOf<T> {
 
   return set(({ subject }, key) => {

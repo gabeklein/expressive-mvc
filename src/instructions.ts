@@ -9,7 +9,7 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-export function setRefMediator<T = any>
+export function ref<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return set((on, key) => {
@@ -26,7 +26,7 @@ export function setRefMediator<T = any>
   })
 }
 
-export function setEffect<T = any>
+export function on<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
   return set((on, key) => {
@@ -39,7 +39,9 @@ export function setEffect<T = any>
   })
 }
 
-export function setMemo(factory: () => any, defer?: boolean){
+export function memo
+  (factory: () => any, defer?: boolean){
+
   return set(({ subject }, key) => {
     const get = () => factory.call(subject);
 
@@ -50,7 +52,7 @@ export function setMemo(factory: () => any, defer?: boolean){
   }) 
 }
 
-export function setLazy(value: any){
+export function lazy(value: any){
   return set(({ state, subject }, key) => {
     subject[key] = value;
     defineProperty(state, key, {
@@ -61,7 +63,7 @@ export function setLazy(value: any){
 
 type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
 
-export function setAction(action: AsyncFn){
+export function act(does: AsyncFn){
   return set((on, key) => {
     let pending = false;
 
@@ -74,7 +76,7 @@ export function setAction(action: AsyncFn){
       pending = true;
       on.update(key);
 
-      return action
+      return does
         .apply(on.subject, args)
         .finally(() => {
           pending = false;
@@ -94,7 +96,7 @@ export function setAction(action: AsyncFn){
   })
 }
 
-export function setComputed(fn: (on?: Model) => any){
+export function from(fn: (on?: Model) => any){
   return set((on, key) => {
     prepareComputed(on, key, fn);
   })

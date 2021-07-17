@@ -1,35 +1,8 @@
-export {
-  setEffect as on,
-  setRefMediator as ref,
-  setAction as act,
-  setComputed as from,
-  setMemo as memo,
-  setLazy as lazy
-} from './instructions';
+export { use, parent } from './compose';
+export { set } from './controller';
+export { on, ref, act, from, memo, lazy } from './instructions';
+export { tap } from './peer';
 
-export {
-  setChild as use,
-  setParent as parent
-} from './compose';
-
-export {
-  setPeer as tap
-} from './peer';
-
-export {
-  set
-} from './controller';
-
-export {
-  Consumer,
-  Provider
-} from './context';
-
-export {
-  Model,
-  Model as default
-} from './model';
-
-export {
-  Singleton
-} from './singleton';
+export { Model, Model as default } from './model';
+export { Consumer, Provider } from './context';
+export { Singleton } from './singleton';
