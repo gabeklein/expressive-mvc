@@ -73,7 +73,7 @@ export function prepareComputed(
 
   defined.set(key, info);
 
-  const compute = (initial?: boolean) => {
+  function compute(initial?: boolean){
     try {
       return getter.call(sub.proxy, sub.proxy);
     }
@@ -83,7 +83,7 @@ export function prepareComputed(
     }
   }
 
-  const update = () => {
+  function update(){
     let value;
 
     try {
@@ -100,7 +100,7 @@ export function prepareComputed(
     }
   }
 
-  const create = (early?: boolean) => {
+  function create(early?: boolean){
     sub = new Subscriber(subject, update, info);
 
     defineProperty(state, key, {
@@ -170,30 +170,31 @@ export function computeContext(
 
   const pending = [] as Callback[];
 
-  return {
-    queue(request: RequestCallback){
-      const compute = metaData(request);
-  
-      if(!compute)
-        return false;
-  
-      if(compute.parent !== parent)
-        request();
-      else
-        insertAfter(pending, request,
-          sib => compute.priority > metaData(sib).priority
-        )
-  
-      return true;
-    },
-    flush(){
-      while(pending.length){
-        const compute = pending.shift()!;
-        const { key } = metaData(compute);
-  
-        if(!handled.has(key))
-          compute();
-      }
+  function queue(request: RequestCallback){
+    const compute = metaData(request);
+
+    if(!compute)
+      return false;
+
+    if(compute.parent !== parent)
+      request();
+    else
+      insertAfter(pending, request,
+        sib => compute.priority > metaData(sib).priority
+      )
+
+    return true;
+  }
+
+  function flush(){
+    while(pending.length){
+      const compute = pending.shift()!;
+      const { key } = metaData(compute);
+
+      if(!handled.has(key))
+        compute();
     }
   }
+
+  return { queue, flush };
 }

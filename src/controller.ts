@@ -13,7 +13,9 @@ export const Oops = issues({
 
 const Pending = new WeakSet<Function>();
 
-export function set(instruction: Public.Instruction<any>){
+export function set(
+  instruction: Public.Instruction<any>){
+
   Pending.add(instruction);
   return instruction as any;
 }

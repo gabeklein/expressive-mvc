@@ -22,8 +22,10 @@ export function setChild<T extends typeof Model>
   return set((on: Controller, key) => {
     let instance = new Peer() as InstanceOf<T>;
 
-    function apply(current: InstanceOf<T>){
-      if(instance = current){
+    function update(current: InstanceOf<T>){
+      instance = current;
+
+      if(current){
         ParentRelationship.set(instance, on.subject);
         Controller.ensure(instance);
     
@@ -60,8 +62,8 @@ export function setChild<T extends typeof Model>
       return init();
     }
 
-    apply(instance);
-    on.register(key, instance, apply);
+    update(instance);
+    on.register(key, instance, update);
 
     return (current: Subscriber, cache: Cache) => {
       if(!current)

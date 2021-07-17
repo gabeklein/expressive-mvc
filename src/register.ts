@@ -11,10 +11,10 @@ export class Lookup {
   private key(T: typeof Model){
     let key = this.table.get(T);
 
-    if(!key)
-      this.table.set(T, 
-        key = Symbol(T.name)
-      );
+    if(!key){
+      key = Symbol(T.name);
+      this.table.set(T, key);
+    }
 
     return key;
   }

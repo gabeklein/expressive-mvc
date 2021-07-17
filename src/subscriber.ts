@@ -23,7 +23,7 @@ export class Subscriber<T extends Stateful = any> {
     const { state } = this.parent =
       Controller.ensure(subject);
 
-    this.proxy = create(subject as any);
+    this.proxy = create(subject);
 
     define(this.proxy, LOCAL, this);
 

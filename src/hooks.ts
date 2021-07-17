@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { Stateful } from './controller';
 import { issues } from './issues';
-import { Event, forAlias, Lifecycle as Cycle } from './lifecycle';
+import { Event, forAlias, Lifecycle as Component } from './lifecycle';
 import { Model } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
@@ -32,18 +32,18 @@ class Hook extends Subscriber {
   }
 
   useLifecycle(){
-    this.at(Cycle.WILL_RENDER);
+    this.at(Component.WILL_RENDER);
     this.at(this.active
-      ? Cycle.WILL_UPDATE
-      : Cycle.WILL_MOUNT  
+      ? Component.WILL_UPDATE
+      : Component.WILL_MOUNT  
     )
 
     useLayoutEffect(() => {
       this.listen();
-      this.at(Cycle.DID_MOUNT);
+      this.at(Component.DID_MOUNT);
 
       return () => {
-        this.at(Cycle.WILL_UNMOUNT);
+        this.at(Component.WILL_UNMOUNT);
         this.release();
       }
     })
@@ -159,7 +159,7 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    instance.on("willUnmount", () => {
+    instance.on(Component.WILL_UNMOUNT, () => {
       instance.destroy();
     });
 
