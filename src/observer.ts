@@ -119,7 +119,9 @@ export class Observer {
 
     for(const handle of current)
       try { handle(frame) }
-      catch(e){}
+      catch(e){
+        /* we can't have nice things */
+      }
   }
 
   public sync(){
