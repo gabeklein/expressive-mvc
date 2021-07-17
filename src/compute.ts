@@ -5,9 +5,6 @@ import { Subscriber } from './subscriber';
 import { alias, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter, name } from './util';
 
 export const Oops = issues({
-  AssignToGetter: (name) => 
-    `Property ${name} is only a getter. Ignoring assignment.`,
-
   ComputeFailed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
 
@@ -137,9 +134,6 @@ export function prepareComputed(
   alias(update, `try ${key}`);
   alias(create, `new ${key}`);
   alias(getter, `run ${key}`);
-
-  if(!setter)
-    setter = Oops.AssignToGetter(key).warn;
 
   ComputedInit.add(create);
 
