@@ -50,6 +50,21 @@ export class Subscriber<T extends Stateful = any> {
     })
   }
 
+  public also(to: Stateful){
+    const { dependant } = this;
+
+    const child = new Subscriber(
+      to, this.callback, this.info
+    );
+
+    dependant.add(child);
+
+    if(this.active)
+      child.listen();
+
+    return child;
+  }
+
   public follow(key: string, cb: Callback){
     if(this.info)
       metaData(cb, this.info);

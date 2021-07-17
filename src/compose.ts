@@ -17,10 +17,12 @@ export const Oops = issues({
 export function setChild<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return set((on, key) => {
+  type Cache = { proxy?: any };
+
+  return set((on: Controller, key) => {
     let instance = new Peer() as InstanceOf<T>;
 
-    function init(current: InstanceOf<T>){
+    function apply(current: InstanceOf<T>){
       if(instance = current){
         ParentRelationship.set(instance, on.subject);
         Controller.ensure(instance);
@@ -30,26 +32,11 @@ export function setChild<T extends typeof Model>
       }
     }
 
-    init(instance);
-    on.register(key, instance, init);
-
-    return (sub: Subscriber, cached: any) => {
-      if(!sub)
-        return instance;
-
-      if("proxy" in cached)
-        return cached.proxy;
-
+    function setup(sub: Subscriber, cached: Cache){
       let reset: Callback | undefined;
 
-      function setup(){
-        const child =
-          new Subscriber(instance, sub.callback, sub.info);
-
-        sub.dependant.add(child);
-
-        if(sub.active)
-          child.listen();
+      function init(){
+        const child = sub.also(instance);
 
         reset = () => {
           child.release();
@@ -62,15 +49,28 @@ export function setChild<T extends typeof Model>
 
       sub.follow(key, () => {
         if(reset)
-          reset();
+          reset()
         
         if(instance)
-          setup();
+          init();
 
         sub.callback();
       });
 
-      return setup();
+      return init();
+    }
+
+    apply(instance);
+    on.register(key, instance, apply);
+
+    return (current: Subscriber, cache: Cache) => {
+      if(!current)
+        return instance;
+
+      if("proxy" in cache)
+        return cache.proxy;
+
+      return setup(current, cache);
     }
   })
 }
