@@ -35,31 +35,37 @@ export function use<T extends typeof Model>
     }
 
     function setup(sub: Subscriber, cached: Cache){
+      const { dependant } = sub;
       let reset: Callback | undefined;
 
-      function init(){
-        const child = sub.also(instance);
+      function subscribe(){
+        const child = new Subscriber(
+          instance, sub.callback, sub.info
+        );
 
+        if(sub.active)
+          child.listen();
+
+        dependant.add(child);
+
+        cached.proxy = child.proxy;
         reset = () => {
           child.release();
-          sub.dependant.delete(child);
+          dependant.delete(child);
           reset = undefined;
         }
-
-        return cached.proxy = child.proxy;
       }
 
+      subscribe();
       sub.follow(key, () => {
         if(reset)
-          reset()
+          reset();
         
         if(instance)
-          init();
+          subscribe();
 
         sub.callback();
       });
-
-      return init();
     }
 
     update(instance);
@@ -69,10 +75,10 @@ export function use<T extends typeof Model>
       if(!current)
         return instance;
 
-      if("proxy" in cache)
-        return cache.proxy;
+      if(!("proxy" in cache))
+        setup(current, cache);
 
-      return setup(current, cache);
+      return cache.proxy;
     }
   })
 }

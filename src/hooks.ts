@@ -39,12 +39,12 @@ class Hook extends Subscriber {
     )
 
     useLayoutEffect(() => {
-      this.listen();
+      const done = this.listen();
       this.at(Component.DID_MOUNT);
 
       return () => {
         this.at(Component.WILL_UNMOUNT);
-        this.release();
+        done();
       }
     })
   }
