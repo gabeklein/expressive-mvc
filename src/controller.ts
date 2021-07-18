@@ -4,7 +4,6 @@ import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { CONTROL, LOCAL, Stateful } from './model';
 import { Observer } from './observer';
-import { Subscriber } from './subscriber';
 import {
   assign,
   createEffect,
@@ -152,7 +151,7 @@ export class Controller extends Observer {
       return this.watch(select, invoke, true);
 
     return this.do(() => {
-      const sub = new Subscriber(target, invoke);
+      const sub = this.subscribe(invoke);
       effect(target = sub.proxy);
       return sub.listen();
     });

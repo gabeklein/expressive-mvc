@@ -1,5 +1,6 @@
 import { computeContext, ensureValue, implementGetters } from './compute';
 import { Stateful } from './model';
+import { Subscriber } from './subscriber';
 import { createEffect, defineProperty, entriesIn, fn } from './util';
 
 export class Observer {
@@ -11,6 +12,10 @@ export class Observer {
 
   constructor(public subject: Stateful){
     implementGetters(this);
+  }
+
+  public subscribe(cb: Callback){
+    return new Subscriber(this, cb)
   }
 
   public start(){

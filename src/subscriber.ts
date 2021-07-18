@@ -1,26 +1,23 @@
 import { GetterInfo, metaData } from './compute';
-import { Controller } from './controller';
-import { LOCAL, Stateful } from './model';
+import { LOCAL } from './model';
 import { Observer } from './observer';
 import { alias, create, define, defineProperty } from './util';
 
-export class Subscriber<T extends Stateful = any> {
+export class Subscriber {
   public active = false;
   public following = {} as BunchOf<Callback>;
-  public parent: Observer;
-  public proxy: T & { [LOCAL]: Subscriber };
+  public proxy: any;
   public info?: GetterInfo;
   public dependant = new Set<{
     listen(): void;
     release(): void;
   }>();
-  
+
   constructor(
-    public subject: T,
+    public parent: Observer,
     public callback: Callback){
 
-    const { state } = this.parent =
-      Controller.ensure(subject);
+    const { state, subject } = parent;
 
     this.proxy = create(subject);
 

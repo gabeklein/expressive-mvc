@@ -98,7 +98,7 @@ export function prepareComputed(
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(subject, update);
+    sub = on.subscribe(update);
 
     sub.info = info;
 

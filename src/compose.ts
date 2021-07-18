@@ -39,7 +39,9 @@ export function use<T extends typeof Model>
       let reset: Callback | undefined;
 
       function subscribe(){
-        const child = new Subscriber(instance, sub.callback);
+        const child = Controller
+          .ensure(instance)
+          .subscribe(sub.callback);
 
         child.info = sub.info;
 

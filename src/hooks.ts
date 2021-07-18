@@ -2,10 +2,10 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { issues } from './issues';
 import { Event, forAlias, Lifecycle as Component } from './lifecycle';
-import { Model, Stateful } from './model';
+import { CONTROL, Model, Stateful } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { fn, defineProperty, name } from './util';
+import { defineProperty, fn, name } from './util';
 
 export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
@@ -16,6 +16,13 @@ const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
 class Hook extends Subscriber {
+  constructor(
+    public subject: any,
+    callback: Callback
+  ){
+    super(subject[CONTROL], callback);
+  }
+
   alias!: (from: Event) => Event;
   tag?: Key;
 
