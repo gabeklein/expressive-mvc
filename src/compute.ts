@@ -98,7 +98,9 @@ export function prepareComputed(
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(subject, update, info);
+    sub = new Subscriber(subject, update);
+
+    sub.info = info;
 
     defineProperty(state, key, {
       value: undefined,

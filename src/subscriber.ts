@@ -10,6 +10,7 @@ export class Subscriber<T extends Stateful = any> {
   public following = {} as BunchOf<Callback>;
   public parent: Observer;
   public proxy: T & { [LOCAL]: Subscriber };
+  public info?: GetterInfo;
   public dependant = new Set<{
     listen(): void;
     release(): void;
@@ -17,8 +18,7 @@ export class Subscriber<T extends Stateful = any> {
   
   constructor(
     public subject: T,
-    public callback: Callback,
-    public info?: GetterInfo){
+    public callback: Callback){
 
     const { state } = this.parent =
       Controller.ensure(subject);
