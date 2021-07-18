@@ -1,5 +1,5 @@
 import { computeContext, ensureValue, implementGetters } from './compute';
-import { Stateful } from './controller';
+import { Stateful } from './model';
 import { createEffect, defineProperty, entriesIn, fn } from './util';
 
 export class Observer {

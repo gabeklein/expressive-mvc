@@ -1,9 +1,8 @@
 import { GetterInfo, metaData } from './compute';
-import { Controller, Stateful } from './controller';
+import { Controller } from './controller';
+import { LOCAL, Stateful } from './model';
 import { Observer } from './observer';
 import { alias, create, define, defineProperty } from './util';
-
-export const LOCAL = Symbol("current_subscriber");
 
 export class Subscriber<T extends Stateful = any> {
   public active = false;

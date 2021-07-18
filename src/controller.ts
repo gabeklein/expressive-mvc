@@ -2,9 +2,19 @@ import type Public from '../types';
 
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
+import { CONTROL, LOCAL, Stateful } from './model';
 import { Observer } from './observer';
-import { LOCAL, Subscriber } from './subscriber';
-import { createEffect, debounce, defineProperty, fn, getOwnPropertyNames, selectRecursive, getOwnPropertyDescriptor, assign } from './util';
+import { Subscriber } from './subscriber';
+import {
+  assign,
+  createEffect,
+  debounce,
+  defineProperty,
+  fn,
+  getOwnPropertyDescriptor,
+  getOwnPropertyNames,
+  selectRecursive,
+} from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -55,12 +65,6 @@ function localGetter(
   }
 }
 
-export const CONTROL = Symbol("controller");
-
-export interface Stateful {
-  [CONTROL]: Controller
-  [LOCAL]?: Subscriber;
-};
 
 export class Controller extends Observer {
   static ensure(from: Stateful){

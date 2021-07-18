@@ -1,9 +1,8 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { Stateful } from './controller';
 import { issues } from './issues';
 import { Event, forAlias, Lifecycle as Component } from './lifecycle';
-import { Model } from './model';
+import { Model, Stateful } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
 import { fn, defineProperty, name } from './util';

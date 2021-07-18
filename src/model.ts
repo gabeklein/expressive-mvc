@@ -1,9 +1,19 @@
 import type Public from '../types';
 
 import { useFromContext } from './context';
-import { CONTROL, Controller, Stateful } from './controller';
+import { Controller } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
+import { Subscriber } from './subscriber';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
+
+
+export const CONTROL = Symbol("controller");
+export const LOCAL = Symbol("current_subscriber");
+
+export interface Stateful {
+  [CONTROL]: Controller
+  [LOCAL]?: Subscriber;
+};
 
 export interface Model extends Public, Stateful {};
 export class Model {

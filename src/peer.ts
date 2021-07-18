@@ -1,7 +1,7 @@
 import { useLookup } from './context';
-import { set, Stateful } from './controller';
+import { set } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
+import { Model, Stateful } from './model';
 import { Lookup } from './register';
 import { Singleton } from './singleton';
 import { define, defineLazy } from './util';
