@@ -16,15 +16,15 @@ const subscriberEvent = forAlias("element");
 const componentEvent = forAlias("component");
 
 class Hook extends Subscriber {
+  alias!: (from: Event) => Event;
+  tag?: Key;
+
   constructor(
     public subject: any,
     callback: Callback
   ){
     super(subject[CONTROL], callback);
   }
-
-  alias!: (from: Event) => Event;
-  tag?: Key;
 
   at(name: Event){
     for(const key of [name, this.alias(name)]){
