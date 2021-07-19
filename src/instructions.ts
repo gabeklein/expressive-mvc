@@ -2,7 +2,7 @@ import { prepareComputed } from './compute';
 import { set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { alias, define, defineLazy, defineProperty } from './util';
+import { define, defineLazy, defineProperty, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -84,7 +84,7 @@ export function act(does: AsyncFn){
         })
     };
 
-    alias(invoke, `run ${key}`);
+    setAlias(invoke, `run ${key}`);
     defineProperty(invoke, "active", {
       get: () => pending
     })

@@ -57,7 +57,7 @@ export function fn(x: any): x is Function {
   return typeof x == "function";
 }
 
-export function alias<T extends Function>(
+export function setAlias<T extends Function>(
   fn: T, displayName: string){
 
   assign(fn, { displayName });

@@ -1,7 +1,7 @@
 import { GetterInfo, metaData } from './compute';
 import { LOCAL } from './model';
 import { Observer } from './observer';
-import { alias, create, define, defineProperty } from './util';
+import { create, define, defineProperty, setAlias } from './util';
 
 export class Subscriber {
   public active = false;
@@ -37,7 +37,7 @@ export class Subscriber {
       return proxy[key];
     }
 
-    alias(intercept, `tap ${key}`);
+    setAlias(intercept, `tap ${key}`);
     defineProperty(proxy, key, {
       get: intercept,
       set: this.parent.setter(key),

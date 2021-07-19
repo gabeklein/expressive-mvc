@@ -2,7 +2,7 @@ import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import { alias, defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter, name } from './util';
+import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter, name, setAlias } from './util';
 
 export const Oops = issues({
   ComputeFailed: (parent, property, initial) =>
@@ -133,9 +133,9 @@ export function prepareComputed(
     }
   }
 
-  alias(update, `try ${key}`);
-  alias(create, `new ${key}`);
-  alias(getter, `run ${key}`);
+  setAlias(update, `try ${key}`);
+  setAlias(create, `new ${key}`);
+  setAlias(getter, `run ${key}`);
 
   ComputedInit.add(create);
 
