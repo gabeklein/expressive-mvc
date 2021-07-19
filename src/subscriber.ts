@@ -17,34 +17,30 @@ export class Subscriber {
     public parent: Observer,
     public onUpdate: Callback){
 
-    this.proxy = create(parent.subject);
+    const proxy = this.proxy =
+      create(parent.subject);
 
-    define(this.proxy, LOCAL, this);
+    define(proxy, LOCAL, this);
 
-    for(const key in parent.state)
-      this.spy(key);
-  }
+    for(const key in parent.state){
+      const intercept = () => {
+        this.follow(key);
+        delete proxy[key];
+        return proxy[key];
+      }
 
-  public spy(key: string){
-    const { proxy } = this;
-
-    const intercept = () => {
-      this.follow(key, this.onUpdate);
-      delete proxy[key];
-      return proxy[key];
+      setAlias(intercept, `tap ${key}`);
+      defineProperty(proxy, key, {
+        get: intercept,
+        set: this.parent.setter(key),
+        configurable: true,
+        enumerable: true
+      })
     }
-
-    setAlias(intercept, `tap ${key}`);
-    defineProperty(proxy, key, {
-      get: intercept,
-      set: this.parent.setter(key),
-      configurable: true,
-      enumerable: true
-    })
   }
 
-  public follow(key: string, cb: Callback){
-    this.follows[key] = cb;
+  public follow(key: string, cb?: Callback){
+    this.follows[key] = cb || this.onUpdate;
   }
 
   public listen = () => {
