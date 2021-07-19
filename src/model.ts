@@ -6,13 +6,12 @@ import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hook
 import { Subscriber } from './subscriber';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
-
 export const CONTROL = Symbol("controller");
-export const LOCAL = Symbol("current_subscriber");
+export const CURRENT = Symbol("subscriber");
 
 export interface Stateful {
-  [CONTROL]: Controller
-  [LOCAL]?: Subscriber;
+  [CONTROL]: Controller;
+  [CURRENT]?: Subscriber;
 };
 
 export interface Model extends Public, Stateful {};
