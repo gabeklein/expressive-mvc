@@ -42,7 +42,7 @@ export function use<T extends typeof Model>
           .ensure(instance)
           .subscribe(sub.callback);
 
-        child.info = sub.info;
+        child.meta = sub.meta;
 
         if(sub.active)
           child.listen();

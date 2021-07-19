@@ -7,7 +7,7 @@ export class Subscriber {
   public active = false;
   public following = {} as BunchOf<Callback>;
   public proxy: any;
-  public info?: GetterInfo;
+  public meta?: GetterInfo;
   public dependant = new Set<{
     listen(): void;
     release(): void;
@@ -47,8 +47,8 @@ export class Subscriber {
   }
 
   public follow(key: string, cb: Callback){
-    if(this.info)
-      metaData(cb, this.info);
+    if(this.meta)
+      metaData(cb, this.meta);
 
     this.following[key] = cb;
   }
