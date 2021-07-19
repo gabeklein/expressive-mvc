@@ -40,9 +40,7 @@ export function use<T extends typeof Model>
       function subscribe(){
         const child = Controller
           .ensure(instance)
-          .subscribe(sub.callback);
-
-        child.meta = sub.meta;
+          .subscribe(sub.onUpdate);
 
         if(sub.active)
           child.listen();
@@ -66,7 +64,7 @@ export function use<T extends typeof Model>
         if(instance)
           subscribe();
 
-        sub.callback();
+        sub.onUpdate();
       });
     }
 

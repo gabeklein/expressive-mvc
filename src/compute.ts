@@ -98,9 +98,7 @@ export function prepareComputed(
   }
 
   function create(early?: boolean){
-    sub = on.subscribe(update);
-
-    sub.meta = info;
+    sub = on.subscribe(update, info);
 
     defineProperty(state, key, {
       value: undefined,
@@ -124,7 +122,7 @@ export function prepareComputed(
     finally {
       sub.listen();
 
-      for(const key in sub.following){
+      for(const key in sub.follows){
         const compute = defined.get(key);
 
         if(compute && compute.priority >= info.priority)

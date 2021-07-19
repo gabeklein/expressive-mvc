@@ -1,4 +1,3 @@
-import { GetterInfo, metaData } from './compute';
 import { LOCAL } from './model';
 import { Observer } from './observer';
 import { create, define, defineProperty, setAlias } from './util';
@@ -10,23 +9,19 @@ type Listener = {
 
 export class Subscriber {
   public proxy: any;
-  public meta?: GetterInfo;
-
   public active = false;
-  public following = {} as BunchOf<Callback>;
+  public follows = {} as BunchOf<Callback>;
   public dependant = new Set<Listener>();
 
   constructor(
     public parent: Observer,
-    public callback: Callback){
+    public onUpdate: Callback){
 
-    const { state, subject } = parent;
-
-    this.proxy = create(subject);
+    this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
 
-    for(const key in state)
+    for(const key in parent.state)
       this.spy(key);
   }
 
@@ -34,7 +29,7 @@ export class Subscriber {
     const { proxy } = this;
 
     const intercept = () => {
-      this.follow(key, this.callback);
+      this.follow(key, this.onUpdate);
       delete proxy[key];
       return proxy[key];
     }
@@ -49,22 +44,19 @@ export class Subscriber {
   }
 
   public follow(key: string, cb: Callback){
-    if(this.meta)
-      metaData(cb, this.meta);
-
-    this.following[key] = cb;
+    this.follows[key] = cb;
   }
 
   public listen = () => {
     this.active = true;
     this.dependant.forEach(x => x.listen());
-    this.parent.listeners.add(this.following);
+    this.parent.listeners.add(this.follows);
 
     return () => this.release();
   }
 
   public release(){
     this.dependant.forEach(x => x.release());
-    this.parent.listeners.delete(this.following);
+    this.parent.listeners.delete(this.follows);
   }
 }

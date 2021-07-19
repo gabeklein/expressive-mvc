@@ -1,4 +1,4 @@
-import { computeContext, ensureValue, implementGetters } from './compute';
+import { computeContext, ensureValue, implementGetters, metaData } from './compute';
 import { Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { createEffect, defineProperty, entriesIn, fn } from './util';
@@ -14,8 +14,13 @@ export class Observer {
     implementGetters(this);
   }
 
-  public subscribe(cb: Callback){
-    return new Subscriber(this, cb)
+  public subscribe(cb: Callback, meta?: any){
+    const sub = new Subscriber(this, cb);
+
+    if(meta)
+      metaData(cb, meta);
+
+    return sub;
   }
 
   public start(){
