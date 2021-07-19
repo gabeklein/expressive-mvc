@@ -8,10 +8,12 @@ import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
 export const CONTROL = Symbol("controller");
 export const CURRENT = Symbol("subscriber");
+export const STATE = Symbol("state");
 
 export interface Stateful {
   [CONTROL]: Controller;
   [CURRENT]?: Subscriber;
+  [STATE]?: any;
 };
 
 export interface Model extends Public, Stateful {};
@@ -35,6 +37,8 @@ export class Model {
     defineLazy(this, CONTROL, () => {
       delete (control as any).do;
       control.start();
+
+      this[STATE] = control.state;
 
       if(this.didCreate)
         this.didCreate();
@@ -62,6 +66,10 @@ export class Model {
     if(this.willDestroy)
       this.willDestroy();
   }
+
+  static STATE = STATE;
+  static CONTROL = CONTROL;
+  static CURRENT = CURRENT;
 
   static [CONTROL]: Controller;
 

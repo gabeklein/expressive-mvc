@@ -95,6 +95,10 @@ export namespace Model {
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
 }
 
+declare const CONTROL: unique symbol;
+declare const CURRENT: unique symbol;
+declare const STATE: unique symbol;
+
 export interface Model extends Controller, Lifecycle {}
 
 export abstract class Model {
@@ -203,6 +207,24 @@ export abstract class Model {
       * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
       */
     tag(idFactory: (idFactory: this) => Key | void): this;
+
+    /** Controller of this instance. */
+    [CONTROL]: Controller;
+
+    /** Current state of this instance. */
+    [STATE]?: Model.State<this>;
+
+    /** Current subscriber (if present) while used in a watch context (i.e. hook). */
+    [CURRENT]?: any;
+
+    /** Key for current state of model instance. */
+    static STATE: typeof STATE;
+
+    /** Key for controller of model instance. */
+    static CONTROL: typeof CONTROL;
+
+    /** Key for subscriber of current instance in a watched context (i.e. hook). */
+    static CURRENT: typeof CURRENT;
 
     /**
      * Creates a new instance of this controller.

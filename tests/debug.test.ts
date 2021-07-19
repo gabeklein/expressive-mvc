@@ -81,3 +81,43 @@ describe("requestUpdate method", () => {
     await expect(update).resolves.toMatchObject(["bar", "baz"]);
   })
 })
+
+describe("Model", () => {
+  class FooBar extends Model {
+    foo = "foo";
+    bar = "bar";
+  }
+
+  it("will expose symbols", () => {
+    expect(Model.STATE).toBeDefined()
+    expect(Model.CONTROL).toBeDefined()
+    expect(Model.CURRENT).toBeDefined()
+  })
+
+  it("will expose instance controller", () => {
+    const instance = FooBar.create();
+    const controller = instance[Model.CONTROL];
+
+    // control and instance share same helper functions
+    expect(controller.on).toStrictEqual(instance.on);
+  })
+
+  it("will expose instance state", () => {
+    const instance = FooBar.create();
+    const exported = instance.export();
+    const state = instance[Model.STATE];
+
+    expect(state).toMatchObject(exported);
+  })
+
+  it("will expose subscriber within listener", () => {
+    const instance = FooBar.create();
+
+    expect(instance[Model.CURRENT]).toBeUndefined();
+
+    instance.effect(local => {
+      expect(local[Model.CONTROL]).toBe(instance[Model.CONTROL]);
+      expect(local[Model.CURRENT]).toBeDefined();
+    })
+  })
+})
