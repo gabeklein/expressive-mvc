@@ -17,9 +17,8 @@ export const Oops = issues({
 export function use<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  type Cache = { proxy?: any };
-
   return set((on: Controller, key) => {
+    const proxy = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
     function update(current: InstanceOf<T>){
@@ -34,7 +33,7 @@ export function use<T extends typeof Model>
       }
     }
 
-    function setup(sub: Subscriber, cached: Cache){
+    function setup(sub: Subscriber){
       const { dependant } = sub;
       let reset: Callback | undefined;
 
@@ -49,10 +48,11 @@ export function use<T extends typeof Model>
           child.listen();
 
         dependant.add(child);
+        proxy.set(sub, child.proxy);
 
-        cached.proxy = child.proxy;
         reset = () => {
           child.release();
+          proxy.set(sub, undefined);
           dependant.delete(child);
           reset = undefined;
         }
@@ -73,14 +73,14 @@ export function use<T extends typeof Model>
     update(instance);
     on.register(key, instance, update);
 
-    return (current: Subscriber, cache: Cache) => {
+    return (current: Subscriber) => {
       if(!current)
         return instance;
 
-      if(!("proxy" in cache))
-        setup(current, cache);
+      if(!proxy.has(current))
+        setup(current);
 
-      return cache.proxy;
+      return proxy.get(current);
     }
   })
 }

@@ -14,6 +14,7 @@ import {
   getOwnPropertyNames,
   selectRecursive,
 } from './util';
+import { Subscriber } from './subscriber';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -39,39 +40,27 @@ export function setup(
   let describe = using(on, key);
 
   if(fn(describe)){
-    const get = localGetter(describe, new Map());
-    const current = getOwnPropertyDescriptor(on.subject, key);
+    const handle = describe as (sub: Subscriber | undefined) => any;
+    const current = getOwnPropertyDescriptor(on.subject, key) || {};
 
-     describe = assign({}, current, { get });
+    describe = assign(current, {
+      get(this: Stateful){
+        return handle(this[LOCAL]);
+      }
+    });
   }
 
   if(describe)
     defineProperty(on.subject, key, describe);
 }
 
-function localGetter(
-  getter: (within: any, cache: any) => any,
-  cache: Map<any, any>){
-
-  return function(this: Stateful){
-    const sub = this[LOCAL];
-    let local = cache.get(sub);
-
-    if(!local)
-      cache.set(sub, local = {});
-
-    return getter(sub, local);
-  }
-}
-
-
 export class Controller extends Observer {
   static ensure(from: Stateful){
     return from[CONTROL];
   }
 
-  public do(fn: () => Callback){
-    return fn();
+  public do(fun: () => Callback){
+    return fun();
   }
 
   public add(

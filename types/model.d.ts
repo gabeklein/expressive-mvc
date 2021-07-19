@@ -24,7 +24,7 @@ export namespace Model {
      * Optional returned callback will run when once upon first access.
     */
     type Instruction<T> = (on: any, key: string) =>
-        void | ((within: any, cache: any) => T) | PropertyDescriptor<T>;
+        void | ((within: any) => T) | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
