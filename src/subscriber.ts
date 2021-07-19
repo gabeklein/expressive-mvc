@@ -3,15 +3,18 @@ import { LOCAL } from './model';
 import { Observer } from './observer';
 import { create, define, defineProperty, setAlias } from './util';
 
+type Listener = {
+  listen(): void;
+  release(): void;
+}
+
 export class Subscriber {
-  public active = false;
-  public following = {} as BunchOf<Callback>;
   public proxy: any;
   public meta?: GetterInfo;
-  public dependant = new Set<{
-    listen(): void;
-    release(): void;
-  }>();
+
+  public active = false;
+  public following = {} as BunchOf<Callback>;
+  public dependant = new Set<Listener>();
 
   constructor(
     public parent: Observer,
@@ -28,12 +31,11 @@ export class Subscriber {
   }
 
   public spy(key: string){
-    const { proxy } = this as any;
+    const { proxy } = this;
 
     const intercept = () => {
-      delete proxy[key];
       this.follow(key, this.callback);
-
+      delete proxy[key];
       return proxy[key];
     }
 
