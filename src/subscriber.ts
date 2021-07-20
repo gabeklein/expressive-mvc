@@ -1,4 +1,4 @@
-import { CURRENT } from './model';
+import { LOCAL } from './model';
 import { Observer } from './observer';
 import { create, define, defineProperty, setAlias } from './util';
 
@@ -20,7 +20,7 @@ export class Subscriber {
     const proxy = this.proxy =
       create(parent.subject);
 
-    define(proxy, CURRENT, this);
+    define(proxy, LOCAL, this);
 
     for(const key in parent.state){
       const intercept = () => {

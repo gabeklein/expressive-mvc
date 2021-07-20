@@ -7,12 +7,12 @@ import { Subscriber } from './subscriber';
 import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
 
 export const CONTROL = Symbol("controller");
-export const CURRENT = Symbol("subscriber");
+export const LOCAL = Symbol("subscriber");
 export const STATE = Symbol("state");
 
 export interface Stateful {
   [CONTROL]: Controller;
-  [CURRENT]?: Subscriber;
+  [LOCAL]?: Subscriber;
   [STATE]?: any;
 };
 
@@ -69,7 +69,7 @@ export class Model {
 
   static STATE = STATE;
   static CONTROL = CONTROL;
-  static CURRENT = CURRENT;
+  static LOCAL = LOCAL;
 
   static [CONTROL]: Controller;
 

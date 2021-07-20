@@ -89,9 +89,9 @@ describe("Model", () => {
   }
 
   it("will expose symbols", () => {
-    expect(Model.STATE).toBeDefined()
     expect(Model.CONTROL).toBeDefined()
-    expect(Model.CURRENT).toBeDefined()
+    expect(Model.STATE).toBeDefined()
+    expect(Model.LOCAL).toBeDefined()
   })
 
   it("will expose instance controller", () => {
@@ -113,11 +113,11 @@ describe("Model", () => {
   it("will expose subscriber within listener", () => {
     const instance = FooBar.create();
 
-    expect(instance[Model.CURRENT]).toBeUndefined();
+    expect(instance[Model.LOCAL]).toBeUndefined();
 
     instance.effect(local => {
       expect(local[Model.CONTROL]).toBe(instance[Model.CONTROL]);
-      expect(local[Model.CURRENT]).toBeDefined();
+      expect(local[Model.LOCAL]).toBeDefined();
     })
   })
 })

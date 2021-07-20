@@ -2,7 +2,7 @@ import type Public from '../types';
 
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
-import { CONTROL, CURRENT, Stateful } from './model';
+import { CONTROL, LOCAL, Stateful } from './model';
 import { Observer } from './observer';
 import {
   assign,
@@ -45,7 +45,7 @@ export function setup(
 
     describe = assign(current, {
       get(this: Stateful){
-        return handle(this[CURRENT]);
+        return handle(this[LOCAL]);
       }
     });
   }

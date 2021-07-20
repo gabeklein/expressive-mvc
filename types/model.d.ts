@@ -96,7 +96,7 @@ export namespace Model {
 }
 
 declare const CONTROL: unique symbol;
-declare const CURRENT: unique symbol;
+declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
 export interface Model extends Controller, Lifecycle {}
@@ -215,16 +215,16 @@ export abstract class Model {
     [STATE]?: Model.State<this>;
 
     /** Current subscriber (if present) while used in a watch context (i.e. hook). */
-    [CURRENT]?: any;
-
-    /** Key for current state of model instance. */
-    static STATE: typeof STATE;
+    [LOCAL]?: any;
 
     /** Key for controller of model instance. */
     static CONTROL: typeof CONTROL;
 
+    /** Key for current state of model instance. */
+    static STATE: typeof STATE;
+
     /** Key for subscriber of current instance in a watched context (i.e. hook). */
-    static CURRENT: typeof CURRENT;
+    static LOCAL: typeof LOCAL;
 
     /**
      * Creates a new instance of this controller.
