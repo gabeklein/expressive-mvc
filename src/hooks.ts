@@ -165,9 +165,10 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    instance.on(Component.WILL_UNMOUNT, () => {
-      instance.destroy();
-    });
+    instance.on(
+      Component.WILL_UNMOUNT, 
+      () => instance.destroy()
+    );
 
     return sub;
   });
