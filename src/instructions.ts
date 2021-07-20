@@ -61,27 +61,24 @@ export function lazy(value: any){
   })
 }
 
-type AsyncFn<T = any> = (...args: any[]) => Promise<T>;
-
-export function act(does: AsyncFn){
+export function act(task: Async){
   return set((on, key) => {
     let pending = false;
 
-    function invoke(...args: any[]){
+    async function invoke(...args: any[]){
+      const run = async () =>
+        task.apply(on.subject, args);
+
       if(pending)
-        return Promise.reject(
-          Oops.DuplicateAction(key)
-        )
+        throw Oops.DuplicateAction(key);
 
       pending = true;
       on.update(key);
 
-      return does
-        .apply(on.subject, args)
-        .finally(() => {
-          pending = false;
-          on.update(key);
-        })
+      return run().finally(() => {
+        pending = false;
+        on.update(key);
+      })
     };
 
     setAlias(invoke, `run ${key}`);

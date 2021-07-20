@@ -4,6 +4,7 @@ type ValuesOf<T> = T[keyof T];
 type Key = string | symbol | number;
 type KeyFactory<T> = (target: T) => Key | undefined;
 
+type Async<T = any> = (...args: any[]) => Promise<T>;
 type Class = new (...args: any[]) => any;
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
