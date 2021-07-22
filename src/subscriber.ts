@@ -44,15 +44,17 @@ export class Subscriber {
   }
 
   public commit = () => {
+    const { dependant, follows, parent } = this;
+    const onDone = parent.addListener(follows);
+
     this.active = true;
-    this.dependant.forEach(x => x.commit());
-    this.parent.listeners.add(this.follows);
+    dependant.forEach(x => x.commit());
 
-    return () => this.release();
+    return this.release = () => {
+      dependant.forEach(x => x.release());
+      onDone();
+    }
   }
 
-  public release(){
-    this.dependant.forEach(x => x.release());
-    this.parent.listeners.delete(this.follows);
-  }
+  public release!: Callback;
 }

@@ -86,6 +86,7 @@ export class Observer {
     once?: boolean){
 
     const keys = ([] as string[]).concat(target);
+    const batch: BunchOf<RequestCallback> = {};
 
     const callback = squash
       ? handler.bind(this.subject)
@@ -95,26 +96,27 @@ export class Observer {
             handler.call(this.subject, this.state[key], key);
       }
 
-    return this.addListener(keys, callback, once);
-  }
+    const handle = once
+      ? (k?: string[]) => { remove(); callback(k) }
+      : callback;
 
-  public addListener(
-    keys: Iterable<string>,
-    callback: RequestCallback,
-    once?: boolean){
-
-    const remove = () => { this.listeners.delete(listener) };
-    const handler = once ? (k?: string[]) => { remove(); callback(k) } : callback;
-    const listener: BunchOf<RequestCallback> = {};
+    const remove = this.addListener(batch);
 
     for(const key of keys){
       ensureValue(this.subject, key);
-      listener[key] = handler;
+      batch[key] = handle;
     }
 
-    this.listeners.add(listener);
-
     return remove;
+  }
+
+  public addListener(
+    batch: BunchOf<RequestCallback>){
+
+    this.listeners.add(batch);
+    return () => {
+      this.listeners.delete(batch)
+    }
   }
 
   public update(key: string){
@@ -122,25 +124,16 @@ export class Observer {
   }
 
   public emit(frame?: string[]){
-    const current = this.waiting;
-
-    this.waiting = [];
-    this.pending = undefined;
-
-    for(const handle of current)
+    for(const handle of this.waiting.splice(0))
       try { handle(frame) }
-      catch(e){
-        /* we can't have nice things */
-      }
+      catch(e){}
   }
 
   public sync(){
     const handled = new Set<string>();
 
-    const {
-      queue: queueComputed,
-      flush: flushComputed
-    } = computeContext(this, handled);
+    const computed =
+      computeContext(this, handled);
 
     const include = (key: string) => {
       if(handled.has(key))
@@ -152,7 +145,7 @@ export class Observer {
         if(key in subscription){
           const request = subscription[key];
 
-          if(queueComputed(request))
+          if(computed.queue(request))
             continue;
 
           this.waiting.push(request);
@@ -160,7 +153,8 @@ export class Observer {
     }
 
     const close = () => {
-      flushComputed();
+      computed.flush();
+      this.pending = undefined;
       this.emit(Array.from(handled));
     }
 
