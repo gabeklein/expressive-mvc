@@ -3,7 +3,7 @@ import { Observer } from './observer';
 import { create, define, defineProperty, setAlias } from './util';
 
 type Listener = {
-  listen(): void;
+  commit(): void;
   release(): void;
 }
 
@@ -43,9 +43,9 @@ export class Subscriber {
     this.follows[key] = cb || this.onUpdate;
   }
 
-  public listen = () => {
+  public commit = () => {
     this.active = true;
-    this.dependant.forEach(x => x.listen());
+    this.dependant.forEach(x => x.commit());
     this.parent.listeners.add(this.follows);
 
     return () => this.release();

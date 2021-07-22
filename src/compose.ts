@@ -43,7 +43,7 @@ export function use<T extends typeof Model>
           .subscribe(sub.onUpdate);
 
         if(sub.active)
-          child.listen();
+          child.commit();
 
         dependant.add(child);
         proxy.set(sub, child.proxy);

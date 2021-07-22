@@ -120,7 +120,7 @@ export function prepareComputed(
       throw e;
     }
     finally {
-      sub.listen();
+      sub.commit();
 
       for(const key in sub.follows){
         const compute = defined.get(key);

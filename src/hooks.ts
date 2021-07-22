@@ -45,12 +45,12 @@ class Hook extends Subscriber {
     )
 
     useLayoutEffect(() => {
-      const done = this.listen();
+      this.commit();
       this.at(Component.DID_MOUNT);
 
       return () => {
         this.at(Component.WILL_UNMOUNT);
-        done();
+        this.release();
       }
     })
   }
@@ -129,7 +129,7 @@ export function useWatcher(
     return sub;
   });
 
-  useLayoutEffect(hook.listen, []);
+  useLayoutEffect(hook.commit, []);
 
   return hook.proxy;
 }

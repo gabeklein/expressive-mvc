@@ -142,7 +142,7 @@ export class Controller extends Observer {
     return this.do(() => {
       const sub = this.subscribe(invoke);
       effect(target = sub.proxy);
-      return sub.listen();
+      return sub.commit();
     });
   }
 
