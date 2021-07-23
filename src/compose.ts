@@ -87,16 +87,16 @@ export function parent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
   return set(({ subject }) => {
-    const expectsType = Expects.name;
-    const onType = name(subject);
+    const child = name(subject);
+    const expected = Expects.name;
     const parent = ParentRelationship.get(subject);
 
     if(!parent){
       if(required)
-        throw Oops.ParentRequired(expectsType, onType);
+        throw Oops.ParentRequired(expected, child);
     }
     else if(!(parent instanceof Expects))
-      throw Oops.UnexpectedParent(expectsType, onType, name(parent));
+      throw Oops.UnexpectedParent(expected, child, name(parent));
 
     return { value: parent };
   })

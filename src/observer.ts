@@ -31,7 +31,7 @@ export class Observer {
   }
 
   public add(key: string, desc: PropertyDescriptor){
-    if("value" in desc && desc.enumerable)
+    if(desc.enumerable && "value" in desc)
       if(!fn(desc.value) || /^[A-Z]/.test(key))
         this.manage(key, desc.value);
   }
@@ -41,11 +41,13 @@ export class Observer {
     initial: any,
     effect?: EffectCallback<any, any>){
 
-    this.state[key] = initial;
-    defineProperty(this.subject, key, {
+    const { state, subject } = this;
+
+    state[key] = initial;
+    defineProperty(subject, key, {
       enumerable: true,
       configurable: true,
-      get: () => this.state[key],
+      get: () => state[key],
       set: this.sets(key, effect)
     });
   }
@@ -76,25 +78,25 @@ export class Observer {
     squash?: boolean,
     once?: boolean){
 
+    const { state, subject } = this;
     const keys = ([] as string[]).concat(target);
     const batch: BunchOf<RequestCallback> = {};
 
     const callback = squash
-      ? handler.bind(this.subject)
+      ? handler.bind(subject)
       : (frame: string[]) => {
         for(const key of frame)
           if(keys.includes(key))
-            handler.call(this.subject, this.state[key], key);
+            handler.call(subject, state[key], key);
       }
 
+    const remove = this.addListener(batch);
     const handle = once
       ? (k?: string[]) => { remove(); callback(k) }
       : callback;
 
-    const remove = this.addListener(batch);
-
     for(const key of keys){
-      ensureValue(this.subject, key);
+      ensureValue(subject, key);
       batch[key] = handle;
     }
 
@@ -125,9 +127,7 @@ export class Observer {
 
   public sync(){
     const handled = new Set<string>();
-
-    const computed =
-      computeContext(this, handled);
+    const computed = computeContext(this, handled);
 
     const include = (key: string) => {
       if(handled.has(key))
