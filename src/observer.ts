@@ -44,7 +44,7 @@ export class Observer {
     this.state[key] = initial;
     this.override(key, {
       get: () => this.state[key],
-      set: this.setter(key, effect)
+      set: this.sets(key, effect)
     });
   }
 
@@ -59,7 +59,7 @@ export class Observer {
     });
   }
 
-  public setter(
+  public sets(
     key: string,
     effect?: EffectCallback<any, any>){
 

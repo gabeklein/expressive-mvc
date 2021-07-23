@@ -32,7 +32,7 @@ export class Subscriber {
       setAlias(intercept, `tap ${key}`);
       defineProperty(proxy, key, {
         get: intercept,
-        set: this.parent.setter(key),
+        set: parent.sets(key),
         configurable: true,
         enumerable: true
       })

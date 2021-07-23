@@ -13,7 +13,7 @@ export function ref<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
   return set((on, key) => {
-    const refObjectFunction = on.setter(key, effect);
+    const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
       set: refObjectFunction,
