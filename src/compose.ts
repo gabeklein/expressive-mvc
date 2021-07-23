@@ -69,7 +69,7 @@ export function use<T extends typeof Model>
     }
 
     update(instance);
-    on.register(key, instance, update);
+    on.manage(key, instance, update);
 
     return (current: Subscriber) => {
       if(!current)

@@ -35,7 +35,7 @@ export function on<T = any>
       value = undefined;
     }
 
-    on.register(key, value, effect);
+    on.manage(key, value, effect);
   })
 }
 

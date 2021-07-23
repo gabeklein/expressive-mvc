@@ -33,10 +33,10 @@ export class Observer {
   public add(key: string, desc: PropertyDescriptor){
     if("value" in desc && desc.enumerable)
       if(!fn(desc.value) || /^[A-Z]/.test(key))
-        this.register(key, desc.value);
+        this.manage(key, desc.value);
   }
 
-  public register(
+  public manage(
     key: string,
     initial: any,
     effect?: EffectCallback<any, any>){
