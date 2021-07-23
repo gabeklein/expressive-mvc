@@ -54,17 +54,17 @@ export class Observer {
     key: string,
     effect?: EffectCallback<any, any>){
 
-    const callback =
-      effect && createEffect(effect);
+    const { state, subject } = this;
+    const callback = effect && createEffect(effect);
 
     return (value: any) => {
-      if(this.state[key] == value)
+      if(state[key] == value)
         return;
 
-      this.state[key] = value;
+      state[key] = value;
 
       if(callback)
-        callback(value, this.subject);
+        callback(value, subject);
 
       this.update(key);
     }
