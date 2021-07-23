@@ -42,20 +42,11 @@ export class Observer {
     effect?: EffectCallback<any, any>){
 
     this.state[key] = initial;
-    this.override(key, {
-      get: () => this.state[key],
-      set: this.sets(key, effect)
-    });
-  }
-
-  public override(
-    key: string,
-    desc: PropertyDescriptor){
-
     defineProperty(this.subject, key, {
       enumerable: true,
       configurable: true,
-      ...desc
+      get: () => this.state[key],
+      set: this.sets(key, effect)
     });
   }
 

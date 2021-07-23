@@ -105,10 +105,12 @@ export function prepareComputed(
       writable: true
     })
 
-    on.override(key, {
+    defineProperty(subject, key, {
+      enumerable: true,
+      configurable: true,
       get: () => state[key],
       set: setter
-    })
+    });
 
     try {
       return state[key] = compute(true);
