@@ -7,7 +7,6 @@ import { Observer } from './observer';
 import {
   assign,
   createEffect,
-  debounce,
   defineProperty,
   fn,
   getOwnPropertyDescriptor,
@@ -115,7 +114,7 @@ export class Controller extends Observer {
     
     let target = this.subject;
     const effect = createEffect(callback);
-    const invoke = debounce(() => effect(target));
+    const invoke = () => effect(target);
 
     if(select)
       return this.watch(select, invoke, true);

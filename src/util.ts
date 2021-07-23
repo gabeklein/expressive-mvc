@@ -67,20 +67,6 @@ export function entriesIn(object: {}){
   return entries(getOwnPropertyDescriptors(object))
 }
 
-export function debounce(callback: Callback){
-  let throttle: undefined | boolean;
-
-  return () => {
-    if(!throttle){
-      throttle = true;
-      callback();
-      setTimeout(() => {
-        throttle = false;
-      }, 0)
-    }
-  }
-}
-
 export function createEffect(
   callback: EffectCallback<any>){
 

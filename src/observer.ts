@@ -115,8 +115,11 @@ export class Observer {
   }
 
   public emit(frame?: string[]){
-    for(const handle of this.waiting.splice(0))
-      try { handle(frame) }
+    const effects = this.waiting.splice(0);
+    const unique = new Set(effects);
+
+    for(const callback of unique)
+      try { callback(frame) }
       catch(e){}
   }
 
