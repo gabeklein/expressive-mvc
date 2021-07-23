@@ -107,12 +107,3 @@ export function selectRecursive(
 
   return Array.from(found);
 }
-
-export function insertAfter<T>(
-  into: T[],
-  item: T,
-  predicate: (item: T) => boolean){
-
-  const matchIndex = into.findIndex(predicate);
-  into.splice(matchIndex + 1, 0, item);
-}

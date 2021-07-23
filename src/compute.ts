@@ -2,7 +2,7 @@ import { issues } from './issues';
 import { Model } from './model';
 import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, insertAfter, name, setAlias } from './util';
+import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, name, setAlias } from './util';
 
 export const Oops = issues({
   ComputeFailed: (parent, property, initial) =>
@@ -175,7 +175,7 @@ export function computeContext(
     if(compute.parent !== parent)
       request();
     else
-      insertAfter(pending, request,
+      interject(request, pending,
         sib => compute.priority > metaData(sib).priority
       )
 
@@ -193,4 +193,11 @@ export function computeContext(
   }
 
   return { queue, flush };
+}
+
+function interject<T>(
+  item: T, into: T[], after: (item: T) => boolean){
+
+  const matchIndex = into.findIndex(after);
+  into.splice(matchIndex + 1, 0, item);
 }
