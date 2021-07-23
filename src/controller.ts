@@ -73,34 +73,15 @@ export class Controller extends Observer {
       super.add(key, desc);
   }
 
-  public select(
-    using?: string | Iterable<string> | Query){
-
-    const keys = getOwnPropertyNames(this.state);
-
-    if(!using)
-      return keys;
-
-    if(typeof using == "string")
-      return [ using ];
-
-    if(fn(using))
-      return selectRecursive(using,
-        keys.concat(lifecycleEvents)
-      );
-
-    return Array.from(using);
-  }
-
   public watch(
-    target: string | Iterable<string> | Query,
+    selection: string | Iterable<string> | Query,
     handler: any,
     squash?: boolean,
     once?: boolean){
 
     return this.do(() =>
       super.watch(
-        this.select(target),
+        select(this.state, selection),
         handler, squash, once
       )
     );
@@ -148,31 +129,28 @@ export class Controller extends Observer {
 
   public import = (
     from: BunchOf<any>,
-    select?: Iterable<string> | Query) => {
+    selection?: Iterable<string> | Query) => {
 
-    const keys = this.select(select);
-
-    for(const key of keys)
+    for(const key of select(this.state, selection))
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
 
   public export = (
-    select?: Iterable<string> | Query) => {
+    selection?: Iterable<string> | Query) => {
 
-    const keys = this.select(select);
     const data = {} as BunchOf<any>;
 
-    for(const key of keys)
+    for(const key of select(this.state, selection))
       data[key] = (this.state as any)[key];
 
     return data;
   }
 
   public update = (
-    select: string | string[] | Query) => {
+    selection: string | string[] | Query) => {
 
-    for(const key of this.select(select))
+    for(const key of select(this.state, selection))
       super.update(key);
   }
 
@@ -190,4 +168,24 @@ export class Controller extends Observer {
     else
       return Promise.resolve(false);
   }
+}
+
+function select(
+  from: {},
+  using?: string | Iterable<string> | Query){
+
+  if(typeof using == "string")
+    return [ using ];
+
+  const keys = getOwnPropertyNames(from);
+
+  if(!using)
+    return keys;
+
+  if(fn(using))
+    return selectRecursive(using,
+      keys.concat(lifecycleEvents)
+    );
+
+  return Array.from(using);
 }
