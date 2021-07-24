@@ -1,4 +1,4 @@
-import { Pending, setup } from "./instructions";
+import { runInstruction } from "./instructions";
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { CONTROL, Stateful } from './model';
@@ -19,14 +19,8 @@ export class Controller extends Observer {
     return fun();
   }
 
-  public add(
-    key: string,
-    desc: PropertyDescriptor){
-
-    if(Pending.has(desc.value))
-      setup(key, this, desc.value);
-    else
-      super.add(key, desc);
+  public add(key: string, handle?: Observer.Handle){
+    super.add(key, handle || runInstruction);
   }
 
   public on = (

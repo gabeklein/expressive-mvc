@@ -1,7 +1,12 @@
 import { computeContext, ensureValue, implementGetters, metaData } from './compute';
 import { Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { createEffect, defineProperty, entriesIn, fn } from './util';
+import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames } from './util';
+
+export namespace Observer {
+  export type Handle =
+    (on: Observer, key: string, value: any) => boolean | void;
+}
 
 export class Observer {
   public state = {} as BunchOf<any>;
@@ -24,16 +29,27 @@ export class Observer {
   }
 
   public start(){
-    for(const [key, desc] of entriesIn(this.subject))
-      this.add(key, desc);
+    for(const key of getOwnPropertyNames(this.subject))
+      this.add(key);
 
     this.emit();
   }
 
-  public add(key: string, desc: PropertyDescriptor){
-    if(desc.enumerable && "value" in desc)
-      if(!fn(desc.value) || /^[A-Z]/.test(key))
-        this.manage(key, desc.value);
+  public add(
+    key: string,
+    handle?: Observer.Handle){
+
+    const desc = getOwnPropertyDescriptor(this.subject, key);
+
+    if(desc && "value" in desc){
+      const { value, enumerable } = desc;
+
+      if(handle && handle(this, key, value))
+        return;
+
+      if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+        this.manage(key, value);
+    }
   }
 
   public manage(

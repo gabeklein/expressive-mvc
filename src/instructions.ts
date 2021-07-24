@@ -1,9 +1,9 @@
 import type Public from '../types';
 
 import { prepareComputed } from './compute';
-import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
+import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { assign, define, defineLazy, defineProperty, fn, getOwnPropertyDescriptor, setAlias } from './util';
 
@@ -21,18 +21,22 @@ export function set(
   return instruction as any;
 }
 
-export function setup(
-  key: string,
-  on: Controller,
-  using: Public.Instruction<any>){
+export function runInstruction(
+  on: Observer, key: string, value: any){
 
-  delete (on.subject as any)[key];
+  if(!Pending.has(value))
+    return;
+
+  const target = on.subject as any;
+  const using = value as Public.Instruction<any>;
+
+  delete (target as any)[key];
 
   let describe = using(on, key);
 
   if(fn(describe)){
     const handle = describe as (sub: Subscriber | undefined) => any;
-    const current = getOwnPropertyDescriptor(on.subject, key) || {};
+    const current = getOwnPropertyDescriptor(target, key) || {};
 
     describe = assign(current, {
       get(this: Stateful){
@@ -42,7 +46,9 @@ export function setup(
   }
 
   if(describe)
-    defineProperty(on.subject, key, describe);
+    defineProperty(target, key, describe);
+
+  return true;
 }
 
 export function ref<T = any>
