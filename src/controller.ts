@@ -72,27 +72,17 @@ export class Controller extends Observer {
       super.add(key, desc);
   }
 
-  public watch(
-    selection: string | Iterable<string> | Query,
-    handler: any,
-    squash?: boolean,
-    once?: boolean){
-
-    return this.do(() =>
-      super.watch(
-        keys(this, selection),
-        handler, squash, once
-      )
-    );
-  }
-
   public on = (
     select: string | Iterable<string> | Query,
     listener: UpdateCallback<any, any>,
     squash?: boolean,
     once?: boolean) => {
 
-    return this.watch(select, listener, squash, once)
+    return this.do(() =>
+      this.watch(
+        keys(this, select), listener, squash, once
+      )
+    );
   }
 
   public once = (
@@ -101,10 +91,10 @@ export class Controller extends Observer {
     squash?: boolean) => {
 
     if(listener)
-      return this.watch(select, listener, squash, true);
+      return this.on(select, listener, squash, true);
     else 
       return new Promise<void>(resolve => {
-        this.watch(select, resolve, true, true);
+        this.on(select, resolve, true, true);
       });
   }
 
@@ -117,7 +107,7 @@ export class Controller extends Observer {
     const invoke = () => effect(target);
 
     if(select)
-      return this.watch(select, invoke, true);
+      return this.on(select, invoke, true);
 
     return this.do(() => {
       const sub = this.subscribe(invoke);
