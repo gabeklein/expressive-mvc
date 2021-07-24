@@ -31,7 +31,7 @@ export class Controller extends Observer {
 
     return this.do(() =>
       this.watch(
-        keys(this, select), listener, squash, once
+        selection(this, select), listener, squash, once
       )
     );
   }
@@ -71,7 +71,7 @@ export class Controller extends Observer {
     from: BunchOf<any>,
     select?: Iterable<string> | Query) => {
 
-    for(const key of keys(this, select))
+    for(const key of selection(this, select))
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
@@ -81,7 +81,7 @@ export class Controller extends Observer {
 
     const data = {} as BunchOf<any>;
 
-    for(const key of keys(this, select))
+    for(const key of selection(this, select))
       data[key] = (this.state as any)[key];
 
     return data;
@@ -90,7 +90,7 @@ export class Controller extends Observer {
   public update = (
     select: string | string[] | Query) => {
 
-    for(const key of keys(this, select))
+    for(const key of selection(this, select))
       super.update(key);
   }
 
@@ -110,7 +110,7 @@ export class Controller extends Observer {
   }
 }
 
-function keys(
+function selection(
   on: Controller,
   using?: string | Iterable<string> | Query){
 
