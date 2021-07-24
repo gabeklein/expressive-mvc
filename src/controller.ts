@@ -80,7 +80,7 @@ export class Controller extends Observer {
 
     return this.do(() =>
       super.watch(
-        select(this.state, selection),
+        keys(this, selection),
         handler, squash, once
       )
     );
@@ -128,28 +128,28 @@ export class Controller extends Observer {
 
   public import = (
     from: BunchOf<any>,
-    selection?: Iterable<string> | Query) => {
+    select?: Iterable<string> | Query) => {
 
-    for(const key of select(this.state, selection))
+    for(const key of keys(this, select))
       if(key in from)
         (this.subject as any)[key] = from[key];
   }
 
   public export = (
-    selection?: Iterable<string> | Query) => {
+    select?: Iterable<string> | Query) => {
 
     const data = {} as BunchOf<any>;
 
-    for(const key of select(this.state, selection))
+    for(const key of keys(this, select))
       data[key] = (this.state as any)[key];
 
     return data;
   }
 
   public update = (
-    selection: string | string[] | Query) => {
+    select: string | string[] | Query) => {
 
-    for(const key of select(this.state, selection))
+    for(const key of keys(this, select))
       super.update(key);
   }
 
@@ -169,14 +169,14 @@ export class Controller extends Observer {
   }
 }
 
-function select(
-  from: {},
+function keys(
+  on: Controller,
   using?: string | Iterable<string> | Query){
 
   if(typeof using == "string")
     return [ using ];
 
-  const keys = getOwnPropertyNames(from);
+  const keys = getOwnPropertyNames(on.state);
 
   if(!using)
     return keys;
