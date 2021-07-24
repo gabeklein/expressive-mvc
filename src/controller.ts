@@ -1,57 +1,14 @@
-import type Public from '../types';
-
+import { Pending, setup } from "./instructions";
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
-import { CONTROL, LOCAL, Stateful } from './model';
+import { CONTROL, Stateful } from './model';
 import { Observer } from './observer';
-import {
-  assign,
-  createEffect,
-  defineProperty,
-  fn,
-  getOwnPropertyDescriptor,
-  getOwnPropertyNames,
-  selectRecursive,
-} from './util';
-import { Subscriber } from './subscriber';
+import { createEffect, fn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
     `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
 })
-
-const Pending = new WeakSet<Function>();
-
-export function set(
-  instruction: Public.Instruction<any>){
-
-  Pending.add(instruction);
-  return instruction as any;
-}
-
-export function setup(
-  key: string,
-  on: Controller,
-  using: Public.Instruction<any>){
-
-  delete (on.subject as any)[key];
-
-  let describe = using(on, key);
-
-  if(fn(describe)){
-    const handle = describe as (sub: Subscriber | undefined) => any;
-    const current = getOwnPropertyDescriptor(on.subject, key) || {};
-
-    describe = assign(current, {
-      get(this: Stateful){
-        return handle(this[LOCAL]);
-      }
-    });
-  }
-
-  if(describe)
-    defineProperty(on.subject, key, describe);
-}
 
 export class Controller extends Observer {
   static ensure(from: Stateful){

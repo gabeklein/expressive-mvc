@@ -1,5 +1,5 @@
 import { useLookup } from './context';
-import { set } from './controller';
+import { set } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';

@@ -1,13 +1,49 @@
+import type Public from '../types';
+
 import { prepareComputed } from './compute';
-import { set } from './controller';
+import { Controller } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
-import { define, defineLazy, defineProperty, setAlias } from './util';
+import { LOCAL, Model, Stateful } from './model';
+import { Subscriber } from './subscriber';
+import { assign, define, defineLazy, defineProperty, fn, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
 })
+
+export const Pending = new WeakSet<Function>();
+
+export function set(
+  instruction: Public.Instruction<any>){
+
+  Pending.add(instruction);
+  return instruction as any;
+}
+
+export function setup(
+  key: string,
+  on: Controller,
+  using: Public.Instruction<any>){
+
+  delete (on.subject as any)[key];
+
+  let describe = using(on, key);
+
+  if(fn(describe)){
+    const handle = describe as (sub: Subscriber | undefined) => any;
+    const current = getOwnPropertyDescriptor(on.subject, key) || {};
+
+    describe = assign(current, {
+      get(this: Stateful){
+        return handle(this[LOCAL]);
+      }
+    });
+  }
+
+  if(describe)
+    defineProperty(on.subject, key, describe);
+}
 
 export function ref<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
