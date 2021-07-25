@@ -1,4 +1,4 @@
-import { computeContext, ensureValue, implementGetters, metaData } from './compute';
+import { computeContext, ComputedInfo, ensureValue, implementGetters } from './compute';
 import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { CONTROL, Stateful } from './model';
@@ -33,7 +33,7 @@ export class Controller {
     const sub = new Subscriber(this, cb);
 
     if(meta)
-      metaData(cb, meta);
+      ComputedInfo.set(cb, meta);
 
     return sub;
   }

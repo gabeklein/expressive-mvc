@@ -19,17 +19,9 @@ export type GetterInfo = {
 }
 
 const ComputedInit = new WeakSet<Function>();
-const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
 
-export function metaData(x: Function): GetterInfo;
-export function metaData(x: Function, set: GetterInfo): void;
-export function metaData(x: Function, set?: GetterInfo){
-  if(set)
-    ComputedInfo.set(x, set);
-  else
-    return ComputedInfo.get(x);
-}
+export const ComputedInfo = new WeakMap<Function, GetterInfo>();
 
 export function implementGetters(on: Controller){
   let scan = on.subject;
@@ -53,9 +45,7 @@ export function prepareComputed(
   let defined = ComputedFor.get(on)!;
   
   if(!defined)
-    ComputedFor.set(on,
-      defined = new Map()
-    );
+    ComputedFor.set(on, defined = new Map());
 
   if(defined.has(key))
     return;
@@ -167,7 +157,7 @@ export function computeContext(
   const pending = [] as Callback[];
 
   function queue(request: RequestCallback){
-    const compute = metaData(request);
+    const compute = ComputedInfo.get(request);
 
     if(!compute)
       return false;
@@ -175,9 +165,9 @@ export function computeContext(
     if(compute.parent !== parent)
       request();
     else
-      interject(request, pending,
-        sib => compute.priority > metaData(sib).priority
-      )
+      interject(request, pending, (sib) =>
+        compute.priority > ComputedInfo.get(sib)!.priority
+      );
 
     return true;
   }
@@ -185,7 +175,7 @@ export function computeContext(
   function flush(){
     while(pending.length){
       const compute = pending.shift()!;
-      const { key } = metaData(compute);
+      const { key } = ComputedInfo.get(compute)!;
 
       if(!handled.has(key))
         compute();
