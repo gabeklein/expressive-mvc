@@ -1,29 +1,36 @@
-import type Public from '../types';
-
 import { useFromContext } from './context';
-import { Controller } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
+import { issues } from './issues';
+import { Observer } from './observer';
 import { Subscriber } from './subscriber';
-import { define, defineLazy, entries, fn, getPrototypeOf } from './util';
+import { createEffect, define, defineLazy, fn, getPrototypeOf } from './util';
 
 export const CONTROL = Symbol("controller");
-export const LOCAL = Symbol("subscriber");
+export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
+export const Oops = issues({
+  StrictUpdate: (expected) => 
+    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
+})
+
 export interface Stateful {
-  [CONTROL]: Controller;
+  [CONTROL]: Observer;
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 };
 
-export interface Model extends Public, Stateful {};
+export interface Model extends Stateful {
+  get: this;
+  set: this;
+
+  didCreate?: Callback;
+  willDestroy?: Callback;
+};
+
 export class Model {
   constructor(){
-    const control = new Controller(this);
-
-    for(const [key, value] of entries(control))
-      if(fn(value))
-        define(this, key, value);
+    const control = new Observer(this);
 
     control.do = (fn: () => Callback) => {
       let release: Callback;
@@ -47,19 +54,104 @@ export class Model {
     })
   }
 
-  tap(): this;
-  tap <K extends keyof this> (key: K, expect?: boolean): this[K];
-  tap <K extends keyof this> (key: K, expect: true): Exclude<this[K], undefined>;
-  tap <K extends Select> (key: K, expect?: boolean): ReturnType<K>;
-  tap <K extends Select> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
   tap(path?: string | Select, expect?: boolean){
     return useWatcher(this, path, expect);
   }
 
-  tag(id?: Key): this;
-  tag(id: KeyFactory<this>): this;
   tag(id?: Key | KeyFactory<this>){
-    return useSubscriber(this, id) as this;
+    return useSubscriber(this, id);
+  }
+
+  on(
+    select: string | Iterable<string> | Query,
+    listener: UpdateCallback<any, any>,
+    squash?: boolean,
+    once?: boolean){
+
+    const control = this[CONTROL];
+
+    return control.do(() => {
+      return control.watch(
+        control.keys(select), listener, squash, once
+      )
+    });
+  }
+
+  once(
+    select: string | Iterable<string> | Query,
+    listener?: UpdateCallback<any, any>,
+    squash?: boolean){
+
+    if(listener)
+      return this.on(select, listener, squash, true);
+    else 
+      return new Promise<void>(resolve => {
+        this.on(select, resolve, true, true);
+      });
+  }
+
+  effect(
+    callback: EffectCallback<any>,
+    select?: string[] | Query){
+
+    const control = this[CONTROL];
+    let target = control.subject;
+
+    const effect = createEffect(callback);
+    const invoke = () => effect(target);
+    const start = select
+      ? () => {
+        invoke();
+        return this.on(select, invoke, true);
+      }
+      : () => {
+        const sub = control.subscribe(invoke);
+        effect(target = sub.proxy);
+        return sub.commit();
+      }
+
+    return control.do(start);
+  }
+
+  import(
+    from: BunchOf<any>,
+    select?: Iterable<string> | Query){
+
+    const control = this[CONTROL];
+
+    for(const key of control.keys(select))
+      if(key in from)
+        (control.subject as any)[key] = from[key];
+  }
+
+  export(select?: Iterable<string> | Query){
+    const control = this[CONTROL];
+    const output: BunchOf<any> = {};
+
+    for(const key of control.keys(select))
+      output[key] = (control.state as any)[key];
+
+    return output;
+  }
+
+  update(select: string | string[] | Query){
+    const control = this[CONTROL];
+
+    for(const key of control.keys(select))
+      control.update(key);
+  }
+
+  requestUpdate(arg?: RequestCallback | boolean){
+    const { pending, waiting } = this[CONTROL];
+
+    if(fn(arg))
+      waiting.push(arg)
+    else if(!pending === arg)
+      return Promise.reject(Oops.StrictUpdate(arg))
+    else if(pending)
+      return new Promise(cb => waiting.push(cb));
+    else
+      return Promise.resolve(false);
   }
 
   destroy(){
@@ -71,7 +163,7 @@ export class Model {
   static CONTROL = CONTROL;
   static LOCAL = LOCAL;
 
-  static [CONTROL]: Controller;
+  static [CONTROL]: Observer;
 
   static create<T extends typeof Model>(
     this: T, ...args: any[]){
@@ -79,7 +171,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Controller.ensure(instance);
+    Observer.ensure(instance);
 
     return instance;
   }
@@ -130,8 +222,7 @@ export class Model {
     this: T, maybe: any): maybe is T {
 
     return (
-      fn(maybe) && 
-      maybe.prototype instanceof this
+      fn(maybe) && maybe.prototype instanceof this
     )
   }
 
@@ -144,7 +235,5 @@ export class Model {
 }
 
 defineLazy(Model, CONTROL, function(){
-  const control = new Controller(this);
-  control.start();
-  return control;
+  return new Observer(this).start();
 })

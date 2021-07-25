@@ -1,7 +1,9 @@
 import { computeContext, ensureValue, implementGetters, metaData } from './compute';
-import { Stateful } from './model';
+import { Stateful, CONTROL } from './model';
 import { Subscriber } from './subscriber';
-import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames } from './util';
+import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { runInstruction } from './instructions';
+import { lifecycleEvents } from './lifecycle';
 
 export namespace Observer {
   export type Handle =
@@ -9,14 +11,22 @@ export namespace Observer {
 }
 
 export class Observer {
+  static ensure(from: Stateful){
+    return from[CONTROL];
+  }
+
   public state = {} as BunchOf<any>;
-  public listeners = new Set<BunchOf<RequestCallback>>();
+  public handles = new Set<BunchOf<RequestCallback>>();
   public waiting = [] as RequestCallback[];
 
   public pending?: (key: string) => void;
 
   constructor(public subject: Stateful){
     implementGetters(this);
+  }
+
+  public do(fun: () => Callback){
+    return fun();
   }
 
   public subscribe(cb: Callback, meta?: any){
@@ -29,22 +39,43 @@ export class Observer {
   }
 
   public start(){
-    for(const key of getOwnPropertyNames(this.subject))
-      this.add(key);
+    getOwnPropertyNames(this.subject)
+      .forEach(k => this.add(k));
 
     this.emit();
+
+    return this;
+  }
+
+  public keys(
+    using?: string | Iterable<string> | Query){
+
+    if(typeof using == "string")
+      return [ using ];
+
+    const keys = getOwnPropertyNames(this.state);
+
+    if(!using)
+      return keys;
+
+    if(fn(using))
+      return selectRecursive(using, [
+        ...keys, ...lifecycleEvents
+      ]);
+
+    return Array.from(using);
   }
 
   public add(
     key: string,
-    handle?: Observer.Handle){
+    handle = runInstruction){
 
     const desc = getOwnPropertyDescriptor(this.subject, key);
 
     if(desc && "value" in desc){
       const { value, enumerable } = desc;
 
-      if(handle && handle(this, key, value))
+      if(handle(this, key, value))
         return;
 
       if(enumerable && !fn(value) || /^[A-Z]/.test(key))
@@ -122,9 +153,9 @@ export class Observer {
   public addListener(
     batch: BunchOf<RequestCallback>){
 
-    this.listeners.add(batch);
+    this.handles.add(batch);
     return () => {
-      this.listeners.delete(batch)
+      this.handles.delete(batch)
     }
   }
 
@@ -151,7 +182,7 @@ export class Observer {
 
       handled.add(key);
 
-      for(const subscription of this.listeners)
+      for(const subscription of this.handles)
         if(key in subscription){
           const request = subscription[key];
 

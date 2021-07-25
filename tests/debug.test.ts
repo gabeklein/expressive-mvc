@@ -1,4 +1,4 @@
-import { Oops } from "../src/controller";
+import { Oops } from "../src/model";
 import { Model } from "./adapter";
 
 describe("requestUpdate method", () => {
@@ -98,8 +98,7 @@ describe("Model", () => {
     const instance = FooBar.create();
     const controller = instance[Model.CONTROL];
 
-    // control and instance share same helper functions
-    expect(controller.on).toStrictEqual(instance.on);
+    expect(controller).toBeDefined();
   })
 
   it("will expose instance state", () => {
