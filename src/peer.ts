@@ -1,4 +1,5 @@
 import { useLookup } from './context';
+import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
@@ -23,7 +24,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
 export function tap<T extends Peer>
   (type: T, required?: boolean): InstanceOf<T> {
 
-  return set(({ subject }, key) => {
+  function peerController({ subject }: Controller, key: string){
     const Self = subject.constructor.name;
 
     if("current" in type)
@@ -45,7 +46,9 @@ export function tap<T extends Peer>
         define(subject, key, remote);
       });
     }
-  })
+  }
+
+  return set(peerController, "tap");
 }
 
 export function usePeers(subject: Model){

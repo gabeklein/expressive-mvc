@@ -57,7 +57,7 @@ export function runInstruction
 export function ref<T = any>
   (effect?: EffectCallback<Model, any>): { current: T } {
 
-  return set((on, key) => {
+  function refProperty(on: Controller, key: string){
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -65,49 +65,59 @@ export function ref<T = any>
       get: () => on.state[key]
     })
 
-    return {
-      value: refObjectFunction
-    };
-  })
+    return { value: refObjectFunction };
+  }
+
+  return set(refProperty, "ref");
 }
 
 export function on<T = any>
   (value: any, effect?: EffectCallback<Model, T>): T {
 
-  return set((on, key) => {
+  function watchProperty(on: Controller, key: string){
     if(!effect){
       effect = value;
       value = undefined;
     }
 
     on.manage(key, value, effect);
-  })
+  }
+
+  return set(watchProperty, "on");
 }
 
 export function memo
   (factory: () => any, defer?: boolean){
 
-  return set(({ subject }, key) => {
-    const get = () => factory.call(subject);
+  function memoized(on: Controller, key: string){
+    const get = () => factory.call(on.subject);
 
     if(defer)
-      defineLazy(subject, key, get);
+      defineLazy(on.subject, key, get);
     else
-      define(subject, key, get())
-  }) 
+      define(on.subject, key, get())
+  }
+
+  return set(memoized, "memo");
+
+
 }
 
 export function lazy(value: any){
-  return set(({ state, subject }, key) => {
+  function lazyValue(on: Controller, key: string){
+    const { state, subject } = on as any;
+
     subject[key] = value;
     defineProperty(state, key, {
       get: () => subject[key]
     });
-  })
+  }
+
+  return set(lazyValue, "lazy");
 }
 
 export function act(task: Async){
-  return set((on, key) => {
+  function asyncFunction(on: Controller, key: string){
     let pending = false;
 
     async function invoke(...args: any[]){
@@ -135,11 +145,15 @@ export function act(task: Async){
       value: invoke,
       writable: false
     };
-  })
+  }
+
+  return set(asyncFunction, "act");
 }
 
 export function from(fn: (on?: Model) => any){
-  return set((on, key) => {
+  function computedProperty(on: Controller, key: string){
     prepareComputed(on, key, fn);
-  })
+  }
+
+  return set(computedProperty, "from");
 }

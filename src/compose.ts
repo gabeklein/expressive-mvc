@@ -18,7 +18,7 @@ export const Oops = issues({
 export function use<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return set((on: Controller, key) => {
+  function childController(on: Controller, key: string){
     const proxy = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
@@ -81,24 +81,28 @@ export function use<T extends typeof Model>
 
       return proxy.get(current);
     }
-  })
+  }
+
+  return set(childController, "use");
 }
 
 export function parent<T extends typeof Model>
   (Expects: T, required?: boolean): InstanceOf<T> {
 
-  return set(({ subject }) => {
-    const child = name(subject);
-    const expected = Expects.name;
-    const parent = ParentRelationship.get(subject);
-
-    if(!parent){
-      if(required)
-        throw Oops.ParentRequired(expected, child);
+  function parentController(on: Controller){
+      const child = name(on.subject);
+      const expected = Expects.name;
+      const parent = ParentRelationship.get(on.subject);
+  
+      if(!parent){
+        if(required)
+          throw Oops.ParentRequired(expected, child);
+      }
+      else if(!(parent instanceof Expects))
+        throw Oops.UnexpectedParent(expected, child, name(parent));
+  
+      return { value: parent };
     }
-    else if(!(parent instanceof Expects))
-      throw Oops.UnexpectedParent(expected, child, name(parent));
-
-    return { value: parent };
-  })
+    
+  return set(parentController, "parent");
 }
