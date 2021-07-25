@@ -1,7 +1,7 @@
 import { useFromContext } from './context';
+import { Controller } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
-import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, fn, getPrototypeOf } from './util';
 
@@ -15,7 +15,7 @@ export const Oops = issues({
 })
 
 export interface Stateful {
-  [CONTROL]: Observer;
+  [CONTROL]: Controller;
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 };
@@ -30,7 +30,7 @@ export interface Model extends Stateful {
 
 export class Model {
   constructor(){
-    const control = new Observer(this);
+    const control = new Controller(this);
 
     control.do = (fn: () => Callback) => {
       let release: Callback;
@@ -163,7 +163,7 @@ export class Model {
   static CONTROL = CONTROL;
   static LOCAL = LOCAL;
 
-  static [CONTROL]: Observer;
+  static [CONTROL]: Controller;
 
   static create<T extends typeof Model>(
     this: T, ...args: any[]){
@@ -171,7 +171,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Observer.ensure(instance);
+    Controller.ensure(instance);
 
     return instance;
   }
@@ -235,5 +235,5 @@ export class Model {
 }
 
 defineLazy(Model, CONTROL, function(){
-  return new Observer(this).start();
+  return new Controller(this).start();
 })

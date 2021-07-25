@@ -1,6 +1,6 @@
+import { Controller } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, name, setAlias } from './util';
 
@@ -14,13 +14,13 @@ export const Oops = issues({
 
 export type GetterInfo = {
   key: string;
-  parent: Observer;
+  parent: Controller;
   priority: number;
 }
 
 const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
-const ComputedFor = new WeakMap<Observer, Map<string, GetterInfo>>();
+const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
 
 export function metaData(x: Function): GetterInfo;
 export function metaData(x: Function, set: GetterInfo): void;
@@ -31,7 +31,7 @@ export function metaData(x: Function, set?: GetterInfo){
     return ComputedInfo.get(x);
 }
 
-export function implementGetters(on: Observer){
+export function implementGetters(on: Controller){
   let scan = on.subject;
 
   while(scan !== Model && scan.constructor !== Model){
@@ -44,7 +44,7 @@ export function implementGetters(on: Observer){
 }
 
 export function prepareComputed(
-  on: Observer,
+  on: Controller,
   key: string,
   getter: (on?: any) => any,
   setter?: (to: any) => void){
@@ -161,7 +161,7 @@ export function ensureValue(from: {}, key: string){
 }
 
 export function computeContext(
-  parent: Observer,
+  parent: Controller,
   handled: Set<string>){
 
   const pending = [] as Callback[];

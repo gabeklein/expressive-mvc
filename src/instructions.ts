@@ -1,11 +1,11 @@
-import type Public from '../types';
-
 import { prepareComputed } from './compute';
+import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
-import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { assign, define, defineLazy, defineProperty, fn, getOwnPropertyDescriptor, setAlias } from './util';
+
+import type Public from '../types';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -22,7 +22,7 @@ export function set(
 }
 
 export function runInstruction(
-  on: Observer, key: string, value: any){
+  on: Controller, key: string, value: any){
 
   if(!Pending.has(value))
     return;

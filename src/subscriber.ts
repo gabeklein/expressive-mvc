@@ -1,5 +1,5 @@
+import { Controller } from './controller';
 import { LOCAL } from './model';
-import { Observer } from './observer';
 import { create, define, defineProperty, setAlias } from './util';
 
 type Listener = {
@@ -14,7 +14,7 @@ export class Subscriber {
   public dependant = new Set<Listener>();
 
   constructor(
-    public parent: Observer,
+    public parent: Controller,
     public onUpdate: Callback){
 
     const proxy = this.proxy =

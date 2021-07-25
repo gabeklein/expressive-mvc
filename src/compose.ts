@@ -1,7 +1,7 @@
+import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
-import { Observer } from './observer';
 import { Subscriber } from './subscriber';
 import { name } from './util';
 
@@ -18,7 +18,7 @@ export const Oops = issues({
 export function use<T extends typeof Model>
   (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  return set((on: Observer, key) => {
+  return set((on: Controller, key) => {
     const proxy = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
@@ -27,7 +27,7 @@ export function use<T extends typeof Model>
 
       if(current){
         ParentRelationship.set(instance, on.subject);
-        Observer.ensure(instance);
+        Controller.ensure(instance);
     
         if(callback)
           callback(instance);
@@ -39,7 +39,7 @@ export function use<T extends typeof Model>
       let reset: Callback | undefined;
 
       function setup(){
-        const child = Observer
+        const child = Controller
           .ensure(instance)
           .subscribe(sub.onUpdate);
 

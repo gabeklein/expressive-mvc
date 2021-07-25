@@ -1,16 +1,16 @@
 import { computeContext, ensureValue, implementGetters, metaData } from './compute';
-import { Stateful, CONTROL } from './model';
-import { Subscriber } from './subscriber';
-import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
+import { CONTROL, Stateful } from './model';
+import { Subscriber } from './subscriber';
+import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
-export namespace Observer {
+export namespace Controller {
   export type Handle =
-    (on: Observer, key: string, value: any) => boolean | void;
+    (on: Controller, key: string, value: any) => boolean | void;
 }
 
-export class Observer {
+export class Controller {
   static ensure(from: Stateful){
     return from[CONTROL];
   }
