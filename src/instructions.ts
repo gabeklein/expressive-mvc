@@ -12,24 +12,27 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-export const Pending = new WeakSet<Function>();
+export const Pending = new Map<symbol, Public.Instruction<any>>();
 
 export function set(
-  instruction: Public.Instruction<any>){
+  instruction: Public.Instruction<any>,
+  name = "pending"){
 
-  Pending.add(instruction);
-  return instruction as any;
+  const placeholder = Symbol(`${name} instruction`);
+  Pending.set(placeholder, instruction);
+  return placeholder as any;
 }
 
-export function runInstruction(
-  on: Controller, key: string, value: any){
+export function runInstruction
+  (on: Controller, key: string, value: any){
 
   if(!Pending.has(value))
     return;
 
   const target = on.subject as any;
-  const using = value as Public.Instruction<any>;
+  const using = Pending.get(value)!;
 
+  Pending.delete(value);
   delete (target as any)[key];
 
   let describe = using(on, key);

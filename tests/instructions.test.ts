@@ -372,7 +372,24 @@ describe("set", () => {
     property = set((_on, key) => {
       this.didRunInstruction(key);
     })
+
+    keyedInstruction = set(() => {}, "foo");
   }
+
+  it("will use symbol as placeholder", () => {
+    const { property } = new Test();
+    const { description } = property as any;
+
+    expect(typeof property).toBe("symbol");
+    expect(description).toBe("pending instruction");
+  })
+
+  it("will give placeholder custom name", () => {
+    const { keyedInstruction } = new Test();
+    const { description } = keyedInstruction as any;
+
+    expect(description).toBe("foo instruction");
+  })
 
   it("will run instruction on create", () => {
     const { didRunInstruction: ran } = Test.create();
