@@ -34,11 +34,11 @@ export function use<T extends typeof Model>
       }
     }
 
-    function setup(sub: Subscriber){
+    function init(sub: Subscriber){
       const { dependant } = sub;
       let reset: Callback | undefined;
 
-      function subscribe(){
+      function setup(){
         const child = Controller
           .ensure(instance)
           .subscribe(sub.onUpdate);
@@ -57,13 +57,13 @@ export function use<T extends typeof Model>
         }
       }
 
-      subscribe();
+      setup();
       sub.follow(key, () => {
         if(reset)
           reset();
         
         if(instance)
-          subscribe();
+          setup();
 
         sub.onUpdate();
       });
@@ -77,7 +77,7 @@ export function use<T extends typeof Model>
         return instance;
 
       if(!proxy.has(current))
-        setup(current);
+        init(current);
 
       return proxy.get(current);
     }
