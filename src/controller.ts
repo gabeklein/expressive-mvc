@@ -56,15 +56,18 @@ export class Controller extends Observer {
     let target = this.subject;
     const effect = createEffect(callback);
     const invoke = () => effect(target);
+    const start = select
+      ? () => {
+        invoke();
+        return this.on(select, invoke, true);
+      }
+      : () => {
+        const sub = this.subscribe(invoke);
+        effect(target = sub.proxy);
+        return sub.commit();
+      }
 
-    if(select)
-      return this.on(select, invoke, true);
-
-    return this.do(() => {
-      const sub = this.subscribe(invoke);
-      effect(target = sub.proxy);
-      return sub.commit();
-    });
+    return this.do(start);
   }
 
   public import = (

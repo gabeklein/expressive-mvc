@@ -192,7 +192,7 @@ describe("effect", () => {
     await state.requestUpdate()
     
     // expect two syncronous groups of updates.
-    expect(mock).toBeCalledTimes(2)
+    expect(mock).toBeCalledTimes(3)
   })
 
   it('will watch values with selector', async () => {
@@ -213,7 +213,7 @@ describe("effect", () => {
     // expect value4, which relies on 3.
     await state.requestUpdate();
     
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledTimes(3);
   })
 
   it('will watch values with subscriber', async () => {
@@ -373,7 +373,7 @@ describe("will accept before ready", () => {
     await state.requestUpdate();
 
     // expect pre-existing listener to hit
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledTimes(3);
   })
 
   it('effect method with selector', async () => {
@@ -397,7 +397,7 @@ describe("will accept before ready", () => {
     await state.requestUpdate();
 
     // expect pre-existing listener to hit
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledTimes(3);
   })
 
   it('effect method with subscriber', async () => {
