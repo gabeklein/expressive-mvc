@@ -38,24 +38,16 @@ class Hook extends Subscriber {
   }
 
   focus(key: string | Select, expect?: boolean){
-    const { proxy, subject } = this;
-
-    if(fn(key)){
-      const available: BunchOf<string> = {};
-
-      for(const key in subject)
-        available[key] = key;
-
-      key = key(available);
-    }
+    const { proxy, subject, parent } = this;
+    const [ select ] = parent.keys(key);
 
     defineProperty(this, "proxy", {
       get(){
-        const value = proxy[key as string];
+        const value = proxy[select];
 
         if(expect && value === undefined)
           throw Oops.HasPropertyUndefined(
-            name(subject), key as string
+            name(subject), select
           );
 
         return value;
@@ -64,11 +56,11 @@ class Hook extends Subscriber {
   }
 }
 
-function useManaged<T>(
+function use<T>(
   init: (trigger: Callback) => T){
 
-  const [ state, update ] = useState((): T[] => [
-    init(() => update(state.concat()))
+  const [ state, forceUpdate ] = useState((): T[] => [
+    init(() => forceUpdate(state.concat()))
   ]);
 
   return state[0];
@@ -120,8 +112,8 @@ export function useWatcher(
   path?: string | Select,
   expected?: boolean){
 
-  const hook = useManaged(update => {
-    const sub = new Hook(target, update);
+  const hook = use(refresh => {
+    const sub = new Hook(target, refresh);
 
     if(path)
       sub.focus(path, expected);
@@ -137,8 +129,8 @@ export function useWatcher(
 export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
-  const hook = useManaged(update => {
-    const sub = new Hook(target, update);
+  const hook = use(refresh => {
+    const sub = new Hook(target, refresh);
 
     sub.alias = subscriberEvent;
     sub.tag = fn(tag) ? tag(target) : tag || 0;
@@ -152,13 +144,13 @@ export function useSubscriber<T extends Stateful>(
 }
 
 export function useModel(
-  Type: typeof Model,
+  Type: Class,
   args: any[], 
   callback?: (instance: Model) => void){
 
-  const hook = useManaged(update => {
-    const instance = Type.create(...args);
-    const sub = new Hook(instance, update);
+  const hook = use(refresh => {
+    const instance: Model = new Type(...args);
+    const sub = new Hook(instance, refresh);
 
     sub.alias = componentEvent;
 
