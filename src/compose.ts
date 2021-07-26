@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
-import { Model } from './model';
+import { Model, CONTROL } from './model';
 import { Subscriber } from './subscriber';
 import { name } from './util';
 
@@ -28,7 +28,7 @@ export function use<T extends typeof Model>
       if(current){
         ParentRelationship.set(instance, on.subject);
         Controller.ensure(instance);
-    
+
         if(callback)
           callback(instance);
       }
@@ -39,9 +39,8 @@ export function use<T extends typeof Model>
       let reset: Callback | undefined;
 
       function setup(){
-        const child = Controller
-          .ensure(instance)
-          .subscribe(sub.onUpdate);
+        const control = instance[CONTROL];
+        const child = control.subscribe(sub.onUpdate);
 
         if(sub.active)
           child.commit();
