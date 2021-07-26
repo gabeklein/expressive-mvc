@@ -28,7 +28,9 @@ export function tap<T extends Peer>
     const Self = subject.constructor.name;
 
     if("current" in type)
-      defineLazy(subject, key, () => (type as typeof Singleton).current);
+      defineLazy(subject, key, () => {
+        return (type as typeof Singleton).current;
+      });
     else if("current" in subject.constructor)
       throw Oops.CantAttachGlobal(Self, type.name);
     else {

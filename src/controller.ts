@@ -25,10 +25,6 @@ export class Controller {
     implementGetters(this);
   }
 
-  public do(fun: () => Callback){
-    return fun();
-  }
-
   public subscribe(cb: Callback, meta?: any){
     const sub = new Subscriber(this, cb);
 

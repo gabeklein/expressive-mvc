@@ -32,17 +32,16 @@ export class Model {
   constructor(){
     const control = new Controller(this);
 
-    control.do = (fn: () => Callback) => {
-      let release: Callback;
-      this.requestUpdate(() => release = fn());
-      return () => release();
-    }
+    defer(control, "on");
+    defer(control, "effect");
 
     define(this, "get", this);
     define(this, "set", this);
 
     defineLazy(this, CONTROL, () => {
-      delete (control as any).do;
+      delete (this as any).on;
+      delete (this as any).effect;
+
       control.start();
 
       this[STATE] = control.state;
@@ -70,11 +69,9 @@ export class Model {
 
     const control = this[CONTROL];
 
-    return control.do(() => {
-      return control.watch(
-        control.keys(select), listener, squash, once
-      )
-    });
+    return control.watch(
+      control.keys(select), listener, squash, once
+    )
   }
 
   once(
@@ -99,18 +96,16 @@ export class Model {
 
     const effect = createEffect(callback);
     const invoke = () => effect(target);
-    const start = select
-      ? () => {
-        invoke();
-        return this.on(select, invoke, true);
-      }
-      : () => {
-        const sub = control.subscribe(invoke);
-        effect(target = sub.proxy);
-        return sub.commit();
-      }
 
-    return control.do(start);
+    if(select){
+      invoke();
+      return this.on(select, invoke, true);
+    }
+    else {
+      const sub = control.subscribe(invoke);
+      effect(target = sub.proxy);
+      return sub.commit();
+    }
   }
 
   import(
@@ -237,3 +232,16 @@ export class Model {
 defineLazy(Model, CONTROL, function(){
   return new Controller(this).start();
 })
+
+function defer(on: Controller, method: string){
+  const target: any = on.subject;
+  const real = target[method];
+
+  target[method] = (...args: any[]) => {
+    let release: any;
+    on.waiting.push(() => {
+      release = real.apply(target, args);
+    });
+    return () => release();
+  }
+}
