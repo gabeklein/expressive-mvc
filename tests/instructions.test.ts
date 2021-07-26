@@ -181,11 +181,17 @@ describe("ref", () => {
 describe("act", () => {
   class Test extends Model {
     test = act(this.wait);
+    nope = act(this.fail);
 
     async wait<T>(input?: T){
       return new Promise<T | undefined>(res => {
         setTimeout(() => res(input), 1)
       });
+    }
+
+    async fail(){
+      await new Promise(r => setTimeout(r, 1));
+      throw new Error("Nope");
     }
   }
 
@@ -195,7 +201,7 @@ describe("act", () => {
     const output = control.test(input);
     
     await expect(output).resolves.toBe(input);
-  });
+  })
 
   it("will set active to true for run-duration", async () => {
     const { test } = Test.create();
@@ -209,7 +215,7 @@ describe("act", () => {
 
     expect(output).toBe("foobar");
     expect(test.active).toBe(false);
-  });
+  })
 
   it("will emit method key before/after activity", async () => {
     let update: string[] | false;
@@ -229,7 +235,7 @@ describe("act", () => {
     expect(test.active).toBe(false);
     expect(update).toContain("test");
     expect(output).toBe("foobar");
-  });
+  })
 
   it("will throw immediately if already in-progress", () => {
     const { test } = Test.create();
@@ -237,6 +243,21 @@ describe("act", () => {
 
     test();
     expect(() => test()).rejects.toThrowError(expected);
+  })
+
+  it("will throw and reset if action fails", async () => {
+    const { nope, get } = Test.create();
+
+    expect(nope.active).toBe(false);
+
+    const result = nope();
+
+    await get.requestUpdate(true);
+    expect(nope.active).toBe(true);
+
+    await expect(result).rejects.toThrowError();
+
+    expect(nope.active).toBe(false);
   })
 
   it("will complain if property is redefined", () => {

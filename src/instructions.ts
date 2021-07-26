@@ -120,17 +120,18 @@ export function act(task: Async){
   function asyncFunction(on: Controller, key: string){
     let pending = false;
 
-    async function invoke(...args: any[]){
-      const run = async () =>
-        task.apply(on.subject, args);
-
+    function invoke(...args: any[]){
       if(pending)
-        throw Oops.DuplicateAction(key);
+        return Promise.reject(
+          Oops.DuplicateAction(key)
+        )
 
       pending = true;
       on.update(key);
 
-      return run().finally(() => {
+      return new Promise(res => {
+        res(task.apply(on.subject, args));
+      }).finally(() => {
         pending = false;
         on.update(key);
       })
