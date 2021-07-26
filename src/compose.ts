@@ -39,8 +39,8 @@ export function use<T extends typeof Model>
       let reset: Callback | undefined;
 
       function setup(){
-        const control = instance[CONTROL];
-        const child = control.subscribe(sub.onUpdate);
+        const child =
+          instance[CONTROL].subscribe(sub.onUpdate);
 
         if(sub.active)
           child.commit();
@@ -68,8 +68,8 @@ export function use<T extends typeof Model>
       });
     }
 
-    update(instance);
     on.manage(key, instance, update);
+    update(instance);
 
     return (current: Subscriber) => {
       if(!current)

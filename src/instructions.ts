@@ -99,8 +99,6 @@ export function memo
   }
 
   return set(memoized, "memo");
-
-
 }
 
 export function lazy(value: any){

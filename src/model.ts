@@ -32,19 +32,19 @@ export class Model {
   constructor(){
     const control = new Controller(this);
 
-    defer(control, "on");
-    defer(control, "effect");
-
     define(this, "get", this);
     define(this, "set", this);
+
+    defer(control, "on");
+    defer(control, "effect");
 
     defineLazy(this, CONTROL, () => {
       delete (this as any).on;
       delete (this as any).effect;
 
-      control.start();
-
       this[STATE] = control.state;
+
+      control.start();
 
       if(this.didCreate)
         this.didCreate();
