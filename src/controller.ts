@@ -116,13 +116,13 @@ export class Controller {
   }
 
   public watch(
-    target: string | string[],
+    target: string | Iterable<string> | Query,
     handler: Function,
     squash?: boolean,
     once?: boolean){
 
     const { state, subject } = this;
-    const keys = ([] as string[]).concat(target);
+    const keys = this.keys(target);
     const batch: BunchOf<RequestCallback> = {};
 
     const callback = squash

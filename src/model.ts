@@ -67,10 +67,8 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    const control = this[CONTROL];
-
-    return control.watch(
-      control.keys(select), listener, squash, once
+    return this[CONTROL].watch(
+      select, listener, squash, once
     )
   }
 
