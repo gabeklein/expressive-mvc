@@ -37,24 +37,6 @@ class Hook extends Subscriber {
     }
   }
 
-  useLifecycle(){
-    this.at(Component.WILL_RENDER);
-    this.at(this.active
-      ? Component.WILL_UPDATE
-      : Component.WILL_MOUNT  
-    )
-
-    useLayoutEffect(() => {
-      this.commit();
-      this.at(Component.DID_MOUNT);
-
-      return () => {
-        this.at(Component.WILL_UNMOUNT);
-        this.release();
-      }
-    })
-  }
-
   focus(key: string | Select, expect?: boolean){
     const { proxy, subject } = this;
 
@@ -90,6 +72,24 @@ function useManaged<T>(
   ]);
 
   return state[0];
+}
+
+function useLifecycle(sub: Hook){
+  sub.at(Component.WILL_RENDER);
+  sub.at(sub.active
+    ? Component.WILL_UPDATE
+    : Component.WILL_MOUNT  
+  )
+
+  useLayoutEffect(() => {
+    sub.commit();
+    sub.at(Component.DID_MOUNT);
+
+    return () => {
+      sub.at(Component.WILL_UNMOUNT);
+      sub.release();
+    }
+  })
 }
 
 export function useLazy(
@@ -146,7 +146,7 @@ export function useSubscriber<T extends Stateful>(
     return sub;
   });
 
-  hook.useLifecycle();
+  useLifecycle(hook);
   
   return hook.proxy;
 }
@@ -174,7 +174,7 @@ export function useModel(
   });
 
   usePeers(hook.subject);
-  hook.useLifecycle();
+  useLifecycle(hook);
 
   return hook.proxy;
 }
