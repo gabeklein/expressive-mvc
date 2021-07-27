@@ -278,7 +278,7 @@ describe("update", () => {
   it("will send synthetic event", async () => {
     const test = Test.create();
 
-    test.update(["foo"]);
+    test.update("foo");
     
     const update = await test.requestUpdate(true);
 
