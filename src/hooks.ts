@@ -15,33 +15,6 @@ export const Oops = issues({
 const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
 
-export class Hook extends Subscriber {
-  constructor(
-    public subject: any,
-    callback: Callback
-  ){
-    super(subject[CONTROL], callback);
-  }
-
-  focus(key: string | Select, expect?: boolean){
-    const { proxy, subject, parent } = this;
-    const [ select ] = parent.keys(key);
-
-    defineProperty(this, "proxy", {
-      get(){
-        const value = proxy[select];
-
-        if(expect && value === undefined)
-          throw Oops.HasPropertyUndefined(
-            name(subject), select
-          );
-
-        return value;
-      }
-    })
-  }
-}
-
 function use<T>(init: (trigger: Callback) => T){
   const [ state, forceUpdate ] = useState((): T[] => [
     init(() => forceUpdate(state.concat()))
@@ -76,14 +49,24 @@ export function usePassive<T extends typeof Model>(
 
 export function useWatcher(
   target: Stateful,
-  path?: string | Select,
+  focus?: string | Select,
   expected?: boolean){
 
   const hook = use(refresh => {
-    const sub = new Hook(target, refresh);
+    const sub = new Subscriber(target[CONTROL], refresh);
 
-    if(path)
-      sub.focus(path, expected);
+    if(focus){
+      const [ key ] = sub.parent.keys(focus);
+      const { proxy } = sub;
+  
+      defineProperty(sub, "proxy", {
+        get(){
+          if(expected && proxy[key] === undefined)
+            throw Oops.HasPropertyUndefined(name(target), key);
+  
+          return proxy[key];
+        }
+      })}
 
     return sub;
   });
@@ -97,7 +80,7 @@ export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
   const hook = use(refresh => {
-    return new Hook(target, refresh);
+    return new Subscriber(target[CONTROL], refresh);
   });
 
   useElementLifecycle(hook, tag || 0);
@@ -112,7 +95,7 @@ export function useModel(
 
   const hook = use(refresh => {
     const instance = new Type(...args) as Model;
-    const sub = new Hook(instance, refresh);
+    const sub = new Subscriber(instance[CONTROL], refresh);
 
     if(callback)
       callback(instance);
@@ -125,7 +108,7 @@ export function useModel(
     return sub;
   });
 
-  usePeers(hook.subject);
+  usePeers(hook.parent.subject as Model);
   useComponentLifecycle(hook);
 
   return hook.proxy;
