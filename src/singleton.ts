@@ -9,36 +9,33 @@ export const Oops = issues({
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
-const Register = new WeakMap<typeof Singleton, Singleton>();
+const Active = new WeakMap<typeof Singleton, Singleton>();
 
 export class Singleton extends Model {
   static get current(){
-    return Register.get(this);
+    return Active.get(this);
   }
 
   static create<T extends typeof Model>(
     this: T, ...args: any[]){
 
-    const Type = this as unknown as typeof Singleton;
-    let instance = Register.get(Type);
+    const Type: typeof Singleton = this as any;
 
-    if(instance)
+    if(Active.has(Type))
       throw Oops.GlobalExists(this.name);
 
-    instance = super.create(...args);
+    let instance = super.create(...args);
 
-    Register.set(Type, instance);
+    Active.set(Type, instance);
 
     return instance as InstanceOf<T>;
   }
 
   static find(){
-    const { current } = this;
+    if(this.current)
+      return this.current;
 
-    if(!current)
-      throw Oops.GlobalDoesNotExist(this.name);
-    else
-      return current;
+    throw Oops.GlobalDoesNotExist(this.name);
   }
 
   static reset(){
@@ -48,9 +45,6 @@ export class Singleton extends Model {
 
   destroy(){
     super.destroy();
-
-    Register.delete(
-      this.constructor as typeof Singleton
-    );
+    Active.delete(this.constructor as any);
   }
 }
