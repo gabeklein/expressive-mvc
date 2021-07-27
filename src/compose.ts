@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
-import { Model, CONTROL } from './model';
+import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
 import { name } from './util';
 
@@ -27,7 +27,7 @@ export function use<T extends typeof Model>
 
       if(current){
         ParentRelationship.set(instance, on.subject);
-        Controller.ensure(instance);
+        manage(instance);
 
         if(callback)
           callback(instance);
@@ -40,7 +40,7 @@ export function use<T extends typeof Model>
 
       function setup(){
         const child =
-          instance[CONTROL].subscribe(sub.onUpdate);
+          manage(instance).subscribe(sub.onUpdate);
 
         if(sub.active)
           child.commit();

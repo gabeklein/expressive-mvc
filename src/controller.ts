@@ -1,7 +1,7 @@
 import { computeContext, ComputedInfo, ensureValue, implementGetters } from './compute';
 import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
-import { CONTROL, Stateful } from './model';
+import { Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
@@ -11,10 +11,6 @@ export namespace Controller {
 }
 
 export class Controller {
-  static ensure(from: Stateful){
-    return from[CONTROL];
-  }
-
   public state = {} as BunchOf<any>;
   public handles = new Set<BunchOf<RequestCallback>>();
   public waiting = [] as RequestCallback[];

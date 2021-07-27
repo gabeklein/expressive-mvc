@@ -28,6 +28,10 @@ export interface Model extends Stateful {
   willDestroy?: Callback;
 };
 
+export function manage(src: Stateful){
+  return src[CONTROL];
+}
+
 export class Model {
   constructor(){
     const control = new Controller(this);
@@ -67,7 +71,7 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    return this[CONTROL].watch(
+    return manage(this).watch(
       select, listener, squash, once
     )
   }
@@ -89,7 +93,7 @@ export class Model {
     callback: EffectCallback<any>,
     select?: string[] | Query){
 
-    const control = this[CONTROL];
+    const control = manage(this);
     let target = control.subject;
 
     const effect = createEffect(callback);
@@ -110,7 +114,7 @@ export class Model {
     from: BunchOf<any>,
     select?: Iterable<string> | Query){
 
-    const control = this[CONTROL];
+    const control = manage(this);
 
     for(const key of control.keys(select))
       if(key in from)
@@ -118,7 +122,7 @@ export class Model {
   }
 
   export(select?: Iterable<string> | Query){
-    const control = this[CONTROL];
+    const control = manage(this);
     const output: BunchOf<any> = {};
 
     for(const key of control.keys(select))
@@ -128,14 +132,14 @@ export class Model {
   }
 
   update(select: string | string[] | Query){
-    const control = this[CONTROL];
+    const control = manage(this);
 
     for(const key of control.keys(select))
       control.update(key);
   }
 
   requestUpdate(arg?: RequestCallback | boolean){
-    const { pending, waiting } = this[CONTROL];
+    const { pending, waiting } = manage(this);
 
     if(typeof arg == "function")
       waiting.push(arg)
@@ -164,7 +168,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    Controller.ensure(instance);
+    manage(instance);
 
     return instance;
   }
