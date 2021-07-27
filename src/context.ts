@@ -27,7 +27,6 @@ export const Oops = issues({
 })
 
 const LookupContext = createContext(new Lookup());
-const LookupProvider = LookupContext.Provider;
 
 export function useLookup(){
   return useContext(LookupContext);
@@ -67,33 +66,26 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-interface RenderProviderProps {
-  instance: Model;
-  render: Function
-}
-
-function FunctionProvider(props: RenderProviderProps){
-  return props.render(useWatcher(props.instance));
-}
+const unexpected = (key: string) => key != "of" && key != "children";
 
 function useProviderWith(
   instance: Model,
   props: PropsWithChildren<{ of: Model | typeof Model }>){
 
+  const { of: model, children } = props;
+
   const current = useContext(LookupContext);
-  const [ watch, next ] = useMemo(() => [
-    keys(instance).filter(k => k != "of" && k != "children"),
-    current.push(instance.get)
-  ], [ props.of ]);
+  const [ watch, value ] = useMemo(() => {
+    const stack = current.push(instance.get);
+    const applicable = keys(instance).filter(unexpected);
+    const scanProps = () => instance.import(props, applicable);
 
-  instance.import(props as any, watch);
+    return [scanProps, stack]
+  }, [ model ]);
 
-  let render = props.children;
+  watch();
 
-  if(typeof render == "function")
-    render = createElement(FunctionProvider, { instance, render });
-
-  return createElement(LookupProvider, { value: next }, render);
+  return createElement(Provide, { value, instance, children });
 }
 
 function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
@@ -107,12 +99,28 @@ function DirectProvider(props: PropsWithChildren<{ of: Model }>){
 function MultiProvider(
   props: PropsWithChildren<{ of: Collection }>){
 
+  const { children } = props;
   const current = useContext(LookupContext);
   const value = useMemo(() => current.push(props.of), []);
 
   useLayoutEffect(() => () => value.pop(), []);
 
-  return createElement(LookupProvider, { value }, props.children);
+  return createElement(Provide, { value, children });
+}
+
+interface ProvideProps {
+  value: Lookup;
+  instance?: Model;
+  children: ReactNode | ((instance: any) => ReactNode);
+}
+
+function Provide(props: ProvideProps){
+  let { value, instance, children } = props;
+
+  if(typeof children == "function")
+    children = children(instance && useWatcher(instance));
+
+  return createElement(LookupContext.Provider, { value }, children);
 }
 
 interface ProviderProps {
