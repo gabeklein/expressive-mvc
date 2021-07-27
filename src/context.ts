@@ -13,7 +13,7 @@ import { useWatcher } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
 import { Collection, Lookup } from './register';
-import { fn, keys } from './util';
+import { keys } from './util';
 
 export const Oops = issues({
   NothingInContext: (name) =>
@@ -54,12 +54,12 @@ interface ConsumerProps {
 export function Consumer(props: ConsumerProps){
   const { get, has, children: render, of: Control } = props;
 
-  if(fn(render))
+  if(typeof render == "function")
     return render(Control.tap());
 
   const callback = has || get;
 
-  if(fn(callback))
+  if(typeof callback == "function")
     callback(Control.get(!!has));
   else
     throw Oops.BadConsumerProps()
@@ -90,7 +90,7 @@ function useProviderWith(
 
   let render = props.children;
 
-  if(fn(render))
+  if(typeof render == "function")
     render = createElement(RenderProvider, { instance, render });
 
   return createElement(LookupProvider, { value: next }, render);

@@ -5,7 +5,7 @@ import { Lifecycle, lifecycle } from './lifecycle';
 import { CONTROL, Model, Stateful } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { defineProperty, fn, name } from './util';
+import { defineProperty, name } from './util';
 
 export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
@@ -39,7 +39,7 @@ export function usePassive<T extends typeof Model>(
   const instance: any = target.find(!!select);
 
   return (
-    fn(select) ?
+    typeof select == "function" ?
       select(instance) :
     typeof select == "string" ?
       instance[select] :

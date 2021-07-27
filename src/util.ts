@@ -53,14 +53,10 @@ export function defineLazy<T>(
   });
 }
 
-export function fn(x: any): x is Function {
-  return typeof x == "function";
-}
-
 export function setAlias<T extends Function>(
-  fn: T, displayName: string){
+  func: T, displayName: string){
 
-  assign(fn, { displayName });
+  assign(func, { displayName });
 }
 
 export function entriesIn(object: {}){
@@ -79,7 +75,7 @@ export function createEffect(
     if(unSet instanceof Promise)
       unSet = undefined;
 
-    if(unSet && !fn(unSet))
+    if(unSet && typeof unSet !== "function")
       throw Oops.BadEffectCallback()
   }
 }

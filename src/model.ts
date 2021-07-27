@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
-import { createEffect, define, defineLazy, fn, getPrototypeOf } from './util';
+import { createEffect, define, defineLazy, getPrototypeOf } from './util';
 
 export const CONTROL = Symbol("controller");
 export const LOCAL = Symbol("local");
@@ -137,7 +137,7 @@ export class Model {
   requestUpdate(arg?: RequestCallback | boolean){
     const { pending, waiting } = this[CONTROL];
 
-    if(fn(arg))
+    if(typeof arg == "function")
       waiting.push(arg)
     else if(!pending === arg)
       return Promise.reject(Oops.StrictUpdate(arg))
@@ -215,7 +215,8 @@ export class Model {
     this: T, maybe: any): maybe is T {
 
     return (
-      fn(maybe) && maybe.prototype instanceof this
+      typeof maybe == "function" &&
+      maybe.prototype instanceof this
     )
   }
 

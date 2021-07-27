@@ -3,7 +3,7 @@ import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { CONTROL, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { createEffect, defineProperty, fn, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export namespace Controller {
   export type Handle =
@@ -54,7 +54,7 @@ export class Controller {
     if(!using)
       return keys;
 
-    if(fn(using))
+    if(typeof using == "function")
       return selectRecursive(using, [
         ...keys, ...lifecycleEvents
       ]);
@@ -74,7 +74,7 @@ export class Controller {
       if(handle(this, key, value))
         return;
 
-      if(enumerable && !fn(value) || /^[A-Z]/.test(key))
+      if(enumerable && typeof value !== "function" || /^[A-Z]/.test(key))
         this.manage(key, value);
     }
   }

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo } from 'react';
 
 import { Subscriber } from './subscriber';
-import { fn, values } from './util';
+import { values } from './util';
 
 export const Lifecycle = {
   WILL_RENDER: "willRender",
@@ -35,7 +35,7 @@ export function lifecycle(prefix: string){
     const emit = useMemo(() => {
       const { parent } = sub;
       const { subject } = parent;
-      const reference = fn(tag) ? tag(subject) : tag;
+      const reference = typeof tag == "function" ? tag(subject) : tag;
       
       return (name: Event) => {
         for(const key of [name, map.get(name)!]){

@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { assign, define, defineLazy, defineProperty, fn, getOwnPropertyDescriptor, setAlias } from './util';
+import { assign, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 import type Public from '../types';
 
@@ -37,7 +37,7 @@ export function runInstruction
 
   let describe = using(on, key);
 
-  if(fn(describe)){
+  if(typeof describe == "function"){
     const handle = describe as (sub: Subscriber | undefined) => any;
     const current = getOwnPropertyDescriptor(target, key) || {};
 
