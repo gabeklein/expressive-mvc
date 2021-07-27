@@ -269,6 +269,45 @@ describe("effect", () => {
   })
 });
 
+describe("update", () => {
+  class Test extends Model {
+    foo = "foo";
+    bar = "bar";
+  }
+  
+  it("will send synthetic event", async () => {
+    const test = Test.create();
+
+    test.update(["foo"]);
+    
+    const update = await test.requestUpdate(true);
+
+    expect(update).toContain("foo");
+  })
+  
+  it("will send synthetic event for multiple keys", async () => {
+    const test = Test.create();
+
+    test.update(["foo", "bar"]);
+    
+    const update = await test.requestUpdate(true);
+
+    expect(update).toContain("foo");
+    expect(update).toContain("bar");
+  })
+  
+  it("will send synthetic event for selection", async () => {
+    const test = Test.create();
+
+    test.update(x => x.foo.bar);
+    
+    const update = await test.requestUpdate(true);
+
+    expect(update).toContain("foo");
+    expect(update).toContain("bar");
+  })
+})
+
 describe("will accept before ready", () => {
   class TestValues extends Model {
     value1 = 1;
