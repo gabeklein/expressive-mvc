@@ -13,7 +13,9 @@ class Issue extends Error {
   // drop first line (error factory) in stack trace.
   stack = this.stack.replace(/\n.+/, "") as string;
 
-  warn = () => console.warn(this.message);
+  warn(){
+    console.warn(this.message);
+  };
 }
 
 export function issues<M extends Messages>(register: M){

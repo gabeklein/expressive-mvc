@@ -72,7 +72,7 @@ interface RenderProviderProps {
   render: Function
 }
 
-function RenderProvider(props: RenderProviderProps){
+function FunctionProvider(props: RenderProviderProps){
   return props.render(useWatcher(props.instance));
 }
 
@@ -91,7 +91,7 @@ function useProviderWith(
   let render = props.children;
 
   if(typeof render == "function")
-    render = createElement(RenderProvider, { instance, render });
+    render = createElement(FunctionProvider, { instance, render });
 
   return createElement(LookupProvider, { value: next }, render);
 }

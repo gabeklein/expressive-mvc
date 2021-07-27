@@ -120,6 +120,7 @@ export class Controller {
     const { state, subject } = this;
     const keys = this.keys(target);
     const batch: BunchOf<RequestCallback> = {};
+    const remove = this.addListener(batch);
 
     const callback = squash
       ? handler.bind(subject)
@@ -129,7 +130,6 @@ export class Controller {
             handler.call(subject, state[key], key);
       }
 
-    const remove = this.addListener(batch);
     const handle = once
       ? (k?: string[]) => { remove(); callback(k) }
       : callback;
@@ -166,7 +166,7 @@ export class Controller {
 
   public sync(){
     const handled = new Set<string>();
-    const computed = computeContext(this, handled);
+    const { queue, flush } = computeContext(this, handled);
 
     const include = (key: string) => {
       if(handled.has(key))
@@ -178,7 +178,7 @@ export class Controller {
         if(key in subscription){
           const request = subscription[key];
 
-          if(computed.queue(request))
+          if(queue(request))
             continue;
 
           this.waiting.push(request);
@@ -186,7 +186,7 @@ export class Controller {
     }
 
     const close = () => {
-      computed.flush();
+      flush();
       this.pending = undefined;
       this.emit(Array.from(handled));
     }

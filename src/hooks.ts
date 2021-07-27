@@ -79,9 +79,9 @@ export function useWatcher(
 export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
-  const hook = use(refresh => {
-    return new Subscriber(manage(target), refresh);
-  });
+  const hook = use(refresh =>
+    new Subscriber(manage(target), refresh)
+  );
 
   useElementLifecycle(hook, tag || 0);
   
@@ -100,10 +100,9 @@ export function useModel(
     if(callback)
       callback(instance);
 
-    instance.on(
-      Lifecycle.WILL_UNMOUNT, 
-      () => instance.destroy()
-    );
+    instance.on(Lifecycle.WILL_UNMOUNT, () => {
+      instance.destroy();
+    });
 
     return sub;
   });
