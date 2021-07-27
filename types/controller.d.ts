@@ -12,28 +12,26 @@ type CallbackFor<S extends Selector.Function<any>, T> =
  * Able to be subscribed to, per-value to know when updated.
  */
 interface Dispatch {
-  // Explicit all
+  // Keyed
   on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false, once?: boolean): Callback;
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
-
-  once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false): Callback;
-  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
-
-  // Explicit squash
+  // Squash
   on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-
-  once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
-  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
-
-  // Implicit squash
-  once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
-  once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
-
-  // Unknown squash
+  // Unknown
   on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
+  // Keyed
+  once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false): Callback;
+  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
+  // Squash
+  once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
+  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+  // Promise
+  once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
+  once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
+  // Unknown
   once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
   once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
 
