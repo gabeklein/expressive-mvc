@@ -20,14 +20,7 @@ export const lifecycleEvents = [
 ];
 
 export function lifecycle(prefix: string){
-  const map = new Map<Event, Event>();
-
-  for(const name of values(Lifecycle)){
-    const alias = prefix + name[0].toUpperCase() + name.slice(1);
-
-    lifecycleEvents.push(alias);
-    map.set(name, alias as Event);
-  }
+  const type = eventsFor(prefix);
 
   return function useLifecycle(
     sub: Subscriber, tag?: Key | KeyFactory<any>){
@@ -38,7 +31,7 @@ export function lifecycle(prefix: string){
       const reference = typeof tag == "function" ? tag(subject) : tag;
       
       return (name: Event) => {
-        for(const key of [name, map.get(name)!]){
+        for(const key of [name, type(name)]){
           const handler = (subject as any)[key];
       
           if(handler)
@@ -65,4 +58,17 @@ export function lifecycle(prefix: string){
       }
     }, [sub]);
   }
+}
+
+function eventsFor(prefix: string){
+  const map = new Map<Event, Event>();
+
+  for(const name of values(Lifecycle)){
+    const alias = prefix + name[0].toUpperCase() + name.slice(1);
+
+    lifecycleEvents.push(alias);
+    map.set(name, alias as Event);
+  }
+
+  return (e: Event) => map.get(e)!;
 }
