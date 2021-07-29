@@ -51,7 +51,6 @@ export function prepareComputed(
     return;
 
   const { state, subject } = on;
-
   const info: GetterInfo = {
     key,
     parent: on,
@@ -188,6 +187,5 @@ export function computeContext(
 function interject<T>(
   item: T, into: T[], after: (item: T) => boolean){
 
-  const matchIndex = into.findIndex(after);
-  into.splice(matchIndex + 1, 0, item);
+  into.splice(into.findIndex(after) + 1, 0, item);
 }

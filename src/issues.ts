@@ -15,7 +15,7 @@ class Issue extends Error {
 
   warn(){
     console.warn(this.message);
-  };
+  }
 }
 
 export function issues<M extends Messages>(register: M){

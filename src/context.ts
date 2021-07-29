@@ -18,20 +18,15 @@ export const Oops = issues({
   NothingInContext: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
-  NoProviderType: () =>
-    `Provider 'of' prop must be Model, typeof Model or a collection of them.`,
-
   BadConsumerProps: () =>
     `Provider expects either a render function, 'get' or 'has' props.`
 })
 
-const LookupContext = createContext(new Lookup());
+export const LookupContext = createContext(new Lookup());
 
 export const useLookup = () => useContext(LookupContext);
 
-export function useFromContext(
-  T: typeof Model, strict?: boolean){
-
+export function useFromContext(T: typeof Model, strict?: boolean){
   const instance = useLookup().get(T);
 
   if(!instance && strict)
@@ -48,10 +43,10 @@ interface ConsumerProps {
 }
 
 export function Consumer(props: ConsumerProps){
-  const { get, has, children: render, of: Control } = props;
+  const { get, has, children, of: Control } = props;
 
-  if(typeof render == "function")
-    return render(Control.tap());
+  if(typeof children == "function")
+    return children(Control.tap());
 
   const callback = has || get;
 
@@ -63,32 +58,31 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-const notExpected = (key: string) => key != "of" && key != "children";
-
 interface ProvideProps {
   of?: typeof Model | Model | Collection;
   children: ReactNode | ((instance: any) => ReactNode);
 }
 
+function useImportRest(within: Model, props: {}){
+  function select(){
+    return keys(within).filter(k => k != "of" && k != "children")
+  }
+
+  within.import(props, useMemo(select, []));
+}
+
 export function Provider(props: ProvideProps){
-  let { of: type, children } = props;
+  let { children } = props;
 
-  const stack = useContext(LookupContext);
-  const value = useMemo(() => {
-    if(!type)
-      throw Oops.NoProviderType();
+  const stack = useLookup();
+  const value = useMemo(() => stack.push(props.of), []);
+  const instance = value.default;
 
-    return stack.push(type);
-  }, []);
-  const target = value.default;
+  if(instance)
+    useImportRest(instance, props);
 
   if(typeof children == "function")
-    children = children(target && useWatcher(target));
-
-  if(target)
-    target.import(props,
-      useMemo(() => keys(target).filter(notExpected), [])
-    );
+    children = children(instance && useWatcher(instance));
 
   useLayoutEffect(() => () => value.pop(), []);
 

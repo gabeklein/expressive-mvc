@@ -1,5 +1,11 @@
 import { Model } from './model';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
+import { issues } from './issues';
+
+export const Oops = issues({
+  NoProviderType: () =>
+    `Provider 'of' prop must be Model, typeof Model or a collection of them.`
+})
 
 export type Collection =
   | Array<Model | typeof Model>
@@ -24,7 +30,10 @@ export class Lookup {
     return (this as any)[this.key(T)];
   }
   
-  public push(insert: typeof Model | Model | Collection){
+  public push(insert?: typeof Model | Model | Collection){
+    if(!insert)
+      throw Oops.NoProviderType();
+
     const next = create(this) as Lookup;
 
     if(insert instanceof Model || typeof insert == "function")
