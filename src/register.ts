@@ -1,11 +1,5 @@
 import { Model } from './model';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
-import { issues } from './issues';
-
-export const Oops = issues({
-  NoProviderType: () =>
-    `Provider 'of' prop must be Model, typeof Model or a collection of them.`
-})
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols } from './util';
 
 export type Collection =
   | Array<Model | typeof Model>
@@ -13,7 +7,6 @@ export type Collection =
 
 export class Lookup {
   private table = new Map<typeof Model, symbol>();
-  public default?: Model;
 
   private key(T: typeof Model){
     let key = this.table.get(T);
@@ -30,19 +23,8 @@ export class Lookup {
     return (this as any)[this.key(T)];
   }
   
-  public push(insert?: typeof Model | Model | Collection){
-    if(!insert)
-      throw Oops.NoProviderType();
-
-    const next = create(this) as Lookup;
-
-    if(insert instanceof Model || typeof insert == "function")
-      this.default = next.register(insert);
-    else
-      for(let I of values(insert))
-        next.register(I);
-
-    return next;
+  public push(){
+    return create(this) as Lookup;
   }
 
   public register(I: Model | typeof Model){

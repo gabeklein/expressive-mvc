@@ -82,6 +82,28 @@ describe("requestUpdate method", () => {
   })
 })
 
+describe("inherits method", () => {
+  class Test extends Model {}
+  class Test2 extends Test {}
+  
+  it("will find extended class of model", () => {
+    expect(Test2.inherits).toBe(Test);
+  })
+
+  it("will return undefined if base model", () => {
+    expect(Test.inherits).toBeUndefined();
+  })
+})
+
+describe("isTypeof method", () => {
+  class Test extends Model {}
+  class Test2 extends Test {}
+  
+  it("will assert if Model extends another", () => {
+    expect(Test.isTypeof(Test2)).toBeTruthy();
+  })
+})
+
 describe("Model", () => {
   class FooBar extends Model {
     foo = "foo";

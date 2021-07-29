@@ -1,20 +1,15 @@
-import {
-  createContext,
-  createElement,
-  ReactElement,
-  ReactNode,
-  useContext,
-  useLayoutEffect,
-  useMemo,
-} from 'react';
+import { createContext, createElement, ReactElement, ReactNode, useContext, useLayoutEffect, useMemo } from 'react';
 
 import { useWatcher } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
 import { Collection, Lookup } from './register';
-import { keys } from './util';
+import { keys, values } from './util';
 
 export const Oops = issues({
+  NoProviderType: () =>
+    `Provider 'of' prop must be Model, typeof Model or a collection of them.`,
+
   NothingInContext: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
@@ -23,7 +18,6 @@ export const Oops = issues({
 })
 
 export const LookupContext = createContext(new Lookup());
-
 export const useLookup = () => useContext(LookupContext);
 
 export function useFromContext(T: typeof Model, strict?: boolean){
@@ -71,12 +65,32 @@ function useImportRest(within: Model, props: {}){
   within.import(props, useMemo(select, []));
 }
 
-export function Provider(props: ProvideProps){
-  let { children } = props;
+const InStack = new WeakMap<Lookup, Model>();
+
+function useNextContext(
+  adds?: typeof Model | Model | Collection){
 
   const stack = useLookup();
-  const value = useMemo(() => stack.push(props.of), []);
-  const instance = value.default;
+
+  return useMemo(() => {
+    if(!adds)
+      throw Oops.NoProviderType();
+
+    const next = stack.push();
+
+    if(adds instanceof Model || typeof adds == "function")
+      InStack.set(next, next.register(adds));
+    else
+      values(adds).forEach(I => next.register(I));
+        
+    return next;
+  }, []);
+}
+
+export function Provider(props: ProvideProps){
+  let { children } = props;
+  const value = useNextContext(props.of);
+  const instance = InStack.get(value);
 
   if(instance)
     useImportRest(instance, props);

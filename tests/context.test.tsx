@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { act } from 'react-test-renderer';
-import { Oops as Context } from '../src/context';
-import { Oops as Resiger } from '../src/register';
+import { Oops } from '../src/context';
 
 import { Consumer, Model, Provider, render, tap } from './adapter';
 
@@ -191,7 +190,7 @@ describe("Provider", () => {
     // @ts-ignore
     const test = () => render(<Provider />);
 
-    expect(test).toThrow(Resiger.NoProviderType());
+    expect(test).toThrow(Oops.NoProviderType());
   })
 })
 
@@ -262,7 +261,7 @@ describe("Consumer", () => {
     )
 
     expect(test).toThrowError(
-      Context.NothingInContext(Bar.name)
+      Oops.NothingInContext(Bar.name)
     );
   })
 
