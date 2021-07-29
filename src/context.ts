@@ -52,19 +52,6 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-interface ProvideProps {
-  of?: typeof Model | Model | Collection;
-  children: ReactNode | ((instance: any) => ReactNode);
-}
-
-function useImportRest(within: Model, props: {}){
-  function select(){
-    return keys(within).filter(k => k != "of" && k != "children")
-  }
-
-  within.import(props, useMemo(select, []));
-}
-
 const InStack = new WeakMap<Lookup, Model>();
 
 function useNextContext(
@@ -85,6 +72,19 @@ function useNextContext(
         
     return next;
   }, []);
+}
+
+function useImportRest(within: Model, props: {}){
+  function select(){
+    return keys(within).filter(k => k != "of" && k != "children")
+  }
+
+  within.import(props, useMemo(select, []));
+}
+
+interface ProvideProps {
+  of?: typeof Model | Model | Collection;
+  children: ReactNode | ((instance: any) => ReactNode);
 }
 
 export function Provider(props: ProvideProps){
