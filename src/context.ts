@@ -28,9 +28,7 @@ export const Oops = issues({
 
 const LookupContext = createContext(new Lookup());
 
-export function useLookup(){
-  return useContext(LookupContext);
-}
+export const useLookup = () => useContext(LookupContext);
 
 export function useFromContext(
   T: typeof Model, strict?: boolean){
@@ -68,59 +66,56 @@ export function Consumer(props: ConsumerProps){
 
 const unexpected = (key: string) => key != "of" && key != "children";
 
-function useProviderWith(
-  instance: Model,
-  props: PropsWithChildren<{ of: Model | typeof Model }>){
-
-  const { of: model, children } = props;
-
-  const current = useContext(LookupContext);
-  const [ watch, value ] = useMemo(() => {
-    const stack = current.push(instance.get);
-    const applicable = keys(instance).filter(unexpected);
-    const scanProps = () => instance.import(props, applicable);
-
-    return [scanProps, stack]
-  }, [ model ]);
-
-  watch();
-
-  return createElement(Provide, { value, instance, children });
-}
-
-function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
-  return useProviderWith(props.of.new(), props);
-}
-
-function DirectProvider(props: PropsWithChildren<{ of: Model }>){
-  return useProviderWith(props.of, props);
-}
-
-function MultiProvider(
-  props: PropsWithChildren<{ of: Collection }>){
-
-  const { children } = props;
-  const current = useContext(LookupContext);
-  const value = useMemo(() => current.push(props.of), []);
-
-  useLayoutEffect(() => () => value.pop(), []);
-
-  return createElement(Provide, { value, children });
+function useImportedProps(instance: any, props: any){
+  useMemo(() => {
+    const select = keys(instance).filter(unexpected);
+    return () => instance.import(props, select);
+  }, [instance])();
 }
 
 interface ProvideProps {
-  value: Lookup;
   instance?: Model;
+  inject?: Collection;
   children: ReactNode | ((instance: any) => ReactNode);
 }
 
 function Provide(props: ProvideProps){
-  let { value, instance, children } = props;
+  let { instance, inject, children } = props;
+
+  const stack = useContext(LookupContext);
+  const value = useMemo(() => stack.push(instance || inject!), [instance]);
 
   if(typeof children == "function")
-    children = children(instance && useWatcher(instance));
+    children = children(
+      instance ? useWatcher(instance) : inject
+    )
+
+  useLayoutEffect(() => () => value.pop(), []);
 
   return createElement(LookupContext.Provider, { value }, children);
+}
+
+function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
+  const { children } = props;
+  const instance = props.of.new();
+
+  useImportedProps(instance, props);
+  
+  return createElement(Provide, { instance, children });
+}
+
+function DirectProvider(props: PropsWithChildren<{ of: Model }>){
+  const { of: instance, children } = props;
+
+  useImportedProps(instance, props);
+
+  return createElement(Provide, { instance, children });
+}
+
+function MultiProvider(props: PropsWithChildren<{ of: Collection }>){
+  const { of: inject, children } = props;
+
+  return createElement(Provide, { inject, children });
 }
 
 interface ProviderProps {
