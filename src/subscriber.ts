@@ -43,7 +43,7 @@ export class Subscriber {
     this.follows[key] = cb || this.onUpdate;
   }
 
-  public commit = () => {
+  public commit(){
     const { dependant, follows, parent } = this;
     const onDone = parent.addListener(follows);
 

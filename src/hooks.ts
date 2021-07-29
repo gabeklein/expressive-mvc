@@ -71,7 +71,7 @@ export function useWatcher(
     return sub;
   });
 
-  useLayoutEffect(hook.commit, []);
+  useLayoutEffect(() => hook.commit(), []);
 
   return hook.proxy;
 }
