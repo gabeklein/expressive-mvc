@@ -7,6 +7,7 @@ export type Collection =
 
 export class Lookup {
   private table = new Map<typeof Model, symbol>();
+  public default?: Model;
 
   private key(T: typeof Model){
     let key = this.table.get(T);
@@ -23,14 +24,14 @@ export class Lookup {
     return (this as any)[this.key(T)];
   }
   
-  public push(items: Model | Collection){
+  public push(insert: typeof Model | Model | Collection){
     const next = create(this) as Lookup;
 
-    items = items instanceof Model
-      ? [ items ] : values(items);
-
-    for(let I of items)
-      next.register(I);
+    if(insert instanceof Model || typeof insert == "function")
+      this.default = next.register(insert);
+    else
+      for(let I of values(insert))
+        next.register(I);
 
     return next;
   }
@@ -55,6 +56,8 @@ export class Lookup {
       });
     }
     while(T = T.inherits!);
+
+    return I;
   }
 
   public pop(){

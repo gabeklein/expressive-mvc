@@ -1,7 +1,6 @@
 import {
   createContext,
   createElement,
-  PropsWithChildren,
   ReactElement,
   ReactNode,
   useContext,
@@ -19,7 +18,7 @@ export const Oops = issues({
   NothingInContext: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
-  BadProviderType: () =>
+  NoProviderType: () =>
     `Provider 'of' prop must be Model, typeof Model or a collection of them.`,
 
   BadConsumerProps: () =>
@@ -64,79 +63,34 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-const unexpected = (key: string) => key != "of" && key != "children";
-
-function useImportedProps(instance: any, props: any){
-  instance.import(props,
-    useMemo(() => keys(instance).filter(unexpected), [instance])
-  );
-}
+const notExpected = (key: string) => key != "of" && key != "children";
 
 interface ProvideProps {
-  instance?: Model;
-  inject?: Collection;
+  of?: typeof Model | Model | Collection;
   children: ReactNode | ((instance: any) => ReactNode);
 }
 
-function Provide(props: ProvideProps){
-  let { instance, inject, children } = props;
+export function Provider(props: ProvideProps){
+  let { of: type, children } = props;
 
   const stack = useContext(LookupContext);
-  const value = useMemo(() => stack.push(instance || inject!), [instance]);
+  const value = useMemo(() => {
+    if(!type)
+      throw Oops.NoProviderType();
+
+    return stack.push(type);
+  }, []);
+  const target = value.default;
 
   if(typeof children == "function")
-    children = children(
-      instance ? useWatcher(instance) : inject
-    )
+    children = children(target && useWatcher(target));
+
+  if(target)
+    target.import(props,
+      useMemo(() => keys(target).filter(notExpected), [])
+    );
 
   useLayoutEffect(() => () => value.pop(), []);
 
   return createElement(LookupContext.Provider, { value }, children);
-}
-
-function ParentProvider(props: PropsWithChildren<{ of: typeof Model }>){
-  const { children } = props;
-  const instance = props.of.new();
-
-  useImportedProps(instance, props);
-  
-  return createElement(Provide, { instance, children });
-}
-
-function DirectProvider(props: PropsWithChildren<{ of: Model }>){
-  const { of: instance, children } = props;
-
-  useImportedProps(instance, props);
-
-  return createElement(Provide, { instance, children });
-}
-
-function MultiProvider(props: PropsWithChildren<{ of: Collection }>){
-  const { of: inject, children } = props;
-
-  return createElement(Provide, { inject, children });
-}
-
-interface ProviderProps {
-  of: Model | typeof Model | Collection;
-  children?: ReactNode;
-}
-
-export function Provider(props: ProviderProps){
-  const Type: any = useMemo(() => {
-    const target = props.of;
-
-    if(Model.isTypeof(target))
-      return ParentProvider;
-
-     if(target instanceof Model)
-      return DirectProvider;
-
-     if(typeof target == "object")
-      return MultiProvider;
-
-    throw Oops.BadProviderType();
-  }, []);
-
-  return createElement(Type, props);
 }

@@ -190,7 +190,7 @@ describe("Provider", () => {
     // @ts-ignore
     const test = () => render(<Provider />);
 
-    expect(test).toThrow(Oops.BadProviderType());
+    expect(test).toThrow(Oops.NoProviderType());
   })
 })
 
