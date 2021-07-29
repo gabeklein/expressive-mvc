@@ -67,10 +67,9 @@ export function Consumer(props: ConsumerProps){
 const unexpected = (key: string) => key != "of" && key != "children";
 
 function useImportedProps(instance: any, props: any){
-  useMemo(() => {
-    const select = keys(instance).filter(unexpected);
-    return () => instance.import(props, select);
-  }, [instance])();
+  instance.import(props,
+    useMemo(() => keys(instance).filter(unexpected), [instance])
+  );
 }
 
 interface ProvideProps {
