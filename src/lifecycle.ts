@@ -28,14 +28,14 @@ export function lifecycle(prefix: string){
     const emit = useMemo(() => {
       const { parent } = sub;
       const { subject } = parent;
-      const reference = typeof tag == "function" ? tag(subject) : tag;
+      const id = typeof tag == "function" ? tag(subject) : tag;
       
       return (name: Event) => {
         for(const key of [name, type(name)]){
           const handler = (subject as any)[key];
       
           if(handler)
-            handler.call(subject, reference);
+            handler.call(subject, id);
       
           parent.update(key);
         }
