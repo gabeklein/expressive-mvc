@@ -12,16 +12,15 @@ export const Oops = issues({
     `Note: Computed values don't run until accessed, except when subscribed to. '${property}' getter may have run earlier than intended.`
 })
 
-export type GetterInfo = {
+type GetterInfo = {
   key: string;
   parent: Controller;
   priority: number;
 }
 
 const ComputedInit = new WeakSet<Function>();
+const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
-
-export const ComputedInfo = new WeakMap<Function, GetterInfo>();
 
 export function implementGetters(on: Controller){
   let scan = on.subject;
@@ -87,7 +86,9 @@ export function prepareComputed(
   }
 
   function create(early?: boolean){
-    sub = parent.subscribe(update, info);
+    sub = new Subscriber(parent, update);
+
+    ComputedInfo.set(update, info);
 
     defineProperty(state, key, {
       value: undefined,

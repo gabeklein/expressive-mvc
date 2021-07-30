@@ -1,8 +1,7 @@
-import { computeContext, ComputedInfo, ensureValue, implementGetters } from './compute';
+import { computeContext, ensureValue, implementGetters } from './compute';
 import { isInstruction, runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
-import { Subscriber } from './subscriber';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export namespace Controller {
@@ -19,15 +18,6 @@ export class Controller {
 
   constructor(public subject: Stateful){
     implementGetters(this);
-  }
-
-  public subscribe(cb: Callback, meta?: any){
-    const sub = new Subscriber(this, cb);
-
-    if(meta)
-      ComputedInfo.set(cb, meta);
-
-    return sub;
   }
 
   public start(){

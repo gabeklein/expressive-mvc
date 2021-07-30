@@ -104,8 +104,9 @@ export class Model {
       return this.on(select, invoke, true);
     }
     else {
-      const sub = control.subscribe(invoke);
-      effect(target = sub.proxy);
+      const sub = new Subscriber(control, invoke);
+      target = sub.proxy;
+      invoke();
       return sub.commit();
     }
   }
