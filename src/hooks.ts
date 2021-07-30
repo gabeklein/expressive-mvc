@@ -98,12 +98,12 @@ export function useModel(
     const instance = new Type(...args) as Model;
     const sub = new Subscriber(manage(instance), refresh);
 
-    if(callback)
-      callback(instance);
-
     instance.on(Lifecycle.WILL_UNMOUNT, () => {
       instance.destroy();
     });
+
+    if(callback)
+      callback(instance);
 
     return sub;
   });
