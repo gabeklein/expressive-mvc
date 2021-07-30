@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { assign, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 import type Public from '../types';
 
@@ -30,27 +30,28 @@ export function isInstruction(maybe: any): maybe is symbol {
 export function runInstruction
   (on: Controller, key: string, value: symbol){
 
-  const target = on.subject as any;
-  const using = Pending.get(value)!;
+  const { subject } = on as any;
+  const instruction = Pending.get(value)!;
 
   Pending.delete(value);
-  delete (target as any)[key];
+  delete subject[key];
 
-  let describe = using(on, key);
+  let output = instruction(on, key);
 
-  if(typeof describe == "function"){
-    const handle = describe as (sub: Subscriber | undefined) => any;
-    const current = getOwnPropertyDescriptor(target, key) || {};
+  if(typeof output == "function"){
+    const existing = getOwnPropertyDescriptor(subject, key);
+    const getter = output as (sub: Subscriber | undefined) => any;
 
-    describe = assign(current, {
+    output = {
+      ...existing,
       get(this: Stateful){
-        return handle(this[LOCAL]);
+        return getter(this[LOCAL]);
       }
-    });
+    }
   }
 
-  if(describe)
-    defineProperty(target, key, describe);
+  if(output)
+    defineProperty(subject, key, output);
 
   return true;
 }
