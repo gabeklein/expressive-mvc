@@ -1,5 +1,5 @@
-import { Oops } from "../src/compute";
-import { Model, use } from "./adapter";
+import { Oops } from '../src/compute';
+import { from, Model, use } from './adapter';
 
 const { error, warn } = console;
 
@@ -308,5 +308,28 @@ describe("circular", () => {
     test.value++;
     await test.requestUpdate();
     expect(test.format).toBe("Value 1 is odd");
+  })
+})
+
+describe("instruction", () => {
+  it("will create a computed property", async () => {
+    class Hello extends Model {
+      friend = "World";
+  
+      greeting = from(this.generateGreeting);
+  
+      generateGreeting(){
+        return `Hello ${this.friend}!`;
+      }
+    }
+
+    const test = Hello.create();
+
+    expect(test.greeting).toBe("Hello World!");
+
+    test.friend = "Foo";
+    await test.requestUpdate(true);
+
+    expect(test.greeting).toBe("Hello Foo!");
   })
 })

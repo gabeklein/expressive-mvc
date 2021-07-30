@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react-hooks';
 
 import { Oops } from '../src/instructions';
 import { Subscriber } from '../src/subscriber';
-import { act, from, lazy, memo, Model, on, ref, set, use } from './adapter';
+import { act, lazy, memo, Model, on, ref, set, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -328,29 +328,6 @@ describe("lazy", () => {
     expect(subscriberOverlay).not.toContain("lazy");
     expect(subscriberOverlay).toContain("eager");
   });
-})
-
-describe("from", () => {
-  class Hello extends Model {
-    friend = "World";
-
-    greeting = from(this.generateGreeting);
-
-    generateGreeting(){
-      return `Hello ${this.friend}!`;
-    }
-  }
-
-  it("will create a computed property", async () => {
-    const test = Hello.create();
-
-    expect(test.greeting).toBe("Hello World!");
-
-    test.friend = "Foo";
-    await test.requestUpdate(true);
-
-    expect(test.greeting).toBe("Hello Foo!");
-  })
 })
 
 describe("memo", () => {
