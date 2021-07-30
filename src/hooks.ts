@@ -61,7 +61,7 @@ export function useWatcher(
 
       defineProperty(sub, "proxy", {
         get(){
-          if(expected && proxy[key] === undefined)
+          if(proxy[key] === undefined && expected)
             throw Oops.HasPropertyUndefined(name(target), key);
 
           return proxy[key];
