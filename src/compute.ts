@@ -36,25 +36,25 @@ export function implementGetters(on: Controller){
 }
 
 export function prepareComputed(
-  on: Controller,
+  parent: Controller,
   key: string,
   getter: (on?: any) => any,
   setter?: (to: any) => void){
 
   let sub: Subscriber;
-  let defined = ComputedFor.get(on)!;
+  let defined = ComputedFor.get(parent)!;
   
   if(!defined)
-    ComputedFor.set(on, defined = new Map());
+    ComputedFor.set(parent,
+      defined = new Map()  
+    );
 
   if(defined.has(key))
     return;
 
-  const { state, subject } = on;
+  const { state, subject } = parent;
   const info: GetterInfo = {
-    key,
-    parent: on,
-    priority: 1
+    key, parent, priority: 1
   };
 
   defined.set(key, info);
@@ -80,14 +80,14 @@ export function prepareComputed(
     }
     finally {
       if(state[key] !== value){
-        on.update(key);
+        parent.update(key);
         return state[key] = value;
       }
     }
   }
 
   function create(early?: boolean){
-    sub = on.subscribe(update, info);
+    sub = parent.subscribe(update, info);
 
     defineProperty(state, key, {
       value: undefined,
@@ -128,15 +128,13 @@ export function prepareComputed(
 
   ComputedInit.add(create);
 
-  const initial = {
-    get: create,
-    set: setter,
-    configurable: true,
-    enumerable: true
-  }
-
-  defineProperty(state, key, initial);
-  defineProperty(subject, key, initial);
+  for(const on of [state, subject])
+    defineProperty(on, key, {
+      get: create,
+      set: setter,
+      configurable: true,
+      enumerable: true
+    })
 }
 
 export function ensureValue(from: {}, key: string){

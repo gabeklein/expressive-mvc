@@ -16,8 +16,8 @@ const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
 
 function use<T>(init: (trigger: Callback) => T){
-  const [ state, forceUpdate ] = useState((): T[] => [
-    init(() => forceUpdate(state.concat()))
+  const [ state, update ] = useState((): T[] => [
+    init(() => update(state.concat()))
   ]);
 
   return state[0];
@@ -58,15 +58,16 @@ export function useWatcher(
     if(focus){
       const [ key ] = sub.parent.keys(focus);
       const { proxy } = sub;
-  
+
       defineProperty(sub, "proxy", {
         get(){
           if(expected && proxy[key] === undefined)
             throw Oops.HasPropertyUndefined(name(target), key);
-  
+
           return proxy[key];
         }
-      })}
+      })
+    }
 
     return sub;
   });

@@ -52,9 +52,9 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-const InStack = new WeakMap<Lookup, Model>();
+const Provided = new WeakMap<Lookup, Model>();
 
-function useNextContext(
+function useNewContext(
   adds?: typeof Model | Model | Collection){
 
   const stack = useLookup();
@@ -66,7 +66,7 @@ function useNextContext(
     const next = stack.push();
 
     if(adds instanceof Model || typeof adds == "function")
-      InStack.set(next, next.register(adds));
+      Provided.set(next, next.register(adds));
     else
       values(adds).forEach(I => next.register(I));
         
@@ -74,7 +74,7 @@ function useNextContext(
   }, []);
 }
 
-function useImportRest(within: Model, props: {}){
+function useImportProps(within: Model, props: {}){
   function select(){
     return keys(within).filter(k => k != "of" && k != "children")
   }
@@ -89,11 +89,11 @@ interface ProvideProps {
 
 export function Provider(props: ProvideProps){
   let { children } = props;
-  const value = useNextContext(props.of);
-  const instance = InStack.get(value);
+  const value = useNewContext(props.of);
+  const instance = Provided.get(value);
 
   if(instance)
-    useImportRest(instance, props);
+    useImportProps(instance, props);
 
   if(typeof children == "function")
     children = children(instance && useWatcher(instance));
