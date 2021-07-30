@@ -349,4 +349,21 @@ describe("instruction", () => {
 
     expect(test.greeting).toBe("Hello Foo!");
   })
+
+  it("will override preexisting getter", () => {
+    class Base extends Model {
+      get foo(){
+        return "foo";
+      }
+    }
+
+    class Super extends Base {
+      /// @ts-ignore - tsc may complain if overriden is getter
+      foo = from(() => "bar");
+    }
+
+    const test = Super.create();
+
+    expect(test.foo).toBe("bar");
+  })
 })

@@ -23,12 +23,17 @@ const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
 
 export function implementGetters(on: Controller){
+  const defined = new Map<string, GetterInfo>();
   let scan = on.subject;
+
+  ComputedFor.set(on, defined);
 
   while(scan !== Model && scan.constructor !== Model){
     for(let [key, { get, set }] of entriesIn(scan))
-      if(get)
-        prepareComputed(on, key, get, set);
+      if(get && !defined.has(key))
+        defined.set(key, 
+          prepareComputed(on, key, get, set)
+        );
 
     scan = getPrototypeOf(scan)
   }
@@ -41,22 +46,11 @@ export function prepareComputed(
   setter?: (to: any) => void){
 
   let sub: Subscriber;
-  let defined = ComputedFor.get(parent)!;
-  
-  if(!defined)
-    ComputedFor.set(parent,
-      defined = new Map()  
-    );
-
-  if(defined.has(key))
-    return;
 
   const { state, subject } = parent;
   const info: GetterInfo = {
     key, parent, priority: 1
   };
-
-  defined.set(key, info);
 
   function compute(initial?: boolean){
     try {
@@ -112,6 +106,8 @@ export function prepareComputed(
       throw e;
     }
     finally {
+      let defined = ComputedFor.get(parent)!;
+
       sub.commit();
 
       for(const key in sub.follows){
@@ -145,6 +141,8 @@ export function prepareComputed(
       configurable: true,
       enumerable: true
     })
+
+  return info;
 }
 
 export function ensureValue(from: {}, key: string){
