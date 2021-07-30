@@ -23,11 +23,12 @@ export function set(
   return placeholder as any;
 }
 
-export function runInstruction
-  (on: Controller, key: string, value: any){
+export function isInstruction(maybe: any): maybe is symbol {
+  return Pending.has(maybe);
+}
 
-  if(!Pending.has(value))
-    return;
+export function runInstruction
+  (on: Controller, key: string, value: symbol){
 
   const target = on.subject as any;
   const using = Pending.get(value)!;

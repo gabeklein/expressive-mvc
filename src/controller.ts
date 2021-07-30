@@ -1,5 +1,5 @@
 import { computeContext, ComputedInfo, ensureValue, implementGetters } from './compute';
-import { runInstruction } from './instructions';
+import { isInstruction, runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
 import { Subscriber } from './subscriber';
@@ -58,19 +58,16 @@ export class Controller {
     return Array.from(using);
   }
 
-  public add(
-    key: string,
-    handle = runInstruction){
-
+  public add(key: string){
     const desc = getOwnPropertyDescriptor(this.subject, key);
 
     if(desc && "value" in desc){
-      const { value, enumerable } = desc;
+      const { value } = desc;
 
-      if(handle(this, key, value))
+      if(isInstruction(value) && runInstruction(this, key, value))
         return;
 
-      if(enumerable && typeof value !== "function" || /^[A-Z]/.test(key))
+      if(desc.enumerable && typeof value !== "function" || /^[A-Z]/.test(key))
         this.manage(key, value);
     }
   }
