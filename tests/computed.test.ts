@@ -187,6 +187,23 @@ describe("computed", () => {
     test.something = "foobar";
     expect(test.didSet).toBeCalledWith("foobar");
   })
+
+  it("will be overriden by class property", () => {
+    class Base extends Model {
+      get foo(){
+        return "foo";
+      }
+    }
+
+    class Super extends Base {
+      // @ts-ignore - tsc may complain
+      foo = "bar";
+    }
+
+    const test = Super.create();
+
+    expect(test.foo).toBe("bar");
+  })
 })
 
 describe("failures", () => {

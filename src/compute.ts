@@ -123,6 +123,15 @@ export function prepareComputed(
     }
   }
 
+  function revert(value: any){
+    delete state[key];
+    defineProperty(subject, key, {
+      enumerable: true,
+      configurable: true,
+      value
+    });
+  }
+
   setAlias(update, `try ${key}`);
   setAlias(create, `new ${key}`);
   setAlias(getter, `run ${key}`);
@@ -132,7 +141,7 @@ export function prepareComputed(
   for(const on of [state, subject])
     defineProperty(on, key, {
       get: create,
-      set: setter,
+      set: setter || revert,
       configurable: true,
       enumerable: true
     })
