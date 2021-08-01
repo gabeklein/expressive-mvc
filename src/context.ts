@@ -89,13 +89,13 @@ function useImportProps(within: Lookup, props: {}){
 }
 
 interface RenderProps {
-  within: Lookup;
-  render: (instance: any) => ReactNode;
+  value: Lookup;
+  render: (instance?: any) => ReactNode;
 }
 
 const RenderProvider = (props: RenderProps): any => {
   const hook = use(refresh => {
-    const target = Provided.get(props.within);
+    const target = Provided.get(props.value);
 
     return target
       ? new Subscriber(target, refresh)
@@ -114,17 +114,15 @@ interface ProvideProps {
 }
 
 export function Provider(props: ProvideProps){
-  let { children } = props;
+  const render: any = props.children;
   const value = useNewContext(props.of);
 
   useImportProps(value, props);
-
-  if(typeof children == "function")
-    children = createElement(RenderProvider, {
-      within: value, render: children as any
-    })
-
   useLayoutEffect(() => () => value.pop(), []);
 
-  return createElement(LookupContext.Provider, { value }, children);
+  return createElement(LookupContext.Provider, { value },
+    typeof render == "function"
+      ? createElement(RenderProvider, { value, render })
+      : render
+  );
 }
