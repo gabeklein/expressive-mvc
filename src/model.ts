@@ -115,11 +115,9 @@ export class Model {
     from: BunchOf<any>,
     select?: Iterable<string> | Query){
 
-    const control = manage(this);
-
-    for(const key of control.keys(select))
+    for(const key of manage(this).keys(select))
       if(key in from)
-        (control.subject as any)[key] = from[key];
+        (this as any)[key] = from[key];
   }
 
   export(select?: Iterable<string> | Query){

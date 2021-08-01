@@ -53,11 +53,10 @@ export class Lookup {
 
   public pop(){
     for(const key of getOwnPropertySymbols(this)){
-      const { writable, value: instance } =
-        getOwnPropertyDescriptor(this, key)!;
+      const entry = getOwnPropertyDescriptor(this, key)!;
 
-      if(writable)
-        instance.destroy();
+      if(entry.writable)
+        entry.value.destroy();
     }
   }
 }
