@@ -74,12 +74,17 @@ function useNewContext(
   }, []);
 }
 
-function useImportProps(within: Model, props: {}){
-  function select(){
-    return keys(within).filter(k => k != "of" && k != "children")
-  }
+function useImportProps(within: Lookup, props: {}){
+  const update = useMemo(() => {
+    const instance = Provided.get(within)!;
 
-  within.import(props, useMemo(select, []));
+    if(instance){
+      const select = keys(instance).filter(k => k != "of" && k != "children");
+      return (props: {}) => instance.import(props, select);
+    }
+  }, [within]);
+
+  update && update(props);
 }
 
 interface ProvideProps {
@@ -92,8 +97,7 @@ export function Provider(props: ProvideProps){
   const value = useNewContext(props.of);
   const instance = Provided.get(value);
 
-  if(instance)
-    useImportProps(instance, props);
+  useImportProps(value, props);
 
   if(typeof children == "function")
     children = children(instance && useWatcher(instance));
