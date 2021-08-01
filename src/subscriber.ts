@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { LOCAL } from './model';
+import { LOCAL, manage, Stateful } from './model';
 import { create, define, defineProperty, setAlias } from './util';
 
 type Listener = {
@@ -12,10 +12,16 @@ export class Subscriber {
   public active = false;
   public follows = {} as BunchOf<Callback>;
   public dependant = new Set<Listener>();
+  public parent: Controller;
 
   constructor(
-    public parent: Controller,
+    parent: Controller | Stateful,
     public onUpdate: Callback){
+
+    if(!(parent instanceof Controller))
+      parent = manage(parent);
+
+    this.parent = parent;
 
     const proxy = this.proxy =
       create(parent.subject);

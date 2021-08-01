@@ -40,7 +40,7 @@ export function use<T extends typeof Model>
 
       function setup(){
         const child =
-          new Subscriber(manage(instance), sub.onUpdate);
+          new Subscriber(instance, sub.onUpdate);
 
         if(sub.active)
           child.commit();

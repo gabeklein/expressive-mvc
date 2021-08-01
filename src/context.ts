@@ -2,7 +2,7 @@ import { createContext, createElement, ReactElement, ReactNode, useContext, useL
 
 import { use } from './hooks';
 import { issues } from './issues';
-import { manage, Model } from './model';
+import { Model } from './model';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
 import { keys, values } from './util';
@@ -98,7 +98,7 @@ const RenderProvider = (props: RenderProps): any => {
     const target = Provided.get(props.within);
 
     return target
-      ? new Subscriber(manage(target), refresh)
+      ? new Subscriber(target, refresh)
       : {} as Subscriber;
   });
 

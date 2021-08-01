@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
-import { manage, Model, Stateful } from './model';
+import { Model, Stateful } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
 import { defineProperty, name } from './util';
@@ -53,7 +53,7 @@ export function useWatcher(
   expected?: boolean){
 
   const hook = use(refresh => {
-    const sub = new Subscriber(manage(target), refresh);
+    const sub = new Subscriber(target, refresh);
 
     if(focus){
       const [ key ] = sub.parent.keys(focus);
@@ -81,7 +81,7 @@ export function useSubscriber<T extends Stateful>(
   target: T, tag?: Key | KeyFactory<T>){
 
   const hook = use(refresh =>
-    new Subscriber(manage(target), refresh)
+    new Subscriber(target, refresh)
   );
 
   useElementLifecycle(hook, tag || 0);
@@ -96,7 +96,7 @@ export function useModel(
 
   const hook = use(refresh => {
     const instance = new Type(...args) as Model;
-    const sub = new Subscriber(manage(instance), refresh);
+    const sub = new Subscriber(instance, refresh);
 
     instance.on(Lifecycle.WILL_UNMOUNT, () => {
       instance.destroy();
