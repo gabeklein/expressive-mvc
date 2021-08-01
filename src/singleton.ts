@@ -16,8 +16,8 @@ export class Singleton extends Model {
     return Active.get(this);
   }
 
-  static create<T extends typeof Model>(
-    this: T, ...args: any[]){
+  static create<Type extends typeof Model>(
+    this: Type, ...args: any[]){
 
     const Type: typeof Singleton = this as any;
 
@@ -28,7 +28,7 @@ export class Singleton extends Model {
 
     Active.set(Type, instance);
 
-    return instance as InstanceOf<T>;
+    return instance as InstanceOf<Type>;
   }
 
   static find(){

@@ -6,7 +6,6 @@ import { Subscriber } from './subscriber';
 import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 import type Public from '../types';
-
 export const Oops = issues({
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
@@ -27,8 +26,8 @@ export function isInstruction(maybe: any): maybe is symbol {
   return Pending.has(maybe);
 }
 
-export function runInstruction
-  (on: Controller, key: string, value: symbol){
+export function runInstruction(
+  on: Controller, key: string, value: symbol){
 
   const { subject } = on as any;
   const instruction = Pending.get(value)!;
@@ -56,10 +55,10 @@ export function runInstruction
   return true;
 }
 
-export function ref<T = any>
-  (effect?: EffectCallback<Model, any>): { current: T } {
+export function ref<T = any>(
+  effect?: EffectCallback<Model, any>): { current: T } {
 
-  function refProperty(on: Controller, key: string){
+  return set((on, key) => {
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -68,56 +67,48 @@ export function ref<T = any>
     })
 
     return { value: refObjectFunction };
-  }
-
-  return set(refProperty, "ref");
+  }, "ref");
 }
 
-export function on<T = any>
-  (value: any, effect?: EffectCallback<Model, T>): T {
+export function on<T = any>(
+  value: any, effect?: EffectCallback<Model, T>): T {
 
-  function watchProperty(on: Controller, key: string){
+  return set((on, key) => {
     if(!effect){
       effect = value;
       value = undefined;
     }
 
     on.manage(key, value, effect);
-  }
-
-  return set(watchProperty, "on");
+  }, "on");
 }
 
-export function memo
-  (factory: () => any, defer?: boolean){
+export function memo(
+  factory: () => any, defer?: boolean){
 
-  function memoized(on: Controller, key: string){
+  return set((on, key) => {
     const get = () => factory.call(on.subject);
 
     if(defer)
       defineLazy(on.subject, key, get);
     else
       define(on.subject, key, get())
-  }
-
-  return set(memoized, "memo");
+  }, "memo");
 }
 
 export function lazy(value: any){
-  function lazyValue(on: Controller, key: string){
+  return set((on, key) => {
     const { state, subject } = on as any;
 
     subject[key] = value;
     defineProperty(state, key, {
       get: () => subject[key]
     });
-  }
-
-  return set(lazyValue, "lazy");
+  }, "lazy");
 }
 
 export function act(task: Async){
-  function asyncFunction(on: Controller, key: string){
+  return set((on, key) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -146,15 +137,13 @@ export function act(task: Async){
       value: invoke,
       writable: false
     };
-  }
-
-  return set(asyncFunction, "act");
+  }, "act");
 }
 
-export function from(fn: (on?: Model) => any){
-  function computedProperty(on: Controller, key: string){
-    prepareComputed(on, key, fn);
-  }
+export function from(
+  fn: (on?: Model) => any){
 
-  return set(computedProperty, "from");
+  return set((on, key) => {
+    prepareComputed(on, key, fn);
+  }, "from");
 }

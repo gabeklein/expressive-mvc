@@ -1,4 +1,3 @@
-import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
@@ -15,10 +14,10 @@ export const Oops = issues({
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`
 })
 
-export function use<T extends typeof Model>
-  (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
+export function use<T extends typeof Model>(
+  Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
-  function childController(on: Controller, key: string){
+  return set((on, key) => {
     const proxy = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
@@ -80,28 +79,24 @@ export function use<T extends typeof Model>
 
       return proxy.get(current);
     }
-  }
-
-  return set(childController, "use");
+  }, "use");
 }
 
-export function parent<T extends typeof Model>
-  (Expects: T, required?: boolean): InstanceOf<T> {
+export function parent<T extends typeof Model>(
+  Expects: T, required?: boolean): InstanceOf<T> {
 
-  function parentController(on: Controller){
-      const child = name(on.subject);
-      const expected = Expects.name;
-      const parent = ParentRelationship.get(on.subject);
-  
-      if(!parent){
-        if(required)
-          throw Oops.ParentRequired(expected, child);
-      }
-      else if(!(parent instanceof Expects))
-        throw Oops.UnexpectedParent(expected, child, name(parent));
-  
-      return { value: parent };
+  return set((on) => {
+    const child = name(on.subject);
+    const expected = Expects.name;
+    const parent = ParentRelationship.get(on.subject);
+
+    if(!parent){
+      if(required)
+        throw Oops.ParentRequired(expected, child);
     }
-    
-  return set(parentController, "parent");
+    else if(!(parent instanceof Expects))
+      throw Oops.UnexpectedParent(expected, child, name(parent));
+
+    return { value: parent };
+  }, "parent");
 }

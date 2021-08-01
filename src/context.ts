@@ -21,11 +21,13 @@ export const Oops = issues({
 export const LookupContext = createContext(new Lookup());
 export const useLookup = () => useContext(LookupContext);
 
-export function useFromContext(T: typeof Model, strict?: boolean){
-  const instance = useLookup().get(T);
+export function useFromContext(
+  Type: typeof Model, strict?: boolean){
+
+  const instance = useLookup().get(Type);
 
   if(!instance && strict)
-    throw Oops.NothingInContext(T.name);
+    throw Oops.NothingInContext(Type.name);
 
   return instance;
 }
@@ -75,7 +77,9 @@ function useNewContext(
   }, []);
 }
 
-function useAppliedProps(within: Lookup, props: {}){
+function useAppliedProps(
+  within: Lookup, props: {}){
+
   const update = useMemo(() => {
     const targets = getOwnPropertySymbols(within).map(
       (symbol): Model => (within as any)[symbol]
