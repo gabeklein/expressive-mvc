@@ -1,9 +1,10 @@
 import { createContext, createElement, ReactElement, ReactNode, useContext, useLayoutEffect, useMemo } from 'react';
 
-import { useWatcher } from './hooks';
+import { use } from './hooks';
 import { issues } from './issues';
-import { Model } from './model';
+import { manage, Model } from './model';
 import { Collection, Lookup } from './register';
+import { Subscriber } from './subscriber';
 import { keys, values } from './util';
 
 export const Oops = issues({
@@ -87,6 +88,26 @@ function useImportProps(within: Lookup, props: {}){
   update && update(props);
 }
 
+interface RenderProps {
+  within: Lookup;
+  render: (instance: any) => ReactNode;
+}
+
+const RenderProvider = (props: RenderProps): any => {
+  const hook = use(refresh => {
+    const target = Provided.get(props.within);
+
+    return target
+      ? new Subscriber(manage(target), refresh)
+      : {} as Subscriber;
+  });
+
+  if(hook.commit)
+    useLayoutEffect(() => hook.commit(), []);
+
+  return props.render(hook.proxy);
+};
+
 interface ProvideProps {
   of?: typeof Model | Model | Collection;
   children: ReactNode | ((instance: any) => ReactNode);
@@ -95,12 +116,13 @@ interface ProvideProps {
 export function Provider(props: ProvideProps){
   let { children } = props;
   const value = useNewContext(props.of);
-  const instance = Provided.get(value);
 
   useImportProps(value, props);
 
   if(typeof children == "function")
-    children = children(instance && useWatcher(instance));
+    children = createElement(RenderProvider, {
+      within: value, render: children as any
+    })
 
   useLayoutEffect(() => () => value.pop(), []);
 

@@ -15,7 +15,7 @@ export const Oops = issues({
 const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
 
-function use<T>(init: (trigger: Callback) => T){
+export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = useState((): T[] => [
     init(() => update(state.concat()))
   ]);
