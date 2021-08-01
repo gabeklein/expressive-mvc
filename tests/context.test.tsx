@@ -84,12 +84,23 @@ describe("Provider", () => {
   it("will assign props to instance", () => {
     render(
       <Provider of={Foo} value="foobar">
-        <Consumer of={Foo} has={i => {
-          expect(i.value).toBe("foobar");
-        }} />
+        <Consumer of={Foo} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
     );
   })
+
+  it("will assign props to muliple controllers", () => {
+    class Bar extends Model {
+      value = "";
+    }
+
+    render(
+      <Provider of={{ Foo, Bar }} value="foobar">
+        <Consumer of={Foo} has={i => expect(i.value).toBe("foobar")} />
+        <Consumer of={Bar} has={i => expect(i.value).toBe("foobar")} />
+      </Provider>
+    );
+  });
 
   it("will not assign foreign props to controller", () => {
     render(

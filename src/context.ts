@@ -5,7 +5,7 @@ import { issues } from './issues';
 import { Model } from './model';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
-import { keys, values } from './util';
+import { entries, getOwnPropertySymbols, values } from './util';
 
 export const Oops = issues({
   NoProviderType: () =>
@@ -75,17 +75,22 @@ function useNewContext(
   }, []);
 }
 
-function useImportProps(within: Lookup, props: {}){
+function useAppliedProps(within: Lookup, props: {}){
   const update = useMemo(() => {
-    const instance = Provided.get(within)!;
+    const targets = getOwnPropertySymbols(within).map(
+      (symbol): Model => (within as any)[symbol]
+    );
 
-    if(instance){
-      const select = keys(instance).filter(k => k != "of" && k != "children");
-      return (props: {}) => instance.import(props, select);
-    }
-  }, [within]);
+    return function integrate(props: {}){
+      for(const [key, value] of entries(props))
+        if(key != "of" && key != "children")
+          for(const into of targets)
+            if(key in into)
+              (into as any)[key] = value;
+    };
+  }, []);
 
-  update && update(props);
+  update(props);
 }
 
 interface RenderProps {
@@ -93,7 +98,7 @@ interface RenderProps {
   render: (instance?: any) => ReactNode;
 }
 
-const RenderProvider = (props: RenderProps): any => {
+function RenderProvider(props: RenderProps): any {
   const hook = use(refresh => {
     const target = Provided.get(props.value);
 
@@ -117,7 +122,7 @@ export function Provider(props: ProvideProps){
   const render: any = props.children;
   const value = useNewContext(props.of);
 
-  useImportProps(value, props);
+  useAppliedProps(value, props);
   useLayoutEffect(() => () => value.pop(), []);
 
   return createElement(LookupContext.Provider, { value },
