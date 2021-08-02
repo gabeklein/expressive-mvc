@@ -1,6 +1,6 @@
 import { useFromContext } from './context';
 import { Controller } from './controller';
-import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
+import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getPrototypeOf } from './util';
 
@@ -176,7 +176,15 @@ export class Model {
   }
 
   static get(key?: boolean | string | Select){
-    return usePassive(this, key);
+    const instance: any = this.find(!!key);
+  
+    return (
+      typeof key == "function" ?
+        key(instance) :
+      typeof key == "string" ?
+        instance[key] :
+        instance
+    )
   }
 
   static tap(key?: string | Select, expect?: boolean): any {

@@ -33,20 +33,6 @@ export function useLazy(
   return instance;
 }
 
-export function usePassive<T extends typeof Model>(
-  target: T, select?: boolean | string | Select){
-
-  const instance: any = target.find(!!select);
-
-  return (
-    typeof select == "function" ?
-      select(instance) :
-    typeof select == "string" ?
-      instance[select] :
-      instance
-  )
-}
-
 export function useWatcher(
   target: Stateful,
   focus?: string | Select,
