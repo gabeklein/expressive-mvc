@@ -53,6 +53,12 @@ export function defineLazy<T>(
   });
 }
 
+export function getOwnSymbolValues<T = any>(within: {}){
+  return getOwnPropertySymbols(within).map(
+    (symbol): T => (within as any)[symbol]
+  )
+}
+
 export function setAlias<T extends Function>(
   func: T, displayName: string){
 

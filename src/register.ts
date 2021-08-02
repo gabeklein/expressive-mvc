@@ -1,5 +1,5 @@
 import { Model } from './model';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols } from './util';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
 
 export type Collection =
   | Array<Model | typeof Model>
@@ -23,8 +23,16 @@ export class Lookup {
     return (this as any)[this.key(T)];
   }
   
-  public push(){
-    return create(this) as Lookup;
+  public push(I: Model | typeof Model | Collection){
+    const next = create(this) as this;
+
+    if(I instanceof Model || typeof I == "function")
+      next.register(I);
+    else
+      for(const i of values(I))
+        next.register(i);
+
+    return next;
   }
 
   public register(I: Model | typeof Model){

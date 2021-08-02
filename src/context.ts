@@ -5,7 +5,7 @@ import { issues } from './issues';
 import { Model } from './model';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
-import { entries, getOwnPropertySymbols, values } from './util';
+import { entries, getOwnSymbolValues } from './util';
 
 export const Oops = issues({
   NoProviderType: () =>
@@ -55,35 +55,11 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
-const Provided = new WeakMap<Lookup, Model>();
-
-function useNewContext(
-  adds?: typeof Model | Model | Collection){
-
-  const stack = useLookup();
-
-  return useMemo(() => {
-    if(!adds)
-      throw Oops.NoProviderType();
-
-    const next = stack.push();
-
-    if(adds instanceof Model || typeof adds == "function")
-      Provided.set(next, next.register(adds));
-    else
-      values(adds).forEach(I => next.register(I));
-        
-    return next;
-  }, []);
-}
-
 function useAppliedProps(
   within: Lookup, props: {}){
 
   const update = useMemo(() => {
-    const targets = getOwnPropertySymbols(within).map(
-      (symbol): Model => (within as any)[symbol]
-    );
+    const targets = getOwnSymbolValues<Model>(within);
 
     return function integrate(props: {}){
       for(const [key, value] of entries(props))
@@ -97,18 +73,19 @@ function useAppliedProps(
   update(props);
 }
 
-interface RenderProps {
-  value: Lookup;
+interface TapFunctionProps {
+  context: Lookup;
   render: (instance?: any) => ReactNode;
 }
 
-function RenderProvider(props: RenderProps): any {
+function TapFunction(props: TapFunctionProps): any {
   const hook = use(refresh => {
-    const target = Provided.get(props.value);
+    const targets = getOwnSymbolValues<Model>(props.context);
 
-    return target
-      ? new Subscriber(target, refresh)
-      : {} as Subscriber;
+    if(targets.length == 1)
+      return new Subscriber(targets[0], refresh);
+
+    return {} as Subscriber;
   });
 
   if(hook.commit)
@@ -124,14 +101,20 @@ interface ProvideProps {
 
 export function Provider(props: ProvideProps){
   const render: any = props.children;
-  const value = useNewContext(props.of);
+  const current = useLookup();
+  const context = useMemo(() => {
+    if(props.of)
+      return current.push(props.of);
 
-  useAppliedProps(value, props);
-  useLayoutEffect(() => () => value.pop(), []);
+    throw Oops.NoProviderType();
+  }, []);
 
-  return createElement(LookupContext.Provider, { value },
+  useAppliedProps(context, props);
+  useLayoutEffect(() => () => context.pop(), []);
+
+  return createElement(LookupContext.Provider, { value: context },
     typeof render == "function"
-      ? createElement(RenderProvider, { value, render })
+      ? createElement(TapFunction, { context, render })
       : render
   );
 }

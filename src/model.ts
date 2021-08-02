@@ -191,8 +191,6 @@ export class Model {
     return useWatcher(this, path);
   }
 
-  static find(strict: true): Model;
-  static find(strict?: boolean): Model | undefined;
   static find(strict?: boolean){
     return useFromContext(this, strict);
   }
