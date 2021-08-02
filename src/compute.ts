@@ -45,12 +45,12 @@ export function prepareComputed(
   getter: (on?: any) => any,
   setter?: (to: any) => void){
 
-  let sub: Subscriber;
-
   const { state, subject } = parent;
   const info: GetterInfo = {
     key, parent, priority: 1
   };
+
+  let sub: Subscriber;
 
   function compute(initial?: boolean){
     try {
@@ -169,10 +169,12 @@ export function computeContext(
 
     if(compute.parent !== parent)
       request();
-    else
-      interject(request, pending, (sib) =>
-        compute.priority > ComputedInfo.get(sib)!.priority
-      );
+    else {
+      const byPriorty = (sib: Function) =>
+        compute.priority > ComputedInfo.get(sib)!.priority;
+
+      pending.splice(pending.findIndex(byPriorty) + 1, 0, request);
+    }
 
     return true;
   }
@@ -188,10 +190,4 @@ export function computeContext(
   }
 
   return { queue, flush };
-}
-
-function interject<T>(
-  item: T, into: T[], after: (item: T) => boolean){
-
-  into.splice(into.findIndex(after) + 1, 0, item);
 }

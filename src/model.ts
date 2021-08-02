@@ -67,22 +67,20 @@ export class Model {
 
   on(
     select: string | Iterable<string> | Query,
-    listener: UpdateCallback<any, any>,
+    does: UpdateCallback<any, any>,
     squash?: boolean,
     once?: boolean){
 
-    return manage(this).watch(
-      select, listener, squash, once
-    )
+    return manage(this).watch(select, does, squash, once);
   }
 
   once(
     select: string | Iterable<string> | Query,
-    listener?: UpdateCallback<any, any>,
+    does?: UpdateCallback<any, any>,
     squash?: boolean){
 
-    if(listener)
-      return this.on(select, listener, squash, true);
+    if(does)
+      return this.on(select, does, squash, true);
     else 
       return new Promise<void>(resolve => {
         this.on(select, resolve, true, true);
@@ -236,14 +234,14 @@ defineLazy(Model, CONTROL, function(){
 })
 
 function defer(on: Controller, method: string){
-  const target: any = on.subject;
-  const real = target[method];
+  const { subject, waiting } = on as any;
+  const real = subject[method];
 
-  target[method] = (...args: any[]) => {
-    let release: any;
-    on.waiting.push(() => {
-      release = real.apply(target, args);
+  subject[method] = (...args: any[]) => {
+    let done: any;
+    waiting.push(() => {
+      done = real.apply(subject, args);
     });
-    return () => release();
+    return () => done();
   }
 }

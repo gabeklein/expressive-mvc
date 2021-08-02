@@ -22,15 +22,15 @@ export function set(
   return placeholder as any;
 }
 
-export function isInstruction(maybe: any): maybe is symbol {
-  return Pending.has(maybe);
-}
-
 export function runInstruction(
   on: Controller, key: string, value: symbol){
 
+  const instruction = Pending.get(value);
+
+  if(!instruction)
+    return;
+
   const { subject } = on as any;
-  const instruction = Pending.get(value)!;
 
   Pending.delete(value);
   delete subject[key];

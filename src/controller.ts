@@ -1,5 +1,5 @@
 import { computeContext, ensureValue, implementGetters } from './compute';
-import { isInstruction, runInstruction } from './instructions';
+import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
@@ -54,7 +54,7 @@ export class Controller {
     if(desc && "value" in desc){
       const { value } = desc;
 
-      if(isInstruction(value) && runInstruction(this, key, value))
+      if(runInstruction(this, key, value))
         return;
 
       if(desc.enumerable && typeof value !== "function" || /^[A-Z]/.test(key))
@@ -155,7 +155,13 @@ export class Controller {
     const handled = new Set<string>();
     const { queue, flush } = computeContext(this, handled);
 
-    const include = (key: string) => {
+    setTimeout(() => {
+      flush();
+      this.pending = undefined;
+      this.emit(Array.from(handled));
+    }, 0);
+
+    return this.pending = (key: string) => {
       if(handled.has(key))
         return;
 
@@ -170,15 +176,6 @@ export class Controller {
 
           this.waiting.push(request);
         }
-    }
-
-    const close = () => {
-      flush();
-      this.pending = undefined;
-      this.emit(Array.from(handled));
-    }
-
-    setTimeout(close, 0);
-    return this.pending = include;
+    };
   }
 }
