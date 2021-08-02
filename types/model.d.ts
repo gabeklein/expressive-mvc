@@ -1,4 +1,4 @@
-import Controller from './controller';
+import Dispatch from './dispatch';
 import Lifecycle from './lifecycle';
 import { Selector } from './selector';
 import { Class, InstanceOf, Key } from './types';
@@ -19,12 +19,14 @@ export namespace Model {
         current: T | null;
     }
 
+    type InstructionGetter<T> = (within: any) => T;
+
     /**
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
     type Instruction<T> = (on: any, key: string) =>
-        void | ((within: any) => T) | PropertyDescriptor<T>;
+        void | InstructionGetter<T> | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
@@ -93,13 +95,63 @@ export namespace Model {
     type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
+
+    export class Controller {
+        state: BunchOf<any>;
+
+        /**
+         * Place a given key's property under management.
+         * 
+         * Note: If property is occupied by an instruction, it will be run.
+         */
+        add(key: string): void;
+
+        /** Add property to managed state. */
+        manage(key: string, initial: any, effect?: EffectCallback<any, any>): void;
+
+        /** Get keys currently under managed state. */
+        keys(): string[];
+        /** Run a query to select keys managed by this controller. */
+        keys(using: Query): string[];
+        /** Helper overload */
+        keys(using: string): string[];
+        /** Helper overload */
+        keys(using: Iterable<string>): string[];
+
+        sets(key: string, effect?: EffectCallback<any, any>): (value: any) => void;
+
+        watch(target: string | Iterable<string> | Query, handler: Function, squash?: boolean, once?: boolean): Callback;
+
+        addListener(batch: BunchOf<RequestCallback>): Callback;
+
+        update(key: string): void;
+
+        requestUpdate(arg?: RequestCallback | boolean): Promise<unknown> | undefined;
+    }
+
+    type Listener = {
+        commit(): void;
+        release(): void;
+    }
+      
+    export class Subscriber {
+        proxy: any;
+        active: boolean;
+        follows: BunchOf<Callback>;
+        dependant: Set<Listener>;
+        parent: Controller;
+
+        follow(key: string, cb?: Callback | undefined): void;
+        commit(): Callback;
+        release(): Callback;
+    }
 }
 
 declare const CONTROL: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
-export interface Model extends Controller, Lifecycle {}
+export interface Model extends Dispatch, Lifecycle {}
 
 export abstract class Model {
     /**
@@ -209,13 +261,13 @@ export abstract class Model {
     tag(idFactory: (idFactory: this) => Key | void): this;
 
     /** Controller of this instance. */
-    [CONTROL]: Controller;
+    [CONTROL]: Model.Controller;
 
     /** Current state of this instance. */
     [STATE]?: Model.State<this>;
 
     /** Current subscriber (if present) while used in a watch context (i.e. hook). */
-    [LOCAL]?: any;
+    [LOCAL]?: Model.Subscriber;
 
     /** Key for controller of model instance. */
     static CONTROL: typeof CONTROL;
@@ -338,7 +390,7 @@ export abstract class Model {
      * 
      * Documentation TBD.
      */
-    static meta <T extends Class>(this: T): T & Controller;
+    static meta <T extends Class>(this: T): T;
 
     /** 
      * **React Hook** - Fetch and subscribe to value defined on class itself using selectors.
