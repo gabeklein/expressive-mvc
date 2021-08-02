@@ -155,19 +155,19 @@ export function ensureValue(from: {}, key: string){
     (getter as Initial)(true);
 }
 
-export function computeContext(
-  parent: Controller,
-  handled: Set<string>){
-
+export function computeContext(){
   const pending = [] as Callback[];
 
-  function queue(request: RequestCallback){
+  function intercept(
+    request: RequestCallback,
+    current: Controller){
+
     const compute = ComputedInfo.get(request);
 
     if(!compute)
-      return false;
+      return;
 
-    if(compute.parent !== parent)
+    if(compute.parent !== current)
       request();
     else {
       const byPriorty = (sib: Function) =>
@@ -179,7 +179,7 @@ export function computeContext(
     return true;
   }
 
-  function flush(){
+  function flush(handled: Set<string>){
     while(pending.length){
       const compute = pending.shift()!;
       const { key } = ComputedInfo.get(compute)!;
@@ -189,5 +189,5 @@ export function computeContext(
     }
   }
 
-  return { queue, flush };
+  return { intercept, flush };
 }

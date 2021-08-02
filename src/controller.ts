@@ -182,10 +182,10 @@ export class Controller {
 
   public sync(reset: Callback){
     const handled = new Set<string>();
-    const { queue, flush } = computeContext(this, handled);
+    const { intercept, flush } = computeContext();
 
     setTimeout(() => {
-      flush();
+      flush(handled);
       reset();
       this.emit(handled);
     }, 0);
@@ -200,7 +200,7 @@ export class Controller {
         if(key in subscription){
           const request = subscription[key];
 
-          if(queue(request))
+          if(intercept(request, this))
             continue;
 
           this.waiting.push(request);
