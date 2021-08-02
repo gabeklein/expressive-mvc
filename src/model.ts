@@ -1,18 +1,12 @@
 import { useFromContext } from './context';
 import { Controller } from './controller';
 import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hooks';
-import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getPrototypeOf } from './util';
 
 export const CONTROL = Symbol("controller");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
-
-export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
-})
 
 export interface Stateful {
   [CONTROL]: Controller;
@@ -136,16 +130,7 @@ export class Model {
   }
 
   requestUpdate(arg?: RequestCallback | boolean){
-    const { pending, waiting } = manage(this);
-
-    if(typeof arg == "function")
-      waiting.push(arg)
-    else if(!pending === arg)
-      return Promise.reject(Oops.StrictUpdate(arg))
-    else if(pending)
-      return new Promise(cb => waiting.push(cb));
-    else
-      return Promise.resolve(false);
+    return manage(this).requestUpdate(arg);
   }
 
   destroy(){

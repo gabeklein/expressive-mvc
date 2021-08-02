@@ -1,5 +1,6 @@
 import { computeContext, ensureValue, implementGetters } from './compute';
 import { runInstruction } from './instructions';
+import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
@@ -9,12 +10,17 @@ export namespace Controller {
     (on: Controller, key: string, value: any) => boolean | void;
 }
 
+export const Oops = issues({
+  StrictUpdate: (expected) => 
+    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
+})
+
+const Pending = new WeakMap<Controller, (key: string) => void>();
+
 export class Controller {
   public state = {} as BunchOf<any>;
   public handles = new Set<BunchOf<RequestCallback>>();
   public waiting = [] as RequestCallback[];
-
-  public pending?: (key: string) => void;
 
   constructor(public subject: Stateful){
     implementGetters(this);
@@ -139,29 +145,52 @@ export class Controller {
   }
 
   public update(key: string){
-    (this.pending || this.sync())(key);
+    let pending = Pending.get(this);
+
+    if(!pending){
+      const done = () => Pending.delete(this);
+      pending = this.sync(done);
+      Pending.set(this, pending);
+    }
+
+    pending(key);
   }
 
-  public emit(frame?: string[]){
+  public requestUpdate(arg?: RequestCallback | boolean){
+    const { waiting } = this;
+    const pending = Pending.get(this);
+
+    if(typeof arg == "function")
+      waiting.push(arg)
+    else if(!pending === arg)
+      return Promise.reject(Oops.StrictUpdate(arg))
+    else if(pending)
+      return new Promise(cb => waiting.push(cb));
+    else
+      return Promise.resolve(false);
+  }
+
+  public emit(frame?: Iterable<string>){
     const effects = this.waiting.splice(0);
     const unique = new Set(effects);
+    const keys = Array.from(frame || []);
 
     for(const callback of unique)
-      try { callback(frame) }
+      try { callback(keys) }
       catch(e){}
   }
 
-  public sync(){
+  public sync(reset: Callback){
     const handled = new Set<string>();
     const { queue, flush } = computeContext(this, handled);
 
     setTimeout(() => {
       flush();
-      this.pending = undefined;
-      this.emit(Array.from(handled));
+      reset();
+      this.emit(handled);
     }, 0);
 
-    return this.pending = (key: string) => {
+    return (key: string) => {
       if(handled.has(key))
         return;
 
