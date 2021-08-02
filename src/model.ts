@@ -4,7 +4,7 @@ import { useLazy, useModel, usePassive, useSubscriber, useWatcher } from './hook
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getPrototypeOf } from './util';
 
-export const CONTROL = Symbol("controller");
+export const CONTROL = Symbol("control");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
