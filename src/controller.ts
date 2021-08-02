@@ -15,12 +15,11 @@ export const Oops = issues({
     `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
 })
 
-const Pending = new WeakMap<Controller, (key: string) => void>();
-
 export class Controller {
   public state = {} as BunchOf<any>;
-  public handles = new Set<BunchOf<RequestCallback>>();
-  public waiting = [] as RequestCallback[];
+  protected handles = new Set<BunchOf<RequestCallback>>();
+  protected waiting = [] as RequestCallback[];
+  protected pending?: (key: string) => void;
 
   constructor(public subject: Stateful){
     implementGetters(this);
@@ -145,20 +144,18 @@ export class Controller {
   }
 
   public update(key: string){
-    let pending = Pending.get(this);
-
-    if(!pending){
-      const done = () => Pending.delete(this);
-      pending = this.sync(done);
-      Pending.set(this, pending);
+    if(!this.pending){
+      const onDone = () => {
+        delete this.pending;
+      }
+      this.pending = this.sync(onDone);
     }
 
-    pending(key);
+    this.pending(key);
   }
 
   public requestUpdate(arg?: RequestCallback | boolean){
-    const { waiting } = this;
-    const pending = Pending.get(this);
+    const { waiting, pending } = this;
 
     if(typeof arg == "function")
       waiting.push(arg)
@@ -172,12 +169,12 @@ export class Controller {
 
   public emit(frame?: Iterable<string>){
     const effects = this.waiting.splice(0);
-    const unique = new Set(effects);
     const keys = Array.from(frame || []);
 
-    for(const callback of unique)
+    new Set(effects).forEach(callback => {
       try { callback(keys) }
       catch(e){}
+    })
   }
 
   public sync(reset: Callback){
