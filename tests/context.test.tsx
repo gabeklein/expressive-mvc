@@ -58,6 +58,17 @@ describe("Provider", () => {
     );
   })
 
+  it("will pass undefined to render function if multiple", () => {
+    render(
+      <Provider of={{ Foo, Bar }}>
+        {(instance) => {
+          expect(instance).toBeUndefined();
+          return null;
+        }}
+      </Provider>
+    );
+  })
+
   it("will refresh render function as a subscriber", async () => {
     const didRender = jest.fn();
     const test = Foo.create();
