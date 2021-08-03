@@ -22,27 +22,30 @@ export class Subscriber {
       parent = manage(parent);
 
     this.parent = parent;
+    this.proxy = create(parent.subject);
 
-    const proxy = this.proxy =
-      create(parent.subject);
+    define(this.proxy, LOCAL, this);
 
-    define(proxy, LOCAL, this);
+    for(const key in parent.state)
+      this.spy(key);
+  }
 
-    for(const key in parent.state){
-      const intercept = () => {
-        this.follow(key);
-        delete proxy[key];
-        return proxy[key];
-      }
+  public spy(key: string){
+    const { proxy, parent } = this;
 
-      setAlias(intercept, `tap ${key}`);
-      defineProperty(proxy, key, {
-        get: intercept,
-        set: parent.sets(key),
-        configurable: true,
-        enumerable: true
-      })
+    const intercept = () => {
+      this.follow(key);
+      delete proxy[key];
+      return proxy[key];
     }
+
+    setAlias(intercept, `tap ${key}`);
+    defineProperty(proxy, key, {
+      get: intercept,
+      set: parent.sets(key),
+      configurable: true,
+      enumerable: true
+    })
   }
 
   public follow(key: string, cb?: Callback){
@@ -51,9 +54,10 @@ export class Subscriber {
 
   public commit(){
     const { dependant, follows, parent } = this;
-    const onDone = parent.addListener(follows);
 
+    const onDone = parent.addListener(follows);
     this.active = true;
+
     dependant.forEach(x => x.commit());
 
     return this.release = () => {

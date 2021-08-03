@@ -21,10 +21,10 @@ export function use<T extends typeof Model>(
     const proxy = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
-    function update(current: InstanceOf<T>){
-      instance = current;
+    function onValue(next: InstanceOf<T>){
+      instance = next;
 
-      if(current){
+      if(next){
         ParentRelationship.set(instance, on.subject);
         manage(instance);
 
@@ -33,51 +33,49 @@ export function use<T extends typeof Model>(
       }
     }
 
-    function init(sub: Subscriber){
-      const { dependant } = sub;
+    on.manage(key, instance, onValue);
+    onValue(instance);
+
+    function extend(sub: Subscriber){
       let reset: Callback | undefined;
 
-      function setup(){
-        const child =
-          new Subscriber(instance, sub.onUpdate);
+      function create(){
+        const child = new Subscriber(instance, sub.onUpdate);
 
         if(sub.active)
           child.commit();
 
-        dependant.add(child);
+        sub.dependant.add(child);
         proxy.set(sub, child.proxy);
 
         reset = () => {
           child.release();
           proxy.set(sub, undefined);
-          dependant.delete(child);
+          sub.dependant.delete(child);
           reset = undefined;
         }
       }
 
-      setup();
+      create();
       sub.follow(key, () => {
         if(reset)
           reset();
         
         if(instance)
-          setup();
+          create();
 
         sub.onUpdate();
       });
     }
 
-    on.manage(key, instance, update);
-    update(instance);
-
-    return (current: Subscriber) => {
-      if(!current)
+    return (local: Subscriber) => {
+      if(!local)
         return instance;
 
-      if(!proxy.has(current))
-        init(current);
+      if(!proxy.has(local))
+        extend(local);
 
-      return proxy.get(current);
+      return proxy.get(local);
     }
   }, "use");
 }
