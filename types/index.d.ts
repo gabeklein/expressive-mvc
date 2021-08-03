@@ -4,6 +4,6 @@ export {
     Singleton
 } from './model';
 
+export * from './context';
 export * from './instructions';
-export * from './react';
 export * from './selector';
