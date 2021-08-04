@@ -19,13 +19,13 @@ export namespace Model {
         current: T | null;
     }
 
-    type InstructionGetter<T> = (within: any) => T;
+    type InstructionGetter<T> = (within: Subscriber) => T;
 
     /**
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (on: any, key: string) =>
+    type Instruction<T> = (on: Controller, key: string) =>
         void | InstructionGetter<T> | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */

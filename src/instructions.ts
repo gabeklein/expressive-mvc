@@ -5,16 +5,19 @@ import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
-import type Public from '../types';
 export const Oops = issues({
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
 })
 
-export const Pending = new Map<symbol, Public.Instruction<any>>();
+type InstructionGetter<T> = (within: Subscriber) => T;
+type Instruction<T> = (on: Controller, key: string) =>
+    void | InstructionGetter<T> | PropertyDescriptor;
+
+export const Pending = new Map<symbol, Instruction<any>>();
 
 export function set(
-  instruction: Public.Instruction<any>,
+  instruction: Instruction<any>,
   name = "pending"){
 
   const placeholder = Symbol(`${name} instruction`);
