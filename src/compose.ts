@@ -18,7 +18,7 @@ export function use<T extends typeof Model>(
   Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
 
   return set((on, key) => {
-    const proxy = new WeakMap<Subscriber, any>();
+    const Proxies = new WeakMap<Subscriber, any>();
     let instance = new Peer() as InstanceOf<T>;
 
     function onValue(next: InstanceOf<T>){
@@ -36,46 +36,46 @@ export function use<T extends typeof Model>(
     on.manage(key, instance, onValue);
     onValue(instance);
 
-    function extend(sub: Subscriber){
-      let reset: Callback | undefined;
+    function init(sub: Subscriber){
+      let child: Subscriber | undefined;
 
       function create(){
-        const child = new Subscriber(instance, sub.onUpdate);
+        if(!instance)
+          return;
+
+        child = new Subscriber(instance, sub.onUpdate);
 
         if(sub.active)
           child.commit();
 
         sub.dependant.add(child);
-        proxy.set(sub, child.proxy);
+        Proxies.set(sub, child.proxy);
+      }
 
-        reset = () => {
+      function refresh(){
+        if(child){
           child.release();
-          proxy.set(sub, undefined);
           sub.dependant.delete(child);
-          reset = undefined;
+          Proxies.set(sub, undefined);
+          child = undefined;
         }
+
+        create();
+        sub.onUpdate();
       }
 
       create();
-      sub.follow(key, () => {
-        if(reset)
-          reset();
-        
-        if(instance)
-          create();
-
-        sub.onUpdate();
-      });
+      sub.follow(key, refresh);
     }
 
     return (local: Subscriber) => {
       if(!local)
         return instance;
 
-      if(!proxy.has(local))
-        extend(local);
+      if(!Proxies.has(local))
+        init(local);
 
-      return proxy.get(local);
+      return Proxies.get(local);
     }
   }, "use");
 }
