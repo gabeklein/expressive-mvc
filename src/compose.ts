@@ -4,7 +4,7 @@ import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
 import { name } from './util';
 
-const ParentRelationship = new WeakMap<{}, {}>();
+const Related = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   ParentRequired: (expects, child) => 
@@ -15,17 +15,17 @@ export const Oops = issues({
 })
 
 export function use<T extends typeof Model>(
-  Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> {
+  Peer: T, callback?: (i: Model) => void): Model {
 
   return set((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
-    let instance = new Peer() as InstanceOf<T>;
+    let instance = new Peer() as Model;
 
-    function onValue(next: InstanceOf<T>){
+    function newValue(next: Model){
       instance = next;
 
       if(next){
-        ParentRelationship.set(instance, on.subject);
+        Related.set(instance, on.subject);
         manage(instance);
 
         if(callback)
@@ -33,10 +33,10 @@ export function use<T extends typeof Model>(
       }
     }
 
-    on.manage(key, instance, onValue);
-    onValue(instance);
+    on.manage(key, instance, newValue);
+    newValue(instance);
 
-    function init(sub: Subscriber){
+    function apply(sub: Subscriber){
       let child: Subscriber | undefined;
 
       function create(){
@@ -73,7 +73,7 @@ export function use<T extends typeof Model>(
         return instance;
 
       if(!Proxies.has(local))
-        init(local);
+        apply(local);
 
       return Proxies.get(local);
     }
@@ -86,7 +86,7 @@ export function parent<T extends typeof Model>(
   return set((on) => {
     const child = name(on.subject);
     const expected = Expects.name;
-    const parent = ParentRelationship.get(on.subject);
+    const parent = Related.get(on.subject);
 
     if(!parent){
       if(required)
