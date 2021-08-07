@@ -2,9 +2,169 @@ import React from 'react';
 
 import { Oops as Compose } from '../src/compose';
 import { Oops as Peers } from '../src/Peer';
-import { Model, parent, Provider, render, Singleton, tap, use } from './adapter';
+import { Model, parent, Provider, render, Singleton, subscribeTo, tap, use } from './adapter';
 
-describe("Parent-Child", () => {
+describe("use instruction", () => {
+  class Child extends Model {
+    value = "foo"
+  }
+  
+  class Parent extends Model {
+    value = "foo";
+    child = use(Child);
+  }
+  
+  it('will track recursively', async () => {
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+      void it.child.value;
+    })
+
+    expect(state.value).toBe("foo");
+    expect(state.child.value).toBe("foo");
+  
+    state.value = "bar";
+    await update();
+  
+    state.child.value = "bar";
+    await update();
+  })
+  
+  it('will create from factory', async () => {
+    class Child extends Model {
+      parent!: Parent;
+    }
+
+    class Parent extends Model {
+      child = use(() => {
+        const child = Child.create();
+        child.parent = this;
+        return child;
+      });
+    }
+
+    const state = Parent.create();
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(state.child.parent).toBe(state);
+  })
+  
+  it('will accept undefined from factory', async () => {
+    class Parent extends Model {
+      child = use(() => undefined);
+    }
+
+    const state = Parent.create();
+
+    expect(state.child).toBeUndefined();
+  })
+
+  it('will update on new value', async () => {
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+      void it.child.value;
+    })
+  
+    expect(state.child.value).toBe("foo");
+  
+    // Will refresh on sub-value change.
+    state.child.value = "bar";
+    await update();
+    expect(state.child.value).toBe("bar");
+  
+    // Will refresh on repalcement.
+    state.child = new Child();
+    await update();
+    expect(state.child.value).toBe("foo");
+  
+    // New subscription does still work.
+    state.child.value = "bar";
+    await update();
+    expect(state.child.value).toBe("bar");
+  })
+  
+  it('will reset if value is undefined', async () => {
+    class Parent extends Model {
+      value = "foo";
+      child = use(Child, false);
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+
+      if(it.child)
+        void it.child.value;
+    })
+  
+    // Will refresh on sub-value change.
+    state.child!.value = "bar";
+    await update();
+  
+    // Will refresh on undefined.
+    state.child = undefined;
+    await update();
+    expect(state.child).toBeUndefined();
+  
+    // Will refresh on repalcement.
+    state.child = new Child();
+    await update();
+  
+    // New subscription does still work.
+    state.child.value = "bar";
+    await update();
+  })
+
+  it('will subscribe if initially undefined', async () => {
+    class Parent extends Model {
+      value = "foo";
+      child = use<Child>();
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+
+      if(it.child)
+        void it.child.value;
+    })
+
+    expect(state.child).toBeUndefined();
+
+    // Will refresh on repalcement.
+    state.child = new Child();
+    await update();
+  
+    // New subscription does work.
+    state.child.value = "bar";
+    await update();
+
+    // Will refresh on deletion.
+    state.child = undefined;
+    await update();
+  })
+
+  it('will complain if undefined in required mode', () => {
+    class Parent extends Model {
+      child = use(Child, true);
+    }
+
+    const state = Parent.create();
+
+    const expected = Compose.UndefinedNotAllowed("child");
+    const setUndefined = () => {
+      // @ts-ignore
+      state.child = undefined;
+    }
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(setUndefined).toThrowError(expected);
+  })
+})
+
+describe("parent instruction", () => {
   it("creates parent-child relationship", () => {
     class Foo extends Model {
       child = use(Bar as any) as Bar;
@@ -65,7 +225,7 @@ describe("Parent-Child", () => {
   })
 });
 
-describe("Peers", () => {
+describe("tap instruction", () => {
   class Foo extends Model {
     bar = tap(Bar);
   }
