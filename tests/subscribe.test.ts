@@ -53,7 +53,7 @@ describe("subscriber", () => {
   })
 })
 
-describe("nested properties", () => {
+describe("use instruction", () => {
   class Child extends Model {
     value = "foo"
   }
@@ -63,7 +63,7 @@ describe("nested properties", () => {
     child = use(Child);
   }
   
-  it('are be tracked recursively', async () => {
+  it('will track recursively', async () => {
     const state = Parent.create();
     const update = subscribeTo(state, it => {
       void it.value;
@@ -80,7 +80,36 @@ describe("nested properties", () => {
     await update();
   })
   
-  it('will update if intermediary does change', async () => {
+  it('will create from factory', async () => {
+    class Child extends Model {
+      parent!: Parent;
+    }
+
+    class Parent extends Model {
+      child = use(() => {
+        const child = Child.create();
+        child.parent = this;
+        return child;
+      });
+    }
+
+    const state = Parent.create();
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(state.child.parent).toBe(state);
+  })
+  
+  it('will accept undefined from factory', async () => {
+    class Parent extends Model {
+      child = use(() => undefined);
+    }
+
+    const state = Parent.create();
+
+    expect(state.child).toBeUndefined();
+  })
+
+  it('will update on new value', async () => {
     const state = Parent.create();
     const update = subscribeTo(state, it => {
       void it.value;
@@ -105,7 +134,7 @@ describe("nested properties", () => {
     expect(state.child.value).toBe("bar");
   })
   
-  it('will reset if child becomes undefined', async () => {
+  it('will reset if value is undefined', async () => {
     class Parent extends Model {
       value = "foo";
       child = use(Child);
@@ -134,6 +163,35 @@ describe("nested properties", () => {
   
     // New subscription does still work.
     state.child.value = "bar";
+    await update();
+  })
+
+  it('will subscribe if initially undefined', async () => {
+    class Parent extends Model {
+      value = "foo";
+      child = use<Child>();
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.value;
+
+      if(it.child)
+        void it.child.value;
+    })
+
+    expect(state.child).toBeUndefined();
+
+    // Will refresh on repalcement.
+    state.child = new Child();
+    await update();
+  
+    // New subscription does work.
+    state.child.value = "bar";
+    await update();
+
+    // Will refresh on deletion.
+    state.child = undefined;
     await update();
   })
 })

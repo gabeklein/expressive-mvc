@@ -92,7 +92,7 @@ function TapFunction(props: TapFunctionProps): any {
     useLayoutEffect(() => hook.commit(), []);
 
   return props.render(hook.proxy);
-};
+}
 
 interface ProvideProps {
   of?: typeof Model | Model | Collection;

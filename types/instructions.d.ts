@@ -13,7 +13,9 @@ export function set <T> (instruction: Model.Instruction<T>, name?: string): T;
  * @param Peer - Type of Model to create and apply to host property.
  * @param callback - Fired after controller is created and ready for use.
  */
- export function use <T extends typeof Model> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T> 
+ export function use <T extends typeof Model> (Peer: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T>;
+ export function use <T extends Model | undefined> (Peer: () => T, callback?: (i: T) => void): T;
+ export function use <T extends Model> (): T | undefined;
 
  /**
   * Fetches and assigns the controller which spawned this host.

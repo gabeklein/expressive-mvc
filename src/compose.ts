@@ -15,11 +15,12 @@ export const Oops = issues({
 })
 
 export function use<T extends typeof Model>(
-  Peer: T, callback?: (i: Model) => void): Model {
+  Peer?: T | (() => InstanceOf<T>),
+  callback?: (i: Model) => void): Model {
 
   return set((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
-    let instance = new Peer() as Model;
+    let instance: Model | undefined;
 
     function newValue(next: Model){
       instance = next;
@@ -32,9 +33,6 @@ export function use<T extends typeof Model>(
           callback(instance);
       }
     }
-
-    on.manage(key, instance, newValue);
-    newValue(instance);
 
     function apply(sub: Subscriber){
       let child: Subscriber | undefined;
@@ -67,6 +65,17 @@ export function use<T extends typeof Model>(
       create();
       sub.follow(key, refresh);
     }
+
+    if(Peer){
+      instance = Model.isTypeof(Peer)
+        ? new Peer()
+        : Peer()
+
+      if(instance)
+        newValue(instance);
+    }
+
+    on.manage(key, instance, newValue);
 
     return (local: Subscriber) => {
       if(!local)
