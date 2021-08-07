@@ -73,12 +73,12 @@ function useAppliedProps(
   update(props);
 }
 
-interface TapFunctionProps {
+interface RenderFunctionProps {
   context: Lookup;
   render: (instance?: any) => ReactNode;
 }
 
-function TapFunction(props: TapFunctionProps): any {
+function RenderFunction(props: RenderFunctionProps): any {
   const hook = use(refresh => {
     const targets = getOwnSymbolValues<Model>(props.context);
 
@@ -114,7 +114,7 @@ export function Provider(props: ProvideProps){
 
   return createElement(LookupContext.Provider, { value: context },
     typeof render == "function"
-      ? createElement(TapFunction, { context, render })
+      ? createElement(RenderFunction, { context, render })
       : render
   );
 }

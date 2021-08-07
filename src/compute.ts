@@ -158,7 +158,7 @@ export function ensureValue(from: {}, key: string){
 export function computeContext(){
   const pending = [] as Callback[];
 
-  function intercept(
+  function capture(
     request: RequestCallback,
     current: Controller){
 
@@ -189,5 +189,5 @@ export function computeContext(){
     }
   }
 
-  return { intercept, flush };
+  return { capture, flush };
 }

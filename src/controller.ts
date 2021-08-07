@@ -179,7 +179,7 @@ export class Controller {
 
   public sync(reset: Callback){
     const handled = new Set<string>();
-    const { intercept, flush } = computeContext();
+    const { capture, flush } = computeContext();
 
     setTimeout(() => {
       flush(handled);
@@ -197,7 +197,7 @@ export class Controller {
         if(key in subscription){
           const request = subscription[key];
 
-          if(intercept(request, this))
+          if(capture(request, this))
             continue;
 
           this.waiting.push(request);
