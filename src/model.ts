@@ -138,6 +138,10 @@ export class Model {
       this.willDestroy();
   }
 
+  toString(){
+    return this.constructor.name;
+  }
+
   static STATE = STATE;
   static CONTROL = CONTROL;
   static LOCAL = LOCAL;

@@ -142,3 +142,12 @@ describe("Model", () => {
     })
   })
 })
+
+describe("toString", () => {
+  class Test extends Model {};
+  
+  it("Model will cast to string as class name", () => {
+    const test = Test.create();
+    expect(String(test)).toBe("Test");
+  })
+})

@@ -2,7 +2,6 @@ import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
-import { name } from './util';
 
 const Related = new WeakMap<{}, {}>();
 
@@ -100,7 +99,7 @@ export function parent<T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> {
 
   return set((on) => {
-    const child = name(on.subject);
+    const child = on.subject;
     const expected = Expects.name;
     const parent = Related.get(on.subject);
 
@@ -109,7 +108,7 @@ export function parent<T extends typeof Model>(
         throw Oops.ParentRequired(expected, child);
     }
     else if(!(parent instanceof Expects))
-      throw Oops.UnexpectedParent(expected, child, name(parent));
+      throw Oops.UnexpectedParent(expected, child, parent);
 
     return { value: parent };
   }, "parent");

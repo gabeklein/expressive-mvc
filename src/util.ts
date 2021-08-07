@@ -86,10 +86,6 @@ export function createEffect(
   }
 }
 
-export function name(instance: any){
-  return instance.constructor.name;
-}
-
 export function selectRecursive(
   using: Function,
   keys: Iterable<string>){

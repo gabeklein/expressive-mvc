@@ -1,4 +1,4 @@
-type MessageVar = string | number | boolean | null;
+type MessageVar = {} | string | number | boolean | null;
 type ExpectVars<T> = T extends (...args: infer T) => any ? T : never;
 
 type Messages = {

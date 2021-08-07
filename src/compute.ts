@@ -2,7 +2,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
-import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, name, setAlias } from './util';
+import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, setAlias } from './util';
 
 export const Oops = issues({
   ComputeFailed: (parent, property, initial) =>
@@ -57,7 +57,7 @@ export function prepareComputed(
       return getter.call(sub.proxy, sub.proxy);
     }
     catch(err){
-      Oops.ComputeFailed(name(subject), key, !!initial).warn();
+      Oops.ComputeFailed(subject, key, !!initial).warn();
       throw err;
     }
   }

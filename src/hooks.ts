@@ -5,7 +5,7 @@ import { Lifecycle, lifecycle } from './lifecycle';
 import { Model, Stateful } from './model';
 import { usePeers } from './peer';
 import { Subscriber } from './subscriber';
-import { defineProperty, name } from './util';
+import { defineProperty } from './util';
 
 export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
@@ -48,7 +48,7 @@ export function useWatcher(
       defineProperty(sub, "proxy", {
         get(){
           if(proxy[key] === undefined && expected)
-            throw Oops.HasPropertyUndefined(name(target), key);
+            throw Oops.HasPropertyUndefined(target, key);
 
           return proxy[key];
         }
