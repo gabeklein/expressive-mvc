@@ -11,13 +11,16 @@ export const Oops = issues({
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 
   UnexpectedParent: (expects, child, got) =>
-    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`
+    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
+
+  UndefinedNotAllowed: (key) =>
+    `Child property ${key} may not be undefined.`
 })
 
 export function use<T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
-  callback?: (i: Model) => void): Model {
-
+  onValue?: ((i: Model) => void) | boolean
+): Model {
   return set((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
@@ -28,10 +31,12 @@ export function use<T extends typeof Model>(
       if(next){
         Related.set(instance, on.subject);
         manage(instance);
-
-        if(callback)
-          callback(instance);
       }
+
+      if(typeof onValue == "function")
+        onValue(instance);
+      else if(!instance && onValue !== false)
+        throw Oops.UndefinedNotAllowed(key);
     }
 
     function apply(sub: Subscriber){
@@ -74,6 +79,8 @@ export function use<T extends typeof Model>(
       if(instance)
         newValue(instance);
     }
+    else
+      onValue = false;
 
     on.manage(key, instance, newValue);
 

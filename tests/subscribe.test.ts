@@ -1,4 +1,5 @@
 import { Model, subscribeTo, use } from './adapter';
+import { Oops } from '../src/compose';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -137,7 +138,7 @@ describe("use instruction", () => {
   it('will reset if value is undefined', async () => {
     class Parent extends Model {
       value = "foo";
-      child = use(Child);
+      child = use(Child, false);
     }
 
     const state = Parent.create();
@@ -153,7 +154,7 @@ describe("use instruction", () => {
     await update();
   
     // Will refresh on undefined.
-    state.child = undefined as any;
+    state.child = undefined;
     await update();
     expect(state.child).toBeUndefined();
   
@@ -193,5 +194,22 @@ describe("use instruction", () => {
     // Will refresh on deletion.
     state.child = undefined;
     await update();
+  })
+
+  it('will complain if undefined in required mode', () => {
+    class Parent extends Model {
+      child = use(Child, true);
+    }
+
+    const state = Parent.create();
+
+    const expected = Oops.UndefinedNotAllowed("child");
+    const setUndefined = () => {
+      // @ts-ignore
+      state.child = undefined;
+    }
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(setUndefined).toThrowError(expected);
   })
 })
