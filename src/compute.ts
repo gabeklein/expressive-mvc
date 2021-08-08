@@ -159,7 +159,6 @@ export function ensure(on: Controller, keys: string[]){
 }
 
 export function capture(on: Controller, request: RequestCallback){
-
   const compute = ComputedInfo.get(request);
 
   if(!compute)
