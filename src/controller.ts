@@ -1,6 +1,5 @@
 import { capture, ensureValues, flush, implementGetters } from './compute';
 import { runInstruction } from './instructions';
-import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
@@ -9,11 +8,6 @@ export namespace Controller {
   export type Handle =
     (on: Controller, key: string, value: any) => boolean | void;
 }
-
-export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
-})
 
 export class Controller {
   public state = {} as BunchOf<any>;
@@ -148,30 +142,30 @@ export class Controller {
     }
   }
 
-  public requestUpdate(arg?: RequestCallback | boolean){
-    const { waiting, pending } = this;
-
-    if(typeof arg == "function")
-      waiting.push(arg)
-    else if(!pending === arg)
-      return Promise.reject(Oops.StrictUpdate(arg))
-    else if(pending)
-      return new Promise(cb => waiting.push(cb));
+  public include(to: RequestCallback){
+    if(capture(this, to))
+      return;
     else
-      return Promise.resolve(false);
+      this.waiting.push(to)
   }
 
   public update(key: string){
     if(!this.pending)
-      setTimeout(() => {
-        flush(this);
-        this.emit();
-      }, 0);
+      setTimeout(() => this.emit(), 0);
 
-    this.include(key);
+    if(this.frame.has(key))
+      return;
+
+    this.frame.add(key);
+
+    for(const subscription of this.handles)
+      if(key in subscription)
+        this.include(subscription[key]);
   }
 
   public emit(){
+    flush(this);
+
     const keys = Array.from(this.frame);
     const handle = new Set(this.waiting.splice(0));
 
@@ -181,22 +175,5 @@ export class Controller {
       try { cb(keys) }
       catch(e){ }
     })
-  }
-
-  public include(key: string){
-    if(this.frame.has(key))
-      return;
-
-    this.frame.add(key);
-
-    for(const subscription of this.handles)
-      if(key in subscription){
-        const request = subscription[key];
-
-        if(capture(this, request))
-          continue;
-
-        this.waiting.push(request);
-      }
   }
 }

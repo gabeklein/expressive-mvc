@@ -1,8 +1,14 @@
 import { useFromContext } from './context';
 import { Controller } from './controller';
 import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
+import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getPrototypeOf } from './util';
+
+export const Oops = issues({
+  StrictUpdate: (expected) => 
+    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
+})
 
 export const CONTROL = Symbol("control");
 export const LOCAL = Symbol("local");
@@ -130,7 +136,18 @@ export class Model {
   }
 
   requestUpdate(arg?: RequestCallback | boolean){
-    return manage(this).requestUpdate(arg);
+    const control = manage(this);
+
+    if(typeof arg == "function")
+      control.include(arg);
+
+    if(!control.pending === arg)
+      return Promise.reject(Oops.StrictUpdate(arg))
+
+    if(control.pending)
+      return new Promise(cb => control.include(cb));
+
+    return Promise.resolve(false);
   }
 
   destroy(){

@@ -1,4 +1,4 @@
-import { Oops } from "../src/controller";
+import { Oops } from "../src/model";
 import { Model } from "./adapter";
 
 describe("requestUpdate method", () => {

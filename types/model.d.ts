@@ -126,7 +126,7 @@ export namespace Model {
 
         update(key: string): void;
 
-        requestUpdate(arg?: RequestCallback | boolean): Promise<unknown> | undefined;
+        include(cb: RequestCallback): void;
     }
 
     type Listener = {
