@@ -29,7 +29,7 @@ export class Controller {
     getOwnPropertyNames(this.subject)
       .forEach(k => this.add(k));
 
-    this.emit();
+    this.emit([]);
 
     return this;
   }
@@ -167,14 +167,12 @@ export class Controller {
     this.pending(key);
   }
 
-  public emit(frame?: Iterable<string>){
-    const effects = this.waiting.splice(0);
-    const keys = Array.from(frame || []);
-
-    new Set(effects).forEach(callback => {
-      try { callback(keys) }
-      catch(e){}
-    })
+  public emit(frame: string[]){
+    new Set(this.waiting.splice(0))
+      .forEach(cb => {
+        try { cb(frame) }
+        catch(e){ }
+      })
   }
 
   public sync(reset: Callback){
@@ -183,7 +181,7 @@ export class Controller {
     setTimeout(() => {
       flush(this, handled);
       reset();
-      this.emit(handled);
+      this.emit(Array.from(handled));
     }, 0);
 
     return (key: string) => {
