@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
 import { Model, Stateful } from './model';
-import { usePeers } from './peer';
+import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
 
@@ -94,7 +94,7 @@ export function useModel(
     return sub;
   });
 
-  usePeers(hook.parent.subject as Model);
+  usePeerContext(hook.parent.subject as Model);
   useComponentLifecycle(hook);
 
   return hook.proxy;

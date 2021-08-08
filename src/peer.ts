@@ -24,33 +24,37 @@ export function tap<T extends Peer>(
   type: T, required?: boolean): InstanceOf<T> {
 
   return set(({ subject }, key) => {
-    const Self = subject.constructor.name;
-
     if("current" in type)
-      defineLazy(subject, key, () => {
-        return (type as typeof Singleton).current;
-      });
+      defineLazy(subject, key, () => type.current);
     else if("current" in subject.constructor)
-      throw Oops.CantAttachGlobal(Self, type.name);
-    else {
-      let pending = PendingContext.get(subject);
-
-      if(!pending)
-        PendingContext.set(subject, pending = []);
-
-      pending.push((context: Lookup) => {
-        const remote = context.get(type);
-
-        if(!remote && required)
-          throw Oops.AmbientRequired(type.name, Self, key);
-
-        define(subject, key, remote);
-      });
-    }
+      throw Oops.CantAttachGlobal(subject, type.name);
+    else
+      registerPeer(subject, type, key, required);
   }, "tap");
 }
 
-export function usePeers(subject: Model){
+function registerPeer(
+  subject: Stateful,
+  type: typeof Model,
+  key: string,
+  required?: boolean
+){
+  let pending = PendingContext.get(subject);
+
+  if(!pending)
+    PendingContext.set(subject, pending = []);
+
+  pending.push((context: Lookup) => {
+    const remote = context.get(type);
+
+    if(!remote && required)
+      throw Oops.AmbientRequired(type.name, subject, key);
+
+    define(subject, key, remote);
+  });
+}
+
+export function usePeerContext(subject: Model){
   if(ContextWasUsed.has(subject)){
     if(ContextWasUsed.get(subject))
       useLookup();
