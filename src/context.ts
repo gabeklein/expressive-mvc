@@ -3,10 +3,10 @@ import { createContext, createElement, ReactElement, ReactNode, useContext, useL
 import { use } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
-import { getPendingContext } from './peer';
+import { applyParallel } from './peer';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
-import { entries, getOwnSymbolValues } from './util';
+import { entries } from './util';
 
 export const Oops = issues({
   NoProviderType: () =>
@@ -60,7 +60,7 @@ function useAppliedProps(
   within: Lookup, props: {}){
 
   const update = useMemo(() => {
-    const targets = getOwnSymbolValues<Model>(within);
+    const targets = within.local;
 
     return function integrate(props: {}){
       for(const [key, value] of entries(props))
@@ -81,7 +81,7 @@ interface RenderFunctionProps {
 
 function RenderFunction(props: RenderFunctionProps): any {
   const hook = use(refresh => {
-    const targets = getOwnSymbolValues<Model>(props.context);
+    const targets = props.context.local;
 
     if(targets.length == 1)
       return new Subscriber(targets[0], refresh);
@@ -109,13 +109,8 @@ export function Provider(props: ProvideProps){
     
     const context = current.push(props.of);
 
-    getOwnSymbolValues(context)
-      .map(getPendingContext)
-      .forEach((pending) => {
-        if(pending)
-          pending.forEach(cb => cb(context))
-      })
-    
+    applyParallel(context);
+
     return context;
   }, []);
 

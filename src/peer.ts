@@ -76,6 +76,11 @@ export function usePeerContext(subject: Model){
   ContextWasUsed.set(subject, !!pending);
 }
 
-export function getPendingContext(on: Stateful){
-  return PendingContext.get(on);
+export function applyParallel(context: Lookup){
+  for(const instance of context.local){
+    const pending = PendingContext.get(instance);
+
+    if(pending)
+      pending.forEach(cb => cb(context));
+  }
 }

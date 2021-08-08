@@ -8,6 +8,12 @@ export type Collection =
 export class Lookup {
   private table = new Map<typeof Model, symbol>();
 
+  public get local(){
+    return getOwnPropertySymbols(this).map(
+      (symbol): Model => (this as any)[symbol]
+    ) 
+  }
+
   private key(T: typeof Model){
     let key = this.table.get(T);
 
