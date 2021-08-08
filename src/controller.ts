@@ -1,4 +1,4 @@
-import { computeContext, ensureValues, implementGetters } from './compute';
+import { capture, ensureValues, flush, implementGetters } from './compute';
 import { runInstruction } from './instructions';
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
@@ -143,17 +143,6 @@ export class Controller {
     }
   }
 
-  public update(key: string){
-    if(!this.pending){
-      const onDone = () => {
-        delete this.pending;
-      }
-      this.pending = this.sync(onDone);
-    }
-
-    this.pending(key);
-  }
-
   public requestUpdate(arg?: RequestCallback | boolean){
     const { waiting, pending } = this;
 
@@ -165,6 +154,17 @@ export class Controller {
       return new Promise(cb => waiting.push(cb));
     else
       return Promise.resolve(false);
+  }
+
+  public update(key: string){
+    if(!this.pending){
+      const onDone = () => {
+        delete this.pending;
+      }
+      this.pending = this.sync(onDone);
+    }
+
+    this.pending(key);
   }
 
   public emit(frame?: Iterable<string>){
@@ -179,10 +179,9 @@ export class Controller {
 
   public sync(reset: Callback){
     const handled = new Set<string>();
-    const { capture, flush } = computeContext();
 
     setTimeout(() => {
-      flush(handled);
+      flush(this, handled);
       reset();
       this.emit(handled);
     }, 0);
@@ -197,7 +196,7 @@ export class Controller {
         if(key in subscription){
           const request = subscription[key];
 
-          if(capture(request, this))
+          if(capture(this, request))
             continue;
 
           this.waiting.push(request);

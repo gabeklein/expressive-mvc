@@ -157,31 +157,35 @@ export function ensureValues(from: {}, keys: string[]){
   }
 }
 
-export function computeContext(){
-  const pending = [] as Callback[];
+const Pending = new WeakMap<Controller, RequestCallback[]>();
 
-  function capture(
-    request: RequestCallback,
-    current: Controller){
+export function capture(on: Controller, request: RequestCallback){
+  const compute = ComputedInfo.get(request);
 
-    const compute = ComputedInfo.get(request);
+  if(!compute)
+    return;
 
-    if(!compute)
-      return;
+  let pending = Pending.get(on);
 
-    if(compute.parent !== current)
-      request();
-    else {
-      const byPriorty = (sib: Function) =>
-        compute.priority > ComputedInfo.get(sib)!.priority;
+  if(!pending)
+    Pending.set(on, pending = []);
 
-      pending.splice(pending.findIndex(byPriorty) + 1, 0, request);
-    }
+  if(compute.parent !== on)
+    request();
+  else {
+    const byPriorty = (sib: Function) =>
+      compute.priority > ComputedInfo.get(sib)!.priority;
 
-    return true;
+    pending.splice(pending.findIndex(byPriorty) + 1, 0, request);
   }
 
-  function flush(handled: Set<string>){
+  return true;
+}
+
+export function flush(on: Controller, handled: Set<string>){
+  let pending = Pending.get(on);
+
+  if(pending){
     while(pending.length){
       const compute = pending.shift()!;
       const { key } = ComputedInfo.get(compute)!;
@@ -189,7 +193,7 @@ export function computeContext(){
       if(!handled.has(key))
         compute();
     }
+  
+    Pending.delete(on);
   }
-
-  return { capture, flush };
 }
