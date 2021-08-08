@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Oops as Compose } from '../src/compose';
 import { Oops as Peers } from '../src/Peer';
-import { Model, parent, Provider, render, Singleton, subscribeTo, tap, use } from './adapter';
+import { Consumer, Model, parent, Provider, render, Singleton, subscribeTo, tap, use } from './adapter';
 
 describe("use instruction", () => {
   class Child extends Model {
@@ -306,5 +306,34 @@ describe("tap instruction", () => {
     expect(attempt).toThrowError(issue);
   })
 
-  it.todo("can access peers sharing same provider");
+  it("will access context through Provider", () => {
+    class Foo extends Model {}
+    class Bar extends Model {
+      foo = tap(Foo, true);
+    }
+
+    render(
+      <Provider of={Foo}>
+        <Provider of={Bar}>
+          <Consumer of={Bar} has={i => expect(i.foo).toBeInstanceOf(Foo)} />
+        </Provider>
+      </Provider>
+    );
+  })
+
+  it("will access peers sharing same provider", () => {
+    class Foo extends Model {
+      bar = tap(Bar, true);
+    }
+    class Bar extends Model {
+      foo = tap(Foo, true);
+    }
+
+    render(
+      <Provider of={{ Foo, Bar }}>
+        <Consumer of={Bar} has={i => expect(i.foo.bar).toBe(i)} />
+        <Consumer of={Foo} has={i => expect(i.bar.foo).toBe(i)} />
+      </Provider>
+    );
+  });
 })

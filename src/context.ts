@@ -3,6 +3,7 @@ import { createContext, createElement, ReactElement, ReactNode, useContext, useL
 import { use } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
+import { getPendingContext } from './peer';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
 import { entries, getOwnSymbolValues } from './util';
@@ -103,10 +104,19 @@ export function Provider(props: ProvideProps){
   const render: any = props.children;
   const current = useLookup();
   const context = useMemo(() => {
-    if(props.of)
-      return current.push(props.of);
+    if(!props.of)
+      throw Oops.NoProviderType();
+    
+    const context = current.push(props.of);
 
-    throw Oops.NoProviderType();
+    getOwnSymbolValues(context)
+      .map(getPendingContext)
+      .forEach((pending) => {
+        if(pending)
+          pending.forEach(cb => cb(context))
+      })
+    
+    return context;
   }, []);
 
   useAppliedProps(context, props);

@@ -75,3 +75,7 @@ export function usePeerContext(subject: Model){
 
   ContextWasUsed.set(subject, !!pending);
 }
+
+export function getPendingContext(on: Stateful){
+  return PendingContext.get(on);
+}
