@@ -48,6 +48,7 @@ interface Dispatch {
   update(keys: Model.Fields<this>[]): void;
   update(keys: Model.Fields<this>): void;
 
+  requestUpdate(strict: true): Promise<string[]>;
   requestUpdate(strict?: boolean): Promise<string[] | false>;
   requestUpdate(cb: (keys: string[]) => void): void;
 }
