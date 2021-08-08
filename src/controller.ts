@@ -1,4 +1,4 @@
-import { computeContext, ensureValue, implementGetters } from './compute';
+import { computeContext, ensureValues, implementGetters } from './compute';
 import { runInstruction } from './instructions';
 import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
@@ -126,10 +126,10 @@ export class Controller {
       ? (k?: string[]) => { remove(); callback(k) }
       : callback;
 
-    for(const key of keys){
-      ensureValue(subject, key);
+    for(const key of keys)
       batch[key] = handle;
-    }
+
+    ensureValues(subject, keys);
 
     return remove;
   }

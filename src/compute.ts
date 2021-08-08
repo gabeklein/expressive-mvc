@@ -145,14 +145,16 @@ export function prepareComputed(
   return info;
 }
 
-export function ensureValue(from: {}, key: string){
+export function ensureValues(from: {}, keys: string[]){
   type Initial = (early?: boolean) => void;
 
-  const desc = getOwnPropertyDescriptor(from, key);
-  const getter = desc && desc.get;
-
-  if(ComputedInit.has(getter!))
-    (getter as Initial)(true);
+  for(const key of keys){
+    const desc = getOwnPropertyDescriptor(from, key);
+    const getter = desc && desc.get;
+  
+    if(ComputedInit.has(getter!))
+      (getter as Initial)(true);
+  }
 }
 
 export function computeContext(){
