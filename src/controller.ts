@@ -1,4 +1,4 @@
-import { capture, ensureValues, flush, implementGetters } from './compute';
+import * as Computed from './compute';
 import { runInstruction } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
@@ -17,7 +17,7 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){
-    implementGetters(this);
+    Computed.implement(this);
   }
 
   public get pending(){
@@ -128,7 +128,7 @@ export class Controller {
     for(const key of keys)
       batch[key] = handle;
 
-    ensureValues(subject, keys);
+    Computed.ensure(subject, keys);
 
     return remove;
   }
@@ -143,7 +143,7 @@ export class Controller {
   }
 
   public include(to: RequestCallback){
-    if(capture(this, to))
+    if(Computed.capture(this, to))
       return;
     else
       this.waiting.push(to)
@@ -164,7 +164,7 @@ export class Controller {
   }
 
   public emit(){
-    flush(this);
+    Computed.flush(this);
 
     const keys = Array.from(this.frame);
     const handle = new Set(this.waiting.splice(0));

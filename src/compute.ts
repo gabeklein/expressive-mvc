@@ -22,7 +22,7 @@ const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
 
-export function implementGetters(on: Controller){
+export function implement(on: Controller){
   const defined = new Map<string, GetterInfo>();
   let scan = on.subject;
 
@@ -32,14 +32,14 @@ export function implementGetters(on: Controller){
     for(let [key, { get, set }] of entriesIn(scan))
       if(get && !defined.has(key))
         defined.set(key, 
-          prepareComputed(on, key, get, set)
+          prepare(on, key, get, set)
         );
 
     scan = getPrototypeOf(scan)
   }
 }
 
-export function prepareComputed(
+export function prepare(
   parent: Controller,
   key: string,
   getter: (on?: any) => any,
@@ -145,7 +145,7 @@ export function prepareComputed(
   return info;
 }
 
-export function ensureValues(from: {}, keys: string[]){
+export function ensure(from: {}, keys: string[]){
   type Initial = (early?: boolean) => void;
 
   for(const key of keys){
@@ -159,7 +159,10 @@ export function ensureValues(from: {}, keys: string[]){
 
 const Pending = new WeakMap<Controller, RequestCallback[]>();
 
-export function capture(on: Controller, request: RequestCallback){
+export function capture(
+  on: Controller,
+  request: RequestCallback){
+
   const compute = ComputedInfo.get(request);
 
   if(!compute)

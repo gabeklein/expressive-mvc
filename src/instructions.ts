@@ -1,4 +1,4 @@
-import { prepareComputed } from './compute';
+import * as Computed from './compute';
 import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
@@ -147,6 +147,6 @@ export function from(
   fn: (on?: Model) => any){
 
   return set((on, key) => {
-    prepareComputed(on, key, fn);
+    Computed.prepare(on, key, fn);
   }, "from");
 }
