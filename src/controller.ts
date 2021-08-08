@@ -17,7 +17,7 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){
-    Computed.implement(this);
+    Computed.bootstrap(this);
   }
 
   public get pending(){
@@ -108,17 +108,16 @@ export class Controller {
     squash?: boolean,
     once?: boolean){
 
-    const { state, subject } = this;
     const keys = this.keys(target);
     const batch: BunchOf<RequestCallback> = {};
     const remove = this.addListener(batch);
 
     const callback = squash
-      ? handler.bind(subject)
+      ? handler.bind(this.subject)
       : (frame: string[]) => {
         for(const key of frame)
           if(keys.includes(key))
-            handler.call(subject, state[key], key);
+            handler.call(this.subject, this.state[key], key);
       }
 
     const handle = once
@@ -128,7 +127,7 @@ export class Controller {
     for(const key of keys)
       batch[key] = handle;
 
-    Computed.ensure(subject, keys);
+    Computed.ensure(this, keys);
 
     return remove;
   }

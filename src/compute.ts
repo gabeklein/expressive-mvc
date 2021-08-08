@@ -21,8 +21,9 @@ type GetterInfo = {
 const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
+const ComputedKeys = new WeakMap<Controller, RequestCallback[]>();
 
-export function implement(on: Controller){
+export function bootstrap(on: Controller){
   const defined = new Map<string, GetterInfo>();
   let scan = on.subject;
 
@@ -40,14 +41,14 @@ export function implement(on: Controller){
 }
 
 export function prepare(
-  parent: Controller,
+  on: Controller,
   key: string,
   getter: (on?: any) => any,
   setter?: (to: any) => void){
 
-  const { state, subject } = parent;
+  const { state, subject } = on;
   const info: GetterInfo = {
-    key, parent, priority: 1
+    key, parent: on, priority: 1
   };
 
   let sub: Subscriber;
@@ -73,14 +74,14 @@ export function prepare(
     }
     finally {
       if(state[key] !== value){
-        parent.update(key);
+        on.update(key);
         return state[key] = value;
       }
     }
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(parent, update);
+    sub = new Subscriber(on, update);
 
     ComputedInfo.set(update, info);
 
@@ -106,7 +107,7 @@ export function prepare(
       throw e;
     }
     finally {
-      let defined = ComputedFor.get(parent)!;
+      let defined = ComputedFor.get(on)!;
 
       sub.commit();
 
@@ -145,11 +146,11 @@ export function prepare(
   return info;
 }
 
-export function ensure(from: {}, keys: string[]){
+export function ensure(on: Controller, keys: string[]){
   type Initial = (early?: boolean) => void;
 
   for(const key of keys){
-    const desc = getOwnPropertyDescriptor(from, key);
+    const desc = getOwnPropertyDescriptor(on.subject, key);
     const getter = desc && desc.get;
   
     if(ComputedInit.has(getter!))
@@ -157,21 +158,17 @@ export function ensure(from: {}, keys: string[]){
   }
 }
 
-const Pending = new WeakMap<Controller, RequestCallback[]>();
-
-export function capture(
-  on: Controller,
-  request: RequestCallback){
+export function capture(on: Controller, request: RequestCallback){
 
   const compute = ComputedInfo.get(request);
 
   if(!compute)
     return;
 
-  let pending = Pending.get(on);
+  let pending = ComputedKeys.get(on);
 
   if(!pending)
-    Pending.set(on, pending = []);
+    ComputedKeys.set(on, pending = []);
 
   if(compute.parent !== on)
     request();
@@ -187,7 +184,7 @@ export function capture(
 
 export function flush(on: Controller){
   const handled = on.frame!;
-  let pending = Pending.get(on);
+  let pending = ComputedKeys.get(on);
 
   if(pending){
     while(pending.length){
@@ -198,6 +195,6 @@ export function flush(on: Controller){
         compute();
     }
   
-    Pending.delete(on);
+    ComputedKeys.delete(on);
   }
 }
