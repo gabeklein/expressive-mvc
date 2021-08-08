@@ -302,30 +302,6 @@ describe("circular", () => {
     expect(test.previous).toBe(initial);
     expect(test.value).not.toBe(initial);
   })
-
-  it.skip("may cause its own update", async () => {
-    class Test extends Model {
-      value = 0;
-      isEven = true;
-  
-      get format(){
-        const { value, isEven } = this;
-        const parity = isEven ? "even" : "odd";
-        const quote = `Value ${value} is ${parity}`;
-  
-        this.isEven = value % 1 == 0;
-        
-        return quote;
-      }
-    }
-
-    const test = Test.create();
-
-    expect(test.format).toBe("Value 0 is even");
-    test.value++;
-    await test.requestUpdate();
-    expect(test.format).toBe("Value 1 is odd");
-  })
 })
 
 describe("instruction", () => {
