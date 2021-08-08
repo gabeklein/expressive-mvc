@@ -179,111 +179,67 @@ describe("lifecycle", () => {
   })
 
   describe("event listeners", () => {
-    function eventChecker(
-      source: any,
-      keys: string[]){
-    
-      const capture = jest.fn();
-  
-      source.on(keys as any[], capture);
-  
-      return (names: string[], expected = true) => {
-        for(const name of names){
-          let check = expect(capture);
-  
-          if(expected == false)
-            check = check.not as jest.JestMatchers<any>;
-  
-          check.toBeCalledWith(undefined, name)
-        }
-      }
-    }
-
     it("will emit component events", async () => {
-      let expect!: (names: string[], expected?: boolean) => void;
+      class LocalTest extends Test {}
 
-      class LocalTest extends Test {
-        constructor(){
-          super();
-
-          expect = eventChecker(this, [
-            "didMount", "componentDidMount",
-            "willRender", "componentWillRender",
-            "willMount", "componentWillMount",
-            "willUpdate", "componentWillUpdate",
-            "willUnmount", "componentWillUnmount"
-          ])
-        }
-      }
       const element = renderHook(() => LocalTest.use());
-      const x = element.result.current;
+      const instance = element.result.current;
 
-      await x.requestUpdate();
-  
-      expect([
+      const didMountEvents = await instance.requestUpdate(true);
+
+      expect(didMountEvents).toMatchObject([
         "willRender", "componentWillRender",
         "willMount", "componentWillMount",
         "didMount", "componentDidMount"
       ])
-  
-      expect([
-        "willUpdate", "componentWillUpdate",
-        "willUnmount", "componentWillUnmount"
-      ], false);
       
       element.rerender();
-      await x.requestUpdate();
+
+      const didUpdateEvents = await instance.requestUpdate(true);
   
-      expect([
+      expect(didUpdateEvents).toMatchObject([
+        "willRender", "componentWillRender",
         "willUpdate", "componentWillUpdate"
-      ]);
+      ])
   
       element.unmount();
-      await x.requestUpdate();
+
+      const didUnmountEvents = await instance.requestUpdate(true);
   
-      expect([
+      expect(didUnmountEvents).toMatchObject([
         "willUnmount", "componentWillUnmount"
-      ]);
+      ])
     })
     
     it("will emit element events", async () => {
-      const x = Test.create();
+      const instance = Test.create();
 
-      const expect = eventChecker(x, [
-        "didMount", "elementDidMount",
-        "willRender", "elementWillRender",
-        "willMount", "elementWillMount",
-        "willUpdate", "elementWillUpdate",
-        "willUnmount", "elementWillUnmount"
-      ])
+      const element = renderHook(() => instance.tag("foobar"));
 
-      const element = renderHook(() => x.tag("foobar"));
-      await x.requestUpdate();
-  
-      expect([
+      const didMountEvents = await instance.requestUpdate();
+
+      expect(didMountEvents).toMatchObject([
         "willRender", "elementWillRender",
         "willMount", "elementWillMount",
         "didMount", "elementDidMount"
       ])
-  
-      expect([
-        "willUpdate", "elementWillUpdate",
-        "willUnmount", "elementWillUnmount"
-      ], false);
       
       element.rerender();
-      await x.requestUpdate();
+
+      const didUpdateEvents = await instance.requestUpdate(true);
   
-      expect([
+      expect(didUpdateEvents).toMatchObject([
+        "willRender", "elementWillRender",
         "willUpdate", "elementWillUpdate"
-      ]);
+      ])
   
       element.unmount();
-      await x.requestUpdate();
+
+      const didUnmountEvents = await instance.requestUpdate(true);
   
-      expect([
+      expect(didUnmountEvents).toMatchObject([
         "willUnmount", "elementWillUnmount"
-      ]);
+      ])
     })
   })
 })
