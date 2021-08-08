@@ -182,7 +182,8 @@ export function capture(on: Controller, request: RequestCallback){
   return true;
 }
 
-export function flush(on: Controller, handled: Set<string>){
+export function flush(on: Controller){
+  const handled = on.frame!;
   let pending = Pending.get(on);
 
   if(pending){
