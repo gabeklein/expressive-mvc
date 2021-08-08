@@ -21,9 +21,9 @@ const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function tap<T extends Peer>(
-  type: T, required?: boolean): InstanceOf<T> {
+  type: T, required?: boolean){
 
-  return set(({ subject }, key) => {
+  return set<InstanceOf<T>>(({ subject }, key) => {
     if("current" in type)
       defineLazy(subject, key, () => type.current);
     else if("current" in subject.constructor)

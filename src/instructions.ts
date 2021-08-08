@@ -16,13 +16,13 @@ type Instruction<T> = (on: Controller, key: string) =>
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-export function set(
+export function set<T = any>(
   instruction: Instruction<any>,
   name = "pending"){
 
   const placeholder = Symbol(`${name} instruction`);
   Pending.set(placeholder, instruction);
-  return placeholder as any;
+  return placeholder as unknown as T;
 }
 
 export function runInstruction(
@@ -59,9 +59,9 @@ export function runInstruction(
 }
 
 export function ref<T = any>(
-  effect?: EffectCallback<Model, any>): { current: T } {
+  effect?: EffectCallback<Model, any>){
 
-  return set((on, key) => {
+  return set<{ current: T }>((on, key) => {
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -74,9 +74,9 @@ export function ref<T = any>(
 }
 
 export function on<T = any>(
-  value: any, effect?: EffectCallback<Model, T>): T {
+  value: any, effect?: EffectCallback<Model, T>){
 
-  return set((on, key) => {
+  return set<T>((on, key) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -86,10 +86,10 @@ export function on<T = any>(
   }, "on");
 }
 
-export function memo(
-  factory: () => any, defer?: boolean){
+export function memo<T>(
+  factory: () => T, defer?: boolean){
 
-  return set((on, key) => {
+  return set<T>((on, key) => {
     const get = () => factory.call(on.subject);
 
     if(defer)
@@ -99,8 +99,8 @@ export function memo(
   }, "memo");
 }
 
-export function lazy(value: any){
-  return set((on, key) => {
+export function lazy<T>(value: T){
+  return set<T>((on, key) => {
     const { state, subject } = on as any;
 
     subject[key] = value;
@@ -110,8 +110,8 @@ export function lazy(value: any){
   }, "lazy");
 }
 
-export function act(task: Async){
-  return set((on, key) => {
+export function act<T extends Async>(task: T){
+  return set<T>((on, key) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -143,10 +143,10 @@ export function act(task: Async){
   }, "act");
 }
 
-export function from(
-  fn: (on?: Model) => any){
+export function from<T>(
+  fn: (on?: Model) => T){
 
-  return set((on, key) => {
+  return set<T>((on, key) => {
     Computed.prepare(on, key, fn);
   }, "from");
 }

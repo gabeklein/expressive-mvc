@@ -19,8 +19,8 @@ export const Oops = issues({
 export function use<T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   onValue?: ((i: Model) => void) | boolean
-): Model {
-  return set((on, key) => {
+){
+  return set<Model>((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
 
@@ -96,9 +96,9 @@ export function use<T extends typeof Model>(
 }
 
 export function parent<T extends typeof Model>(
-  Expects: T, required?: boolean): InstanceOf<T> {
+  Expects: T, required?: boolean){
 
-  return set((on) => {
+  return set<InstanceOf<T>>((on) => {
     const child = on.subject;
     const expected = Expects.name;
     const parent = Related.get(on.subject);
