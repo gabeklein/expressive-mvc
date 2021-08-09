@@ -74,9 +74,7 @@ function useNewContext(
   }, []);
 }
 
-function useAppliedProps(
-  within: Lookup, props: {}){
-
+function useAppliedProps(within: Lookup, props: {}){
   const update = useMemo(() => {
     const targets = within.local;
 

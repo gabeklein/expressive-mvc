@@ -10,9 +10,8 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-type InstructionGetter<T> = (within: Subscriber) => T;
 type Instruction<T> = (on: Controller, key: string) =>
-    void | InstructionGetter<T> | PropertyDescriptor;
+    void | ((within: Subscriber) => T) | PropertyDescriptor;
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
@@ -58,9 +57,9 @@ export function runInstruction(
 }
 
 export function ref<T = any>(
-  effect?: EffectCallback<Model, any>){
+  effect?: EffectCallback<Model, any>): { current: T } {
 
-  return set<{ current: T }>((on, key) => {
+  return set((on, key) => {
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -73,9 +72,9 @@ export function ref<T = any>(
 }
 
 export function on<T = any>(
-  value: any, effect?: EffectCallback<Model, T>){
+  value: any, effect?: EffectCallback<Model, T>): T {
 
-  return set<T>((on, key) => {
+  return set((on, key) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -85,10 +84,8 @@ export function on<T = any>(
   }, "on");
 }
 
-export function memo<T>(
-  factory: () => T, defer?: boolean){
-
-  return set<T>((on, key) => {
+export function memo<T>(factory: () => T, defer?: boolean): T {
+  return set((on, key) => {
     const get = () => factory.call(on.subject);
 
     if(defer)
@@ -98,8 +95,8 @@ export function memo<T>(
   }, "memo");
 }
 
-export function lazy<T>(value: T){
-  return set<T>((on, key) => {
+export function lazy<T>(value: T): T {
+  return set((on, key) => {
     const { state, subject } = on as any;
 
     subject[key] = value;
@@ -109,8 +106,8 @@ export function lazy<T>(value: T){
   }, "lazy");
 }
 
-export function act<T extends Async>(task: T){
-  return set<T>((on, key) => {
+export function act<T extends Async>(task: T): T {
+  return set((on, key) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -142,10 +139,8 @@ export function act<T extends Async>(task: T){
   }, "act");
 }
 
-export function from<T>(
-  getter: (on?: Model) => T){
-
-  return set<T>((on, key) => {
+export function from<T>(getter: (on?: Model) => T): T {
+  return set((on, key) => {
     Computed.prepare(on, key, getter);
   }, "from");
 }
