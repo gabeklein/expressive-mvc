@@ -30,32 +30,31 @@ export function runInstruction(
 
   const instruction = Pending.get(value);
 
-  if(!instruction)
-    return;
+  if(instruction){
+    const { subject } = on as any;
 
-  const { subject } = on as any;
+    Pending.delete(value);
+    delete subject[key];
 
-  Pending.delete(value);
-  delete subject[key];
+    let output = instruction(on, key);
 
-  let output = instruction(on, key);
+    if(typeof output == "function"){
+      const existing = getOwnPropertyDescriptor(subject, key);
+      const getter = output as (sub: Subscriber | undefined) => any;
 
-  if(typeof output == "function"){
-    const existing = getOwnPropertyDescriptor(subject, key);
-    const getter = output as (sub: Subscriber | undefined) => any;
-
-    output = {
-      ...existing,
-      get(this: Stateful){
-        return getter(this[LOCAL]);
+      output = {
+        ...existing,
+        get(this: Stateful){
+          return getter(this[LOCAL]);
+        }
       }
     }
+
+    if(output)
+      defineProperty(subject, key, output);
+
+    return true;
   }
-
-  if(output)
-    defineProperty(subject, key, output);
-
-  return true;
 }
 
 export function ref<T = any>(
@@ -144,9 +143,9 @@ export function act<T extends Async>(task: T){
 }
 
 export function from<T>(
-  fn: (on?: Model) => T){
+  getter: (on?: Model) => T){
 
   return set<T>((on, key) => {
-    Computed.prepare(on, key, fn);
+    Computed.prepare(on, key, getter);
   }, "from");
 }
