@@ -3,7 +3,7 @@ import { createContext, createElement, ReactElement, ReactNode, useContext, useL
 import { use } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
-import { applyParallel } from './peer';
+import { getPending } from './peer';
 import { Collection, Lookup } from './register';
 import { Subscriber } from './subscriber';
 import { entries } from './util';
@@ -56,6 +56,24 @@ export function Consumer(props: ConsumerProps){
   return null;
 }
 
+function useNewContext(
+  from: Lookup,
+  inject?: Model | typeof Model | Collection){
+
+  return useMemo(() => {
+    if(!inject)
+      throw Oops.NoProviderType();
+    
+    const context = from.push(inject);
+
+    for(const instance of context.local)
+      for(const apply of getPending(instance))
+        apply(context)
+
+    return context;
+  }, []);
+}
+
 function useAppliedProps(
   within: Lookup, props: {}){
 
@@ -76,7 +94,7 @@ function useAppliedProps(
 
 interface RenderFunctionProps {
   context: Lookup;
-  render: (instance?: any) => ReactNode;
+  render: Function;
 }
 
 function RenderFunction(props: RenderFunctionProps): any {
@@ -97,22 +115,13 @@ function RenderFunction(props: RenderFunctionProps): any {
 
 interface ProvideProps {
   of?: typeof Model | Model | Collection;
-  children: ReactNode | ((instance: any) => ReactNode);
+  children: ReactNode | ((instance?: any) => ReactNode);
 }
 
 export function Provider(props: ProvideProps){
-  const render: any = props.children;
+  const render = props.children;
   const current = useLookup();
-  const context = useMemo(() => {
-    if(!props.of)
-      throw Oops.NoProviderType();
-    
-    const context = current.push(props.of);
-
-    applyParallel(context);
-
-    return context;
-  }, []);
+  const context = useNewContext(current, props.of);
 
   useAppliedProps(context, props);
   useLayoutEffect(() => () => context.pop(), []);

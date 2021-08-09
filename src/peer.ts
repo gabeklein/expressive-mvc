@@ -28,30 +28,16 @@ export function tap<T extends Peer>(
       defineLazy(subject, key, () => type.current);
     else if("current" in subject.constructor)
       throw Oops.CantAttachGlobal(subject, type.name);
-    else
-      registerPeer(subject, type, key, required);
+    else 
+      getPending(subject).push((context) => {
+        const remote = context.get(type);
+    
+        if(!remote && required)
+          throw Oops.AmbientRequired(type.name, subject, key);
+    
+        define(subject, key, remote);
+      });
   }, "tap");
-}
-
-function registerPeer(
-  subject: Stateful,
-  type: typeof Model,
-  key: string,
-  required?: boolean
-){
-  let pending = PendingContext.get(subject);
-
-  if(!pending)
-    PendingContext.set(subject, pending = []);
-
-  pending.push((context: Lookup) => {
-    const remote = context.get(type);
-
-    if(!remote && required)
-      throw Oops.AmbientRequired(type.name, subject, key);
-
-    define(subject, key, remote);
-  });
 }
 
 export function usePeerContext(subject: Model){
@@ -76,11 +62,11 @@ export function usePeerContext(subject: Model){
   ContextWasUsed.set(subject, !!pending);
 }
 
-export function applyParallel(context: Lookup){
-  for(const instance of context.local){
-    const pending = PendingContext.get(instance);
+export function getPending(subject: Stateful){
+  let pending = PendingContext.get(subject);
 
-    if(pending)
-      pending.forEach(cb => cb(context));
-  }
+  if(!pending)
+    PendingContext.set(subject, pending = []);
+
+  return pending;
 }
