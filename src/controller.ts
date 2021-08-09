@@ -149,11 +149,11 @@ export class Controller {
   }
 
   public update(key: string){
-    if(!this.pending)
-      setTimeout(() => this.emit(), 0);
-
     if(this.frame.has(key))
       return;
+
+    if(!this.frame.size)
+      setTimeout(() => this.emit(), 0);
 
     this.frame.add(key);
 
