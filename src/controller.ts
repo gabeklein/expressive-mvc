@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { runInstruction } from './instructions';
+import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
 import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
@@ -50,7 +50,7 @@ export class Controller {
     if(desc && "value" in desc){
       const { value } = desc;
 
-      if(runInstruction(this, key, value))
+      if(apply(this, key, value))
         return;
 
       if(desc.enumerable && typeof value !== "function" || /^[A-Z]/.test(key))

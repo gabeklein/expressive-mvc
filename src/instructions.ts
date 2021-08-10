@@ -15,7 +15,7 @@ type Instruction<T> = (on: Controller, key: string) =>
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-export function set<T = any>(
+export function run<T = any>(
   instruction: Instruction<any>,
   name = "pending"){
 
@@ -24,7 +24,7 @@ export function set<T = any>(
   return placeholder as unknown as T;
 }
 
-export function runInstruction(
+export function apply(
   on: Controller, key: string, value: symbol){
 
   const instruction = Pending.get(value);
@@ -59,7 +59,7 @@ export function runInstruction(
 export function ref<T = any>(
   effect?: EffectCallback<Model, any>): { current: T } {
 
-  return set((on, key) => {
+  return run((on, key) => {
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -74,7 +74,7 @@ export function ref<T = any>(
 export function on<T = any>(
   value: any, effect?: EffectCallback<Model, T>): T {
 
-  return set((on, key) => {
+  return run((on, key) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -85,7 +85,7 @@ export function on<T = any>(
 }
 
 export function memo<T>(factory: () => T, defer?: boolean): T {
-  return set((on, key) => {
+  return run((on, key) => {
     const get = () => factory.call(on.subject);
 
     if(defer)
@@ -96,7 +96,7 @@ export function memo<T>(factory: () => T, defer?: boolean): T {
 }
 
 export function lazy<T>(value: T): T {
-  return set((on, key) => {
+  return run((on, key) => {
     const { state, subject } = on as any;
 
     subject[key] = value;
@@ -107,7 +107,7 @@ export function lazy<T>(value: T): T {
 }
 
 export function act<T extends Async>(task: T): T {
-  return set((on, key) => {
+  return run((on, key) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -140,7 +140,7 @@ export function act<T extends Async>(task: T): T {
 }
 
 export function from<T>(getter: (on?: Model) => T): T {
-  return set((on, key) => {
+  return run((on, key) => {
     Computed.prepare(on, key, getter);
   }, "from");
 }

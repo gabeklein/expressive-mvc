@@ -1,5 +1,5 @@
 import { useLookup } from './context';
-import { set } from './instructions';
+import { run } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';
@@ -23,7 +23,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
 export function tap<T extends Peer>(
   type: T, required?: boolean){
 
-  return set<InstanceOf<T>>(({ subject }, key) => {
+  return run<InstanceOf<T>>(({ subject }, key) => {
     if("current" in type)
       defineLazy(subject, key, () => type.current);
     else if("current" in subject.constructor)
