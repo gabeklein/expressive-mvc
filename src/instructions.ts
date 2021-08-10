@@ -46,17 +46,17 @@ export function set<T>(instruction: Instruction<T>, name?: string){
 }
 
 export function apply(
-  on: Controller, key: string, value: symbol){
+  to: Controller, key: string, value: symbol){
 
   const instruction = Pending.get(value);
 
   if(instruction){
-    const { subject } = on as any;
+    const { subject } = to as any;
 
     Pending.delete(value);
     delete subject[key];
 
-    let output = instruction(on, key);
+    let output = instruction(to, key);
 
     if(typeof output == "function"){
       const existing = getOwnPropertyDescriptor(subject, key);
