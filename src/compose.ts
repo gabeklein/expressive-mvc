@@ -18,13 +18,13 @@ export const Oops = issues({
 
 export function use<T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
-  onValue?: ((i: Model) => void) | boolean
+  argument?: ((i: Model) => void) | boolean
 ): Model {
   return run((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
 
-    function newValue(next: Model){
+    function update(next: Model){
       instance = next;
 
       if(next){
@@ -32,13 +32,13 @@ export function use<T extends typeof Model>(
         manage(instance);
       }
 
-      if(typeof onValue == "function")
-        onValue(instance);
-      else if(!instance && onValue !== false)
+      if(typeof argument == "function")
+        argument(instance);
+      else if(!instance && argument !== false)
         throw Oops.UndefinedNotAllowed(key);
     }
 
-    function apply(sub: Subscriber){
+    function attach(sub: Subscriber){
       let child: Subscriber | undefined;
 
       function create(){
@@ -76,19 +76,19 @@ export function use<T extends typeof Model>(
         : Peer()
 
       if(instance)
-        newValue(instance);
+        update(instance);
     }
     else
-      onValue = false;
+      argument = false;
 
-    on.manage(key, instance, newValue);
+    on.manage(key, instance, update);
 
-    return (local: Subscriber) => {
+    return (local) => {
       if(!local)
         return instance;
 
       if(!Proxies.has(local))
-        apply(local);
+        attach(local);
 
       return Proxies.get(local);
     }
