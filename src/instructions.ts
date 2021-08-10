@@ -11,7 +11,7 @@ export const Oops = issues({
 })
 
 type Instruction<T> = (on: Controller, key: string) =>
-    void | ((within: Subscriber) => T) | PropertyDescriptor;
+    void | ((within?: Subscriber) => T) | PropertyDescriptor;
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
@@ -22,6 +22,27 @@ export function run<T = any>(
   const placeholder = Symbol(`${name} instruction`);
   Pending.set(placeholder, instruction);
   return placeholder as unknown as T;
+}
+
+export function set<T>(instruction: Instruction<T>, name?: string){
+  const memo = new WeakMap<Subscriber, any>();
+
+  return run((on, key) => {
+    const output = instruction(on, key);
+
+    if(typeof output == "function")
+      return sub => {
+        if(!sub)
+          return output();
+        
+        if(!memo.has(sub))
+          memo.set(sub, output(sub));
+
+        return memo.get(sub);
+      }
+    else
+      return output;
+  }, name);
 }
 
 export function apply(
