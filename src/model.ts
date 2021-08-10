@@ -1,5 +1,5 @@
 import { useFromContext } from './context';
-import { Controller } from './controller';
+import { Controller, keys } from './controller';
 import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
@@ -111,18 +111,18 @@ export class Model {
 
   import(
     from: BunchOf<any>,
-    select?: Iterable<string> | Query){
+    subset?: Iterable<string> | Query){
 
-    for(const key of manage(this).keys(select))
+    for(const key of keys(manage(this), subset))
       if(key in from)
         (this as any)[key] = from[key];
   }
 
-  export(select?: Iterable<string> | Query){
+  export(subset?: Iterable<string> | Query){
     const control = manage(this);
     const output: BunchOf<any> = {};
 
-    for(const key of control.keys(select))
+    for(const key of keys(control, subset))
       output[key] = (control.state as any)[key];
 
     return output;
@@ -131,7 +131,7 @@ export class Model {
   update(select: string | string[] | Query){
     const control = manage(this);
 
-    for(const key of control.keys(select))
+    for(const key of keys(control, select))
       control.update(key);
   }
 

@@ -33,23 +33,15 @@ export class Controller {
     return this;
   }
 
-  public keys(
-    using?: string | Iterable<string> | Query){
-
-    if(typeof using == "string")
-      return [ using ];
-
+  public select(using?: Query){
     const keys = getOwnPropertyNames(this.state);
 
-    if(!using)
+    if(using)
+      return selectRecursive(
+        using, keys.concat(lifecycleEvents)
+      );
+    else
       return keys;
-
-    if(typeof using == "function")
-      return selectRecursive(using, [
-        ...keys, ...lifecycleEvents
-      ]);
-
-    return Array.from(using);
   }
 
   public add(key: string){
@@ -103,12 +95,12 @@ export class Controller {
   }
 
   public watch(
-    target: string | Iterable<string> | Query,
+    subset: string | Iterable<string> | Query,
     handler: Function,
     squash?: boolean,
     once?: boolean){
 
-    const keys = this.keys(target);
+    const set = keys(this, subset);
     const batch: BunchOf<RequestCallback> = {};
     const remove = this.addListener(batch);
 
@@ -116,7 +108,7 @@ export class Controller {
       ? handler.bind(this.subject)
       : (frame: string[]) => {
         for(const key of frame)
-          if(keys.includes(key))
+          if(set.includes(key))
             handler.call(this.subject, this.state[key], key);
       }
 
@@ -124,10 +116,10 @@ export class Controller {
       ? (k?: string[]) => { remove(); callback(k) }
       : callback;
 
-    for(const key of keys)
+    for(const key of set)
       batch[key] = handle;
 
-    Computed.ensure(this, keys);
+    Computed.ensure(this, set);
 
     return remove;
   }
@@ -175,4 +167,17 @@ export class Controller {
       catch(e){ }
     })
   }
+}
+
+export function keys(
+  from: Controller,
+  using?: string | Iterable<string> | Query){
+
+  if(typeof using == "string")
+    return [ using ];
+
+  if(typeof using == "object")
+    return Array.from(using);
+
+  return from.select(using);
 }

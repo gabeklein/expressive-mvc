@@ -109,14 +109,7 @@ export namespace Model {
         /** Add property to managed state. */
         manage(key: string, initial: any, effect?: EffectCallback<any, any>): void;
 
-        /** Get keys currently under managed state. */
-        keys(): string[];
-        /** Run a query to select keys managed by this controller. */
-        keys(using: Query): string[];
-        /** Helper overload */
-        keys(using: string): string[];
-        /** Helper overload */
-        keys(using: Iterable<string>): string[];
+        select(using?: Query): string[];
 
         sets(key: string, effect?: EffectCallback<any, any>): (value: any) => void;
 

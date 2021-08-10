@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
+import { keys } from './controller';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
 import { Model, Stateful } from './model';
@@ -42,15 +43,15 @@ export function useWatcher(
     const sub = new Subscriber(target, refresh);
 
     if(focus){
-      const [ key ] = sub.parent.keys(focus);
-      const { proxy } = sub;
+      const src = sub.proxy;
+      const key = keys(sub.parent, focus)[0];
 
       defineProperty(sub, "proxy", {
         get(){
-          if(proxy[key] === undefined && expected)
+          if(src[key] === undefined && expected)
             throw Oops.HasPropertyUndefined(target, key);
 
-          return proxy[key];
+          return src[key];
         }
       })
     }
