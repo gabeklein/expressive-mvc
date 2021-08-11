@@ -3,7 +3,7 @@ import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
 
-const Related = new WeakMap<{}, {}>();
+const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   ParentRequired: (expects, child) => 
@@ -29,7 +29,7 @@ export function use<T extends typeof Model>(
         instance = next;
   
         if(next){
-          Related.set(instance, this.subject);
+          Parent.set(instance, this.subject);
           manage(instance);
         }
   
@@ -104,16 +104,16 @@ export function parent<T extends typeof Model>(
     function parent(){
       const child = this.subject;
       const expected = Expects.name;
-      const parent = Related.get(this.subject);
+      const value = Parent.get(this.subject);
   
-      if(!parent){
+      if(!value){
         if(required)
           throw Oops.ParentRequired(expected, child);
       }
-      else if(!(parent instanceof Expects))
-        throw Oops.UnexpectedParent(expected, child, parent);
+      else if(!(value instanceof Expects))
+        throw Oops.UnexpectedParent(expected, child, value);
   
-      return { value: parent };
+      return { value };
     }
   );
 }
