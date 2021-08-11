@@ -1,4 +1,4 @@
-import { run } from './instructions';
+import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
@@ -20,7 +20,7 @@ export function use<T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   argument?: ((i: Model) => void) | boolean
 ): Model {
-  return run((on, key) => {
+  return set((on, key) => {
     const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
 
@@ -98,7 +98,7 @@ export function use<T extends typeof Model>(
 export function parent<T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> {
 
-  return run((on) => {
+  return set((on) => {
     const child = on.subject;
     const expected = Expects.name;
     const parent = Related.get(on.subject);

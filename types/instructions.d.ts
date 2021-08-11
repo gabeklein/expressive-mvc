@@ -5,12 +5,6 @@ import { Async, Class, EffectCallback, InstanceOf } from './types';
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  **/
-export function run <T> (instruction: Model.Instruction<T>, name?: string): T;
-
-/**
- * Run instruction as controller sets itself up.
- * This will specialize the behavior of a given property.
- **/
 export function set <T> (instruction: Model.Instruction<T>, name?: string): T;
 
 /**

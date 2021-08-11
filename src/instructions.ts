@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, memoize, setAlias } from './util';
+import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -37,7 +37,7 @@ export function apply(
   }
 }
 
-export function run<T>(
+export function set<T>(
   instruction: Instruction<T>, name?: string){
 
   return declare((on, key) => {
@@ -58,21 +58,10 @@ export function run<T>(
   }, name);
 }
 
-export function set<T>(
-  instruction: Instruction<T>, name?: string){
-
-  return run((on, key) => {
-    const output = instruction(on, key);
-
-    return typeof output == "function"
-      ? memoize(output) : output;
-  }, name);
-}
-
 export function ref<T = any>(
   effect?: EffectCallback<Model, any>): { current: T } {
 
-  return run((on, key) => {
+  return set((on, key) => {
     const refObjectFunction = on.sets(key, effect);
 
     defineProperty(refObjectFunction, "current", {
@@ -87,7 +76,7 @@ export function ref<T = any>(
 export function on<T = any>(
   value: any, effect?: EffectCallback<Model, T>): T {
 
-  return run((on, key) => {
+  return declare((on, key) => {
     if(!effect){
       effect = value;
       value = undefined;
@@ -98,7 +87,7 @@ export function on<T = any>(
 }
 
 export function memo<T>(factory: () => T, defer?: boolean): T {
-  return run((on, key) => {
+  return declare((on, key) => {
     const get = () => factory.call(on.subject);
 
     if(defer)
@@ -109,7 +98,7 @@ export function memo<T>(factory: () => T, defer?: boolean): T {
 }
 
 export function lazy<T>(value: T): T {
-  return run((on, key) => {
+  return declare((on, key) => {
     const { state, subject } = on as any;
 
     subject[key] = value;
@@ -120,7 +109,7 @@ export function lazy<T>(value: T): T {
 }
 
 export function act<T extends Async>(task: T): T {
-  return run((on, key) => {
+  return set((on, key) => {
     let pending = false;
 
     function invoke(...args: any[]){
@@ -153,7 +142,7 @@ export function act<T extends Async>(task: T): T {
 }
 
 export function from<T>(getter: (on?: Model) => T): T {
-  return run((on, key) => {
+  return declare((on, key) => {
     Computed.prepare(on, key, getter);
   }, "from");
 }

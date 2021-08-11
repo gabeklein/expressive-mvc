@@ -1,5 +1,5 @@
 import { useLookup } from './context';
-import { run } from './instructions';
+import { set } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';
@@ -23,7 +23,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
 export function tap<T extends Peer>(
   type: T, required?: boolean): InstanceOf<T> {
 
-  return run((on, key) => {
+  return set((on, key) => {
     const { subject } = on;
 
     if("current" in type)
