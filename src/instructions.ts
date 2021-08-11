@@ -10,71 +10,76 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
+type GetFunction<T = any> = (sub?: Subscriber) => T;
 type Instruction<T> = (on: Controller, key: string) =>
-    void | ((within?: Subscriber) => T) | PropertyDescriptor;
+    void | GetFunction<T> | PropertyDescriptor;
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-export function run<T = any>(
-  instruction: Instruction<any>,
-  name = "pending"){
+function declare<T = any>(
+  instruction: Instruction<any>, name = "pending"){
 
   const placeholder = Symbol(`${name} instruction`);
   Pending.set(placeholder, instruction);
   return placeholder as unknown as T;
 }
 
-export function set<T>(instruction: Instruction<T>, name?: string){
-  const memo = new WeakMap<Subscriber, any>();
-
-  return run((on, key) => {
-    const output = instruction(on, key);
-
-    if(typeof output == "function")
-      return sub => {
-        if(!sub)
-          return output();
-        
-        if(!memo.has(sub))
-          memo.set(sub, output(sub));
-
-        return memo.get(sub);
-      }
-    else
-      return output;
-  }, name);
-}
-
 export function apply(
-  to: Controller, key: string, value: symbol){
+  on: Controller, key: string, value: symbol){
 
   const instruction = Pending.get(value);
 
   if(instruction){
-    const { subject } = to as any;
-
     Pending.delete(value);
-    delete subject[key];
+    delete (on.subject as any)[key];
+    instruction(on, key);
+    return true;
+  }
+}
 
-    let output = instruction(to, key);
+export function run<T>(
+  instruction: Instruction<T>, name?: string){
+
+  return declare((on, key) => {
+    let output = instruction(on, key);
 
     if(typeof output == "function"){
-      const existing = getOwnPropertyDescriptor(subject, key);
-      const getter = output as (sub: Subscriber | undefined) => any;
-
+      const getter = output as GetFunction;
       output = {
-        ...existing,
+        ...getOwnPropertyDescriptor(on.subject, key),
         get(this: Stateful){
-          return getter(this[LOCAL]);
+          return getter(this[LOCAL])
         }
       }
     }
 
     if(output)
-      defineProperty(subject, key, output);
+      defineProperty(on.subject, key, output);
+  }, name);
+}
 
-    return true;
-  }
+export function set<T>(
+  instruction: Instruction<T>, name?: string){
+
+  return run((on, key) => {
+    const output = instruction(on, key);
+
+    if(typeof output == "function"){
+      const memo = new WeakMap<Subscriber, any>();
+
+      return (local) => {
+        if(!local)
+          return output();
+        
+        if(!memo.has(local))
+          memo.set(local, output(local));
+
+        return memo.get(local);
+      }
+    }
+
+    return output;
+  }, name);
 }
 
 export function ref<T = any>(
