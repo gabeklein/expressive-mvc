@@ -10,7 +10,7 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-type GetFunction<T = any> = (sub?: Subscriber) => T;
+type GetFunction<T> = (sub?: Subscriber) => T;
 type Instruction<T> = (this: Controller, key: string) =>
     void | GetFunction<T> | PropertyDescriptor;
 
@@ -18,17 +18,17 @@ export const Pending = new Map<symbol, Instruction<any>>();
 
 export function declare<T = any>(
   instruction: Instruction<T>,
-  oncePerSubscriber?: boolean){
+  perSubscriber?: boolean,
+  name = instruction.name || "pending"){
 
-  const name = instruction.name || "pending"
   const placeholder = Symbol(`${name} instruction`);
 
   function apply(this: Controller, key: string){
     let output = instruction.call(this, key);
 
     if(typeof output == "function"){
-      const getter: GetFunction =
-        oncePerSubscriber ? memoize(output) : output;
+      const getter: GetFunction<T> =
+        perSubscriber ? memoize(output) : output;
 
       output = {
         ...getOwnPropertyDescriptor(this.subject, key),
