@@ -371,7 +371,9 @@ describe("set", () => {
       this.didRunInstruction(key);
     })
 
-    keyedInstruction = declare(() => {}, "foo");
+    keyedInstruction = declare(
+      function foo(){}
+    );
   }
 
   it("will use symbol as placeholder", () => {

@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, memoize, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -18,15 +18,18 @@ export const Pending = new Map<symbol, Instruction<any>>();
 
 export function declare<T = any>(
   instruction: Instruction<T>,
-  name = instruction.name || "pending"){
+  oncePerSubscriber?: boolean){
 
+  const name = instruction.name || "pending"
   const placeholder = Symbol(`${name} instruction`);
 
   function apply(this: Controller, key: string){
     let output = instruction.call(this, key);
 
     if(typeof output == "function"){
-      const getter = output as GetFunction;
+      const getter: GetFunction =
+        oncePerSubscriber ? memoize(output) : output;
+
       output = {
         ...getOwnPropertyDescriptor(this.subject, key),
         get(this: Stateful){
