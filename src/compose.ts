@@ -1,4 +1,4 @@
-import { set } from './instructions';
+import { declare } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
@@ -20,96 +20,100 @@ export function use<T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   argument?: ((i: Model) => void) | boolean
 ): Model {
-  return set((on, key) => {
-    const Proxies = new WeakMap<Subscriber, any>();
-    let instance: Model | undefined;
-
-    function update(next: Model){
-      instance = next;
-
-      if(next){
-        Related.set(instance, on.subject);
-        manage(instance);
-      }
-
-      if(typeof argument == "function")
-        argument(instance);
-      else if(!instance && argument !== false)
-        throw Oops.UndefinedNotAllowed(key);
-    }
-
-    function attach(sub: Subscriber){
-      let child: Subscriber | undefined;
-
-      function create(){
-        if(!instance)
-          return;
-
-        child = new Subscriber(instance, sub.onUpdate);
-
-        if(sub.active)
-          child.commit();
-
-        sub.dependant.add(child);
-        Proxies.set(sub, child.proxy);
-      }
-
-      function refresh(){
-        if(child){
-          child.release();
-          sub.dependant.delete(child);
-          Proxies.set(sub, undefined);
-          child = undefined;
+  return declare(
+    function use(key){
+      const Proxies = new WeakMap<Subscriber, any>();
+      let instance: Model | undefined;
+  
+      const update = (next: Model) => {
+        instance = next;
+  
+        if(next){
+          Related.set(instance, this.subject);
+          manage(instance);
         }
-
-        create();
-        sub.onUpdate();
+  
+        if(typeof argument == "function")
+          argument(instance);
+        else if(!instance && argument !== false)
+          throw Oops.UndefinedNotAllowed(key);
       }
-
-      create();
-      sub.follow(key, refresh);
+  
+      const attach = (sub: Subscriber) => {
+        let child: Subscriber | undefined;
+  
+        function create(){
+          if(!instance)
+            return;
+  
+          child = new Subscriber(instance, sub.onUpdate);
+  
+          if(sub.active)
+            child.commit();
+  
+          sub.dependant.add(child);
+          Proxies.set(sub, child.proxy);
+        }
+  
+        function refresh(){
+          if(child){
+            child.release();
+            sub.dependant.delete(child);
+            Proxies.set(sub, undefined);
+            child = undefined;
+          }
+  
+          create();
+          sub.onUpdate();
+        }
+  
+        create();
+        sub.follow(key, refresh);
+      }
+  
+      if(Peer){
+        instance = Model.isTypeof(Peer)
+          ? new Peer()
+          : Peer()
+  
+        if(instance)
+          update(instance);
+      }
+      else
+        argument = false;
+  
+      this.manage(key, instance, update);
+  
+      return (local) => {
+        if(!local)
+          return instance;
+  
+        if(!Proxies.has(local))
+          attach(local);
+  
+        return Proxies.get(local);
+      }
     }
-
-    if(Peer){
-      instance = Model.isTypeof(Peer)
-        ? new Peer()
-        : Peer()
-
-      if(instance)
-        update(instance);
-    }
-    else
-      argument = false;
-
-    on.manage(key, instance, update);
-
-    return (local) => {
-      if(!local)
-        return instance;
-
-      if(!Proxies.has(local))
-        attach(local);
-
-      return Proxies.get(local);
-    }
-  }, "use");
+  );
 }
 
 export function parent<T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> {
 
-  return set((on) => {
-    const child = on.subject;
-    const expected = Expects.name;
-    const parent = Related.get(on.subject);
-
-    if(!parent){
-      if(required)
-        throw Oops.ParentRequired(expected, child);
+  return declare(
+    function parent(){
+      const child = this.subject;
+      const expected = Expects.name;
+      const parent = Related.get(this.subject);
+  
+      if(!parent){
+        if(required)
+          throw Oops.ParentRequired(expected, child);
+      }
+      else if(!(parent instanceof Expects))
+        throw Oops.UnexpectedParent(expected, child, parent);
+  
+      return { value: parent };
     }
-    else if(!(parent instanceof Expects))
-      throw Oops.UnexpectedParent(expected, child, parent);
-
-    return { value: parent };
-  }, "parent");
+  );
 }

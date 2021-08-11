@@ -11,16 +11,36 @@ export const Oops = issues({
 })
 
 type GetFunction<T = any> = (sub?: Subscriber) => T;
-type Instruction<T> = (on: Controller, key: string) =>
+type Instruction<T> = (this: Controller, key: string) =>
     void | GetFunction<T> | PropertyDescriptor;
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-function declare<T = any>(
-  instruction: Instruction<any>, name = "pending"){
+export function declare<T = any>(
+  instruction: Instruction<T>,
+  name = instruction.name || "pending"){
 
   const placeholder = Symbol(`${name} instruction`);
-  Pending.set(placeholder, instruction);
+
+  function apply(this: Controller, key: string){
+    let output = instruction.call(this, key);
+
+    if(typeof output == "function"){
+      const getter = output as GetFunction;
+      output = {
+        ...getOwnPropertyDescriptor(this.subject, key),
+        get(this: Stateful){
+          return getter(this[LOCAL])
+        }
+      }
+    }
+
+    if(output)
+      defineProperty(this.subject, key, output);
+  }
+
+  Pending.set(placeholder, apply);
+
   return placeholder as unknown as T;
 }
 
@@ -32,117 +52,109 @@ export function apply(
   if(instruction){
     Pending.delete(value);
     delete (on.subject as any)[key];
-    instruction(on, key);
+    instruction.call(on, key);
     return true;
   }
-}
-
-export function set<T>(
-  instruction: Instruction<T>, name?: string){
-
-  return declare((on, key) => {
-    let output = instruction(on, key);
-
-    if(typeof output == "function"){
-      const getter = output as GetFunction;
-      output = {
-        ...getOwnPropertyDescriptor(on.subject, key),
-        get(this: Stateful){
-          return getter(this[LOCAL])
-        }
-      }
-    }
-
-    if(output)
-      defineProperty(on.subject, key, output);
-  }, name);
 }
 
 export function ref<T = any>(
   effect?: EffectCallback<Model, any>): { current: T } {
 
-  return set((on, key) => {
-    const refObjectFunction = on.sets(key, effect);
+  return declare(
+    function ref(key){
+      const refObjectFunction = this.sets(key, effect);
 
-    defineProperty(refObjectFunction, "current", {
-      set: refObjectFunction,
-      get: () => on.state[key]
-    })
+      defineProperty(refObjectFunction, "current", {
+        set: refObjectFunction,
+        get: () => this.state[key]
+      })
 
-    return { value: refObjectFunction };
-  }, "ref");
+      return { value: refObjectFunction };
+    }
+  );
 }
 
 export function on<T = any>(
   value: any, effect?: EffectCallback<Model, T>): T {
 
-  return declare((on, key) => {
-    if(!effect){
-      effect = value;
-      value = undefined;
+  return declare(
+    function on(key){
+      if(!effect){
+        effect = value;
+        value = undefined;
+      }
+  
+      this.manage(key, value, effect);
     }
-
-    on.manage(key, value, effect);
-  }, "on");
+  );
 }
 
 export function memo<T>(factory: () => T, defer?: boolean): T {
-  return declare((on, key) => {
-    const get = () => factory.call(on.subject);
-
-    if(defer)
-      defineLazy(on.subject, key, get);
-    else
-      define(on.subject, key, get())
-  }, "memo");
+  return declare(
+    function memo(key){
+      const source = this.subject;
+      const get = () => factory.call(source);
+  
+      if(defer)
+        defineLazy(source, key, get);
+      else
+        define(source, key, get())
+    }
+  );
 }
 
 export function lazy<T>(value: T): T {
-  return declare((on, key) => {
-    const { state, subject } = on as any;
-
-    subject[key] = value;
-    defineProperty(state, key, {
-      get: () => subject[key]
-    });
-  }, "lazy");
+  return declare(
+    function lazy(key){
+      const source = this.subject as any;
+  
+      source[key] = value;
+      defineProperty(this.state, key, {
+        get: () => source[key]
+      });
+    }
+  );
 }
 
 export function act<T extends Async>(task: T): T {
-  return set((on, key) => {
-    let pending = false;
-
-    function invoke(...args: any[]){
-      if(pending)
-        return Promise.reject(
-          Oops.DuplicateAction(key)
-        )
-
-      pending = true;
-      on.update(key);
-
-      return new Promise(res => {
-        res(task.apply(on.subject, args));
-      }).finally(() => {
-        pending = false;
-        on.update(key);
+  return declare(
+    function act(key){
+      let pending = false;
+  
+      const invoke = (...args: any[]) => {
+        if(pending)
+          return Promise.reject(
+            Oops.DuplicateAction(key)
+          )
+  
+        pending = true;
+        this.update(key);
+  
+        return new Promise(res => {
+          res(task.apply(this.subject, args));
+        }).finally(() => {
+          pending = false;
+          this.update(key);
+        })
+      };
+  
+      setAlias(invoke, `run ${key}`);
+      defineProperty(invoke, "active", {
+        get: () => pending
       })
-    };
-
-    setAlias(invoke, `run ${key}`);
-    defineProperty(invoke, "active", {
-      get: () => pending
-    })
-
-    return {
-      value: invoke,
-      writable: false
-    };
-  }, "act");
+  
+      return {
+        value: invoke,
+        writable: false
+      };
+    }
+  );
 }
 
 export function from<T>(getter: (on?: Model) => T): T {
-  return declare((on, key) => {
-    Computed.prepare(on, key, getter);
-  }, "from");
+  return declare(
+    function from(key){
+      Computed.prepare(this, key, getter);
+    }
+  );
 }

@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react-hooks';
 
 import { Oops } from '../src/instructions';
 import { Subscriber } from '../src/subscriber';
-import { act, lazy, memo, Model, on, ref, set, use } from './adapter';
+import { act, lazy, memo, Model, on, ref, declare, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -367,11 +367,11 @@ describe("set", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
 
-    property = set((_on, key) => {
+    property = declare((key) => {
       this.didRunInstruction(key);
     })
 
-    keyedInstruction = set(() => {}, "foo");
+    keyedInstruction = declare(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -401,7 +401,7 @@ describe("get", () => {
     didRunInstruction = jest.fn();
     didGetSubscriber = jest.fn();
 
-    property = set((_on, key) => (sub) => {
+    property = declare((key) => (sub) => {
       this.didRunInstruction(key);
       this.didGetSubscriber(sub);
 

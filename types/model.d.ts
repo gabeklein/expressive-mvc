@@ -19,14 +19,14 @@ export namespace Model {
         current: T | null;
     }
 
-    type InstructionGetter<T> = (within: Subscriber) => T;
+    type GetFunction<T> = (within?: Subscriber) => T;
 
     /**
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (on: Controller, key: string) =>
-        void | InstructionGetter<T> | PropertyDescriptor<T>;
+    type Instruction<T> = (this: Controller, key: string) =>
+        void | GetFunction<T> | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
