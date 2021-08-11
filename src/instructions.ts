@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, memoize, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -64,21 +64,8 @@ export function set<T>(
   return run((on, key) => {
     const output = instruction(on, key);
 
-    if(typeof output == "function"){
-      const memo = new WeakMap<Subscriber, any>();
-
-      return (local) => {
-        if(!local)
-          return output();
-        
-        if(!memo.has(local))
-          memo.set(local, output(local));
-
-        return memo.get(local);
-      }
-    }
-
-    return output;
+    return typeof output == "function"
+      ? memoize(output) : output;
   }, name);
 }
 
