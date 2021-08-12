@@ -32,7 +32,7 @@ describe("basics", () => {
     expect(state.value).toBe(1);
 
     state.value = 2
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(state.value).toBe(2);
   })
@@ -43,14 +43,14 @@ describe("basics", () => {
     expect(state.value).toBe(1);
 
     state.value = 1
-    await state.requestUpdate(false);
+    await state.update(false);
   })
   
   it('accepts update from within a method', async () => {
     const state = Subject.create();
     
     state.setValue(3);
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(state.value).toBe(3)
   })
@@ -61,7 +61,7 @@ describe("basics", () => {
     expect(state.get.value).toBe(1);
   
     state.set.value = 2;
-    await state.requestUpdate(true);
+    await state.update(true);
     
     expect(state.get.value).toBe(2)
   })

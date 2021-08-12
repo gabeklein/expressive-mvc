@@ -1,7 +1,7 @@
 import { Oops } from "../src/model";
 import { Model } from "./adapter";
 
-describe("requestUpdate method", () => {
+describe("update method", () => {
   class Control extends Model {
     foo = 1;
     bar = 2;
@@ -15,21 +15,10 @@ describe("requestUpdate method", () => {
     const control = Control.create();
     
     control.foo = 2;
-    await control.requestUpdate();
+    await control.update();
     
     control.bar = 3;
-    await control.requestUpdate();
-  })
-  
-  it("runs callback for next update emitted", async () => {
-    const control = Control.create();
-    const mock = jest.fn();
-
-    control.requestUpdate(mock);
-    control.bar = 3;
-
-    await control.requestUpdate();
-    expect(mock).toHaveBeenCalled();
+    await control.update();
   })
 
   it("resolves keys next update involved", async () => {
@@ -37,20 +26,20 @@ describe("requestUpdate method", () => {
 
     control.foo = 2;
 
-    const updated = control.requestUpdate();
-    await expect(updated).resolves.toMatchObject(["foo"]);
+    const updated = await control.update();
+    expect(updated).toMatchObject(["foo"]);
   })
 
   it('resolves immediately when no updates pending', async () => {
     const control = Control.create();
-    const update = control.requestUpdate();
+    const update = await control.update();
 
-    await expect(update).resolves.toBe(false);
+    expect(update).toBe(false);
   })
 
   it('rejects if no update pending in strict mode', async () => {
     const control = Control.create();
-    const update = control.requestUpdate(true);
+    const update = control.update(true);
     const expected = Oops.StrictUpdate(true);
     
     await expect(update).rejects.toThrowError(expected);
@@ -61,7 +50,7 @@ describe("requestUpdate method", () => {
 
     control.foo = 2;
 
-    const update = control.requestUpdate(false);
+    const update = control.update(false);
     const expected = Oops.StrictUpdate(false);
     
     await expect(update).rejects.toThrowError(expected);
@@ -76,9 +65,9 @@ describe("requestUpdate method", () => {
 
     control.bar = 3;
 
-    const update = control.requestUpdate();
+    const update = await control.update();
 
-    await expect(update).resolves.toMatchObject(["bar", "baz"]);
+    expect(update).toMatchObject(["bar", "baz"]);
   })
 })
 

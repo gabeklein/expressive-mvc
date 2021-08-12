@@ -33,7 +33,7 @@ describe("on", () => {
     state.test1 = 1;
     expect(state.checkResult).toBe(2);
 
-    await state.requestUpdate(true)
+    await state.update(true)
     expect(callback).toBeCalledWith(1, "test1");
   })
   
@@ -42,11 +42,11 @@ describe("on", () => {
   
     state.test2 = 1;
 
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(state.checkResult).toBe(undefined);
     state.test2 = 2;
 
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(state.checkResult).toBe(true);
   })
   
@@ -56,7 +56,7 @@ describe("on", () => {
     expect(state.test3).toBe("foo");
     state.test3 = "bar";
 
-    await state.requestUpdate();
+    await state.update();
     expect(state.checkResult).toBe("bar");
   })
 })
@@ -112,7 +112,7 @@ describe("ref", () => {
     const state = Subject.create();
 
     state.ref1.current = "foobar";
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(state.ref1.current).toBe("foobar");
   })
   
@@ -122,7 +122,7 @@ describe("ref", () => {
   
     state.once("ref1", callback);
     state.ref1.current = "foobar";
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
@@ -132,7 +132,7 @@ describe("ref", () => {
   
     state.once("ref1", callback);
     state.ref1("foobar");
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
   
@@ -145,7 +145,7 @@ describe("ref", () => {
     state.once("ref2", callback);
     state.ref2.current = targetValue;
     expect(state.checkValue).toBe(targetValue);
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(callback).toBeCalledWith(targetValue, "ref2");
   })
   
@@ -153,10 +153,10 @@ describe("ref", () => {
     const state = Subject.create();
   
     state.ref3.current = 1;
-    await state.requestUpdate();
+    await state.update();
     expect(state.checkValue).toBe(undefined);
     state.ref3.current = 2;
-    await state.requestUpdate();
+    await state.update();
     expect(state.checkValue).toBe(true);
   })
 
@@ -224,13 +224,13 @@ describe("act", () => {
     expect(test.active).toBe(false);
 
     const result = test("foobar");
-    update = await get.requestUpdate(true);
+    update = await get.update(true);
 
     expect(test.active).toBe(true);
     expect(update).toContain("test");
 
     const output = await result;
-    update = await get.requestUpdate(true);
+    update = await get.update(true);
 
     expect(test.active).toBe(false);
     expect(update).toContain("test");
@@ -252,7 +252,7 @@ describe("act", () => {
 
     const result = nope();
 
-    await get.requestUpdate(true);
+    await get.update(true);
     expect(nope.active).toBe(true);
 
     await expect(result).rejects.toThrowError();
@@ -286,12 +286,12 @@ describe("lazy", () => {
     expect(state.lazy).toBe("foo");
     
     state.lazy = "bar";
-    await state.requestUpdate(false);
+    await state.update(false);
 
     expect(state.lazy).toBe("bar");
     
     state.eager = "foo";
-    await state.requestUpdate(true);
+    await state.update(true);
   });
 
   it("will include key on import", () => {
@@ -425,7 +425,7 @@ describe("declare", () => {
     expect(ran).toBeCalledWith("property");
 
     instance.update("property");
-    await instance.requestUpdate(true);
+    await instance.update(true);
 
     expect(ran).toBeCalledTimes(2);
   })
@@ -441,7 +441,7 @@ describe("declare", () => {
     expect(ran).toBeCalledWith("property");
 
     instance.update("property");
-    await instance.requestUpdate(true);
+    await instance.update(true);
 
     expect(ran).toBeCalledTimes(1);
   })

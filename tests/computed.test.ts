@@ -31,16 +31,16 @@ describe("computed", () => {
   
     state.seconds = 30;
   
-    await state.requestUpdate(true);
+    await state.update(true);
   
     expect(state.seconds).toEqual(30);
     expect(state.minutes).toEqual(0);
   
-    await state.requestUpdate(false);
+    await state.update(false);
     
     state.seconds = 60;
   
-    await state.requestUpdate(true);
+    await state.update(true);
   
     expect(state.seconds).toEqual(60);
     expect(state.minutes).toEqual(1);
@@ -52,12 +52,12 @@ describe("computed", () => {
     expect(state.nested).toBe("foo");
   
     state.child.value = "bar";
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(state.nested).toBe("bar");
 
     state.child = new Child();
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(state.nested).toBe("foo");
   })
@@ -107,7 +107,7 @@ describe("computed", () => {
     state.b++;
     state.x.value++;
 
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(exec).toBeCalledTimes(2);
     expect(emit).toBeCalledTimes(1);
@@ -145,7 +145,7 @@ describe("computed", () => {
 
     // initialize D, should cascade to dependancies
     expect(test.D).toBe(6);
-    await test.requestUpdate();
+    await test.update();
 
     // should evaluate in order, by use
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -155,7 +155,7 @@ describe("computed", () => {
 
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.requestUpdate();
+    const updated = await test.update();
 
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -181,7 +181,7 @@ describe("computed", () => {
     expect(test.value).toBe("foo");
     test.value = "bar";
 
-    await test.requestUpdate(true);
+    await test.update(true);
     expect(test.value).toBe("bar");
 
     test.something = "foobar";
@@ -257,7 +257,7 @@ describe("failures", () => {
     state.once(x => x.value);
     state.shouldFail = true;
 
-    await state.requestUpdate(true);
+    await state.update(true);
 
     expect(warn).toBeCalledWith(failed.message);
     expect(error).toBeCalled();
@@ -296,7 +296,7 @@ describe("circular", () => {
 
     // change upstream value to trigger re-compute
     test.multiplier = 1;
-    await test.requestUpdate(true);
+    await test.update(true);
 
     // getter should see current value while producing new one
     expect(test.previous).toBe(initial);
@@ -321,7 +321,7 @@ describe("instruction", () => {
     expect(test.greeting).toBe("Hello World!");
 
     test.friend = "Foo";
-    await test.requestUpdate(true);
+    await test.update(true);
 
     expect(test.greeting).toBe("Hello Foo!");
   })

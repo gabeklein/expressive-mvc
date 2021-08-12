@@ -44,7 +44,7 @@ describe("using", () => {
 
     expect(instance).toBeInstanceOf(Test);
 
-    const update = instance.requestUpdate();
+    const update = instance.update();
 
     rendered.update(<TestComponent foo="foo" bar="bar" />);
 

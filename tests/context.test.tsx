@@ -86,7 +86,7 @@ describe("Provider", () => {
 
     await act(async () => {
       test.value = "foobar";
-      await test.requestUpdate(true);
+      await test.update(true);
     })
     
     expect(didRender).toBeCalledWith("foobar");

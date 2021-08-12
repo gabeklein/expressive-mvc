@@ -185,7 +185,7 @@ describe("lifecycle", () => {
       const element = renderHook(() => LocalTest.use());
       const instance = element.result.current;
 
-      const didMountEvents = await instance.requestUpdate(true);
+      const didMountEvents = await instance.update(true);
 
       expect(didMountEvents).toMatchObject([
         "willRender", "componentWillRender",
@@ -195,7 +195,7 @@ describe("lifecycle", () => {
       
       element.rerender();
 
-      const didUpdateEvents = await instance.requestUpdate(true);
+      const didUpdateEvents = await instance.update(true);
   
       expect(didUpdateEvents).toMatchObject([
         "willRender", "componentWillRender",
@@ -204,7 +204,7 @@ describe("lifecycle", () => {
   
       element.unmount();
 
-      const didUnmountEvents = await instance.requestUpdate(true);
+      const didUnmountEvents = await instance.update(true);
   
       expect(didUnmountEvents).toMatchObject([
         "willUnmount", "componentWillUnmount"
@@ -216,7 +216,7 @@ describe("lifecycle", () => {
 
       const element = renderHook(() => instance.tag("foobar"));
 
-      const didMountEvents = await instance.requestUpdate();
+      const didMountEvents = await instance.update();
 
       expect(didMountEvents).toMatchObject([
         "willRender", "elementWillRender",
@@ -226,7 +226,7 @@ describe("lifecycle", () => {
       
       element.rerender();
 
-      const didUpdateEvents = await instance.requestUpdate(true);
+      const didUpdateEvents = await instance.update(true);
   
       expect(didUpdateEvents).toMatchObject([
         "willRender", "elementWillRender",
@@ -235,7 +235,7 @@ describe("lifecycle", () => {
   
       element.unmount();
 
-      const didUnmountEvents = await instance.requestUpdate(true);
+      const didUnmountEvents = await instance.update(true);
   
       expect(didUnmountEvents).toMatchObject([
         "willUnmount", "elementWillUnmount"

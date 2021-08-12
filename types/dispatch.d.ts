@@ -44,14 +44,12 @@ interface Dispatch {
   export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
   export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
-  update(keys: Model.SelectFields<this>): void;
-  update(keys: Model.Fields<this>[]): void;
-  update(keys: Model.Fields<this>): void;
-
-  requestUpdate(strict: true): Promise<string[]>;
-  requestUpdate(strict: false): Promise<false>;
-  requestUpdate(strict?: boolean): Promise<string[] | false>;
-  requestUpdate(cb: (keys: string[]) => void): void;
+  update(strict: true): Promise<string[]>;
+  update(strict: false): Promise<false>;
+  update(strict?: boolean): Promise<string[] | false>;
+  update(keys: Model.Fields<this>[]): Promise<string[]>;
+  update(keys: Model.Fields<this>): Promise<string[]>;
+  update(keys: Model.SelectFields<this>): Promise<string[]>;
 }
 
 export = Dispatch;

@@ -18,7 +18,7 @@ describe("on", () => {
     state.on("seconds", callback);
 
     state.seconds = 30;
-    await state.requestUpdate();
+    await state.update();
   
     expect(callback).toBeCalledWith(30, "seconds");
   })
@@ -30,7 +30,7 @@ describe("on", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.requestUpdate();
+    await state.update();
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
@@ -42,7 +42,7 @@ describe("on", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.requestUpdate();
+    await state.update();
   
     expect(callback).toBeCalledWith(1, "minutes");
   })
@@ -54,7 +54,7 @@ describe("on", () => {
     state.on(x => x.seconds, callback);
 
     state.seconds = 30;
-    await state.requestUpdate();
+    await state.update();
   
     expect(callback).toBeCalledWith(30, "seconds");
   })
@@ -66,13 +66,13 @@ describe("on", () => {
     state.on(x => x.seconds.hours, callback);
 
     state.seconds = 30;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledTimes(1);
     expect(callback).toBeCalledWith(30, "seconds");
 
     state.hours = 2;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledWith(2, "hours");
   })
@@ -84,7 +84,7 @@ describe("on", () => {
     state.on(x => x.minutes.seconds, callback);
 
     state.seconds = 60;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledWith(60, "seconds");
     expect(callback).toBeCalledWith(1, "minutes");
@@ -97,7 +97,7 @@ describe("on", () => {
     state.on(x => x.seconds.minutes, callback, true);
 
     state.seconds = 60;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledWith(["seconds", "minutes"]);
   })
@@ -120,12 +120,12 @@ describe("once", () => {
     state.once(x => x.seconds, callback);
 
     state.seconds = 30;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledWith(30, "seconds");
 
     state.seconds = 45;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).not.toBeCalledWith(45, "seconds");
   })
@@ -146,13 +146,13 @@ describe("once", () => {
     state.once(x => x.seconds.minutes, callback);
 
     state.seconds = 60;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).toBeCalledWith(60, "seconds");
     expect(callback).toBeCalledWith(1, "minutes");
 
     state.seconds = 61;
-    await state.requestUpdate();
+    await state.update();
 
     expect(callback).not.toBeCalledWith(61, "seconds");
   })
@@ -183,13 +183,13 @@ describe("effect", () => {
     state.value1 = 2;
 
     // wait for update event, thus queue flushed
-    await state.requestUpdate()
+    await state.update()
     
     state.value2 = 3;
     state.value3 = 4;
 
     // wait for update event to flush queue
-    await state.requestUpdate()
+    await state.update()
     
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(3)
@@ -206,12 +206,12 @@ describe("effect", () => {
     state.value1 = 2;
     state.value2 = 3;
 
-    await state.requestUpdate();
+    await state.update();
 
     state.value3 = 4;
 
     // expect value4, which relies on 3.
-    await state.requestUpdate();
+    await state.update();
     
     expect(mock).toBeCalledTimes(3);
   })
@@ -228,14 +228,14 @@ describe("effect", () => {
     });
   
     state.value1 = 2;
-    await state.requestUpdate();
+    await state.update();
 
     state.value2 = 3;
-    await state.requestUpdate();
+    await state.update();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.requestUpdate();
+    await state.update();
   
     /**
      * must invoke once to detect subscription
@@ -280,7 +280,7 @@ describe("update", () => {
 
     test.update("foo");
     
-    const update = await test.requestUpdate(true);
+    const update = await test.update(true);
 
     expect(update).toContain("foo");
   })
@@ -290,7 +290,7 @@ describe("update", () => {
 
     test.update(["foo", "bar"]);
     
-    const update = await test.requestUpdate(true);
+    const update = await test.update(true);
 
     expect(update).toContain("foo");
     expect(update).toContain("bar");
@@ -301,7 +301,7 @@ describe("update", () => {
 
     test.update(x => x.foo.bar);
     
-    const update = await test.requestUpdate(true);
+    const update = await test.update(true);
 
     expect(update).toContain("foo");
     expect(update).toContain("bar");
@@ -330,7 +330,7 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value1++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalled();
   })
@@ -347,7 +347,7 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value2++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalled();
   })
@@ -364,7 +364,7 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value1++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalled();
   })
@@ -378,17 +378,17 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value1++;
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(mock).toBeCalledTimes(1);
 
     state.value1++;
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(mock).toBeCalledTimes(2);
 
     state.cancel();
 
     state.value1++;
-    await state.requestUpdate(true);
+    await state.update(true);
     expect(mock).toBeCalledTimes(2);
   })
 
@@ -404,12 +404,12 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value1++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalled();
 
     state.value2++;
-    await state.requestUpdate();
+    await state.update();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
@@ -428,12 +428,12 @@ describe("will accept before ready", () => {
     const state = Test.create();
 
     state.value1++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalled();
 
     state.value2++;
-    await state.requestUpdate();
+    await state.update();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
@@ -460,12 +460,12 @@ describe("will accept before ready", () => {
     expect(mock).toBeCalled();
 
     state.value1++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalledTimes(2);
 
     state.value2++;
-    await state.requestUpdate();
+    await state.update();
 
     expect(mock).toBeCalledTimes(3);
   })

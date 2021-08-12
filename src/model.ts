@@ -7,7 +7,7 @@ import { createEffect, define, defineLazy, getPrototypeOf } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
-    `Strict requestUpdate() did ${expected ? "not " : ""}find pending updates.`
+    `Strict update() did ${expected ? "not " : ""}find pending updates.`
 })
 
 export const CONTROL = Symbol("control");
@@ -128,21 +128,16 @@ export class Model {
     return output;
   }
 
-  update(select: string | string[] | Query){
+  update(arg: string | string[] | Query | boolean){
     const control = manage(this);
 
-    for(const key of keys(control, select))
-      control.update(key);
-  }
-
-  requestUpdate(arg?: RequestCallback | boolean){
-    const control = manage(this);
-
-    if(typeof arg == "function")
-      control.include(arg);
-
-    if(!control.pending === arg)
-      return Promise.reject(Oops.StrictUpdate(arg))
+    if(typeof arg == "boolean"){
+      if(!control.pending === arg)
+        return Promise.reject(Oops.StrictUpdate(arg))
+    }
+    else if(arg)
+      for(const key of keys(control, arg))
+        control.update(key);
 
     if(control.pending)
       return new Promise(cb => control.include(cb));
