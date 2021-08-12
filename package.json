@@ -1,6 +1,6 @@
 {
   "name": "@expressive/mvc",
-  "version": "1.0.0-beta.6",
+  "version": "1.0.0-beta.7",
   "description": "Use classes to define state in React!",
   "author": {
     "name": "Gabe Klein",
