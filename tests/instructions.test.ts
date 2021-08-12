@@ -363,17 +363,27 @@ describe("memo", () => {
   })
 })
 
-describe("set", () => {
+describe("declare", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
+    didRunGetter = jest.fn();
 
     property = declare((key) => {
       this.didRunInstruction(key);
+
+      return () => {
+        this.didRunGetter(key);
+      }
     })
 
-    keyedInstruction = declare(
-      function foo(){}
-    );
+    memoedProperty = declare((key) => {
+      return () => {
+        this.didRunGetter(key);
+      }
+    }, true)
+
+    keyedInstruction = declare(function foo(){});
+    namedInstruction = declare(() => {}, false, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -391,10 +401,49 @@ describe("set", () => {
     expect(description).toBe("foo instruction");
   })
 
+  it("will give placeholder custom name", () => {
+    const { namedInstruction } = new Test();
+    const { description } = namedInstruction as any;
+
+    expect(description).toBe("foo instruction");
+  })
+
   it("will run instruction on create", () => {
     const { didRunInstruction: ran } = Test.create();
 
     expect(ran).toBeCalledWith("property");
+  })
+
+  it.skip("will run instruction getter", async () => {
+    const instance = Test.create();
+    const ran = instance.didRunGetter;
+
+    instance.effect(x => {
+      void x.property;
+    })
+    
+    expect(ran).toBeCalledWith("property");
+
+    instance.update("property");
+    await instance.requestUpdate(true);
+
+    expect(ran).toBeCalledTimes(2);
+  })
+
+  it.skip("will run instruction in memo mode", async () => {
+    const instance = Test.create();
+    const ran = instance.didRunGetter;
+
+    instance.effect(x => {
+      void x.property;
+    })
+    
+    expect(ran).toBeCalledWith("property");
+
+    instance.update("property");
+    await instance.requestUpdate(true);
+
+    expect(ran).toBeCalledTimes(1);
   })
 })
 
@@ -412,24 +461,27 @@ describe("get", () => {
   }
 
   it("will run instruction on access", () => {
-    const { didRunInstruction: ran, get } = Test.create();
-
+    const instance = Test.create();
+    const ran = instance.didRunInstruction;
+    
     expect(ran).not.toBeCalled();
-    expect(get.property).toBe("foobar");
+    expect(instance.property).toBe("foobar");
     expect(ran).toBeCalledWith("property");
   })
 
   it("will pass undefined for subscriber", () => {
-    const { didGetSubscriber: got, get } = Test.create();
-
-    expect(get.property).toBe("foobar");
+    const instance = Test.create();
+    const got = instance.didGetSubscriber;
+    
+    expect(instance.property).toBe("foobar");
     expect(got).toBeCalledWith(undefined);
   })
 
   it("will pass undefined for subscriber", () => {
-    const { didGetSubscriber: got, get } = Test.create();
-
-    expect(get.property).toBe("foobar");
+    const instance = Test.create();
+    const got = instance.didGetSubscriber;
+    
+    expect(instance.property).toBe("foobar");
     expect(got).toBeCalledWith(undefined);
   })
 

@@ -137,6 +137,7 @@ export namespace Model {
         follow(key: string, cb?: Callback | undefined): void;
         commit(): Callback;
         release(): Callback;
+        onUpdate(): void;
     }
 }
 
