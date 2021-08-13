@@ -117,7 +117,7 @@ export namespace Model {
 
         addListener(batch: BunchOf<RequestCallback>): Callback;
 
-        update(key: string): void;
+        update(key: string, value?: any): void;
 
         include(cb: RequestCallback): void;
     }

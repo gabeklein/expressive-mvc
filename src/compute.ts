@@ -74,8 +74,8 @@ export function prepare(
     }
     finally {
       if(state[key] !== value){
-        on.update(key);
-        return state[key] = value;
+        on.update(key, value);
+        return value;
       }
     }
   }

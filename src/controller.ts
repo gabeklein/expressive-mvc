@@ -85,12 +85,10 @@ export class Controller {
       if(state[key] == value)
         return;
 
-      state[key] = value;
-
       if(callback)
         callback(value, subject);
 
-      this.update(key);
+      this.update(key, value);
     }
   }
 
@@ -140,7 +138,10 @@ export class Controller {
       this.waiting.push(to)
   }
 
-  public update(key: string){
+  public update(key: string, value?: any){
+    if(1 in arguments)
+      this.state[key] = value;
+
     if(this.frame.has(key))
       return;
 
