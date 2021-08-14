@@ -92,7 +92,7 @@ export class Model {
     select?: string[] | Query){
 
     const control = manage(this);
-    let target = control.subject;
+    let target = this;
 
     const effect = createEffect(callback);
     const invoke = () => effect(target);
