@@ -1,7 +1,7 @@
 import { Oops } from "../src/util";
 import { Model } from "./adapter";
 
-describe("on", () => {
+describe("on method", () => {
   class Subject extends Model {
     seconds = 0;
     hours = 0;
@@ -103,7 +103,7 @@ describe("on", () => {
   })
 })
 
-describe("once", () => {
+describe("once method", () => {
   class Subject extends Model {
     seconds = 0;
     hours = 0;
@@ -158,8 +158,10 @@ describe("once", () => {
   })
 })
 
-describe("effect", () => {
+describe("effect method", () => {
   class TestValues extends Model {
+    invoked = jest.fn();
+
     value1 = 1;
     value2 = 2;
     value3 = 3;
@@ -171,9 +173,8 @@ describe("effect", () => {
 
   it('will watch values', async () => {
     const state = TestValues.create();
-    const mock = jest.fn();
   
-    state.effect(mock, [
+    state.effect(state.invoked, [
       "value1",
       "value2",
       "value3",
@@ -192,14 +193,13 @@ describe("effect", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(mock).toBeCalledTimes(3)
+    expect(state.invoked).toBeCalledTimes(3)
   })
 
   it('will watch values with selector', async () => {
     const state = TestValues.create();
-    const mock = jest.fn();
   
-    state.effect(mock,
+    state.effect(state.invoked,
       $ => $.value1.value2.value3.value4
     );
   
@@ -213,18 +213,17 @@ describe("effect", () => {
     // expect value4, which relies on 3.
     await state.update();
     
-    expect(mock).toBeCalledTimes(3);
+    expect(state.invoked).toBeCalledTimes(3);
   })
 
   it('will watch values with subscriber', async () => {
     const state = TestValues.create();
-    let invokedNTimes = 0;
   
     state.effect(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
       void value1, value2, value3;
-      invokedNTimes++;
+      self.invoked();
     });
   
     state.value1 = 2;
@@ -245,7 +244,34 @@ describe("effect", () => {
      * - value 2
      * - value 2 & 3 (squashed)
      */
-    expect(invokedNTimes).toBe(4);
+    expect(state.invoked).toBeCalledTimes(4);
+  })
+
+  it('will watch values with method subscriber', async () => {
+    class Test extends TestValues {
+      testEffect(){
+        // destructure values to indicate access.
+        const { value1, value2, value3 } = this;
+        void value1, value2, value3;
+        this.invoked();
+      }
+    }
+
+    const state = Test.create();
+  
+    state.effect(state.testEffect);
+  
+    state.value1 = 2;
+    await state.update();
+
+    state.value2 = 3;
+    await state.update();
+
+    state.value2 = 4;
+    state.value3 = 4;
+    await state.update();
+
+    expect(state.invoked).toBeCalledTimes(4);
   })
 
   it("will throw if effect returns non-function", () => {
@@ -269,7 +295,7 @@ describe("effect", () => {
   })
 });
 
-describe("update", () => {
+describe("update method", () => {
   class Test extends Model {
     foo = "foo";
     bar = "bar";

@@ -95,7 +95,7 @@ export class Model {
     let target = this;
 
     const effect = createEffect(callback);
-    const invoke = () => effect(target);
+    const invoke = () => effect.call(target, target);
 
     if(select){
       invoke();

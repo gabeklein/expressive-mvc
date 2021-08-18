@@ -68,9 +68,9 @@ export function createEffect(
 
   let unSet: Callback | Promise<any> | void;
 
-  return (value: any, callee = value) => {
+  return function(this: any, value: any){
     typeof unSet == "function" && unSet();
-    unSet = callback.call(callee, value);
+    unSet = callback.call(this, value);
 
     if(unSet instanceof Promise)
       unSet = undefined;

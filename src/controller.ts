@@ -86,7 +86,7 @@ export class Controller {
         return;
 
       if(callback)
-        callback(value, subject);
+        callback.call(subject, value);
 
       this.update(key, value);
     }
