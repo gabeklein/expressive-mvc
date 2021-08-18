@@ -16,104 +16,100 @@ export const Oops = issues({
     `Child property ${key} may not be undefined.`
 })
 
-export function use<T extends typeof Model>(
+export const use = <T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   argument?: ((i: Model) => void) | boolean
-): Model {
-  return declare(
-    function use(key){
-      const Proxies = new WeakMap<Subscriber, any>();
-      let instance: Model | undefined;
-  
-      const update = (next: Model) => {
-        instance = next;
-  
-        if(next){
-          Parent.set(instance, this.subject);
-          manage(instance);
-        }
-  
-        if(typeof argument == "function")
-          argument(instance);
-        else if(!instance && argument !== false)
-          throw Oops.UndefinedNotAllowed(key);
+): Model => declare(
+  function use(key){
+    const Proxies = new WeakMap<Subscriber, any>();
+    let instance: Model | undefined;
+
+    const update = (next: Model) => {
+      instance = next;
+
+      if(next){
+        Parent.set(instance, this.subject);
+        manage(instance);
       }
-  
-      const attach = (sub: Subscriber) => {
-        let child: Subscriber | undefined;
-  
-        function create(){
-          if(!instance)
-            return;
-  
-          child = new Subscriber(instance, sub.onUpdate);
-  
-          if(sub.active)
-            child.commit();
-  
-          sub.dependant.add(child);
-          Proxies.set(sub, child.proxy);
+
+      if(typeof argument == "function")
+        argument(instance);
+      else if(!instance && argument !== false)
+        throw Oops.UndefinedNotAllowed(key);
+    }
+
+    const attach = (sub: Subscriber) => {
+      let child: Subscriber | undefined;
+
+      function create(){
+        if(!instance)
+          return;
+
+        child = new Subscriber(instance, sub.onUpdate);
+
+        if(sub.active)
+          child.commit();
+
+        sub.dependant.add(child);
+        Proxies.set(sub, child.proxy);
+      }
+
+      function refresh(){
+        if(child){
+          child.release();
+          sub.dependant.delete(child);
+          Proxies.set(sub, undefined);
+          child = undefined;
         }
-  
-        function refresh(){
-          if(child){
-            child.release();
-            sub.dependant.delete(child);
-            Proxies.set(sub, undefined);
-            child = undefined;
-          }
-  
-          create();
-          sub.onUpdate();
-        }
-  
+
         create();
-        sub.follow(key, refresh);
+        sub.onUpdate();
       }
-  
-      if(Peer){
-        instance = Model.isTypeof(Peer)
-          ? new Peer()
-          : Peer()
-  
-        if(instance)
-          update(instance);
-      }
-      else
-        argument = false;
-  
-      this.manage(key, instance, update);
-  
-      return (local) => {
-        if(!local)
-          return instance;
-  
-        if(!Proxies.has(local))
-          attach(local);
-  
-        return Proxies.get(local);
-      }
-    }
-  );
-}
 
-export function parent<T extends typeof Model>(
-  Expects: T, required?: boolean): InstanceOf<T> {
-
-  return declare(
-    function parent(){
-      const child = this.subject;
-      const expected = Expects.name;
-      const value = Parent.get(this.subject);
-  
-      if(!value){
-        if(required)
-          throw Oops.ParentRequired(expected, child);
-      }
-      else if(!(value instanceof Expects))
-        throw Oops.UnexpectedParent(expected, child, value);
-  
-      return { value };
+      create();
+      sub.follow(key, refresh);
     }
-  );
-}
+
+    if(Peer){
+      instance = Model.isTypeof(Peer)
+        ? new Peer()
+        : Peer()
+
+      if(instance)
+        update(instance);
+    }
+    else
+      argument = false;
+
+    this.manage(key, instance, update);
+
+    return (local) => {
+      if(!local)
+        return instance;
+
+      if(!Proxies.has(local))
+        attach(local);
+
+      return Proxies.get(local);
+    }
+  }
+);
+
+export const parent = <T extends typeof Model>(
+  Expects: T, required?: boolean): InstanceOf<T> => declare(
+
+  function parent(){
+    const child = this.subject;
+    const expected = Expects.name;
+    const value = Parent.get(this.subject);
+
+    if(!value){
+      if(required)
+        throw Oops.ParentRequired(expected, child);
+    }
+    else if(!(value instanceof Expects))
+      throw Oops.UnexpectedParent(expected, child, value);
+
+    return { value };
+  }
+);

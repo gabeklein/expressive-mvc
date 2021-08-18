@@ -60,104 +60,96 @@ export function apply(
   }
 }
 
-export function ref<T = any>(
-  effect?: EffectCallback<Model, any>): { current: T } {
+export const ref = <T = any>(
+  effect?: EffectCallback<Model, any>): { current: T } => declare(
 
-  return declare(
-    function ref(key){
-      const refObjectFunction = this.sets(key, effect);
+  function ref(key){
+    const refObjectFunction = this.sets(key, effect);
 
-      defineProperty(refObjectFunction, "current", {
-        set: refObjectFunction,
-        get: () => this.state[key]
-      })
+    defineProperty(refObjectFunction, "current", {
+      set: refObjectFunction,
+      get: () => this.state[key]
+    })
 
-      return { value: refObjectFunction };
+    return { value: refObjectFunction };
+  }
+);
+
+export const on = <T = any>(
+  value: any, effect?: EffectCallback<Model, T>): T => declare(
+
+  function on(key){
+    if(!effect){
+      effect = value;
+      value = undefined;
     }
-  );
-}
 
-export function on<T = any>(
-  value: any, effect?: EffectCallback<Model, T>): T {
+    this.manage(key, value, effect);
+  }
+);
 
-  return declare(
-    function on(key){
-      if(!effect){
-        effect = value;
-        value = undefined;
-      }
-  
-      this.manage(key, value, effect);
-    }
-  );
-}
+export const memo = <T>(
+  factory: () => T, defer?: boolean): T => declare(
 
-export function memo<T>(factory: () => T, defer?: boolean): T {
-  return declare(
-    function memo(key){
-      const source = this.subject;
-      const get = () => factory.call(source);
-  
-      if(defer)
-        defineLazy(source, key, get);
-      else
-        define(source, key, get())
-    }
-  );
-}
+  function memo(key){
+    const source = this.subject;
+    const get = () => factory.call(source);
 
-export function lazy<T>(value: T): T {
-  return declare(
-    function lazy(key){
-      const source = this.subject as any;
-  
-      source[key] = value;
-      defineProperty(this.state, key, {
-        get: () => source[key]
-      });
-    }
-  );
-}
+    if(defer)
+      defineLazy(source, key, get);
+    else
+      define(source, key, get())
+  }
+);
 
-export function act<T extends Async>(task: T): T {
-  return declare(
-    function act(key){
-      let pending = false;
-  
-      const invoke = (...args: any[]) => {
-        if(pending)
-          return Promise.reject(
-            Oops.DuplicateAction(key)
-          )
-  
-        pending = true;
+export const lazy = <T>(value: T): T => declare(
+  function lazy(key){
+    const source = this.subject as any;
+
+    source[key] = value;
+    defineProperty(this.state, key, {
+      get: () => source[key]
+    });
+  }
+);
+
+export const act = <T extends Async>(task: T): T => declare(
+  function act(key){
+    let pending = false;
+
+    const invoke = (...args: any[]) => {
+      if(pending)
+        return Promise.reject(
+          Oops.DuplicateAction(key)
+        )
+
+      pending = true;
+      this.update(key);
+
+      return new Promise(res => {
+        res(task.apply(this.subject, args));
+      }).finally(() => {
+        pending = false;
         this.update(key);
-  
-        return new Promise(res => {
-          res(task.apply(this.subject, args));
-        }).finally(() => {
-          pending = false;
-          this.update(key);
-        })
-      };
-  
-      setAlias(invoke, `run ${key}`);
-      defineProperty(invoke, "active", {
-        get: () => pending
       })
-  
-      return {
-        value: invoke,
-        writable: false
-      };
-    }
-  );
-}
+    };
 
-export function from<T>(getter: (on?: Model) => T): T {
-  return declare(
-    function from(key){
-      Computed.prepare(this, key, getter);
-    }
-  );
-}
+    setAlias(invoke, `run ${key}`);
+    defineProperty(invoke, "active", {
+      get: () => pending
+    })
+
+    return {
+      value: invoke,
+      writable: false
+    };
+  }
+)
+
+export const from = <T>(
+  getter: (on?: Model) => T): T => declare(
+
+  function from(key){
+    Computed.prepare(this, key, getter);
+  }
+);

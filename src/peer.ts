@@ -20,29 +20,27 @@ type ApplyPeer = (context: Lookup) => void;
 const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
-export function tap<T extends Peer>(
-  type: T, required?: boolean): InstanceOf<T> {
+export const tap = <T extends Peer>(
+  type: T, required?: boolean): InstanceOf<T> => declare(
 
-  return declare(
-    function tap(key){
-      const { subject } = this;
-  
-      if("current" in type)
-        defineLazy(subject, key, () => type.current);
-      else if("current" in subject.constructor)
-        throw Oops.CantAttachGlobal(subject, type.name);
-      else 
-        getPending(subject).push((context) => {
-          const remote = context.get(type);
-      
-          if(!remote && required)
-            throw Oops.AmbientRequired(type.name, subject, key);
-      
-          define(subject, key, remote);
-        });
-    }
-  );
-}
+  function tap(key){
+    const { subject } = this;
+
+    if("current" in type)
+      defineLazy(subject, key, () => type.current);
+    else if("current" in subject.constructor)
+      throw Oops.CantAttachGlobal(subject, type.name);
+    else 
+      getPending(subject).push((context) => {
+        const remote = context.get(type);
+    
+        if(!remote && required)
+          throw Oops.AmbientRequired(type.name, subject, key);
+    
+        define(subject, key, remote);
+      });
+  }
+);
 
 export function usePeerContext(subject: Model){
   if(ContextWasUsed.has(subject)){
