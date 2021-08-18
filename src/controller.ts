@@ -2,7 +2,7 @@ import * as Computed from './compute';
 import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Stateful } from './model';
-import { createEffect, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export namespace Controller {
   export type Handle =
@@ -79,14 +79,13 @@ export class Controller {
     effect?: EffectCallback<any, any>){
 
     const { state, subject } = this;
-    const callback = effect && createEffect(effect);
 
     return (value: any) => {
       if(state[key] == value)
         return;
 
-      if(callback)
-        callback.call(subject, value);
+      if(effect)
+        effect.call(subject, value);
 
       this.update(key, value);
     }

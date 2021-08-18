@@ -3,7 +3,7 @@ import { Controller } from './controller';
 import { issues } from './issues';
 import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { define, defineLazy, defineProperty, getOwnPropertyDescriptor, memoize, setAlias } from './util';
+import { createEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, memoize, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -64,7 +64,10 @@ export const ref = <T = any>(
   effect?: EffectCallback<Model, any>): { current: T } => declare(
 
   function ref(key){
-    const refObjectFunction = this.sets(key, effect);
+    
+    const refObjectFunction = this.sets(key,  
+      effect && createEffect(effect)
+    );
 
     defineProperty(refObjectFunction, "current", {
       set: refObjectFunction,
@@ -84,7 +87,9 @@ export const on = <T = any>(
       value = undefined;
     }
 
-    this.manage(key, value, effect);
+    this.manage(key, value,
+      effect && createEffect(effect)
+    );
   }
 );
 
