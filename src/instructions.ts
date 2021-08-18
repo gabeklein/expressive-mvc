@@ -64,7 +64,6 @@ export const ref = <T = any>(
   effect?: EffectCallback<Model, any>): { current: T } => declare(
 
   function ref(key){
-    
     const refObjectFunction = this.sets(key,  
       effect && createEffect(effect)
     );
