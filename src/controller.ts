@@ -5,8 +5,7 @@ import { Stateful } from './model';
 import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export namespace Controller {
-  export type Handle =
-    (on: Controller, key: string, value: any) => boolean | void;
+  export type HandleValue = (this: Stateful, value: any) => boolean | void;
 }
 
 export class Controller {
@@ -61,7 +60,7 @@ export class Controller {
   public manage(
     key: string,
     initial: any,
-    effect?: EffectCallback<any, any>){
+    effect?: Controller.HandleValue){
 
     const { state, subject } = this;
 
@@ -76,7 +75,7 @@ export class Controller {
 
   public sets(
     key: string,
-    effect?: EffectCallback<any, any>){
+    handler?: Controller.HandleValue){
 
     const { state, subject } = this;
 
@@ -84,8 +83,9 @@ export class Controller {
       if(state[key] == value)
         return;
 
-      if(effect)
-        effect.call(subject, value);
+      if(handler)
+        if(handler.call(subject, value) === false)
+          return;
 
       this.update(key, value);
     }
