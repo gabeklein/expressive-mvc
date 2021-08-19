@@ -6,20 +6,20 @@ import { act, lazy, memo, Model, on, ref, declare, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
-    checkResult?: any = undefined;
+    didTrigger = jest.fn()
   
-    test1 = on<number>(value => {
-      this.checkResult = value + 1;
+    test1 = on<number>(undefined, value => {
+      this.didTrigger(value + 1);
     });
   
-    test2 = on<number>(value => {
+    test2 = on<number>(undefined, () => {
       return () => {
-        this.checkResult = true;
+        this.didTrigger(true);
       }
     });
   
     test3 = on("foo", value => {
-      this.checkResult = value;
+      this.didTrigger(value);
     });
   }
   
@@ -27,11 +27,11 @@ describe("on", () => {
     const state = Subject.create();
     const callback = jest.fn();
   
-    expect(state.checkResult).toBe(undefined);
+    expect(state.didTrigger).not.toBeCalled();
     state.once("test1", callback);
 
     state.test1 = 1;
-    expect(state.checkResult).toBe(2);
+    expect(state.didTrigger).toBeCalledWith(2);
 
     await state.update(true)
     expect(callback).toBeCalledWith(1, "test1");
@@ -43,11 +43,11 @@ describe("on", () => {
     state.test2 = 1;
 
     await state.update(true);
-    expect(state.checkResult).toBe(undefined);
+    expect(state.didTrigger).not.toBeCalled();
     state.test2 = 2;
 
     await state.update(true);
-    expect(state.checkResult).toBe(true);
+    expect(state.didTrigger).toBeCalledWith(true);
   })
   
   it('will assign a default value', async () => {
@@ -57,7 +57,7 @@ describe("on", () => {
     state.test3 = "bar";
 
     await state.update();
-    expect(state.checkResult).toBe("bar");
+    expect(state.didTrigger).toBeCalledWith("bar");
   })
 })
 
@@ -93,17 +93,17 @@ describe("use", () => {
 
 describe("ref", () => {
   class Subject extends Model {
-    checkValue?: any = undefined;
+    didTrigger = jest.fn();
   
     ref1 = ref<string>();
   
     ref2 = ref<symbol>(value => {
-      this.checkValue = value;
+      this.didTrigger(value);
     })
   
     ref3 = ref<number>(() => {
       return () => {
-        this.checkValue = true;
+        this.didTrigger(true);
       }
     })
   }
@@ -112,6 +112,7 @@ describe("ref", () => {
     const state = Subject.create();
 
     state.ref1.current = "foobar";
+
     await state.update(true);
     expect(state.ref1.current).toBe("foobar");
   })
@@ -122,6 +123,7 @@ describe("ref", () => {
   
     state.once("ref1", callback);
     state.ref1.current = "foobar";
+
     await state.update(true);
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
@@ -132,6 +134,7 @@ describe("ref", () => {
   
     state.once("ref1", callback);
     state.ref1("foobar");
+
     await state.update(true);
     expect(callback).toBeCalledWith("foobar", "ref1");
   })
@@ -141,10 +144,11 @@ describe("ref", () => {
     const targetValue = Symbol("inserted object");
     const callback = jest.fn();
   
-    expect(state.checkValue).toBe(undefined);
+    expect(state.didTrigger).not.toBeCalled();
     state.once("ref2", callback);
     state.ref2.current = targetValue;
-    expect(state.checkValue).toBe(targetValue);
+    expect(state.didTrigger).toBeCalledWith(targetValue);
+
     await state.update(true);
     expect(callback).toBeCalledWith(targetValue, "ref2");
   })
@@ -153,11 +157,13 @@ describe("ref", () => {
     const state = Subject.create();
   
     state.ref3.current = 1;
+
     await state.update();
-    expect(state.checkValue).toBe(undefined);
+    expect(state.didTrigger).not.toBeCalled();
     state.ref3.current = 2;
+
     await state.update();
-    expect(state.checkValue).toBe(true);
+    expect(state.didTrigger).toBeCalledWith(true);
   })
 
   it('will export value of ref-properties', () => {
@@ -212,7 +218,6 @@ describe("act", () => {
     expect(test.active).toBe(true);
 
     const output = await result;
-
     expect(output).toBe("foobar");
     expect(test.active).toBe(false);
   })
@@ -256,7 +261,6 @@ describe("act", () => {
     expect(nope.active).toBe(true);
 
     await expect(result).rejects.toThrowError();
-
     expect(nope.active).toBe(false);
   })
 
@@ -284,13 +288,12 @@ describe("lazy", () => {
     const state = Test.create();
 
     expect(state.lazy).toBe("foo");
-    
     state.lazy = "bar";
-    await state.update(false);
 
+    await state.update(false);
     expect(state.lazy).toBe("bar");
-    
     state.eager = "foo";
+
     await state.update(true);
   });
 
@@ -439,10 +442,9 @@ describe("declare", () => {
     })
     
     expect(ran).toBeCalledWith("property");
-
     instance.update("property");
-    await instance.update(true);
 
+    await instance.update(true);
     expect(ran).toBeCalledTimes(1);
   })
 })

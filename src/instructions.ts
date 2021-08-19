@@ -61,34 +61,28 @@ export function apply(
 }
 
 export const ref = <T = any>(
-  effect?: EffectCallback<Model, any>): { current: T } => declare(
+  cb?: EffectCallback<Model, any>): { current: T } => declare(
 
   function ref(key){
-    const refObjectFunction = this.sets(key,  
-      effect && createEffect(effect)
-    );
+    const refObjectFunction =
+      this.sets(key, cb && createEffect(cb));
 
     defineProperty(refObjectFunction, "current", {
       set: refObjectFunction,
       get: () => this.state[key]
     })
 
-    return { value: refObjectFunction };
+    return {
+      value: refObjectFunction
+    };
   }
 );
 
 export const on = <T = any>(
-  value: any, effect?: EffectCallback<Model, T>): T => declare(
+  value: T, cb: EffectCallback<Model, T>): T => declare(
 
   function on(key){
-    if(!effect){
-      effect = value;
-      value = undefined;
-    }
-
-    this.manage(key, value,
-      effect && createEffect(effect)
-    );
+    this.manage(key, value, cb && createEffect(cb));
   }
 );
 

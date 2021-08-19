@@ -46,22 +46,13 @@ export function declare <T = any> (
  export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
  
  /**
-  * Sets property to synchronously call an effect upon update (much like a setter).
-  * 
-  * **Note:** Use generic-type to specifiy property signature. 
-  * Value will always start off as undefined. 
-  * 
-  * @param callback - Effect-callback fired upon update of host property.
-  */
- export function on <T = any> (callback: EffectCallback<T>): T | undefined;
-
- /**
   * Sets property to synchronously call effect upon update.
   * 
   * @param starting - Beginning value of host property.
   * @param callback - Effect-callback fired upon set of host property.
   */
- export function on <T = any> (starting: T, callback: EffectCallback<T>): T;
+ export function on <T = any> (initial: undefined, callback: EffectCallback<T>): T | undefined;
+ export function on <T = any> (initial: T, callback: EffectCallback<T>): T;
  
  /**
   * Creates a ref-compatible property for use with components.
