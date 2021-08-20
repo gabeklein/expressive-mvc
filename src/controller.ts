@@ -35,12 +35,9 @@ export class Controller {
   public select(using?: Query){
     const keys = getOwnPropertyNames(this.state);
 
-    if(using)
-      return selectRecursive(
-        using, keys.concat(lifecycleEvents)
-      );
-    else
-      return keys;
+    return using
+      ? selectRecursive(using, keys.concat(lifecycleEvents))
+      : keys;
   }
 
   public add(key: string){
