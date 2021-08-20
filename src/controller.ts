@@ -98,7 +98,7 @@ export class Controller {
     once?: boolean){
 
     const set = keys(this, subset);
-    const batch: BunchOf<RequestCallback> = {};
+    const batch = {} as BunchOf<RequestCallback>;
     const remove = this.addListener(batch);
 
     const callback = squash

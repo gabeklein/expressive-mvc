@@ -98,6 +98,7 @@ export namespace Model {
 
     export class Controller {
         state: BunchOf<any>;
+        subject: {};
 
         /**
          * Place a given key's property under management.
@@ -254,22 +255,22 @@ export abstract class Model {
       */
     tag(idFactory: (idFactory: this) => Key | void): this;
 
-    /** Controller of this instance. */
+    /** Controller for this instance. */
     [CONTROL]: Model.Controller;
 
     /** Current state of this instance. */
     [STATE]?: Model.State<this>;
 
-    /** Current subscriber (if present) while used in a watch context (i.e. hook). */
+    /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
     [LOCAL]?: Model.Subscriber;
 
-    /** Key for controller of model instance. */
+    /** Use symbol to access controller of a model. */
     static CONTROL: typeof CONTROL;
 
-    /** Key for current state of model instance. */
+    /** Use symbol to access current state of a model. */
     static STATE: typeof STATE;
 
-    /** Key for subscriber of current instance in a watched context (i.e. hook). */
+    /** Use symbol to access current subscriber of a model in a live context (e.g. hook or effect). */
     static LOCAL: typeof LOCAL;
 
     /**
