@@ -379,14 +379,8 @@ describe("declare", () => {
       }
     })
 
-    memoedProperty = declare((key) => {
-      return () => {
-        this.didRunGetter(key);
-      }
-    }, true)
-
     keyedInstruction = declare(function foo(){});
-    namedInstruction = declare(() => {}, false, "foo");
+    namedInstruction = declare(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -431,21 +425,6 @@ describe("declare", () => {
     await instance.update(true);
 
     expect(ran).toBeCalledTimes(2);
-  })
-
-  it.skip("will run instruction in memo mode", async () => {
-    const instance = Test.create();
-    const ran = instance.didRunGetter;
-
-    instance.effect(x => {
-      void x.property;
-    })
-    
-    expect(ran).toBeCalledWith("property");
-    instance.update("property");
-
-    await instance.update(true);
-    expect(ran).toBeCalledTimes(1);
   })
 })
 

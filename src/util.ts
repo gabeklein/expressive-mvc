@@ -99,17 +99,3 @@ export function selectRecursive(
 
   return Array.from(found);
 }
-
-export function memoize<T extends {}, R>(func: (x?: T) => R){
-  const memo = new WeakMap<T, any>();
-
-  return (arg: T | undefined): R => {
-    if(!arg)
-      return func();
-    
-    if(!memo.has(arg))
-      memo.set(arg, func(arg));
-
-    return memo.get(arg);
-  }
-}

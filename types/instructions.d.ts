@@ -7,7 +7,6 @@ import { Async, Class, EffectCallback, InstanceOf } from './types';
  **/
 export function declare <T = any> (
   instruction: Model.Instruction<T>,
-  perSubscriber?: boolean,
   name?: string
 ): T;
 
