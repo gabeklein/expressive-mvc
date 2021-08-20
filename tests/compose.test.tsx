@@ -79,7 +79,7 @@ describe("use instruction", () => {
     await update();
     expect(state.child.value).toBe("foo");
   
-    // New subscription does still work.
+    // New subscription still works.
     state.child.value = "bar";
     await update();
     expect(state.child.value).toBe("bar");
@@ -112,7 +112,7 @@ describe("use instruction", () => {
     state.child = new Child();
     await update();
   
-    // New subscription does still work.
+    // New subscription still works.
     state.child.value = "bar";
     await update();
   })

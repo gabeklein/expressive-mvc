@@ -291,7 +291,7 @@ describe("meta", () => {
     await waitForNextUpdate(opts);
     expect(current.child.value).toBe("foo");
   
-    // Fresh subscription does still work.
+    // Fresh subscription still works.
     current.child.value = "bar";
     await waitForNextUpdate(opts);
     expect(current.child.value).toBe("bar");

@@ -1,5 +1,5 @@
 import { useLookup } from './context';
-import { declare } from './instructions';
+import { set } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';
@@ -21,7 +21,7 @@ const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export const tap = <T extends Peer>(
-  type: T, required?: boolean): InstanceOf<T> => declare(
+  type: T, required?: boolean): InstanceOf<T> => set(
 
   function tap(key){
     const { subject } = this;

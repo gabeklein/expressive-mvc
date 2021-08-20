@@ -1,5 +1,5 @@
 export { parent, use } from './compose';
-export { act, from, lazy, memo, on, ref, declare } from './instructions';
+export { act, from, lazy, memo, on, ref, set } from './instructions';
 export { tap } from './peer';
 
 export { Model, Model as default } from './model';

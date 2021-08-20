@@ -1,4 +1,4 @@
-import { declare } from './instructions';
+import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
@@ -19,7 +19,7 @@ export const Oops = issues({
 export const use = <T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   argument?: ((i: Model) => void) | boolean
-): Model => declare(
+): Model => set(
   function use(key){
     const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
@@ -96,7 +96,7 @@ export const use = <T extends typeof Model>(
 );
 
 export const parent = <T extends typeof Model>(
-  Expects: T, required?: boolean): InstanceOf<T> => declare(
+  Expects: T, required?: boolean): InstanceOf<T> => set(
 
   function parent(){
     const child = this.subject;

@@ -16,7 +16,7 @@ type Instruction<T> = (this: Controller, key: string) =>
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-export function declare<T = any>(
+export function set<T = any>(
   instruction: Instruction<T>,
   name = instruction.name || "pending"){
 
@@ -59,7 +59,7 @@ export function apply(
 }
 
 export const ref = <T = any>(
-  cb?: EffectCallback<Model, any>): { current: T } => declare(
+  cb?: EffectCallback<Model, any>): { current: T } => set(
 
   function ref(key){
     const refObjectFunction =
@@ -77,7 +77,7 @@ export const ref = <T = any>(
 );
 
 export const on = <T = any>(
-  value: T, cb: EffectCallback<Model, T>): T => declare(
+  value: T, cb: EffectCallback<Model, T>): T => set(
 
   function on(key){
     this.manage(key, value, cb && createEffect(cb));
@@ -85,7 +85,7 @@ export const on = <T = any>(
 );
 
 export const memo = <T>(
-  factory: () => T, defer?: boolean): T => declare(
+  factory: () => T, defer?: boolean): T => set(
 
   function memo(key){
     const source = this.subject;
@@ -98,7 +98,7 @@ export const memo = <T>(
   }
 );
 
-export const lazy = <T>(value: T): T => declare(
+export const lazy = <T>(value: T): T => set(
   function lazy(key){
     const source = this.subject as any;
 
@@ -109,7 +109,7 @@ export const lazy = <T>(value: T): T => declare(
   }
 );
 
-export const act = <T extends Async>(task: T): T => declare(
+export const act = <T extends Async>(task: T): T => set(
   function act(key){
     let pending = false;
 
@@ -143,7 +143,7 @@ export const act = <T extends Async>(task: T): T => declare(
 )
 
 export const from = <T>(
-  getter: (on?: Model) => T): T => declare(
+  getter: (on?: Model) => T): T => set(
 
   function from(key){
     Computed.prepare(this, key, getter);

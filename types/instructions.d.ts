@@ -5,7 +5,7 @@ import { Async, Class, EffectCallback, InstanceOf } from './types';
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  **/
-export function declare <T = any> (
+export function set <T = any> (
   instruction: Model.Instruction<T>,
   name?: string
 ): T;

@@ -9,6 +9,7 @@ export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 
+export const set = Source.set as typeof Public.set;
 export const tap = Source.tap as typeof Public.tap;
 export const on = Source.on as typeof Public.on;
 export const ref = Source.ref as typeof Public.ref;
@@ -18,7 +19,6 @@ export const act = Source.act as typeof Public.act;
 export const lazy = Source.lazy as typeof Public.lazy;
 export const from = Source.from as typeof Public.from;
 export const parent = Source.parent as typeof Public.parent;
-export const declare = Source.declare as typeof Public.declare;
 
 export function subscribeTo<T extends Public.Model>(
   target: T,
