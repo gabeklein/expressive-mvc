@@ -52,7 +52,7 @@ export function set <T = any> (
   */
  export function on <T = any> (initial: undefined, callback: EffectCallback<T>): T | undefined;
  export function on <T = any> (initial: T, callback: EffectCallback<T>): T;
- 
+
  /**
   * Creates a ref-compatible property for use with components.
   * Will persist value, and updates to this are made part of controller event-stream.

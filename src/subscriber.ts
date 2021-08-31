@@ -1,6 +1,6 @@
 import { Controller } from './controller';
 import { LOCAL, manage, Stateful } from './model';
-import { create, define, defineProperty, setAlias } from './util';
+import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
   commit(): void;
@@ -31,7 +31,11 @@ export class Subscriber {
   }
 
   public spy(key: string){
-    const { proxy, parent } = this;
+    const { proxy } = this;
+
+    const { set } = getOwnPropertyDescriptor(
+      this.parent.subject, key
+    )!
 
     const intercept = () => {
       this.follow(key);
@@ -42,7 +46,7 @@ export class Subscriber {
     setAlias(intercept, `tap ${key}`);
     defineProperty(proxy, key, {
       get: intercept,
-      set: parent.sets(key),
+      set,
       configurable: true,
       enumerable: true
     })

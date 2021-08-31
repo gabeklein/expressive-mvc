@@ -1,4 +1,4 @@
-import { Model, subscribeTo } from './adapter';
+import { Model, on, subscribeTo } from './adapter';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -50,5 +50,23 @@ describe("subscriber", () => {
 
     state.value2 = 3;
     await update(false);
+  })
+
+  it('will not obstruct set-behavior', () => {
+    class Test extends Model {
+      didSet = jest.fn();
+      value = on("foo", this.didSet);
+    }
+
+    const state = Test.create();
+
+    expect(state.value).toBe("foo");
+
+    subscribeTo(state, it => {
+      it.value = "bar";
+    })
+
+    expect(state.value).toBe("bar");
+    expect(state.didSet).toBeCalledWith("bar");
   })
 })
