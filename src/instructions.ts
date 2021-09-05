@@ -16,6 +16,19 @@ type Instruction<T> = (this: Controller, key: string) =>
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
+export function apply(
+  on: Controller, key: string, value: symbol){
+
+  const instruction = Pending.get(value);
+
+  if(instruction){
+    Pending.delete(value);
+    delete (on.subject as any)[key];
+    instruction.call(on, key);
+    return true;
+  }
+}
+
 export function set<T = any>(
   instruction: Instruction<T>,
   name = instruction.name || "pending"){
@@ -43,19 +56,6 @@ export function set<T = any>(
   Pending.set(placeholder, apply);
 
   return placeholder as unknown as T;
-}
-
-export function apply(
-  on: Controller, key: string, value: symbol){
-
-  const instruction = Pending.get(value);
-
-  if(instruction){
-    Pending.delete(value);
-    delete (on.subject as any)[key];
-    instruction.call(on, key);
-    return true;
-  }
 }
 
 export const ref = <T = any>(

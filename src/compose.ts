@@ -1,3 +1,4 @@
+import { Controller } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
@@ -19,9 +20,8 @@ export const Oops = issues({
 export const use = <T extends typeof Model>(
   Peer?: T | (() => InstanceOf<T>),
   argument?: ((i: Model) => void) | boolean
-): Model => set(
+): Model => child(
   function use(key){
-    const Proxies = new WeakMap<Subscriber, any>();
     let instance: Model | undefined;
 
     const update = (next: Model) => {
@@ -38,38 +38,6 @@ export const use = <T extends typeof Model>(
         throw Oops.UndefinedNotAllowed(key);
     }
 
-    const attach = (sub: Subscriber) => {
-      let child: Subscriber | undefined;
-
-      function create(){
-        if(!instance)
-          return;
-
-        child = new Subscriber(instance, sub.onUpdate);
-
-        if(sub.active)
-          child.commit();
-
-        sub.dependant.add(child);
-        Proxies.set(sub, child.proxy);
-      }
-
-      function refresh(){
-        if(child){
-          child.release();
-          sub.dependant.delete(child);
-          Proxies.set(sub, undefined);
-          child = undefined;
-        }
-
-        create();
-        sub.onUpdate();
-      }
-
-      create();
-      sub.follow(key, refresh);
-    }
-
     if(Peer){
       instance = Model.isTypeof(Peer)
         ? new Peer() : Peer();
@@ -82,17 +50,67 @@ export const use = <T extends typeof Model>(
 
     this.manage(key, instance, update);
 
-    return (local) => {
-      if(!local)
-        return instance;
-
-      if(!Proxies.has(local))
-        attach(local);
-
-      return Proxies.get(local);
-    }
+    return () => instance;
   }
 );
+
+type ChildInstruction<T extends Model> =
+  (this: Controller, key: string) => () => T | undefined;
+
+export const child = <T extends Model>(
+  from: ChildInstruction<T>, name?: string): T => {
+
+  function child(this: Controller, key: string){
+    const proxyCache = new WeakMap<Subscriber, any>();
+    const getCurrent = from.call(this, key);
+
+    function attach(sub: Subscriber){
+      let child: Subscriber | undefined;
+  
+      function create(){
+        const instance = getCurrent();
+  
+        if(!instance)
+          return;
+  
+        child = new Subscriber(instance, sub.onUpdate);
+  
+        if(sub.active)
+          child.commit();
+  
+        sub.dependant.add(child);
+        proxyCache.set(sub, child.proxy);
+      }
+  
+      function refresh(){
+        if(child){
+          child.release();
+          sub.dependant.delete(child);
+          proxyCache.set(sub, undefined);
+          child = undefined;
+        }
+  
+        create();
+        sub.onUpdate();
+      }
+  
+      create();
+      sub.follow(key, refresh);
+    }
+  
+    return (local?: Subscriber) => {
+      if(!local)
+        return getCurrent();
+  
+      if(!proxyCache.has(local))
+        attach(local);
+  
+      return proxyCache.get(local);
+    }
+  }
+
+  return set(child, name || from.name);
+}
 
 export const parent = <T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> => set(

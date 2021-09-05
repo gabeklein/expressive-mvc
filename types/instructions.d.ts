@@ -22,6 +22,13 @@ export function set <T = any> (
  export function use <T extends Model | undefined> (Peer: () => T, callback?: (i: T) => void): T;
  export function use <T extends Model> (): T | undefined;
 
+/**
+ * Generic instruction used by `use()` and `tap()` for recursive subscription.
+ * 
+ * @param from - Instruction body is run upon parent create. Return function to fetch current value of field.
+ */
+export function child <T extends Model> (from: (this: Model.Controller, key: string) => () => T | undefined): T;
+ 
  /**
   * Fetches and assigns the controller which spawned this host.
   * When parent assigns an instance via `use()` directive, it

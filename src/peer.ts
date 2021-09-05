@@ -1,10 +1,9 @@
+import { child } from './compose';
 import { useLookup } from './context';
-import { set } from './instructions';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';
 import { Singleton } from './singleton';
-import { Subscriber } from './subscriber';
 
 export const Oops = issues({
   CantAttachGlobal: (parent, child) =>
@@ -21,70 +20,27 @@ const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export const tap = <T extends Peer>(
-  type: T, required?: boolean): InstanceOf<T> => set(
+  type: T, required?: boolean) => child(
 
   function tap(key){
-    const { subject } = this;
-    const Proxies = new WeakMap<Subscriber, any>();
-    let getInstance: () => Model | undefined;
+    const to = this.subject;
+    let getInstance: () => InstanceOf<T> | undefined;
 
     if("current" in type)
-      getInstance = () => type.current;
-    else if("current" in subject.constructor)
-      throw Oops.CantAttachGlobal(subject, type.name);
+      getInstance = () => type.current as InstanceOf<T>;
+    else if("current" in to.constructor)
+      throw Oops.CantAttachGlobal(to, type.name);
     else 
-      getPending(subject).push(context => {
+      getPending(to).push(context => {
         const remote = context.get(type);
 
         if(!remote && required)
-          throw Oops.AmbientRequired(type.name, subject, key);
+          throw Oops.AmbientRequired(type.name, to, key);
     
         getInstance = () => remote;
       })
 
-    const attach = (sub: Subscriber) => {
-      let child: Subscriber | undefined;
-
-      function create(){
-        const instance = getInstance();
-
-        if(!instance)
-          return;
-
-        child = new Subscriber(instance, sub.onUpdate);
-
-        if(sub.active)
-          child.commit();
-
-        sub.dependant.add(child);
-        Proxies.set(sub, child.proxy);
-      }
-
-      function refresh(){
-        if(child){
-          child.release();
-          sub.dependant.delete(child);
-          Proxies.set(sub, undefined);
-          child = undefined;
-        }
-
-        create();
-        sub.onUpdate();
-      }
-
-      create();
-      sub.follow(key, refresh);
-    }
-
-    return (local) => {
-      if(!local)
-        return getInstance();
-
-      if(!Proxies.has(local))
-        attach(local);
-
-      return Proxies.get(local);
-    }
+    return () => getInstance();
   }
 );
 
