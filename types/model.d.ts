@@ -96,6 +96,8 @@ export namespace Model {
 
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
 
+    type HandleValue = (value: any) => boolean | void;
+
     export class Controller {
         state: BunchOf<any>;
         subject: {};
@@ -108,11 +110,11 @@ export namespace Model {
         add(key: string): void;
 
         /** Add property to managed state. */
-        manage(key: string, initial: any, effect?: EffectCallback<any, any>): void;
+        manage(key: string, initial: any, effect?: HandleValue): void;
 
         select(using?: Query): string[];
 
-        sets(key: string, effect?: EffectCallback<any, any>): (value: any) => void;
+        sets(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
         watch(target: string | Iterable<string> | Query, handler: Function, squash?: boolean, once?: boolean): Callback;
 
