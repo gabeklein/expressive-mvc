@@ -17,7 +17,8 @@
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
       "args": ["--watchAll", "--runInBand", "--config=${workspaceFolder}/jest.config.json", "${input:testName}"],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
+      "internalConsoleOptions": "neverOpen",
+      "runtimeExecutable": "/usr/local/bin/node"
     }
   ],
   "inputs": [

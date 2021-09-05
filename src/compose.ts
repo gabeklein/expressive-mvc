@@ -72,8 +72,7 @@ export const use = <T extends typeof Model>(
 
     if(Peer){
       instance = Model.isTypeof(Peer)
-        ? new Peer()
-        : Peer()
+        ? new Peer() : Peer();
 
       if(instance)
         update(instance);

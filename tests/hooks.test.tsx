@@ -155,7 +155,7 @@ describe("tap", () => {
     expect(() => hook.result.current).toThrowError(expected);
   })
 
-  it('select subvalue directly', async () => {
+  it('will select subvalue directly', async () => {
     const parent = Parent.create();
     const { result, waitForNextUpdate } =
       renderHook(() => parent.tap(x => x.value));
@@ -167,7 +167,7 @@ describe("tap", () => {
     expect(result.current).toBe("bar");
   })
   
-  it('access child controller', async () => {
+  it('will access child controller', async () => {
     const parent = Parent.create();
     const { result, waitForNextUpdate } = renderHook(() => {
       return parent.tap("child").value;
