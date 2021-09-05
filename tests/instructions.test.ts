@@ -411,18 +411,15 @@ describe("set", () => {
     expect(ran).toBeCalledWith("property");
   })
 
-  it.skip("will run instruction getter", async () => {
+  it("will run instruction getter upon access", async () => {
     const instance = Test.create();
     const ran = instance.didRunGetter;
 
-    instance.effect(x => {
-      void x.property;
-    })
+    instance.effect(x => void x.property);
     
     expect(ran).toBeCalledWith("property");
-
-    instance.update("property");
-    await instance.update(true);
+    
+    void instance.property;
 
     expect(ran).toBeCalledTimes(2);
   })
