@@ -26,6 +26,7 @@ export {
   entries,
   getPrototypeOf,
   getOwnPropertyDescriptor,
+  getOwnPropertyDescriptors,
   getOwnPropertyNames,
   getOwnPropertySymbols,
   keys,

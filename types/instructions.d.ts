@@ -16,11 +16,49 @@ export function set <T = any> (
  * @param Peer - Type of Model to create and apply to host property.
  * @param callback - Fired after controller is created and ready for use.
  */
- export function use <T extends typeof Model> (Peer: T, callback: (i?: InstanceOf<T>) => void): InstanceOf<T> | undefined;
- export function use <T extends typeof Model> (Peer: T, required: false): InstanceOf<T> | undefined;
- export function use <T extends typeof Model> (Peer: T, required?: true): InstanceOf<T>;
- export function use <T extends Model | undefined> (Peer: () => T, callback?: (i: T) => void): T;
- export function use <T extends Model> (): T | undefined;
+export function use <T extends typeof Model> (Peer: T, callback: (i?: InstanceOf<T>) => void): InstanceOf<T> | undefined;
+
+/**
+ * Creates a new child-instance of specified controller.
+ * 
+ * @param Peer - Type of Model to create and apply to host property.
+ * @param required - Property should be non-nullable, will throw if value is set to undefined.
+ */
+export function use <T extends typeof Model> (Peer: T, required: false): InstanceOf<T> | undefined;
+export function use <T extends typeof Model> (Peer: T, required?: true): InstanceOf<T>;
+
+/**
+ * Creates a new child-instance of specified controller.
+ * 
+ * @param factory - Generate model for use.
+ * @param callback - Fired after controller is created and ready for use.
+ */
+export function use <T extends Model | undefined> (factory: () => T, callback?: (i: T) => void): T;
+
+/**
+ * Create a child-instance relationship with provided model.
+ * 
+ * Note: If `peer` is not already initialized before parent is
+ * (created with `new` as opposed to create method), that model will
+ * attach this via `parent()` instruction. It will not howerver, if
+ * already active.
+ * 
+ * @param factory - Instance of model to attach.
+ * @param callback - Fired after controller is attached.
+ */
+export function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
+
+/**
+ * Create a placeholder for specified Model type.
+ */
+export function use <T extends Model> (): T | undefined;
+
+/**
+ * Generate a child controller from specified object. Object's values are be trackable, as would be for a full-model.
+ * 
+ * Note: Child will *not* be same object as one provided.
+ */
+export function use <T extends {}> (object: T): T;
 
 /**
  * Generic instruction used by `use()` and `tap()` for recursive subscription.

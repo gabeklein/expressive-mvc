@@ -30,6 +30,75 @@ describe("use instruction", () => {
     state.child.value = "bar";
     await update();
   })
+
+  it('will accept instance', async () => {
+    const child = Child.create();
+    
+    class Parent extends Model {
+      child = use(child);
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.child.value;
+    })
+
+    expect(state.child.value).toBe("foo");
+  
+    state.child.value = "bar";
+    await update();
+
+    expect(state.child.value).toBe("bar");
+  })
+
+  it('will accept simple object', async () => {
+    class Parent extends Model {
+      child = use({
+        value: "foo"
+      });
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.child.value;
+    })
+
+    expect(state.child.value).toBe("foo");
+  
+    state.child.value = "bar";
+    await update();
+
+    expect(state.child.value).toBe("bar");
+  })
+
+  it('will accept simple object as new value', async () => {
+    class Parent extends Model {
+      child = use({
+        value: "foo"
+      });
+    }
+
+    const state = Parent.create();
+    const update = subscribeTo(state, it => {
+      void it.child.value;
+    })
+
+    expect(state.child.value).toBe("foo");
+  
+    state.child.value = "bar";
+    await update();
+    expect(state.child.value).toBe("bar");
+
+    // Will refresh on repalcement.
+    state.child = { value: "baz" };
+    await update();
+    expect(state.child.value).toBe("baz");
+  
+    // New subscription still works.
+    state.child.value = "bar";
+    await update();
+    expect(state.child.value).toBe("bar");
+  })
   
   it('will create from factory', async () => {
     class Child extends Model {
@@ -161,6 +230,17 @@ describe("use instruction", () => {
 
     expect(state.child).toBeInstanceOf(Child);
     expect(setUndefined).toThrowError(expected);
+  })
+
+  it('will throw if bad argument type', () => {
+    class Parent extends Model {
+      child = use(1);
+    }
+
+    const expected = Compose.BadArgument("number");
+    const attempt = () => Parent.create();
+
+    expect(attempt).toThrowError(expected)
   })
 })
 

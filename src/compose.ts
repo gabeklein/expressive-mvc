@@ -3,6 +3,7 @@ import { set } from './instructions';
 import { issues } from './issues';
 import { manage, Model } from './model';
 import { Subscriber } from './subscriber';
+import { defineProperty, getOwnPropertyDescriptors } from './util';
 
 const Parent = new WeakMap<{}, {}>();
 
@@ -14,20 +15,25 @@ export const Oops = issues({
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 
   UndefinedNotAllowed: (key) =>
-    `Child property ${key} may not be undefined.`
+    `Child property ${key} may not be undefined.`,
+
+  BadArgument: (type) =>
+    `Instruction \`use\` cannot accept argument type of ${type}.`
 })
 
 export const use = <T extends typeof Model>(
-  Peer?: T | (() => InstanceOf<T>),
-  argument?: ((i: Model) => void) | boolean
+  input?: T | (() => InstanceOf<T>),
+  argument?: ((i: Model | undefined) => void) | boolean
 ): Model => child(
   function use(key){
     let instance: Model | undefined;
 
-    const update = (next: Model) => {
-      instance = next;
+    const update = (next: Model | {} | undefined) => {
+      instance =
+        next instanceof Model ? next :
+        next && bootstrap(next);
 
-      if(next){
+      if(instance){
         Parent.set(instance, this.subject);
         manage(instance);
       }
@@ -38,9 +44,13 @@ export const use = <T extends typeof Model>(
         throw Oops.UndefinedNotAllowed(key);
     }
 
-    if(Peer){
-      instance = Model.isTypeof(Peer)
-        ? new Peer() : Peer();
+    if(input){
+      instance =
+        Model.isTypeof(input) ? new input() :
+        input instanceof Model ? input :
+        typeof input === "function" ? input() :
+        typeof input === "object" ? bootstrap(input) :
+        Oops.BadArgument(typeof input).throw();
 
       if(instance)
         update(instance);
@@ -53,6 +63,16 @@ export const use = <T extends typeof Model>(
     return () => instance;
   }
 );
+
+function bootstrap<T extends {}>(object: T){
+  const breakdown = getOwnPropertyDescriptors(object);
+  const control = new Model();
+
+  for(const key in breakdown)
+    defineProperty(control, key, breakdown[key]);
+    
+  return control as T & Model;
+}
 
 type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
