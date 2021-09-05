@@ -81,8 +81,12 @@ export class Controller {
         return;
 
       if(handler)
-        if(handler.call(subject, value) === false)
-          return;
+        switch(handler.call(subject, value)){
+          case true:
+            this.update(key)
+          case false:
+            return;
+        }
 
       this.update(key, value);
     }
