@@ -477,3 +477,46 @@ describe("get", () => {
     expect(got).toBeCalledWith(expect.any(Subscriber));
   });
 })
+
+describe("custom", () => {
+  const managed = () => set<boolean>(
+    function manage(key){
+      this.manage(key, false, (value: any) => {
+        const on = this.subject as Test;
+
+        // register instruction did run
+        on.didRunInstruction(value);
+        // update the state manually
+        this.state.property = value;
+        // block update if value is set to false
+        return value === true;
+      });
+    }
+  );
+
+  class Test extends Model {
+    didRunInstruction = jest.fn();
+    property = managed();
+  }
+
+  it("may prevent default on update", async () => {
+    const instance = Test.create();
+    const ran = instance.didRunInstruction;
+
+    expect(instance.property).toBe(false);
+    
+    instance.property = true;
+    expect(ran).toBeCalledWith(true);
+
+    // expect update event
+    await instance.update(true);
+    expect(instance.property).toBe(true);
+
+    instance.property = false;
+    expect(ran).toBeCalledWith(false);
+    
+    // update should be prevented
+    await instance.update(false);
+    expect(instance.property).toBe(false);
+  })
+})
