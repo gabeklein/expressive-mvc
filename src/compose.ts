@@ -64,22 +64,21 @@ export const child = <T extends Model>(
     const proxyCache = new WeakMap<Subscriber, any>();
     const getCurrent = from.call(this, key);
 
-    function attach(sub: Subscriber){
+    function subscribe(sub: Subscriber){
       let child: Subscriber | undefined;
   
-      function create(){
+      function start(){
         const instance = getCurrent();
   
-        if(!instance)
-          return;
-  
-        child = new Subscriber(instance, sub.onUpdate);
-  
-        if(sub.active)
-          child.commit();
-  
-        sub.dependant.add(child);
-        proxyCache.set(sub, child.proxy);
+        if(instance){
+          child = new Subscriber(instance, sub.onUpdate);
+    
+          if(sub.active)
+            child.commit();
+    
+          sub.dependant.add(child);
+          proxyCache.set(sub, child.proxy);
+        }
       }
   
       function refresh(){
@@ -90,20 +89,20 @@ export const child = <T extends Model>(
           child = undefined;
         }
   
-        create();
+        start();
         sub.onUpdate();
       }
   
-      create();
+      start();
       sub.follow(key, refresh);
     }
   
-    return (local?: Subscriber) => {
+    return (local: Subscriber | undefined) => {
       if(!local)
         return getCurrent();
   
       if(!proxyCache.has(local))
-        attach(local);
+        subscribe(local);
   
       return proxyCache.get(local);
     }
