@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { act } from 'react-test-renderer';
-import { Oops } from '../src/context';
 
-import { Consumer, Model, Provider, render, tap } from './adapter';
+import { Oops } from '../src/context';
+import { Consumer, Model, Provider, render, subscribeTo, tap } from './adapter';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -327,10 +327,10 @@ describe("Peers", () => {
 
   it("will assign peer-properties from context", async () => {
     const parent = Shared.create();
-    let consumer!: Consumer;
 
     const Inner = () => {
-      consumer = Consumer.use();
+      const { shared } = Consumer.use();
+      expect(shared.get).toBe(parent);
       return null;
     }
 
@@ -340,7 +340,34 @@ describe("Peers", () => {
       </Provider>
     );
 
-    expect(consumer.shared).toBe(parent);
+  })
+
+  it("will subscribe peer-properties from context", async () => {
+    class Foo extends Model {
+      value = "foo";
+    }
+    class Bar extends Model {
+      foo = tap(Foo, true);
+    }
+
+    const foo = Foo.create();
+    let bar!: Bar;
+
+    const Child = () => {
+      bar = Bar.use();
+      return null;
+    }
+
+    render(
+      <Provider of={foo}>
+        <Child />
+      </Provider>
+    )
+
+    const update = subscribeTo(bar, it => it.foo.value);
+
+    foo.value = "bar";
+    await update();
   })
 
   it("will assign multiple peers from context", async () => {

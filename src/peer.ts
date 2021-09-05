@@ -4,7 +4,7 @@ import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { Lookup } from './register';
 import { Singleton } from './singleton';
-import { define, defineLazy } from './util';
+import { Subscriber } from './subscriber';
 
 export const Oops = issues({
   CantAttachGlobal: (parent, child) =>
@@ -25,20 +25,66 @@ export const tap = <T extends Peer>(
 
   function tap(key){
     const { subject } = this;
+    const Proxies = new WeakMap<Subscriber, any>();
+    let getInstance: () => Model | undefined;
 
     if("current" in type)
-      defineLazy(subject, key, () => type.current);
+      getInstance = () => type.current;
     else if("current" in subject.constructor)
       throw Oops.CantAttachGlobal(subject, type.name);
     else 
-      getPending(subject).push((context) => {
+      getPending(subject).push(context => {
         const remote = context.get(type);
-    
+
         if(!remote && required)
           throw Oops.AmbientRequired(type.name, subject, key);
     
-        define(subject, key, remote);
-      });
+        getInstance = () => remote;
+      })
+
+    const attach = (sub: Subscriber) => {
+      let child: Subscriber | undefined;
+
+      function create(){
+        const instance = getInstance();
+
+        if(!instance)
+          return;
+
+        child = new Subscriber(instance, sub.onUpdate);
+
+        if(sub.active)
+          child.commit();
+
+        sub.dependant.add(child);
+        Proxies.set(sub, child.proxy);
+      }
+
+      function refresh(){
+        if(child){
+          child.release();
+          sub.dependant.delete(child);
+          Proxies.set(sub, undefined);
+          child = undefined;
+        }
+
+        create();
+        sub.onUpdate();
+      }
+
+      create();
+      sub.follow(key, refresh);
+    }
+
+    return (local) => {
+      if(!local)
+        return getInstance();
+
+      if(!Proxies.has(local))
+        attach(local);
+
+      return Proxies.get(local);
+    }
   }
 );
 
