@@ -23,24 +23,24 @@ export const tap = <T extends Peer>(
   type: T, required?: boolean) => child(
 
   function tap(key){
-    const to = this.subject;
-    let getInstance: () => InstanceOf<T> | undefined;
-
     if("current" in type)
-      getInstance = () => type.current as InstanceOf<T>;
-    else if("current" in to.constructor)
+      return () => type.current as InstanceOf<T>;
+
+    const to = this.subject;
+
+    if("current" in to.constructor)
       throw Oops.CantAttachGlobal(to, type.name);
-    else 
-      getPending(to).push(context => {
-        const remote = context.get(type);
 
-        if(!remote && required)
-          throw Oops.AmbientRequired(type.name, to, key);
-    
-        getInstance = () => remote;
-      })
+    let instance: InstanceOf<T> | undefined;
 
-    return () => getInstance();
+    getPending(to).push(context => {
+      instance = context.get(type);
+
+      if(!instance && required)
+        throw Oops.AmbientRequired(type.name, to, key);
+    })
+
+    return () => instance;
   }
 );
 
