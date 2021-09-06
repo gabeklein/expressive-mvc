@@ -15,12 +15,13 @@ export const Oops = issues({
 
 type Peer = typeof Model | typeof Singleton;
 type ApplyPeer = (context: Lookup) => void;
+type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
 
 const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export const tap = <T extends Peer>(
-  type: T, required?: boolean) => child(
+  type: T, argument?: boolean | PeerCallback<T>) => child(
 
   function tap(key){
     if("current" in type)
@@ -36,7 +37,12 @@ export const tap = <T extends Peer>(
     getPending(to).push(context => {
       instance = context.get(type);
 
-      if(!instance && required)
+      if(typeof argument == "function"){
+        if(argument(instance) === false)
+          instance = undefined;
+      }
+
+      else if(!instance && argument)
         throw Oops.AmbientRequired(type.name, to, key);
     })
 

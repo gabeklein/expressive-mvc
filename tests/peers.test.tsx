@@ -80,6 +80,70 @@ describe("tap instruction", () => {
   })
 })
 
+describe("callback", () => {
+  class Foo extends Model {}
+  class Bar extends Model {
+    didTap = jest.fn();
+    foo = tap(Foo, this.didTap);
+  }
+
+  it("will run on attachment of model", () => {
+    render(
+      <Provider of={Foo}>
+        <Provider of={Bar}>
+          <Consumer of={Bar} has={bar => {
+            expect(bar.didTap).toBeCalledWith(expect.any(Foo));
+          }}/>
+        </Provider>
+      </Provider>
+    )
+  })
+
+  it("will pass undefined if not found", () => {
+    render(
+      <Provider of={Bar}>
+        <Consumer of={Bar} has={bar => {
+          expect(bar.didTap).toHaveBeenCalledWith(undefined);
+        }}/>
+      </Provider>
+    )
+  })
+
+  it("will force undefined if returns false", () => {
+    class Bar extends Model {
+      foo = tap(Foo, () => false);
+    }
+
+    render(
+      <Provider of={Foo}>
+        <Provider of={Bar}>
+          <Consumer of={Bar} has={bar => {
+            expect(bar.foo).toBe(undefined);
+          }}/>
+        </Provider>
+      </Provider>
+    )
+  })
+
+  it("will not run before didCreate", () => {
+    class Bar extends Model {
+      didCreate = jest.fn();
+
+      foo = tap(Foo, () => {
+        expect(this.didCreate).toHaveBeenCalled();
+      });
+    }
+
+    render(
+      <Provider of={Foo}>
+        <Provider of={Bar}>
+          {null}
+        </Provider>
+      </Provider>
+    )
+  })
+})
+
 describe("singleton", () => {
   it("will attach to model", () => {
     class Foo extends Model {

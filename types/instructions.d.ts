@@ -74,6 +74,20 @@ export function child <T extends Model> (from: (this: Model.Controller, key: str
  */
 export function parent <T extends typeof Model> (Expects: T, required: true): InstanceOf<T>;
 export function parent <T extends typeof Model> (Expects: T, required?: false): InstanceOf<T> | undefined;
+
+/**
+ * Find and attach most applicable instance of Model via context.
+ * 
+ * Host controller will search element-hierarchy relative to where it spawned.
+ * 
+ * @param Type - Type of model to find from context
+ * @param callback -
+ *  - Invoked after context is scanned, is passed result - either found or undefined.
+ *  - If argument is inadequate, but required, your implemention should simply throw.
+ *  - If inadequate and not required, conditionally return false.
+ */
+export function tap <T extends typeof Model> (Type: T, callback?: (instance?: InstanceOf<T>) => void | true): InstanceOf<T>;
+export function tap <T extends typeof Model> (Type: T, callback?: (instance?: InstanceOf<T>) => void | false): InstanceOf<T> | undefined;
  
 /**
  * Find and attach most applicable instance of Model via context.
