@@ -183,7 +183,7 @@ describe("use instruction", () => {
     await update();
   })
 
-  it('will subscribe if initially undefined', async () => {
+  it('will still subscribe if initially undefined', async () => {
     class Parent extends Model {
       value = "foo";
       child = use<Child>();

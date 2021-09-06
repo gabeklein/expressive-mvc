@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { act } from 'react-test-renderer';
+import React from 'react';
 
 import { Oops } from '../src/Peer';
 import { Consumer, Model, Provider, render, Singleton, subscribeTo, tap } from './adapter';
@@ -13,18 +12,45 @@ describe("tap instruction", () => {
     value = "bar";
   }
 
-  it("will attach property via tap directive", () => {
+  it("will attach peer from context", () => {
+    const bar = Bar.create();
+
     const Test = () => {
       const { bar } = Foo.use();
-      expect(bar.value).toBe("bar");
+      expect(bar).toBe(bar);
       return null;
     }
 
     render(
-      <Provider of={Bar}>
+      <Provider of={bar}>
         <Test />
       </Provider>
     );
+  })
+
+  it("will subscribe peer from context", async () => {
+    class Foo extends Model {
+      bar = tap(Bar, true);
+    }
+
+    const bar = Bar.create();
+    let foo!: Foo;
+
+    const Child = () => {
+      foo = Foo.use();
+      return null;
+    }
+
+    render(
+      <Provider of={bar}>
+        <Child />
+      </Provider>
+    )
+
+    const update = subscribeTo(foo, it => it.bar.value);
+
+    bar.value = "foo";
+    await update();
   })
 
   it("will return undefined if instance not found", () => {
@@ -52,8 +78,10 @@ describe("tap instruction", () => {
 
     render(<TestComponent />);
   })
+})
 
-  it("will attach a singleton via tap directive", () => {
+describe("singleton", () => {
+  it("will attach to model", () => {
     class Foo extends Model {
       global = tap(Global);
     }
@@ -73,7 +101,19 @@ describe("tap instruction", () => {
     render(<Test />);
   })
 
-  it("will throw if model is tapped by singleton", () => {
+  it("will attach to another singleton", () => {
+    class Peer extends Singleton {}
+    class Global extends Singleton {
+      peer = tap(Peer);
+    }
+    
+    const peer = Peer.create();
+    const global = Global.create();    
+
+    expect(global.peer).toBe(peer);
+  })
+
+  it("will throw if tries to attach Model", () => {
     class Normal extends Model {}
     class Global extends Singleton {
       notPossible = tap(Normal);
@@ -84,17 +124,48 @@ describe("tap instruction", () => {
 
     expect(attempt).toThrowError(issue);
   })
+})
 
-  it("will access context through Provider", () => {
-    class Foo extends Model {}
-    class Bar extends Model {
-      foo = tap(Foo, true);
+describe("context", () => {
+  class Foo extends Model {
+    bar = tap(Bar, true);
+  };
+
+  class Bar extends Model {
+    value = 1;
+  };
+
+  it("will assign multiple peers", async () => {
+    class Foo extends Model {
+      value = 2;
+    };
+
+    class Multi extends Model {
+      bar = tap(Bar);
+      foo = tap(Foo);
+    };
+
+    const Inner = () => {
+      const { bar, foo } = Multi.use();
+
+      expect(bar).toBeInstanceOf(Bar);
+      expect(foo).toBeInstanceOf(Foo);
+
+      return null;
     }
 
     render(
-      <Provider of={Foo}>
-        <Provider of={Bar}>
-          <Consumer of={Bar} has={i => expect(i.foo).toBeInstanceOf(Foo)} />
+      <Provider of={{ Foo, Bar }}>
+        <Inner />
+      </Provider>
+    );
+  })
+
+  it("will still access when created by provider", () => {
+    render(
+      <Provider of={Bar}>
+        <Provider of={Foo}>
+          <Consumer of={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
         </Provider>
       </Provider>
     );
@@ -115,106 +186,28 @@ describe("tap instruction", () => {
       </Provider>
     );
   });
-})
 
-describe("Peers", () => {
-  class Shared extends Model {
-    value = 1;
-  };
-
-  class Consumer extends Model {
-    shared = tap(Shared);
-  };
-
-  it("will assign peer-properties from context", async () => {
-    const parent = Shared.create();
-
-    const Inner = () => {
-      const { shared } = Consumer.use();
-      expect(shared.get).toBe(parent);
-      return null;
-    }
-
-    render(
-      <Provider of={parent}>
-        <Inner />
-      </Provider>
-    );
-
-  })
-
-  it("will subscribe peer-properties from context", async () => {
-    class Foo extends Model {
-      value = "foo";
-    }
-    class Bar extends Model {
-      foo = tap(Foo, true);
-    }
-
-    const foo = Foo.create();
-    let bar!: Bar;
-
-    const Child = () => {
-      bar = Bar.use();
-      return null;
-    }
-
-    render(
-      <Provider of={foo}>
-        <Child />
-      </Provider>
-    )
-
-    const update = subscribeTo(bar, it => it.foo.value);
-
-    foo.value = "bar";
-    await update();
-  })
-
-  it("will assign multiple peers from context", async () => {
-    class AlsoShared extends Model {
-      value = 1;
-    };
-
-    class Multiple extends Consumer {
-      also = tap(AlsoShared);
-    };
-
-    let consumer!: Multiple;
-
-    const Inner = () => {
-      consumer = Multiple.use();
-      return null;
-    }
-
-    render(
-      <Provider of={{ Shared, AlsoShared }}>
-        <Inner />
-      </Provider>
-    );
-
-    expect(consumer.shared).toBeInstanceOf(Shared);
-    expect(consumer.also).toBeInstanceOf(AlsoShared);
-  })
-
-  it("will maintain useContext hook", async () => {
-    let refresh!: (x: any) => void;
-
+  it("will maintain hook", async () => {
     const didRender = jest.fn();
+
     const Inner = () => {
-      Consumer.use();
-      refresh = useState()[1];
+      Foo.use();
       didRender();
       return null;
     }
 
-    render(
-      <Provider of={Shared}>
+    const x = render(
+      <Provider of={Bar}>
         <Inner />
       </Provider>
     );
 
-    act(() => refresh(true));
+    x.update(
+      <Provider of={Bar}>
+        <Inner />
+      </Provider>
+    );
+
     expect(didRender).toBeCalledTimes(2);
   })
 })
