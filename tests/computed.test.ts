@@ -1,13 +1,6 @@
 import { Oops } from '../src/compute';
 import { from, Model, use } from './adapter';
 
-const { error, warn } = console;
-
-afterAll(() => {
-  console.warn = warn;
-  console.error = error;
-});
-
 describe("computed", () => {
   class Child extends Model {
     value = "foo";
@@ -207,6 +200,13 @@ describe("computed", () => {
 })
 
 describe("failures", () => {
+  const { error, warn } = console;
+  
+  afterAll(() => {
+    console.warn = warn;
+    console.error = error;
+  });
+
   class Subject extends Model {
     get never(){
       throw new Error();
