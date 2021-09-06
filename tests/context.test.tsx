@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { act } from 'react-test-renderer';
 
 import { Oops } from '../src/context';
-import { Consumer, Model, Provider, render, subscribeTo, tap } from './adapter';
+import { Consumer, Model, Provider, render } from './adapter';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -315,105 +315,3 @@ describe("Consumer", () => {
     )
   })
 });
-
-describe("Peers", () => {
-  class Shared extends Model {
-    value = 1;
-  };
-
-  class Consumer extends Model {
-    shared = tap(Shared);
-  };
-
-  it("will assign peer-properties from context", async () => {
-    const parent = Shared.create();
-
-    const Inner = () => {
-      const { shared } = Consumer.use();
-      expect(shared.get).toBe(parent);
-      return null;
-    }
-
-    render(
-      <Provider of={parent}>
-        <Inner />
-      </Provider>
-    );
-
-  })
-
-  it("will subscribe peer-properties from context", async () => {
-    class Foo extends Model {
-      value = "foo";
-    }
-    class Bar extends Model {
-      foo = tap(Foo, true);
-    }
-
-    const foo = Foo.create();
-    let bar!: Bar;
-
-    const Child = () => {
-      bar = Bar.use();
-      return null;
-    }
-
-    render(
-      <Provider of={foo}>
-        <Child />
-      </Provider>
-    )
-
-    const update = subscribeTo(bar, it => it.foo.value);
-
-    foo.value = "bar";
-    await update();
-  })
-
-  it("will assign multiple peers from context", async () => {
-    class AlsoShared extends Model {
-      value = 1;
-    };
-
-    class Multiple extends Consumer {
-      also = tap(AlsoShared);
-    };
-
-    let consumer!: Multiple;
-
-    const Inner = () => {
-      consumer = Multiple.use();
-      return null;
-    }
-
-    render(
-      <Provider of={{ Shared, AlsoShared }}>
-        <Inner />
-      </Provider>
-    );
-
-    expect(consumer.shared).toBeInstanceOf(Shared);
-    expect(consumer.also).toBeInstanceOf(AlsoShared);
-  })
-
-  it("will maintain useContext hook", async () => {
-    let refresh!: (x: any) => void;
-
-    const didRender = jest.fn();
-    const Inner = () => {
-      Consumer.use();
-      refresh = useState()[1];
-      didRender();
-      return null;
-    }
-
-    render(
-      <Provider of={Shared}>
-        <Inner />
-      </Provider>
-    );
-
-    act(() => refresh(true));
-    expect(didRender).toBeCalledTimes(2);
-  })
-})

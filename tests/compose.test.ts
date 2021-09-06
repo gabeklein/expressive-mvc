@@ -1,8 +1,5 @@
-import React from 'react';
-
-import { Oops as Compose } from '../src/compose';
-import { Oops as Peers } from '../src/Peer';
-import { Consumer, Model, parent, Provider, render, Singleton, subscribeTo, tap, use } from './adapter';
+import { Oops } from '../src/compose';
+import { Model, parent, subscribeTo, use } from './adapter';
 
 describe("use instruction", () => {
   class Child extends Model {
@@ -30,7 +27,7 @@ describe("use instruction", () => {
     state.child.value = "bar";
     await update();
   })
-
+ 
   it('will accept instance', async () => {
     const child = Child.create();
     
@@ -222,7 +219,7 @@ describe("use instruction", () => {
 
     const state = Parent.create();
 
-    const expected = Compose.UndefinedNotAllowed("child");
+    const expected = Oops.UndefinedNotAllowed("child");
     const setUndefined = () => {
       // @ts-ignore
       state.child = undefined;
@@ -237,7 +234,7 @@ describe("use instruction", () => {
       child = use(1);
     }
 
-    const expected = Compose.BadArgument("number");
+    const expected = Oops.BadArgument("number");
     const attempt = () => Parent.create();
 
     expect(attempt).toThrowError(expected)
@@ -269,7 +266,7 @@ describe("parent instruction", () => {
     const attempt = () => 
       NonStandalone.create();
 
-    const error = Compose.ParentRequired(
+    const error = Oops.ParentRequired(
       Detatched.name, NonStandalone.name
     )
 
@@ -297,123 +294,10 @@ describe("parent instruction", () => {
     }
 
     const attempt = () => Unexpected.create();
-    const error = Compose.UnexpectedParent(
+    const error = Oops.UnexpectedParent(
       Expected.name, Adopted.name, Unexpected.name
     )
 
     expect(attempt).toThrowError(error);
   })
 });
-
-describe("tap instruction", () => {
-  class Foo extends Model {
-    bar = tap(Bar);
-  }
-
-  class Bar extends Model {
-    value = "bar";
-  }
-
-  it("will attach property via tap directive", () => {
-    const Test = () => {
-      const { bar } = Foo.use();
-      expect(bar.value).toBe("bar");
-      return null;
-    }
-
-    render(
-      <Provider of={Bar}>
-        <Test />
-      </Provider>
-    );
-  })
-
-  it("will return undefined if instance not found", () => {
-    const Test = () => {
-      const foo = Foo.use();
-      expect(foo.bar).toBeUndefined();
-      return null;
-    }
-
-    render(<Test />);
-  })
-
-  it("will throw if strict tap is undefined", () => {
-    class Foo extends Model {
-      bar = tap(Bar, true);
-    }
-
-    const expected = Peers.AmbientRequired(Bar.name, Foo.name, "bar");
-    const useStrictFooBar = () => Foo.use().bar;
-
-    const TestComponent = () => {
-      expect(useStrictFooBar).toThrowError(expected);
-      return null;
-    }
-
-    render(<TestComponent />);
-  })
-
-  it("will attach a singleton via tap directive", () => {
-    class Foo extends Model {
-      global = tap(Global);
-    }
-
-    class Global extends Singleton {
-      value = "bar";
-    }
-
-    Global.create();
-
-    const Test = () => {
-      const { global } = Foo.use();
-      expect(global.value).toBe("bar");
-      return null;
-    }
-
-    render(<Test />);
-  })
-
-  it("will throw if model is tapped by singleton", () => {
-    class Normal extends Model {}
-    class Global extends Singleton {
-      notPossible = tap(Normal);
-    }
-
-    const attempt = () => Global.create();
-    const issue = Peers.CantAttachGlobal(Global.name, Normal.name);
-
-    expect(attempt).toThrowError(issue);
-  })
-
-  it("will access context through Provider", () => {
-    class Foo extends Model {}
-    class Bar extends Model {
-      foo = tap(Foo, true);
-    }
-
-    render(
-      <Provider of={Foo}>
-        <Provider of={Bar}>
-          <Consumer of={Bar} has={i => expect(i.foo).toBeInstanceOf(Foo)} />
-        </Provider>
-      </Provider>
-    );
-  })
-
-  it("will access peers sharing same provider", () => {
-    class Foo extends Model {
-      bar = tap(Bar, true);
-    }
-    class Bar extends Model {
-      foo = tap(Foo, true);
-    }
-
-    render(
-      <Provider of={{ Foo, Bar }}>
-        <Consumer of={Bar} has={i => expect(i.foo.bar).toBe(i)} />
-        <Consumer of={Foo} has={i => expect(i.bar.foo).toBe(i)} />
-      </Provider>
-    );
-  });
-})
