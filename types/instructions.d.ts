@@ -13,7 +13,7 @@ export function set <T = any> (instruction: Model.Instruction<T>, name?: string)
  * @param Peer - Type of Model to create and apply to host property.
  * @param callback - Fired after controller is created and ready for use.
  */
-export function use <T extends typeof Model> (Peer: T, callback: (i?: InstanceOf<T>) => void): InstanceOf<T> | undefined;
+export function use <T extends Class> (Peer: T, callback: (i?: InstanceOf<T>) => void): InstanceOf<T> | undefined;
 
 /**
  * Creates a new child-instance of specified controller.
@@ -21,8 +21,8 @@ export function use <T extends typeof Model> (Peer: T, callback: (i?: InstanceOf
  * @param Peer - Type of Model to create and apply to host property.
  * @param required - Property should be non-nullable, will throw if value is set to undefined.
  */
-export function use <T extends typeof Model> (Peer: T, required: false): InstanceOf<T> | undefined;
-export function use <T extends typeof Model> (Peer: T, required?: true): InstanceOf<T>;
+export function use <T extends Class> (Peer: T, required: false): InstanceOf<T> | undefined;
+export function use <T extends Class> (Peer: T, required?: true): InstanceOf<T>;
 
 /**
  * Creates a new child-instance of specified controller.
@@ -55,7 +55,7 @@ export function use <T extends Model> (): T | undefined;
  *
  * Note: Child will *not* be same object as one provided.
  */
-export function use <T extends {}> (object: T): T;
+export function use <T extends BunchOf<any>> (object: T): T;
 
 /**
  * Generic instruction used by `use()` and `tap()` for recursive subscription.
