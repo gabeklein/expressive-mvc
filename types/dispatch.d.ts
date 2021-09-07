@@ -2,9 +2,6 @@ import { Model } from './model';
 import { Selector } from './selector';
 import { Callback, EffectCallback, UpdateCallback } from './types';
 
-type CallbackFor<S extends Selector.Function<any>, T> =
-  (this: T, value: Selector.Gets<S>, key: Selector.From<S>) => void;
-
 /**
  * Observable Instance
  * 
@@ -13,7 +10,7 @@ type CallbackFor<S extends Selector.Function<any>, T> =
  */
 interface Dispatch {
   // Keyed
-  on <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false, once?: boolean): Callback;
+  on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
   // Squash
   on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
@@ -23,7 +20,7 @@ interface Dispatch {
   on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
   // Keyed
-  once <S extends Model.SelectEvents<this>> (via: S, cb: CallbackFor<S, this>, squash?: false): Callback;
+  once <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false): Callback;
   once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
   // Squash
   once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;

@@ -26,4 +26,7 @@ export namespace Selector {
 
   export type Gets<F extends Function<any>> =
       F extends (spy: any) => infer R ? Values<R> : never;
+
+  export type Callback<S extends Function<any>, T> =
+      (this: T, value: Gets<S>, key: From<S>) => void;
 }
