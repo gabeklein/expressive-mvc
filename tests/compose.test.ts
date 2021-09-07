@@ -231,6 +231,7 @@ describe("use instruction", () => {
 
   it('will throw if bad argument type', () => {
     class Parent extends Model {
+      // @ts-ignore
       child = use(1);
     }
 
