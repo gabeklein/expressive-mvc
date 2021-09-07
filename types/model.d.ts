@@ -132,6 +132,7 @@ export namespace Model {
       
     export class Subscriber {
         proxy: any;
+        source: any;
         active: boolean;
         follows: BunchOf<Callback>;
         dependant: Set<Listener>;

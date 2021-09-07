@@ -9,6 +9,7 @@ type Listener = {
 
 export class Subscriber {
   public proxy: any;
+  public source: any;
   public active = false;
   public follows = {} as BunchOf<Callback>;
   public dependant = new Set<Listener>();
@@ -22,6 +23,7 @@ export class Subscriber {
       parent = manage(parent);
 
     this.parent = parent;
+    this.source = parent.subject;
     this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
@@ -31,11 +33,10 @@ export class Subscriber {
   }
 
   public spy(key: string){
-    const { proxy } = this;
+    const { proxy, source } = this;
 
-    const { set } = getOwnPropertyDescriptor(
-      this.parent.subject, key
-    )!
+    const { set } =
+      getOwnPropertyDescriptor(source, key)!;
 
     const intercept = () => {
       this.follow(key);
