@@ -401,11 +401,6 @@ export abstract class Model {
      * Will determine if provided class is a subtype of this one. 
      */
     static isTypeof <T extends Class>(this: T, subject: any): subject is T;
-
-    /** 
-     * Retreives parent inherited by this class, unless it is base `Model`.
-     */
-    static inherits: typeof Model | undefined;
 }
 
 export class Singleton extends Model {

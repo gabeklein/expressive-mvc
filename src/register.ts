@@ -1,5 +1,5 @@
 import { Model } from './model';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, values } from './util';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './util';
 
 export type Collection =
   | Array<Model | typeof Model>
@@ -56,11 +56,11 @@ export class Lookup {
 
     do {
       defineProperty(this, this.key(T), {
-        value: I,
-        writable
+        value: I, writable
       });
+      T = getPrototypeOf(T);
     }
-    while(T = T.inherits!);
+    while(T !== Model);
 
     return I;
   }

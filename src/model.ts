@@ -199,13 +199,6 @@ export class Model {
       maybe.prototype instanceof this
     )
   }
-
-  static get inherits(): typeof Model | undefined {
-    const I = getPrototypeOf(this);
-
-    if(I !== Model)
-      return I;
-  }
 }
 
 defineLazy(Model, CONTROL, function(){
