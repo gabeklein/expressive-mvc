@@ -20,24 +20,31 @@ type GetterInfo = {
 
 const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
-const ComputedFor = new WeakMap<Controller, Map<string, GetterInfo>>();
+const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
 const ComputedKeys = new WeakMap<Controller, RequestCallback[]>();
 
-export function bootstrap(on: Controller){
-  const defined = new Map<string, GetterInfo>();
-  let scan = on.subject;
+export function prepareGetters(on: Controller){
+  const defined = getRegister(on);
 
-  ComputedFor.set(on, defined);
-
-  while(scan !== Model && scan.constructor !== Model){
-    for(let [key, { get, set }] of entriesIn(scan))
-      if(get && !defined.has(key))
-        defined.set(key, 
-          prepare(on, key, get, set)
-        );
-
+  for(
+    let scan = on.subject;
+    scan !== Model && scan.constructor !== Model;
     scan = getPrototypeOf(scan)
+  )
+  for(let [key, { get, set }] of entriesIn(scan))
+    if(get && !defined.has(key))
+      prepare(on, key, get, set)
+}
+
+function getRegister(on: Controller){
+  let register = ComputedUsed.get(on);
+
+  if(!register){
+    register = new Map<string, GetterInfo>();
+    ComputedUsed.set(on, register);
   }
+
+  return register;
 }
 
 export function prepare(
@@ -47,11 +54,14 @@ export function prepare(
   setter?: (to: any) => void){
 
   const { state, subject } = on;
+  const defined = getRegister(on);
   const info: GetterInfo = {
     key, parent: on, priority: 1
   };
 
   let sub: Subscriber;
+
+  defined.set(key, info);
 
   function compute(initial?: boolean){
     try {
@@ -107,15 +117,13 @@ export function prepare(
       throw e;
     }
     finally {
-      let defined = ComputedFor.get(on)!;
-
       sub.commit();
 
       for(const key in sub.follows){
-        const compute = defined.get(key);
+        const peer = defined.get(key);
 
-        if(compute && compute.priority >= info.priority)
-          info.priority = compute.priority + 1;
+        if(peer && peer.priority >= info.priority)
+          info.priority = peer.priority + 1;
       }
     }
   }

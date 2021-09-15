@@ -16,7 +16,7 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){
-    Computed.bootstrap(this);
+    Computed.prepareGetters(this);
   }
 
   public get pending(){
