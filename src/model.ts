@@ -39,20 +39,20 @@ export class Model {
 
   on(
     select: string | Iterable<string> | Query,
-    does: UpdateCallback<any, any>,
+    callback: UpdateCallback<any, any>,
     squash?: boolean,
     once?: boolean){
 
-    return manage(this).watch(select, does, squash, once);
+    return manage(this).watch(select, callback, squash, once);
   }
 
   once(
     select: string | Iterable<string> | Query,
-    does?: UpdateCallback<any, any>,
+    callback?: UpdateCallback<any, any>,
     squash?: boolean){
 
-    if(does)
-      return this.on(select, does, squash, true);
+    if(callback)
+      return this.on(select, callback, squash, true);
     else 
       return new Promise<void>(resolve => {
         this.on(select, resolve, true, true);
