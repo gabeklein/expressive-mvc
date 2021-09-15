@@ -2,7 +2,7 @@ import * as Computed from './compute';
 import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
 export const LOCAL = Symbol("local");
@@ -30,6 +30,25 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){}
+
+  static init(onto: Stateful, after?: Callback){
+    const control = new this(onto);
+
+    defer(control, "on");
+    defer(control, "effect");
+
+    defineLazy(onto, CONTROL, () => {
+      delete (onto as any).on;
+      delete (onto as any).effect;
+
+      onto[STATE] = control.state;
+
+      control.start();
+      after && after();
+
+      return control;
+    })
+  }
 
   public get pending(){
     return this.frame.size > 0;
@@ -193,4 +212,17 @@ export function keys(
     return Array.from(using);
 
   return from.select(using);
+}
+
+function defer(on: Controller, method: string){
+  const { subject, waiting } = on as any;
+  const real = subject[method];
+
+  subject[method] = (...args: any[]) => {
+    let done: any;
+    waiting.push(() => {
+      done = real.apply(subject, args);
+    });
+    return () => done();
+  }
 }

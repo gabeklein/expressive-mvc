@@ -20,26 +20,12 @@ export interface Model extends Stateful {
 
 export class Model {
   constructor(){
-    const control = new Controller(this);
-
     define(this, "get", this);
     define(this, "set", this);
 
-    defer(control, "on");
-    defer(control, "effect");
-
-    defineLazy(this, CONTROL, () => {
-      delete (this as any).on;
-      delete (this as any).effect;
-
-      this[STATE] = control.state;
-
-      control.start();
-
+    Controller.init(this, () => {
       if(this.didCreate)
         this.didCreate();
-
-      return control;
     })
   }
 
@@ -225,16 +211,3 @@ export class Model {
 defineLazy(Model, CONTROL, function(){
   return new Controller(this).start();
 })
-
-function defer(on: Controller, method: string){
-  const { subject, waiting } = on as any;
-  const real = subject[method];
-
-  subject[method] = (...args: any[]) => {
-    let done: any;
-    waiting.push(() => {
-      done = real.apply(subject, args);
-    });
-    return () => done();
-  }
-}
