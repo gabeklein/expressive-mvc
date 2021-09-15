@@ -1,8 +1,22 @@
 import * as Computed from './compute';
 import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
-import { Stateful } from './model';
+import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+
+export const CONTROL = Symbol("control");
+export const LOCAL = Symbol("local");
+export const STATE = Symbol("state");
+
+export function manage(src: Stateful){
+  return src[CONTROL];
+}
+
+export interface Stateful {
+  [CONTROL]: Controller;
+  [LOCAL]?: Subscriber;
+  [STATE]?: any;
+};
 
 export namespace Controller {
   export type HandleValue = (this: Stateful, value: any) => boolean | void;

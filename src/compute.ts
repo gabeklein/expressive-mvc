@@ -1,6 +1,5 @@
-import { Controller } from './controller';
+import { CONTROL, Controller } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, setAlias } from './util';
 
@@ -23,19 +22,6 @@ const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
 const ComputedKeys = new WeakMap<Controller, RequestCallback[]>();
 
-export function prepareGetters(on: Controller){
-  const defined = getRegister(on);
-
-  for(
-    let scan = on.subject;
-    scan !== Model && scan.constructor !== Model;
-    scan = getPrototypeOf(scan)
-  )
-  for(let [key, { get, set }] of entriesIn(scan))
-    if(get && !defined.has(key))
-      prepare(on, key, get, set)
-}
-
 function getRegister(on: Controller){
   let register = ComputedUsed.get(on);
 
@@ -45,6 +31,20 @@ function getRegister(on: Controller){
   }
 
   return register;
+}
+
+export function prepareGetters(on: Controller){
+  const defined = getRegister(on);
+
+  for(
+    let scan = on.subject;
+    !scan.hasOwnProperty(CONTROL) && 
+    !scan.constructor.hasOwnProperty(CONTROL);
+    scan = getPrototypeOf(scan)
+  )
+  for(let [key, { get, set }] of entriesIn(scan))
+    if(get && !defined.has(key))
+      prepare(on, key, get, set)
 }
 
 export function prepare(

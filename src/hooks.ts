@@ -1,9 +1,9 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { keys } from './controller';
+import { keys, Stateful } from './controller';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
-import { Model, Stateful } from './model';
+import { Model } from './model';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';

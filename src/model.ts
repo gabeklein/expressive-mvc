@@ -1,5 +1,5 @@
 import { useFromContext } from './context';
-import { Controller, keys } from './controller';
+import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
@@ -10,16 +10,6 @@ export const Oops = issues({
     `Strict update() did ${expected ? "not " : ""}find pending updates.`
 })
 
-export const CONTROL = Symbol("control");
-export const LOCAL = Symbol("local");
-export const STATE = Symbol("state");
-
-export interface Stateful {
-  [CONTROL]: Controller;
-  [LOCAL]?: Subscriber;
-  [STATE]?: any;
-};
-
 export interface Model extends Stateful {
   get: this;
   set: this;
@@ -27,10 +17,6 @@ export interface Model extends Stateful {
   didCreate?: Callback;
   willDestroy?: Callback;
 };
-
-export function manage(src: Stateful){
-  return src[CONTROL];
-}
 
 export class Model {
   constructor(){

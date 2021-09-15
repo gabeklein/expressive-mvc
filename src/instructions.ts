@@ -1,7 +1,7 @@
 import * as Computed from './compute';
-import { Controller } from './controller';
+import { Controller, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
-import { LOCAL, Model, Stateful } from './model';
+import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 

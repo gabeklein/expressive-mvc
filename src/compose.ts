@@ -1,7 +1,7 @@
-import { Controller } from './controller';
+import { Controller, manage } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
-import { manage, Model } from './model';
+import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptors } from './util';
 
