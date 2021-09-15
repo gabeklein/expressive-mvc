@@ -102,13 +102,6 @@ export namespace Model {
         state: BunchOf<any>;
         subject: {};
 
-        /**
-         * Place a given key's property under management.
-         * 
-         * Note: If property is occupied by an instruction, it will be run.
-         */
-        add(key: string): void;
-
         /** Add property to managed state. */
         manage(key: string, initial: any, effect?: HandleValue): void;
 

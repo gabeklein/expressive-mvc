@@ -2,7 +2,7 @@ import * as Computed from './compute';
 import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineLazy, defineProperty, entriesIn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
 export const LOCAL = Symbol("local");
@@ -55,8 +55,17 @@ export class Controller {
   }
 
   public start(){
-    getOwnPropertyNames(this.subject)
-      .forEach(k => this.add(k));
+    entriesIn(this.subject).forEach(([key, desc]) => {
+      if(desc && desc.enumerable && "value" in desc){
+        const { value } = desc;
+  
+        if(apply(this, key, value))
+          return;
+  
+        if(typeof value !== "function" || /^[A-Z]/.test(key))
+          this.manage(key, value);
+      }
+    });
 
     this.emit();
 
@@ -69,20 +78,6 @@ export class Controller {
     return using
       ? selectRecursive(using, keys.concat(lifecycleEvents))
       : keys;
-  }
-
-  public add(key: string){
-    const desc = getOwnPropertyDescriptor(this.subject, key);
-
-    if(desc && "value" in desc){
-      const { value } = desc;
-
-      if(apply(this, key, value))
-        return;
-
-      if(desc.enumerable && typeof value !== "function" || /^[A-Z]/.test(key))
-        this.manage(key, value);
-    }
   }
 
   public manage(
