@@ -1,14 +1,13 @@
-import { Oops } from "../src/model";
-import { Model } from "./adapter";
+import { Oops } from '../src/model';
+import { from, Model } from './adapter';
 
 describe("update method", () => {
   class Control extends Model {
     foo = 1;
     bar = 2;
-
-    get baz(){
-      return this.bar + 1;
-    }
+    baz = from((state: this) => {
+      return state.bar + 1;
+    });
   }
 
   it("provides promise resolving next update", async () => {

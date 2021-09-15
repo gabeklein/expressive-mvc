@@ -1,7 +1,7 @@
-import { CONTROL, Controller } from './controller';
+import { Controller } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
-import { defineProperty, entriesIn, getOwnPropertyDescriptor, getPrototypeOf, setAlias } from './util';
+import { defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   ComputeFailed: (parent, property, initial) =>
@@ -25,26 +25,12 @@ const ComputedKeys = new WeakMap<Controller, RequestCallback[]>();
 function getRegister(on: Controller){
   let register = ComputedUsed.get(on);
 
-  if(!register){
-    register = new Map<string, GetterInfo>();
-    ComputedUsed.set(on, register);
-  }
+  if(!register)
+    ComputedUsed.set(on, 
+      register = new Map<string, GetterInfo>()
+    );
 
   return register;
-}
-
-export function prepareGetters(on: Controller){
-  const defined = getRegister(on);
-
-  for(
-    let scan = on.subject;
-    !scan.hasOwnProperty(CONTROL) && 
-    !scan.constructor.hasOwnProperty(CONTROL);
-    scan = getPrototypeOf(scan)
-  )
-  for(let [key, { get, set }] of entriesIn(scan))
-    if(get && !defined.has(key))
-      prepare(on, key, get, set)
 }
 
 export function prepare(

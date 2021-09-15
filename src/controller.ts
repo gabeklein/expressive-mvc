@@ -29,9 +29,7 @@ export class Controller {
   protected handles = new Set<BunchOf<RequestCallback>>();
   protected waiting = [] as RequestCallback[];
 
-  constructor(public subject: Stateful){
-    Computed.prepareGetters(this);
-  }
+  constructor(public subject: Stateful){}
 
   public get pending(){
     return this.frame.size > 0;

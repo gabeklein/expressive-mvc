@@ -1,14 +1,14 @@
-import { Oops } from "../src/util";
-import { Model } from "./adapter";
+import { Oops } from '../src/util';
+import { Model, from } from './adapter';
 
 describe("on method", () => {
   class Subject extends Model {
     seconds = 0;
     hours = 0;
-  
-    get minutes(){
-      return Math.floor(this.seconds / 60)
-    }
+
+    minutes = from((state: this) => {
+      return Math.floor(state.seconds / 60)
+    })
   }
   
   it('will watch for updated value', async () => {
@@ -107,10 +107,10 @@ describe("once method", () => {
   class Subject extends Model {
     seconds = 0;
     hours = 0;
-  
-    get minutes(){
-      return Math.floor(this.seconds / 60)
-    }
+
+    minutes = from((state: this) => {
+      return Math.floor(state.seconds / 60)
+    })
   }
 
   it('will ignore subsequent events', async () => {
@@ -165,10 +165,10 @@ describe("effect method", () => {
     value1 = 1;
     value2 = 2;
     value3 = 3;
-  
-    get value4(){
-      return this.value3 + 1;
-    }
+
+    value4 = from((state: this) => {
+      return state.value3 + 1;
+    });
   }
 
   it('will watch values', async () => {
@@ -338,10 +338,10 @@ describe("will accept before ready", () => {
   class TestValues extends Model {
     value1 = 1;
     value2 = 2;
-  
-    get value3(){
-      return this.value2 + 1;
-    }
+
+    value3 = from((state: this) => {
+      return state.value2 + 1;
+    });
   }
 
   it('on method', async () => {

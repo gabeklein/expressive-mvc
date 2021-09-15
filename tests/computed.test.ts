@@ -9,14 +9,14 @@ describe("computed", () => {
   class Subject extends Model {
     child = use(Child);
     seconds = 0;
-  
-    get minutes(){
-      return Math.floor(this.seconds / 60)
-    }
+    
+    minutes = from((state: this) => {
+      return Math.floor(state.seconds / 60);
+    })
 
-    get nested(){
-      return this.child.value;
-    }
+    nested = from((state: this) => {
+      return state.child.value;
+    })
   }
   
   it('will trigger when input changes', async () => {
@@ -80,13 +80,14 @@ describe("computed", () => {
       a = 1;
       b = 1;
 
+      c = from((state: this) => {
+        exec();
+        return state.a + state.b + state.x.value;
+
+      })
+
       // make sure multi-source updates work
       x = use(Inner);
-
-      get c(){
-        exec();
-        return this.a + this.b + this.x.value;
-      }
     }
 
     const state = Test.create();
@@ -111,27 +112,30 @@ describe("computed", () => {
 
     class Ordered extends Model {
       X = 1;
-  
-      get A(){
-        const value = this.X
+
+      A = from((state: this) => {
+        const value = state.X
         didCompute.push("A")
         return value;
-      };
-      get B(){
-        const value = this.A + 1
+      })
+
+      B = from((state: this) => {
+        const value = state.A + 1
         didCompute.push("B")
         return value;
-      };
-      get C(){
-        const value = this.X + this.B + 1
+      })
+
+      C = from((state: this) => {
+        const value = state.X + state.B + 1
         didCompute.push("C")
         return value;
-      };
-      get D(){
-        const value = this.A + this.C + 1
+      })
+
+      D = from((state: this) => {
+        const value = state.A + state.C + 1
         didCompute.push("D")
         return value;
-      };
+      })
     }
 
     const test = Ordered.create();
@@ -155,6 +159,134 @@ describe("computed", () => {
     expect(updated).toMatchObject(["X", "A", "B", "C", "D"]);
   })
 
+  it("will create a computed from method", async () => {
+    class Hello extends Model {
+      friend = "World";
+  
+      greeting = from(this.generateGreeting);
+  
+      generateGreeting(){
+        return `Hello ${this.friend}!`;
+      }
+    }
+
+    const test = Hello.create();
+
+    expect(test.greeting).toBe("Hello World!");
+
+    test.friend = "Foo";
+    await test.update(true);
+
+    expect(test.greeting).toBe("Hello Foo!");
+  })
+})
+
+describe("failures", () => {
+  const { error, warn } = console;
+  
+  afterAll(() => {
+    console.warn = warn;
+    console.error = error;
+  });
+
+  class Subject extends Model {
+    never = from(() => {
+      throw new Error();
+    })
+  }
+
+  it('will warn if throws', () => {
+    const state = Subject.create();
+    const attempt = () => state.never;
+
+    const warn = console.warn = jest.fn();
+    const failed = Oops.ComputeFailed(Subject.name, "never", true);
+
+    expect(attempt).toThrowError();
+    expect(warn).toBeCalledWith(failed.message);
+  })
+
+  it('will warn if throws early', () => {
+    const state = Subject.create();
+    const attempt = () => state.once("never");
+
+    const warn = console.warn = jest.fn();
+    const failed = Oops.ComputeFailed(Subject.name, "never", true);
+    const early = Oops.ComputedEarly("never");
+
+    expect(attempt).rejects.toThrowError();
+    expect(warn).toBeCalledWith(failed.message);
+    expect(warn).toBeCalledWith(early.message);
+  })
+
+  it('will warn if throws on update', async () => {
+    class Test extends Model {
+      shouldFail = false;
+
+      value = from((state: this) => {
+        if(state.shouldFail)
+          throw new Error();
+        else
+          return undefined;
+      })
+    }
+
+    const warn = console.warn = jest.fn();
+    const error = console.error = jest.fn();
+    const state = Test.create();
+    const failed = Oops.ComputeFailed(Test.name, "value", false);
+
+    state.once(x => x.value);
+    state.shouldFail = true;
+
+    await state.update(true);
+
+    expect(warn).toBeCalledWith(failed.message);
+    expect(error).toBeCalled();
+  })
+})
+
+describe("circular", () => {
+  it("may access own previous value", async () => {
+    class Test extends Model {
+      multiplier = 0;
+      previous: any;
+
+      value = from((state: this) => {
+        const { value, multiplier } = state;
+
+        // use set to bypass subscriber
+        this.previous = value;
+
+        return Math.ceil(Math.random() * 10) * multiplier;
+      });
+    }
+
+    const test = Test.create();
+
+    // shouldn't exist until getter's side-effect
+    expect("previous" in test).toBe(false);
+
+    const initial = test.value;
+
+    // will start at 0 because of multiple
+    expect(initial).toBe(0);
+
+    // should now exist but be undefined (initial get)
+    expect("previous" in test).toBe(true);
+    expect(test.previous).toBeUndefined();
+
+    // change upstream value to trigger re-compute
+    test.multiplier = 1;
+    await test.update(true);
+
+    // getter should see current value while producing new one
+    expect(test.previous).toBe(initial);
+    expect(test.value).not.toBe(initial);
+  })
+})
+
+describe.skip("getter", () => {
   it("will not override existing setter", async () => {
     class Test extends Model {
       value = "foo";
@@ -196,134 +328,6 @@ describe("computed", () => {
     const test = Super.create();
 
     expect(test.foo).toBe("bar");
-  })
-})
-
-describe("failures", () => {
-  const { error, warn } = console;
-  
-  afterAll(() => {
-    console.warn = warn;
-    console.error = error;
-  });
-
-  class Subject extends Model {
-    get never(){
-      throw new Error();
-    }
-  }
-
-  it('will warn if throws', () => {
-    const state = Subject.create();
-    const attempt = () => state.never;
-
-    const warn = console.warn = jest.fn();
-    const failed = Oops.ComputeFailed(Subject.name, "never", true);
-
-    expect(attempt).toThrowError();
-    expect(warn).toBeCalledWith(failed.message);
-  })
-
-  it('will warn if throws early', () => {
-    const state = Subject.create();
-    const attempt = () => state.once("never");
-
-    const warn = console.warn = jest.fn();
-    const failed = Oops.ComputeFailed(Subject.name, "never", true);
-    const early = Oops.ComputedEarly("never");
-
-    expect(attempt).rejects.toThrowError();
-    expect(warn).toBeCalledWith(failed.message);
-    expect(warn).toBeCalledWith(early.message);
-  })
-
-  it('will warn if throws on update', async () => {
-    class Test extends Model {
-      shouldFail = false;
-
-      get value(){
-        if(this.shouldFail)
-          throw new Error();
-        else
-          return undefined;
-      }
-    }
-
-    const warn = console.warn = jest.fn();
-    const error = console.error = jest.fn();
-    const state = Test.create();
-    const failed = Oops.ComputeFailed(Test.name, "value", false);
-
-    state.once(x => x.value);
-    state.shouldFail = true;
-
-    await state.update(true);
-
-    expect(warn).toBeCalledWith(failed.message);
-    expect(error).toBeCalled();
-  })
-})
-
-describe("circular", () => {
-  it("may access own previous value", async () => {
-    class Test extends Model {
-      multiplier = 0;
-      previous: any;
-
-      get value(): number {
-        const { value, multiplier } = this;
-
-        // use set to bypass subscriber
-        this.set.previous = value;
-
-        return Math.ceil(Math.random() * 10) * multiplier;
-      }
-    }
-
-    const test = Test.create();
-
-    // shouldn't exist until getter's side-effect
-    expect("previous" in test).toBe(false);
-
-    const initial = test.value;
-
-    // will start at 0 because of multiple
-    expect(initial).toBe(0);
-
-    // should now exist but be undefined (initial get)
-    expect("previous" in test).toBe(true);
-    expect(test.previous).toBeUndefined();
-
-    // change upstream value to trigger re-compute
-    test.multiplier = 1;
-    await test.update(true);
-
-    // getter should see current value while producing new one
-    expect(test.previous).toBe(initial);
-    expect(test.value).not.toBe(initial);
-  })
-})
-
-describe("instruction", () => {
-  it("will create a computed property", async () => {
-    class Hello extends Model {
-      friend = "World";
-  
-      greeting = from(this.generateGreeting);
-  
-      generateGreeting(){
-        return `Hello ${this.friend}!`;
-      }
-    }
-
-    const test = Hello.create();
-
-    expect(test.greeting).toBe("Hello World!");
-
-    test.friend = "Foo";
-    await test.update(true);
-
-    expect(test.greeting).toBe("Hello Foo!");
   })
 
   it("will override preexisting getter", () => {
