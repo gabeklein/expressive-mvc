@@ -1,5 +1,5 @@
 import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
+import { CONTROL, Controller, keys, LOCAL, manage, CREATE, STATE, Stateful } from './controller';
 import { useLazy, useModel, useWatcher } from './hooks';
 import { define } from './util';
 
@@ -12,18 +12,15 @@ export interface State extends Stateful {
 }
 
 export class State {
-  static STATE = STATE;
   static CONTROL = CONTROL;
+  static STATE = STATE;
+  static INIT = CREATE;
   static LOCAL = LOCAL;
 
   constructor(){
     define(this, "get", this);
     define(this, "set", this);
-
-    Controller.init(this, () => {
-      if(this.didCreate)
-        this.didCreate();
-    })
+    Controller.setup(this);
   }
 
   import(

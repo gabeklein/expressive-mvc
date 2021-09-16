@@ -1,5 +1,5 @@
 import * as Computed from "./compute";
-import { CONTROL, Controller, keys, manage } from './controller';
+import { CONTROL, Controller, CREATE, keys, manage } from './controller';
 import { useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { State } from './stateful';
@@ -12,6 +12,16 @@ export const Oops = issues({
 })
 
 export class Model extends State {
+  [CREATE](using: Controller){
+    defer(using, "on");
+    defer(using, "effect");
+
+    return () => {
+      delete (this as any).on;
+      delete (this as any).effect;
+    }
+  }
+
   on(
     select: string | Iterable<string> | Query,
     callback: UpdateCallback<any, any>,
@@ -122,4 +132,17 @@ function watch(
   Computed.ensure(control, set);
 
   return remove;
+}
+
+function defer(on: Controller, method: string){
+  const { subject, waiting } = on as any;
+  const real = subject[method];
+
+  subject[method] = (...args: any[]) => {
+    let done: any;
+    waiting.push(() => {
+      done = real.apply(subject, args);
+    });
+    return () => done();
+  }
 }

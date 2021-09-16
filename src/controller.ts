@@ -5,6 +5,7 @@ import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty, entriesIn, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
+export const CREATE = Symbol("start");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
@@ -14,8 +15,11 @@ export function manage(src: Stateful){
 
 export interface Stateful {
   [CONTROL]: Controller;
+  [CREATE]?(has: Controller): Callback | void;
   [LOCAL]?: Subscriber;
   [STATE]?: any;
+
+  didCreate?(): void;
 };
 
 export namespace Controller {
@@ -31,20 +35,20 @@ export class Controller {
 
   constructor(public subject: Stateful){}
 
-  static init(onto: Stateful, after?: Callback){
+  static setup(onto: Stateful){
+    const create = onto[CREATE];
     const control = new this(onto);
-
-    defer(control, "on");
-    defer(control, "effect");
+    const after = create && create.call(onto, control);
 
     defineLazy(onto, CONTROL, () => {
-      delete (onto as any).on;
-      delete (onto as any).effect;
-
       onto[STATE] = control.state;
-
       control.start();
-      after && after();
+
+      if(after)
+        after();
+
+      if(onto.didCreate)
+        onto.didCreate();
 
       return control;
     })
@@ -177,17 +181,4 @@ export function keys(
     return Array.from(using);
 
   return from.select(using);
-}
-
-function defer(on: Controller, method: string){
-  const { subject, waiting } = on as any;
-  const real = subject[method];
-
-  subject[method] = (...args: any[]) => {
-    let done: any;
-    waiting.push(() => {
-      done = real.apply(subject, args);
-    });
-    return () => done();
-  }
 }
