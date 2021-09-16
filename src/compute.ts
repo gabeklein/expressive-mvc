@@ -156,10 +156,11 @@ export function capture(on: Controller, request: RequestCallback){
   if(compute.parent !== on)
     request();
   else {
-    const byPriorty = (sib: Function) =>
-      compute.priority > ComputedInfo.get(sib)!.priority;
+    const queue = pending.findIndex(peer =>
+      compute.priority > ComputedInfo.get(peer)!.priority
+    );
 
-    pending.splice(pending.findIndex(byPriorty) + 1, 0, request);
+    pending.splice(queue + 1, 0, request);
   }
 
   return true;
