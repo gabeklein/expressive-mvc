@@ -75,13 +75,13 @@ export class State {
   }
 
   static uses(props: BunchOf<any>, only?: string[]){
-    return useModel(this, [], instance => {
+    return this.use([], instance => {
       instance.import(props, only);
     })
   }
 
   static using(props: BunchOf<any>, only?: string[]){
-    const instance = useModel(this, []);
+    const instance = this.use([]);
     instance.import(props, only);
     return instance;
   }

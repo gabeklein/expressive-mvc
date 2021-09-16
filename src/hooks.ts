@@ -4,7 +4,6 @@ import { keys, Stateful } from './controller';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
 import { Model } from './model';
-import { usePeerContext } from './peer';
 import { State } from './stateful';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
@@ -15,7 +14,6 @@ export const Oops = issues({
 })
 
 const useElementLifecycle = lifecycle("element");
-const useComponentLifecycle = lifecycle("component");
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = useState((): T[] => [
@@ -93,18 +91,13 @@ export function useModel(
     const instance = new Type(...args || []) as Model;
     const sub = new Subscriber(instance, refresh);
 
-    instance.on(Lifecycle.WILL_UNMOUNT, () => {
-      instance.destroy();
-    });
+    instance.on(Lifecycle.WILL_UNMOUNT, () => instance.destroy());
 
     if(callback)
       callback(instance);
 
     return sub;
   });
-
-  usePeerContext(hook.parent.subject as Model);
-  useComponentLifecycle(hook);
 
   return hook.proxy;
 }

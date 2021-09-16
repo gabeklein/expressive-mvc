@@ -1,10 +1,14 @@
-import * as Computed from "./compute";
-import { CONTROL, Controller, CREATE, keys, manage } from './controller';
-import { useSubscriber, useWatcher } from './hooks';
+import * as Computed from './compute';
+import { CONTROL, Controller, CREATE, keys, LOCAL, manage } from './controller';
+import { useModel, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
+import { lifecycle } from './lifecycle';
+import { usePeerContext } from './peer';
 import { State } from './stateful';
 import { Subscriber } from './subscriber';
 import { createEffect, defineLazy } from './util';
+
+const useComponentLifecycle = lifecycle("component");
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -110,6 +114,13 @@ export class Model extends State {
   }
 
   static [CONTROL]: Controller;
+
+  static use(args: any[], callback?: (instance: Model) => void){
+    const instance = useModel(this, args, callback);
+    useComponentLifecycle(instance[LOCAL]);
+    usePeerContext(instance.get);
+    return instance;
+  }
 
   static tag(id?: Key | ((target: Model) => Key | undefined)){
     return useSubscriber(this.find(true), id);
