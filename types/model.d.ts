@@ -282,7 +282,7 @@ export abstract class Model {
      * Differs from `use()` in lacking subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
      */
-    static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
+    static new <T extends Class> (this: T, args?: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
@@ -291,7 +291,7 @@ export abstract class Model {
      * 
      * @param args - Arguments passed to constructor of `this`
      */
-    static use <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
+    static use <T extends Class> (this: T, args?: ConstructorParameters<T>): InstanceOf<T>;
 
     /**
      * **React Hook** - Similar to `use`, will instanciate a controller bound to ambient component.

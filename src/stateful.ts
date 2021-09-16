@@ -66,8 +66,12 @@ export class State {
     return instance;
   }
 
-  static use(...args: any[]){
-    return useModel(this, args);
+  static new(args: any[], callback?: (instance: State) => void){
+    return useLazy(this, args, callback);
+  }
+
+  static use(args: any[], callback?: (instance: State) => void){
+    return useModel(this, args, callback);
   }
 
   static uses(props: BunchOf<any>, only?: string[]){
@@ -84,10 +88,6 @@ export class State {
 
   static find<T extends Class>(this: T, strict?: boolean){
     return useFromContext(this, strict) as InstanceOf<T>;
-  }
-
-  static new(...args: any[]){
-    return useLazy(this, args);
   }
 
   static get(key?: boolean | string | Select){

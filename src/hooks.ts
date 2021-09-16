@@ -26,9 +26,16 @@ export function use<T>(init: (trigger: Callback) => T){
 }
 
 export function useLazy<T extends typeof State>(
-  Type: T, args: any[]){
+  Type: T, args?: any[], callback?: (instance: InstanceOf<T>) => void){
 
-  const instance = useMemo(() => Type.create(...args), []);
+  const instance = useMemo(() => {
+    const instance = Type.create(...args || []);
+
+    if(callback)
+      callback(instance);
+
+    return instance;
+  }, []);
 
   useLayoutEffect(() => () => instance.destroy(), []);
 
@@ -79,11 +86,11 @@ export function useSubscriber<T extends Stateful>(
 
 export function useModel(
   Type: Class,
-  args: any[], 
+  args?: any[], 
   callback?: (instance: Model) => void){
 
   const hook = use(refresh => {
-    const instance = new Type(...args) as Model;
+    const instance = new Type(...args || []) as Model;
     const sub = new Subscriber(instance, refresh);
 
     instance.on(Lifecycle.WILL_UNMOUNT, () => {
