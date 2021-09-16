@@ -5,6 +5,7 @@ import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
 import { Model } from './model';
 import { usePeerContext } from './peer';
+import { State } from './stateful';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
 
@@ -24,8 +25,8 @@ export function use<T>(init: (trigger: Callback) => T){
   return state[0];
 }
 
-export function useLazy(
-  Type: typeof Model, args: any[]){
+export function useLazy<T extends typeof State>(
+  Type: T, args: any[]){
 
   const instance = useMemo(() => Type.create(...args), []);
 

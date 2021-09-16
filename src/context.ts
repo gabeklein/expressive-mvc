@@ -22,15 +22,15 @@ export const Oops = issues({
 export const LookupContext = createContext(new Lookup());
 export const useLookup = () => useContext(LookupContext);
 
-export function useFromContext(
-  Type: typeof Model, strict?: boolean){
+export function useFromContext<T extends Class>(
+  Type: T, strict?: boolean){
 
-  const instance = useLookup().get(Type);
+  const instance = useLookup().get(Type as any);
 
   if(!instance && strict)
     throw Oops.NothingInContext(Type.name);
 
-  return instance;
+  return instance as InstanceOf<T>;
 }
 
 interface ConsumerProps {

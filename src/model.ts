@@ -1,42 +1,16 @@
-import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
-import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
+import { CONTROL, Controller, keys, manage } from './controller';
+import { useModel, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
+import { State } from './stateful';
 import { Subscriber } from './subscriber';
-import { createEffect, define, defineLazy, getPrototypeOf } from './util';
+import { createEffect, defineLazy } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
     `Strict update() did ${expected ? "not " : ""}find pending updates.`
 })
 
-export interface Model extends Stateful {
-  get: this;
-  set: this;
-
-  didCreate?: Callback;
-  willDestroy?: Callback;
-};
-
-export class Model {
-  constructor(){
-    define(this, "get", this);
-    define(this, "set", this);
-
-    Controller.init(this, () => {
-      if(this.didCreate)
-        this.didCreate();
-    })
-  }
-
-  tap(path?: string | Select, expect?: boolean){
-    return useWatcher(this, path, expect);
-  }
-
-  tag(id?: Key | KeyFactory<this>){
-    return useSubscriber(this, id);
-  }
-
+export class Model extends State {
   on(
     select: string | Iterable<string> | Query,
     callback: UpdateCallback<any, any>,
@@ -117,31 +91,11 @@ export class Model {
     return Promise.resolve(false);
   }
 
-  destroy(){
-    if(this.willDestroy)
-      this.willDestroy();
+  tag(id?: Key | KeyFactory<this>){
+    return useSubscriber(this, id);
   }
-
-  toString(){
-    return this.constructor.name;
-  }
-
-  static STATE = STATE;
-  static CONTROL = CONTROL;
-  static LOCAL = LOCAL;
 
   static [CONTROL]: Controller;
-
-  static create<T extends typeof Model>(
-    this: T, ...args: any[]){
-
-    const instance: InstanceOf<T> = 
-      new (this as any)(...args);
-
-    manage(instance);
-
-    return instance;
-  }
 
   static use(...args: any[]){
     return useModel(this, args);
@@ -159,45 +113,12 @@ export class Model {
     return instance;
   }
 
-  static new(...args: any[]){
-    return useLazy(this, args);
-  }
-
-  static get(key?: boolean | string | Select){
-    const instance: any = this.find(!!key);
-  
-    return (
-      typeof key == "function" ?
-        key(instance) :
-      typeof key == "string" ?
-        instance[key] :
-        instance
-    )
-  }
-
-  static tap(key?: string | Select, expect?: boolean): any {
-    return useWatcher(this.find(true), key, expect);
-  }
-
   static tag(id?: Key | ((target: Model) => Key | undefined)){
     return useSubscriber(this.find(true), id);
   }
 
   static meta(path: string | Select): any {
     return useWatcher(this, path);
-  }
-
-  static find(strict?: boolean){
-    return useFromContext(this, strict);
-  }
-
-  static isTypeof<T extends typeof Model>(
-    this: T, maybe: any): maybe is T {
-
-    return (
-      typeof maybe == "function" &&
-      maybe.prototype instanceof this
-    )
   }
 }
 

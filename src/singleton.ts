@@ -16,8 +16,8 @@ export class Singleton extends Model {
     return Active.get(this);
   }
 
-  static create<Type extends typeof Model>(
-    this: Type, ...args: any[]){
+  static create<T extends Class>(
+    this: T, ...args: any[]){
 
     const Type: typeof Singleton = this as any;
 
@@ -28,12 +28,12 @@ export class Singleton extends Model {
 
     Active.set(Type, instance);
 
-    return instance as InstanceOf<Type>;
+    return instance as InstanceOf<T>;
   }
 
-  static find(){
-    if(this.current)
-      return this.current;
+  static find<T extends Class>(this: T): InstanceOf<T> {
+    if((this as any).current)
+      return (this as any).current;
 
     throw Oops.GlobalDoesNotExist(this.name);
   }
