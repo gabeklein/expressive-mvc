@@ -1,5 +1,5 @@
 import { CONTROL, Controller, keys, manage } from './controller';
-import { useModel, useSubscriber, useWatcher } from './hooks';
+import { useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { State } from './stateful';
 import { Subscriber } from './subscriber';
@@ -55,25 +55,6 @@ export class Model extends State {
     }
   }
 
-  import(
-    from: BunchOf<any>,
-    subset?: Iterable<string> | Query){
-
-    for(const key of keys(manage(this), subset))
-      if(key in from)
-        (this as any)[key] = from[key];
-  }
-
-  export(subset?: Iterable<string> | Query){
-    const control = manage(this);
-    const output: BunchOf<any> = {};
-
-    for(const key of keys(control, subset))
-      output[key] = (control.state as any)[key];
-
-    return output;
-  }
-
   update(arg: string | string[] | Query | boolean){
     const control = manage(this);
 
@@ -96,22 +77,6 @@ export class Model extends State {
   }
 
   static [CONTROL]: Controller;
-
-  static use(...args: any[]){
-    return useModel(this, args);
-  }
-
-  static uses(props: BunchOf<any>, only?: string[]){
-    return useModel(this, [], instance => {
-      instance.import(props, only);
-    })
-  }
-
-  static using(props: BunchOf<any>, only?: string[]){
-    const instance = useModel(this, []);
-    instance.import(props, only);
-    return instance;
-  }
 
   static tag(id?: Key | ((target: Model) => Key | undefined)){
     return useSubscriber(this.find(true), id);

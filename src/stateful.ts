@@ -1,6 +1,6 @@
 import { useFromContext } from './context';
-import { CONTROL, Controller, LOCAL, manage, STATE, Stateful } from './controller';
-import { useLazy, useWatcher } from './hooks';
+import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
+import { useLazy, useModel, useWatcher } from './hooks';
 import { define } from './util';
 
 export interface State extends Stateful {
@@ -26,17 +26,36 @@ export class State {
     })
   }
 
+  import(
+    from: BunchOf<any>,
+    subset?: Iterable<string> | Query){
+
+    for(const key of keys(manage(this), subset))
+      if(key in from)
+        (this as any)[key] = from[key];
+  }
+
+  export(subset?: Iterable<string> | Query){
+    const control = manage(this);
+    const output: BunchOf<any> = {};
+
+    for(const key of keys(control, subset))
+      output[key] = (control.state as any)[key];
+
+    return output;
+  }
+
+  destroy(){
+    if(this.willDestroy)
+      this.willDestroy();
+  }
+
   toString(){
     return this.constructor.name;
   }
 
   tap(path?: string | Select, expect?: boolean){
     return useWatcher(this, path, expect);
-  }
-
-  destroy(){
-    if(this.willDestroy)
-      this.willDestroy();
   }
 
   static create<T extends Class>(
@@ -47,6 +66,22 @@ export class State {
 
     manage(instance);
 
+    return instance;
+  }
+
+  static use(...args: any[]){
+    return useModel(this, args);
+  }
+
+  static uses(props: BunchOf<any>, only?: string[]){
+    return useModel(this, [], instance => {
+      instance.import(props, only);
+    })
+  }
+
+  static using(props: BunchOf<any>, only?: string[]){
+    const instance = useModel(this, []);
+    instance.import(props, only);
     return instance;
   }
 
