@@ -23,12 +23,34 @@ export class Model extends State {
   }
 
   on(
-    select: string | Iterable<string> | Query,
-    callback: UpdateCallback<any, any>,
+    subset: string | Iterable<string> | Query,
+    handler: Function,
     squash?: boolean,
     once?: boolean){
 
-    return watch(this, select, callback, squash, once);
+    const control = manage(this);
+    const set = keys(control, subset);
+    const batch = {} as BunchOf<RequestCallback>;
+    const remove = control.addListener(batch);
+
+    const callback: RequestCallback = squash
+      ? handler.bind(this)
+      : (frame: string[]) => {
+        for(const key of frame)
+          if(set.includes(key))
+            handler.call(this, control.state[key], key);
+      }
+
+    const handle = once
+      ? (k?: string[]) => { remove(); callback(k) }
+      : callback;
+
+    for(const key of set)
+      batch[key] = handle;
+
+    Computed.ensure(control, set);
+
+    return remove;
   }
 
   once(
@@ -101,38 +123,6 @@ export class Model extends State {
 defineLazy(Model, CONTROL, function(){
   return new Controller(this).start();
 })
-
-function watch(
-  subject: Model,
-  subset: string | Iterable<string> | Query,
-  handler: Function,
-  squash?: boolean,
-  once?: boolean){
-
-  const control = manage(subject);
-  const set = keys(control, subset);
-  const batch = {} as BunchOf<RequestCallback>;
-  const remove = control.addListener(batch);
-
-  const callback = squash
-    ? handler.bind(subject)
-    : (frame: string[]) => {
-      for(const key of frame)
-        if(set.includes(key))
-          handler.call(subject, control.state[key], key);
-    }
-
-  const handle = once
-    ? (k?: string[]) => { remove(); callback(k) }
-    : callback;
-
-  for(const key of set)
-    batch[key] = handle;
-
-  Computed.ensure(control, set);
-
-  return remove;
-}
 
 function defer(on: Controller, method: string){
   const { subject, waiting } = on as any;
