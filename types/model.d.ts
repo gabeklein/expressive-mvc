@@ -109,8 +109,6 @@ export namespace Model {
 
         sets(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
-        watch(target: string | Iterable<string> | Query, handler: Function, squash?: boolean, once?: boolean): Callback;
-
         addListener(batch: BunchOf<RequestCallback>): Callback;
 
         update(key: string, value?: any): void;

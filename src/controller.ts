@@ -118,36 +118,6 @@ export class Controller {
     }
   }
 
-  public watch(
-    subset: string | Iterable<string> | Query,
-    handler: Function,
-    squash?: boolean,
-    once?: boolean){
-
-    const set = keys(this, subset);
-    const batch = {} as BunchOf<RequestCallback>;
-    const remove = this.addListener(batch);
-
-    const callback = squash
-      ? handler.bind(this.subject)
-      : (frame: string[]) => {
-        for(const key of frame)
-          if(set.includes(key))
-            handler.call(this.subject, this.state[key], key);
-      }
-
-    const handle = once
-      ? (k?: string[]) => { remove(); callback(k) }
-      : callback;
-
-    for(const key of set)
-      batch[key] = handle;
-
-    Computed.ensure(this, set);
-
-    return remove;
-  }
-
   public addListener(
     batch: BunchOf<RequestCallback>){
 
