@@ -60,10 +60,6 @@ export function setAlias<T extends Function>(
   assign(func, { displayName });
 }
 
-export function entriesIn(object: {}){
-  return entries(getOwnPropertyDescriptors(object))
-}
-
 export function createEffect(
   callback: EffectCallback<any>){
 
