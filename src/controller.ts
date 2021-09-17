@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineLazy, defineProperty, entriesIn, getOwnPropertyNames, selectRecursive } from './util';
+import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
 export const CREATE = Symbol("start");
@@ -73,20 +73,24 @@ export class Controller {
   }
 
   public start(){
-    entriesIn(this.subject).forEach(([key, desc]) => {
-      if(desc && desc.enumerable && "value" in desc){
+    const { subject } = this;
+    
+    for(const key in subject){
+      const desc = getOwnPropertyDescriptor(subject, key);
+
+      if(desc && "value" in desc){
         const { value } = desc;
         const instruction = Pending.get(value);
 
         if(instruction){
           Pending.delete(value);
-          delete (this.subject as any)[key];
+          delete (subject as any)[key];
           instruction.call(this, key);
         }
         else if(typeof value !== "function" || /^[A-Z]/.test(key))
           this.manage(key, value);
       }
-    });
+    }
 
     this.emit();
 
