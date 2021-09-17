@@ -66,6 +66,8 @@ export class Controller {
 
       return control;
     })
+
+    return control;
   }
 
   public get pending(){

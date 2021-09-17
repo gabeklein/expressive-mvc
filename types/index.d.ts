@@ -1,4 +1,5 @@
 export {
+    State,
     Model,
     Model as default,
     Singleton

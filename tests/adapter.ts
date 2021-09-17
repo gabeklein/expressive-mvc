@@ -4,6 +4,7 @@ import * as Source from '../src';
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
+export const State = Source.State as unknown as typeof Public.State;
 export const Model = Source.Model as unknown as typeof Public.Model;
 export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;

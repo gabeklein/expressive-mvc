@@ -9,7 +9,11 @@ import { createEffect, defineLazy } from './util';
 
 const useComponentLifecycle = lifecycle("component");
 
-export class Model extends State  {
+export class Model extends State {
+  constructor(){
+    super(false);
+  }
+
   [CREATE](using: Controller){
     defer(using, "on");
     defer(using, "effect");

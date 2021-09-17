@@ -1,5 +1,6 @@
+import { prepareGetters } from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, CREATE, STATE, Stateful } from './controller';
+import { CONTROL, Controller, CREATE, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
 import { define } from './util';
@@ -23,10 +24,14 @@ export class State {
   static INIT = CREATE;
   static LOCAL = LOCAL;
 
-  constructor(){
+  constructor(computeGetters?: boolean){
+    const control = Controller.setup(this);
+
     define(this, "get", this);
     define(this, "set", this);
-    Controller.setup(this);
+
+    if(computeGetters !== false)
+      prepareGetters(control);
   }
 
   import(
