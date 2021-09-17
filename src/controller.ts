@@ -1,5 +1,4 @@
 import * as Computed from './compute';
-import { apply } from './instructions';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty, entriesIn, getOwnPropertyNames, selectRecursive } from './util';
@@ -8,6 +7,9 @@ export const CONTROL = Symbol("control");
 export const CREATE = Symbol("start");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
+
+export const Pending =
+  new Map<symbol, Controller.Instruction<any>>();
 
 export function manage(src: Stateful){
   return src[CONTROL];
@@ -24,6 +26,10 @@ export interface Stateful {
 
 export namespace Controller {
   export type HandleValue = (this: Stateful, value: any) => boolean | void;
+
+  export type Getter<T> = (sub?: Subscriber) => T
+  export type Instruction<T> = (this: Controller, key: string) =>
+      void | Getter<T> | PropertyDescriptor;
 }
 
 export class Controller {
@@ -34,6 +40,14 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){}
+
+  static defer<T = any>(
+    name: string, handler: Controller.Instruction<any>){
+
+    const placeholder = Symbol(`${name} instruction`);
+    Pending.set(placeholder, handler);
+    return placeholder as unknown as T;
+  }
 
   static setup(onto: Stateful){
     const create = onto[CREATE];
@@ -62,11 +76,14 @@ export class Controller {
     entriesIn(this.subject).forEach(([key, desc]) => {
       if(desc && desc.enumerable && "value" in desc){
         const { value } = desc;
-  
-        if(apply(this, key, value))
-          return;
-  
-        if(typeof value !== "function" || /^[A-Z]/.test(key))
+        const instruction = Pending.get(value);
+
+        if(instruction){
+          Pending.delete(value);
+          delete (this.subject as any)[key];
+          instruction.call(this, key);
+        }
+        else if(typeof value !== "function" || /^[A-Z]/.test(key))
           this.manage(key, value);
       }
     });

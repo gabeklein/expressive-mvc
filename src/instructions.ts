@@ -2,7 +2,6 @@ import * as Computed from './compute';
 import { Controller, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
@@ -10,32 +9,11 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-type GetFunction<T> = (sub?: Subscriber) => T;
-type Instruction<T> = (this: Controller, key: string) =>
-    void | GetFunction<T> | PropertyDescriptor;
-
-export const Pending = new Map<symbol, Instruction<any>>();
-
-export function apply(
-  on: Controller, key: string, value: symbol){
-
-  const instruction = Pending.get(value);
-
-  if(instruction){
-    Pending.delete(value);
-    delete (on.subject as any)[key];
-    instruction.call(on, key);
-    return true;
-  }
-}
-
 export function set<T = any>(
-  instruction: Instruction<T>,
+  instruction: Controller.Instruction<T>,
   name = instruction.name || "pending"){
 
-  const placeholder = Symbol(`${name} instruction`);
-
-  function apply(this: Controller, key: string){
+  return Controller.defer<T>(name, function(key){
     let output = instruction.call(this, key);
 
     if(typeof output == "function"){
@@ -51,11 +29,7 @@ export function set<T = any>(
 
     if(output)
       defineProperty(this.subject, key, output);
-  }
-
-  Pending.set(placeholder, apply);
-
-  return placeholder as unknown as T;
+  });
 }
 
 export const ref = <T = any>(
