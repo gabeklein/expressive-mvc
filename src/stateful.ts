@@ -1,7 +1,13 @@
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, CREATE, STATE, Stateful } from './controller';
 import { useLazy, useModel, useWatcher } from './hooks';
+import { issues } from './issues';
 import { define } from './util';
+
+export const Oops = issues({
+  StrictUpdate: (expected) => 
+    `Strict update() did ${expected ? "not " : ""}find pending updates.`
+})
 
 export interface State extends Stateful {
   get: this;
@@ -40,6 +46,23 @@ export class State {
       output[key] = (control.state as any)[key];
 
     return output;
+  }
+
+  update(arg: string | string[] | Query | boolean){
+    const control = manage(this);
+
+    if(typeof arg == "boolean"){
+      if(!control.pending === arg)
+        return Promise.reject(Oops.StrictUpdate(arg))
+    }
+    else if(arg)
+      for(const key of keys(control, arg))
+        control.update(key);
+
+    if(control.pending)
+      return new Promise(cb => control.include(cb));
+
+    return Promise.resolve(false);
   }
 
   destroy(){

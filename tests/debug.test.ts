@@ -1,4 +1,4 @@
-import { Oops } from '../src/model';
+import { Oops } from '../src/stateful';
 import { from, Model } from './adapter';
 
 describe("update method", () => {

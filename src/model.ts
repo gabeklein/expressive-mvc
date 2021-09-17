@@ -1,7 +1,6 @@
 import * as Computed from './compute';
 import { CONTROL, Controller, CREATE, keys, LOCAL, manage } from './controller';
 import { useModel, useSubscriber, useWatcher } from './hooks';
-import { issues } from './issues';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
 import { State } from './stateful';
@@ -10,12 +9,7 @@ import { createEffect, defineLazy } from './util';
 
 const useComponentLifecycle = lifecycle("component");
 
-export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict update() did ${expected ? "not " : ""}find pending updates.`
-})
-
-export class Model extends State {
+export class Model extends State  {
   [CREATE](using: Controller){
     defer(using, "on");
     defer(using, "effect");
@@ -90,23 +84,6 @@ export class Model extends State {
       invoke();
       return sub.commit();
     }
-  }
-
-  update(arg: string | string[] | Query | boolean){
-    const control = manage(this);
-
-    if(typeof arg == "boolean"){
-      if(!control.pending === arg)
-        return Promise.reject(Oops.StrictUpdate(arg))
-    }
-    else if(arg)
-      for(const key of keys(control, arg))
-        control.update(key);
-
-    if(control.pending)
-      return new Promise(cb => control.include(cb));
-
-    return Promise.resolve(false);
   }
 
   tag(id?: Key | KeyFactory<this>){
