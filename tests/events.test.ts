@@ -311,26 +311,14 @@ describe("update method", () => {
     expect(update).toContain("foo");
   })
   
-  it("will send synthetic event for multiple keys", async () => {
+  it("will send synthetic event using selector", async () => {
     const test = Test.create();
 
-    test.update(["foo", "bar"]);
+    test.update(x => x.foo);
     
     const update = await test.update(true);
 
     expect(update).toContain("foo");
-    expect(update).toContain("bar");
-  })
-  
-  it("will send synthetic event for selection", async () => {
-    const test = Test.create();
-
-    test.update(x => x.foo.bar);
-    
-    const update = await test.update(true);
-
-    expect(update).toContain("foo");
-    expect(update).toContain("bar");
   })
 })
 

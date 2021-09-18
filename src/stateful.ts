@@ -53,21 +53,31 @@ export class State {
     return output;
   }
 
-  update(arg: string | string[] | Query | boolean){
+  update(key: string | Select, tag?: any): void;
+  update(strict?: boolean): Promise<string[] | false>;
+  update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
+
+    if(typeof arg == "function")
+      arg = control.select(arg)[0];
 
     if(typeof arg == "boolean"){
       if(!control.pending === arg)
         return Promise.reject(Oops.StrictUpdate(arg))
     }
-    else if(arg)
-      for(const key of keys(control, arg))
-        control.update(key);
+    else if(arg){
+      if(1 in arguments && arg in this) 
+        (this as any)[arg].call(this, tag);
 
-    if(control.pending)
-      return new Promise(cb => control.include(cb));
+      control.update(arg);
+      return;
+    }
 
-    return Promise.resolve(false);
+    return <Promise<any>>(
+      control.pending
+        ? new Promise(cb => control.include(cb)) 
+        : Promise.resolve(false)
+    );
   }
 
   destroy(){
