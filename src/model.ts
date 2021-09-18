@@ -96,7 +96,7 @@ export class Model extends State {
 
   static [CONTROL]: Controller;
 
-  static use(args: any[], callback?: (instance: Model) => void){
+  static use(args: any[], callback?: (instance: State) => void){
     const instance = useModel(this, args, callback);
     useComponentLifecycle(instance[LOCAL]);
     usePeerContext(instance.get);

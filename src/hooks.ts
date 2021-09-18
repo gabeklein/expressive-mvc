@@ -1,9 +1,8 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { keys, Stateful } from './controller';
+import { keys, manage, Stateful } from './controller';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
-import { Model } from './model';
 import { State } from './stateful';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
@@ -85,13 +84,19 @@ export function useSubscriber<T extends Stateful>(
 export function useModel(
   Type: Class,
   args?: any[], 
-  callback?: (instance: Model) => void){
+  callback?: (instance: State) => void){
 
   const hook = use(refresh => {
-    const instance = new Type(...args || []) as Model;
-    const sub = new Subscriber(instance, refresh);
+    const instance = new Type(...args || []) as State;
+    const control = manage(instance);
+    const sub = new Subscriber(control, refresh);
 
-    instance.on(Lifecycle.WILL_UNMOUNT, () => instance.destroy());
+    const release = control.addListener({
+      [Lifecycle.WILL_UNMOUNT](){
+        instance.destroy();
+        release();
+      }
+    });
 
     if(callback)
       callback(instance);

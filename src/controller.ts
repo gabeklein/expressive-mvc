@@ -29,7 +29,7 @@ export namespace Controller {
 
   export type Getter<T> = (sub?: Subscriber) => T
   export type Instruction<T> = (this: Controller, key: string) =>
-      void | Getter<T> | PropertyDescriptor;
+    void | Getter<T> | PropertyDescriptor;
 }
 
 export class Controller {
@@ -186,8 +186,8 @@ export class Controller {
 
     this.frame.clear();
 
-    handle.forEach(cb => {
-      try { cb(keys) }
+    handle.forEach(callback => {
+      try { callback(keys) }
       catch(e){ }
     })
   }
