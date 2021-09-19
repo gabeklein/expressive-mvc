@@ -1,8 +1,8 @@
-import { Controller, manage } from './controller';
+import { attach } from './attach';
+import { manage } from './controller';
 import { set } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptors } from './util';
 
 const Parent = new WeakMap<{}, {}>();
@@ -21,10 +21,20 @@ export const Oops = issues({
     `Instruction \`use\` cannot accept argument type of ${type}.`
 })
 
+function bootstrap<T extends {}>(object: T){
+  const breakdown = getOwnPropertyDescriptors(object);
+  const control = new Model();
+
+  for(const key in breakdown)
+    defineProperty(control, key, breakdown[key]);
+    
+  return control as T & Model;
+}
+
 export const use = <T extends typeof Model>(
   input?: T | (() => InstanceOf<T>),
   argument?: ((i: Model | undefined) => void) | boolean
-): Model => child(
+): Model => attach(
   function use(key){
     let instance: Model | undefined;
 
@@ -63,72 +73,6 @@ export const use = <T extends typeof Model>(
     return () => instance;
   }
 );
-
-function bootstrap<T extends {}>(object: T){
-  const breakdown = getOwnPropertyDescriptors(object);
-  const control = new Model();
-
-  for(const key in breakdown)
-    defineProperty(control, key, breakdown[key]);
-    
-  return control as T & Model;
-}
-
-type ChildInstruction<T extends Model> =
-  (this: Controller, key: string) => () => T | undefined;
-
-export const child = <T extends Model>(
-  from: ChildInstruction<T>, name?: string): T => set(
-
-  function child(this: Controller, key: string){
-    const proxyCache = new WeakMap<Subscriber, any>();
-    const getCurrent = from.call(this, key);
-
-    function subscribe(sub: Subscriber){
-      let child: Subscriber | undefined;
-  
-      function start(){
-        const instance = getCurrent();
-  
-        if(instance){
-          child = new Subscriber(instance, sub.onUpdate);
-    
-          if(sub.active)
-            child.commit();
-    
-          sub.dependant.add(child);
-          proxyCache.set(sub, child.proxy);
-        }
-      }
-  
-      function refresh(){
-        if(child){
-          child.release();
-          sub.dependant.delete(child);
-          proxyCache.set(sub, undefined);
-          child = undefined;
-        }
-  
-        start();
-        sub.onUpdate();
-      }
-  
-      start();
-      sub.follow(key, refresh);
-    }
-  
-    return (local: Subscriber | undefined) => {
-      if(!local)
-        return getCurrent();
-  
-      if(!proxyCache.has(local))
-        subscribe(local);
-  
-      return proxyCache.get(local);
-    }
-  },
-  name || from.name
-)
 
 export const parent = <T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> => set(

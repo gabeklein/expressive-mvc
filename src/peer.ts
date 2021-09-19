@@ -1,4 +1,4 @@
-import { child } from './compose';
+import { attach } from './attach';
 import { useLookup } from './context';
 import { Stateful } from './controller';
 import { issues } from './issues';
@@ -22,7 +22,7 @@ const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export const tap = <T extends Peer>(
-  type: T, argument?: boolean | PeerCallback<T>) => child(
+  type: T, argument?: boolean | PeerCallback<T>) => attach(
 
   function tap(key){
     if("current" in type)
