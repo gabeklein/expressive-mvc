@@ -13,6 +13,6 @@ type Query = (select: Recursive<{}>) => void;
 type Select = <T>(from: T) => T[keyof T];
 
 type Callback = () => void;
-type RequestCallback = (keys?: string[]) => void;
+type RequestCallback = (keys: string[]) => void;
 type EffectCallback<T, A = T> = (this: T, argument: A) => Callback | Promise<any> | void;
 type UpdateCallback<T, P extends keyof T> = (this: T, value: T[P], changed: P) => void;

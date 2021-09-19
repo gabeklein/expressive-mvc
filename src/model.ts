@@ -44,7 +44,7 @@ export class Model extends State {
       }
 
     const handle = once
-      ? (k?: string[]) => { remove(); callback(k) }
+      ? (k: string[]) => { remove(); callback(k) }
       : callback;
 
     for(const key of set)
