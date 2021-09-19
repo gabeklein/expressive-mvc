@@ -53,6 +53,8 @@ export class State {
     return output;
   }
 
+  update(key: string | Select, argument?: any): PromiseLike<string[]>;
+  update(strict?: boolean): Promise<string[] | false>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 

@@ -320,6 +320,24 @@ describe("update method", () => {
 
     expect(update).toContain("foo");
   })
+  
+  it("will resolve after event is handled", async () => {
+    const test = Test.create();
+
+    const update = await test.update(x => x.foo);
+
+    expect(update).toContain("foo");
+  })
+  
+  it("will resolve with keys already in frame", async () => {
+    const test = Test.create();
+
+    test.bar = "foo";
+
+    const update = await test.update(x => x.foo);
+
+    expect(update).toMatchObject(["bar", "foo"]);
+  })
 })
 
 describe("will accept before ready", () => {
