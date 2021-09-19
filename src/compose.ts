@@ -78,7 +78,7 @@ type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
 
 export const child = <T extends Model>(
-  from: ChildInstruction<T>, name?: string): T => {
+  from: ChildInstruction<T>, name?: string): T => set(
 
   function child(this: Controller, key: string){
     const proxyCache = new WeakMap<Subscriber, any>();
@@ -126,10 +126,9 @@ export const child = <T extends Model>(
   
       return proxyCache.get(local);
     }
-  }
-
-  return set(child, name || from.name);
-}
+  },
+  name || from.name
+)
 
 export const parent = <T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> => set(
