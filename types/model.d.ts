@@ -24,7 +24,7 @@ export namespace Model {
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (this: Controller, key: string) =>
+    type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
         void | GetFunction<T> | PropertyDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */

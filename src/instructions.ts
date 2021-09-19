@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller, LOCAL, Stateful } from './controller';
+import { Instruction, does, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { createEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
@@ -9,12 +9,11 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-export function set<T = any>(
-  instruction: Controller.Instruction<T>,
-  name = instruction.name || "pending"){
+export const set = <T = any>(
+  instruction: Instruction<T>, name?: string): T => does(
 
-  return Controller.defer<T>(name, function(key){
-    let output = instruction.call(this, key);
+  function set(key){
+    let output = instruction.call(this, key, this);
 
     if(typeof output == "function"){
       const getter = output;
@@ -29,8 +28,9 @@ export function set<T = any>(
 
     if(output)
       defineProperty(this.subject, key, output);
-  });
-}
+  }, 
+  name || instruction.name || "pending"
+)
 
 export const ref = <T = any>(
   cb?: EffectCallback<Model, any>): { current: T } => set(

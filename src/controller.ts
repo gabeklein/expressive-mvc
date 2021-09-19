@@ -8,11 +8,18 @@ export const CREATE = Symbol("start");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
-export const Pending =
-  new Map<symbol, Controller.Instruction<any>>();
+export const Pending = new Map<symbol, Instruction<any>>();
 
 export function manage(src: Stateful){
   return src[CONTROL];
+}
+
+export function does<T = any>(
+  instruction: Instruction<any>, label: string){
+
+  const placeholder = Symbol(`${label} instruction`);
+  Pending.set(placeholder, instruction);
+  return placeholder as unknown as T;
 }
 
 export interface Stateful {
@@ -24,13 +31,11 @@ export interface Stateful {
   didCreate?(): void;
 };
 
-export namespace Controller {
-  export type HandleValue = (this: Stateful, value: any) => boolean | void;
+export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
-  export type Getter<T> = (sub?: Subscriber) => T
-  export type Instruction<T> = (this: Controller, key: string) =>
-    void | Getter<T> | PropertyDescriptor;
-}
+export type Getter<T> = (sub?: Subscriber) => T
+export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+  void | Getter<T> | PropertyDescriptor;
 
 export class Controller {
   public state = {} as BunchOf<any>;
@@ -40,14 +45,6 @@ export class Controller {
   protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){}
-
-  static defer<T = any>(
-    name: string, handler: Controller.Instruction<any>){
-
-    const placeholder = Symbol(`${name} instruction`);
-    Pending.set(placeholder, handler);
-    return placeholder as unknown as T;
-  }
 
   static setup(onto: Stateful){
     const create = onto[CREATE];
@@ -87,7 +84,7 @@ export class Controller {
         if(instruction){
           Pending.delete(value);
           delete (subject as any)[key];
-          instruction.call(this, key);
+          instruction.call(this, key, this);
         }
         else if(typeof value !== "function" || /^[A-Z]/.test(key))
           this.manage(key, value);
@@ -110,7 +107,7 @@ export class Controller {
   public manage(
     key: string,
     initial: any,
-    effect?: Controller.HandleValue){
+    effect?: HandleValue){
 
     const { state, subject } = this;
 
@@ -125,7 +122,7 @@ export class Controller {
 
   public sets(
     key: string,
-    handler?: Controller.HandleValue){
+    handler?: HandleValue){
 
     const { state, subject } = this;
 
