@@ -20,7 +20,7 @@ type GetterInfo = {
 const ComputedInit = new WeakSet<Function>();
 const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
-const ComputedKeys = new WeakMap<Controller, RequestCallback[]>();
+const ComputedKeys = new WeakMap<Controller, Callback[]>();
 
 function getRegister(on: Controller){
   let register = ComputedUsed.get(on);
@@ -171,6 +171,7 @@ export function ensure(on: Controller, keys: string[]){
 
 export function capture(on: Controller, request: RequestCallback){
   const compute = ComputedInfo.get(request);
+  const callback = request as Callback;
 
   if(!compute)
     return;
@@ -181,13 +182,13 @@ export function capture(on: Controller, request: RequestCallback){
     ComputedKeys.set(on, pending = []);
 
   if(compute.parent !== on)
-    request();
+    callback();
   else {
     const queue = pending.findIndex(peer =>
       compute.priority > ComputedInfo.get(peer)!.priority
     );
 
-    pending.splice(queue + 1, 0, request);
+    pending.splice(queue + 1, 0, callback);
   }
 
   return true;
