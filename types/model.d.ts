@@ -212,12 +212,12 @@ export abstract class State {
     export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
     export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
+    update(): PromiseLike<string[] | false>;
     update(strict: true): Promise<string[]>;
     update(strict: false): Promise<false>;
-    update(strict?: boolean): Promise<string[] | false>;
-    update(keys: Model.Fields<this>[]): Promise<string[]>;
-    update(keys: Model.Fields<this>): Promise<string[]>;
-    update(keys: Model.SelectFields<this>): Promise<string[]>;
+    update(strict: boolean): Promise<string[] | false>;
+    update(keys: Model.Fields<this>): PromiseLike<string[]>;
+    update(keys: Model.SelectField<this>): PromiseLike<string[]>;
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.

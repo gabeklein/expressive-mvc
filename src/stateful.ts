@@ -53,8 +53,6 @@ export class State {
     return output;
   }
 
-  update(key: string | Select, tag?: any): void;
-  update(strict?: boolean): Promise<string[] | false>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
@@ -70,14 +68,17 @@ export class State {
         (this as any)[arg].call(this, tag);
 
       control.update(arg);
-      return;
     }
 
-    return <Promise<any>>(
-      control.pending
-        ? new Promise(cb => control.include(cb)) 
-        : Promise.resolve(false)
-    );
+    return <PromiseLike<string[] | false>> {
+      then(callback){
+        if(callback)
+          if(control.pending)
+            control.include(callback);
+          else
+            callback(false);
+      }
+    }
   }
 
   destroy(){
