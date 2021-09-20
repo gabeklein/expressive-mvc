@@ -1,3 +1,7 @@
+export type KeysOfType<T, ST> = {
+    [Key in keyof T]: T[Key] extends ST ? Key : never
+}[keyof T];
+
 export namespace Selector {
   /**
    * Shallow-recursive clone of source object.
@@ -29,4 +33,15 @@ export namespace Selector {
 
   export type Callback<S extends Function<any>, T> =
       (this: T, value: Gets<S>, key: From<S>) => void;
+}
+
+export namespace Select {
+    export type One<T> =
+        (arg: { [K in keyof T]: K }) => string & keyof T;
+
+    export type Key<T extends string | number | symbol> =
+        (arg: { [K in T]: K }) => string & T;
+
+    export type From<T extends One<any>> =
+        T extends (from: any) => infer R ? R : never;
 }

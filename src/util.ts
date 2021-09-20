@@ -77,6 +77,17 @@ export function createEffect(
   }
 }
 
+export function select<T extends {}>(
+  source: T, select: (from: { [K in keyof T]: K }) => any){
+
+  const proxy = {} as any;
+
+  for(const k in source)
+    proxy[k] = k;
+
+  return select(proxy) as string;
+}
+
 export function selectRecursive(
   using: Function,
   keys: Iterable<string>){

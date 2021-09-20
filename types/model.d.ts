@@ -1,5 +1,6 @@
+import { KeysOfType } from './selector';
 import Lifecycle from './lifecycle';
-import { Selector } from './selector';
+import { Select, Selector } from './selector';
 import { Class, InstanceOf, Key } from './types';
 
 interface PropertyDescriptor<T> {
@@ -10,6 +11,8 @@ interface PropertyDescriptor<T> {
     get?(): T;
     set?(v: T): void;
 }
+
+type Argument<T> = T extends (arg: infer U) => any ? U : never;
 
 export namespace Model {
     /** Exotic value, actual value is contained. */
@@ -94,6 +97,14 @@ export namespace Model {
     type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
 
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
+
+    type SelectFieldKey<T> = Select.Key<Fields<T>>;
+
+    type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
+        [Key in X]: T[Key] extends ST ? Key : never;
+    }[X];
+
+    type SelectTypeof<T, ST> = Select.Key<Typeof<T, ST>>;
 
     type HandleValue = (value: any) => boolean | void;
 
@@ -216,8 +227,15 @@ export abstract class State {
     update(strict: true): Promise<string[]>;
     update(strict: false): Promise<false>;
     update(strict: boolean): Promise<string[] | false>;
+
     update(keys: Model.Fields<this>): PromiseLike<string[]>;
-    update(keys: Model.SelectField<this>): PromiseLike<string[]>;
+    update(keys: Model.SelectFieldKey<this>): PromiseLike<string[]>;
+
+    update(keys: Model.Typeof<this, () => void>, callMethod: boolean): PromiseLike<string[]>;
+    update(keys: Model.SelectTypeof<this, () => void>, callMethod: boolean): PromiseLike<string[]>;
+
+    update<T>(keys: Model.Typeof<this, (arg: T) => void>, argument: T): PromiseLike<string[]>;
+    update<T>(keys: Model.SelectTypeof<this, (arg: T) => void>, argument: T): PromiseLike<string[]>;
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.

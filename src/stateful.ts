@@ -3,7 +3,7 @@ import { useFromContext } from './context';
 import { CONTROL, Controller, CREATE, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
-import { define } from './util';
+import { define, select } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -59,17 +59,20 @@ export class State {
     const control = manage(this);
 
     if(typeof arg == "function")
-      arg = control.select(arg)[0];
+      arg = select(this, arg);
 
     if(typeof arg == "boolean"){
       if(!control.pending === arg)
         return Promise.reject(Oops.StrictUpdate(arg))
     }
     else if(arg){
-      if(1 in arguments && arg in this) 
-        (this as any)[arg].call(this, tag);
-
       control.update(arg);
+
+      if(1 in arguments && arg in this)
+        if(typeof tag != "boolean")
+          (this as any)[arg](tag);
+        else if(tag)
+          (this as any)[arg]();
     }
 
     return <PromiseLike<string[] | false>> {
