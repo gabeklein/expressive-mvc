@@ -87,8 +87,7 @@ export class State {
   }
 
   destroy(){
-    if(this.willDestroy)
-      this.willDestroy();
+    this.update("willDestroy", true);
   }
 
   toString(){
