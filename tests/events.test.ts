@@ -367,6 +367,16 @@ describe("update method", () => {
     expect(test.methodString).toBeCalledWith("foobar");
   })
 
+  it("will throw if callback is undefined", async () => {
+    const test = Test.create();
+    const attempt = () => {
+      // @ts-ignore
+      test.update("foo").then();
+    }
+
+    expect(attempt).toThrowError();
+  })
+
   it("will include caused-by-method updates", async () => {
     const test = Test.create();
     const updates = await test.update("methodString", "foobar");

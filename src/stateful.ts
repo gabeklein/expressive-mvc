@@ -7,7 +7,10 @@ import { define, select } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
-    `Strict update() did ${expected ? "not " : ""}find pending updates.`
+    `Strict update() did ${expected ? "not " : ""}find pending updates.`,
+
+  NoChaining: () =>
+    `Then called with undefined; update promise will never catch nor supports chaining.`
 })
 
 export interface State extends Stateful {
@@ -82,6 +85,8 @@ export class State {
             control.include(callback);
           else
             callback(false);
+        else
+          throw Oops.NoChaining();
       }
     }
   }

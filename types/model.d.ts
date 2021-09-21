@@ -14,6 +14,10 @@ interface PropertyDescriptor<T> {
 
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
 
+type Thenable<T> = {
+    then(onFulfilled: (arg: T) => void): void;
+}
+
 export namespace Model {
     /** Exotic value, actual value is contained. */
     interface Ref<T = any> {
@@ -228,14 +232,14 @@ export abstract class State {
     update(strict: false): Promise<false>;
     update(strict: boolean): Promise<string[] | false>;
 
-    update(keys: Model.Fields<this>): PromiseLike<string[]>;
-    update(keys: Model.SelectFieldKey<this>): PromiseLike<string[]>;
+    update(keys: Model.Fields<this>): Thenable<string[]>;
+    update(keys: Model.SelectFieldKey<this>): Thenable<string[]>;
 
-    update(keys: Model.Typeof<this, () => void>, callMethod: boolean): PromiseLike<string[]>;
-    update(keys: Model.SelectTypeof<this, () => void>, callMethod: boolean): PromiseLike<string[]>;
+    update(keys: Model.Typeof<this, () => void>, callMethod: boolean): Thenable<string[]>;
+    update(keys: Model.SelectTypeof<this, () => void>, callMethod: boolean): Thenable<string[]>;
 
-    update<T>(keys: Model.Typeof<this, (arg: T) => void>, argument: T): PromiseLike<string[]>;
-    update<T>(keys: Model.SelectTypeof<this, (arg: T) => void>, argument: T): PromiseLike<string[]>;
+    update<T>(keys: Model.Typeof<this, (arg: T) => void>, argument: T): Thenable<string[]>;
+    update<T>(keys: Model.SelectTypeof<this, (arg: T) => void>, argument: T): Thenable<string[]>;
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
