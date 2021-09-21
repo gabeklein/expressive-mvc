@@ -1,4 +1,3 @@
-import { KeysOfType } from './selector';
 import Lifecycle from './lifecycle';
 import { Select, Selector } from './selector';
 import { Class, InstanceOf, Key } from './types';
@@ -315,7 +314,7 @@ export abstract class State {
      * 
      * @param data - Data to be applied to controller upon creation.
      */
-    static uses <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
+    static uses <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D, only?: (keyof D)[]): I;
 
     /**
      * **React Hook** - Similar to `uses`, will instanciate a controller includive of given data.
@@ -324,7 +323,7 @@ export abstract class State {
      * 
      * @param data - Data to be observed by controller.
      */
-    static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D): I;
+    static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D, only?: (keyof D)[]): I;
 
     /**
      * **React Hook** - Locate most relevant instance of this type in context.

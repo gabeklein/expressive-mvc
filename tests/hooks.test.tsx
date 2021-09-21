@@ -34,6 +34,22 @@ describe("uses", () => {
 
     expect(result.current).toMatchObject(mockExternal);
   })
+
+  it("will apply select values", () => {
+    const mockExternal = {
+      foo: "foo",
+      bar: "bar"
+    }
+
+    const { result } = renderHook(() => {
+      return Test.uses(mockExternal, ["foo"]).export();
+    });
+
+    expect(result.current).toMatchObject({
+      bar: undefined,
+      foo: "foo"
+    });
+  })
 })
 
 describe("using", () => {
