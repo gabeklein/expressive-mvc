@@ -2,9 +2,19 @@ import React from 'react';
 
 import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
-import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
+import { Model, State, Provider, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
+
+describe("use", () => {
+  class Test extends State {};
+
+  it("will run callback after creation", () => {
+    const callback = jest.fn();
+    renderHook(() => Test.use([], callback));
+    expect(callback).toHaveBeenCalledWith(expect.any(Test));
+  })
+})
 
 describe("uses", () => {
   class Test extends Model {
@@ -106,6 +116,12 @@ describe("new", () => {
 
     expect(result.current).toBeInstanceOf(Test);
   });
+
+  it("will run callback after creation", () => {
+    const callback = jest.fn();
+    renderHook(() => Test.new([], callback));
+    expect(callback).toHaveBeenCalledWith(expect.any(Test));
+  })
 
   it("will destroy on unmount", () => {
     const { result, unmount } = renderHook(() => Test.new());

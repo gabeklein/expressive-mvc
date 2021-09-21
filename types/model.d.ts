@@ -293,8 +293,11 @@ export abstract class State {
      * 
      * Differs from `use()` in lacking subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
+     * 
+     * @param args - Arguments passed to constructor of `this`
+     * @param callback - Run after creation of instance.
      */
-    static new <T extends Class> (this: T, args?: ConstructorParameters<T>): InstanceOf<T>;
+    static new <T extends Class> (this: T, args?: ConstructorParameters<T>, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
 
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
@@ -302,8 +305,9 @@ export abstract class State {
      * Note: Model will be destroyed when ambient component unmounts!
      * 
      * @param args - Arguments passed to constructor of `this`
+     * @param callback - Run after creation of instance.
      */
-    static use <T extends Class> (this: T, args?: ConstructorParameters<T>): InstanceOf<T>;
+    static use <T extends Class> (this: T, args?: ConstructorParameters<T>, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
 
     /**
      * **React Hook** - Similar to `use`, will instanciate a controller bound to ambient component.
