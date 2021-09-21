@@ -400,8 +400,8 @@ export abstract class Model extends State {
     once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
 
-    effect(callback: EffectCallback<this>, select?: Model.SelectFields<this>): Callback;
-    effect(callback: EffectCallback<this>, select?: (keyof this)[]): Callback;
+    effect(callback: (this: this, state: this) => void, select?: Model.SelectFields<this>): Callback;
+    effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
