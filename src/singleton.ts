@@ -31,6 +31,14 @@ export class Singleton extends Model {
     return instance as InstanceOf<T>;
   }
 
+  static update<T extends typeof Singleton>(
+    this: T, updates: Partial<InstanceOf<T>>){
+
+    const instance = this.current || this.create();
+    instance.import(updates);
+    return instance.update();
+  }
+
   static find<T extends Class>(this: T): InstanceOf<T> {
     if((this as any).current)
       return (this as any).current;

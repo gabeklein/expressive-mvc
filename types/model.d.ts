@@ -468,6 +468,15 @@ export class Singleton extends Model {
     /** Current instance of this controller accessable anywhere. */
     static current?: Singleton;
 
+    /**
+     * Update the active instance of this class.
+     * Returns a thenable; resolves after successful update.
+     * If instance does not already exist, one will be created. 
+     **/
+    static update<T extends Class>(
+        this: T, updates: Model.Data<InstanceOf<T>>
+    ): PromiseLike<string[] | false>;
+
     /** Destroy current instance of Singleton, if it exists. */
     static reset(): void;
 }
