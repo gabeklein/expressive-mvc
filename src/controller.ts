@@ -116,11 +116,11 @@ export class Controller {
       enumerable: true,
       configurable: true,
       get: () => state[key],
-      set: this.sets(key, effect)
+      set: this.setter(key, effect)
     });
   }
 
-  public sets(
+  public setter(
     key: string,
     handler?: HandleValue){
 
@@ -133,7 +133,7 @@ export class Controller {
       if(handler)
         switch(handler.call(subject, value)){
           case true:
-            this.update(key)
+            this.update(key);
           case false:
             return;
         }

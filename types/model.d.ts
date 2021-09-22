@@ -120,7 +120,7 @@ export namespace Model {
 
         select(using?: Query): string[];
 
-        sets(key: string, effect?: HandleValue): (value: any) => boolean | void;
+        setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
         addListener(batch: BunchOf<RequestCallback>): Callback;
 

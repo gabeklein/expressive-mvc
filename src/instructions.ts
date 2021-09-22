@@ -37,7 +37,7 @@ export const ref = <T = any>(
 
   function ref(key){
     const refObjectFunction =
-      this.sets(key, cb && createEffect(cb));
+      this.setter(key, cb && createEffect(cb));
 
     defineProperty(refObjectFunction, "current", {
       set: refObjectFunction,
