@@ -338,7 +338,8 @@ export abstract class State {
     /**
      * **React Hook** - Locate most relevant instance of this type in context.
      */
-    static find <T extends Class>(this: T): InstanceOf<T>;
+    static find <T extends Class>(this: T, strict: true): InstanceOf<T>;
+    static find <T extends Class>(this: T, strict?: boolean): InstanceOf<T> | undefined;
 
     /**
      * **React Hook** - Fetch most instance of this controller from context, if it exists.

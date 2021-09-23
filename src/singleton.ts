@@ -39,11 +39,13 @@ export class Singleton extends Model {
     return instance.update();
   }
 
-  static find<T extends Class>(this: T): InstanceOf<T> {
-    if((this as any).current)
-      return (this as any).current;
+  static find<T extends Class>(this: T, strict?: boolean){
+    const instance = (this as any).current as InstanceOf<T>;
 
-    throw Oops.GlobalDoesNotExist(this.name);
+    if(!instance && strict)
+      throw Oops.GlobalDoesNotExist(this.name);
+
+    return instance;
   }
 
   static reset(){

@@ -134,8 +134,10 @@ export class State {
     return instance;
   }
 
+  static find<T extends Class>(this: T, strict: true): InstanceOf<T>;
+  static find<T extends Class>(this: T, strict?: boolean): InstanceOf<T> | undefined;
   static find<T extends Class>(this: T, strict?: boolean){
-    return useFromContext(this, strict) as InstanceOf<T>;
+    return useFromContext(this, strict);
   }
 
   static get(key?: boolean | string | Select){
