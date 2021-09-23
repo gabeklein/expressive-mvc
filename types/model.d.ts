@@ -234,11 +234,21 @@ export abstract class State {
     update(keys: Model.Fields<this>): Thenable<string[]>;
     update(keys: Model.SelectFieldKey<this>): Thenable<string[]>;
 
+    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<string[]>;
+    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<string[]>;
+
+    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<string[]>;
+    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<string[]>;
+
+    /*
+    Issue with self-reference, using fallback.
+    
     update(keys: Model.Typeof<this, () => void>, callMethod: boolean): Thenable<string[]>;
     update(keys: Model.SelectTypeof<this, () => void>, callMethod: boolean): Thenable<string[]>;
 
     update<T>(keys: Model.Typeof<this, (arg: T) => void>, argument: T): Thenable<string[]>;
     update<T>(keys: Model.SelectTypeof<this, (arg: T) => void>, argument: T): Thenable<string[]>;
+    */
 
     /** 
      * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
