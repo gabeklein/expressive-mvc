@@ -24,10 +24,10 @@ describe("singleton", () => {
   
   it("will complain if not initialized", () => {
     Global.create();
-    expect(Global.current).toBeDefined();
+    expect(Global.get()).toBeDefined();
   
     Global.reset();
-    expect(Global.current).toBeUndefined();
+    expect(Global.get()).toBeUndefined();
   })
   
   it("will destroy active instance on reset", () => {

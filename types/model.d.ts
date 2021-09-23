@@ -476,9 +476,6 @@ export abstract class Model extends State {
 }
 
 export class Singleton extends Model {
-    /** Current instance of this controller accessable anywhere. */
-    static current?: Singleton;
-
     /**
      * Update the active instance of this class.
      * Returns a thenable; resolves after successful update.
