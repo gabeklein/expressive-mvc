@@ -367,6 +367,8 @@ describe("update method", () => {
     expect(test.methodString).toBeCalledWith("foobar");
   })
 
+  it.todo("will set value to argument if not a function");
+
   it("will throw if callback is undefined", async () => {
     const test = Test.create();
     const attempt = () => {
