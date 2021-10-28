@@ -55,7 +55,7 @@ export function use <T extends Model> (): T | undefined;
  *
  * Note: Child will *not* be same object as one provided.
  */
-export function use <T extends BunchOf<any>> (object: T): T;
+export function use <T extends {}> (object: T): T;
 
 /**
  * Generic instruction used by `use()` and `tap()` for recursive subscription.
@@ -117,7 +117,7 @@ export function on <T = any> (initial: T, callback: EffectCallback<T>): T;
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-export function ref <T = HTMLElement> (callback?: EffectCallback<T>): Model.Ref<T>;
+export function ref <T = HTMLElement> (this: any, callback?: (value: T) => Callback | Promise<any> | void): Model.Ref<T>;
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.
