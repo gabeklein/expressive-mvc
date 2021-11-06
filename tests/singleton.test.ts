@@ -21,6 +21,19 @@ describe("singleton", () => {
   
     expect(found).toBe(instance);
   })
+
+  it("will get an existing instance", () => {
+    const instance = Global.create();
+    const found = Global.is();
+  
+    expect(found).toBe(instance);
+  })
+
+  it("will throw if cannot get instance", () => {
+    const expected = Oops.GlobalDoesNotExist(Global.name);
+
+    expect(() => Global.is()).toThrowError(expected);
+  })
   
   it("will complain if not initialized", () => {
     Global.create();

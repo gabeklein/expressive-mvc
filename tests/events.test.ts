@@ -274,6 +274,25 @@ describe("effect method", () => {
     expect(state.invoked).toBeCalledTimes(4);
   })
 
+  it("will call function effect returns on subsequent update", async () => {
+    class Test extends TestValues {
+      testEffect(){
+        return this.invoked;
+      }
+    }
+
+    const state = Test.create();
+    
+    state.effect(state.testEffect, ["value1"]);
+
+    expect(state.invoked).not.toBeCalled();
+
+    state.value1 = 2;
+    await state.update();
+
+    expect(state.invoked).toBeCalled();
+  })
+
   it("will throw if effect returns non-function", () => {
     const state = TestValues.create();
     const expected = Oops.BadEffectCallback();

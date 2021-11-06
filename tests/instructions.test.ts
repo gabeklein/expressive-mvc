@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react-hooks';
 
-import { Oops } from '../src/instructions';
+import { Oops as Instruct } from '../src/instructions';
+import { Oops as Util } from '../src/util';
 import { Subscriber } from '../src/subscriber';
 import { act, set, lazy, memo, Model, on, ref, use } from './adapter';
 
@@ -89,6 +90,28 @@ describe("on", () => {
 
     await state.update(true);
     expect(state.test5).toBe("foo");
+  })
+
+  it('will ignore effect promise', () => {
+    class Subject extends Model {
+      property = on(undefined, async () => {});
+    }
+
+    const state = Subject.create();
+
+    expect(() => state.property = "bar").not.toThrow();
+  })
+
+  it('will throw on bad effect return', () => {
+    class Subject extends Model {
+      // @ts-ignore
+      property = on(undefined, () => 3);
+    }
+
+    const expected = Util.BadEffectCallback();
+    const state = Subject.create();
+
+    expect(() => state.property = "bar").toThrow(expected);
   })
 })
 
@@ -275,7 +298,7 @@ describe("act", () => {
 
   it("will throw immediately if already in-progress", () => {
     const { test } = Test.create();
-    const expected = Oops.DuplicateAction("test");
+    const expected = Instruct.DuplicateAction("test");
 
     test();
     expect(() => test()).rejects.toThrowError(expected);
