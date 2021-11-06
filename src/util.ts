@@ -77,6 +77,30 @@ export function createEffect(
   }
 }
 
+export function createValueEffect<T = any>(
+  callback: InterceptCallback<T>){
+
+  let unSet: ((next: T) => void) | undefined;
+
+  return function(this: any, value: any){
+    if(typeof unSet == "function")
+      unSet(value);
+    
+    const out = callback.call(this, value);
+    
+    if(typeof out == "boolean")
+      return out;
+    
+    if(!out || out instanceof Promise)
+      return;
+
+    if(typeof out == "function")
+      unSet = out;
+    else
+      throw Oops.BadEffectCallback()
+  }
+}
+
 export function select<T extends {}>(
   source: T, select: (from: { [K in keyof T]: K }) => any){
 

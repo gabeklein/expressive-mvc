@@ -2,7 +2,7 @@ import * as Computed from './compute';
 import { Instruction, does, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
-import { createEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { createValueEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -32,12 +32,12 @@ export const set = <T = any>(
   name || instruction.name || "pending"
 )
 
-export const ref = <T = any>(
-  cb?: EffectCallback<Model, any>): { current: T } => set(
+export const ref = <T>(
+  cb?: InterceptCallback<T>): { current: T } => set(
 
   function ref(key){
     const refObjectFunction =
-      this.setter(key, cb && createEffect(cb));
+      this.setter(key, cb && createValueEffect(cb));
 
     defineProperty(refObjectFunction, "current", {
       set: refObjectFunction,
@@ -50,11 +50,11 @@ export const ref = <T = any>(
   }
 );
 
-export const on = <T = any>(
-  value: T, cb: EffectCallback<Model, T>): T => set(
+export const on = <T>(
+  value: T, cb: InterceptCallback<T>): T => set(
 
   function on(key){
-    this.manage(key, value, cb && createEffect(cb));
+    this.manage(key, value, cb && createValueEffect(cb));
   }
 );
 

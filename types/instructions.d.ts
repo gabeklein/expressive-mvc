@@ -1,5 +1,5 @@
 import Model from '.';
-import { Async, Class, EffectCallback, InstanceOf } from './types';
+import { Async, Class, InstanceOf, InterceptCallback } from './types';
 
 /**
  * Run instruction as controller sets itself up.
@@ -99,15 +99,22 @@ export function tap <T extends typeof Model> (Type: T, callback?: (instance?: In
  * @param required - Throw if instance of Type cannot be found.
  */
 export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
- 
+
 /**
- * Sets property to synchronously call effect upon update.
+ * Cause property to synchronously run effect upon update.
+ * 
+ * Callback may return an effect callback, Promise (ignored), or a boolean.
+ * 
+ * If a boolean is returned explicitly, new value will be dropped. Useful to override.
+ * 
+ * - `false` will prevent update.
+ * - `true` will emit update (unchanged).
  *
- * @param starting - Beginning value of host property.
- * @param callback - Effect-callback fired upon set of host property.
+ * @param initialValue - Beginning value of host property.
+ * @param onUpdate - Effect-callback fired upon set of host property.
  */
-export function on <T = any> (initial: undefined, callback: EffectCallback<T>): T | undefined;
-export function on <T = any> (initial: T, callback: EffectCallback<T>): T;
+export function on <T = any> (initialValue: undefined, onUpdate: InterceptCallback<T>): T | undefined;
+export function on <T = any> (initialValue: T, onUpdate: InterceptCallback<T>): T;
 
 /**
  * Creates a ref-compatible property for use with components.
@@ -117,7 +124,7 @@ export function on <T = any> (initial: T, callback: EffectCallback<T>): T;
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-export function ref <T = HTMLElement> (this: any, callback?: (value: T) => Callback | Promise<any> | void): Model.Ref<T>;
+export function ref <T = HTMLElement> (this: any, callback?: InterceptCallback<T>): Model.Ref<T>;
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.

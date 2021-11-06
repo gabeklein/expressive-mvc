@@ -21,6 +21,16 @@ describe("on", () => {
     test3 = on("foo", value => {
       this.didTrigger(value);
     });
+
+    test4 = on("foo", value => {
+      this.didTrigger(value);
+      return false;
+    });
+
+    test5 = on("foo", value => {
+      this.didTrigger(value);
+      return true;
+    });
   }
   
   it('will invoke callback on property set', async () => {
@@ -58,6 +68,27 @@ describe("on", () => {
 
     await state.update();
     expect(state.didTrigger).toBeCalledWith("bar");
+  })
+
+  it('will prevent update if callback returns false', async () => {
+    const state = Subject.create();
+  
+    expect(state.test4).toBe("foo");
+    state.test4 = "bar";
+
+    await state.update(false);
+    expect(state.didTrigger).toBeCalledWith("bar");
+    expect(state.test4).toBe("foo");
+  })
+
+  it('will block value if callback returns true', async () => {
+    const state = Subject.create();
+  
+    expect(state.test5).toBe("foo");
+    state.test5 = "bar";
+
+    await state.update(true);
+    expect(state.test5).toBe("foo");
   })
 })
 
