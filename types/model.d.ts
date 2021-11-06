@@ -476,6 +476,9 @@ export abstract class Model extends State {
 }
 
 export class Singleton extends Model {
+    /** Get current instance of this singleton. Will throw if one does not exist. */
+    static is<T extends Class>(this: T): InstanceOf<T>;
+
     /**
      * Update the active instance of this class.
      * Returns a thenable; resolves after successful update.

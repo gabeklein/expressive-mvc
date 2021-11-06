@@ -39,6 +39,10 @@ export class Singleton extends Model {
     return instance.update();
   }
 
+  static is(){
+    return this.find(true);
+  }
+
   static find<T extends Class>(this: T, strict?: boolean){
     const instance = (this as any).current as InstanceOf<T>;
 
