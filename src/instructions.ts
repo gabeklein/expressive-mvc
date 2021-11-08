@@ -108,8 +108,16 @@ export const act = <T extends Async>(task: T): T => set(
   }
 )
 
-export const from = <T>(fn: (on?: Model) => T): T => set(
-  function from(key){
-    Computed.prepare(this, key, fn);
-  }
-);
+export function from<T>(
+  source: ((on?: Model) => T) | Model,
+  method?: string): T {
+
+  return set(
+    function from(key){
+      if(typeof source !== "function")
+        source = (source as any)[method!] as () => T;
+  
+      Computed.prepare(this, key, source);
+    }
+  )
+}

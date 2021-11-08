@@ -286,6 +286,40 @@ describe("circular", () => {
   })
 })
 
+describe("method", () => {
+  class Test extends Model {
+    foo = 1;
+    bar = from(this, "getBar");
+
+    getBar(){
+      return 1 + this.foo;
+    }
+  }
+
+  it("will create computed via source and key", async () => {
+    const test = Test.create();
+
+    expect(test.bar).toBe(2);
+
+    test.foo++;
+
+    await test.update(true);
+    expect(test.bar).toBe(3);
+  })
+
+  it("will use top-most method of extended class", () => {
+    class Extended extends Test {
+      getBar(){
+        return 2 + this.foo;
+      }
+    }
+
+    const test = Extended.create();
+
+    expect(test.bar).toBe(3);
+  })
+})
+
 describe("getter", () => {
   it("will not override existing setter", async () => {
     class Test extends State {
