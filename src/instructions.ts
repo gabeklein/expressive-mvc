@@ -9,11 +9,9 @@ export const Oops = issues({
     `Invoked action ${key} but one is already active.`
 })
 
-export const set = <T = any>(
-  instruction: Instruction<T>, name?: string): T => does(
-
+export const set = <T = any>(fn: Instruction<T>, name?: string): T => does(
   function set(key){
-    let output = instruction.call(this, key, this);
+    let output = fn.call(this, key, this);
 
     if(typeof output == "function"){
       const getter = output;
@@ -29,12 +27,10 @@ export const set = <T = any>(
     if(output)
       defineProperty(this.subject, key, output);
   }, 
-  name || instruction.name || "pending"
+  name || fn.name || "pending"
 )
 
-export const ref = <T>(
-  cb?: InterceptCallback<T>): { current: T } => set(
-
+export const ref = <T>(cb?: InterceptCallback<T>): { current: T } => set(
   function ref(key){
     const refObjectFunction =
       this.setter(key, cb && createValueEffect(cb));
@@ -50,17 +46,13 @@ export const ref = <T>(
   }
 );
 
-export const on = <T>(
-  value: T, cb: InterceptCallback<T>): T => set(
-
+export const on = <T>(initial: T, cb: InterceptCallback<T>): T => set(
   function on(key){
-    this.manage(key, value, cb && createValueEffect(cb));
+    this.manage(key, initial, cb && createValueEffect(cb));
   }
 );
 
-export const memo = <T>(
-  factory: () => T, defer?: boolean): T => set(
-
+export const memo = <T>(factory: () => T, defer?: boolean): T => set(
   function memo(key){
     const source = this.subject;
     const get = () => factory.call(source);
@@ -116,10 +108,8 @@ export const act = <T extends Async>(task: T): T => set(
   }
 )
 
-export const from = <T>(
-  getter: (on?: Model) => T): T => set(
-
+export const from = <T>(fn: (on?: Model) => T): T => set(
   function from(key){
-    Computed.prepare(this, key, getter);
+    Computed.prepare(this, key, fn);
   }
 );
