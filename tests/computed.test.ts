@@ -1,4 +1,5 @@
 import { Oops } from '../src/compute';
+import { Oops as Instruction } from '../src/instructions';
 import { from, Model, State, use } from './adapter';
 
 describe("computed", () => {
@@ -10,11 +11,11 @@ describe("computed", () => {
     child = use(Child);
     seconds = 0;
     
-    minutes = from((state: this) => {
+    minutes = from(this, state => {
       return Math.floor(state.seconds / 60);
     })
 
-    nested = from((state: this) => {
+    nested = from(this, state => {
       return state.child.value;
     })
   }
@@ -80,10 +81,9 @@ describe("computed", () => {
       a = 1;
       b = 1;
 
-      c = from((state: this) => {
+      c = from(this, state => {
         exec();
         return state.a + state.b + state.x.value;
-
       })
 
       // make sure multi-source updates work
@@ -113,25 +113,25 @@ describe("computed", () => {
     class Ordered extends Model {
       X = 1;
 
-      A = from((state: this) => {
+      A = from(this, state => {
         const value = state.X
         didCompute.push("A")
         return value;
       })
 
-      B = from((state: this) => {
+      B = from(this, state => {
         const value = state.A + 1
         didCompute.push("B")
         return value;
       })
 
-      C = from((state: this) => {
+      C = from(this, state => {
         const value = state.X + state.B + 1
         didCompute.push("C")
         return value;
       })
 
-      D = from((state: this) => {
+      D = from(this, state => {
         const value = state.A + state.C + 1
         didCompute.push("D")
         return value;
@@ -163,7 +163,7 @@ describe("computed", () => {
     class Hello extends Model {
       friend = "World";
   
-      greeting = from(this.generateGreeting);
+      greeting = from(() => this.generateGreeting);
   
       generateGreeting(){
         return `Hello ${this.friend}!`;
@@ -190,7 +190,7 @@ describe("failures", () => {
   });
 
   class Subject extends Model {
-    never = from(() => {
+    never = from(this, () => {
       throw new Error();
     })
   }
@@ -223,7 +223,7 @@ describe("failures", () => {
     class Test extends Model {
       shouldFail = false;
 
-      value = from((state: this) => {
+      value = from(this, state => {
         if(state.shouldFail)
           throw new Error();
         else
@@ -244,6 +244,19 @@ describe("failures", () => {
     expect(warn).toBeCalledWith(failed.message);
     expect(error).toBeCalled();
   })
+
+  it('will throw if source is not \'this\'', async () => {
+    class Peer extends Model {}
+    class Test extends Model {
+      value = from(unexpected, state => {});
+    }
+
+    const expected = Instruction.SourceNotSupported();
+    const unexpected = Peer.create();
+
+    const create = () => Test.create();
+    expect(create).toThrow(expected);
+  })
 })
 
 describe("circular", () => {
@@ -252,7 +265,7 @@ describe("circular", () => {
       multiplier = 0;
       previous: any;
 
-      value = from((state: this) => {
+      value = from(this, state => {
         const { value, multiplier } = state;
 
         // use set to bypass subscriber
@@ -286,17 +299,17 @@ describe("circular", () => {
   })
 })
 
-describe("method", () => {
+describe("factory", () => {
   class Test extends Model {
     foo = 1;
-    bar = from(this, "getBar");
+    bar = from(() => this.getBar);
 
     getBar(){
       return 1 + this.foo;
     }
   }
 
-  it("will create computed via source and key", async () => {
+  it("will create computed via factory", async () => {
     const test = Test.create();
 
     expect(test.bar).toBe(2);
@@ -317,6 +330,16 @@ describe("method", () => {
     const test = Extended.create();
 
     expect(test.bar).toBe(3);
+  })
+
+  it("will provide property key to factory", () => {
+    class Test extends Model {
+      fooBar = from((key) => () => key);
+    }
+
+    const test = Test.create();
+
+    expect(test.fooBar).toBe("fooBar");
   })
 })
 
@@ -373,7 +396,7 @@ describe("getter", () => {
 
     class Super extends Base {
       /// @ts-ignore - tsc may complain if overriden is getter
-      foo = from(() => "bar");
+      foo = from(this, () => "bar");
     }
 
     const test = Super.create();

@@ -5,7 +5,7 @@ describe("update method", () => {
   class Control extends Model {
     foo = 1;
     bar = 2;
-    baz = from((state: this) => {
+    baz = from(this, state => {
       return state.bar + 1;
     });
   }

@@ -1,12 +1,14 @@
 import * as Computed from './compute';
-import { Instruction, does, LOCAL, Stateful } from './controller';
+import { does, Instruction, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
 import { createValueEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
-    `Invoked action ${key} but one is already active.`
+    `Invoked action ${key} but one is already active.`,
+
+  SourceNotSupported: () =>
+    `Computed from-instruction does not support source other than 'this'.`
 })
 
 export const set = <T = any>(fn: Instruction<T>, name?: string): T => does(
@@ -108,16 +110,27 @@ export const act = <T extends Async>(task: T): T => set(
   }
 )
 
+type ComputeFunction<T, O = any> = (this: O, on: O) => T;
+type ComputeFactory<T> = (key: string) => ComputeFunction<T>;
+
 export function from<T>(
-  source: ((on?: Model) => T) | Model,
-  method?: string): T {
+  source: ComputeFactory<T> | Stateful,
+  fn?: ComputeFunction<T>): T {
 
   return set(
     function from(key){
-      if(typeof source !== "function")
-        source = (source as any)[method!] as () => T;
-  
-      Computed.prepare(this, key, source);
+      let getter: ComputeFunction<any>;
+
+      if(typeof source == "function")
+        getter = source.call(this.subject, key);
+      else {
+        if(source !== this.subject)
+          throw Oops.SourceNotSupported();
+
+        getter = fn!;
+      }
+      
+      Computed.prepare(this, key, getter);
     }
   )
 }

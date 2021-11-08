@@ -6,7 +6,7 @@ describe("on method", () => {
     seconds = 0;
     hours = 0;
 
-    minutes = from((state: this) => {
+    minutes = from(this, state => {
       return Math.floor(state.seconds / 60)
     })
   }
@@ -108,7 +108,7 @@ describe("once method", () => {
     seconds = 0;
     hours = 0;
 
-    minutes = from((state: this) => {
+    minutes = from(this, state => {
       return Math.floor(state.seconds / 60)
     })
   }
@@ -166,7 +166,7 @@ describe("effect method", () => {
     value2 = 2;
     value3 = 3;
 
-    value4 = from((state: this) => {
+    value4 = from(this, state => {
       return state.value3 + 1;
     });
   }
@@ -413,7 +413,7 @@ describe("will accept before ready", () => {
     value1 = 1;
     value2 = 2;
 
-    value3 = from((state: this) => {
+    value3 = from(this, state => {
       return state.value2 + 1;
     });
   }
