@@ -149,7 +149,7 @@ export function from<T>(
       else
         throw Oops.BadComputedSource(subject, key, source);
       
-      Computed.prepare(this, key, getter, undefined, getSource);
+      Computed.prepare(this, key, getter, getSource);
     }
   )
 }

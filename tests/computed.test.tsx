@@ -1,7 +1,8 @@
 import React from 'react';
+
 import { Oops } from '../src/compute';
 import { Oops as Instruction } from '../src/instructions';
-import { from, Model, Provider, render, Singleton, State, tap, use } from './adapter';
+import { from, Model, Provider, render, Singleton, tap, use } from './adapter';
 
 describe("computed", () => {
   class Child extends Model {
@@ -414,67 +415,5 @@ describe("external", () => {
     const expected = Instruction.PeerNotAllowed("Test", "value");
 
     expect(() => Test.create()).toThrow(expected);
-  })
-})
-
-describe("getter", () => {
-  it("will not override existing setter", async () => {
-    class Test extends State {
-      value = "foo";
-      didSet = jest.fn();
-
-      get something(){
-        return this.value;
-      }
-
-      set something(x){
-        this.didSet(x);
-      }
-    }
-
-    const test = Test.create();
-
-    expect(test.value).toBe("foo");
-    test.value = "bar";
-
-    await test.update(true);
-    expect(test.value).toBe("bar");
-
-    test.something = "foobar";
-    expect(test.didSet).toBeCalledWith("foobar");
-  })
-
-  it("will be overriden by class property", () => {
-    class Base extends State {
-      get foo(){
-        return "foo";
-      }
-    }
-
-    class Super extends Base {
-      // @ts-ignore - tsc may complain
-      foo = "bar";
-    }
-
-    const test = Super.create();
-
-    expect(test.foo).toBe("bar");
-  })
-
-  it("will override preexisting getter", () => {
-    class Base extends State {
-      get foo(){
-        return "foo";
-      }
-    }
-
-    class Super extends Base {
-      /// @ts-ignore - tsc may complain if overriden is getter
-      foo = from(this, () => "bar");
-    }
-
-    const test = Super.create();
-
-    expect(test.foo).toBe("bar");
   })
 })

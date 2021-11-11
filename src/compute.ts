@@ -1,7 +1,7 @@
 import { Controller } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, getPrototypeOf, setAlias } from './util';
+import { defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   ComputeFailed: (parent, property, initial) =>
@@ -33,29 +33,11 @@ function getRegister(on: Controller){
   return register;
 }
 
-export function prepareGetters(on: Controller){
-  const defined = getRegister(on);
-
-  for(
-    let scan = on.subject;
-    scan.constructor !== Object;
-    scan = getPrototypeOf(scan)
-  )
-  for(const key of getOwnPropertyNames(scan)){
-    const { get, set } =
-      getOwnPropertyDescriptor(scan, key)!;
-
-    if(get && !defined.has(key))
-      prepare(on, key, get, set)
-  }
-}
-
 export function prepare(
   control: Controller,
   key: string,
   getter: (on?: any) => any,
-  setter?: (to: any) => void,
-  getSource?: () => Controller){
+  getSource: () => Controller){
 
   const { state, subject } = control;
   const defined = getRegister(control);
@@ -95,9 +77,7 @@ export function prepare(
   }
 
   function create(early?: boolean){
-    const source = getSource ? getSource() : control;
-
-    sub = new Subscriber(source, update);
+    sub = new Subscriber(getSource(), update);
 
     ComputedInfo.set(update, info);
 
@@ -109,8 +89,7 @@ export function prepare(
     defineProperty(subject, key, {
       enumerable: true,
       configurable: true,
-      get: () => state[key],
-      set: setter
+      get: () => state[key]
     });
 
     try {
@@ -134,15 +113,6 @@ export function prepare(
     }
   }
 
-  function revert(value: any){
-    delete state[key];
-    defineProperty(subject, key, {
-      enumerable: true,
-      configurable: true,
-      value
-    });
-  }
-
   setAlias(update, `try ${key}`);
   setAlias(create, `new ${key}`);
   setAlias(getter, `run ${key}`);
@@ -152,7 +122,6 @@ export function prepare(
   for(const on of [state, subject])
     defineProperty(on, key, {
       get: create,
-      set: setter || revert,
       configurable: true,
       enumerable: true
     })
