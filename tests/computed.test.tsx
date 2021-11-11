@@ -1,6 +1,7 @@
+import React from 'react';
 import { Oops } from '../src/compute';
 import { Oops as Instruction } from '../src/instructions';
-import { from, Model, State, use } from './adapter';
+import { from, Model, Provider, render, Singleton, State, tap, use } from './adapter';
 
 describe("computed", () => {
   class Child extends Model {
@@ -244,19 +245,6 @@ describe("failures", () => {
     expect(warn).toBeCalledWith(failed.message);
     expect(error).toBeCalled();
   })
-
-  it('will throw if source is not \'this\'', async () => {
-    class Peer extends Model {}
-    class Test extends Model {
-      value = from(unexpected, state => {});
-    }
-
-    const expected = Instruction.SourceNotSupported();
-    const unexpected = Peer.create();
-
-    const create = () => Test.create();
-    expect(create).toThrow(expected);
-  })
 })
 
 describe("circular", () => {
@@ -340,6 +328,92 @@ describe("factory", () => {
     const test = Test.create();
 
     expect(test.fooBar).toBe("fooBar");
+  })
+
+  it("will throw if factory isn't an arrow function", () => {
+    function factory(){
+      return () => "foobar";
+    }
+    
+    class Test extends Model {
+      value = from(factory);
+    }
+
+    const expected = Instruction.BadComputedSource("Test", "value", factory);
+
+    expect(() => Test.create()).toThrow(expected);
+  })
+})
+
+describe("external", () => {
+  class Peer extends Singleton {
+    value = 1;
+  }
+
+  afterEach(() => Peer.reset());
+
+  it('will accept source other than \'this\'', async () => {
+    const peer = Peer.create();
+
+    class Test extends Model {
+      value = from(peer, state => state.value + 1);
+    }
+    
+    const test = Test.create();
+
+    expect(test.value).toBe(2);
+
+    peer.value = 2;
+
+    await test.update(true);
+
+    expect(test.value).toBe(3);
+  });
+
+  it('will accept Model in-context as source', () => {
+    class Peer extends Model {
+      value = 1;
+    }
+
+    class Test extends Model {
+      value = from(Peer, state => state.value + 1);
+    }
+
+    const Component = () => {
+      const test = Test.use();
+
+      expect(test.value).toBe(2);
+      return null;
+    }
+
+    render(
+      <Provider of={Peer}>
+        <Component />
+      </Provider>
+    );
+  })
+
+  it('will accept Singleton as source', () => {
+    Peer.create();
+
+    class Test extends Model {
+      value = from(Peer, state => state.value + 1);
+    }
+    
+    const test = Test.create();
+
+    expect(test.value).toBe(2);
+  })
+
+  it('will throw if source is another instruction', () => {
+    class Test extends Model {
+      peer = tap(Peer);
+      value = from(this.peer, () => {});
+    }
+
+    const expected = Instruction.PeerNotAllowed("Test", "value");
+
+    expect(() => Test.create()).toThrow(expected);
   })
 })
 

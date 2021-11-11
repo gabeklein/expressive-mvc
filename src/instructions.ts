@@ -1,14 +1,19 @@
 import * as Computed from './compute';
-import { does, Instruction, LOCAL, Stateful } from './controller';
+import { CONTROL, does, Instruction, LOCAL, Stateful } from './controller';
 import { issues } from './issues';
+import { Model } from './model';
+import { pendingAccess } from './peer';
 import { createValueEffect, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`,
 
-  SourceNotSupported: () =>
-    `Computed from-instruction does not support source other than 'this'.`
+  BadComputedSource: (model, property, got) =>
+    `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
+
+  PeerNotAllowed: (model, property) =>
+    'Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.'
 })
 
 export const set = <T = any>(fn: Instruction<T>, name?: string): T => does(
@@ -119,18 +124,32 @@ export function from<T>(
 
   return set(
     function from(key){
+      const { subject } = this;
       let getter: ComputeFunction<any>;
+      let getSource = () => this;
 
-      if(typeof source == "function")
-        getter = source.call(this.subject, key);
-      else {
-        if(source !== this.subject)
-          throw Oops.SourceNotSupported();
+      // Easy mistake, using a peer - will always be unresolved.
+      if(typeof source == "symbol")
+        throw Oops.PeerNotAllowed(subject, key);
 
+      if(typeof source == "object"){
         getter = fn!;
+        // replace source controller incase different
+        getSource = () => source[CONTROL];
       }
+      // is an arrow function (getter factory)
+      else if(!source.prototype)
+        getter = source(key);
+      // is a peer Model (constructor)
+      else if(Model.isTypeof(source)){
+        getter = fn!;
+        getSource = pendingAccess(subject, source, key, true);
+      }
+      // Vanilla function is to ambiguous so not allowed.
+      else
+        throw Oops.BadComputedSource(subject, key, source);
       
-      Computed.prepare(this, key, getter);
+      Computed.prepare(this, key, getter, undefined, getSource);
     }
   )
 }

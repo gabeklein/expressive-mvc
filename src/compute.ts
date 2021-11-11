@@ -51,15 +51,16 @@ export function prepareGetters(on: Controller){
 }
 
 export function prepare(
-  on: Controller,
+  control: Controller,
   key: string,
   getter: (on?: any) => any,
-  setter?: (to: any) => void){
+  setter?: (to: any) => void,
+  getSource?: () => Controller){
 
-  const { state, subject } = on;
-  const defined = getRegister(on);
+  const { state, subject } = control;
+  const defined = getRegister(control);
   const info: GetterInfo = {
-    key, parent: on, priority: 1
+    key, parent: control, priority: 1
   };
 
   let sub: Subscriber;
@@ -87,14 +88,16 @@ export function prepare(
     }
     finally {
       if(state[key] !== value){
-        on.update(key, value);
+        control.update(key, value);
         return value;
       }
     }
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(on, update);
+    const source = getSource ? getSource() : control;
+
+    sub = new Subscriber(source, update);
 
     ComputedInfo.set(update, info);
 

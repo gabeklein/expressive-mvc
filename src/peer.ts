@@ -25,31 +25,38 @@ export const tap = <T extends Peer>(
   type: T, argument?: boolean | PeerCallback<T>) => attach(
 
   function tap(key){
-    if("current" in type)
-      return () => type.current as InstanceOf<T>;
-
-    const to = this.subject;
-
-    if("current" in to.constructor)
-      throw Oops.CantAttachGlobal(to, type.name);
-
-    let instance: InstanceOf<T> | undefined;
-
-    getPending(to).push(context => {
-      instance = context.get(type);
-
-      if(typeof argument == "function"){
-        if(argument(instance) === false)
-          instance = undefined;
-      }
-
-      else if(!instance && argument)
-        throw Oops.AmbientRequired(type.name, to, key);
-    })
-
-    return () => instance;
+    return pendingAccess(this.subject, type, key, argument);
   }
 );
+
+export function pendingAccess<T extends Peer>(
+  from: Stateful,
+  type: T,
+  key: string,
+  argument?: boolean | PeerCallback<T>){
+
+  if("current" in type)
+    return () => type.current as InstanceOf<T>;
+
+  if("current" in from.constructor)
+    throw Oops.CantAttachGlobal(from, type.name);
+
+  let instance: InstanceOf<T> | undefined;
+
+  getPending(from).push(context => {
+    instance = context.get(type);
+
+    if(typeof argument == "function"){
+      if(argument(instance) === false)
+        instance = undefined;
+    }
+
+    else if(!instance && argument)
+      throw Oops.AmbientRequired(type.name, from, key);
+  })
+
+  return () => instance;
+}
 
 export function usePeerContext(subject: Model){
   if(ContextWasUsed.has(subject)){
