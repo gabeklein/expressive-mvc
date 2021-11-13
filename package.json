@@ -26,12 +26,8 @@
     "build": "rollup --config",
     "watch": "rollup --config --sourcemap --watch",
     "prebuild": "rm -rf lib/",
-    "publish:pre": "npm version prerelease --preid=beta",
-    "preversion": "jest --coverage",
-    "postversion": "npm run build; npm publish",
-    "postpublish": "git push; git push --tags; rm -rf lib",
-    "coverage": "jest --collectCoverage",
-    "test": "jest --watchAll"
+    "test": "jest --watchAll",
+    "coverage": "jest --collectCoverage"
   },
   "peerDependencies": {
     "react": ">=17.0.2"

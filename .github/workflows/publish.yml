@@ -1,18 +1,36 @@
-name: "Run Coverage"
+name: "Publish"
 
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
-  test:
+  publish:
+    name: Publish Beta
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: 14.x
-      - run: npm i
+          node-version: 16
+          cache: npm
+      - run: npm ci
       - run: npm run coverage
+      - run: npm run build
+      - name: Setup Git Identity
+        run: |
+          git config user.name "Publish Bot"
+          git config user.email github-actions@github.com
+      - name: Increment beta version
+        run: |
+          npm version prerelease --preid=beta -m "Release: %s"
+      - name: Publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+          npm publish
+      - name: Push new version to repo
+        run: |
+          git push
+          git push --tags
