@@ -5,8 +5,8 @@ on:
     branches: [ master ]
 
 jobs:
-  publish:
-    name: Publish Beta
+  quality:
+    name: Test Library
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -15,7 +15,19 @@ jobs:
           node-version: 16
           cache: npm
       - run: npm ci
-      - run: npm run coverage
+      - run: npx jest --coverage
+
+  publish:
+    name: Publish Beta
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          cache: npm
+      - run: npm ci
       - run: npm run build
       - name: Setup Git Identity
         run: |
@@ -25,11 +37,11 @@ jobs:
         run: |
           npm version prerelease --preid=beta -m "Release: %s"
       - name: Publish
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm config set //registry.npmjs.org/:_authToken=${NPM_TOKEN}
           npm publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Push new version to repo
         run: |
           git push

@@ -14,7 +14,7 @@
   },
   "keywords": [
     "react",
-    "hooks"
+    "mvc"
   ],
   "main": "lib/index.js",
   "types": "types/index.d.ts",
@@ -24,10 +24,8 @@
   ],
   "scripts": {
     "build": "rollup --config",
-    "watch": "rollup --config --sourcemap --watch",
-    "prebuild": "rm -rf lib/",
-    "test": "jest --watchAll",
-    "coverage": "jest --collectCoverage"
+    "watch": "jest --watchAll",
+    "prebuild": "rm -rf lib/"
   },
   "peerDependencies": {
     "react": ">=17.0.2"
