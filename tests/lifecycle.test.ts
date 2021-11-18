@@ -59,8 +59,10 @@ describe("lifecycle", () => {
       for(const mock of methods)
         if(as === false)
           expect(mock).not.toBeCalled();
-        else
+        else if(as !== undefined)
           expect(mock).toBeCalledWith(as);
+        else
+          expect(mock).toBeCalled();
     }
 
     describe("use", () => {
@@ -100,6 +102,40 @@ describe("lifecycle", () => {
           test.elementWillRender,
           test.elementWillMount,
           test.elementDidMount
+        ]);
+      })
+    })
+
+    describe("new", () => {
+      it("will call willRender method", async () => {
+        const element = renderHook(() => Test.new());
+        const instance = element.result.current;
+
+        expectToBeCalled(undefined, [
+          instance.willRender
+        ]);
+
+        element.rerender();
+
+        expectToBeCalled(undefined, [
+          instance.willRender
+        ]);
+      })
+    })
+
+    describe("tap", () => {
+      it("will call willRender method", async () => {
+        const instance = Test.create();
+        const element = renderHook(() => instance.tap());
+
+        expectToBeCalled(undefined, [
+          instance.willRender
+        ]);
+
+        element.rerender();
+
+        expectToBeCalled(undefined, [
+          instance.willRender
         ]);
       })
     })

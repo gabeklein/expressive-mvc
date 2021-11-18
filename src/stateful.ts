@@ -52,8 +52,10 @@ export class State {
     return output;
   }
 
-  update(key: string | Select, argument?: any): PromiseLike<string[]>;
   update(strict?: boolean): Promise<string[] | false>;
+  update(select?: Select): PromiseLike<string[]>;
+  update(key: string | Select, callMethod: boolean): PromiseLike<string[]>;
+  update(key: string | Select, tag?: any): PromiseLike<string[]>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
@@ -96,7 +98,9 @@ export class State {
   }
 
   tap(path?: string | Select, expect?: boolean){
-    return useWatcher(this, path, expect);
+    const proxy = useWatcher(this, path, expect);
+    this.update("willRender", true);
+    return proxy;
   }
 
   static create<T extends Class>(
@@ -111,7 +115,9 @@ export class State {
   }
 
   static new(args: any[], callback?: (instance: State) => void){
-    return useLazy(this, args, callback);
+    const instance = useLazy(this, args, callback);
+    instance.update("willRender", true);
+    return instance
   }
 
   static use(args: any[], callback?: (instance: State) => void){
