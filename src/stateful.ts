@@ -149,7 +149,7 @@ export class State {
   }
 
   static tap(key?: string | Select, expect?: boolean): any {
-    return useWatcher(this.find(true), key, expect);
+    return this.find(true).tap(key, expect);
   }
 
   static isTypeof<T extends typeof State>(
