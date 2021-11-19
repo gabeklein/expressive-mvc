@@ -180,3 +180,10 @@ export function memo <T> (compute: () => T, lazy?: boolean): T;
  * @param value - starting value of property.
  */
 export function lazy <T> (value?: T): T;
+
+/**
+ * Cause react to suspend during the execution of given function.
+ * 
+ * @param waitFor - Async function to suspend for.
+ */
+export function suspend<T = never>(source: (tag?: T) => Promise<void>): (tag?: T) => void
