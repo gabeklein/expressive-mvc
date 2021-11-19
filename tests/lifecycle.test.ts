@@ -111,15 +111,11 @@ describe("lifecycle", () => {
         const element = renderHook(() => Test.new());
         const instance = element.result.current;
 
-        expectToBeCalled(undefined, [
-          instance.willRender
-        ]);
+        expect(instance.willRender).toBeCalled();
 
         element.rerender();
 
-        expectToBeCalled(undefined, [
-          instance.willRender
-        ]);
+        expect(instance.willRender).toBeCalledTimes(2);
       })
     })
 
@@ -128,15 +124,11 @@ describe("lifecycle", () => {
         const instance = Test.create();
         const element = renderHook(() => instance.tap());
 
-        expectToBeCalled(undefined, [
-          instance.willRender
-        ]);
+        expect(instance.willRender).toBeCalled();
 
         element.rerender();
 
-        expectToBeCalled(undefined, [
-          instance.willRender
-        ]);
+        expect(instance.willRender).toBeCalledTimes(2);
       })
     })
 
