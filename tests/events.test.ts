@@ -135,8 +135,10 @@ describe("once method", () => {
     const pending = state.once(x => x.seconds);
 
     state.seconds = 30;
-  
-    await expect(pending).resolves.toMatchObject(["seconds"]);
+
+    const updated = await pending;
+
+    expect(updated).toMatchObject(["seconds"]);
   })
 
   it('will call for all simultaneous', async () => {

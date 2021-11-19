@@ -1,4 +1,4 @@
-import Model, { Selector } from '.';
+import Model from '.';
 import { Async, Class, InstanceOf, InterceptCallback } from './types';
 
 /**
