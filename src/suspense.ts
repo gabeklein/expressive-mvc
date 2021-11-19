@@ -1,22 +1,26 @@
 import { set } from "./instructions";
 
-export const suspend = <T = never>(
-  source: (tag?: T) => Promise<void>): (tag?: T) => void => set(
+export const suspend = <T = void>(
+  source: () => Promise<T>): T => set(
 
   function suspense(){
-    let suspend = true;
+    let returned: any;
+    let waiting = true;
     let error: any;
 
-    return {
-      value: (tag: T) => {
-        if(error)
-          throw error;
+    return () => {
+      if(error)
+        throw error;
 
-        if(suspend)
-          throw source(tag)
-            .then(() => suspend = false)
-            .catch(err => error = err)
-      }
+      if(waiting)
+        throw source()
+          .catch(err => error = err)
+          .then((value) => {
+            returned = value;
+            waiting = false;
+          })
+
+      return returned;
     }
   }
 );

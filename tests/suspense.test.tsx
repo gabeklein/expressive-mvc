@@ -3,17 +3,15 @@ import React, { Suspense } from 'react';
 import { Model, render, suspend } from './adapter';
 
 describe("suspense", () => {
-  class Test extends Model {
-    endSuspense!: () => void;
+  it('will auto-suspend if willRender is instruction', async () => {
+    class Test extends Model {
+      endSuspense!: () => void;
 
-    willRender = suspend(() => (
-      new Promise<void>(res => {
-        this.endSuspense = res;
-      })
-    ))
-  }
+      willRender = suspend(() => (
+        new Promise(res => { this.endSuspense = res })
+      ))
+    }
 
-  it('will fallback if willRender is a suspend instruction', async () => {
     const test = Test.create();
   
     let waiting = false;

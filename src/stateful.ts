@@ -69,11 +69,15 @@ export class State {
     else if(arg){
       control.update(arg);
 
-      if(1 in arguments && arg in this)
-        if(typeof tag != "boolean")
-          (this as any)[arg](tag);
-        else if(tag)
-          (this as any)[arg]();
+      if(1 in arguments && arg in this){
+        const method = (this as any)[arg];
+
+        if(typeof method == "function")
+          if(typeof tag != "boolean")
+            method.call(this, tag);
+          else if(tag)
+            method.call(this);
+      }
     }
 
     return <PromiseLike<string[] | false>> {

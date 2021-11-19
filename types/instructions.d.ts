@@ -186,4 +186,5 @@ export function lazy <T> (value?: T): T;
  * 
  * @param waitFor - Async function to suspend for.
  */
-export function suspend<T = never>(source: (tag?: T) => Promise<void>): (tag?: T) => void
+export function suspend (waitFor: () => Promise<void>): undefined;
+export function suspend <T> (waitFor: () => Promise<T>): T;
