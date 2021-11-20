@@ -1,6 +1,8 @@
+import { Key } from 'react';
+
 import Lifecycle from './lifecycle';
 import { Select, Selector } from './selector';
-import { Class, InstanceOf, Key } from './types';
+import { BunchOf, Callback, Class, InstanceOf, Query, RequestCallback, UpdateCallback } from './types';
 
 interface PropertyDescriptor<T> {
     configurable?: boolean;

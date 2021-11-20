@@ -13,3 +13,6 @@ export type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed:
 export type InterceptCallback<T> = (argument: T) => ((next: T) => void) | Promise<any> | void | boolean;
 
 export type RefFunction = (e: HTMLElement | null) => void;
+
+export type Recursive<T> = { [K in keyof T]: Recursive<Omit<T, K>> };
+export type Query = (select: Recursive<{}>) => void;
