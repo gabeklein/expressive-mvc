@@ -4,23 +4,22 @@ export const suspend = <T = void>(
   source: () => Promise<T>): T => set(
 
   function suspense(){
-    let returned: any;
     let waiting = true;
+    let output: any;
     let error: any;
 
     return () => {
+      if(waiting)
+        throw source
+          .call(this.subject)
+          .catch(err => error = err)
+          .then((value) => output = value)
+          .finally(() => waiting = false)
+
       if(error)
         throw error;
 
-      if(waiting)
-        throw source()
-          .catch(err => error = err)
-          .then((value) => {
-            returned = value;
-            waiting = false;
-          })
-
-      return returned;
+      return output;
     }
   }
 );
