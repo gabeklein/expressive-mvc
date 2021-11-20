@@ -59,13 +59,16 @@ function scenario(){
     assertDidSuspend(yes: boolean){
       expect(didSuspend).toBe(yes);
     },
-    assertDidThrow(error: Error){
-      expect(didThrow).toBe(error);
+    assertDidThrow(error: Error | false){
+      if(error)
+        expect(didThrow).toBe(error);
+      else
+        expect(didThrow).toBeUndefined();
     }
   }
 }
 
-describe("suspense", () => {
+describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
     const { trigger, pending } = manageAsync();
 
@@ -118,5 +121,25 @@ describe("suspense", () => {
     await instance.update();
 
     test.assertDidThrow(error);
+  })
+  
+  it('will bind async function to self', async () => {
+    class Test extends Model {
+      // methods lose implicit this
+      willRender = suspend(this.method);
+
+      async method(){
+        expect(this).toStrictEqual(instance);
+      }
+    }
+
+    const test = scenario();
+    const instance = Test.create();
+
+    test.renderHook(() => instance.tap());
+
+    await instance.update();
+
+    test.assertDidThrow(false);
   })
 })
