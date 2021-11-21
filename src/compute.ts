@@ -22,32 +22,20 @@ const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
 const ComputedKeys = new WeakMap<Controller, Callback[]>();
 
-function getRegister(on: Controller){
-  let register = ComputedUsed.get(on);
-
-  if(!register)
-    ComputedUsed.set(on, 
-      register = new Map<string, GetterInfo>()
-    );
-
-  return register;
-}
-
 export function prepare(
   control: Controller,
   key: string,
   getter: (on?: any) => any,
   getSource: () => Controller){
 
+  let sub: Subscriber;
+
   const { state, subject } = control;
-  const defined = getRegister(control);
   const info: GetterInfo = {
     key, parent: control, priority: 1
   };
 
-  let sub: Subscriber;
-
-  defined.set(key, info);
+  const prioritize = register(control, key, info);
 
   function compute(initial?: boolean){
     try {
@@ -104,12 +92,8 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.follows){
-        const peer = defined.get(key);
-
-        if(peer && peer.priority >= info.priority)
-          info.priority = peer.priority + 1;
-      }
+      for(const key in sub.follows)
+        prioritize(key);
     }
   }
 
@@ -125,8 +109,28 @@ export function prepare(
       configurable: true,
       enumerable: true
     })
+}
 
-  return info;
+function register(
+  on: Controller,
+  key: string,
+  info: GetterInfo){
+
+  let register = ComputedUsed.get(on)!;
+
+  if(!register)
+    ComputedUsed.set(on, 
+      register = new Map<string, GetterInfo>()
+    );
+
+  register.set(key, info);
+
+  return (key: string) => {
+    const peer = register.get(key);
+
+    if(peer && peer.priority >= info.priority)
+      info.priority = peer.priority + 1;
+  }
 }
 
 export function ensure(on: Controller, keys: string[]){
