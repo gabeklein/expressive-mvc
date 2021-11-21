@@ -13,7 +13,7 @@ export const Oops = issues({
     `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
 
   PeerNotAllowed: (model, property) =>
-    'Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.'
+    `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`
 })
 
 export const set = <T = any>(fn: Instruction<T>, name?: string): T => does(
