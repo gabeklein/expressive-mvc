@@ -14,8 +14,8 @@ function manageAsync<T = void>(){
 
 function scenario(){
   let tryFunction!: () => void;
-  let didSuspend = false;
   let didRender = false;
+  let didSuspend = false;
   let didThrow: Error | undefined;
 
   const Waiting = () => {
@@ -26,6 +26,7 @@ function scenario(){
 
   const Component = () => {
     try {
+      didRender = true;
       tryFunction();
     }
     catch(err: any){
@@ -37,8 +38,6 @@ function scenario(){
       didThrow = err;
       return null;
     }
-
-    didRender = true;
 
     return <div>Content!</div>;
   }
@@ -55,9 +54,12 @@ function scenario(){
     },
     assertDidRender(yes: boolean){
       expect(didRender).toBe(yes);
+      expect(didSuspend).toBe(false);
+      didSuspend = didRender = false;
     },
     assertDidSuspend(yes: boolean){
       expect(didSuspend).toBe(yes);
+      didSuspend = didRender = false;
     },
     assertDidThrow(error: Error | false){
       if(error)
@@ -79,14 +81,11 @@ describe("async function", () => {
     const test = scenario();
     const instance = Test.create();
 
-    test.assertDidSuspend(false);
-
     test.renderHook(() => {
       instance.tap();
     })
   
     test.assertDidSuspend(true);
-    test.assertDidRender(false);
 
     trigger();
     await instance.update();
@@ -108,14 +107,11 @@ describe("async function", () => {
     const test = scenario();
     const instance = Test.create();
 
-    test.assertDidSuspend(false);
-
     test.renderHook(() => {
       instance.tap();
     })
   
     test.assertDidSuspend(true);
-    test.assertDidRender(false);
 
     trigger();
     await instance.update();
