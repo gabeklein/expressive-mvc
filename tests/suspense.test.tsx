@@ -13,10 +13,15 @@ function manageAsync<T = void>(){
 }
 
 function scenario(){
-  let tryFunction!: () => void;
+  let renderHook!: () => void;
   let didRender = false;
   let didSuspend = false;
   let didThrow: Error | undefined;
+
+  const reset = () => {
+    didSuspend = didRender = false;
+    didThrow = undefined;
+  }
 
   const Waiting = () => {
     didSuspend = true;
@@ -27,7 +32,7 @@ function scenario(){
   const Component = () => {
     try {
       didRender = true;
-      tryFunction();
+      renderHook();
     }
     catch(err: any){
       // let suspense do it's thing
@@ -44,7 +49,7 @@ function scenario(){
 
   return {
     renderHook(fn: () => void){
-      tryFunction = fn;
+      renderHook = fn;
   
       render(
         <Suspense fallback={<Waiting/>}>
@@ -55,17 +60,19 @@ function scenario(){
     assertDidRender(yes: boolean){
       expect(didRender).toBe(yes);
       expect(didSuspend).toBe(false);
-      didSuspend = didRender = false;
+      reset();
     },
     assertDidSuspend(yes: boolean){
       expect(didSuspend).toBe(yes);
-      didSuspend = didRender = false;
+      reset();
     },
     assertDidThrow(error: Error | false){
       if(error)
         expect(didThrow).toBe(error);
       else
         expect(didThrow).toBeUndefined();
+
+      reset();
     }
   }
 }
