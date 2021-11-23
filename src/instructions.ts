@@ -118,38 +118,37 @@ export const act = <T extends Async>(task: T): T => set(
 type ComputeFunction<T, O = any> = (this: O, on: O) => T;
 type ComputeFactory<T> = (key: string) => ComputeFunction<T>;
 
-export function from<T>(
+export function from<T, R = T>(
   source: ComputeFactory<T> | Stateful,
-  fn?: ComputeFunction<T>): T {
+  setter?: ComputeFunction<T>,
+  getter?: (this: Model, value: T, key: string) => R): R {
 
   return set(
     function from(key){
       const { subject } = this;
-      let getter: ComputeFunction<any>;
       let getSource = () => this;
 
-      // Easy mistake, using a peer - will always be unresolved.
       if(typeof source == "symbol")
+        // Easy mistake, using a peer, will always be unresolved.
         throw Oops.PeerNotAllowed(subject, key);
 
-      if(typeof source == "object"){
-        getter = fn!;
-        // replace source controller incase different
+      if(typeof source == "object")
+        // replace source controller incase is different
         getSource = () => source[CONTROL];
-      }
-      // is an arrow function (getter factory)
+
       else if(!source.prototype)
-        getter = source(key);
-      // is a peer Model (constructor)
-      else if(Model.isTypeof(source)){
-        getter = fn!;
+        // specifically an arrow function (getter factory)
+        setter = source.call(subject, key);
+
+      else if(Model.isTypeof(source))
+        // is a peer Model (constructor)
         getSource = pendingAccess(subject, source, key, true);
-      }
-      // Vanilla function is to ambiguous so not allowed.
+
       else
+        // Regular function is to ambiguous so not allowed.
         throw Oops.BadComputedSource(subject, key, source);
       
-      Computed.prepare(this, key, getter, getSource);
+      Computed.prepare(this, key, getSource, setter!, getter);
     }
   )
 }

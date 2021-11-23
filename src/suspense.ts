@@ -1,25 +1,76 @@
-import { set } from "./instructions";
+import Model from '.';
+import { from, set } from './instructions';
+import { issues } from './issues';
 
-export const suspend = <T = void>(
-  source: () => Promise<T>): T => set(
+export const Oops = issues({
+  ValueNotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`
+})
 
-  function suspense(){
-    let waiting = true;
-    let output: any;
-    let error: any;
+type ComputeFunction<T, O = any> = (this: O, on: O) => T;
 
-    return () => {
-      if(waiting)
-        throw source
-          .call(this.subject)
-          .catch(err => error = err)
-          .then((value) => output = value)
-          .finally(() => waiting = false)
+/**
+ * Create suspense promise also interpretable as an error.
+ * React will handle it but other contexts probably won't.
+ */
+function suspense(model: Model, key: string){
+  const { message, stack } = Oops.ValueNotReady(model, key);
+  const promise = new Promise<void>(resolve => {
+    const release = model.on(key, (value: any) => {
+      if(value !== undefined)
+        release(), resolve();
+    });
+  });
 
-      if(error)
-        throw error;
+  return Object.assign(promise, { message, stack });
+}
 
-      return output;
+export function suspend<T = void>(
+  source: (() => Promise<T>) | Model | typeof Model,
+  compute?: ComputeFunction<T>){
+
+  if(typeof source == "function" && !source.prototype)
+    return suspendForAsync(source as any)
+  else
+    return from(source as any, compute,
+      function getter(value, key){
+        if(value === undefined)
+          throw suspense(this, key);
+        
+        return value;
+      }
+    )
+}
+
+function suspendForAsync<T = void>(
+  source: (key: string) => Promise<T>){
+
+  return set(
+    function suspense(key){
+      let waiting = true;
+      let output: any;
+      let error: any;
+  
+      return () => {
+        if(waiting){
+          const issue = Oops.ValueNotReady(this.subject, key);
+          const promise = source
+            .call(this.subject, key)
+            .catch(err => error = err)
+            .then((value) => output = value)
+            .finally(() => waiting = false);
+
+          throw Object.assign(promise, {
+            message: issue.message,
+            stack: issue.stack
+          });
+        }
+  
+        if(error)
+          throw error;
+  
+        return output;
+      }
     }
-  }
-);
+  )
+}

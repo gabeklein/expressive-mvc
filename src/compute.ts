@@ -23,23 +23,26 @@ const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
 const ComputedKeys = new WeakMap<Controller, Callback[]>();
 
 export function prepare(
-  control: Controller,
+  parent: Controller,
   key: string,
-  getter: (on?: any) => any,
-  getSource: () => Controller){
+  source: () => Controller,
+  setter: (on?: any) => any,
+  getter?: (value: any, key: string) => any){
 
   let sub: Subscriber;
 
-  const { state, subject } = control;
-  const info: GetterInfo = {
-    key, parent: control, priority: 1
-  };
+  const { state, subject } = parent;
+  const info: GetterInfo = { key, parent, priority: 1 };
 
-  const prioritize = register(control, key, info);
+  const current = getter
+    ? () => getter.call(subject, state[key], key)
+    : () => state[key];
+
+  const prioritize = register(parent, key, info);
 
   function compute(initial?: boolean){
     try {
-      return getter.call(sub.proxy, sub.proxy);
+      return setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
       Oops.ComputeFailed(subject, key, !!initial).warn();
@@ -58,16 +61,14 @@ export function prepare(
     }
     finally {
       if(state[key] !== value){
-        control.update(key, value);
+        parent.update(key, value);
         return value;
       }
     }
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(getSource(), update);
-
-    ComputedInfo.set(update, info);
+    sub = new Subscriber(source(), update);
 
     defineProperty(state, key, {
       value: undefined,
@@ -77,11 +78,11 @@ export function prepare(
     defineProperty(subject, key, {
       enumerable: true,
       configurable: true,
-      get: () => state[key]
+      get: current
     });
 
     try {
-      return state[key] = compute(true);
+      state[key] = compute(true);
     }
     catch(e){
       if(early)
@@ -95,13 +96,16 @@ export function prepare(
       for(const key in sub.follows)
         prioritize(key);
     }
+
+    return current();
   }
 
   setAlias(update, `try ${key}`);
   setAlias(create, `new ${key}`);
-  setAlias(getter, `run ${key}`);
+  setAlias(setter, `run ${key}`);
 
   ComputedInit.add(create);
+  ComputedInfo.set(update, info);
 
   for(const on of [state, subject])
     defineProperty(on, key, {

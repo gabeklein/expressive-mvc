@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 
+import { Oops } from '../src/suspense';
 import { Model, render, suspend } from './adapter';
 
 function manageAsync<T = void>(){
@@ -99,6 +100,20 @@ describe("async function", () => {
 
     test.assertDidRender(true);
   })
+
+  it("will seem to throw \"error\" outside react", () => {
+    const { trigger, pending } = manageAsync();
+
+    class Test extends Model {
+      value = suspend(() => pending);
+    }
+
+    const instance = Test.create();
+    const exprected = Oops.ValueNotReady(instance, "value");
+
+    expect(() => instance.value).toThrowError(exprected);
+    trigger();
+  })
   
   it('will refresh and throw if async rejects', async () => {
     const { trigger, pending } = manageAsync();
@@ -145,4 +160,92 @@ describe("async function", () => {
 
     test.assertDidThrow(false);
   })
+})
+
+describe("computed", () => {
+  class Test extends Model {
+    random = 0;
+    source?: string = undefined;
+
+    value = suspend(this, x => {
+      void x.random;
+      return x.source;
+    });
+  }
+
+  it("will suspend if value is undefined", async () => {
+    const test = scenario();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.source = "foobar!";
+
+    await instance.once("willRender");
+
+    test.assertDidRender(true);
+  })
+
+  it("will seem to throw \"error\" outside react", () => {
+    const instance = Test.create();
+    const exprected = Oops.ValueNotReady(instance, "value");
+
+    expect(() => instance.value).toThrowError(exprected);
+  })
+
+  it("will return immediately if value is defined", async () => {
+    const test = scenario();
+    const instance = Test.create();
+
+    instance.source = "foobar!";
+
+    let value!: string;
+
+    test.renderHook(() => {
+      value = instance.tap("value");
+    })
+
+    test.assertDidRender(true);
+
+    expect(value).toBe("foobar!");
+  })
+
+  it("will not resolve if value stays undefined", async () => {
+    const test = scenario();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.random = 1;
+
+    // update to value is expected
+    const pending = instance.update(true);
+    await expect(pending).resolves.toContain("value");
+
+    // value will still be undefined
+    expect(instance.export().value).toBe(undefined);
+
+    // give react a moment to render (if it were)
+    await new Promise(res => setTimeout(res, 100));
+
+    // expect no action - value still is undefined
+    test.assertDidRender(false);
+  
+    instance.source = "foobar!";
+
+    // we do expect a render this time
+    await instance.once("willRender");
+
+    test.assertDidRender(true);
+  })
+
+  it.todo("will start suspense if value becomes undefined");
 })
