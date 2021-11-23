@@ -430,7 +430,7 @@ export abstract class Model extends State {
      * 
      * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
      */
-    tag(id?: Key): this;
+    tag(id?: any): this;
 
      /**
       * **React Hook** - Attach to instance of this controller within ambient component.
@@ -439,7 +439,7 @@ export abstract class Model extends State {
       * 
       * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
       */
-    tag(idFactory: (idFactory: this) => Key | void): this;
+    tag(idFactory: (idFactory: this) => any): this;
 
 
     /**
