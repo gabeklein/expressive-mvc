@@ -1,6 +1,5 @@
 import { attach } from './attach';
-import { manage } from './controller';
-import { set } from './instructions';
+import { manage, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { defineProperty, getOwnPropertyDescriptors } from './util';

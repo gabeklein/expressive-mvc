@@ -1,6 +1,7 @@
-import Model from '.';
-import { from, set } from './instructions';
+import { set } from './controller';
+import { from } from './instructions';
 import { issues } from './issues';
+import { Model } from './model';
 
 export const Oops = issues({
   ValueNotReady: (model, key) =>

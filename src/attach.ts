@@ -1,5 +1,4 @@
-import { Controller } from './controller';
-import { set } from './instructions';
+import { Controller, set } from './controller';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 
