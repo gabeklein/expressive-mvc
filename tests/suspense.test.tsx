@@ -10,7 +10,7 @@ function manageAsync<T = void>(){
     trigger = resolve;
   })
 
-  return { pending, trigger }
+  return [ pending, trigger ] as const;
 }
 
 function scenario(){
@@ -80,10 +80,10 @@ function scenario(){
 
 describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
-    const { trigger, pending } = manageAsync();
+    const [ promise, resolve ] = manageAsync();
 
     class Test extends Model {
-      willRender = suspend(() => pending);
+      willRender = suspend(() => promise);
     }
 
     const test = scenario();
@@ -95,33 +95,33 @@ describe("async function", () => {
   
     test.assertDidSuspend(true);
 
-    trigger();
+    resolve();
     await instance.update();
 
     test.assertDidRender(true);
   })
 
   it("will seem to throw \"error\" outside react", () => {
-    const { trigger, pending } = manageAsync();
+    const [ promise, resolve ] = manageAsync();
 
     class Test extends Model {
-      value = suspend(() => pending);
+      value = suspend(() => promise);
     }
 
     const instance = Test.create();
     const exprected = Oops.ValueNotReady(instance, "value");
 
     expect(() => instance.value).toThrowError(exprected);
-    trigger();
+    resolve();
   })
   
   it('will refresh and throw if async rejects', async () => {
-    const { trigger, pending } = manageAsync();
+    const [ promise, resolve ] = manageAsync();
     const error = new Error("some foobar went down");
 
     class Test extends Model {
       willRender = suspend(async () => {
-        await pending;
+        await promise;
         throw error;
       })
     }
@@ -135,7 +135,7 @@ describe("async function", () => {
   
     test.assertDidSuspend(true);
 
-    trigger();
+    resolve();
     await instance.update();
 
     test.assertDidThrow(error);
