@@ -26,7 +26,7 @@ function suspense(model: Model, key: string){
   return Object.assign(promise, { message, stack });
 }
 
-export function suspend<T = void>(
+export function pending<T = void>(
   source: (() => Promise<T>) | Model | typeof Model,
   compute?: ComputeFunction<T>){
 

@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Oops } from '../src/suspense';
-import { Model, render, suspend } from './adapter';
+import { Model, render, pending } from './adapter';
 
 function manageAsync<T = void>(){
   let trigger!: (value: T) => void;
@@ -83,7 +83,7 @@ describe("async function", () => {
     const [ promise, resolve ] = manageAsync();
 
     class Test extends Model {
-      willRender = suspend(() => promise);
+      willRender = pending(() => promise);
     }
 
     const test = scenario();
@@ -105,7 +105,7 @@ describe("async function", () => {
     const [ promise, resolve ] = manageAsync();
 
     class Test extends Model {
-      value = suspend(() => promise);
+      value = pending(() => promise);
     }
 
     const instance = Test.create();
@@ -120,7 +120,7 @@ describe("async function", () => {
     const error = new Error("some foobar went down");
 
     class Test extends Model {
-      willRender = suspend(async () => {
+      willRender = pending(async () => {
         await promise;
         throw error;
       })
@@ -144,7 +144,7 @@ describe("async function", () => {
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
-      willRender = suspend(this.method);
+      willRender = pending(this.method);
 
       async method(){
         expect(this).toStrictEqual(instance);
@@ -167,7 +167,7 @@ describe("computed", () => {
     random = 0;
     source?: string = undefined;
 
-    value = suspend(this, x => {
+    value = pending(this, x => {
       void x.random;
       return x.source;
     });
