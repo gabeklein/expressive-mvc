@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { CONTROL, set, Stateful } from './controller';
+import { Controller, manage, set, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { pendingAccess } from './peer';
@@ -121,26 +121,28 @@ export function from<T, R = T>(
   return set(
     function from(key){
       const { subject } = this;
-      let getSource = () => this;
+      let getSource: () => Controller;
 
+      // Easy mistake, using a peer, will always be unresolved.
       if(typeof source == "symbol")
-        // Easy mistake, using a peer, will always be unresolved.
         throw Oops.PeerNotAllowed(subject, key);
 
+      // replace source controller in-case different
       if(typeof source == "object")
-        // replace source controller incase is different
-        getSource = () => source[CONTROL];
+        getSource = () => manage(source);
 
-      else if(!source.prototype)
-        // specifically an arrow function (getter factory)
+      // specifically an arrow function (getter factory)
+      else if(!source.prototype){
         setter = source.call(subject, key);
+        getSource = () => this;
+      }
 
+      // is a peer Model (constructor)
       else if(Model.isTypeof(source))
-        // is a peer Model (constructor)
         getSource = pendingAccess(subject, source, key, true);
 
+      // Regular function is to ambiguous so not allowed.
       else
-        // Regular function is to ambiguous so not allowed.
         throw Oops.BadComputedSource(subject, key, source);
 
       Computed.prepare(this, key, getSource, setter!, getter);
