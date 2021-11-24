@@ -22,36 +22,27 @@ const ComputedInfo = new WeakMap<Function, GetterInfo>();
 const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
 const ComputedKeys = new WeakMap<Controller, Callback[]>();
 
-function getRegister(on: Controller){
-  let register = ComputedUsed.get(on);
-
-  if(!register)
-    ComputedUsed.set(on, 
-      register = new Map<string, GetterInfo>()
-    );
-
-  return register;
-}
-
 export function prepare(
-  control: Controller,
+  parent: Controller,
   key: string,
-  getter: (on?: any) => any,
-  getSource: () => Controller){
-
-  const { state, subject } = control;
-  const defined = getRegister(control);
-  const info: GetterInfo = {
-    key, parent: control, priority: 1
-  };
+  source: () => Controller,
+  setter: (on?: any) => any,
+  getter?: (value: any, key: string) => any){
 
   let sub: Subscriber;
 
-  defined.set(key, info);
+  const { state, subject } = parent;
+  const info: GetterInfo = { key, parent, priority: 1 };
+
+  const current = getter
+    ? () => getter.call(subject, state[key], key)
+    : () => state[key];
+
+  const prioritize = register(parent, key, info);
 
   function compute(initial?: boolean){
     try {
-      return getter.call(sub.proxy, sub.proxy);
+      return setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
       Oops.ComputeFailed(subject, key, !!initial).warn();
@@ -70,16 +61,14 @@ export function prepare(
     }
     finally {
       if(state[key] !== value){
-        control.update(key, value);
+        parent.update(key, value);
         return value;
       }
     }
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(getSource(), update);
-
-    ComputedInfo.set(update, info);
+    sub = new Subscriber(source(), update);
 
     defineProperty(state, key, {
       value: undefined,
@@ -89,11 +78,11 @@ export function prepare(
     defineProperty(subject, key, {
       enumerable: true,
       configurable: true,
-      get: () => state[key]
+      get: current
     });
 
     try {
-      return state[key] = compute(true);
+      state[key] = compute(true);
     }
     catch(e){
       if(early)
@@ -104,20 +93,19 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.follows){
-        const peer = defined.get(key);
-
-        if(peer && peer.priority >= info.priority)
-          info.priority = peer.priority + 1;
-      }
+      for(const key in sub.follows)
+        prioritize(key);
     }
+
+    return current();
   }
 
   setAlias(update, `try ${key}`);
   setAlias(create, `new ${key}`);
-  setAlias(getter, `run ${key}`);
+  setAlias(setter, `run ${key}`);
 
   ComputedInit.add(create);
+  ComputedInfo.set(update, info);
 
   for(const on of [state, subject])
     defineProperty(on, key, {
@@ -125,8 +113,28 @@ export function prepare(
       configurable: true,
       enumerable: true
     })
+}
 
-  return info;
+function register(
+  on: Controller,
+  key: string,
+  info: GetterInfo){
+
+  let register = ComputedUsed.get(on)!;
+
+  if(!register)
+    ComputedUsed.set(on, 
+      register = new Map<string, GetterInfo>()
+    );
+
+  register.set(key, info);
+
+  return (key: string) => {
+    const peer = register.get(key);
+
+    if(peer && peer.priority >= info.priority)
+      info.priority = peer.priority + 1;
+  }
 }
 
 export function ensure(on: Controller, keys: string[]){

@@ -100,7 +100,7 @@ export class Model extends State {
   }
 
   static tag(id?: Key | ((target: Model) => Key | undefined)){
-    return useSubscriber(this.find(true), id);
+    return this.find(true).tag(id);
   }
 
   static meta(path: string | Select): any {

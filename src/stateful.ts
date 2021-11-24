@@ -52,8 +52,10 @@ export class State {
     return output;
   }
 
-  update(key: string | Select, argument?: any): PromiseLike<string[]>;
   update(strict?: boolean): Promise<string[] | false>;
+  update(select?: Select): PromiseLike<string[]>;
+  update(key: string | Select, callMethod: boolean): PromiseLike<string[]>;
+  update(key: string | Select, tag?: any): PromiseLike<string[]>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
@@ -67,11 +69,15 @@ export class State {
     else if(arg){
       control.update(arg);
 
-      if(1 in arguments && arg in this)
-        if(typeof tag != "boolean")
-          (this as any)[arg](tag);
-        else if(tag)
-          (this as any)[arg]();
+      if(1 in arguments && arg in this){
+        const method = (this as any)[arg];
+
+        if(typeof method == "function")
+          if(typeof tag != "boolean")
+            method.call(this, tag);
+          else if(tag)
+            method.call(this);
+      }
     }
 
     return <PromiseLike<string[] | false>> {
@@ -96,7 +102,9 @@ export class State {
   }
 
   tap(path?: string | Select, expect?: boolean){
-    return useWatcher(this, path, expect);
+    const proxy = useWatcher(this, path, expect);
+    this.update("willRender", true);
+    return proxy;
   }
 
   static create<T extends Class>(
@@ -111,7 +119,9 @@ export class State {
   }
 
   static new(args: any[], callback?: (instance: State) => void){
-    return useLazy(this, args, callback);
+    const instance = useLazy(this, args, callback);
+    instance.update("willRender", true);
+    return instance
   }
 
   static use(args: any[], callback?: (instance: State) => void){
@@ -149,7 +159,7 @@ export class State {
   }
 
   static tap(key?: string | Select, expect?: boolean): any {
-    return useWatcher(this.find(true), key, expect);
+    return this.find(true).tap(key, expect);
   }
 
   static isTypeof<T extends typeof State>(

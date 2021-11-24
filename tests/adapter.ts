@@ -20,6 +20,7 @@ export const act = Source.act as typeof Public.act;
 export const lazy = Source.lazy as typeof Public.lazy;
 export const from = Source.from as typeof Public.from;
 export const parent = Source.parent as typeof Public.parent;
+export const pending = Source.pending as typeof Public.pending;
 
 export function subscribeTo<T extends Public.Model>(
   target: T,

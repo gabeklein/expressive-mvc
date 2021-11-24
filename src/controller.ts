@@ -14,11 +14,32 @@ export function manage(src: Stateful){
   return src[CONTROL];
 }
 
-export function does<T = any>(
-  instruction: Instruction<any>, label: string){
+export function set<T = any>(
+  instruction: Instruction<any>, label?: string){
 
-  const placeholder = Symbol(`${label} instruction`);
-  Pending.set(placeholder, instruction);
+  const name = label || instruction.name || "pending";
+  const placeholder = Symbol(`${name} instruction`);
+
+  Pending.set(placeholder,
+    function set(key){
+      let output = instruction.call(this, key, this);
+  
+      if(typeof output == "function"){
+        const getter = output;
+  
+        output = {
+          ...getOwnPropertyDescriptor(this.subject, key),
+          get(this: Stateful){
+            return getter(this[LOCAL])
+          }
+        }
+      }
+  
+      if(output)
+        defineProperty(this.subject, key, output);
+    }  
+  );
+
   return placeholder as unknown as T;
 }
 
