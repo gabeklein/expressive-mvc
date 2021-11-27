@@ -20,25 +20,25 @@ export function set<T = any>(
   const name = label || instruction.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
-  Pending.set(placeholder,
-    function set(key){
-      let output = instruction.call(this, key, this);
-  
-      if(typeof output == "function"){
-        const getter = output;
-  
-        output = {
-          ...getOwnPropertyDescriptor(this.subject, key),
-          get(this: Stateful){
-            return getter(this[LOCAL])
-          }
+  function setup(this: Controller, key: string){
+    let output = instruction.call(this, key, this);
+
+    if(typeof output == "function"){
+      const getter = output;
+
+      output = {
+        ...getOwnPropertyDescriptor(this.subject, key),
+        get(this: Stateful){
+          return getter(this[LOCAL])
         }
       }
-  
-      if(output)
-        defineProperty(this.subject, key, output);
-    }  
-  );
+    }
+
+    if(output)
+      defineProperty(this.subject, key, output);
+  }
+
+  Pending.set(placeholder, setup);
 
   return placeholder as unknown as T;
 }

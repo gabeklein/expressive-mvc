@@ -21,13 +21,15 @@ type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => voi
 const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
-export const tap = <T extends Peer>(
-  type: T, argument?: boolean | PeerCallback<T>) => child(
+export function tap<T extends Peer>(
+  type: T, argument?: boolean | PeerCallback<T>){
 
-  function tap(key){
-    return pendingAccess(this.subject, type, key, argument);
-  }
-);
+  return child(
+    function tap(key){
+      return pendingAccess(this.subject, type, key, argument);
+    }
+  )
+};
 
 export function pendingAccess<T extends Peer>(
   from: Stateful,
