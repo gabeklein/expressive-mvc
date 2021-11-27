@@ -1,4 +1,4 @@
-export { attach } from './attach';
+export { child } from './attach';
 export { parent, use } from './compose';
 export { act, from, lazy, memo, on, ref } from './instructions';
 export { set } from './controller';

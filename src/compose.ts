@@ -1,4 +1,4 @@
-import { attach } from './attach';
+import { child } from './attach';
 import { manage, set } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
@@ -33,7 +33,7 @@ function bootstrap<T extends {}>(object: T){
 export const use = <T extends typeof Model>(
   input?: T | (() => InstanceOf<T>),
   argument?: ((i: Model | undefined) => void) | boolean
-): Model => attach(
+): Model => child(
   function use(key){
     let instance: Model | undefined;
 

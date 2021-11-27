@@ -5,10 +5,10 @@ import { Subscriber } from './subscriber';
 type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
 
-export const attach = <T extends Model>(
+export const child = <T extends Model>(
   from: ChildInstruction<T>, name?: string): T => set(
 
-  function attach(this: Controller, key: string){
+  function child(this: Controller, key: string){
     const proxyCache = new WeakMap<Subscriber, any>();
     const getCurrent = from.call(this, key);
 
