@@ -5,7 +5,6 @@ export { apply } from './controller';
 export { tap } from './peer';
 export { pending } from './suspense';
 
-export { State } from './stateful';
 export { Model, Model as default } from './model';
 export { Consumer, Provider } from './context';
 export { Singleton } from './singleton';

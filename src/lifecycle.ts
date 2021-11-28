@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo } from 'react';
 
-import { State } from './stateful';
+import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { values } from './util';
 
@@ -27,7 +27,7 @@ export function lifecycle(prefix: string){
     sub: Subscriber, tag?: Key | KeyFactory<any>){
 
     const emit = useMemo(() => {
-      const subject = sub.source as State;
+      const subject = sub.source as Model;
       const id = typeof tag == "function" ? tag(subject) : tag;
       
       return (name: Event) => {

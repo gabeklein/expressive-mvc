@@ -2,12 +2,12 @@ import React from 'react';
 
 import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
-import { Model, State, Provider, render, renderHook, Singleton, use } from './adapter';
+import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
 
 describe("use", () => {
-  class Test extends State {};
+  class Test extends Model {};
 
   it("will run callback after creation", () => {
     const callback = jest.fn();

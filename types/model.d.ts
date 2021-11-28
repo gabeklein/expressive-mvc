@@ -153,7 +153,8 @@ declare const CONTROL: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
-export abstract class State {
+export interface Model extends Lifecycle {}
+export abstract class Model {
     /** Controller for this instance. */
     [CONTROL]: Model.Controller;
 
@@ -280,6 +281,50 @@ export abstract class State {
 
     tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
     tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+    
+    // Keyed
+    on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
+    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
+    // Squash
+    on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
+    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+    // Unknown
+    on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
+    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
+
+    // Keyed
+    once <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false): Callback;
+    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
+    // Squash
+    once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
+    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+    // Promise
+    once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
+    once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
+    // Unknown
+    once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
+    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
+
+    effect(callback: (this: this, state: this) => void, select?: Model.SelectFields<this>): Callback;
+    effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
+
+    /**
+     * **React Hook** - Attach to instance of this controller within ambient component.
+     * 
+     * This method will fire lifecycle events on given controller.
+     * 
+     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
+     */
+    tag(id?: any): this;
+
+     /**
+      * **React Hook** - Attach to instance of this controller within ambient component.
+      * 
+      * This method will fire lifecycle events on given controller.
+      * 
+      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
+      */
+    tag(idFactory: (idFactory: this) => any): this;
 
     /** Use symbol to access controller of a model. */
     static CONTROL: typeof CONTROL;
@@ -388,61 +433,6 @@ export abstract class State {
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key: K, expect: true): Exclude<ReturnType<K>, undefined>;
 
     /**
-     * Static equivalent of `x instanceof this`.
-     * 
-     * Will determine if provided class is a subtype of this one. 
-     */
-    static isTypeof <T extends Class>(this: T, subject: any): subject is T;
-}
-
-export interface Model extends Lifecycle {}
-export abstract class Model extends State {
-    // Keyed
-    on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
-    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
-    // Squash
-    on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
-    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-    // Unknown
-    on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
-    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
-
-    // Keyed
-    once <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false): Callback;
-    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
-    // Squash
-    once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
-    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
-    // Promise
-    once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
-    once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
-    // Unknown
-    once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
-    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
-
-    effect(callback: (this: this, state: this) => void, select?: Model.SelectFields<this>): Callback;
-    effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
-
-    /**
-     * **React Hook** - Attach to instance of this controller within ambient component.
-     * 
-     * This method will fire lifecycle events on given controller.
-     * 
-     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
-     */
-    tag(id?: any): this;
-
-     /**
-      * **React Hook** - Attach to instance of this controller within ambient component.
-      * 
-      * This method will fire lifecycle events on given controller.
-      * 
-      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
-      */
-    tag(idFactory: (idFactory: this) => any): this;
-
-
-    /**
      * **React Hook** - Attach to instance of this controller within ambient component.
      * 
      * This method will fire lifecycle events on given controller.
@@ -475,6 +465,13 @@ export abstract class Model extends State {
      * Documentation TBD.
      */
     static meta <T extends Class, K extends Model.SelectField<T>> (this: T, key?: K): ReturnType<K>;
+
+    /**
+     * Static equivalent of `x instanceof this`.
+     * 
+     * Will determine if provided class is a subtype of this one. 
+     */
+    static isTypeof <T extends Class>(this: T, subject: any): subject is T;
 }
 
 export class Singleton extends Model {

@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 import { keys, manage, Stateful } from './controller';
 import { issues } from './issues';
 import { Lifecycle, lifecycle } from './lifecycle';
-import { State } from './stateful';
+import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
 
@@ -22,7 +22,7 @@ export function use<T>(init: (trigger: Callback) => T){
   return state[0];
 }
 
-export function useLazy<T extends typeof State>(
+export function useLazy<T extends typeof Model>(
   Type: T, args?: any[], callback?: (instance: InstanceOf<T>) => void){
 
   const instance = useMemo(() => {
@@ -84,10 +84,10 @@ export function useSubscriber<T extends Stateful>(
 export function useModel(
   Type: Class,
   args?: any[], 
-  callback?: (instance: State) => void){
+  callback?: (instance: Model) => void){
 
   const hook = use(refresh => {
-    const instance = new Type(...args || []) as State;
+    const instance = new Type(...args || []) as Model;
     const control = manage(instance);
     const sub = new Subscriber(control, refresh);
 
