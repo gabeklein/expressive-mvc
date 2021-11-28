@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react-hooks';
 import { Oops as Instruct } from '../src/instructions';
 import { Oops as Util } from '../src/util';
 import { Subscriber } from '../src/subscriber';
-import { act, set, lazy, memo, Model, on, ref, use } from './adapter';
+import { act, apply, lazy, memo, Model, on, ref, use } from './adapter';
 
 describe("on", () => {
   class Subject extends Model {
@@ -425,7 +425,7 @@ describe("set", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = set((key) => {
+    property = apply((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -433,8 +433,8 @@ describe("set", () => {
       }
     })
 
-    keyedInstruction = set(function foo(){});
-    namedInstruction = set(() => {}, "foo");
+    keyedInstruction = apply(function foo(){});
+    namedInstruction = apply(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -484,7 +484,7 @@ describe("get", () => {
     didRunInstruction = jest.fn();
     didGetSubscriber = jest.fn();
 
-    property = set((key) => (sub) => {
+    property = apply((key) => (sub) => {
       this.didRunInstruction(key);
       this.didGetSubscriber(sub);
 
@@ -530,15 +530,15 @@ describe("get", () => {
 })
 
 describe("custom", () => {
-  const managed = <T>(
-    value: T, update: (next: T, state: any) => boolean | void) => set<T>(
+  function managed<T>(
+    value: T, update: (next: T, state: any) => boolean | void){
 
-    function manage(key){
-      this.manage(key, value,
-        (next) => update(next, this.state)
-      );
-    }
-  );
+    return apply<T>(
+      function manage(key){
+        this.manage(key, value, (next) => update(next, this.state));
+      }
+    )
+  }
 
   it("will prevent update if instruction returns false", async () => {
     class Test extends Model {

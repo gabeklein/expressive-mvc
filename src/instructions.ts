@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller, manage, set, Stateful } from './controller';
+import { apply, Controller, manage, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { pendingAccess } from './peer';
@@ -19,7 +19,7 @@ export const Oops = issues({
 export function ref<T>(
   cb?: InterceptCallback<T>): { current: T } {
 
-  return set(
+  return apply(
     function ref(key){
       const refObjectFunction =
         this.setter(key, cb && createValueEffect(cb));
@@ -39,7 +39,7 @@ export function ref<T>(
 export function on<T>(
   initial: T, cb: InterceptCallback<T>): T {
 
-  return set(
+  return apply(
     function on(key){
       this.manage(key, initial, cb && createValueEffect(cb));
     }
@@ -49,7 +49,7 @@ export function on<T>(
 export function memo<T>(
   factory: () => T, defer?: boolean): T {
 
-  return set(
+  return apply(
     function memo(key){
       const source = this.subject;
       const get = () => factory.call(source);
@@ -63,7 +63,7 @@ export function memo<T>(
 }
 
 export function lazy<T>(value: T): T {
-  return set(
+  return apply(
     function lazy(key){
       const source = this.subject as any;
 
@@ -76,7 +76,7 @@ export function lazy<T>(value: T): T {
 }
 
 export function act<T extends Async>(task: T): T {
-  return set(
+  return apply(
     function act(key){
       let pending = false;
 
@@ -118,7 +118,7 @@ export function from<T, R = T>(
   setter?: ComputeFunction<T>,
   getter?: (this: Model, value: T, key: string) => R): R {
 
-  return set(
+  return apply(
     function from(key){
       const { subject } = this;
       let getSource: () => Controller;

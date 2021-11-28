@@ -1,5 +1,5 @@
 import { child } from './attach';
-import { manage, set } from './controller';
+import { apply, manage } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { defineProperty, getOwnPropertyDescriptors } from './util';
@@ -78,7 +78,7 @@ export function use<T extends typeof Model>(
 export function parent<T extends typeof Model>(
   Expects: T, required?: boolean): InstanceOf<T> {
 
-  return set(
+  return apply(
     function parent(){
       const child = this.subject;
       const expected = Expects.name;

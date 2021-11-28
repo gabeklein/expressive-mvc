@@ -1,59 +1,61 @@
-import { Controller, set } from './controller';
+import { apply, Controller } from './controller';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 
 type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
 
-export const child = <T extends Model>(
-  from: ChildInstruction<T>, name?: string): T => set(
+export function child<T extends Model>(
+  from: ChildInstruction<T>, name?: string){
 
-  function child(this: Controller, key: string){
-    const proxyCache = new WeakMap<Subscriber, any>();
-    const getCurrent = from.call(this, key);
-
-    function subscribe(sub: Subscriber){
-      let child: Subscriber | undefined;
+  return apply(
+    function child(this: Controller, key: string){
+      const proxyCache = new WeakMap<Subscriber, any>();
+      const getCurrent = from.call(this, key);
   
-      function start(){
-        const instance = getCurrent();
-  
-        if(instance){
-          child = new Subscriber(instance, sub.onUpdate);
+      function subscribe(sub: Subscriber){
+        let child: Subscriber | undefined;
     
-          if(sub.active)
-            child.commit();
+        function start(){
+          const instance = getCurrent();
     
-          sub.dependant.add(child);
-          proxyCache.set(sub, child.proxy);
+          if(instance){
+            child = new Subscriber(instance, sub.onUpdate);
+      
+            if(sub.active)
+              child.commit();
+      
+            sub.dependant.add(child);
+            proxyCache.set(sub, child.proxy);
+          }
         }
-      }
-  
-      function refresh(){
-        if(child){
-          child.release();
-          sub.dependant.delete(child);
-          proxyCache.set(sub, undefined);
-          child = undefined;
+    
+        function refresh(){
+          if(child){
+            child.release();
+            sub.dependant.delete(child);
+            proxyCache.set(sub, undefined);
+            child = undefined;
+          }
+    
+          start();
+          sub.onUpdate();
         }
-  
+    
         start();
-        sub.onUpdate();
+        sub.follow(key, refresh);
       }
-  
-      start();
-      sub.follow(key, refresh);
-    }
-  
-    return (local: Subscriber | undefined) => {
-      if(!local)
-        return getCurrent();
-  
-      if(!proxyCache.has(local))
-        subscribe(local);
-  
-      return proxyCache.get(local);
-    }
-  },
-  name || from.name
-)
+    
+      return (local: Subscriber | undefined) => {
+        if(!local)
+          return getCurrent();
+    
+        if(!proxyCache.has(local))
+          subscribe(local);
+    
+        return proxyCache.get(local);
+      }
+    },
+    name || from.name
+  )
+}

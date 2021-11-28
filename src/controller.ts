@@ -14,14 +14,14 @@ export function manage(src: Stateful){
   return src[CONTROL];
 }
 
-export function set<T = any>(
-  instruction: Instruction<any>, label?: string){
+export function apply<T = any>(
+  fn: Instruction<any>, label?: string){
 
-  const name = label || instruction.name || "pending";
+  const name = label || fn.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
-    let output = instruction.call(this, key, this);
+    let output = fn.call(this, key, this);
 
     if(typeof output == "function"){
       const getter = output;

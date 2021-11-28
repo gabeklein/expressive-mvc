@@ -1,4 +1,4 @@
-import { set } from './controller';
+import { apply } from './controller';
 import { from } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
@@ -46,7 +46,7 @@ export function pending<T = void>(
 function suspendForAsync<T = void>(
   source: (key: string) => Promise<T>){
 
-  return set(
+  return apply(
     function suspense(key){
       let waiting = true;
       let output: any;
