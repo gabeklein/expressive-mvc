@@ -238,6 +238,49 @@ describe("ref", () => {
   })
 })
 
+describe("ref (object)", () => {
+  class Subject extends Model {
+    foo = "foo";
+    bar = "bar";
+
+    refs = ref(this);
+  }
+
+  it("will match properties", () => {
+    const test = Subject.create();
+
+    for(const key in test)
+      expect(test.refs).toHaveProperty(key);
+  })
+
+  it("will match values via current", () => {
+    const test = Subject.create();
+    const { refs } = test;
+
+    for(const key in test){
+      const value = (test as any)[key];
+      const { current } = (refs as any)[key];
+
+      expect(current).toBe(value);
+    }
+  })
+
+  it("will update values", async () => {
+    const test = Subject.create();
+
+    expect(test.foo).toBe("foo");
+    expect(test.bar).toBe("bar");
+    
+    test.refs.foo("bar");
+    test.refs.bar("foo");
+
+    await test.update(true);
+
+    expect(test.foo).toBe("bar");
+    expect(test.bar).toBe("foo");
+  })
+})
+
 describe("act", () => {
   class Test extends Model {
     test = act(this.wait);
@@ -410,7 +453,7 @@ describe("memo", () => {
     expect(state.ranMemo).toBeCalled();
   })
 
-  it("will run memoLazy on first access", () => {
+  it("will run on access in lazy mode", () => {
     const state = Test.create();
 
     expect(state.ranLazyMemo).not.toBeCalled();

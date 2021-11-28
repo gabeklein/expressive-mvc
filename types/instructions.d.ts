@@ -117,14 +117,24 @@ export function on <T = any> (initialValue: undefined, onUpdate: InterceptCallba
 export function on <T = any> (initialValue: T, onUpdate: InterceptCallback<T>): T;
 
 /**
- * Creates a ref-compatible property for use with components.
+ * Creates an object with references to all managed values.
+ * Each property will set value in state when invoked.
+ *
+ * *Properties are simultaneously a ref-function and ref-object, use as needed.*
+ *
+ * @param target - Source model from which to reference values.
+ */
+export function ref <T = Model> (target: T): { [P in Model.Fields<T>]: Model.Ref<T[P]> };
+
+/**
+ * Creates a ref-compatible property.
  * Will persist value, and updates to this are made part of controller event-stream.
  *
  * *Output is simultaneously a ref-function and ref-object, use as needed.*
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-export function ref <T = HTMLElement> (this: any, callback?: InterceptCallback<T>): Model.Ref<T>;
+export function ref <T = HTMLElement> (callback?: InterceptCallback<T>): Model.Ref<T>;
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.

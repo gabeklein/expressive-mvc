@@ -16,24 +16,39 @@ export const Oops = issues({
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`
 })
 
-export function ref<T>(
-  cb?: InterceptCallback<T>): { current: T } {
+function createRef(
+  this: Controller,
+  key: string,
+  cb?: InterceptCallback<any>){
 
+  const refObjectFunction =
+    this.setter(key, cb && createValueEffect(cb));
+
+  defineProperty(refObjectFunction, "current", {
+    set: refObjectFunction,
+    get: () => this.state[key]
+  })
+
+  return refObjectFunction;
+}
+
+export function ref<T>(arg?: InterceptCallback<T> | Model): { current: T } {
   return apply(
     function ref(key){
-      const refObjectFunction =
-        this.setter(key, cb && createValueEffect(cb));
+      let value = {};
 
-      defineProperty(refObjectFunction, "current", {
-        set: refObjectFunction,
-        get: () => this.state[key]
-      })
+      if(typeof arg == "object"){
+        const source = manage(arg);
+    
+        for(const key in source.state)
+          defineLazy(value, key, createRef.bind(source, key));
+      }
+      else 
+        value = createRef.call(this, key, arg);
 
-      return {
-        value: refObjectFunction
-      };
+      return { value };
     }
-  );
+  )
 }
 
 export function on<T>(
