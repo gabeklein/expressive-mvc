@@ -4,15 +4,22 @@ import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
-export const CREATE = Symbol("start");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
-export const Pending = new Map<symbol, Instruction<any>>();
+export interface Stateful {
+  [CONTROL]: Controller;
+  [LOCAL]?: Subscriber;
+  [STATE]?: any;
+
+  didCreate?(): void;
+};
 
 export function manage(src: Stateful){
   return src[CONTROL];
 }
+
+export const Pending = new Map<symbol, Instruction<any>>();
 
 export function apply<T = any>(
   fn: Instruction<any>, label?: string){
@@ -43,15 +50,6 @@ export function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export interface Stateful {
-  [CONTROL]: Controller;
-  [CREATE]?(has: Controller): Callback | void;
-  [LOCAL]?: Subscriber;
-  [STATE]?: any;
-
-  didCreate?(): void;
-};
-
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
 export type Getter<T> = (sub?: Subscriber) => T
@@ -68,16 +66,11 @@ export class Controller {
   constructor(public subject: Stateful){}
 
   static setup(onto: Stateful){
-    const create = onto[CREATE];
     const control = new this(onto);
-    const after = create && create.call(onto, control);
 
     defineLazy(onto, CONTROL, () => {
       onto[STATE] = control.state;
       control.start();
-
-      if(after)
-        after();
 
       if(onto.didCreate)
         onto.didCreate();

@@ -1,6 +1,6 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, CREATE, keys, LOCAL, manage, STATE, Stateful } from './controller';
+import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
 import { issues } from './issues';
 import { lifecycle } from './lifecycle';
@@ -27,28 +27,25 @@ export interface Model extends Stateful {
 }
 
 export class Model {
-  [CREATE](using: Controller){
-    defer(using, "on");
-    defer(using, "effect");
-
-    return () => {
-      delete (this as any).on;
-      delete (this as any).effect;
-    }
-  }
-
   static CONTROL = CONTROL;
   static STATE = STATE;
-  static INIT = CREATE;
   static LOCAL = LOCAL;
 
   static [CONTROL]: Controller;
 
   constructor(){
-    Controller.setup(this);
+    const control = Controller.setup(this);
 
     define(this, "get", this);
     define(this, "set", this);
+
+    defer(control, "on");
+    defer(control, "effect");
+
+    control.include(() => {
+      delete (this as any).on;
+      delete (this as any).effect;
+    })
   }
 
   tap(path?: string | Select, expect?: boolean){
