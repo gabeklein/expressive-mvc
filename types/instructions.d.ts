@@ -116,6 +116,9 @@ export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<
 export function on <T = any> (initialValue: undefined, onUpdate: InterceptCallback<T>): T | undefined;
 export function on <T = any> (initialValue: T, onUpdate: InterceptCallback<T>): T;
 
+/** Object with references to all managed values of `T`. */
+export type Refs <T extends Model> = { [P in Model.Fields<T>]: Model.Ref<T[P]> };
+
 /**
  * Creates an object with references to all managed values.
  * Each property will set value in state when invoked.
@@ -124,7 +127,7 @@ export function on <T = any> (initialValue: T, onUpdate: InterceptCallback<T>): 
  *
  * @param target - Source model from which to reference values.
  */
-export function ref <T = Model> (target: T): { [P in Model.Fields<T>]: Model.Ref<T[P]> };
+export function ref <T extends Model> (target: T): Refs<T>;
 
 /**
  * Creates a ref-compatible property.
