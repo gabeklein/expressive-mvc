@@ -1,8 +1,6 @@
-import { Consumer, ReactElement, ReactNode, Component, ComponentType } from "react";
+import { Consumer, ReactElement, ReactNode } from "react";
 import { Model } from "./model"
 import { Class } from "./types";
-
-type Output = ReactElement<any, any> | null;
 
 export namespace Provider {
     type Item = Model | typeof Model;
@@ -21,7 +19,7 @@ export namespace Provider {
     type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
-export function Provider<T extends Provider.Item>(props: Provider.Props<T>): Output;
+export function Provider<T extends Provider.Item>(props: Provider.Props<T>): ReactElement<typeof props>;
 
 export namespace Consumer {
     type HasProps<E extends Class> = {
@@ -50,10 +48,10 @@ export namespace Consumer {
          * Similar to `tap()`, updates to properties accessed in
          * this function will cause a refresh when they change.
          */
-        children: (value: InstanceType<E>) => Output;
+        children: (value: InstanceType<E>) => ReactElement<any, any> | null;
     }
 
     type Props<T extends Class> = HasProps<T> | GetProps<T> | RenderProps<T>
 }
 
-export function Consumer<T extends Class>(props: Consumer.Props<T>): Output;
+export function Consumer<T extends Class>(props: Consumer.Props<T>): null;
