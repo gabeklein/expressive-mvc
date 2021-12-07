@@ -198,7 +198,7 @@ export function lazy <T> (value?: T): T;
  * Pending value. Will suspend unless value is defined,
  * suspense resolves when a value is aquired. 
  */
-export function pending <T = boolean> (): Exclude<T, undefined>;
+export function pending <T = boolean> (): T;
 
 /**
  * Suspend during the execution of given function to obtain value.
