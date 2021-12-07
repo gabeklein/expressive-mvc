@@ -195,6 +195,12 @@ export function memo <T> (compute: () => T, lazy?: boolean): T;
 export function lazy <T> (value?: T): T;
 
 /**
+ * Pending value. Will suspend unless value is defined,
+ * suspense resolves when a value is aquired. 
+ */
+export function pending <T = boolean> (): Exclude<T, undefined>;
+
+/**
  * Suspend during the execution of given function to obtain value.
  * 
  * @param waitFor - Async function to suspend for.

@@ -1,4 +1,4 @@
-import { apply } from './controller';
+import { apply, Controller, manage } from './controller';
 import { from } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
@@ -10,37 +10,75 @@ export const Oops = issues({
 
 type ComputeFunction<T, O = any> = (this: O, on: O) => T;
 
+export function pending<T = void>(
+  source: (() => Promise<T>) | Model | typeof Model,
+  compute?: ComputeFunction<T>){
+
+  return (
+    source === undefined ?
+      suspendForValue() :
+    typeof source == "function" && !source.prototype ?
+      suspendForAsync(source as any) :
+      suspendForComputed(source as any, compute)
+  )
+}
+
 /**
  * Create suspense promise also interpretable as an error.
- * React will handle it but other contexts probably won't.
+ * React could handle it but other contexts probably not.
  */
-function suspense(model: Model, key: string){
-  const { message, stack } = Oops.ValueNotReady(model, key);
+function suspense(target: Controller, key: string){
+  const { message, stack } =
+    Oops.ValueNotReady(target.subject, key);
+
   const promise = new Promise<void>(resolve => {
-    const release = model.on(key, (value: any) => {
-      if(value !== undefined)
-        release(), resolve();
+    const release = target.addListener({
+      [key]: (value: any) => {
+        if(value !== undefined){
+          release();
+          resolve();
+        }
+      }
     });
   });
 
   return Object.assign(promise, { message, stack });
 }
 
-export function pending<T = void>(
-  source: (() => Promise<T>) | Model | typeof Model,
+function suspendForComputed<T>(
+  source: Model | typeof Model,
   compute?: ComputeFunction<T>){
 
-  if(typeof source == "function" && !source.prototype)
-    return suspendForAsync(source as any)
-  else
-    return from(source as any, compute,
-      function getter(value, key){
-        if(value === undefined)
-          throw suspense(this, key);
-        
-        return value;
+  function getter(
+    this: Model, value: any, key: string){
+
+    if(value === undefined)
+      throw suspense(manage(this), key);
+    
+    return value;
+  }
+
+  return from(source, compute, getter);
+}
+
+function suspendForValue<T = void>(){
+  return apply<T>(
+    function pending(key){
+      this.state[key] = undefined;
+
+      return {
+        set: this.setter(key),
+        get: () => {
+          const value = this.state[key];
+
+          if(value === undefined)
+            throw suspense(this, key);
+          
+          return value;
+        }
       }
-    )
+    }
+  )
 }
 
 function suspendForAsync<T = void>(
@@ -48,29 +86,31 @@ function suspendForAsync<T = void>(
 
   return apply(
     function suspense(key){
+      const subject = this.subject as Model
       let waiting = true;
-      let output: any;
+      let value: any;
       let error: any;
   
       return () => {
-        if(waiting){
-          const issue = Oops.ValueNotReady(this.subject, key);
-          const promise = source
-            .call(this.subject, key)
-            .catch(err => error = err)
-            .then((value) => output = value)
-            .finally(() => waiting = false);
-
-          throw Object.assign(promise, {
-            message: issue.message,
-            stack: issue.stack
-          });
-        }
-  
         if(error)
           throw error;
+
+        if(!waiting)
+          return value;
+
+        const issue =
+          Oops.ValueNotReady(subject, key);
+
+        let suspend = source
+          .call(subject, key)
+          .catch(err => error = err)
+          .then(out => value = out)
+          .finally(() => waiting = false);
   
-        return output;
+        throw Object.assign(suspend, {
+          message: issue.message,
+          stack: issue.stack
+        });
       }
     }
   )

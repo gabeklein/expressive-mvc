@@ -78,6 +78,47 @@ function scenario(){
   }
 }
 
+describe("assigned", () => {
+  it('will suspend if value is accessed before set', async () => {
+    class Test extends Model {
+      foobar = pending<string>();
+    }
+
+    const test = scenario();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("foobar");
+    })
+  
+    test.assertDidSuspend(true);
+
+    instance.foobar = "foo!";
+
+    // expect refresh caused by update
+    await instance.once("willRender");
+
+    test.assertDidRender(true);
+  })
+
+  it('will not suspend if value is defined', async () => {
+    class Test extends Model {
+      foobar = pending<string>();
+    }
+
+    const test = scenario();
+    const instance = Test.create();
+
+    instance.foobar = "foo!";
+
+    test.renderHook(() => {
+      instance.tap("foobar");
+    })
+  
+    test.assertDidRender(true);
+  })
+})
+
 describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
     const [ promise, resolve ] = manageAsync();
