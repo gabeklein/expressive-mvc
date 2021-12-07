@@ -24,16 +24,25 @@ export function pending<T = void>(
 }
 
 /**
- * Create suspense promise also interpretable as an error.
+ * Get value, suspend instead if undefined.
+ * 
+ * Throws suspense promise also interpretable as an error.
  * React could handle it but other contexts probably not.
  */
-function suspense(target: Controller, key: string){
+function pendingValue<T = any>(
+  via: Controller, key: string): T {
+
+  const value = via.state[key];
+
+  if(value !== undefined)
+    return value;
+
   const error =
-    Oops.ValueNotReady(target.subject, key);
+    Oops.ValueNotReady(via.subject, key);
 
   const promise = new Promise<void>(resolve => {
-    const release = target.addListener({
-      [key]: (value: any) => {
+    const release = via.addListener({
+      [key](value: any){
         if(value !== undefined){
           release();
           resolve();
@@ -42,7 +51,7 @@ function suspense(target: Controller, key: string){
     });
   });
 
-  return Object.assign(promise, {
+  throw Object.assign(promise, {
     toString: () => String(error),
     message: error.message,
     stack: error.stack
@@ -54,12 +63,9 @@ function suspendForComputed<T>(
   compute?: ComputeFunction<T>){
 
   function getter(
-    this: Model, value: any, key: string){
+    this: Model, _value: any, key: string){
 
-    if(value === undefined)
-      throw suspense(manage(this), key);
-    
-    return value;
+    return pendingValue(manage(this), key);
   }
 
   return from(source, compute, getter);
@@ -72,14 +78,7 @@ function suspendForValue<T = void>(){
 
       return {
         set: this.setter(key),
-        get: () => {
-          const value = this.state[key];
-
-          if(value === undefined)
-            throw suspense(this, key);
-          
-          return value;
-        }
+        get: () => pendingValue(this, key)
       }
     }
   )
