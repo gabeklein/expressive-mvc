@@ -233,9 +233,17 @@ describe("computed", () => {
 
   it("will seem to throw \"error\" outside react", () => {
     const instance = Test.create();
-    const exprected = Oops.ValueNotReady(instance, "value");
+    const expected = Oops.ValueNotReady(instance, "value");
+    let didThrow: Error | undefined;
 
-    expect(() => instance.value).toThrowError(exprected);
+    try {
+      void instance.value;
+    }
+    catch(err: any){
+      didThrow = err;
+    }
+
+    expect(String(didThrow)).toBe(String(expected));
   })
 
   it("will return immediately if value is defined", async () => {

@@ -28,7 +28,7 @@ export function pending<T = void>(
  * React could handle it but other contexts probably not.
  */
 function suspense(target: Controller, key: string){
-  const { message, stack } =
+  const error =
     Oops.ValueNotReady(target.subject, key);
 
   const promise = new Promise<void>(resolve => {
@@ -42,7 +42,11 @@ function suspense(target: Controller, key: string){
     });
   });
 
-  return Object.assign(promise, { message, stack });
+  return Object.assign(promise, {
+    toString: () => String(error),
+    message: error.message,
+    stack: error.stack
+  });
 }
 
 function suspendForComputed<T>(
