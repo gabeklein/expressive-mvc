@@ -252,7 +252,7 @@ describe("computed", () => {
 
     instance.source = "foobar!";
 
-    let value!: string;
+    let value: string | undefined;
 
     test.renderHook(() => {
       value = instance.tap("value");

@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
-import { useLazy, useModel, useSubscriber, useWatcher } from './hooks';
+import { use, useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
@@ -16,6 +16,7 @@ export const Oops = issues({
     `Then called with undefined; update promise will never catch nor supports chaining.`
 })
 
+const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
 
 export interface Model extends Stateful {
@@ -55,7 +56,26 @@ export class Model {
   }
 
   tag(id?: Key | KeyFactory<this>){
-    return useSubscriber(this, id);
+    const hook = use(refresh => {
+      return new Subscriber(this, refresh);
+    });
+  
+    useElementLifecycle(hook, id || 0);
+    
+    return hook.proxy;
+  }
+
+  use(callback?: (instance: Model) => void){
+    const hook = use(refresh => {
+      if(callback)
+        callback(this);
+
+      return new Subscriber(this, refresh);
+    });
+  
+    useComponentLifecycle(hook);
+    
+    return hook.proxy;
   }
 
   on(
@@ -203,8 +223,8 @@ export class Model {
     return instance;
   }
 
-  static new(args: any[], callback?: (instance: Model) => void){
-    const instance = useLazy(this, args, callback);
+  static new(callback?: (instance: Model) => void){
+    const instance = useLazy(this, callback);
     instance.update("willRender", true);
     return instance
   }
@@ -235,21 +255,21 @@ export class Model {
     return this.find(true).tag(id);
   }
 
-  static use(args: any[], callback?: (instance: Model) => void){
-    const instance = useModel(this, args, callback);
+  static use(callback?: (instance: Model) => void){
+    const instance = useModel(this, callback);
     useComponentLifecycle(instance[LOCAL]);
     usePeerContext(instance.get);
     return instance;
   }
 
   static uses(props: BunchOf<any>, only?: string[]){
-    return this.use([], instance => {
+    return this.use(instance => {
       instance.import(props, only);
     })
   }
 
   static using(props: BunchOf<any>, only?: string[]){
-    const instance = this.use([]);
+    const instance = this.use();
     instance.import(props, only);
     return instance;
   }

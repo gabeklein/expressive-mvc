@@ -309,7 +309,7 @@ export abstract class Model {
     effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
 
     /**
-     * **React Hook** - Attach to instance of this controller within ambient component.
+     * **React Hook** - Attach to instance of this controller within a component.
      * 
      * This method will fire lifecycle events on given controller.
      * 
@@ -318,13 +318,22 @@ export abstract class Model {
     tag(id?: any): this;
 
      /**
-      * **React Hook** - Attach to instance of this controller within ambient component.
+      * **React Hook** - Subscribe to instance of controller within a component.
       * 
-      * This method will fire lifecycle events on given controller.
+      * This method will fire lifecycle events on given controller (as element)..
       * 
       * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
       */
     tag(idFactory: (idFactory: this) => any): this;
+
+    /**
+     * **React Hook** - Subscribe to instance of controller within a component.
+     * 
+     * This method will fire lifecycle events on given controller (as component).
+     * 
+     * @param callback - Run once before subscription begins.
+     */
+    use(callback?: (instance: this) => void): this;
 
     /** Use symbol to access controller of a model. */
     static CONTROL: typeof CONTROL;
@@ -350,20 +359,18 @@ export abstract class Model {
      * Differs from `use()` in lacking subscription and lifecycle events.
      * Much more efficient if you don't need hook-based features.
      * 
-     * @param args - Arguments passed to constructor of `this`
      * @param callback - Run after creation of instance.
      */
-    static new <T extends Class> (this: T, args?: ConstructorParameters<T>, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
+    static new <T extends Class> (this: T, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
 
     /**
      * **React Hook** - Create and attach an instance of this controller a react component.
      * 
      * Note: Model will be destroyed when ambient component unmounts!
      * 
-     * @param args - Arguments passed to constructor of `this`
      * @param callback - Run after creation of instance.
      */
-    static use <T extends Class> (this: T, args?: ConstructorParameters<T>, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
+    static use <T extends Class> (this: T, callback?: (instance: InstanceOf<T>) => void): InstanceOf<T>;
 
     /**
      * **React Hook** - Similar to `use`, will instanciate a controller bound to ambient component.

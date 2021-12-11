@@ -9,9 +9,17 @@ const opts = { timeout: 100 };
 describe("use", () => {
   class Test extends Model {};
 
+  it("will subscribe to instance of controller", () => {
+    const instance = Test.create();
+    const callback = jest.fn();
+
+    renderHook(() => instance.use(callback));
+    expect(callback).toHaveBeenCalledWith(instance);
+  })
+
   it("will run callback after creation", () => {
     const callback = jest.fn();
-    renderHook(() => Test.use([], callback));
+    renderHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 })
@@ -135,7 +143,7 @@ describe("new", () => {
 
   it("will run callback after creation", () => {
     const callback = jest.fn();
-    renderHook(() => Test.new([], callback));
+    renderHook(() => Test.new(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 
@@ -239,7 +247,7 @@ describe("tag", () => {
     expect(result.current.value).toBe("bar");
   })
 
-  it("will subscribe to instance", async () => {
+  it("will subscribe from context", async () => {
     const mock = jest.fn();
 
     class Test extends Model {

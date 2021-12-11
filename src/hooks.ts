@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { keys, manage, Stateful } from './controller';
 import { issues } from './issues';
-import { Lifecycle, lifecycle } from './lifecycle';
+import { Lifecycle } from './lifecycle';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty } from './util';
@@ -11,8 +11,6 @@ export const Oops = issues({
   HasPropertyUndefined: (control, property) =>
     `${control}.${property} is marked as required for this render.`
 })
-
-const useElementLifecycle = lifecycle("element");
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = useState((): T[] => [
@@ -23,10 +21,10 @@ export function use<T>(init: (trigger: Callback) => T){
 }
 
 export function useLazy<T extends typeof Model>(
-  Type: T, args?: any[], callback?: (instance: InstanceOf<T>) => void){
+  Type: T, callback?: (instance: InstanceOf<T>) => void){
 
   const instance = useMemo(() => {
-    const instance = Type.create(...args || []);
+    const instance = Type.create();
 
     if(callback)
       callback(instance);
@@ -69,25 +67,12 @@ export function useWatcher(
   return hook.proxy;
 }
 
-export function useSubscriber<T extends Stateful>(
-  target: T, tag?: Key | KeyFactory<T>){
-
-  const hook = use(refresh =>
-    new Subscriber(target, refresh)
-  );
-
-  useElementLifecycle(hook, tag || 0);
-  
-  return hook.proxy;
-}
-
 export function useModel(
   Type: Class,
-  args?: any[], 
   callback?: (instance: Model) => void){
 
   const hook = use(refresh => {
-    const instance = new Type(...args || []) as Model;
+    const instance = new Type() as Model;
     const control = manage(instance);
     const sub = new Subscriber(control, refresh);
 
