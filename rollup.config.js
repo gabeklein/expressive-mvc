@@ -1,20 +1,24 @@
 import commonjs from '@rollup/plugin-commonjs'
 import typescript from 'rollup-plugin-typescript2';
 
-export default {
+export default  {
   input: 'src/index.ts',
-  output: {
-    dir: 'lib',
-    format: 'cjs',
-    exports: 'named'
-  },
-  external: ['react'],
+  output: [
+    {
+      file: 'lib/index.js',
+      format: 'cjs',
+      exports: 'named',
+      sourcemap: true
+    },
+    {
+      file: 'lib/index.esm.js',
+      format: 'esm',
+      sourcemap: true
+    }
+  ],
+  external: [ 'react' ],
   plugins: [
     typescript(),
     commonjs()
-  ],
-  onwarn: (message, warn) => {
-    if(message.code !== "CIRCULAR_DEPENDENCY")
-      warn(message);
-  }
+  ]
 }
