@@ -17,7 +17,13 @@ export const Oops = issues({
     `Child property ${key} may not be undefined.`,
 
   BadArgument: (type) =>
-    `Instruction \`use\` cannot accept argument type of ${type}.`
+    `Instruction \`use\` cannot accept argument type of ${type}.`,
+
+  IsReadOnly: (owner, key) =>
+    `${owner}.${key} is set to read-only, but tried to reassign assign.`,
+
+  MustBeDefined: (owner, key) =>
+    `${owner}.${key} must have initial value, as a read-only property.`
 })
 
 function bootstrap<T extends {}>(object: T){
@@ -32,45 +38,60 @@ function bootstrap<T extends {}>(object: T){
 
 export function use<T extends typeof Model>(
   input?: T | (() => InstanceOf<T>),
-  argument?: ((i: Model | undefined) => void) | boolean){
+  argument?: ((i: Model | undefined) => boolean) | boolean){
 
   return child(
     function use(key){
-      let instance: Model | undefined;
+      const { subject } = this;
+
+      // `true` => readonly
+      // `false` => writable, may be undefined
+      // `undefined` => writable (default)
+      let mode = argument;
+      let current: Model | undefined;
   
-      const update = (next: Model | {} | undefined) => {
-        instance =
-          next instanceof Model ? next :
-          next && bootstrap(next);
-  
-        if(instance){
-          Parent.set(instance, this.subject);
-          manage(instance);
+      const onUpdate = (
+        next: Model | {} | undefined,
+        initial?: boolean) => {
+
+        if(mode === true && !initial)
+          throw Oops.IsReadOnly(subject, key);
+
+        if(next){
+          current = next instanceof Model
+            ? next : bootstrap(next);
+
+          Parent.set(current, subject);
+          manage(current);
         }
+        else if(mode === undefined)
+          throw Oops.UndefinedNotAllowed(key);
+        else
+          current = undefined;
   
         if(typeof argument == "function")
-          argument(instance);
-        else if(!instance && argument !== false)
-          throw Oops.UndefinedNotAllowed(key);
+          return argument(current);
       }
   
       if(input){
-        instance =
+        current =
           Model.isTypeof(input) ? new input() :
           input instanceof Model ? input :
           typeof input === "function" ? input() :
           typeof input === "object" ? bootstrap(input) :
           Oops.BadArgument(typeof input).throw();
   
-        if(instance)
-          update(instance);
+        if(current)
+          mode = onUpdate(current, true) || mode;
+        else if(mode == true)
+          throw Oops.MustBeDefined(subject, key);
       }
       else
-        argument = false;
+        mode = false;
   
-      this.manage(key, instance, update);
+      this.manage(key, current, onUpdate);
   
-      return () => instance;
+      return () => current;
     }
   )
 }

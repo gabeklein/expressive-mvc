@@ -150,6 +150,20 @@ describe("use instruction", () => {
     await update();
     expect(state.child.value).toBe("bar");
   })
+
+  it('will complain if assigned in read-only mode', () => {
+    class Parent extends Model {
+      // @ts-ignore
+      child = use(Child, true);
+    }
+  
+    const state = Parent.create();
+    const expected = Oops.IsReadOnly("Parent", "child");
+    const reassign = () => state.child = new Child();
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(reassign).toThrowError(expected);
+  })
   
   it('will reset if value is undefined', async () => {
     class Parent extends Model {
@@ -212,9 +226,9 @@ describe("use instruction", () => {
     await update();
   })
 
-  it('will complain if undefined in required mode', () => {
+  it('will complain if undefined while not optional', () => {
     class Parent extends Model {
-      child = use(Child, true);
+      child = use(Child);
     }
 
     const state = Parent.create();
@@ -227,6 +241,17 @@ describe("use instruction", () => {
 
     expect(state.child).toBeInstanceOf(Child);
     expect(setUndefined).toThrowError(expected);
+  })
+
+  it('will complain if undefined in read-only mode', () => {
+    class Parent extends Model {
+      // @ts-ignore
+      child = use(() => {}, true);
+    }
+
+    const expected = Oops.MustBeDefined("Parent", "child");
+  
+    expect(() => Parent.create()).toThrowError(expected);
   })
 
   it('will throw if bad argument type', () => {
