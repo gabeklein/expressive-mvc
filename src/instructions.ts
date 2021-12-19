@@ -3,7 +3,7 @@ import { apply, Controller, manage, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { pendingAccess } from './peer';
-import { createValueEffect, define, defineLazy, defineProperty, setAlias } from './util';
+import { createValueEffect, defineLazy, defineProperty, setAlias } from './util';
 
 export const Oops = issues({
   DuplicateAction: (key) =>
@@ -49,45 +49,6 @@ export function ref<T>(arg?: InterceptCallback<T> | Model): { current: T } {
       return { value };
     }
   )
-}
-
-export function on<T>(
-  initial: T, cb: InterceptCallback<T>): T {
-
-  return apply(
-    function on(key){
-      this.manage(key, initial, cb && createValueEffect(cb));
-    }
-  );
-}
-
-export function memo<T>(
-  factory: () => T, defer?: boolean): T {
-
-  return apply(
-    function memo(key){
-      const source = this.subject;
-      const get = () => factory.call(source);
-
-      if(defer)
-        defineLazy(source, key, get);
-      else
-        define(source, key, get())
-    }
-  );
-}
-
-export function lazy<T>(value: T): T {
-  return apply(
-    function lazy(key){
-      const source = this.subject as any;
-
-      source[key] = value;
-      defineProperty(this.state, key, {
-        get: () => source[key]
-      });
-    }
-  );
 }
 
 export function act<T extends Async>(task: T): T {
