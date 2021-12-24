@@ -11,7 +11,7 @@ describe("on method", () => {
     })
   }
   
-  it('will watch for updated value', async () => {
+  it('will watch for specified value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
@@ -22,7 +22,7 @@ describe("on method", () => {
   
     expect(callback).toBeCalledWith(30, "seconds");
   })
-  
+
   it('will watch for computed value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
@@ -45,6 +45,62 @@ describe("on method", () => {
     await state.update();
   
     expect(callback).toBeCalledWith(1, "minutes");
+  })
+  
+  it('will watch for multiple values', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on(["seconds", "minutes"], callback);
+
+    state.seconds = 30;
+    await state.update();
+  
+    // sanity check
+    expect(callback).toBeCalledWith(30, "seconds");
+    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
+
+    state.seconds = 61;
+    await state.update();
+  
+    expect(callback).toBeCalledWith(61, "seconds");
+    expect(callback).toBeCalledWith(1, "minutes");
+  })
+  
+  it('will watch for any value', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on([], callback);
+
+    state.seconds = 30;
+    await state.update();
+  
+    expect(callback).toBeCalledWith(30, "seconds");
+    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
+
+    state.seconds = 61;
+    await state.update();
+  
+    expect(callback).toBeCalledWith(61, "seconds");
+    expect(callback).toBeCalledWith(1, "minutes");
+  })
+  
+  it('will watch for any (synthetic) value', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on([], callback);
+
+    await state.update("seconds");
+  
+    expect(callback).toBeCalledWith(0, "seconds");
+    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
+
+    await state.update("minutes");
+  
+    expect(callback).toBeCalledWith(0, "minutes");
+    expect(callback).not.toBeCalledWith(expect.anything, "seconds");
   })
 
   it('will watch values with selector', async () => {
@@ -182,6 +238,26 @@ describe("effect method", () => {
       "value3",
       "value4",
     ]);
+  
+    state.value1 = 2;
+
+    // wait for update event, thus queue flushed
+    await state.update()
+    
+    state.value2 = 3;
+    state.value3 = 4;
+
+    // wait for update event to flush queue
+    await state.update()
+    
+    // expect two syncronous groups of updates.
+    expect(state.invoked).toBeCalledTimes(3)
+  })
+
+  it('will watch for any value', async () => {
+    const state = TestValues.create();
+  
+    state.effect(state.invoked, []);
   
     state.value1 = 2;
 

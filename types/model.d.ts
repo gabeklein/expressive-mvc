@@ -284,28 +284,36 @@ export abstract class Model {
     
     // Keyed
     on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
+    on <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     // Squash
     on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
+    on <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     // Unknown
     on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
+    on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
     // Keyed
     once <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false): Callback;
+    once <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
     // Squash
     once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
+    once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
     // Promise
     once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
+    once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
     // Unknown
     once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
+    once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
 
     effect(callback: (this: this, state: this) => void, select?: Model.SelectFields<this>): Callback;
+    effect(callback: (this: this, state: this) => void, select?: []): Callback;
     effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
 
     /**

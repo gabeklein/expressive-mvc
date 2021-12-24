@@ -79,7 +79,7 @@ export class Model {
   }
 
   on(
-    subset: string | Iterable<string> | Query,
+    subset: string | string[] | Set<string> | Query,
     handler: Function,
     squash?: boolean,
     once?: boolean){
@@ -110,7 +110,7 @@ export class Model {
   }
 
   once(
-    select: string | Iterable<string> | Query,
+    select: string | string[] | Set<string> | Query,
     callback?: UpdateCallback<any, any>,
     squash?: boolean){
 
@@ -146,14 +146,14 @@ export class Model {
 
   import(
     from: BunchOf<any>,
-    subset?: Iterable<string> | Query){
+    subset?: Set<string> | string[] | Query){
 
     for(const key of keys(manage(this), subset))
       if(key in from)
         (this as any)[key] = from[key];
   }
 
-  export(subset?: Iterable<string> | Query){
+  export(subset?: Set<string> | string[] | Query){
     const control = manage(this);
     const output: BunchOf<any> = {};
 

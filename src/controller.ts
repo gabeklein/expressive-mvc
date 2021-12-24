@@ -206,13 +206,19 @@ export class Controller {
 
 export function keys(
   from: Controller,
-  using?: string | Iterable<string> | Query){
+  using?: string | string[] | Set<string> | Query){
 
   if(typeof using == "string")
     return [ using ];
 
-  if(typeof using == "object")
-    return Array.from(using);
+  if(typeof using == "object"){
+    using = Array.from(using);
+    
+    if(using.length === 0)
+      using = undefined;
+    else
+      return using;
+  }
 
   return from.select(using);
 }
