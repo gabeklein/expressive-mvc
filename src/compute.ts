@@ -138,7 +138,7 @@ export function ensure(on: Controller, keys: string[]){
   }
 }
 
-export function capture(on: Controller, request: RequestCallback){
+export function defer(on: Controller, request: RequestCallback){
   const compute = INFO.get(request);
 
   if(!compute)

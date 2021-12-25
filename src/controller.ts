@@ -159,6 +159,8 @@ export class Controller {
   public addListener(
     batch: BunchOf<RequestCallback>){
 
+    Computed.ensure(this, Object.keys(batch));
+
     this.handles.add(batch);
     return () => {
       this.handles.delete(batch)
@@ -181,7 +183,7 @@ export class Controller {
       if(key in handle){
         const to = handle[key];
 
-        if(Computed.capture(this, to))
+        if(Computed.defer(this, to))
           continue;
         else
           this.waiting.push(to)

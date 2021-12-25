@@ -1,4 +1,3 @@
-import * as Computed from './compute';
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { use, useLazy, useModel, useWatcher } from './hooks';
@@ -85,24 +84,24 @@ export class Model {
     once?: boolean){
 
     const control = manage(this);
-    const set = keys(control, subset);
-    const batch = {} as BunchOf<RequestCallback>;
-    const remove = control.addListener(batch);
+    const request = keys(control, subset);
+    const listener = {} as BunchOf<RequestCallback>;
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
       : frame => frame
-        .filter(k => set.includes(k))
+        .filter(k => request.includes(k))
         .forEach(k => handler.call(this, control.state[k], k))
 
-    const handle: RequestCallback = once
+    const trigger: RequestCallback = once
       ? frame => { remove(); callback(frame) }
       : callback;
 
-    for(const key of set)
-      batch[key] = handle;
+    for(const key of request)
+      listener[key] = trigger;
 
-    Computed.ensure(control, set);
+    const remove =
+      control.addListener(listener);
 
     return remove;
   }
