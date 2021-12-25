@@ -34,11 +34,18 @@ export function prepare(
   const { state, subject } = parent;
   const info: GetterInfo = { key, parent, priority: 1 };
 
+  let register = ComputedUsed.get(parent)!;
+
+  if(!register){
+    register = new Map<string, GetterInfo>();
+    ComputedUsed.set(parent, register);
+  }
+
+  register.set(key, info);
+
   const current = getter
     ? () => getter.call(subject, state[key], key)
     : () => state[key];
-
-  const prioritize = register(parent, key, info);
 
   function compute(initial?: boolean){
     try {
@@ -93,8 +100,12 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.follows)
-        prioritize(key);
+      for(const key in sub.follows){
+        const peer = register.get(key);
+    
+        if(peer && peer.priority >= info.priority)
+          info.priority = peer.priority + 1;
+      }
     }
 
     return current();
@@ -113,28 +124,6 @@ export function prepare(
       configurable: true,
       enumerable: true
     })
-}
-
-function register(
-  on: Controller,
-  key: string,
-  info: GetterInfo){
-
-  let register = ComputedUsed.get(on)!;
-
-  if(!register)
-    ComputedUsed.set(on, 
-      register = new Map<string, GetterInfo>()
-    );
-
-  register.set(key, info);
-
-  return (key: string) => {
-    const peer = register.get(key);
-
-    if(peer && peer.priority >= info.priority)
-      info.priority = peer.priority + 1;
-  }
 }
 
 export function ensure(on: Controller, keys: string[]){
