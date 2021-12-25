@@ -1,4 +1,3 @@
-import * as Computed from './compute';
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
 import { use, useLazy, useModel, useWatcher } from './hooks';
@@ -43,7 +42,7 @@ export class Model {
     defer(control, "on");
     defer(control, "effect");
 
-    control.include(() => {
+    control.waiting.push(() => {
       delete (this as any).on;
       delete (this as any).effect;
     })
@@ -79,38 +78,36 @@ export class Model {
   }
 
   on(
-    subset: string | Iterable<string> | Query,
+    subset: string | string[] | Set<string> | Query,
     handler: Function,
     squash?: boolean,
     once?: boolean){
 
     const control = manage(this);
-    const set = keys(control, subset);
-    const batch = {} as BunchOf<RequestCallback>;
-    const remove = control.addListener(batch);
+    const request = keys(control, subset);
+    const listener = {} as BunchOf<RequestCallback>;
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
-      : (frame: string[]) => {
-        for(const key of frame)
-          if(set.includes(key))
-            handler.call(this, control.state[key], key);
-      }
+      : frame => frame
+        .filter(k => request.includes(k))
+        .forEach(k => handler.call(this, control.state[k], k))
 
-    const handle = once
-      ? (k: string[]) => { remove(); callback(k) }
+    const trigger: RequestCallback = once
+      ? frame => { remove(); callback(frame) }
       : callback;
 
-    for(const key of set)
-      batch[key] = handle;
+    for(const key of request)
+      listener[key] = trigger;
 
-    Computed.ensure(control, set);
+    const remove =
+      control.addListener(listener);
 
     return remove;
   }
 
   once(
-    select: string | Iterable<string> | Query,
+    select: string | string[] | Set<string> | Query,
     callback?: UpdateCallback<any, any>,
     squash?: boolean){
 
@@ -146,14 +143,14 @@ export class Model {
 
   import(
     from: BunchOf<any>,
-    subset?: Iterable<string> | Query){
+    subset?: Set<string> | string[] | Query){
 
     for(const key of keys(manage(this), subset))
       if(key in from)
         (this as any)[key] = from[key];
   }
 
-  export(subset?: Iterable<string> | Query){
+  export(subset?: Set<string> | string[] | Query){
     const control = manage(this);
     const output: BunchOf<any> = {};
 
@@ -165,8 +162,8 @@ export class Model {
 
   update(strict?: boolean): Promise<string[] | false>;
   update(select?: Select): PromiseLike<string[]>;
-  update(key: string | Select, callMethod: boolean): PromiseLike<string[]>;
-  update(key: string | Select, tag?: any): PromiseLike<string[]>;
+  update(key: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
+  update(key: string | Select, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
@@ -191,11 +188,11 @@ export class Model {
       }
     }
 
-    return <PromiseLike<string[] | false>> {
+    return <PromiseLike<readonly string[] | false>> {
       then(callback){
         if(callback)
           if(control.pending)
-            control.include(callback);
+            control.waiting.push(callback);
           else
             callback(false);
         else

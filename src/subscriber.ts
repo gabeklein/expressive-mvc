@@ -10,13 +10,13 @@ export class Subscriber {
   public proxy: any;
   public source: any;
   public active = false;
-  public follows = {} as BunchOf<Callback>;
+  public follows = {} as BunchOf<RequestCallback>;
   public dependant = new Set<Listener>();
   public parent: Controller;
 
   constructor(
     parent: Controller | Stateful,
-    public onUpdate: Callback){
+    public onUpdate: RequestCallback){
 
     if(!(parent instanceof Controller))
       parent = manage(parent);
@@ -52,7 +52,7 @@ export class Subscriber {
     })
   }
 
-  public follow(key: string, cb?: Callback){
+  public follow(key: string, cb?: RequestCallback){
     this.follows[key] = cb || this.onUpdate;
   }
 

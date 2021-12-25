@@ -17,10 +17,10 @@ type GetterInfo = {
   priority: number;
 }
 
-const ComputedInit = new WeakSet<Function>();
-const ComputedInfo = new WeakMap<Function, GetterInfo>();
-const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
-const ComputedKeys = new WeakMap<Controller, Callback[]>();
+const INIT = new WeakSet<Function>();
+const INFO = new WeakMap<Function, GetterInfo>();
+const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
+const KEYS = new WeakMap<Controller, RequestCallback[]>();
 
 export function prepare(
   parent: Controller,
@@ -34,11 +34,18 @@ export function prepare(
   const { state, subject } = parent;
   const info: GetterInfo = { key, parent, priority: 1 };
 
+  let register = USED.get(parent)!;
+
+  if(!register){
+    register = new Map<string, GetterInfo>();
+    USED.set(parent, register);
+  }
+
+  register.set(key, info);
+
   const current = getter
     ? () => getter.call(subject, state[key], key)
     : () => state[key];
-
-  const prioritize = register(parent, key, info);
 
   function compute(initial?: boolean){
     try {
@@ -93,8 +100,12 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.follows)
-        prioritize(key);
+      for(const key in sub.follows){
+        const peer = register.get(key);
+    
+        if(peer && peer.priority >= info.priority)
+          info.priority = peer.priority + 1;
+      }
     }
 
     return current();
@@ -104,8 +115,8 @@ export function prepare(
   setAlias(create, `new ${key}`);
   setAlias(setter, `run ${key}`);
 
-  ComputedInit.add(create);
-  ComputedInfo.set(update, info);
+  INIT.add(create);
+  INFO.set(update, info);
 
   for(const on of [state, subject])
     defineProperty(on, key, {
@@ -115,28 +126,6 @@ export function prepare(
     })
 }
 
-function register(
-  on: Controller,
-  key: string,
-  info: GetterInfo){
-
-  let register = ComputedUsed.get(on)!;
-
-  if(!register)
-    ComputedUsed.set(on, 
-      register = new Map<string, GetterInfo>()
-    );
-
-  register.set(key, info);
-
-  return (key: string) => {
-    const peer = register.get(key);
-
-    if(peer && peer.priority >= info.priority)
-      info.priority = peer.priority + 1;
-  }
-}
-
 export function ensure(on: Controller, keys: string[]){
   type Initial = (early?: boolean) => void;
 
@@ -144,49 +133,50 @@ export function ensure(on: Controller, keys: string[]){
     const desc = getOwnPropertyDescriptor(on.subject, key);
     const getter = desc && desc.get;
   
-    if(ComputedInit.has(getter!))
+    if(INIT.has(getter!))
       (getter as Initial)(true);
   }
 }
 
-export function capture(on: Controller, request: RequestCallback){
-  const compute = ComputedInfo.get(request);
-  const callback = request as Callback;
+export function defer(on: Controller, request: RequestCallback){
+  const compute = INFO.get(request);
 
   if(!compute)
     return;
 
-  let pending = ComputedKeys.get(on);
+  let pending = KEYS.get(on);
 
   if(!pending)
-    ComputedKeys.set(on, pending = []);
+    KEYS.set(on, pending = []);
 
   if(compute.parent !== on)
-    callback();
+    request([]);
   else {
-    const queue = pending.findIndex(peer =>
-      compute.priority > ComputedInfo.get(peer)!.priority
-    );
+    const after = pending.findIndex(peer => (
+      compute.priority > INFO.get(peer)!.priority
+    ));
 
-    pending.splice(queue + 1, 0, callback);
+    pending.splice(after + 1, 0, request);
   }
 
   return true;
 }
 
 export function flush(on: Controller){
-  const handled = on.frame!;
-  let pending = ComputedKeys.get(on);
+  const handled = on.frame;
+  const pending = KEYS.get(on);
 
-  if(pending){
-    while(pending.length){
-      const compute = pending.shift()!;
-      const { key } = ComputedInfo.get(compute)!;
+  if(!pending)
+    return;
 
-      if(!handled.has(key))
-        compute();
-    }
-  
-    ComputedKeys.delete(on);
+  while(pending.length){
+    const why = [ ...handled ];
+    const compute = pending.shift()!;
+    const { key } = INFO.get(compute)!;
+
+    if(!handled.has(key))
+      compute(why);
   }
+
+  KEYS.delete(on);
 }

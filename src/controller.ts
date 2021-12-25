@@ -59,9 +59,9 @@ export type Instruction<T> = (this: Controller, key: string, thisArg: Controller
 export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
+  public waiting = [] as RequestCallback[];
 
   protected handles = new Set<BunchOf<RequestCallback>>();
-  protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){}
 
@@ -159,17 +159,12 @@ export class Controller {
   public addListener(
     batch: BunchOf<RequestCallback>){
 
+    Computed.ensure(this, Object.keys(batch));
+
     this.handles.add(batch);
     return () => {
       this.handles.delete(batch)
     }
-  }
-
-  public include(to: RequestCallback){
-    if(Computed.capture(this, to))
-      return;
-    else
-      this.waiting.push(to)
   }
 
   public update(key: string, value?: any){
@@ -184,15 +179,21 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const subscription of this.handles)
-      if(key in subscription)
-        this.include(subscription[key]);
+    for(const handle of this.handles)
+      if(key in handle){
+        const to = handle[key];
+
+        if(Computed.defer(this, to))
+          continue;
+        else
+          this.waiting.push(to)
+      }
   }
 
   public emit(){
     Computed.flush(this);
 
-    const keys = Array.from(this.frame);
+    const keys = Object.freeze([ ...this.frame ]);
     const handle = new Set(this.waiting.splice(0));
 
     this.frame.clear();
@@ -206,13 +207,19 @@ export class Controller {
 
 export function keys(
   from: Controller,
-  using?: string | Iterable<string> | Query){
+  using?: string | string[] | Set<string> | Query){
 
   if(typeof using == "string")
     return [ using ];
 
-  if(typeof using == "object")
-    return Array.from(using);
+  if(typeof using == "object"){
+    using = Array.from(using);
+    
+    if(using.length === 0)
+      using = undefined;
+    else
+      return using;
+  }
 
   return from.select(using);
 }

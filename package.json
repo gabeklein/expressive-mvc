@@ -26,7 +26,10 @@
     "build": "rollup --config",
     "watch": "jest --watchAll",
     "test": "jest --collectCoverage",
-    "prebuild": "rm -rf lib/"
+    "prebuild": "rm -rf lib/",
+    "preversion": "npm run test && npm run build",
+    "publish:beta": "npm version prerelease --preid=beta",
+    "postversion": "npm publish"
   },
   "peerDependencies": {
     "react": ">=17.0.2"
@@ -46,5 +49,5 @@
     "tslib": "^2.3.0",
     "typescript": "typescript@>=3.8 <5.0"
   },
-  "version": "1.0.0-beta.24"
+  "version": "1.0.0-beta.26"
 }

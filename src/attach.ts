@@ -30,7 +30,7 @@ export function child<T extends Model>(
           }
         }
     
-        function refresh(){
+        function refresh(keys: readonly string[]){
           if(child){
             child.release();
             sub.dependant.delete(child);
@@ -39,7 +39,7 @@ export function child<T extends Model>(
           }
     
           start();
-          sub.onUpdate();
+          sub.onUpdate(keys);
         }
     
         start();
