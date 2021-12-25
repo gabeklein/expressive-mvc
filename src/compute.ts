@@ -20,7 +20,7 @@ type GetterInfo = {
 const INIT = new WeakSet<Function>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
-const KEYS = new WeakMap<Controller, Callback[]>();
+const KEYS = new WeakMap<Controller, RequestCallback[]>();
 
 export function prepare(
   parent: Controller,
@@ -140,7 +140,6 @@ export function ensure(on: Controller, keys: string[]){
 
 export function capture(on: Controller, request: RequestCallback){
   const compute = INFO.get(request);
-  const callback = request as Callback;
 
   if(!compute)
     return;
@@ -151,31 +150,33 @@ export function capture(on: Controller, request: RequestCallback){
     KEYS.set(on, pending = []);
 
   if(compute.parent !== on)
-    callback();
+    request([]);
   else {
-    const queue = pending.findIndex(peer =>
+    const after = pending.findIndex(peer => (
       compute.priority > INFO.get(peer)!.priority
-    );
+    ));
 
-    pending.splice(queue + 1, 0, callback);
+    pending.splice(after + 1, 0, request);
   }
 
   return true;
 }
 
 export function flush(on: Controller){
-  const handled = on.frame!;
-  let pending = KEYS.get(on);
+  const handled = on.frame;
+  const pending = KEYS.get(on);
 
-  if(pending){
-    while(pending.length){
-      const compute = pending.shift()!;
-      const { key } = INFO.get(compute)!;
+  if(!pending)
+    return;
 
-      if(!handled.has(key))
-        compute();
-    }
-  
-    KEYS.delete(on);
+  while(pending.length){
+    const why = [ ...handled ];
+    const compute = pending.shift()!;
+    const { key } = INFO.get(compute)!;
+
+    if(!handled.has(key))
+      compute(why);
   }
+
+  KEYS.delete(on);
 }
