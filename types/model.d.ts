@@ -116,6 +116,7 @@ export namespace Model {
     export class Controller {
         state: BunchOf<any>;
         subject: {};
+        waiting: RequestCallback[];
 
         /** Add property to managed state. */
         manage(key: string, initial: any, effect?: HandleValue): void;
@@ -127,8 +128,6 @@ export namespace Model {
         addListener(batch: BunchOf<RequestCallback>): Callback;
 
         update(key: string, value?: any): void;
-
-        include(cb: RequestCallback): void;
     }
 
     export class Subscriber {

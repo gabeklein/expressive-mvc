@@ -43,7 +43,7 @@ export class Model {
     defer(control, "on");
     defer(control, "effect");
 
-    control.include(() => {
+    control.waiting.push(() => {
       delete (this as any).on;
       delete (this as any).effect;
     })
@@ -193,7 +193,7 @@ export class Model {
       then(callback){
         if(callback)
           if(control.pending)
-            control.include(callback);
+            control.waiting.push(callback);
           else
             callback(false);
         else

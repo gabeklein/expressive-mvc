@@ -59,9 +59,9 @@ export type Instruction<T> = (this: Controller, key: string, thisArg: Controller
 export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
+  public waiting = [] as RequestCallback[];
 
   protected handles = new Set<BunchOf<RequestCallback>>();
-  protected waiting = [] as RequestCallback[];
 
   constructor(public subject: Stateful){}
 
@@ -165,13 +165,6 @@ export class Controller {
     }
   }
 
-  public include(to: RequestCallback){
-    if(Computed.capture(this, to))
-      return;
-    else
-      this.waiting.push(to)
-  }
-
   public update(key: string, value?: any){
     if(1 in arguments)
       this.state[key] = value;
@@ -184,9 +177,15 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const subscription of this.handles)
-      if(key in subscription)
-        this.include(subscription[key]);
+    for(const handle of this.handles)
+      if(key in handle){
+        const to = handle[key];
+
+        if(Computed.capture(this, to))
+          continue;
+        else
+          this.waiting.push(to)
+      }
   }
 
   public emit(){
