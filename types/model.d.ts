@@ -136,13 +136,13 @@ export namespace Model {
         source: any;
         parent: Controller;
         active: boolean;
-        follows: BunchOf<Callback>;
+        follows: BunchOf<RequestCallback>;
         dependant: Set<{
             commit(): void;
             release(): void;
         }>;
 
-        follow(key: string, cb?: Callback | undefined): void;
+        follow(key: string, cb?: RequestCallback | undefined): void;
         commit(): Callback;
         release(): Callback;
         onUpdate(): void;

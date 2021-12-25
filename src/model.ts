@@ -91,14 +91,12 @@ export class Model {
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
-      : (frame: string[]) => {
-        for(const key of frame)
-          if(set.includes(key))
-            handler.call(this, control.state[key], key);
-      }
+      : frame => frame
+        .filter(k => set.includes(k))
+        .forEach(k => handler.call(this, control.state[k], k))
 
-    const handle = once
-      ? (k: string[]) => { remove(); callback(k) }
+    const handle: RequestCallback = once
+      ? frame => { remove(); callback(frame) }
       : callback;
 
     for(const key of set)
@@ -165,8 +163,8 @@ export class Model {
 
   update(strict?: boolean): Promise<string[] | false>;
   update(select?: Select): PromiseLike<string[]>;
-  update(key: string | Select, callMethod: boolean): PromiseLike<string[]>;
-  update(key: string | Select, tag?: any): PromiseLike<string[]>;
+  update(key: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
+  update(key: string | Select, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
@@ -191,7 +189,7 @@ export class Model {
       }
     }
 
-    return <PromiseLike<string[] | false>> {
+    return <PromiseLike<readonly string[] | false>> {
       then(callback){
         if(callback)
           if(control.pending)

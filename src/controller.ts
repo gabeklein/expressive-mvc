@@ -192,7 +192,7 @@ export class Controller {
   public emit(){
     Computed.flush(this);
 
-    const keys = Array.from(this.frame);
+    const keys = Object.freeze([ ...this.frame ]);
     const handle = new Set(this.waiting.splice(0));
 
     this.frame.clear();
