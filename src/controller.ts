@@ -59,7 +59,7 @@ export type Instruction<T> = (this: Controller, key: string, thisArg: Controller
 export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
-  public waiting = [] as RequestCallback[];
+  public waiting = new Set<RequestCallback>();
 
   protected handles = new Set<BunchOf<RequestCallback>>();
 
@@ -186,7 +186,7 @@ export class Controller {
         if(Computed.defer(this, to))
           continue;
         else
-          this.waiting.push(to)
+          this.waiting.add(to)
       }
   }
 
@@ -194,8 +194,9 @@ export class Controller {
     Computed.flush(this);
 
     const keys = Object.freeze([ ...this.frame ]);
-    const handle = new Set(this.waiting.splice(0));
+    const handle = new Set(this.waiting);
 
+    this.waiting.clear();
     this.frame.clear();
 
     handle.forEach(callback => {

@@ -116,7 +116,7 @@ export namespace Model {
     export class Controller {
         state: BunchOf<any>;
         subject: {};
-        waiting: RequestCallback[];
+        waiting: Set<RequestCallback>;
 
         /** Add property to managed state. */
         manage(key: string, initial: any, effect?: HandleValue): void;
