@@ -17,10 +17,10 @@ type GetterInfo = {
   priority: number;
 }
 
-const ComputedInit = new WeakSet<Function>();
-const ComputedInfo = new WeakMap<Function, GetterInfo>();
-const ComputedUsed = new WeakMap<Controller, Map<string, GetterInfo>>();
-const ComputedKeys = new WeakMap<Controller, Callback[]>();
+const INIT = new WeakSet<Function>();
+const INFO = new WeakMap<Function, GetterInfo>();
+const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
+const KEYS = new WeakMap<Controller, Callback[]>();
 
 export function prepare(
   parent: Controller,
@@ -34,11 +34,11 @@ export function prepare(
   const { state, subject } = parent;
   const info: GetterInfo = { key, parent, priority: 1 };
 
-  let register = ComputedUsed.get(parent)!;
+  let register = USED.get(parent)!;
 
   if(!register){
     register = new Map<string, GetterInfo>();
-    ComputedUsed.set(parent, register);
+    USED.set(parent, register);
   }
 
   register.set(key, info);
@@ -115,8 +115,8 @@ export function prepare(
   setAlias(create, `new ${key}`);
   setAlias(setter, `run ${key}`);
 
-  ComputedInit.add(create);
-  ComputedInfo.set(update, info);
+  INIT.add(create);
+  INFO.set(update, info);
 
   for(const on of [state, subject])
     defineProperty(on, key, {
@@ -133,28 +133,28 @@ export function ensure(on: Controller, keys: string[]){
     const desc = getOwnPropertyDescriptor(on.subject, key);
     const getter = desc && desc.get;
   
-    if(ComputedInit.has(getter!))
+    if(INIT.has(getter!))
       (getter as Initial)(true);
   }
 }
 
 export function capture(on: Controller, request: RequestCallback){
-  const compute = ComputedInfo.get(request);
+  const compute = INFO.get(request);
   const callback = request as Callback;
 
   if(!compute)
     return;
 
-  let pending = ComputedKeys.get(on);
+  let pending = KEYS.get(on);
 
   if(!pending)
-    ComputedKeys.set(on, pending = []);
+    KEYS.set(on, pending = []);
 
   if(compute.parent !== on)
     callback();
   else {
     const queue = pending.findIndex(peer =>
-      compute.priority > ComputedInfo.get(peer)!.priority
+      compute.priority > INFO.get(peer)!.priority
     );
 
     pending.splice(queue + 1, 0, callback);
@@ -165,17 +165,17 @@ export function capture(on: Controller, request: RequestCallback){
 
 export function flush(on: Controller){
   const handled = on.frame!;
-  let pending = ComputedKeys.get(on);
+  let pending = KEYS.get(on);
 
   if(pending){
     while(pending.length){
       const compute = pending.shift()!;
-      const { key } = ComputedInfo.get(compute)!;
+      const { key } = INFO.get(compute)!;
 
       if(!handled.has(key))
         compute();
     }
   
-    ComputedKeys.delete(on);
+    KEYS.delete(on);
   }
 }
