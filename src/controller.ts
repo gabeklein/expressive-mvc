@@ -61,7 +61,7 @@ export class Controller {
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
 
-  protected handles = new Set<BunchOf<RequestCallback>>();
+  protected handles = new Set<Subscription>();
 
   constructor(public subject: Stateful){}
 
@@ -156,14 +156,12 @@ export class Controller {
     }
   }
 
-  public addListener(
-    batch: BunchOf<RequestCallback>){
+  public addListener(listener: Subscription){
+    Computed.ensure(this, Object.keys(listener));
 
-    Computed.ensure(this, Object.keys(batch));
-
-    this.handles.add(batch);
+    this.handles.add(listener);
     return () => {
-      this.handles.delete(batch)
+      this.handles.delete(listener)
     }
   }
 

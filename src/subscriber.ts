@@ -10,7 +10,7 @@ export class Subscriber {
   public proxy: any;
   public source: any;
   public active = false;
-  public follows = {} as BunchOf<RequestCallback>;
+  public listener = {} as Subscription;
   public dependant = new Set<Listener>();
   public parent: Controller;
 
@@ -53,13 +53,13 @@ export class Subscriber {
   }
 
   public follow(key: string, cb?: RequestCallback){
-    this.follows[key] = cb || this.onUpdate;
+    this.listener[key] = cb || this.onUpdate;
   }
 
   public commit(){
-    const { dependant, follows, parent } = this;
+    const { dependant, listener, parent } = this;
 
-    const onDone = parent.addListener(follows);
+    const onDone = parent.addListener(listener);
     this.active = true;
 
     dependant.forEach(x => x.commit());

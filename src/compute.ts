@@ -100,7 +100,7 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.follows){
+      for(const key in sub.listener){
         const peer = register.get(key);
     
         if(peer && peer.priority >= info.priority)
