@@ -85,7 +85,7 @@ export class Model {
 
     const control = manage(this);
     const request = keys(control, subset);
-    const listener = {} as BunchOf<RequestCallback>;
+    const listener = {} as Subscription;
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
