@@ -233,19 +233,19 @@ export abstract class Model {
     export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
     export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
-    update(): PromiseLike<string[] | false>;
-    update(strict: true): Promise<string[]>;
+    update(): PromiseLike<readonly string[] | false>;
+    update(strict: true): Promise<readonly string[]>;
     update(strict: false): Promise<false>;
-    update(strict: boolean): Promise<string[] | false>;
+    update(strict: boolean): Promise<readonly string[] | false>;
 
-    update(keys: Model.Fields<this>): Thenable<string[]>;
-    update(keys: Model.SelectFieldKey<this>): Thenable<string[]>;
+    update(keys: Model.Fields<this>): Thenable<readonly string[]>;
+    update(keys: Model.SelectFieldKey<this>): Thenable<readonly string[]>;
 
-    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<string[]>;
-    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<string[]>;
+    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
+    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
 
-    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<string[]>;
-    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<string[]>;
+    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<readonly string[]>;
+    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<readonly string[]>;
 
     /*
     Issue with self-reference, using fallback.
