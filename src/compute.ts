@@ -74,23 +74,25 @@ export function prepare(
     }
   }
 
+  function defer(_key: string, from: Controller){
+    let pending = KEYS.get(from);
+
+    if(!pending)
+      KEYS.set(from, pending = []);
+
+    if(info.parent !== from)
+      update();
+    else {
+      const after = pending.findIndex(peer => (
+        info.priority > INFO.get(peer)!.priority
+      ));
+
+      pending.splice(after + 1, 0, update);
+    }
+  }
+
   function create(early?: boolean){
-    sub = new Subscriber(source(), (_key, from) => {
-      let pending = KEYS.get(from);
-
-      if(!pending)
-        KEYS.set(from, pending = []);
-
-      if(info.parent !== from)
-        update();
-      else {
-        const after = pending.findIndex(peer => (
-          info.priority > INFO.get(peer)!.priority
-        ));
-
-        pending.splice(after + 1, 0, update);
-      }
-    });
+    sub = new Subscriber(source(), defer);
 
     defineProperty(state, key, {
       value: undefined,
