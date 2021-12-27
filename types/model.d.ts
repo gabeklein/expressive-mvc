@@ -154,6 +154,7 @@ export namespace Model {
 }
 
 declare const CONTROL: unique symbol;
+declare const UPDATE: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
@@ -167,6 +168,14 @@ export abstract class Model {
 
     /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
     [LOCAL]?: Model.Subscriber;
+
+    /**
+     * Last update causing a refresh to subscribers.
+     * 
+     * If accessed directly, will contain all keys from last push.
+     * If within a subscribed function, will contain only keys which explicitly caused a refresh.
+     **/
+    [UPDATE]?: readonly string[];
 
     /**
      * Circular reference to `this` controller.
@@ -355,6 +364,9 @@ export abstract class Model {
 
     /** Use symbol to access current subscriber of a model in a live context (e.g. hook or effect). */
     static LOCAL: typeof LOCAL;
+
+    /** Use symbol to access keys affected by last update. */
+    static WHY: typeof UPDATE;
 
     /**
      * Creates a new instance of this controller.

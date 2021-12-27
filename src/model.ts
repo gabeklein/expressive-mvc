@@ -1,6 +1,6 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
+import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
 import { use, useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
 import { lifecycle } from './lifecycle';
@@ -31,8 +31,10 @@ export class Model {
   static CONTROL = CONTROL;
   static STATE = STATE;
   static LOCAL = LOCAL;
+  static WHY = UPDATE;
 
   static [CONTROL]: Controller;
+  static [UPDATE]: readonly string[];
 
   constructor(){
     const control = Controller.setup(this);

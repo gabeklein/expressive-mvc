@@ -4,11 +4,13 @@ import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
+export const UPDATE = Symbol("update");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
 export interface Stateful {
   [CONTROL]: Controller;
+  [UPDATE]?: readonly string[];
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 
@@ -197,6 +199,11 @@ export class Controller {
 
     this.waiting.clear();
     this.frame.clear();
+
+    defineProperty(this.subject, UPDATE, {
+      configurable: true,
+      value: keys
+    })
 
     handle.forEach(callback => {
       try { callback(keys) }

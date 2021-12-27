@@ -1,5 +1,5 @@
-import { Controller, LOCAL, manage, Stateful } from './controller';
-import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { Controller, LOCAL, manage, Stateful, UPDATE } from './controller';
+import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
   commit(): void;
@@ -13,6 +13,7 @@ export class Subscriber {
   public handle = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
   public parent: Controller;
+  public notify?: RequestCallback;
 
   constructor(
     parent: Controller | Stateful,
@@ -26,9 +27,22 @@ export class Subscriber {
     this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
+    defineLazy(this.proxy, UPDATE, this.debug);
 
     for(const key in parent.state)
       this.spy(key);
+  }
+
+  public debug = () => {
+    const update: string[] = [];
+
+    this.notify = keys => {
+      update.splice(0, update.length,
+        ...keys.filter(k => k in this.handle)  
+      )
+    }
+
+    return update;
   }
 
   public listen = (key: string, from: Controller) => {
@@ -40,7 +54,13 @@ export class Subscriber {
     if(typeof handler == "function")
       handler();
 
-    return this.onUpdate(key, from);
+    const notify = this.onUpdate(key, from);
+
+    if(notify)
+      from.waiting.add(notify);
+
+    if(this.notify)
+      from.waiting.add(this.notify);
   }
 
   public spy(key: string){

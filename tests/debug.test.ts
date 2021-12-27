@@ -68,6 +68,67 @@ describe("update method", () => {
   })
 })
 
+describe("update property", () => {
+  class Test extends Model {
+    value1 = 1;
+    value2 = 2;
+    value3 = 3;
+  }
+
+  it("will reveal last update", async () => {
+    const test = Test.create();
+
+    test.value1 = 2;
+    test.value2 = 3;
+
+    const update = await test.update();
+    const updated = test[Model.WHY];
+
+    expect(update).toStrictEqual(updated);
+
+    expect(updated).toContain("value1");
+    expect(updated).toContain("value2");
+  })
+
+  it("will reveal cause for update", async () => {
+    const test = Test.create();
+
+    let update: readonly string[] | undefined;
+    let fullUpdate: readonly string[] | false;
+
+    test.effect(state => {
+      void state.value1;
+      void state.value3;
+
+      update = state[Model.WHY];
+    })
+
+    expect(update).toMatchObject([]);
+
+    test.value1 = 2;
+    test.value2 = 3;
+
+    fullUpdate = await test.update();
+
+    // sanity check
+    expect(update).not.toMatchObject(fullUpdate);
+    expect(fullUpdate).toContain("value2");
+
+    expect(update).toContain("value1");
+    expect(update).not.toContain("value2");
+
+    test.value3 = 4;
+
+    fullUpdate = await test.update();
+
+    // sanity check
+    expect(fullUpdate).not.toContain("value1");
+    
+    expect(update).toContain("value3");
+    expect(fullUpdate).toContain("value3");
+  })
+})
+
 describe("isTypeof method", () => {
   class Test extends Model {}
   class Test2 extends Test {}
