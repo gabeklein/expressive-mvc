@@ -3,8 +3,6 @@ import { from, Model } from './adapter';
 
 describe("method", () => {
   class TestValues extends Model {
-    invoked = jest.fn();
-
     value1 = 1;
     value2 = 2;
     value3 = 3;
@@ -16,8 +14,9 @@ describe("method", () => {
 
   it('will watch values', async () => {
     const state = TestValues.create();
-  
-    state.effect(state.invoked, [
+    const callback = jest.fn();
+
+    state.effect(callback, [
       "value1",
       "value2",
       "value3",
@@ -36,13 +35,14 @@ describe("method", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(3)
+    expect(callback).toBeCalledTimes(3)
   })
 
   it('will squash simultaneous updates', async () => {
     const state = TestValues.create();
-  
-    state.effect(state.invoked, ["value1", "value2"]);
+    const callback = jest.fn();
+
+    state.effect(callback, ["value1", "value2"]);
   
     state.value1 = 2;
     state.value2 = 3;
@@ -50,26 +50,28 @@ describe("method", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(2)
+    expect(callback).toBeCalledTimes(2)
   })
 
   it('will squash simultaneous compute update', async () => {
     const state = TestValues.create();
-  
-    state.effect(state.invoked, ["value3", "value4"]);
+    const callback = jest.fn();
+
+    state.effect(callback, ["value3", "value4"]);
   
     state.value3 = 4;
 
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(2)
+    expect(callback).toBeCalledTimes(2)
   })
 
   it('will watch for any value', async () => {
     const state = TestValues.create();
-  
-    state.effect(state.invoked, []);
+    const callback = jest.fn();
+
+    state.effect(callback, []);
   
     state.value1 = 2;
 
@@ -83,13 +85,14 @@ describe("method", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(3)
+    expect(callback).toBeCalledTimes(3)
   })
 
   it('will watch values with selector', async () => {
     const state = TestValues.create();
-  
-    state.effect(state.invoked,
+    const callback = jest.fn();
+
+    state.effect(callback,
       $ => $.value1.value2.value3.value4
     );
   
@@ -103,16 +106,17 @@ describe("method", () => {
     // expect value4, which relies on 3.
     await state.update();
     
-    expect(state.invoked).toBeCalledTimes(3);
+    expect(callback).toBeCalledTimes(3);
   })
 
   it('will squash simultaneous updates via subscriber', async () => {
     const state = TestValues.create();
-  
+    const callback = jest.fn();
+
     state.effect(self => {
       void self.value1
       void self.value2;
-      self.invoked();
+      callback();
     });
   
     state.value1 = 2;
@@ -121,16 +125,17 @@ describe("method", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(2)
+    expect(callback).toBeCalledTimes(2)
   })
 
   it('will squash simultaneous compute via subscriber', async () => {
     const state = TestValues.create();
-  
+    const callback = jest.fn();
+
     state.effect(self => {
       void self.value3;
       void self.value4;
-      self.invoked();
+      callback();
     });
   
     state.value3 = 4;
@@ -138,17 +143,18 @@ describe("method", () => {
     await state.update()
     
     // expect two syncronous groups of updates.
-    expect(state.invoked).toBeCalledTimes(2)
+    expect(callback).toBeCalledTimes(2)
   })
 
   it('will watch values with subscriber', async () => {
     const state = TestValues.create();
-  
+    const callback = jest.fn();
+
     state.effect(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
       void value1, value2, value3;
-      self.invoked();
+      callback();
     });
   
     state.value1 = 2;
@@ -169,7 +175,7 @@ describe("method", () => {
      * - value 2
      * - value 2 & 3 (squashed)
      */
-    expect(state.invoked).toBeCalledTimes(4);
+    expect(callback).toBeCalledTimes(4);
   })
 
   it('will watch values with method subscriber', async () => {
@@ -178,11 +184,12 @@ describe("method", () => {
         // destructure values to indicate access.
         const { value1, value2, value3 } = this;
         void value1, value2, value3;
-        this.invoked();
+        callback();
       }
     }
 
     const state = Test.create();
+    const callback = jest.fn();
   
     state.effect(state.testEffect);
   
@@ -196,26 +203,27 @@ describe("method", () => {
     state.value3 = 4;
     await state.update();
 
-    expect(state.invoked).toBeCalledTimes(4);
+    expect(callback).toBeCalledTimes(4);
   })
 
   it("will call function effect returns on subsequent update", async () => {
     class Test extends TestValues {
       testEffect(){
-        return this.invoked;
+        return callback;
       }
     }
 
     const state = Test.create();
+    const callback = jest.fn();
     
     state.effect(state.testEffect, ["value1"]);
 
-    expect(state.invoked).not.toBeCalled();
+    expect(callback).not.toBeCalled();
 
     state.value1 = 2;
     await state.update();
 
-    expect(state.invoked).toBeCalled();
+    expect(callback).toBeCalled();
   })
 
   it("will throw if effect returns non-function", () => {
