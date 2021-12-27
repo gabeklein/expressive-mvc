@@ -320,7 +320,7 @@ describe("act", () => {
   })
 
   it("will emit method key before/after activity", async () => {
-    let update: string[] | false;
+    let update: readonly string[];
     const { test, get } = Test.create();
 
     expect(test.active).toBe(false);
