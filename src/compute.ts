@@ -76,7 +76,20 @@ export function prepare(
 
   function create(early?: boolean){
     sub = new Subscriber(source(), (_key, from) => {
-      defer(from, update);
+      let pending = KEYS.get(from);
+
+      if(!pending)
+        KEYS.set(from, pending = []);
+
+      if(info.parent !== from)
+        update();
+      else {
+        const after = pending.findIndex(peer => (
+          info.priority > INFO.get(peer)!.priority
+        ));
+
+        pending.splice(after + 1, 0, update);
+      }
     });
 
     defineProperty(state, key, {
@@ -138,30 +151,6 @@ export function ensure(on: Controller, keys: string[]){
     if(INIT.has(getter!))
       (getter as Initial)(true);
   }
-}
-
-export function defer(on: Controller, request: RequestCallback){
-  const compute = INFO.get(request);
-
-  if(!compute)
-    return;
-
-  let pending = KEYS.get(on);
-
-  if(!pending)
-    KEYS.set(on, pending = []);
-
-  if(compute.parent !== on)
-    request([]);
-  else {
-    const after = pending.findIndex(peer => (
-      compute.priority > INFO.get(peer)!.priority
-    ));
-
-    pending.splice(after + 1, 0, request);
-  }
-
-  return true;
 }
 
 export function flush(on: Controller){
