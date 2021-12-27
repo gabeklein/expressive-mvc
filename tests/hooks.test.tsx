@@ -6,10 +6,12 @@ import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
 
-describe("use", () => {
-  class Test extends Model {};
+describe("use (instance)", () => {
+  class Test extends Model {
+    value = "foo";
+  };
 
-  it("will subscribe to instance of controller", () => {
+  it("will run callback", () => {
     const instance = Test.create();
     const callback = jest.fn();
 
@@ -17,10 +19,41 @@ describe("use", () => {
     expect(callback).toHaveBeenCalledWith(instance);
   })
 
-  it("will run callback after creation", () => {
+  it("will subscribe to instance of controller", async () => {
+    const instance = Test.create();
+
+    const { result, waitForNextUpdate } =
+      renderHook(() => instance.use());
+
+    expect(result.current.value).toBe("foo");
+
+    instance.value = "bar";
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
+  })
+})
+
+describe("use (static)", () => {
+  class Test extends Model {
+    value = "foo";
+  };
+
+  it("will run callback", () => {
     const callback = jest.fn();
     renderHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
+  })
+
+  it("will subscribe to instance of controller", async () => {
+    const { result, waitForNextUpdate } =
+      renderHook(() => Test.use());
+
+    expect(result.current.value).toBe("foo");
+
+    result.current.value = "bar";
+
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
   })
 })
 
