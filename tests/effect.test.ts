@@ -39,6 +39,33 @@ describe("method", () => {
     expect(state.invoked).toBeCalledTimes(3)
   })
 
+  it('will squash simultaneous updates', async () => {
+    const state = TestValues.create();
+  
+    state.effect(state.invoked, ["value1", "value2"]);
+  
+    state.value1 = 2;
+    state.value2 = 3;
+
+    await state.update()
+    
+    // expect two syncronous groups of updates.
+    expect(state.invoked).toBeCalledTimes(2)
+  })
+
+  it('will squash simultaneous compute update', async () => {
+    const state = TestValues.create();
+  
+    state.effect(state.invoked, ["value3", "value4"]);
+  
+    state.value3 = 4;
+
+    await state.update()
+    
+    // expect two syncronous groups of updates.
+    expect(state.invoked).toBeCalledTimes(2)
+  })
+
   it('will watch for any value', async () => {
     const state = TestValues.create();
   
@@ -77,6 +104,41 @@ describe("method", () => {
     await state.update();
     
     expect(state.invoked).toBeCalledTimes(3);
+  })
+
+  it('will squash simultaneous updates via subscriber', async () => {
+    const state = TestValues.create();
+  
+    state.effect(self => {
+      void self.value1
+      void self.value2;
+      self.invoked();
+    });
+  
+    state.value1 = 2;
+    state.value2 = 3;
+
+    await state.update()
+    
+    // expect two syncronous groups of updates.
+    expect(state.invoked).toBeCalledTimes(2)
+  })
+
+  it('will squash simultaneous compute via subscriber', async () => {
+    const state = TestValues.create();
+  
+    state.effect(self => {
+      void self.value3;
+      void self.value4;
+      self.invoked();
+    });
+  
+    state.value3 = 4;
+
+    await state.update()
+    
+    // expect two syncronous groups of updates.
+    expect(state.invoked).toBeCalledTimes(2)
   })
 
   it('will watch values with subscriber', async () => {

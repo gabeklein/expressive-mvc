@@ -43,7 +43,7 @@ export function useWatcher(
   expected?: boolean){
 
   const hook = use(refresh => {
-    const sub = new Subscriber(target, refresh);
+    const sub = new Subscriber(target, () => refresh);
 
     if(focus){
       const src = sub.proxy;
@@ -74,14 +74,17 @@ export function useModel(
   const hook = use(refresh => {
     const instance = new Type() as Model;
     const control = manage(instance);
-    const sub = new Subscriber(control, refresh);
+    const sub = new Subscriber(control, () => refresh);
 
-    const release = control.addListener({
-      [Lifecycle.WILL_UNMOUNT](){
-        instance.destroy();
-        release();
+    const release = control.addListener(
+      (key: string) => {
+        if(key == Lifecycle.WILL_UNMOUNT)
+          return () => {
+            instance.destroy();
+            release();
+          }
       }
-    });
+    );
 
     if(callback)
       callback(instance);

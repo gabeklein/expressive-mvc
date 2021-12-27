@@ -55,6 +55,8 @@ describe("computed", () => {
     state.child = new Child();
     await state.update(true);
 
+    // sanity check
+    expect(state.child.value).toBe("foo");
     expect(state.nested).toBe("foo");
   })
 

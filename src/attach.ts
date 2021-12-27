@@ -29,8 +29,8 @@ export function child<T extends Model>(
             proxyCache.set(sub, child.proxy);
           }
         }
-    
-        function refresh(keys: readonly string[]){
+
+        function refresh(){
           if(child){
             child.release();
             sub.dependant.delete(child);
@@ -39,7 +39,6 @@ export function child<T extends Model>(
           }
     
           start();
-          sub.onUpdate(keys);
         }
     
         start();

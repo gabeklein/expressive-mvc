@@ -75,7 +75,9 @@ export function prepare(
   }
 
   function create(early?: boolean){
-    sub = new Subscriber(source(), update);
+    sub = new Subscriber(source(), (_key, from) => {
+      defer(from, update);
+    });
 
     defineProperty(state, key, {
       value: undefined,
@@ -100,7 +102,7 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.listener){
+      for(const key in sub.handle){
         const peer = register.get(key);
     
         if(peer && peer.priority >= info.priority)

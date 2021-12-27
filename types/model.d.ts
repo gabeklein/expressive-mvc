@@ -113,6 +113,11 @@ export namespace Model {
 
     type HandleValue = (value: any) => boolean | void;
 
+    export namespace Controller {
+        export type Listen = (key: string, source: Controller) =>
+            RequestCallback | undefined;
+    }
+
     export class Controller {
         state: BunchOf<any>;
         subject: {};
@@ -125,7 +130,7 @@ export namespace Model {
 
         setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
-        addListener(batch: BunchOf<RequestCallback>): Callback;
+        addListener(listener: Controller.Listen): Callback;
 
         update(key: string, value?: any): void;
     }
@@ -135,7 +140,7 @@ export namespace Model {
         source: any;
         parent: Controller;
         active: boolean;
-        follows: BunchOf<RequestCallback>;
+        listen: Controller.Listen;
         dependant: Set<{
             commit(): void;
             release(): void;

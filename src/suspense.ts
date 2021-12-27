@@ -41,13 +41,14 @@ function pendingValue<T = any>(
     Oops.ValueNotReady(via.subject, key);
 
   const promise = new Promise<void>(resolve => {
-    const release = via.addListener({
-      [key](value: any){
-        if(value !== undefined){
-          release();
-          resolve();
+    const release = via.addListener(forKey => {
+      if(forKey == key)
+        return () => {
+          if(via.state[key] !== undefined){
+            release();
+            resolve();
+          }
         }
-      }
     });
   });
 

@@ -53,15 +53,21 @@ export function apply<T = any>(
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
 export type Getter<T> = (sub?: Subscriber) => T
+
 export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   void | Getter<T> | PropertyDescriptor;
+
+export namespace Controller {
+  export type Listen = (key: string, source: Controller) =>
+    RequestCallback | void;
+}
 
 export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
 
-  protected followers = new Set<Subscription>();
+  protected followers = new Set<Controller.Listen>();
 
   constructor(public subject: Stateful){}
 
@@ -156,9 +162,7 @@ export class Controller {
     }
   }
 
-  public addListener(listener: Subscription){
-    Computed.ensure(this, Object.keys(listener));
-
+  public addListener(listener: Controller.Listen){
     this.followers.add(listener);
     return () => {
       this.followers.delete(listener)
@@ -177,15 +181,12 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const subscription of this.followers)
-      if(key in subscription){
-        const to = subscription[key];
+    for(const subscription of this.followers){
+      const notify = subscription(key, this);
 
-        if(Computed.defer(this, to))
-          continue;
-        else
-          this.waiting.add(to)
-      }
+      if(notify)
+        this.waiting.add(notify);
+    }
   }
 
   public emit(){
