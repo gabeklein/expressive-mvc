@@ -78,6 +78,28 @@ function scenario(){
   }
 }
 
+describe("tap method", () => {
+  it('will suspend any value if strict tap', async () => {
+    class Test extends Model {
+      value?: string = undefined;
+    }
+
+    const test = scenario();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value", true);
+    })
+  
+    test.assertDidSuspend(true);
+
+    instance.value = "foo!";
+    await instance.once("willRender");
+
+    test.assertDidRender(true);
+  })
+})
+
 describe("assigned", () => {
   it('will suspend if value is accessed before set', async () => {
     class Test extends Model {

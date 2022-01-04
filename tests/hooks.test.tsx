@@ -1,6 +1,5 @@
 import React from 'react';
 
-import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
 import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
 
@@ -218,14 +217,6 @@ describe("tap", () => {
     parent.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
-  })
-
-  it('will throw if undefined in expect-mode', () => {
-    const parent = Parent.create();
-    const hook = renderHook(() => parent.tap("empty", true));
-    const expected = Hooks.HasPropertyUndefined(Parent.name, "empty");
-    
-    expect(() => hook.result.current).toThrowError(expected);
   })
 
   it('will select subvalue directly', async () => {

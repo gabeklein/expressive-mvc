@@ -29,22 +29,30 @@ export function pending<T = void>(
  * Throws suspense promise also interpretable as an error.
  * React could handle it but other contexts probably not.
  */
-function pendingValue<T = any>(
+export function pendingValue<T = any>(
   via: Controller, key: string): T {
 
   const value = via.state[key];
 
-  if(value !== undefined)
-    return value;
+  if(value === undefined)
+    throw suspend(via, key);
+
+  return value;
+}
+
+type Suspense<T = any> = Promise<T> & Error;
+
+export function suspend(
+  source: Controller, key: string): Suspense {
 
   const error =
-    Oops.ValueNotReady(via.subject, key);
+    Oops.ValueNotReady(source.subject, key);
 
   const promise = new Promise<void>(resolve => {
-    const release = via.addListener(forKey => {
+    const release = source.addListener(forKey => {
       if(forKey == key)
         return () => {
-          if(via.state[key] !== undefined){
+          if(source.state[key] !== undefined){
             release();
             resolve();
           }
@@ -52,8 +60,9 @@ function pendingValue<T = any>(
     });
   });
 
-  throw Object.assign(promise, {
+  return Object.assign(promise, {
     toString: () => String(error),
+    name: "Suspense",
     message: error.message,
     stack: error.stack
   });

@@ -1,16 +1,11 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { keys, manage, Stateful } from './controller';
-import { issues } from './issues';
 import { Lifecycle } from './lifecycle';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
+import { suspend } from './suspense';
 import { defineProperty } from './util';
-
-export const Oops = issues({
-  HasPropertyUndefined: (control, property) =>
-    `${control}.${property} is marked as required for this render.`
-})
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = useState((): T[] => [
@@ -46,15 +41,17 @@ export function useWatcher(
     const sub = new Subscriber(target, () => refresh);
 
     if(focus){
-      const src = sub.proxy;
+      const source = sub.proxy;
       const key = keys(sub.parent, focus)[0];
 
       defineProperty(sub, "proxy", {
         get(){
-          if(src[key] === undefined && expected)
-            throw Oops.HasPropertyUndefined(target, key);
+          const value = source[key];
 
-          return src[key];
+          if(value === undefined && expected)
+            throw suspend(sub.parent, key)
+
+          return value;
         }
       })
     }
