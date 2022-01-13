@@ -3,14 +3,20 @@ import React, { Suspense } from 'react';
 import { Oops } from '../src/suspense';
 import { Model, render, pending } from './adapter';
 
-function manageAsync<T = void>(){
-  let trigger!: (value: T) => void;
+function asyncTest<T = void>(){
+  const events = new Set<Function>();
 
-  const pending = new Promise<T>(resolve => {
-    trigger = resolve;
-  })
-
-  return [ pending, trigger ] as const;
+  return {
+    wait: () => {
+      return new Promise<T>(
+        res => events.add(res)
+      )
+    },
+    trigger: () => {
+      events.forEach(x => x());
+      events.clear();
+    }
+  }
 }
 
 function scenario(){
@@ -143,12 +149,11 @@ describe("assigned", () => {
 
 describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
-    const [ promise, resolve ] = manageAsync();
-
     class Test extends Model {
-      willRender = pending(() => promise);
+      willRender = pending(sync.wait);
     }
 
+    const sync = asyncTest();
     const test = scenario();
     const instance = Test.create();
 
@@ -158,33 +163,33 @@ describe("async function", () => {
   
     test.assertDidSuspend(true);
 
-    resolve();
+    sync.trigger();
     await instance.update();
 
     test.assertDidRender(true);
   })
 
   it("will seem to throw \"error\" outside react", () => {
-    const [ promise, resolve ] = manageAsync();
+    const sync = asyncTest();
 
     class Test extends Model {
-      value = pending(() => promise);
+      value = pending(sync.wait);
     }
 
     const instance = Test.create();
     const exprected = Oops.ValueNotReady(instance, "value");
 
     expect(() => instance.value).toThrowError(exprected);
-    resolve();
+    sync.trigger();
   })
   
   it('will refresh and throw if async rejects', async () => {
-    const [ promise, resolve ] = manageAsync();
+    const sync = asyncTest();
     const error = new Error("some foobar went down");
 
     class Test extends Model {
       willRender = pending(async () => {
-        await promise;
+        await sync.wait();
         throw error;
       })
     }
@@ -198,7 +203,7 @@ describe("async function", () => {
   
     test.assertDidSuspend(true);
 
-    resolve();
+    sync.trigger();
     await instance.update();
 
     test.assertDidThrow(error);
