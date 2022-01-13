@@ -113,6 +113,11 @@ export namespace Model {
 
     type HandleValue = (value: any) => boolean | void;
 
+    export namespace Controller {
+        export type Listen = (key: string, source: Controller) =>
+            RequestCallback | undefined;
+    }
+
     export class Controller {
         state: BunchOf<any>;
         subject: {};
@@ -125,7 +130,7 @@ export namespace Model {
 
         setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
-        addListener(batch: BunchOf<RequestCallback>): Callback;
+        addListener(listener: Controller.Listen): Callback;
 
         update(key: string, value?: any): void;
     }
@@ -135,7 +140,7 @@ export namespace Model {
         source: any;
         parent: Controller;
         active: boolean;
-        follows: BunchOf<RequestCallback>;
+        listen: Controller.Listen;
         dependant: Set<{
             commit(): void;
             release(): void;
@@ -149,6 +154,7 @@ export namespace Model {
 }
 
 declare const CONTROL: unique symbol;
+declare const UPDATE: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
@@ -162,6 +168,14 @@ export abstract class Model {
 
     /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
     [LOCAL]?: Model.Subscriber;
+
+    /**
+     * Last update causing a refresh to subscribers.
+     * 
+     * If accessed directly, will contain all keys from last push.
+     * If within a subscribed function, will contain only keys which explicitly caused a refresh.
+     **/
+    [UPDATE]?: readonly string[];
 
     /**
      * Circular reference to `this` controller.
@@ -228,19 +242,19 @@ export abstract class Model {
     export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
     export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
-    update(): PromiseLike<string[] | false>;
-    update(strict: true): Promise<string[]>;
+    update(): PromiseLike<readonly string[] | false>;
+    update(strict: true): Promise<readonly string[]>;
     update(strict: false): Promise<false>;
-    update(strict: boolean): Promise<string[] | false>;
+    update(strict: boolean): Promise<readonly string[] | false>;
 
-    update(keys: Model.Fields<this>): Thenable<string[]>;
-    update(keys: Model.SelectFieldKey<this>): Thenable<string[]>;
+    update(keys: Model.Fields<this>): Thenable<readonly string[]>;
+    update(keys: Model.SelectFieldKey<this>): Thenable<readonly string[]>;
 
-    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<string[]>;
-    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<string[]>;
+    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
+    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
 
-    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<string[]>;
-    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<string[]>;
+    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<readonly string[]>;
+    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<readonly string[]>;
 
     /*
     Issue with self-reference, using fallback.
@@ -278,8 +292,8 @@ export abstract class Model {
     tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
-    tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
-    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+    tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
+    tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
     
     // Keyed
     on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
@@ -350,6 +364,9 @@ export abstract class Model {
 
     /** Use symbol to access current subscriber of a model in a live context (e.g. hook or effect). */
     static LOCAL: typeof LOCAL;
+
+    /** Use symbol to access keys affected by last update. */
+    static WHY: typeof UPDATE;
 
     /**
      * Creates a new instance of this controller.
@@ -435,7 +452,7 @@ export abstract class Model {
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K, expect?: boolean): ReturnType<K>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
@@ -444,7 +461,7 @@ export abstract class Model {
      * This makes return type non-nullable and convenient to use without optional chaining.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.

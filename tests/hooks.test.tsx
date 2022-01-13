@@ -1,15 +1,16 @@
 import React from 'react';
 
-import { Oops as Hooks } from '../src/hooks';
 import { Oops as Global } from '../src/singleton';
 import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
 
-describe("use", () => {
-  class Test extends Model {};
+describe("use (instance)", () => {
+  class Test extends Model {
+    value = "foo";
+  };
 
-  it("will subscribe to instance of controller", () => {
+  it("will run callback", () => {
     const instance = Test.create();
     const callback = jest.fn();
 
@@ -17,10 +18,41 @@ describe("use", () => {
     expect(callback).toHaveBeenCalledWith(instance);
   })
 
-  it("will run callback after creation", () => {
+  it("will subscribe to instance of controller", async () => {
+    const instance = Test.create();
+
+    const { result, waitForNextUpdate } =
+      renderHook(() => instance.use());
+
+    expect(result.current.value).toBe("foo");
+
+    instance.value = "bar";
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
+  })
+})
+
+describe("use (static)", () => {
+  class Test extends Model {
+    value = "foo";
+  };
+
+  it("will run callback", () => {
     const callback = jest.fn();
     renderHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
+  })
+
+  it("will subscribe to instance of controller", async () => {
+    const { result, waitForNextUpdate } =
+      renderHook(() => Test.use());
+
+    expect(result.current.value).toBe("foo");
+
+    result.current.value = "bar";
+
+    await waitForNextUpdate(opts);
+    expect(result.current.value).toBe("bar");
   })
 })
 
@@ -174,7 +206,7 @@ describe("tap", () => {
     value = "bar"
   }
 
-  it('access subvalue directly', async () => {
+  it('will access subvalue directly', async () => {
     const parent = Parent.create();
 
     const { result, waitForNextUpdate } =
@@ -182,26 +214,6 @@ describe("tap", () => {
   
     expect(result.current).toBe("foo");
   
-    parent.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  })
-
-  it('will throw if undefined in expect-mode', () => {
-    const parent = Parent.create();
-    const hook = renderHook(() => parent.tap("empty", true));
-    const expected = Hooks.HasPropertyUndefined(Parent.name, "empty");
-    
-    expect(() => hook.result.current).toThrowError(expected);
-  })
-
-  it('will select subvalue directly', async () => {
-    const parent = Parent.create();
-    const { result, waitForNextUpdate } =
-      renderHook(() => parent.tap(x => x.value));
-  
-    expect(result.current).toBe("foo");
-
     parent.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
@@ -226,6 +238,70 @@ describe("tap", () => {
     parent.child.value = "bar"
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
+  })
+})
+
+describe("tap (computed)", () => {
+  class Test extends Model {
+    foo = 1;
+    bar = 2;
+    baz = 3;
+  }
+
+  it('will select and subscribe to subvalue', async () => {
+    const parent = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return parent.tap(x => x.foo);
+    });
+
+    expect(result.current).toBe(1)
+
+    parent.foo = 2;
+    await waitForNextUpdate();
+
+    expect(result.current).toBe(2);
+  })
+
+  it('will compute output', async () => {
+    const parent = Test.create();
+    const { result, waitForNextUpdate } =
+      renderHook(() => parent.tap(x => x.foo + x.bar));
+  
+    expect(result.current).toBe(3);
+
+    parent.foo = 2;
+    await waitForNextUpdate(opts);
+
+    expect(result.current).toBe(4);
+  })  
+
+  it('will ignore updates with same result', async () => {
+    const parent = Test.create();
+    const compute = jest.fn();
+    const render = jest.fn();
+
+    const { result } = renderHook(() => {
+      render();
+      return parent.tap(x => {
+        compute();
+        void x.foo;
+        return x.bar;
+      });
+    });
+
+    expect(result.current).toBe(2);
+    expect(compute).toBeCalled();
+
+    parent.foo = 2;
+    await parent.update();
+
+    // did attempt a second compute
+    expect(compute).toBeCalledTimes(2);
+
+    // compute did not trigger a new render
+    expect(render).toBeCalledTimes(1);
+    expect(result.current).toBe(2);
   })
 })
 

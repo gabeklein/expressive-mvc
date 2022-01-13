@@ -4,11 +4,13 @@ import { Subscriber } from './subscriber';
 import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
+export const UPDATE = Symbol("update");
 export const LOCAL = Symbol("local");
 export const STATE = Symbol("state");
 
 export interface Stateful {
   [CONTROL]: Controller;
+  [UPDATE]?: readonly string[];
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 
@@ -53,15 +55,21 @@ export function apply<T = any>(
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
 export type Getter<T> = (sub?: Subscriber) => T
+
 export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   void | Getter<T> | PropertyDescriptor;
+
+export namespace Controller {
+  export type Listen = (key: string, source: Controller) =>
+    RequestCallback | void;
+}
 
 export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
 
-  protected handles = new Set<Subscription>();
+  protected followers = new Set<Controller.Listen>();
 
   constructor(public subject: Stateful){}
 
@@ -156,12 +164,10 @@ export class Controller {
     }
   }
 
-  public addListener(listener: Subscription){
-    Computed.ensure(this, Object.keys(listener));
-
-    this.handles.add(listener);
+  public addListener(listener: Controller.Listen){
+    this.followers.add(listener);
     return () => {
-      this.handles.delete(listener)
+      this.followers.delete(listener)
     }
   }
 
@@ -177,15 +183,12 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const handle of this.handles)
-      if(key in handle){
-        const to = handle[key];
+    for(const subscription of this.followers){
+      const notify = subscription(key, this);
 
-        if(Computed.defer(this, to))
-          continue;
-        else
-          this.waiting.add(to)
-      }
+      if(notify)
+        this.waiting.add(notify);
+    }
   }
 
   public emit(){
@@ -196,6 +199,11 @@ export class Controller {
 
     this.waiting.clear();
     this.frame.clear();
+
+    defineProperty(this.subject, UPDATE, {
+      configurable: true,
+      value: keys
+    })
 
     handle.forEach(callback => {
       try { callback(keys) }

@@ -1,6 +1,7 @@
+import * as Computed from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful } from './controller';
-import { use, useLazy, useModel, useWatcher } from './hooks';
+import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
+import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
@@ -30,8 +31,10 @@ export class Model {
   static CONTROL = CONTROL;
   static STATE = STATE;
   static LOCAL = LOCAL;
+  static WHY = UPDATE;
 
   static [CONTROL]: Controller;
+  static [UPDATE]: readonly string[];
 
   constructor(){
     const control = Controller.setup(this);
@@ -49,6 +52,9 @@ export class Model {
   }
 
   tap(path?: string | Select, expect?: boolean){
+    if(typeof path == "function")
+      return useComputed(this, path, expect);
+
     const proxy = useWatcher(this, path, expect);
     this.update("willRender", true);
     return proxy;
@@ -56,7 +62,7 @@ export class Model {
 
   tag(id?: Key | KeyFactory<this>){
     const hook = use(refresh => {
-      return new Subscriber(this, refresh);
+      return new Subscriber(this, () => refresh);
     });
   
     useElementLifecycle(hook, id || 0);
@@ -69,7 +75,7 @@ export class Model {
       if(callback)
         callback(this);
 
-      return new Subscriber(this, refresh);
+      return new Subscriber(this, () => refresh);
     });
   
     useComponentLifecycle(hook);
@@ -85,7 +91,6 @@ export class Model {
 
     const control = manage(this);
     const request = keys(control, subset);
-    const listener = {} as Subscription;
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
@@ -97,11 +102,12 @@ export class Model {
       ? frame => { remove(); callback(frame) }
       : callback;
 
-    for(const key of request)
-      listener[key] = trigger;
+    Computed.ensure(control, request);
 
-    const remove =
-      control.addListener(listener);
+    const remove = control.addListener(key => {
+      if(request.includes(key))
+        return trigger;
+    });
 
     return remove;
   }
@@ -134,7 +140,7 @@ export class Model {
       return this.on(select, invoke, true);
     }
     else {
-      const sub = new Subscriber(control, invoke);
+      const sub = new Subscriber(control, () => invoke);
       target = sub.proxy;
       invoke();
       return sub.commit();
@@ -272,7 +278,9 @@ export class Model {
   }
 
   static meta(path: string | Select): any {
-    return useWatcher(this, path);
+    return typeof path == "function"
+      ? useComputed(this, path)
+      : useWatcher(this, path)
   }
 
   static isTypeof<T extends typeof Model>(

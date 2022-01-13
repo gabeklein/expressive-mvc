@@ -73,6 +73,8 @@ export function act<T extends Async>(task: T): T {
         })
       };
 
+      this.state[key] = undefined;
+
       setAlias(invoke, `run ${key}`);
       defineProperty(invoke, "active", {
         get: () => pending

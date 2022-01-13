@@ -100,7 +100,7 @@ function RenderFunction(props: RenderFunctionProps): any {
     const targets = props.context.local;
 
     if(targets.length == 1)
-      return new Subscriber(targets[0], refresh);
+      return new Subscriber(targets[0], () => refresh);
 
     return {} as Subscriber;
   });

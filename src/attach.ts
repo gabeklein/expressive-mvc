@@ -6,18 +6,19 @@ type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
 
 export function child<T extends Model>(
-  from: ChildInstruction<T>, name?: string){
+  source: ChildInstruction<T>,
+  name?: string){
 
   return apply(
     function child(this: Controller, key: string){
-      const proxyCache = new WeakMap<Subscriber, any>();
-      const getCurrent = from.call(this, key);
+      const context = new WeakMap<Subscriber, any>();
+      const current = source.call(this, key);
   
       function subscribe(sub: Subscriber){
         let child: Subscriber | undefined;
     
         function start(){
-          const instance = getCurrent();
+          const instance = current();
     
           if(instance){
             child = new Subscriber(instance, sub.onUpdate);
@@ -26,36 +27,35 @@ export function child<T extends Model>(
               child.commit();
       
             sub.dependant.add(child);
-            proxyCache.set(sub, child.proxy);
+            context.set(sub, child.proxy);
           }
         }
-    
-        function refresh(keys: readonly string[]){
+
+        function restart(){
           if(child){
             child.release();
             sub.dependant.delete(child);
-            proxyCache.set(sub, undefined);
+            context.set(sub, undefined);
             child = undefined;
           }
     
           start();
-          sub.onUpdate(keys);
         }
     
         start();
-        sub.follow(key, refresh);
+        sub.follow(key, restart);
       }
     
       return (local: Subscriber | undefined) => {
         if(!local)
-          return getCurrent();
+          return current();
     
-        if(!proxyCache.has(local))
+        if(!context.has(local))
           subscribe(local);
     
-        return proxyCache.get(local);
+        return context.get(local);
       }
     },
-    name || from.name
+    name || source.name
   )
 }

@@ -1,5 +1,5 @@
-import { Controller, LOCAL, manage, Stateful } from './controller';
-import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { Controller, LOCAL, manage, Stateful, UPDATE } from './controller';
+import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
   commit(): void;
@@ -10,13 +10,14 @@ export class Subscriber {
   public proxy: any;
   public source: any;
   public active = false;
-  public listener = {} as Subscription;
+  public handle = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
   public parent: Controller;
+  public notify?: RequestCallback;
 
   constructor(
     parent: Controller | Stateful,
-    public onUpdate: RequestCallback){
+    public onUpdate: Controller.Listen){
 
     if(!(parent instanceof Controller))
       parent = manage(parent);
@@ -26,9 +27,40 @@ export class Subscriber {
     this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
+    defineLazy(this.proxy, UPDATE, this.debug);
 
     for(const key in parent.state)
       this.spy(key);
+  }
+
+  public debug = () => {
+    const update: string[] = [];
+
+    this.notify = keys => {
+      update.splice(0, update.length,
+        ...keys.filter(k => k in this.handle)  
+      )
+    }
+
+    return update;
+  }
+
+  public listen = (key: string, from: Controller) => {
+    const handler = this.handle[key];
+
+    if(!handler)
+      return;
+
+    if(typeof handler == "function")
+      handler();
+
+    const notify = this.onUpdate(key, from);
+
+    if(notify)
+      from.waiting.add(notify);
+
+    if(this.notify)
+      from.waiting.add(this.notify);
   }
 
   public spy(key: string){
@@ -52,20 +84,20 @@ export class Subscriber {
     })
   }
 
-  public follow(key: string, cb?: RequestCallback){
-    this.listener[key] = cb || this.onUpdate;
+  public follow(key: string, callback?: Callback){
+    this.handle[key] = callback || true;
   }
 
   public commit(){
-    const { dependant, listener, parent } = this;
+    const onDone =
+      this.parent.addListener(this.listen);
 
-    const onDone = parent.addListener(listener);
     this.active = true;
 
-    dependant.forEach(x => x.commit());
+    this.dependant.forEach(x => x.commit());
 
     return this.release = () => {
-      dependant.forEach(x => x.release());
+      this.dependant.forEach(x => x.release());
       onDone();
     }
   }
