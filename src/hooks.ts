@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { keys, manage, Stateful } from './controller';
+import { manage, Stateful } from './controller';
 import { Lifecycle } from './lifecycle';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
@@ -34,7 +34,7 @@ export function useLazy<T extends typeof Model>(
 
 export function useWatcher(
   target: Stateful,
-  focus?: string | Select,
+  focus?: string,
   expected?: boolean){
 
   const hook = use(refresh => {
@@ -42,14 +42,13 @@ export function useWatcher(
 
     if(focus){
       const source = sub.proxy;
-      const key = keys(sub.parent, focus)[0];
 
       defineProperty(sub, "proxy", {
         get(){
-          const value = source[key];
+          const value = source[focus];
 
           if(value === undefined && expected)
-            throw suspend(sub.parent, key)
+            throw suspend(sub.parent, focus)
 
           return value;
         }
@@ -60,6 +59,56 @@ export function useWatcher(
   });
 
   useLayoutEffect(() => hook.commit(), []);
+
+  return hook.proxy;
+}
+
+export function useComputed(
+  target: Stateful,
+  compute: Function,
+  expected?: boolean){
+
+  const hook = use(refresh => {
+    const sub = new Subscriber(target, () => update);
+    const { proxy } = sub;
+
+    let value: any;
+    let retry: Callback | undefined;
+
+    const update = () => {
+      const next = compute.call(proxy, proxy);
+      
+      if(value == next)
+        return;
+
+      value = next;
+
+      if(retry){
+        retry();
+        retry = undefined;
+      }
+      else
+        refresh();
+    }
+
+    const access = () => {
+      if(value === undefined && expected)
+        throw new Promise<void>(res => {
+          retry = res;
+        });
+
+      return value;
+    }
+
+    value = compute.call(proxy, proxy);
+    sub.commit();
+    
+    defineProperty(sub, "proxy", { get: access });
+
+    return sub;
+  });
+
+  useLayoutEffect(() => hook.release, []);
 
   return hook.proxy;
 }

@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
-import { use, useLazy, useModel, useWatcher } from './hooks';
+import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
 import { issues } from './issues';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
@@ -52,6 +52,9 @@ export class Model {
   }
 
   tap(path?: string | Select, expect?: boolean){
+    if(typeof path == "function")
+      return useComputed(this, path, expect);
+
     const proxy = useWatcher(this, path, expect);
     this.update("willRender", true);
     return proxy;
@@ -275,7 +278,9 @@ export class Model {
   }
 
   static meta(path: string | Select): any {
-    return useWatcher(this, path);
+    return typeof path == "function"
+      ? useComputed(this, path)
+      : useWatcher(this, path)
   }
 
   static isTypeof<T extends typeof Model>(

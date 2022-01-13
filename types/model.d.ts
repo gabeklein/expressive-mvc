@@ -292,8 +292,8 @@ export abstract class Model {
     tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
-    tap <K extends Model.SelectField<this>> (key: K, expect?: boolean): ReturnType<K>;
-    tap <K extends Model.SelectField<this>> (key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+    tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
+    tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
     
     // Keyed
     on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
@@ -452,7 +452,7 @@ export abstract class Model {
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K, expect?: boolean): ReturnType<K>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
@@ -461,7 +461,7 @@ export abstract class Model {
      * This makes return type non-nullable and convenient to use without optional chaining.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key: K, expect: true): Exclude<ReturnType<K>, undefined>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.

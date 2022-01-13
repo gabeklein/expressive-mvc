@@ -85,11 +85,11 @@ function scenario(){
 }
 
 describe("tap method", () => {
-  it('will suspend any value if strict tap', async () => {
-    class Test extends Model {
-      value?: string = undefined;
-    }
+  class Test extends Model {
+    value?: string = undefined;
+  }
 
+  it('will suspend any value if strict tap', async () => {
     const test = scenario();
     const instance = Test.create();
 
@@ -103,6 +103,41 @@ describe("tap method", () => {
     await instance.once("willRender");
 
     test.assertDidRender(true);
+  })
+
+  it('will suspend if strict compute', async () => {
+    const test = scenario();
+    const sync = asyncTest();
+    const instance = Test.create();
+    const rendered = jest.fn();
+    const computed = jest.fn();
+
+    test.renderHook(() => {
+      sync.trigger();
+      rendered();
+    
+      instance.tap(state => {
+        computed();
+        if(state.value == "foobar")
+          return true;
+      }, true);
+    })
+  
+    test.assertDidSuspend(true);
+
+    expect(computed).toBeCalledTimes(1);
+
+    instance.value = "foobar";
+    await sync.wait();
+
+    // 1st - render prior to bailing
+    // 2nd - successful render
+    expect(rendered).toBeCalledTimes(2);
+
+    // 1st - initial render fails
+    // 2nd - recheck success (permit render again)
+    // 3rd - hook regenerated next render 
+    expect(computed).toBeCalledTimes(3);
   })
 })
 
