@@ -39,3 +39,43 @@ export function lazy<T>(value: T): T {
     }
   );
 }
+
+// export function set(value?: any, argument?: any){
+//   return apply(
+//     arguments.length == 0 ?
+//       setPlaceholder() :
+//     typeof value == "function" ?
+//       setViaFactory(value, argument) :
+//       setProperty(value, argument)
+//   )
+// }
+
+// function setPlaceholder(){
+//   return function set(){
+
+//   }
+// }
+
+// function setViaFactory (waitFor: () => Promise<void>, defer?: boolean): true;
+// function setViaFactory (factory: () => Promise<any>, defer?: boolean): any;
+// function setViaFactory (factory: () => any, defer?: boolean): any;
+// function setViaFactory (factory: () => any, defer?: boolean): any {
+//   return function set(this: Controller, key: string){
+//     const source = this.subject;
+//     const get = () => factory.call(source);
+
+//     if(defer)
+//       defineLazy(source, key, get);
+//     else
+//       define(source, key, get())
+//   }
+// }
+
+// function setProperty (
+//   value: any,
+//   argument?: boolean | InterceptCallback<any, any>){
+
+//   return function set(this: Controller, key: string){
+
+//   }
+// }
