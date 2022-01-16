@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
 export const UPDATE = Symbol("update");
@@ -68,6 +68,7 @@ export class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
+  public handled = [] as readonly string[];
 
   protected followers = new Set<Controller.Listen>();
 
@@ -76,14 +77,28 @@ export class Controller {
   static setup(onto: Stateful){
     const control = new this(onto);
 
-    defineLazy(onto, CONTROL, () => {
-      onto[STATE] = control.state;
-      control.start();
+    defineProperty(onto, CONTROL, { 
+      configurable: true,
+      get(){
+        defineProperty(onto, CONTROL, {
+          value: control
+        });
+        defineProperty(onto, STATE, {
+          get: () => ({ ...control.state }),
+          configurable: true
+        })
+        defineProperty(onto, UPDATE, {
+          get: () => [ ...control.handled ],
+          configurable: true
+        })
+  
+        control.start();
+  
+        if(onto.didCreate)
+          onto.didCreate();
 
-      if(onto.didCreate)
-        onto.didCreate();
-
-      return control;
+        return control;
+      }
     })
 
     return control;
@@ -194,19 +209,15 @@ export class Controller {
   public emit(){
     Computed.flush(this);
 
-    const keys = Object.freeze([ ...this.frame ]);
     const handle = new Set(this.waiting);
+    const handled = this.handled =
+      Object.freeze([ ...this.frame ]);
 
     this.waiting.clear();
     this.frame.clear();
 
-    defineProperty(this.subject, UPDATE, {
-      configurable: true,
-      value: keys
-    })
-
     handle.forEach(callback => {
-      try { callback(keys) }
+      try { callback(handled) }
       catch(e){ }
     })
   }
