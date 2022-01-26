@@ -1,3 +1,4 @@
+import { Model } from './model';
 import { Controller, LOCAL, manage, Stateful, UPDATE } from './controller';
 import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
@@ -22,18 +23,36 @@ export class Subscriber {
     if(!(parent instanceof Controller))
       parent = manage(parent);
 
+    const subject = this.source =
+      parent.subject as Model | Stateful;
+
+    const proxy = this.proxy =
+      create(subject) as Model | Stateful;
+      
     this.parent = parent;
-    this.source = parent.subject;
-    this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
     defineProperty(this.proxy, UPDATE, {
       get: () => (
-        this.parent.handled.filter(k => (
-          k in this.handle
-        ))
+        this.parent.handled.filter(
+          key => key in this.handle
+        )
       )
-    })
+    });
+
+    if("update" in subject){
+      define(proxy, "update", (...args: any[]) => {
+        if(!args.length){
+          const refresh =
+            this.onUpdate("", parent as Controller);
+  
+          if(refresh)
+            refresh([]);
+        }
+
+        return subject.update(...args);
+      })
+    }
 
     for(const key in parent.state)
       this.spy(key);

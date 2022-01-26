@@ -30,6 +30,8 @@ describe("use (instance)", () => {
     await waitForNextUpdate(opts);
     expect(result.current.value).toBe("bar");
   })
+
+  it.todo("will refresh on `update()`");
 })
 
 describe("use (static)", () => {

@@ -69,4 +69,16 @@ describe("subscriber", () => {
     expect(state.value).toBe("bar");
     expect(state.didSet).toBeCalledWith("bar");
   })
+
+  it('will refresh on `update()`', async () => {
+    let forceUpdate!: () => PromiseLike<any>;
+    
+    const state = Subject.create();
+    const update = subscribeTo(state, it => {
+      forceUpdate = it.update;
+    })
+
+    await forceUpdate();
+    await update();
+  })
 })
