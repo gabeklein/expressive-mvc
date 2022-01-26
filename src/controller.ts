@@ -59,12 +59,12 @@ export type Getter<T> = (sub?: Subscriber) => T
 export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   void | Getter<T> | PropertyDescriptor;
 
-export namespace Controller {
-  export type Listen = (key: string, source: Controller) =>
+declare namespace Controller {
+  type Listen = (key: string, source: Controller) =>
     RequestCallback | void;
 }
 
-export class Controller {
+class Controller {
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
@@ -222,6 +222,8 @@ export class Controller {
     })
   }
 }
+
+export { Controller }
 
 export function keys(
   from: Controller,
