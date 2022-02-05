@@ -129,11 +129,13 @@ export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<
  *
  * @param initialValue - Beginning value of host property.
  * @param onUpdate - Effect-callback fired upon set of host property.
+ * 
+ * @deprecated will be removed in favor of `set`
  */
-export function on <T> (initialValue: undefined, onUpdate: InterceptCallback<T>): T | undefined; // ✅
-export function on <T> (initialValue: T, onUpdate: InterceptCallback<T>): T; // ✅
-export function on <T, S> (initialValue: undefined, onUpdate: InterceptCallback<T, S>): T | undefined; // ✅
-export function on <T, S> (initialValue: T, onUpdate: InterceptCallback<T, S>): T; // ✅
+export function on <T> (initialValue: undefined, onUpdate: InterceptCallback<T>): T | undefined;
+export function on <T> (initialValue: T, onUpdate: InterceptCallback<T>): T;
+export function on <T, S> (initialValue: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
+export function on <T, S> (initialValue: T, onUpdate: InterceptCallback<T, S>): T;
 
 /** Object with references to all managed values of `T`. */
 export type Refs <T extends Model> = { [P in Model.Fields<T>]: Model.Ref<T[P]> };
@@ -206,32 +208,40 @@ export function from <R, T> (source: T, compute: (this: T, on: T) => R): R;
  *
  * @param compute - Factory for memoized value.
  * @param lazy - Wait until accessed to introduce value.
+ * 
+ * @deprecated will be removed in favor of `set`
  */
-export function memo <R> (compute: () => R, lazy?: boolean): R; // ✅
-export function memo <R, T> (compute: (this: T) => R, lazy?: boolean): R; // ✅
+export function memo <R> (compute: () => R, lazy?: boolean): R;
+export function memo <R, T> (compute: (this: T) => R, lazy?: boolean): R;
  
 /**
  * Flag property as not to be tracked. Useful if changes often with no real-time impact.
  *
  * @param value - starting value of property.
+ * 
+ * @deprecated will be removed in major version 1.0
  */
-export function lazy <T> (value?: T): T; // ✅
+export function lazy <T> (value?: T): T;
 
 /**
  * Pending value. Will suspend unless value is already defined,
- * suspense resolves when a value is then aquired. 
+ * suspense resolves when a value is then aquired.
+ * 
+ * @deprecated will be removed in favor of `set`
  */
-export function pending <T = boolean> (): T; // ✅
+export function pending <T = boolean> (): T;
 
 /**
  * Suspend during the execution of given function to obtain value.
  * 
  * @param waitFor - Async function to suspend for.
+ * 
+ * @deprecated will be removed in favor of `set`
  */
-export function pending (waitFor: () => Promise<void>): undefined; // ✅
-export function pending <T> (waitFor: (this: T) => Promise<void>): undefined; // ✅
-export function pending <R> (waitFor: () => Promise<R>): R; // ✅
-export function pending <R, T> (waitFor: (this: T) => Promise<R>): R; // ✅
+export function pending (waitFor: () => Promise<void>): undefined;
+export function pending <T> (waitFor: (this: T) => Promise<void>): undefined;
+export function pending <R> (waitFor: () => Promise<R>): R;
+export function pending <R, T> (waitFor: (this: T) => Promise<R>): R;
  
 /**
  * Suspend for a computed value, returned by syncronous function.
@@ -250,18 +260,18 @@ export function pending <R, T> (waitFor: (this: T) => Promise<R>): R; // ✅
  * @param compute - Compute function returns output value. Bound to a subscriber of source.
  * Will re-run automatically as input values change.
  */
-export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R;
+export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; // ✅
 
 export function set <T = any>(): T;
 
-export function set <T>(factory: (key: string) => T, defer?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string) => T, defer?: boolean): T;
+export function set <T>(factory: (key: string, subject: unknown) => T, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string, subject: S) => T, defer?: boolean): T;
 
-export function set <T>(factory: (key: string) => Promise<T>, defer?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string) => Promise<T>, defer?: boolean): T;
+export function set <T>(factory: (key: string, subject: unknown) => Promise<T>, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string, subject: S) => Promise<T>, defer?: boolean): T;
 
-export function set (waitFor: (key: string) => Promise<void>, defer?: boolean): true;
-export function set <S> (waitFor: (this: S, key: string) => Promise<void>, defer?: boolean): true;
+export function set (waitFor: (key: string, subject: unknown) => Promise<void>, defer?: boolean): true;
+export function set <S> (waitFor: (this: S, key: string, subject: S) => Promise<void>, defer?: boolean): true;
 
 export function set <T> (value: T | undefined, optional?: boolean): T;
 export function set <T> (value: T | undefined, optional: true): T | undefined;

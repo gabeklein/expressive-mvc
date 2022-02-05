@@ -1,31 +1,14 @@
-import { apply } from './controller';
-import { createValueEffect, define, defineLazy, defineProperty } from './util';
+import { apply, HandleValue } from './controller';
+import { issues } from './issues';
+import { pendingValue } from './suspense';
+import { createValueEffect, defineProperty } from './util';
 
-export function on<T>(
-  initial: T, cb: InterceptCallback<T>): T {
-
-  return apply(
-    function on(key){
-      this.manage(key, initial, cb && createValueEffect(cb));
-    }
-  );
-}
-
-export function memo<T>(
-  factory: () => T, defer?: boolean): T {
-
-  return apply(
-    function memo(key){
-      const source = this.subject;
-      const get = () => factory.call(source);
-
-      if(defer)
-        defineLazy(source, key, get);
-      else
-        define(source, key, get())
-    }
-  );
-}
+export const Oops = issues({
+  NonOptional: (Parent, key) => 
+    `Property ${Parent}.${key} is marked as required.`,
+  ValueNotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`
+})
 
 export function lazy<T>(value: T): T {
   return apply(
@@ -40,42 +23,108 @@ export function lazy<T>(value: T): T {
   );
 }
 
-// export function set(value?: any, argument?: any){
-//   return apply(
-//     arguments.length == 0 ?
-//       setPlaceholder() :
-//     typeof value == "function" ?
-//       setViaFactory(value, argument) :
-//       setProperty(value, argument)
-//   )
-// }
+export function set(value?: any, argument?: any){
+  return typeof value == "function"
+    ? setFactory(value, argument)
+    : setValue(value, argument)
+}
 
-// function setPlaceholder(){
-//   return function set(){
+export {
+  set as on,
+  set as memo
+}
 
-//   }
-// }
+function setValue(
+  value: any,
+  argument?: boolean | HandleValue){
 
-// function setViaFactory (waitFor: () => Promise<void>, defer?: boolean): true;
-// function setViaFactory (factory: () => Promise<any>, defer?: boolean): any;
-// function setViaFactory (factory: () => any, defer?: boolean): any;
-// function setViaFactory (factory: () => any, defer?: boolean): any {
-//   return function set(this: Controller, key: string){
-//     const source = this.subject;
-//     const get = () => factory.call(source);
+  return apply(
+    function set(key){
+      this.state[key] = value;
 
-//     if(defer)
-//       defineLazy(source, key, get);
-//     else
-//       define(source, key, get())
-//   }
-// }
+      const required =
+        argument === false ||
+        argument === undefined;
 
-// function setProperty (
-//   value: any,
-//   argument?: boolean | InterceptCallback<any, any>){
+      const onAssign =
+        argument == true ?
+          undefined :
+          createValueEffect(
+            typeof argument == "function" ?
+              argument :
+              (value: any) => {
+                if(value === undefined)
+                  throw Oops.NonOptional(this.subject, key);
+              }
+          )
 
-//   return function set(this: Controller, key: string){
+      return {
+        set: this.setter(key, onAssign),
+        get: value == undefined && required ?
+          () => pendingValue(this, key) : 
+          () => this.state[key]
+      }
+    }
+  )
+}
 
-//   }
-// }
+function setFactory(waitFor: (key: string, subject: unknown) => Promise<void>, defer?: boolean): true;
+function setFactory(factory: (key: string, subject: unknown) => Promise<any>, defer?: boolean): any;
+function setFactory(factory: (key: string, subject: unknown) => any, defer?: boolean): any;
+function setFactory(factory: (key: string, subject: unknown) => any, defer?: boolean): any {
+  return apply(
+    function set(key){
+      const subject = this.subject;
+      let waiting: undefined | Promise<any> | false;
+      let value: any;
+      let error: any;
+
+      let evaluate = () => {
+        try {
+          const output = factory.call(subject, key, subject);
+
+          if(output instanceof Promise){
+            const issue =
+              Oops.ValueNotReady(subject, key);
+  
+            output
+              .catch(err => error = err)
+              .then(out => {
+                value = out === undefined ? true : out;
+              })
+              .finally(() => waiting = false)
+  
+            waiting = Object.assign(output, {
+              message: issue.message,
+              stack: issue.stack
+            });
+          }
+          else {
+            value = output;
+            waiting = false;
+          }
+        }
+        catch(err){
+          error = err;
+          waiting = false;
+        }
+      }
+
+      if(!defer)
+        evaluate();
+  
+      return () => {
+        if(waiting === undefined)
+          evaluate();
+
+        if(error)
+          throw error;
+
+        if(waiting)
+          throw waiting;
+
+        return value;
+      }
+    }
+  )
+}

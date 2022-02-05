@@ -1,4 +1,5 @@
-import { apply, Controller, manage } from './controller';
+import { set } from './assign';
+import { Controller, manage } from './controller';
 import { from } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
@@ -16,9 +17,9 @@ export function pending<T = void>(
 
   return (
     source === undefined ?
-      suspendForValue() :
+      set() :
     typeof source == "function" && !source.prototype ?
-      suspendForAsync(source as any) :
+      set(source, true) :
       suspendForComputed(source as any, compute)
   )
 }
@@ -79,52 +80,4 @@ function suspendForComputed<T>(
   }
 
   return from(source, compute, getter);
-}
-
-function suspendForValue<T = void>(){
-  return apply<T>(
-    function pending(key){
-      this.state[key] = undefined;
-
-      return {
-        set: this.setter(key),
-        get: () => pendingValue(this, key)
-      }
-    }
-  )
-}
-
-function suspendForAsync<T = void>(
-  source: (key: string) => Promise<T>){
-
-  return apply(
-    function suspense(key){
-      const subject = this.subject as Model
-      let waiting = true;
-      let value: any;
-      let error: any;
-  
-      return () => {
-        if(error)
-          throw error;
-
-        if(!waiting)
-          return value;
-
-        const issue =
-          Oops.ValueNotReady(subject, key);
-
-        let suspend = source
-          .call(subject, key)
-          .catch(err => error = err)
-          .then(out => value = out)
-          .finally(() => waiting = false);
-  
-        throw Object.assign(suspend, {
-          message: issue.message,
-          stack: issue.stack
-        });
-      }
-    }
-  )
 }
