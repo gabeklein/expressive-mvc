@@ -264,20 +264,23 @@ export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; /
 
 export function set <T = any>(): T;
 
-export function set <T>(factory: (key: string, subject: unknown) => T, defer?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string, subject: S) => T, defer?: boolean): T;
+export function set <T> (value: undefined, optional: true): T | undefined;
+export function set <T> (value: undefined, optional?: boolean): T;
 
-export function set <T>(factory: (key: string, subject: unknown) => Promise<T>, defer?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string, subject: S) => Promise<T>, defer?: boolean): T;
+export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
+export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
 
 export function set (waitFor: (key: string, subject: unknown) => Promise<void>, defer?: boolean): true;
 export function set <S> (waitFor: (this: S, key: string, subject: S) => Promise<void>, defer?: boolean): true;
 
-export function set <T> (value: T | undefined, optional?: boolean): T;
-export function set <T> (value: T | undefined, optional: true): T | undefined;
+export function set <T>(factory: (key: string, subject: unknown) => Promise<T>, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string, subject: S) => Promise<T>, defer?: boolean): T;
 
-export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
-export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
+export function set <T>(factory: (key: string, subject: unknown) => T, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string, subject: S) => T, defer?: boolean): T;
+
+export function set <T> (value: T, optional: true): T | undefined;
+export function set <T> (value: T, optional?: boolean): T;
 
 export function set <T> (value: T, onUpdate: InterceptCallback<T>): T;
 export function set <T, S> (value: T, onUpdate: InterceptCallback<T, S>): T;
