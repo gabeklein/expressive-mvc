@@ -41,7 +41,7 @@ export function child<T extends Model>(
     
           start();
         }
-    
+
         start();
         sub.follow(key, restart);
       }
