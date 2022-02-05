@@ -463,7 +463,7 @@ describe("memo", () => {
   })
 })
 
-describe("set", () => {
+describe("apply", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
@@ -522,7 +522,7 @@ describe("set", () => {
   })
 })
 
-describe("get", () => {
+describe("apply (getter)", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
     didGetSubscriber = jest.fn();
