@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Oops } from '../src/suspense';
-import { Model, render, pending } from './adapter';
+import { Model, render, pending, set } from './adapter';
 
 function asyncTest<T = void>(){
   const events = new Set<Function>();
@@ -144,7 +144,7 @@ describe("tap method", () => {
 describe("assigned", () => {
   it('will suspend if value is accessed before set', async () => {
     class Test extends Model {
-      foobar = pending<string>();
+      foobar = set<string>();
     }
 
     const test = scenario();
@@ -166,7 +166,7 @@ describe("assigned", () => {
 
   it('will not suspend if value is defined', async () => {
     class Test extends Model {
-      foobar = pending<string>();
+      foobar = set<string>();
     }
 
     const test = scenario();
@@ -185,7 +185,7 @@ describe("assigned", () => {
 describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
     class Test extends Model {
-      willRender = pending(sync.wait);
+      value = set(sync.wait);
     }
 
     const sync = asyncTest();
@@ -193,7 +193,7 @@ describe("async function", () => {
     const instance = Test.create();
 
     test.renderHook(() => {
-      instance.tap();
+      instance.tap().value;
     })
   
     test.assertDidSuspend(true);
@@ -204,11 +204,11 @@ describe("async function", () => {
     test.assertDidRender(true);
   })
 
-  it("will seem to throw \"error\" outside react", () => {
+  it("will seem to throw error outside react", () => {
     const sync = asyncTest();
 
     class Test extends Model {
-      value = pending(sync.wait);
+      value = set(sync.wait);
     }
 
     const instance = Test.create();
@@ -223,7 +223,7 @@ describe("async function", () => {
     const error = new Error("some foobar went down");
 
     class Test extends Model {
-      willRender = pending(async () => {
+      value = set(async () => {
         await sync.wait();
         throw error;
       })
@@ -233,7 +233,7 @@ describe("async function", () => {
     const instance = Test.create();
 
     test.renderHook(() => {
-      instance.tap();
+      instance.tap().value;
     })
   
     test.assertDidSuspend(true);
@@ -247,7 +247,7 @@ describe("async function", () => {
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
-      willRender = pending(this.method);
+      value = set(this.method, true);
 
       async method(){
         expect(this).toStrictEqual(instance);
@@ -257,7 +257,9 @@ describe("async function", () => {
     const test = scenario();
     const instance = Test.create();
 
-    test.renderHook(() => instance.tap());
+    test.renderHook(() => {
+      instance.tap().value;
+    });
 
     await instance.update();
 

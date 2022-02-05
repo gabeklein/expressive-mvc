@@ -10,6 +10,7 @@ export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 
 export const apply = Source.apply as typeof Public.apply;
+export const set = Source.set as typeof Public.set;
 export const tap = Source.tap as typeof Public.tap;
 export const on = Source.on as typeof Public.on;
 export const ref = Source.ref as typeof Public.ref;
