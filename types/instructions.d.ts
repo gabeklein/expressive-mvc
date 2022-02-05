@@ -254,21 +254,20 @@ export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R;
 
 export function set <T = any>(): T;
 
-export function set <T> (value: T | undefined, argument?: boolean): T;
+export function set <T>(factory: (key: string) => T, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string) => T, defer?: boolean): T;
+
+export function set <T>(factory: (key: string) => Promise<T>, defer?: boolean): T;
+export function set <T, S>(factory: (this: S, key: string) => Promise<T>, defer?: boolean): T;
+
+export function set (waitFor: (key: string) => Promise<void>, defer?: boolean): true;
+export function set <S> (waitFor: (this: S, key: string) => Promise<void>, defer?: boolean): true;
+
+export function set <T> (value: T | undefined, optional?: boolean): T;
 export function set <T> (value: T | undefined, optional: true): T | undefined;
-export function set <T> (value: T | undefined, events: false): T;
 
 export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
 export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
 
 export function set <T> (value: T, onUpdate: InterceptCallback<T>): T;
 export function set <T, S> (value: T, onUpdate: InterceptCallback<T, S>): T;
-
-export function set (waitFor: () => Promise<void>, defer?: boolean): true;
-export function set <S> (waitFor: (this: S) => Promise<void>, defer?: boolean): true;
-
-export function set <T>(factory: () => Promise<T>, defer?: boolean): T;
-export function set <T, S>(factory: (this: S) => Promise<T>, defer?: boolean): T;
-
-export function set <T>(factory: () => T, defer?: boolean): T;
-export function set <T, S>(factory: (this: S) => T, defer?: boolean): T;
