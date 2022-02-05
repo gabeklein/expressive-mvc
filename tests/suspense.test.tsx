@@ -247,7 +247,7 @@ describe("async function", () => {
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
-      value = set(this.method, true);
+      value = set(this.method, false);
 
       async method(){
         expect(this).toStrictEqual(instance);
@@ -295,7 +295,7 @@ describe("computed", () => {
     test.assertDidRender(true);
   })
 
-  it("will seem to throw \"error\" outside react", () => {
+  it("will seem to throw error outside react", () => {
     const instance = Test.create();
     const expected = Oops.ValueNotReady(instance, "value");
     let didThrow: Error | undefined;

@@ -19,7 +19,7 @@ export function pending<T = void>(
     source === undefined ?
       set() :
     typeof source == "function" && !source.prototype ?
-      set(source, true) :
+      set(source) :
       suspendForComputed(source as any, compute)
   )
 }

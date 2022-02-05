@@ -68,10 +68,10 @@ function setValue(
   )
 }
 
-function setFactory(waitFor: (key: string, subject: unknown) => Promise<void>, defer?: boolean): true;
-function setFactory(factory: (key: string, subject: unknown) => Promise<any>, defer?: boolean): any;
-function setFactory(factory: (key: string, subject: unknown) => any, defer?: boolean): any;
-function setFactory(factory: (key: string, subject: unknown) => any, defer?: boolean): any {
+function setFactory(waitFor: (key: string, subject: unknown) => Promise<void>, required?: boolean): true;
+function setFactory(factory: (key: string, subject: unknown) => Promise<any>, required?: boolean): any;
+function setFactory(factory: (key: string, subject: unknown) => any, required?: boolean): any;
+function setFactory(factory: (key: string, subject: unknown) => any, required?: boolean): any {
   return apply(
     function set(key){
       const subject = this.subject;
@@ -107,21 +107,22 @@ function setFactory(factory: (key: string, subject: unknown) => any, defer?: boo
         catch(err){
           error = err;
           waiting = false;
+          throw err;
         }
       }
 
-      if(!defer)
+      if(required !== false)
         evaluate();
   
       return () => {
-        if(waiting === undefined)
-          evaluate();
+        if(waiting)
+          throw waiting;
 
         if(error)
           throw error;
 
-        if(waiting)
-          throw waiting;
+        if(waiting === undefined)
+          evaluate();
 
         return value;
       }

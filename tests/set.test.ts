@@ -162,7 +162,7 @@ describe("memoize", () => {
     memoLazy = set(() => {
       this.ranLazyMemo();
       return "foobar";
-    }, true);
+    }, false);
   }
 
   it("will run memoize on create", () => {
