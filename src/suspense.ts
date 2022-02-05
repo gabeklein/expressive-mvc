@@ -11,6 +11,8 @@ export const Oops = issues({
 
 type ComputeFunction<T, O = any> = (this: O, on: O) => T;
 
+/* deprecated - ignore coverage */
+/* istanbul ignore next */
 export function pending<T = void>(
   source: (() => Promise<T>) | Model | typeof Model,
   compute?: ComputeFunction<T>){

@@ -180,4 +180,14 @@ describe("memoize", () => {
     expect(state.memoLazy).toBe("foobar");
     expect(state.ranLazyMemo).toBeCalled();
   })
+
+  it("will rethrow error from factory", () => {
+    class Test extends Model {
+      memoized = set(() => {
+        throw new Error("Foobar")
+      })
+    }
+  
+    expect(() => Test.create()).toThrowError("Foobar");
+  })
 })
