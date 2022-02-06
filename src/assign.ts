@@ -38,18 +38,20 @@ function setValue(
   value: any,
   argument?: boolean | HandleValue){
 
+  const required = argument !== false;
+
   return apply(
     function set(key){
       const get =
-        value === undefined && argument !== true
+        value === undefined && required
           ? () => pendingValue(this, key)
           : () => this.state[key];
 
       let onAssign;
-        
+
       if(typeof argument == "function")
         onAssign = createValueEffect(argument);
-      else if(!argument)
+      else if(required)
         onAssign = (value: any) => {
           if(value === undefined)
             throw Oops.NonOptional(this.subject, key);
@@ -65,10 +67,10 @@ function setValue(
   )
 }
 
-function setFactory(waitFor: (key: string, subject: unknown) => Promise<void>, required?: boolean): true;
-function setFactory(factory: (key: string, subject: unknown) => Promise<any>, required?: boolean): any;
-function setFactory(factory: (key: string, subject: unknown) => any, required?: boolean): any;
-function setFactory(factory: (key: string, subject: unknown) => any, required?: boolean): any {
+function setFactory(
+  factory: (key: string, subject: unknown) => any,
+  required?: boolean): any {
+
   return apply(
     function set(key){
       const subject = this.subject;

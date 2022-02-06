@@ -269,8 +269,8 @@ export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; /
 
 export function set <T = any>(): T;
 
-export function set <T> (value: undefined, optional: true): T | undefined;
-export function set <T> (value: undefined, optional?: boolean): T;
+export function set <T> (value: undefined, required: false): T | undefined;
+export function set <T> (value: undefined, required?: boolean): T;
 
 export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
 export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
@@ -281,8 +281,8 @@ export function set <T, S>(factory: (this: S, key: string, subject: S) => Promis
 export function set <T>(factory: (key: string, subject: unknown) => T, required?: boolean): T;
 export function set <T, S>(factory: (this: S, key: string, subject: S) => T, required?: boolean): T;
 
-export function set <T> (value: T, optional: true): T | undefined;
-export function set <T> (value: T, optional?: boolean): T;
+export function set <T> (value: T, required: false): T | undefined;
+export function set <T> (value: T, required?: boolean): T;
 
 export function set <T> (value: T, onUpdate: InterceptCallback<T>): T;
 export function set <T, S> (value: T, onUpdate: InterceptCallback<T, S>): T;

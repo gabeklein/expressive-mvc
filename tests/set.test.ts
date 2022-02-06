@@ -5,8 +5,8 @@ import { Model, set } from './adapter';
 describe("optional", () => {
   class Test extends Model {
     foo = set("foo");
-    bar = set("bar", true);
-    baz = set<string>(undefined, false);
+    bar = set("bar", false);
+    baz = set<string>(undefined, true);
   }
 
   it("will throw if set to undefined", () => {
