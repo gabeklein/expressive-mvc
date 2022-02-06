@@ -270,9 +270,6 @@ export function set <T> (value: undefined, optional?: boolean): T;
 export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
 export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
 
-export function set (waitFor: (key: string, subject: unknown) => Promise<void>, required?: boolean): true;
-export function set <S> (waitFor: (this: S, key: string, subject: S) => Promise<void>, required?: boolean): true;
-
 export function set <T>(factory: (key: string, subject: unknown) => Promise<T>, required?: boolean): T;
 export function set <T, S>(factory: (this: S, key: string, subject: S) => Promise<T>, required?: boolean): T;
 

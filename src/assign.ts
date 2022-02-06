@@ -89,9 +89,7 @@ function setFactory(factory: (key: string, subject: unknown) => any, required?: 
   
             output
               .catch(err => error = err)
-              .then(out => {
-                value = out === undefined ? true : out;
-              })
+              .then(out => value = out)
               .finally(() => waiting = false)
   
             waiting = Object.assign(output, {
