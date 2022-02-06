@@ -3,6 +3,7 @@ import { apply, Controller, manage, Stateful } from './controller';
 import { issues } from './issues';
 import { Model } from './model';
 import { pendingAccess } from './peer';
+import { pendingValue } from './suspense';
 import { createValueEffect, defineLazy, defineProperty, setAlias } from './util';
 
 export const Oops = issues({
@@ -90,16 +91,20 @@ export function act<T extends Async>(task: T): T {
 
 type ComputeFunction<T, O = any> = (this: O, on: O) => T;
 type ComputeFactory<T> = (key: string) => ComputeFunction<T>;
+type ComputeGetter = (controller: Controller, key: string) => any;
 
 export function from<T, R = T>(
   source: ComputeFactory<T> | Stateful,
   setter?: ComputeFunction<T>,
-  getter?: (this: Model, value: T, key: string) => R): R {
+  argument?: boolean | ComputeGetter): R {
 
   return apply(
     function from(key){
       const { subject } = this;
       let getSource: () => Controller;
+      let getter = argument === true
+        ? pendingValue
+        : argument || undefined;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof source == "symbol")
@@ -119,7 +124,7 @@ export function from<T, R = T>(
       else if(Model.isTypeof(source))
         getSource = pendingAccess(subject, source, key, true);
 
-      // Regular function is to ambiguous so not allowed.
+      // Regular function is too ambiguous so not allowed.
       else
         throw Oops.BadComputedSource(subject, key, source);
 

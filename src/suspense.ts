@@ -1,5 +1,5 @@
 import { set } from './assign';
-import { Controller, manage } from './controller';
+import { Controller } from './controller';
 import { from } from './instructions';
 import { issues } from './issues';
 import { Model } from './model';
@@ -17,13 +17,13 @@ export function pending<T = void>(
   source: (() => Promise<T>) | Model | typeof Model,
   compute?: ComputeFunction<T>){
 
-  return (
-    source === undefined ?
-      set() :
-    typeof source == "function" && !source.prototype ?
-      set(source) :
-      suspendForComputed(source as any, compute)
-  )
+  if(source === undefined)
+    return set();
+
+  if(typeof source == "function" && !source.prototype)
+    return set(source);
+
+  return from(source as any, compute, true);
 }
 
 /**
@@ -69,17 +69,4 @@ export function suspend(
     message: error.message,
     stack: error.stack
   });
-}
-
-function suspendForComputed<T>(
-  source: Model | typeof Model,
-  compute?: ComputeFunction<T>){
-
-  function getter(
-    this: Model, _value: any, key: string){
-
-    return pendingValue(manage(this), key);
-  }
-
-  return from(source, compute, getter);
 }

@@ -27,7 +27,7 @@ export function prepare(
   key: string,
   source: () => Controller,
   setter: (on?: any) => any,
-  getter?: (value: any, key: string) => any){
+  getter?: (on: Controller, key: string) => any){
 
   let sub: Subscriber;
 
@@ -44,7 +44,7 @@ export function prepare(
   register.set(key, info);
 
   const current = getter
-    ? () => getter.call(subject, state[key], key)
+    ? () => getter(parent, key)
     : () => state[key];
 
   function compute(initial?: boolean){
