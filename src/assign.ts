@@ -40,29 +40,26 @@ function setValue(
 
   return apply(
     function set(key){
+      const get =
+        value === undefined && argument !== true
+          ? () => pendingValue(this, key)
+          : () => this.state[key];
+
+      let onAssign;
+        
+      if(typeof argument == "function")
+        onAssign = createValueEffect(argument);
+      else if(!argument)
+        onAssign = (value: any) => {
+          if(value === undefined)
+            throw Oops.NonOptional(this.subject, key);
+        }
+
       this.state[key] = value;
 
-      const required =
-        argument === false ||
-        argument === undefined;
-
-      const onAssign =
-        argument == true ?
-          undefined :
-          createValueEffect(
-            typeof argument == "function" ?
-              argument :
-              (value: any) => {
-                if(value === undefined)
-                  throw Oops.NonOptional(this.subject, key);
-              }
-          )
-
       return {
-        set: this.setter(key, onAssign),
-        get: value == undefined && required ?
-          () => pendingValue(this, key) : 
-          () => this.state[key]
+        get,
+        set: this.setter(key, onAssign)
       }
     }
   )
