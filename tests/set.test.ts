@@ -202,4 +202,15 @@ describe("memoize", () => {
     expect(() => Test.create()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);
   })
+
+  it("will throw on bad argument", () => {
+    class Test extends Model {
+      // @ts-ignore
+      memoized = set("foobar");
+    }
+
+    const expected = Assign.BadFactory();
+
+    expect(() => Test.create()).toThrowError(expected);
+  })
 })
