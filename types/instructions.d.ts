@@ -247,7 +247,7 @@ export function pending (waitFor: () => Promise<void>): undefined;
 export function pending <T> (waitFor: (this: T) => Promise<void>): undefined;
 export function pending <R> (waitFor: () => Promise<R>): R;
 export function pending <R, T> (waitFor: (this: T) => Promise<R>): R;
- 
+
 /**
  * Suspend for a computed value, returned by syncronous function.
  *
@@ -267,6 +267,8 @@ export function pending <R, T> (waitFor: (this: T) => Promise<R>): R;
  */
 export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; // ✅
 
+type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
+
 export function set <T = any>(): T;
 
 export function set <T> (value: undefined, required: false): T | undefined;
@@ -275,14 +277,20 @@ export function set <T> (value: undefined, required?: boolean): T;
 export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
 export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
 
-export function set <T>(factory: (key: string, subject: unknown) => Promise<T>, required?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string, subject: S) => Promise<T>, required?: boolean): T;
+export function set <T>(factory: FactoryFunction<Promise<T>>, required: false): T | undefined;
+export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required: false): T | undefined;
 
-export function set <T>(factory: (key: string, subject: unknown) => T, required?: boolean): T;
-export function set <T, S>(factory: (this: S, key: string, subject: S) => T, required?: boolean): T;
+export function set <T>(factory: FactoryFunction<Promise<T>>, required?: boolean): T;
+export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required?: boolean): T;
 
-export function set <T> (value: T, required: false): T | undefined;
-export function set <T> (value: T, required?: boolean): T;
+export function set <T> (value: FactoryFunction<Promise<T>>, onUpdate: InterceptCallback<T>): T;
+export function set <T, S> (value: FactoryFunction<Promise<T>, S>, onUpdate: InterceptCallback<T, S>): T;
 
-export function set <T> (value: T, onUpdate: InterceptCallback<T>): T;
-export function set <T, S> (value: T, onUpdate: InterceptCallback<T, S>): T;
+export function set <T>(factory: FactoryFunction<T>, required: false): T | undefined;
+export function set <T, S>(factory: FactoryFunction<T, S>, required: false): T | undefined;
+
+export function set <T>(factory: FactoryFunction<T>, required?: boolean): T;
+export function set <T, S>(factory: FactoryFunction<T, S>, required?: boolean): T;
+
+export function set <T> (value: FactoryFunction<T>, onUpdate: InterceptCallback<T>): T;
+export function set <T, S> (value: FactoryFunction<T, S>, onUpdate: InterceptCallback<T, S>): T;

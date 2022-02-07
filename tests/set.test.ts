@@ -4,8 +4,8 @@ import { Model, set } from './adapter';
 
 describe("optional", () => {
   class Test extends Model {
-    foo = set("foo");
-    bar = set("bar", false);
+    foo = set(() => "foo");
+    bar = set(() => "bar", false);
     baz = set<string>(undefined, true);
   }
 
@@ -53,16 +53,16 @@ describe("callback", () => {
       }
     });
   
-    test3 = set("foo", value => {
+    test3 = set(() => "foo", value => {
       this.didTrigger(value);
     });
 
-    test4 = set("foo", value => {
+    test4 = set(() => "foo", value => {
       this.didTrigger(value);
       return false;
     });
 
-    test5 = set("foo", value => {
+    test5 = set(() => "foo", value => {
       this.didTrigger(value);
       return true;
     });

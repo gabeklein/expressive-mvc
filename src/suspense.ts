@@ -21,7 +21,7 @@ export function pending<T = void>(
     return set();
 
   if(typeof source == "function" && !source.prototype)
-    return set(source);
+    return set(source as any);
 
   return from(source as any, compute, true);
 }
