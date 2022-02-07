@@ -49,7 +49,7 @@ export function pendingFactory(
   fn: (key: string, subject: unknown) => any){
 
   const { subject, state } = via;
-  let waiting: undefined | Promise<any> | false;
+  let waiting: Promise<any> | undefined;
   let error: any;
 
   return () => {
@@ -59,7 +59,7 @@ export function pendingFactory(
     if(error)
       throw error;
 
-    if(waiting === false)
+    if(key in state)
       return state[key];
 
     let output;
@@ -68,9 +68,7 @@ export function pendingFactory(
       output = fn.call(subject, key, subject);
     }
     catch(err){
-      error = err;
-      waiting = false;
-      throw err;
+      throw error = err;
     }
 
     if(output instanceof Promise){
@@ -80,7 +78,7 @@ export function pendingFactory(
       output
         .catch(err => error = err)
         .then(out => state[key] = out)
-        .finally(() => waiting = false)
+        .finally(() => waiting = undefined)
 
       throw waiting = Object.assign(output, {
         message: issue.message,
@@ -88,7 +86,6 @@ export function pendingFactory(
       });
     }
     else {
-      waiting = false;
       return state[key] = output;
     }
   }
