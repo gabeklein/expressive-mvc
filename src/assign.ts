@@ -80,8 +80,12 @@ function set(
   )
 }
 
+function on(initial: any, onUpdate: HandleValue){
+  return set(initial && (() => initial), onUpdate)
+}
+
 export {
+  on,
   set,
-  set as on,
   set as memo
 }
