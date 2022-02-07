@@ -1,6 +1,6 @@
 import { apply, HandleValue } from './controller';
 import { issues } from './issues';
-import { pendingValue } from './suspense';
+import { pendingFactory, pendingValue } from './suspense';
 import { createValueEffect, defineProperty } from './util';
 
 export const Oops = issues({
@@ -46,50 +46,7 @@ function set(
         onGet = () => pendingValue(this, key);
 
       else if(typeof factory == "function"){
-        const { subject, state } = this;
-        let waiting: undefined | Promise<any> | false;
-        let error: any;
-
-        onGet = () => {
-          if(waiting)
-            throw waiting;
-  
-          if(error)
-            throw error;
-
-          if(waiting === false)
-            return state[key];
-
-          let output;
-
-          try {
-            output = factory!.call(subject, key, subject);
-          }
-          catch(err){
-            error = err;
-            waiting = false;
-            throw err;
-          }
-
-          if(output instanceof Promise){
-            const issue =
-              Oops.ValueNotReady(subject, key);
-  
-            output
-              .catch(err => error = err)
-              .then(out => state[key] = out)
-              .finally(() => waiting = false)
-  
-            throw waiting = Object.assign(output, {
-              message: issue.message,
-              stack: issue.stack
-            });
-          }
-          else {
-            waiting = false;
-            return state[key] = output;
-          }
-        }
+        onGet = pendingFactory.call(this, factory, key)
 
         if(required)
           try {
@@ -99,7 +56,7 @@ function set(
             if(err instanceof Promise)
               void 0;
             else {
-              Oops.FactoryFailed(subject, key).warn();
+              Oops.FactoryFailed(this.subject, key).warn();
               throw err;
             }
           }

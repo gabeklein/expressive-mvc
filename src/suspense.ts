@@ -43,6 +43,57 @@ export function pendingValue<T = any>(
   return value;
 }
 
+export function pendingFactory(
+  this: Controller,
+  fn: (key: string, subject: unknown) => any,
+  key: string
+){
+  const { subject, state } = this;
+  let waiting: undefined | Promise<any> | false;
+  let error: any;
+
+  return () => {
+    if(waiting)
+      throw waiting;
+
+    if(error)
+      throw error;
+
+    if(waiting === false)
+      return state[key];
+
+    let output;
+
+    try {
+      output = fn.call(subject, key, subject);
+    }
+    catch(err){
+      error = err;
+      waiting = false;
+      throw err;
+    }
+
+    if(output instanceof Promise){
+      const issue =
+        Oops.ValueNotReady(subject, key);
+
+      output
+        .catch(err => error = err)
+        .then(out => state[key] = out)
+        .finally(() => waiting = false)
+
+      throw waiting = Object.assign(output, {
+        message: issue.message,
+        stack: issue.stack
+      });
+    }
+    else {
+      waiting = false;
+      return state[key] = output;
+    }
+  }
+}
+
 type Suspense<T = any> = Promise<T> & Error;
 
 export function suspend(
