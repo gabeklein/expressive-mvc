@@ -43,7 +43,7 @@ function set(
         onGet = () => pendingValue(this, key);
 
       else if(typeof factory == "function"){
-        onGet = pendingFactory.call(this, factory, key)
+        onGet = pendingFactory(this, key, factory)
 
         if(required)
           try {

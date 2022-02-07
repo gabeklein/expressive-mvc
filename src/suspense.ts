@@ -44,11 +44,11 @@ export function pendingValue<T = any>(
 }
 
 export function pendingFactory(
-  this: Controller,
-  fn: (key: string, subject: unknown) => any,
-  key: string
-){
-  const { subject, state } = this;
+  via: Controller,
+  key: string,
+  fn: (key: string, subject: unknown) => any){
+
+  const { subject, state } = via;
   let waiting: undefined | Promise<any> | false;
   let error: any;
 
