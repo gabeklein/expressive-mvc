@@ -11,7 +11,10 @@ export const Oops = issues({
     `Value ${model}.${key} value is not yet available.`,
 
   BadFactory: () =>
-    `Set instruction can only accept a factory or undefined.`
+    `Set instruction can only accept a factory or undefined.`,
+
+  FactoryFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`
 })
 
 export function lazy<T>(value: T): T {
@@ -33,10 +36,6 @@ function set(
 
   return apply(
     function set(key){
-      const subject = this.subject;
-      let waiting: undefined | Promise<any> | false;
-      let error: any;
-
       let onSet;
       let onGet: () => void;
 
@@ -47,38 +46,9 @@ function set(
         onGet = () => pendingValue(this, key);
 
       else if(typeof factory == "function"){
-        const evaluate = () => {
-          try {
-            const output = factory!.call(subject, key, subject);
-  
-            if(output instanceof Promise){
-              const issue =
-                Oops.ValueNotReady(subject, key);
-    
-              output
-                .catch(err => error = err)
-                .then(out => this.state[key] = out)
-                .finally(() => waiting = false)
-    
-              waiting = Object.assign(output, {
-                message: issue.message,
-                stack: issue.stack
-              });
-            }
-            else {
-              this.state[key] = output;
-              waiting = false;
-            }
-          }
-          catch(err){
-            error = err;
-            waiting = false;
-            throw err;
-          }
-        }
-
-        if(required)
-          evaluate();
+        const { subject, state } = this;
+        let waiting: undefined | Promise<any> | false;
+        let error: any;
 
         onGet = () => {
           if(waiting)
@@ -86,12 +56,53 @@ function set(
   
           if(error)
             throw error;
+
+          if(waiting === false)
+            return state[key];
+
+          let output;
+
+          try {
+            output = factory!.call(subject, key, subject);
+          }
+          catch(err){
+            error = err;
+            waiting = false;
+            throw err;
+          }
+
+          if(output instanceof Promise){
+            const issue =
+              Oops.ValueNotReady(subject, key);
   
-          if(waiting === undefined)
-            evaluate();
+            output
+              .catch(err => error = err)
+              .then(out => state[key] = out)
+              .finally(() => waiting = false)
   
-          return this.state[key];
+            throw waiting = Object.assign(output, {
+              message: issue.message,
+              stack: issue.stack
+            });
+          }
+          else {
+            waiting = false;
+            return state[key] = output;
+          }
         }
+
+        if(required)
+          try {
+            onGet();
+          }
+          catch(err){
+            if(err instanceof Promise)
+              void 0;
+            else {
+              Oops.FactoryFailed(subject, key).warn();
+              throw err;
+            }
+          }
       }
       else
         throw Oops.BadFactory();

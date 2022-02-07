@@ -150,6 +150,13 @@ describe("callback", () => {
 })
 
 describe("memoize", () => {
+  const { error, warn } = console;
+
+  afterAll(() => {
+    console.warn = warn;
+    console.error = error;
+  });
+
   class Test extends Model {
     ranMemo = jest.fn();
     ranLazyMemo = jest.fn();
@@ -181,13 +188,18 @@ describe("memoize", () => {
     expect(state.ranLazyMemo).toBeCalled();
   })
 
-  it("will rethrow error from factory", () => {
+  it("will warn and rethrow error from factory", () => {
+    const warn = console.warn = jest.fn();
+
     class Test extends Model {
       memoized = set(() => {
         throw new Error("Foobar")
       })
     }
+
+    const failed = Assign.FactoryFailed(Test.name, "memoized");
   
     expect(() => Test.create()).toThrowError("Foobar");
+    expect(warn).toBeCalledWith(failed.message);
   })
 })
