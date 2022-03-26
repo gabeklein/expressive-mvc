@@ -3,39 +3,55 @@ import { Oops as Util } from '../src/util';
 import { Model, set } from './adapter';
 
 describe("optional", () => {
-  class Test extends Model {
-    foo = set(() => "foo");
-    bar = set(() => "bar", false);
-    baz = set<string>(undefined, true);
-  }
-
   it("will throw if set to undefined", () => {
+    class Test extends Model {
+      value = set(() => "foo");
+    }
+
     const test = Test.create();
-
-    const expected = Assign.NonOptional(test, "foo");
-
-    expect(() => test.foo = "bar").not.toThrow();
+    const expected = Assign.NonOptional(test, "value");
 
     // @ts-ignore
-    expect(() => test.foo = undefined).toThrowError(expected);
+    expect(() => test.value = undefined).toThrowError(expected);
+    expect(() => test.value = "bar").not.toThrow();
   })
 
-  it("will throw while optional set to false", () => {
+  it("will throw while required set to true", () => {
+    class Test extends Model {
+      value = set<string>(undefined, true);
+    }
+
     const test = Test.create();
+    const expected = Assign.NonOptional(test, "value");
 
-    const expected = Assign.NonOptional(test, "baz");
-
-    expect(() => test.baz = "bar").not.toThrow();
+    test.value = "foo";
 
     // @ts-ignore
-    expect(() => test.baz = undefined).toThrowError(expected);
+    expect(() => test.value = undefined).toThrowError(expected);
+    expect(() => test.value = "bar").not.toThrow();
   })
 
-  it("will not throw while optional set to true", () => {
+  it("will not throw if required value remains undefined", () => {
+    class Test extends Model {
+      value = set<string>(undefined, true);
+    }
+
     const test = Test.create();
 
-    expect(() => test.bar = "foo").not.toThrow();
-    expect(() => test.bar = undefined).not.toThrow();
+    // @ts-ignore
+    expect(() => test.value = undefined).not.toThrowError();
+    expect(() => test.value = "bar").not.toThrow();
+  })
+
+  it("will not throw while required set to false", () => {
+    class Test extends Model {
+      value = set(() => "bar", false);
+    }
+
+    const test = Test.create();
+
+    expect(() => test.value = undefined).not.toThrow();
+    expect(() => test.value = "foo").not.toThrow();
   })
 })
 
