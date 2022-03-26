@@ -56,90 +56,97 @@ describe("optional", () => {
 })
 
 describe("callback", () => {
-  class Subject extends Model {
-    didTrigger = jest.fn()
-  
-    test1 = set<number>(undefined, value => {
-      this.didTrigger(value + 1);
-    });
-  
-    test2 = set<number>(undefined, () => {
-      return () => {
-        this.didTrigger(true);
-      }
-    });
-  
-    test3 = set(() => "foo", value => {
-      this.didTrigger(value);
-    });
-
-    test4 = set(() => "foo", value => {
-      this.didTrigger(value);
-      return false;
-    });
-
-    test5 = set(() => "foo", value => {
-      this.didTrigger(value);
-      return true;
-    });
-  }
-  
   it('will invoke callback on property set', async () => {
-    const state = Subject.create();
-    const callback = jest.fn();
-  
-    expect(state.didTrigger).not.toBeCalled();
-    state.once("test1", callback);
+    class Subject extends Model {
+      test = set<number>(undefined, value => {
+        callback(value + 1);
+      });
+    }
 
-    state.test1 = 1;
-    expect(state.didTrigger).toBeCalledWith(2);
+    const state = Subject.create();
+    const callback = jest.fn()
+    const event = jest.fn();
+  
+    expect(callback).not.toBeCalled();
+    state.once("test", event);
+
+    state.test = 1;
+    expect(callback).toBeCalledWith(2);
 
     await state.update(true)
-    expect(callback).toBeCalledWith(1, "test1");
+    expect(event).toBeCalledWith(1, "test");
   })
   
   it('will invoke return-callback on overwrite', async () => {
+    class Subject extends Model {
+      test = set<number>(undefined, () => {
+        return () => {
+          callback(true);
+        }
+      });
+    }
+    
+    const callback = jest.fn()
     const state = Subject.create();
   
-    state.test2 = 1;
+    state.test = 1;
 
     await state.update(true);
-    expect(state.didTrigger).not.toBeCalled();
-    state.test2 = 2;
+    expect(callback).not.toBeCalled();
+    state.test = 2;
 
     await state.update(true);
-    expect(state.didTrigger).toBeCalledWith(true);
+    expect(callback).toBeCalledWith(true);
   })
   
   it('will assign a default value', async () => {
+    class Subject extends Model {
+      test = set(() => "foo", value => {
+        callback(value);
+      });
+    }
+    
+    const callback = jest.fn()
     const state = Subject.create();
   
-    expect(state.test3).toBe("foo");
-    state.test3 = "bar";
+    expect(state.test).toBe("foo");
+    state.test = "bar";
 
     await state.update();
-    expect(state.didTrigger).toBeCalledWith("bar");
+    expect(callback).toBeCalledWith("bar");
   })
 
   it('will prevent update if callback returns false', async () => {
+    class Subject extends Model {
+      test = set(() => "foo", value => {
+        callback(value);
+        return false;
+      });
+    }
+    
+    const callback = jest.fn()
     const state = Subject.create();
   
-    expect(state.test4).toBe("foo");
-    state.test4 = "bar";
+    expect(state.test).toBe("foo");
+    state.test = "bar";
 
     await state.update(false);
-    expect(state.didTrigger).toBeCalledWith("bar");
-    expect(state.test4).toBe("foo");
+    expect(callback).toBeCalledWith("bar");
+    expect(state.test).toBe("foo");
   })
 
   it('will block value if callback returns true', async () => {
+    class Subject extends Model {
+      test = set(() => "foo", value => true);
+    }
+  
     const state = Subject.create();
   
-    expect(state.test5).toBe("foo");
-    state.test5 = "bar";
+    expect(state.test).toBe("foo");
+    state.test = "bar";
 
     await state.update(true);
-    expect(state.test5).toBe("foo");
+    expect(state.test).toBe("foo");
   })
 
   it('will ignore effect promise', () => {
