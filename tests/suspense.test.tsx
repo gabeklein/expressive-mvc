@@ -183,7 +183,7 @@ describe("assigned", () => {
 })
 
 describe("async function", () => {
-  it('will auto-suspend if willRender is instruction', async () => {
+  it('will auto-suspend if assessed value is async', async () => {
     class Test extends Model {
       value = set(promise.await);
     }
@@ -217,7 +217,7 @@ describe("async function", () => {
     expect(() => instance.value).toThrowError(exprected);
     promise.resolve();
   })
-  
+
   it('will refresh and throw if async rejects', async () => {
     const promise = asyncTest();
     const expected = new Error("oh foo");
