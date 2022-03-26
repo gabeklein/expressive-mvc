@@ -61,9 +61,9 @@ export class Model {
   }
 
   tag(id?: Key | KeyFactory<this>){
-    const hook = use(refresh => {
-      return new Subscriber(this, () => refresh);
-    });
+    const hook = use(refresh => (
+      new Subscriber(this, () => refresh)
+    ));
   
     useElementLifecycle(hook, id || 0);
     
@@ -139,12 +139,11 @@ export class Model {
       invoke();
       return this.on(select, invoke, true);
     }
-    else {
-      const sub = new Subscriber(control, () => invoke);
-      target = sub.proxy;
-      invoke();
-      return sub.commit();
-    }
+    
+    const sub = new Subscriber(control, () => invoke);
+    target = sub.proxy;
+    invoke();
+    return sub.commit();
   }
 
   import(

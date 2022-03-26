@@ -42,7 +42,10 @@ function set(
       if(factory === undefined)
         onGet = () => pendingValue(this, key);
 
-      else if(typeof factory == "function"){
+      else if(typeof factory !== "function")
+        throw Oops.BadFactory();
+
+      else {
         onGet = pendingFactory(this, key, factory);
 
         if(required)
@@ -58,8 +61,6 @@ function set(
             }
           }
       }
-      else
-        throw Oops.BadFactory();
 
       if(typeof argument == "function")
         onSet = createValueEffect(argument);

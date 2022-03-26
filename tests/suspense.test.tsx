@@ -7,12 +7,12 @@ function asyncTest<T = void>(){
   const events = new Set<Function>();
 
   return {
-    wait: () => {
+    await: () => {
       return new Promise<T>(
         res => events.add(res)
       )
     },
-    trigger: () => {
+    resolve: () => {
       events.forEach(x => x());
       events.clear();
     }
@@ -107,13 +107,13 @@ describe("tap method", () => {
 
   it('will suspend if strict compute', async () => {
     const test = scenario();
-    const sync = asyncTest();
+    const promise = asyncTest();
     const instance = Test.create();
     const rendered = jest.fn();
     const computed = jest.fn();
 
     test.renderHook(() => {
-      sync.trigger();
+      promise.resolve();
       rendered();
     
       instance.tap(state => {
@@ -128,7 +128,7 @@ describe("tap method", () => {
     expect(computed).toBeCalledTimes(1);
 
     instance.value = "foobar";
-    await sync.wait();
+    await promise.await();
 
     // 1st - render prior to bailing
     // 2nd - successful render
@@ -185,47 +185,47 @@ describe("assigned", () => {
 describe("async function", () => {
   it('will auto-suspend if willRender is instruction', async () => {
     class Test extends Model {
-      value = set(sync.wait);
+      value = set(promise.await);
     }
 
-    const sync = asyncTest();
+    const promise = asyncTest();
     const test = scenario();
     const instance = Test.create();
 
     test.renderHook(() => {
-      instance.tap().value;
+      void instance.tap().value;
     })
   
     test.assertDidSuspend(true);
 
-    sync.trigger();
+    promise.resolve();
     await instance.update();
 
     test.assertDidRender(true);
   })
 
   it("will seem to throw error outside react", () => {
-    const sync = asyncTest();
+    const promise = asyncTest();
 
     class Test extends Model {
-      value = set(sync.wait);
+      value = set(promise.await);
     }
 
     const instance = Test.create();
     const exprected = Oops.ValueNotReady(instance, "value");
 
     expect(() => instance.value).toThrowError(exprected);
-    sync.trigger();
+    promise.resolve();
   })
   
   it('will refresh and throw if async rejects', async () => {
-    const sync = asyncTest();
-    const error = new Error("some foobar went down");
+    const promise = asyncTest();
+    const expected = new Error("oh foo");
 
     class Test extends Model {
       value = set(async () => {
-        await sync.wait();
-        throw error;
+        await promise.await();
+        throw expected;
       })
     }
 
@@ -233,15 +233,15 @@ describe("async function", () => {
     const instance = Test.create();
 
     test.renderHook(() => {
-      instance.tap().value;
+      void instance.tap().value;
     })
   
     test.assertDidSuspend(true);
 
-    sync.trigger();
+    promise.resolve();
     await instance.update();
 
-    test.assertDidThrow(error);
+    test.assertDidThrow(expected);
   })
   
   it('will bind async function to self', async () => {
@@ -258,7 +258,7 @@ describe("async function", () => {
     const instance = Test.create();
 
     test.renderHook(() => {
-      instance.tap().value;
+      void instance.tap().value;
     });
 
     await instance.update();

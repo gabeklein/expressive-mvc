@@ -60,8 +60,7 @@ export type Instruction<T> = (this: Controller, key: string, thisArg: Controller
   void | Getter<T> | PropertyDescriptor;
 
 export namespace Controller {
-  export type Listen = (key: string, source: Controller) =>
-    RequestCallback | void;
+  export type Listen = (key: string, source: Controller) => RequestCallback | void;
 }
 
 export class Controller {
