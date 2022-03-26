@@ -269,28 +269,71 @@ export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; /
 
 type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
 
-export function set <T = any>(): T;
+/**
+ * Set property with a placeholder.
+ * 
+ * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
+ * `Promise`/`Error` (ala: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
+ */
+ export function set <T = any>(): T;
 
-export function set <T> (value: undefined, required: false): T | undefined;
-export function set <T> (value: undefined, required?: boolean): T;
-
-export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
-export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
-
-export function set <T>(factory: FactoryFunction<Promise<T>>, required: false): T | undefined;
-export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required: false): T | undefined;
-
-export function set <T>(factory: FactoryFunction<Promise<T>>, required?: boolean): T;
-export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required?: boolean): T;
-
-export function set <T> (value: FactoryFunction<Promise<T>>, onUpdate: InterceptCallback<T>): T;
-export function set <T, S> (value: FactoryFunction<Promise<T>, S>, onUpdate: InterceptCallback<T, S>): T;
-
-export function set <T>(factory: FactoryFunction<T>, required: false): T | undefined;
-export function set <T, S>(factory: FactoryFunction<T, S>, required: false): T | undefined;
-
-export function set <T>(factory: FactoryFunction<T>, required?: boolean): T;
-export function set <T, S>(factory: FactoryFunction<T, S>, required?: boolean): T;
-
-export function set <T> (value: FactoryFunction<T>, onUpdate: InterceptCallback<T>): T;
-export function set <T, S> (value: FactoryFunction<T, S>, onUpdate: InterceptCallback<T, S>): T;
+ /**
+  * Set property with starting value `undefined`.
+  * 
+  * If required and accessed while still empty, React Suspense will be thrown.
+  * Property will reject any assignment of undefined.
+  * 
+  * @param value - Starting value of host property (undefined).
+  * @param required - Property will suspend callee if undefined at time of access.
+  */
+ export function set <T> (value: undefined, required: false): T | undefined;
+ export function set <T> (value: undefined, required?: boolean): T;
+ 
+ export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
+ export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
+ 
+ /**
+  * Set property with an async function.
+  * 
+  * Property cannot be accessed until factory resolves, yeilding a result.
+  * If accessed while processing, React Suspense will be thrown.
+  * 
+  * - `required: true` (default) -
+  *      Run factory immediately upon creation of model instance.
+  * - `required: false` -
+  *      Run factory only if/when accessed.
+  *      Value will always throw suspense at least once - use with caution.
+  * 
+  * @param factory - Callback run to derrive property value.
+  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+  */
+ export function set <T>(factory: FactoryFunction<Promise<T>>, required: false): T | undefined;
+ export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required: false): T | undefined;
+ 
+ export function set <T>(factory: FactoryFunction<Promise<T>>, required?: boolean): T;
+ export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required?: boolean): T;
+ 
+ export function set <T> (value: FactoryFunction<Promise<T>>, onUpdate: InterceptCallback<T>): T;
+ export function set <T, S> (value: FactoryFunction<Promise<T>, S>, onUpdate: InterceptCallback<T, S>): T;
+ 
+ /**
+  * Set property with a factory function.
+  * 
+  * - `required: true` (default) -
+  *      Run factory immediately upon creation of model instance.
+  * - `required: false` -
+  *      Run factory only if/when accessed.
+  *      Value will always throw suspense at least once - use with caution.
+  * 
+  * @param factory - Callback run to derrive property value.
+  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+  */
+ export function set <T>(factory: FactoryFunction<T>, required: false): T | undefined;
+ export function set <T, S>(factory: FactoryFunction<T, S>, required: false): T | undefined;
+ 
+ export function set <T>(factory: FactoryFunction<T>, required?: boolean): T;
+ export function set <T, S>(factory: FactoryFunction<T, S>, required?: boolean): T;
+ 
+ export function set <T> (value: FactoryFunction<T>, onUpdate: InterceptCallback<T>): T;
+ export function set <T, S> (value: FactoryFunction<T, S>, onUpdate: InterceptCallback<T, S>): T;
+ 
