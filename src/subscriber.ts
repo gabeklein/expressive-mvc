@@ -10,7 +10,7 @@ export class Subscriber {
   public proxy: any;
   public source: any;
   public active = false;
-  public handle = {} as BunchOf<Callback | true>;
+  public using = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
   public parent: Controller;
   public notify?: RequestCallback;
@@ -38,15 +38,15 @@ export class Subscriber {
 
     this.notify = keys => {
       update.splice(0, update.length,
-        ...keys.filter(k => k in this.handle)  
+        ...keys.filter(k => k in this.using)  
       )
     }
 
     return update;
   }
 
-  public listen = (key: string, from: Controller) => {
-    const handler = this.handle[key];
+  public listen = (key: string, source: Controller) => {
+    const handler = this.using[key];
 
     if(!handler)
       return;
@@ -54,7 +54,7 @@ export class Subscriber {
     if(typeof handler == "function")
       handler();
 
-    const notify = this.onUpdate(key, from);
+    const notify = this.onUpdate(key, source);
 
     if(notify)
       from.waiting.add(notify);
@@ -70,7 +70,7 @@ export class Subscriber {
       getOwnPropertyDescriptor(source, key)!;
 
     const intercept = () => {
-      this.handle[key] = true;
+      this.using[key] = true;
       delete proxy[key];
       return proxy[key];
     }

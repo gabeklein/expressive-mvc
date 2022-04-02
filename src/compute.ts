@@ -117,7 +117,7 @@ export function prepare(
     finally {
       sub.commit();
 
-      for(const key in sub.handle){
+      for(const key in sub.using){
         const peer = register.get(key);
     
         if(peer && peer.priority >= info.priority)
