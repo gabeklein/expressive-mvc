@@ -3,7 +3,7 @@ import React, { Suspense } from 'react';
 import { Oops } from '../src/suspense';
 import { Model, pending, render, set, testAsync } from './adapter';
 
-function scenario(){
+function testSuspense(){
   let renderHook!: () => void;
   let didRender = false;
   let didSuspend = false;
@@ -16,8 +16,7 @@ function scenario(){
 
   const Waiting = () => {
     didSuspend = true;
-
-    return <div>Waiting...</div>;
+    return null;
   }
 
   const Component = () => {
@@ -35,7 +34,7 @@ function scenario(){
       return null;
     }
 
-    return <div>Content!</div>;
+    return null;
   }
 
   return {
@@ -74,7 +73,7 @@ describe("tap method", () => {
   }
 
   it('will suspend any value if strict tap', async () => {
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -90,7 +89,7 @@ describe("tap method", () => {
   })
 
   it('will suspend if strict compute', async () => {
-    const test = scenario();
+    const test = testSuspense();
     const promise = testAsync();
     const instance = Test.create();
     const rendered = jest.fn();
@@ -131,7 +130,7 @@ describe("assigned", () => {
       foobar = set<string>();
     }
 
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -153,7 +152,7 @@ describe("assigned", () => {
       foobar = set<string>();
     }
 
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     instance.foobar = "foo!";
@@ -173,7 +172,7 @@ describe("async function", () => {
     }
 
     const promise = testAsync();
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -213,7 +212,7 @@ describe("async function", () => {
       })
     }
 
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -238,7 +237,7 @@ describe("async function", () => {
       }
     }
 
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -263,7 +262,7 @@ describe("computed", () => {
   }
 
   it("will suspend if value is undefined", async () => {
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -295,7 +294,7 @@ describe("computed", () => {
   })
 
   it("will return immediately if value is defined", async () => {
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     instance.source = "foobar!";
@@ -312,7 +311,7 @@ describe("computed", () => {
   })
 
   it("will not resolve if value stays undefined", async () => {
-    const test = scenario();
+    const test = testSuspense();
     const instance = Test.create();
 
     test.renderHook(() => {
