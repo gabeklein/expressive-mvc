@@ -27,55 +27,37 @@ export class Subscriber {
     this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
-    defineLazy(this.proxy, UPDATE, this.debug);
+    defineLazy(this.proxy, UPDATE, () => {
+      const update: string[] = [];
+  
+      this.notify = keys => {
+        update.splice(0, update.length,
+          ...keys.filter(k => k in this.using)  
+        )
+      }
+  
+      return update;
+    });
 
     for(const key in parent.state)
       this.spy(key);
   }
 
-  public debug = () => {
-    const update: string[] = [];
-
-    this.notify = keys => {
-      update.splice(0, update.length,
-        ...keys.filter(k => k in this.using)  
-      )
-    }
-
-    return update;
-  }
-
-  public listen = (key: string, source: Controller) => {
-    const handler = this.using[key];
-
-    if(!handler)
-      return;
-
-    if(typeof handler == "function")
-      handler();
-
-    const notify = this.onUpdate(key, source);
-
-    source.onUpdate(notify);
-    source.onUpdate(this.notify);
-  }
-
   public spy(key: string){
-    const { proxy, source } = this;
+    const { proxy } = this;
+    const existing =
+      getOwnPropertyDescriptor(this.source, key)!;
 
-    const { set } =
-      getOwnPropertyDescriptor(source, key)!;
-
-    const intercept = () => {
+    const isUsing = () => {
       this.using[key] = true;
       delete proxy[key];
       return proxy[key];
     }
 
-    setAlias(intercept, `tap ${key}`);
+    setAlias(isUsing, `tap ${key}`);
     defineProperty(proxy, key, {
-      get: intercept,
-      set,
+      set: existing.set,
+      get: isUsing,
       configurable: true,
       enumerable: true
     })
@@ -83,10 +65,22 @@ export class Subscriber {
 
   public commit(){
     const onDone =
-      this.parent.addListener(this.listen);
+      this.parent.addListener((key, source) => {
+        const handler = this.using[key];
+    
+        if(!handler)
+          return;
+    
+        if(typeof handler == "function")
+          handler();
+    
+        const notify = this.onUpdate(key, source);
+    
+        source.onUpdate(notify);
+        source.onUpdate(this.notify);
+      });
 
     this.active = true;
-
     this.dependant.forEach(x => x.commit());
 
     return this.release = () => {
