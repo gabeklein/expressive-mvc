@@ -104,9 +104,7 @@ export function useComputed(
     const get = expected
       ? () => {
         if(value === undefined)
-          throw new Promise<void>(res => {
-            retry = res;
-          });
+          throw new Promise<void>(res => retry = res);
 
         return value;
       }
