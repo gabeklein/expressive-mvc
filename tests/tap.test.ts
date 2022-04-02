@@ -181,18 +181,19 @@ describe("suspense", () => {
   })
 
   it('will suspend strict compute', async () => {
-    const test = testSuspense();
-    const promise = testAsync();
     const instance = Test.create();
-    const rendered = jest.fn();
-    const computed = jest.fn();
+    const promise = testAsync();
+    const test = testSuspense();
+
+    const didRender = jest.fn();
+    const didCompute = jest.fn();
 
     test.renderHook(() => {
       promise.resolve();
-      rendered();
+      didRender();
     
       instance.tap(state => {
-        computed();
+        didCompute();
         if(state.value == "foobar")
           return true;
       }, true);
@@ -200,18 +201,18 @@ describe("suspense", () => {
   
     test.assertDidSuspend(true);
 
-    expect(computed).toBeCalledTimes(1);
+    expect(didCompute).toBeCalledTimes(1);
 
     instance.value = "foobar";
     await promise.await();
 
     // 1st - render prior to bailing
     // 2nd - successful render
-    expect(rendered).toBeCalledTimes(2);
+    expect(didRender).toBeCalledTimes(2);
 
     // 1st - initial render fails
     // 2nd - recheck success (permit render again)
     // 3rd - hook regenerated next render 
-    expect(computed).toBeCalledTimes(3);
+    expect(didCompute).toBeCalledTimes(3);
   })
 })
