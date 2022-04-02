@@ -100,9 +100,9 @@ export function from<T, R = T>(
 
   return apply(
     function from(key){
-      const { subject } = this;
       let getSource: () => Controller;
-      let getter = argument === true
+      const { subject } = this;
+      const getter = argument === true
         ? pendingValue
         : argument || undefined;
 
