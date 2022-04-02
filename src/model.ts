@@ -119,10 +119,10 @@ export class Model {
 
     if(callback)
       return this.on(select, callback, squash, true);
-    else 
-      return new Promise<void>(resolve => {
-        this.on(select, resolve, true, true);
-      });
+
+    return new Promise<void>(resolve => {
+      this.on(select, resolve, true, true);
+    });
   }
 
   effect(
