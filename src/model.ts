@@ -45,7 +45,7 @@ export class Model {
     defer(control, "on");
     defer(control, "effect");
 
-    control.waiting.add(() => {
+    control.onUpdate(() => {
       delete (this as any).on;
       delete (this as any).effect;
     })

@@ -92,6 +92,11 @@ export class Controller {
     return this.frame.size > 0;
   }
 
+  public onUpdate(cb: any){
+    if(typeof cb == "function")
+      this.waiting.add(cb);
+  }
+
   public start(){
     const { subject } = this;
     
@@ -182,12 +187,10 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const subscription of this.followers){
-      const notify = subscription(key, this);
-
-      if(notify)
-        this.waiting.add(notify);
-    }
+    for(const callback of this.followers)
+      this.onUpdate(
+        callback(key, this)
+      );
   }
 
   public emit(){

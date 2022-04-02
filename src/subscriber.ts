@@ -56,11 +56,8 @@ export class Subscriber {
 
     const notify = this.onUpdate(key, source);
 
-    if(notify)
-      from.waiting.add(notify);
-
-    if(this.notify)
-      from.waiting.add(this.notify);
+    source.onUpdate(notify);
+    source.onUpdate(this.notify);
   }
 
   public spy(key: string){
