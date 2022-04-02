@@ -43,7 +43,7 @@ export function child<T extends Model>(
         }
 
         start();
-        sub.follow(key, restart);
+        sub.handle[key] = restart;
       }
     
       return (local: Subscriber | undefined) => {

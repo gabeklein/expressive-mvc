@@ -70,7 +70,7 @@ export class Subscriber {
       getOwnPropertyDescriptor(source, key)!;
 
     const intercept = () => {
-      this.follow(key);
+      this.handle[key] = true;
       delete proxy[key];
       return proxy[key];
     }
@@ -82,10 +82,6 @@ export class Subscriber {
       configurable: true,
       enumerable: true
     })
-  }
-
-  public follow(key: string, callback?: Callback){
-    this.handle[key] = callback || true;
   }
 
   public commit(){
