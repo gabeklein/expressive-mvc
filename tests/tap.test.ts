@@ -1,8 +1,8 @@
-import { Model, renderHook, testAsync, use } from './adapter';
+import { Model, renderHook, testAsync, testSuspense, use } from './adapter';
 
 const opts = { timeout: 100 };
 
-describe("tap", () => {
+describe("method", () => {
   class Parent extends Model {
     value = "foo";
     empty = undefined;
@@ -157,4 +157,61 @@ describe("async", () => {
 
     expect(result.current).toBe("foobar");
   });
+})
+
+describe("suspense", () => {
+  class Test extends Model {
+    value?: string = undefined;
+  }
+
+  it('will suspend if property undefined', async () => {
+    const test = testSuspense();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value", true);
+    })
+  
+    test.assertDidSuspend(true);
+
+    instance.value = "foo!";
+    await instance.once("willRender");
+
+    test.assertDidRender(true);
+  })
+
+  it('will suspend strict compute', async () => {
+    const test = testSuspense();
+    const promise = testAsync();
+    const instance = Test.create();
+    const rendered = jest.fn();
+    const computed = jest.fn();
+
+    test.renderHook(() => {
+      promise.resolve();
+      rendered();
+    
+      instance.tap(state => {
+        computed();
+        if(state.value == "foobar")
+          return true;
+      }, true);
+    })
+  
+    test.assertDidSuspend(true);
+
+    expect(computed).toBeCalledTimes(1);
+
+    instance.value = "foobar";
+    await promise.await();
+
+    // 1st - render prior to bailing
+    // 2nd - successful render
+    expect(rendered).toBeCalledTimes(2);
+
+    // 1st - initial render fails
+    // 2nd - recheck success (permit render again)
+    // 3rd - hook regenerated next render 
+    expect(computed).toBeCalledTimes(3);
+  })
 })

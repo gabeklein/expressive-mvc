@@ -1,64 +1,7 @@
 import { Oops } from '../src/suspense';
 import { Model, pending, set, testAsync, testSuspense } from './adapter';
 
-describe("tap method", () => {
-  class Test extends Model {
-    value?: string = undefined;
-  }
-
-  it('will suspend any value if strict tap', async () => {
-    const test = testSuspense();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("value", true);
-    })
-  
-    test.assertDidSuspend(true);
-
-    instance.value = "foo!";
-    await instance.once("willRender");
-
-    test.assertDidRender(true);
-  })
-
-  it('will suspend if strict compute', async () => {
-    const test = testSuspense();
-    const promise = testAsync();
-    const instance = Test.create();
-    const rendered = jest.fn();
-    const computed = jest.fn();
-
-    test.renderHook(() => {
-      promise.resolve();
-      rendered();
-    
-      instance.tap(state => {
-        computed();
-        if(state.value == "foobar")
-          return true;
-      }, true);
-    })
-  
-    test.assertDidSuspend(true);
-
-    expect(computed).toBeCalledTimes(1);
-
-    instance.value = "foobar";
-    await promise.await();
-
-    // 1st - render prior to bailing
-    // 2nd - successful render
-    expect(rendered).toBeCalledTimes(2);
-
-    // 1st - initial render fails
-    // 2nd - recheck success (permit render again)
-    // 3rd - hook regenerated next render 
-    expect(computed).toBeCalledTimes(3);
-  })
-})
-
-describe("assigned", () => {
+describe("empty", () => {
   it('will suspend if value is accessed before set', async () => {
     class Test extends Model {
       foobar = set<string>();
@@ -99,7 +42,7 @@ describe("assigned", () => {
   })
 })
 
-describe("async function", () => {
+describe("set async", () => {
   it('will auto-suspend if assessed value is async', async () => {
     class Test extends Model {
       value = set(promise.await);
