@@ -1,23 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Oops } from '../src/suspense';
-import { Model, render, pending, set } from './adapter';
-
-function asyncTest<T = void>(){
-  const events = new Set<Function>();
-
-  return {
-    await: () => {
-      return new Promise<T>(
-        res => events.add(res)
-      )
-    },
-    resolve: () => {
-      events.forEach(x => x());
-      events.clear();
-    }
-  }
-}
+import { Model, pending, render, set, testAsync } from './adapter';
 
 function scenario(){
   let renderHook!: () => void;
@@ -107,7 +91,7 @@ describe("tap method", () => {
 
   it('will suspend if strict compute', async () => {
     const test = scenario();
-    const promise = asyncTest();
+    const promise = testAsync();
     const instance = Test.create();
     const rendered = jest.fn();
     const computed = jest.fn();
@@ -188,7 +172,7 @@ describe("async function", () => {
       value = set(promise.await);
     }
 
-    const promise = asyncTest();
+    const promise = testAsync();
     const test = scenario();
     const instance = Test.create();
 
@@ -205,7 +189,7 @@ describe("async function", () => {
   })
 
   it("will seem to throw error outside react", () => {
-    const promise = asyncTest();
+    const promise = testAsync();
 
     class Test extends Model {
       value = set(promise.await);
@@ -219,7 +203,7 @@ describe("async function", () => {
   })
 
   it('will refresh and throw if async rejects', async () => {
-    const promise = asyncTest();
+    const promise = testAsync();
     const expected = new Error("oh foo");
 
     class Test extends Model {

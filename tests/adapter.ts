@@ -47,3 +47,19 @@ export function subscribeTo<T extends Public.Model>(
       expect(didTrigger).not.toHaveBeenCalled();
   }
 }
+
+export function testAsync<T = void>(){
+  const events = new Set<Function>();
+
+  return {
+    await: () => {
+      return new Promise<T>(
+        res => events.add(res)
+      )
+    },
+    resolve: () => {
+      events.forEach(x => x());
+      events.clear();
+    }
+  }
+}
