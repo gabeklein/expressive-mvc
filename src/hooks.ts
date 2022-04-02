@@ -70,14 +70,13 @@ export function useComputed(
 
   const hook = use(refresh => {
     const sub = new Subscriber(target, () => update);
-    const { proxy } = sub;
+    const spy = sub.proxy;
 
-    let value: any;
+    let value = compute.call(spy, spy);
+    let update: RequestCallback | undefined;
     let retry: Callback | undefined;
 
-    const update = () => {
-      const next = compute.call(proxy, proxy);
-      
+    const set = (next: any) => {
       if(value == next)
         return;
 
@@ -91,19 +90,29 @@ export function useComputed(
         refresh();
     }
 
-    const access = () => {
-      if(value === undefined && expected)
-        throw new Promise<void>(res => {
-          retry = res;
-        });
-
-      return value;
+    if(value instanceof Promise){
+      value.then(set);
+      value = undefined;
+    }
+    else {
+      sub.commit();
+      update = () => set(
+        compute.call(spy, spy)
+      );
     }
 
-    value = compute.call(proxy, proxy);
-    sub.commit();
-    
-    defineProperty(sub, "proxy", { get: access });
+    const get = expected
+      ? () => {
+        if(value === undefined)
+          throw new Promise<void>(res => {
+            retry = res;
+          });
+
+        return value;
+      }
+      : () => value
+
+    defineProperty(sub, "proxy", { get });
 
     return sub;
   });

@@ -292,6 +292,9 @@ export abstract class Model {
     tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
 
+    tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
+    tap <T> (from: (this: this, state: this) => Promise<T>, expect: true): Exclude<T, undefined>;
+
     tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
     tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
     
@@ -452,6 +455,7 @@ export abstract class Model {
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T | undefined;
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
     /** 
@@ -461,6 +465,7 @@ export abstract class Model {
      * This makes return type non-nullable and convenient to use without optional chaining.
      */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
 
     /**
