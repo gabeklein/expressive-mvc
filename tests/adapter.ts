@@ -52,17 +52,22 @@ export function subscribeTo<T extends Public.Model>(
 }
 
 export function testAsync<T = void>(){
-  const events = new Set<Function>();
+  const pending =
+    new Set<[Function, Function]>();
 
   return {
-    await: () => {
-      return new Promise<T>(
-        res => events.add(res)
-      )
-    },
+    await: () => (
+      new Promise<T>((res, rej) => {
+        pending.add([res, rej]);
+      })
+    ),
     resolve: (value: T) => {
-      events.forEach(x => x(value));
-      events.clear();
+      pending.forEach(x => x[0](value));
+      pending.clear();
+    },
+    reject: (error?: any) => {
+      pending.forEach(x => x[1](error));
+      pending.clear();
     }
   }
 }
