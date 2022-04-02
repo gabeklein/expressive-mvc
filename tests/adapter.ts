@@ -1,3 +1,6 @@
+import { createElement, Suspense } from 'react';
+import { create as render } from 'react-test-renderer';
+
 import * as Public from '../';
 import * as Source from '../src';
 
@@ -60,6 +63,71 @@ export function testAsync<T = void>(){
     resolve: (value: T) => {
       events.forEach(x => x(value));
       events.clear();
+    }
+  }
+}
+
+export function testSuspense(){
+  let renderHook!: () => void;
+  let didRender = false;
+  let didSuspend = false;
+  let didThrow: Error | undefined;
+
+  const reset = () => {
+    didSuspend = didRender = false;
+    didThrow = undefined;
+  }
+
+  const Waiting = () => {
+    didSuspend = true;
+    return null;
+  }
+
+  const Component = () => {
+    try {
+      didRender = true;
+      renderHook();
+    }
+    catch(err: any){
+      // let suspense do it's thing
+      if(err instanceof Promise)
+        throw err;
+
+      // log and supress otherwise
+      didThrow = err;
+      return null;
+    }
+
+    return null;
+  }
+
+  return {
+    renderHook(fn: () => void){
+      renderHook = fn;
+  
+      render(
+        createElement(Suspense, {
+          fallback: createElement(Waiting),
+          children: createElement(Component)
+        })
+      )
+    },
+    assertDidRender(yes: boolean){
+      expect(didRender).toBe(yes);
+      expect(didSuspend).toBe(false);
+      reset();
+    },
+    assertDidSuspend(yes: boolean){
+      expect(didSuspend).toBe(yes);
+      reset();
+    },
+    assertDidThrow(error: Error | false){
+      if(error)
+        expect(didThrow).toBe(error);
+      else
+        expect(didThrow).toBeUndefined();
+
+      reset();
     }
   }
 }
