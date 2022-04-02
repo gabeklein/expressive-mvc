@@ -1,4 +1,4 @@
-import { Model, renderHook, use } from './adapter';
+import { Model, renderHook, testAsync, use } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -67,7 +67,7 @@ describe("computed", () => {
       return parent.tap(x => x.foo);
     });
 
-    expect(result.current).toBe(1)
+    expect(result.current).toBe(1);
 
     parent.foo = 2;
     await waitForNextUpdate();
@@ -115,4 +115,46 @@ describe("computed", () => {
     expect(render).toBeCalledTimes(1);
     expect(result.current).toBe(2);
   })
+})
+
+describe("async", () => {
+  class Test extends Model {
+    foo = "bar";
+  };
+
+  it('will return undefined then refresh', async () => {
+    const promise = testAsync<string>();
+    const control = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return control.tap(async () => promise.await());
+    });
+
+    expect(result.current).toBeUndefined();
+
+    promise.resolve("foobar");
+    await waitForNextUpdate();
+
+    expect(result.current).toBe("foobar");
+  });
+
+  it('will not refresh via subscription', async () => {
+    const promise = testAsync<string>();
+    const control = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return control.tap(async $ => {
+        void $.foo;
+        return promise.await();
+      });
+    });
+
+    control.foo = "foo";
+    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
+
+    promise.resolve("foobar");
+    await waitForNextUpdate();
+
+    expect(result.current).toBe("foobar");
+  });
 })

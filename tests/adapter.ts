@@ -57,8 +57,8 @@ export function testAsync<T = void>(){
         res => events.add(res)
       )
     },
-    resolve: () => {
-      events.forEach(x => x());
+    resolve: (value: T) => {
+      events.forEach(x => x(value));
       events.clear();
     }
   }
