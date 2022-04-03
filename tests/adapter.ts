@@ -64,10 +64,6 @@ export function testAsync<T = void>(){
     resolve: (value: T) => {
       pending.forEach(x => x[0](value));
       pending.clear();
-    },
-    reject: (error?: any) => {
-      pending.forEach(x => x[1](error));
-      pending.clear();
     }
   }
 }
