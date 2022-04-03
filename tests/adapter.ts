@@ -73,6 +73,8 @@ export function testAsync<T = void>(){
 }
 
 export function testSuspense(){
+  const promise = testAsync();
+
   let renderHook!: () => void;
   let didRender = false;
   let didSuspend = false;
@@ -102,11 +104,17 @@ export function testSuspense(){
       didThrow = err;
       return null;
     }
+    finally {
+      promise.resolve();
+    }
 
     return null;
   }
 
   return {
+    waitForNextRender(){
+      return promise.await();
+    },
     renderHook(fn: () => void){
       renderHook = fn;
   
