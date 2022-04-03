@@ -215,4 +215,23 @@ describe("suspense", () => {
     // 3rd - hook regenerated next render 
     expect(didCompute).toBeCalledTimes(3);
   })
+
+  it('will suspend strict async', async () => {
+    const instance = Test.create();
+    const promise = testAsync();
+    const test = testSuspense();
+
+    test.renderHook(() => {
+      instance.tap(async () => {
+        await promise.await();
+      }, true);
+    })
+  
+    test.assertDidSuspend(true);
+
+    promise.resolve();
+    await test.waitForNextRender();
+
+    test.assertDidRender(true);
+  })
 })

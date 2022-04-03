@@ -77,9 +77,6 @@ export function useComputed(
     let retry: Callback | undefined;
 
     const set = (next: any) => {
-      if(value == next)
-        return;
-
       value = next;
 
       if(retry){
@@ -96,9 +93,12 @@ export function useComputed(
     }
     else {
       sub.commit();
-      update = () => set(
-        compute.call(spy, spy)
-      );
+      update = () => {
+        const next = compute.call(spy, spy);
+
+        if(value != next)
+          set(next);
+      }
     }
 
     const get = expected
