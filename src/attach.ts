@@ -43,7 +43,7 @@ export function child<T extends Model>(
         }
 
         start();
-        sub.using[key] = restart;
+        sub.watch[key] = restart;
       }
     
       return (local: Subscriber | undefined) => {

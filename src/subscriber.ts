@@ -10,10 +10,11 @@ export class Subscriber {
   public proxy: any;
   public source: any;
   public active = false;
-  public using = {} as BunchOf<Callback | true>;
+  public watch = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
   public parent: Controller;
   public notify?: RequestCallback;
+  public release!: Callback;
 
   constructor(
     parent: Controller | Stateful,
@@ -32,7 +33,7 @@ export class Subscriber {
   
       this.notify = keys => {
         update.splice(0, update.length,
-          ...keys.filter(k => k in this.using)  
+          ...keys.filter(k => k in this.watch)  
         )
       }
   
@@ -49,7 +50,7 @@ export class Subscriber {
       getOwnPropertyDescriptor(this.source, key)!;
 
     const isUsing = () => {
-      this.using[key] = true;
+      this.watch[key] = true;
       delete proxy[key];
       return proxy[key];
     }
@@ -66,7 +67,7 @@ export class Subscriber {
   public commit(){
     const onDone =
       this.parent.addListener((key, source) => {
-        const handler = this.using[key];
+        const handler = this.watch[key];
     
         if(!handler)
           return;
@@ -88,6 +89,4 @@ export class Subscriber {
       onDone();
     }
   }
-
-  public release!: Callback;
 }
