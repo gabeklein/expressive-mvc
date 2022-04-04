@@ -9,38 +9,30 @@ describe("singleton", () => {
   
   afterEach(() => Global.reset());
 
-  it("will access values from create global", () => {
+  it("will access values from created global", () => {
     const hook = renderHook(() => Global.use());
   
     expect(hook.result.current.value).toBe(1);
   })
-  
-  it("will find existing instance", () => {
-    const instance = Global.create();
-    const found = Global.find();
-  
-    expect(found).toBe(instance);
-  })
 
   it("will get an existing instance", () => {
     const instance = Global.create();
-    const found = Global.is();
   
-    expect(found).toBe(instance);
+    expect(Global.get()).toBe(instance);
   })
 
   it("will throw if cannot get instance", () => {
     const expected = Oops.GlobalDoesNotExist(Global.name);
 
-    expect(() => Global.is()).toThrowError(expected);
+    expect(() => Global.get()).toThrowError(expected);
   })
   
-  it("will complain if not initialized", () => {
+  it("will return undefined if not initialized", () => {
     Global.create();
     expect(Global.get()).toBeDefined();
   
     Global.reset();
-    expect(Global.get()).toBeUndefined();
+    expect(Global.get(false)).toBeUndefined();
   })
   
   it("will destroy active instance on reset", () => {

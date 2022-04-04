@@ -5,6 +5,8 @@ import { Subscriber } from './subscriber';
 type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => () => T | undefined;
 
+//TODO: sync instruction
+
 export function child<T extends Model>(
   source: ChildInstruction<T>,
   name?: string){

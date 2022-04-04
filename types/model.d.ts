@@ -366,24 +366,18 @@ export abstract class Model {
     static using <T extends Class, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D, only?: (keyof D)[]): I;
 
     /**
-     * **React Hook** - Locate most relevant instance of this type in context.
-     */
-    static find <T extends Class>(this: T, strict: true): InstanceOf<T>;
-    static find <T extends Class>(this: T, strict?: boolean): InstanceOf<T> | undefined;
-
-    /**
      * **React Hook** - Fetch most instance of this controller from context, if it exists.
      * 
-     * @param expect - If true, will throw where controller cannot be found. Otherwise, may return undefined.
+     * @param required - If false, may return undefined.
      */
-    static get <T extends Class> (this: T, expect?: boolean): InstanceOf<T> | undefined;
+    static get <T extends Class> (this: T, required?: true): InstanceOf<T>;
 
     /**
      * **React Hook** - Fetch most instance of this controller from context.
      * 
-     * @param expect - Will throw if controller cannot be found.
+     * @param required - Unless false, will throw where instance cannot be found.
      */
-    static get <T extends Class> (this: T, expect: true): InstanceOf<T>;
+    static get <T extends Class> (this: T, required: boolean): InstanceOf<T> | undefined;
 
     /**
      * **React Hook** - Fetch specific value from instance of this controller in context.
@@ -460,9 +454,6 @@ export abstract class Model {
 }
 
 export class Singleton extends Model {
-    /** Get current instance of this singleton. Will throw if one does not exist. */
-    static is<T extends Class>(this: T): InstanceOf<T>;
-
     /**
      * Update the active instance of this class.
      * Returns a thenable; resolves after successful update.

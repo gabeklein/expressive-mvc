@@ -220,30 +220,26 @@ export class Model {
     return instance
   }
 
-  static find<T extends Class>(this: T, strict: true): InstanceOf<T>;
-  static find<T extends Class>(this: T, strict?: boolean): InstanceOf<T> | undefined;
-  static find<T extends Class>(this: T, strict?: boolean){
-    return useFromContext(this, strict);
-  }
-
   static get(key?: boolean | string | Function){
-    const instance: any = this.find(!!key);
+    const instance = useFromContext(this,
+      key !== false && typeof key !== "function"
+    );
   
     return (
       typeof key == "function" ?
         key(instance) :
       typeof key == "string" ?
-        instance[key] :
+        (instance as any)[key] :
         instance
     )
   }
 
   static tap(key?: string, expect?: boolean): any {
-    return this.find(true).tap(key, expect);
+    return this.get().tap(key, expect);
   }
 
   static tag(id?: Key | ((target: Model) => Key | undefined)){
-    return this.find(true).tag(id);
+    return this.get().tag(id);
   }
 
   static use(callback?: (instance: Model) => void){

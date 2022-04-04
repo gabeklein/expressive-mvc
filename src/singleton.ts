@@ -12,10 +12,6 @@ export const Oops = issues({
 const Active = new WeakMap<typeof Singleton, Singleton>();
 
 export class Singleton extends Model {
-  static get current(){
-    return Active.get(this);
-  }
-
   static create<T extends Class>(
     this: T, ...args: any[]){
 
@@ -24,7 +20,7 @@ export class Singleton extends Model {
     if(Active.has(Type))
       throw Oops.GlobalExists(this.name);
 
-    let instance = super.create(...args);
+    const instance = super.create(...args);
 
     Active.set(Type, instance);
 
@@ -34,27 +30,32 @@ export class Singleton extends Model {
   static update<T extends typeof Singleton>(
     this: T, updates: Partial<InstanceOf<T>>){
 
-    const instance = this.current || this.create();
+    const instance = Active.get(this) || this.create();
     instance.import(updates);
     return instance.update();
   }
 
-  static is(){
-    return this.find(true);
-  }
+  static get(arg?: boolean | string | Function){
+    const instance = Active.get(this);
 
-  static find<T extends Class>(this: T, strict?: boolean){
-    const instance = (this as any).current as InstanceOf<T>;
+    if(typeof arg == "function")
+      return arg(instance);
 
-    if(!instance && strict)
+    if(!instance && arg !== false)
       throw Oops.GlobalDoesNotExist(this.name);
 
-    return instance;
+    return (
+      typeof arg == "string" ?
+        (instance as any)[arg] :
+        instance
+    )
   }
 
   static reset(){
-    if(this.current)
-      this.current.destroy();
+    const current = Active.get(this);
+
+    if(current)
+      current.destroy();
   }
 
   destroy(){
