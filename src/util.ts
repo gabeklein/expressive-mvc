@@ -102,34 +102,3 @@ export function createValueEffect<T = any>(
       throw Oops.BadEffectCallback()
   }
 }
-
-export function select<T extends {}>(
-  source: T, select: (from: { [K in keyof T]: K }) => any){
-
-  const proxy = {} as any;
-
-  for(const k in source)
-    proxy[k] = k;
-
-  return select(proxy) as string;
-}
-
-export function selectRecursive(
-  using: Function,
-  keys: Iterable<string>){
-
-  const found = new Set<string>();
-  const spy = {} as Recursive<any>;
-
-  for(const key of new Set(keys))
-    defineProperty(spy, key, {
-      get(){
-        found.add(key);
-        return spy;
-      }
-    });
-
-  using(spy);
-
-  return Array.from(found);
-}

@@ -18,17 +18,9 @@ it("will send synthetic event", async () => {
   expect(update).toContain("foo");
 })
 
-it("will send synthetic event using selector", async () => {
-  const test = Test.create();
-  test.update(x => x.foo);
-  
-  const update = await test.update(true);
-  expect(update).toContain("foo");
-})
-
 it("will resolve after event is handled", async () => {
   const test = Test.create();
-  const update = await test.update(x => x.foo);
+  const update = await test.update("foo");
 
   expect(update).toContain("foo");
 })
@@ -37,19 +29,13 @@ it("will resolve with keys already in frame", async () => {
   const test = Test.create();
   test.bar = "foo";
 
-  const update = await test.update(x => x.foo);
+  const update = await test.update("foo");
   expect(update).toMatchObject(["bar", "foo"]);
 })
 
 it("will call function of same name", async () => {
   const test = Test.create();
   await test.update("method", true);
-  expect(test.method).toBeCalled();
-})
-
-it("will call function via selector", async () => {
-  const test = Test.create();
-  await test.update(x => x.method, true);
   expect(test.method).toBeCalled();
 })
 
@@ -62,12 +48,6 @@ it("will not call function if false", async () => {
 it("will call function with argument", async () => {
   const test = Test.create();
   await test.update("methodString", "foobar");
-  expect(test.methodString).toBeCalledWith("foobar");
-})
-
-it("will call function via selector with argument", async () => {
-  const test = Test.create();
-  await test.update(x => x.methodString, "foobar");
   expect(test.methodString).toBeCalledWith("foobar");
 })
 

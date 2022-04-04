@@ -1,8 +1,7 @@
 import * as Computed from './compute';
 import { issues } from './issues';
-import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -110,14 +109,6 @@ export class Controller {
     return this;
   }
 
-  public select(using?: Query){
-    const keys = getOwnPropertyNames(this.state);
-
-    return using
-      ? selectRecursive(using, keys.concat(lifecycleEvents))
-      : keys;
-  }
-
   public manage(
     key: string,
     initial: any,
@@ -219,23 +210,4 @@ export class Controller {
       catch(e){ }
     })
   }
-}
-
-export function keys(
-  from: Controller,
-  using?: string | string[] | Set<string> | Query){
-
-  if(typeof using == "string")
-    return [ using ];
-
-  if(typeof using == "object"){
-    using = Array.from(using);
-    
-    if(using.length === 0)
-      using = undefined;
-    else
-      return using;
-  }
-
-  return from.select(using);
 }

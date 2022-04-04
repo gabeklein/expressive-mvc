@@ -86,7 +86,9 @@ describe("method", () => {
   })
 
   it("will call return-function on subsequent update", async () => {
-    class Test extends TestValues {
+    class Test extends Model {
+      value1 = 1;
+
       testEffect(){
         return mock;
       }
@@ -110,60 +112,6 @@ describe("method", () => {
       constructor(){
         super();
         this.effect(mock, ["value1", "value3"]);
-      }
-    }
-
-    const mock = jest.fn();
-    const state = Test.create();
-
-    state.value1++;
-    await state.update();
-
-    expect(mock).toBeCalled();
-
-    state.value3++;
-    await state.update();
-
-    // expect pre-existing listener to hit
-    expect(mock).toBeCalledTimes(3);
-  })
-})
-
-describe("selector", () => {
-  class TestValues extends Model {
-    value1 = 1;
-    value2 = 2;
-    value3 = 3;
-    value4 = from(this, $ => $.value3 + 1);
-  }
-
-  it('will watch values', async () => {
-    const state = TestValues.create();
-    const mock = jest.fn();
-
-    state.effect(mock,
-      $ => $.value1.value2.value3.value4
-    );
-  
-    state.value1 = 2;
-    state.value2 = 3;
-
-    await state.update();
-
-    state.value3 = 4;
-
-    // expect value4, which relies on 3.
-    await state.update();
-    
-    expect(mock).toBeCalledTimes(3);
-  })
-
-  it('will register before ready', async () => {
-    class Test extends TestValues {
-      constructor(){
-        super();
-        // @ts-ignore
-        this.effect(mock, x => x.value1.value3);
       }
     }
 

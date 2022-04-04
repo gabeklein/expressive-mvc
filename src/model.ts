@@ -1,11 +1,11 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
+import { CONTROL, Controller, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
 import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
-import { createEffect, define, defineLazy, select } from './util';
+import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
@@ -52,7 +52,7 @@ export class Model {
     })
   }
 
-  tap(path?: string | Select, expect?: boolean){
+  tap(path?: string | Function, expect?: boolean){
     if(typeof path == "function")
       return useComputed(this, path, expect);
 
@@ -85,28 +85,32 @@ export class Model {
   }
 
   on(
-    subset: string | string[] | Set<string> | Query,
+    select: string | string[],
     handler: Function,
     squash?: boolean,
     once?: boolean){
 
     const control = manage(this);
-    const request = keys(control, subset);
+
+    if(typeof select == "string")
+      select = [select];
+    else if(!select.length)
+      select = getOwnPropertyNames(control.state)
 
     const callback: RequestCallback = squash
       ? handler.bind(this)
       : frame => frame
-        .filter(k => request.includes(k))
+        .filter(k => select.includes(k))
         .forEach(k => handler.call(this, control.state[k], k))
 
     const trigger: RequestCallback = once
       ? frame => { remove(); callback(frame) }
       : callback;
 
-    Computed.ensure(control, request);
+    Computed.ensure(control, select);
 
     const remove = control.addListener(key => {
-      if(request.includes(key))
+      if(select.includes(key))
         return trigger;
     });
 
@@ -114,7 +118,7 @@ export class Model {
   }
 
   once(
-    select: string | string[] | Set<string> | Query,
+    select: string | string[],
     callback?: UpdateCallback<any, any>,
     squash?: boolean){
 
@@ -128,7 +132,7 @@ export class Model {
 
   effect(
     callback: EffectCallback<any>,
-    select?: string[] | Query){
+    select?: string[]){
 
     const control = manage(this);
     let target = this;
@@ -149,32 +153,28 @@ export class Model {
 
   import(
     from: BunchOf<any>,
-    subset?: Set<string> | string[] | Query){
+    subset?: Set<string> | string[]){
 
-    for(const key of keys(manage(this), subset))
+    for(const key of subset || getOwnPropertyNames(this))
       if(key in from)
         (this as any)[key] = from[key];
   }
 
-  export(subset?: Set<string> | string[] | Query){
-    const control = manage(this);
+  export(subset?: Set<string> | string[]){
+    const { state } = manage(this);
     const output: BunchOf<any> = {};
 
-    for(const key of keys(control, subset))
-      output[key] = (control.state as any)[key];
+    for(const key of subset || getOwnPropertyNames(state))
+      output[key] = (state as any)[key];
 
     return output;
   }
 
-  update(select?: Select): PromiseLike<string[]>;
   update(strict?: boolean): Promise<string[] | false>;
-  update(select: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
-  update(select: string | Select, tag?: any): PromiseLike<readonly string[]>;
-  update(arg?: string | boolean | Select, tag?: any){
+  update(select: string, callMethod: boolean): PromiseLike<readonly string[]>;
+  update(select: string, tag?: any): PromiseLike<readonly string[]>;
+  update(arg?: string | boolean, tag?: any){
     const control = manage(this);
-
-    if(typeof arg == "function")
-      arg = select(this, arg);
 
     if(typeof arg == "string"){
       control.update(arg);
@@ -226,7 +226,7 @@ export class Model {
     return useFromContext(this, strict);
   }
 
-  static get(key?: boolean | string | Select){
+  static get(key?: boolean | string | Function){
     const instance: any = this.find(!!key);
   
     return (
@@ -238,7 +238,7 @@ export class Model {
     )
   }
 
-  static tap(key?: string | Select, expect?: boolean): any {
+  static tap(key?: string, expect?: boolean): any {
     return this.find(true).tap(key, expect);
   }
 
@@ -265,7 +265,7 @@ export class Model {
     return instance;
   }
 
-  static meta(path: string | Select): any {
+  static meta(path: string | Function): any {
     return typeof path == "function"
       ? useComputed(this, path)
       : useWatcher(this, path)

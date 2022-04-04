@@ -240,7 +240,7 @@ describe("failures", () => {
     const state = Test.create();
     const failed = Oops.ComputeFailed(Test.name, "value", false);
 
-    state.once(x => x.value);
+    state.once("value");
     state.shouldFail = true;
 
     await state.update(true);

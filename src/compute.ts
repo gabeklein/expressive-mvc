@@ -144,7 +144,7 @@ export function prepare(
 }
 
 export function ensure(
-  on: Controller, keys: string[] | Set<string>){
+  on: Controller, keys: string[]){
 
   type Initial = (early?: boolean) => void;
 

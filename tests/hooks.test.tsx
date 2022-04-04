@@ -144,7 +144,7 @@ describe("get", () => {
     expect(result.current).toBe(1);
   })
 
-  it("will get value using selector", () => {
+  it("will get value through function", () => {
     Test.create();
     const { result } = renderHook(() => {
       return Test.get(x => x.value);

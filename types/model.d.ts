@@ -1,7 +1,6 @@
 import { Key } from 'react';
 
 import Lifecycle from './lifecycle';
-import { Select, Selector } from './selector';
 import { BunchOf, Callback, Class, InstanceOf, Query, RequestCallback, UpdateCallback } from './types';
 
 interface PropertyDescriptor<T> {
@@ -60,56 +59,11 @@ export namespace Model {
 
     type EventsCompat<T> = keyof T | keyof Lifecycle;
 
-    /**
-     * Field selector which includes Model-Lifecycle events.
-     * Can select for any tracked-property on a specified controller.
-     * 
-     * Function `SelectEvent<T>` is a preferred alterative to string `keyof T`.
-     * 
-     * ---
-     * 
-     * ```js
-     * Model.on(x => x.foo.bar.didMountComponent, cb)
-     * ```
-     * is equivalent to, while also more robust than:
-     * ```js
-     * Model.on(["foo", "bar", "didMountComponent"], cb)
-     * ```
-     */
-    type SelectEvents<T> = Selector.Function<Events<T>>;
-
-    /**
-     * Field selector function you provide. Argument is a representation of controller specified.
-     * *When used as an argument*, return a chain of properties desired for a given operation.
-     * 
-     * Allows for refactor safe selection of properties belonging to a controller. 
-     * Using selectors is generally recommended to prevent unexpected behavior to be caused by bundling of your code.
-     * 
-     * ---
-     * 
-     * **Selector used to update specific properties:**
-     * 
-     * ```js
-     * Model.update(x => x.foo.bar.baz)
-     * ```
-     * 
-     * is equivalent to, while more robust than:
-     * 
-     * ```js
-     * Model.update(["foo", "bar", "baz"])
-     * ```
-     */
-    type SelectFields<T> = Selector.Function<Omit<T, keyof Model>>;
-
     type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
-
-    type SelectFieldKey<T> = Select.Key<Fields<T>>;
 
     type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
         [Key in X]: T[Key] extends ST ? Key : never;
     }[X];
-
-    type SelectTypeof<T, ST> = Select.Key<Typeof<T, ST>>;
 
     type HandleValue = (value: any) => boolean | void;
 
@@ -128,8 +82,6 @@ export namespace Model {
         start(): this;
 
         manage(key: string, initial: any, effect?: HandleValue): void;
-
-        select(using?: Query): string[];
 
         setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
@@ -244,11 +196,10 @@ export abstract class Model {
      */
     set: this;
 
-    import <O extends Model.Data<this>> (via: O, select?: string[] | Model.SelectFields<this>): void;
+    import <O extends Model.Data<this>> (via: O, select?: string[]): void;
 
     export(): Model.State<this>;
     export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
-    export <S extends Model.SelectFields<this>> (select: S): Model.State<this, Selector.From<S>>;
 
     update(): PromiseLike<readonly string[] | false>;
     update(strict: true): Promise<readonly string[]>;
@@ -256,13 +207,10 @@ export abstract class Model {
     update(strict: boolean): Promise<readonly string[] | false>;
 
     update(keys: Model.Fields<this>): Thenable<readonly string[]>;
-    update(keys: Model.SelectFieldKey<this>): Thenable<readonly string[]>;
 
     update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
-    update(keys: Model.SelectFields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
 
     update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<readonly string[]>;
-    update<T>(keys: Model.SelectFields<this>, argument: T): PromiseLike<readonly string[]>;
 
     /*
     Issue with self-reference, using fallback.
@@ -307,38 +255,31 @@ export abstract class Model {
     tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
     
     // Keyed
-    on <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false, once?: boolean): Callback;
     on <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     // Squash
-    on <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true, once?: boolean): Callback;
     on <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     // Unknown
-    on <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean, once?: boolean): Callback;
     on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
     // Keyed
-    once <S extends Model.SelectEvents<this>> (via: S, cb: Selector.Callback<S, this>, squash?: false): Callback;
     once <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
     // Squash
-    once <S extends Model.SelectEvents<this>> (via: S, cb: (keys: Selector.From<S>[]) => void, squash: true): Callback;
     once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
     // Promise
-    once <S extends Model.SelectEvents<this>> (via: S): Promise<Selector.From<S>[]>;
     once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
     // Unknown
-    once <S extends Model.SelectEvents<this>> (via: S, cb: unknown, squash: boolean): Callback;
     once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
 
-    effect(callback: (this: this, state: this) => void, select?: Model.SelectFields<this>): Callback;
-    effect(callback: (this: this, state: this) => void, select?: []): Callback;
-    effect(callback: (this: this, state: this) => void, select?: (keyof this)[]): Callback;
+    effect(callback: (this: this, state: this) => void): Callback;
+    effect(callback: (this: this, state: this) => void, select: []): Callback;
+    effect(callback: (this: this, state: this) => void, select: (keyof this)[]): Callback;
 
     /**
      * **React Hook** - Attach to instance of this controller within a component.

@@ -102,23 +102,11 @@ describe("on method", () => {
     expect(callback).not.toBeCalledWith(expect.anything, "seconds");
   })
 
-  it('will watch values with selector', async () => {
-    const state = Subject.create();
-    const callback = jest.fn();
-  
-    state.on(x => x.seconds, callback);
-
-    state.seconds = 30;
-    await state.update();
-  
-    expect(callback).toBeCalledWith(30, "seconds");
-  })
-
   it('will watch multiple keys', async () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.on(x => x.seconds.hours, callback);
+    state.on(["seconds", "hours"], callback);
 
     state.seconds = 30;
     await state.update();
@@ -136,7 +124,7 @@ describe("on method", () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.on(x => x.minutes.seconds, callback);
+    state.on(["seconds", "minutes"], callback);
 
     state.seconds = 60;
     await state.update();
@@ -149,7 +137,7 @@ describe("on method", () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.on(x => x.seconds.minutes, callback, true);
+    state.on(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
     await state.update();
@@ -172,7 +160,7 @@ describe("once method", () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.once(x => x.seconds, callback);
+    state.once("seconds", callback);
 
     state.seconds = 30;
     await state.update();
@@ -187,7 +175,7 @@ describe("once method", () => {
 
   it('will return promise with update keys', async () => {
     const state = Subject.create();
-    const pending = state.once(x => x.seconds);
+    const pending = state.once("seconds");
 
     state.seconds = 30;
 
@@ -200,7 +188,7 @@ describe("once method", () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.once(x => x.seconds.minutes, callback);
+    state.once(["seconds", "minutes"], callback);
 
     state.seconds = 60;
     await state.update();
@@ -254,23 +242,6 @@ describe("before ready", () => {
     const state = Test.create();
 
     state.value2++;
-    await state.update();
-
-    expect(mock).toBeCalled();
-  })
-
-  it('on method with selector', async () => {
-    class Test extends TestValues {
-      constructor(){
-        super();
-        this.on(x => x.value1, mock);
-      }
-    }
-    
-    const mock = jest.fn();
-    const state = Test.create();
-
-    state.value1++;
     await state.update();
 
     expect(mock).toBeCalled();
