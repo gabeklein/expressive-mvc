@@ -143,7 +143,9 @@ export function prepare(
     })
 }
 
-export function ensure(on: Controller, keys: string[]){
+export function ensure(
+  on: Controller, keys: string[] | Set<string>){
+
   type Initial = (early?: boolean) => void;
 
   for(const key of keys){

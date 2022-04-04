@@ -183,7 +183,7 @@ export class Controller {
     }
   }
 
-  public requestUpdate(strict?: boolean){
+  public requestUpdate(strict?: boolean): any {
     if(strict !== undefined && !this.pending === strict)
       return Promise.reject(Oops.StrictUpdate(strict));
 
@@ -200,7 +200,7 @@ export class Controller {
     }
   }
 
-  public emit(){
+  private emit(){
     Computed.flush(this);
 
     const keys = Object.freeze([ ...this.frame ]);

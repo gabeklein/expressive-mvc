@@ -122,8 +122,11 @@ export namespace Model {
         state: BunchOf<any>;
         subject: {};
         waiting: Set<RequestCallback>;
+        frame: Set<string>;
+        pending: boolean;
 
-        /** Add property to managed state. */
+        start(): this;
+
         manage(key: string, initial: any, effect?: HandleValue): void;
 
         select(using?: Query): string[];
@@ -133,6 +136,11 @@ export namespace Model {
         addListener(listener: Controller.Listen): Callback;
 
         update(key: string, value?: any): void;
+
+        requestUpdate(): PromiseLike<readonly string[] | false>;
+        requestUpdate(strict: true): Promise<readonly string[]>;
+        requestUpdate(strict: false): Promise<false>;
+        requestUpdate(strict: boolean): Promise<readonly string[] | false>;
     }
 
     export class Subscriber {
