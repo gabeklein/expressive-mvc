@@ -12,13 +12,20 @@ export function child<T extends Model>(
   return apply(
     function child(this: Controller, key: string){
       const context = new WeakMap<Subscriber, any>();
-      const current = source.call(this, key);
+      const getValue = source.call(this, key);
   
       function subscribe(sub: Subscriber){
         let child: Subscriber | undefined;
     
-        function start(){
-          const instance = current();
+        function init(){
+          if(child){
+            child.release();
+            sub.dependant.delete(child);
+            context.set(sub, undefined);
+            child = undefined;
+          }
+    
+          const instance = getValue();
     
           if(instance){
             child = new Subscriber(instance, sub.onUpdate);
@@ -31,24 +38,13 @@ export function child<T extends Model>(
           }
         }
 
-        function restart(){
-          if(child){
-            child.release();
-            sub.dependant.delete(child);
-            context.set(sub, undefined);
-            child = undefined;
-          }
-    
-          start();
-        }
-
-        start();
-        sub.watch[key] = restart;
+        init();
+        sub.watch[key] = init;
       }
     
       return (local: Subscriber | undefined) => {
         if(!local)
-          return current();
+          return getValue();
     
         if(!context.has(local))
           subscribe(local);
