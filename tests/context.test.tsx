@@ -10,17 +10,40 @@ class Foo extends Model {
 class Bar extends Model {}
 class Baz extends Bar {}
 
-describe("Provider", () => {
-  it("will provide instance of model", () => {
-    const instance = Foo.create();
+describe("get", () => {
+  class Test extends Model {
+    value = "foo";
+  }
+
+  it("will get instance of model", () => {
+    const Hook = () => {
+      const value = Test.get("value");
+      expect(value).toBe("foo")
+      return null;
+    }
 
     render(
-      <Provider of={instance}>
-        <Consumer of={Foo} get={i => expect(i).toBe(instance)} />
+      <Provider of={Test}>
+        <Hook />
       </Provider>
     );
   })
 
+  it("will fail if not found", () => {
+    const Hook = () => {
+      Test.get();
+      return null;
+    }
+
+    const test = () => render(<Hook />);
+
+    expect(test).toThrowError(
+      Oops.NothingInContext(Test.name)
+    );
+  })
+})
+
+describe("Provider", () => {
   it("will create instance of given model", () => {
     render(
       <Provider of={Foo}>
@@ -277,7 +300,7 @@ describe("Consumer", () => {
     )
   })
 
-  it("will throw if not found for has-prop", () => {
+  it("will throw if not found where required", () => {
     const test = () => render(
       <Consumer of={Bar} has={i => void i} />
     )
