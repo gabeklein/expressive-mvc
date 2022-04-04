@@ -2,19 +2,10 @@ import * as Computed from './compute';
 import { useFromContext } from './context';
 import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
 import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
-import { issues } from './issues';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, select } from './util';
-
-export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict update() did ${expected ? "not " : ""}find pending updates.`,
-
-  NoChaining: () =>
-    `Then called with undefined; update promise will never catch nor supports chaining.`
-})
 
 const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
@@ -175,21 +166,17 @@ export class Model {
     return output;
   }
 
-  update(strict?: boolean): Promise<string[] | false>;
   update(select?: Select): PromiseLike<string[]>;
-  update(key: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
-  update(key: string | Select, tag?: any): PromiseLike<readonly string[]>;
+  update(strict?: boolean): Promise<string[] | false>;
+  update(select: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
+  update(select: string | Select, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean | Select, tag?: any){
     const control = manage(this);
 
     if(typeof arg == "function")
       arg = select(this, arg);
 
-    if(typeof arg == "boolean"){
-      if(!control.pending === arg)
-        return Promise.reject(Oops.StrictUpdate(arg))
-    }
-    else if(arg){
+    if(typeof arg == "string"){
       control.update(arg);
 
       if(1 in arguments && arg in this){
@@ -201,19 +188,11 @@ export class Model {
           else if(tag)
             method.call(this);
       }
+
+      arg = undefined;
     }
 
-    return <PromiseLike<readonly string[] | false>> {
-      then(callback){
-        if(callback)
-          if(control.pending)
-            control.waiting.add(callback);
-          else
-            callback(false);
-        else
-          throw Oops.NoChaining();
-      }
-    }
+    return control.requestUpdate(arg);
   }
 
   destroy(){

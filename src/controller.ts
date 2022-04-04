@@ -1,7 +1,16 @@
 import * as Computed from './compute';
+import { issues } from './issues';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+
+export const Oops = issues({
+  StrictUpdate: (expected) => 
+    `Strict update() did ${expected ? "not " : ""}find pending updates.`,
+
+  NoChaining: () =>
+    `Then called with undefined; update promise will never catch nor supports chaining.`
+})
 
 export const CONTROL = Symbol("control");
 export const UPDATE = Symbol("update");
@@ -175,6 +184,23 @@ export class Controller {
       this.onUpdate(
         callback(key, this)
       );
+  }
+
+  public requestUpdate(strict?: boolean){
+    if(strict !== undefined && !this.pending === strict)
+      return Promise.reject(Oops.StrictUpdate(strict));
+
+    return <PromiseLike<readonly string[] | false>> {
+      then: (callback) => {
+        if(callback)
+          if(this.pending)
+            this.waiting.add(callback);
+          else
+            callback(false);
+        else
+          throw Oops.NoChaining();
+      }
+    }
   }
 
   public emit(){
