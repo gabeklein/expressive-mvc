@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { lifecycleEvents } from './lifecycle';
 import { Subscriber } from './subscriber';
-import { defineLazy, defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
 
 export const CONTROL = Symbol("control");
 export const UPDATE = Symbol("update");
@@ -71,22 +71,6 @@ export class Controller {
   protected followers = new Set<Controller.Listen>();
 
   constructor(public subject: Stateful){}
-
-  static setup(onto: Stateful){
-    const control = new this(onto);
-
-    defineLazy(onto, CONTROL, () => {
-      onto[STATE] = control.state;
-      control.start();
-
-      if(onto.didCreate)
-        onto.didCreate();
-
-      return control;
-    })
-
-    return control;
-  }
 
   public get pending(){
     return this.frame.size > 0;

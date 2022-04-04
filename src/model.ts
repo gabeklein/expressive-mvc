@@ -37,7 +37,17 @@ export class Model {
   static [UPDATE]: readonly string[];
 
   constructor(){
-    const control = Controller.setup(this);
+    const control = new Controller(this);
+
+    defineLazy(this, CONTROL, () => {
+      this[STATE] = control.state;
+      control.start();
+
+      if(this.didCreate)
+        this.didCreate();
+
+      return control;
+    })
 
     define(this, "get", this);
     define(this, "set", this);
