@@ -1,8 +1,7 @@
 import { child } from './attach';
 import { useLookup } from './context';
-import { Stateful } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
+import { Model, Stateful } from './model';
 import { Lookup } from './register';
 import { Singleton } from './singleton';
 

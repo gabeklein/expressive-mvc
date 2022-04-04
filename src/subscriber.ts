@@ -1,4 +1,5 @@
-import { Controller, LOCAL, manage, Stateful, UPDATE } from './controller';
+import { Controller } from './controller';
+import { LOCAL, manage, Stateful, UPDATE } from './model';
 import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {

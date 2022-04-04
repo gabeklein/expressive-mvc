@@ -1,6 +1,6 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
-import { CONTROL, Controller, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
+import { Controller } from './controller';
 import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
 import { lifecycle } from './lifecycle';
 import { usePeerContext } from './peer';
@@ -9,6 +9,24 @@ import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
+
+export const CONTROL = Symbol("control");
+export const UPDATE = Symbol("update");
+export const LOCAL = Symbol("local");
+export const STATE = Symbol("state");
+
+export interface Stateful {
+  [CONTROL]: Controller;
+  [UPDATE]?: readonly string[];
+  [LOCAL]?: Subscriber;
+  [STATE]?: any;
+
+  didCreate?(): void;
+};
+
+export function manage(src: Stateful){
+  return src[CONTROL];
+}
 
 export interface Model extends Stateful {
   get: this;

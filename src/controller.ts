@@ -1,5 +1,6 @@
 import * as Computed from './compute';
 import { issues } from './issues';
+import { LOCAL, Stateful, UPDATE } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
@@ -10,24 +11,6 @@ export const Oops = issues({
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
 })
-
-export const CONTROL = Symbol("control");
-export const UPDATE = Symbol("update");
-export const LOCAL = Symbol("local");
-export const STATE = Symbol("state");
-
-export interface Stateful {
-  [CONTROL]: Controller;
-  [UPDATE]?: readonly string[];
-  [LOCAL]?: Subscriber;
-  [STATE]?: any;
-
-  didCreate?(): void;
-};
-
-export function manage(src: Stateful){
-  return src[CONTROL];
-}
 
 export const Pending = new Map<symbol, Instruction<any>>();
 

@@ -1,8 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { manage, Stateful } from './controller';
 import { Lifecycle } from './lifecycle';
-import { Model } from './model';
+import { manage, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { suspend } from './suspense';
 import { defineProperty } from './util';
