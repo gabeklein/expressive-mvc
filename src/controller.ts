@@ -85,11 +85,6 @@ export class Controller {
     return this.frame.size > 0;
   }
 
-  public onUpdate(cb: any){
-    if(typeof cb == "function")
-      this.waiting.add(cb);
-  }
-
   public start(){
     const { subject } = this;
     
@@ -180,10 +175,12 @@ export class Controller {
 
     this.frame.add(key);
 
-    for(const callback of this.followers)
-      this.onUpdate(
-        callback(key, this)
-      );
+    for(const callback of this.followers){
+      const event = callback(key, this);
+
+      if(typeof event == "function")
+        this.waiting.add(event);
+    }
   }
 
   public requestUpdate(strict?: boolean){
