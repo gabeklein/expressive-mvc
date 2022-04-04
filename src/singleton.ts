@@ -35,11 +35,8 @@ export class Singleton extends Model {
     return instance.update();
   }
 
-  static get(arg?: boolean | string | Function){
+  static get(arg?: boolean | string){
     const instance = Active.get(this);
-
-    if(typeof arg == "function")
-      return arg(instance);
 
     if(!instance && arg !== false)
       throw Oops.GlobalDoesNotExist(this.name);

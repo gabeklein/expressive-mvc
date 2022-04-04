@@ -144,15 +144,6 @@ describe("get", () => {
     expect(result.current).toBe(1);
   })
 
-  it("will get value through function", () => {
-    Test.create();
-    const { result } = renderHook(() => {
-      return Test.get(x => x.value);
-    });
-
-    expect(result.current).toBe(1);
-  })
-
   it("will complain if not-found in expect mode", () => {
     const { result } = renderHook(() => Test.get(true));
     const expected = Global.GlobalDoesNotExist(Test.name);

@@ -220,14 +220,10 @@ export class Model {
     return instance
   }
 
-  static get(key?: boolean | string | Function){
-    const instance = useFromContext(this,
-      key !== false && typeof key !== "function"
-    );
+  static get(key?: boolean | string){
+    const instance = useFromContext(this, key !== false);
   
     return (
-      typeof key == "function" ?
-        key(instance) :
       typeof key == "string" ?
         (instance as any)[key] :
         instance
