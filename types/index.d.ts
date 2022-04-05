@@ -6,4 +6,3 @@ export {
 
 export * from './context';
 export * from './instructions';
-export * from './selector';
