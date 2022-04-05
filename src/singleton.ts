@@ -27,7 +27,7 @@ export class Singleton extends Model {
     return instance as InstanceOf<T>;
   }
 
-  static update<T extends typeof Singleton>(
+  static set<T extends typeof Singleton>(
     this: T, updates: Partial<InstanceOf<T>>){
 
     const instance = Active.get(this) || this.create();

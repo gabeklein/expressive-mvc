@@ -459,7 +459,7 @@ export class Singleton extends Model {
      * Returns a thenable; resolves after successful update.
      * If instance does not already exist, one will be created. 
      **/
-    static update<T extends Class>(
+    static set<T extends Class>(
         this: T, updates: Model.Data<InstanceOf<T>>
     ): PromiseLike<string[] | false>;
 

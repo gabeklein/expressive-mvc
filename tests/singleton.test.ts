@@ -71,7 +71,7 @@ describe("update", () => {
     expect(Global.get("foo")).toBe(1);
     expect(Global.get("bar")).toBe(2);
 
-    const update = await Global.update({ foo: 2, bar: 1 });
+    const update = await Global.set({ foo: 2, bar: 1 });
 
     expect(update).toMatchObject(["foo", "bar"]);
 
@@ -80,7 +80,7 @@ describe("update", () => {
   })
 
   it("will create then update instance", async () => {
-    const update = await Global.update({ foo: 1, bar: 2 });
+    const update = await Global.set({ foo: 1, bar: 2 });
 
     expect(update).toBe(false);
 

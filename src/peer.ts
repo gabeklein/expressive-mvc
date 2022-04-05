@@ -36,10 +36,10 @@ export function pendingAccess<T extends Peer>(
   key: string,
   argument?: boolean | PeerCallback<T>){
 
-  if("update" in type)
+  if("set" in type)
     return () => type.get() as InstanceOf<T>;
 
-  if("update" in from.constructor)
+  if("set" in from.constructor)
     throw Oops.CantAttachGlobal(from, type.name);
 
   let instance: InstanceOf<T> | undefined;
