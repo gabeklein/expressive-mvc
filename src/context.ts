@@ -68,8 +68,9 @@ function useNewContext(
     const context = from.push(inject);
 
     for(const instance of context.local)
-      for(const apply of getPending(instance))
-        apply(context)
+      if(instance)
+        for(const apply of getPending(instance))
+          apply(context)
 
     return context;
   }, []);
@@ -83,7 +84,7 @@ function useAppliedProps(within: Lookup, props: {}){
       for(const [key, value] of entries(props))
         if(key != "of" && key != "children")
           for(const into of targets)
-            if(key in into)
+            if(into && key in into)
               (into as any)[key] = value;
     };
   }, []);

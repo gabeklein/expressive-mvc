@@ -57,9 +57,15 @@ export class Lookup {
     }
 
     do {
-      defineProperty(this, this.key(T), {
-        value: I, writable
+      const key = this.key(T);
+      const conflict = this.hasOwnProperty(key);
+
+      defineProperty(this, key, {
+        value: conflict ? null : I,
+        configurable: true,
+        writable
       });
+
       T = getPrototypeOf(T);
     }
     while(T !== Model);
