@@ -1,14 +1,9 @@
 import * as Computed from './compute';
 import { useFromContext } from './context';
 import { Controller } from './controller';
-import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
-import { lifecycle } from './lifecycle';
-import { usePeerContext } from './peer';
+import { useComputed, useLazy, useModel, useNew, useTag, useTap, useWatcher } from './hooks';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
-
-const useElementLifecycle = lifecycle("element");
-const useComponentLifecycle = lifecycle("component");
 
 export const CONTROL = Symbol("control");
 export const UPDATE = Symbol("update");
@@ -71,35 +66,15 @@ export class Model {
   }
 
   tap(path?: string | Function, expect?: boolean){
-    if(typeof path == "function")
-      return useComputed(this, path, expect);
-
-    const proxy = useWatcher(this, path, expect);
-    this.update("willRender", true);
-    return proxy;
+    return useTap(this, path, expect);
   }
 
   tag(id?: Key | KeyFactory<this>){
-    const hook = use(refresh => (
-      new Subscriber(this, () => refresh)
-    ));
-  
-    useElementLifecycle(hook, id || 0);
-    
-    return hook.proxy;
+    return useTag(this, id);
   }
 
   use(callback?: (instance: Model) => void){
-    const hook = use(refresh => {
-      if(callback)
-        callback(this);
-
-      return new Subscriber(this, () => refresh);
-    });
-  
-    useComponentLifecycle(hook);
-    
-    return hook.proxy;
+    return useNew(this, callback);
   }
 
   on(
@@ -233,9 +208,7 @@ export class Model {
   }
 
   static new(callback?: (instance: Model) => void){
-    const instance = useLazy(this, callback);
-    instance.update("willRender", true);
-    return instance
+    return useLazy(this, callback);
   }
 
   static get(key?: boolean | string){
@@ -257,10 +230,7 @@ export class Model {
   }
 
   static use(callback?: (instance: Model) => void){
-    const instance = useModel(this, callback);
-    useComponentLifecycle(instance[LOCAL]);
-    usePeerContext(instance.get);
-    return instance;
+    return useModel(this, callback);
   }
 
   static uses(props: BunchOf<any>, only?: string[]){

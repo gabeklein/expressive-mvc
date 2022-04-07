@@ -1,10 +1,14 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { Lifecycle } from './lifecycle';
+import { Lifecycle, lifecycle } from './lifecycle';
 import { manage, Model, Stateful } from './model';
+import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { suspend } from './suspense';
 import { defineProperty } from './util';
+
+const useElementLifecycle = lifecycle("element");
+const useComponentLifecycle = lifecycle("component");
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = useState((): T[] => [
@@ -12,6 +16,48 @@ export function use<T>(init: (trigger: Callback) => T){
   ]);
 
   return state[0];
+}
+
+export function useTap(
+  model: Model,
+  path?: string | Function,
+  expect?: boolean){
+
+  if(typeof path == "function")
+    return useComputed(model, path, expect);
+
+  const proxy = useWatcher(model, path, expect);
+  model.update("willRender", true);
+  return proxy;
+}
+
+export function useTag<T extends Model>(
+  model: T,
+  id?: Key | KeyFactory<T>){
+
+  const hook = use(refresh => (
+    new Subscriber(model, () => refresh)
+  ));
+
+  useElementLifecycle(hook, id || 0);
+  
+  return hook.proxy;
+}
+
+export function useNew<T extends Model>(
+  model: T,
+  callback?: (instance: T) => void){
+    
+  const hook = use(refresh => {
+    if(callback)
+      callback(model);
+
+    return new Subscriber(model, () => refresh);
+  });
+
+  useComponentLifecycle(hook);
+  
+  return hook.proxy;
 }
 
 export function useLazy<T extends typeof Model>(
@@ -27,6 +73,7 @@ export function useLazy<T extends typeof Model>(
   }, []);
 
   useLayoutEffect(() => () => instance.destroy(), []);
+  instance.update("willRender", true);
 
   return instance;
 }
@@ -143,6 +190,9 @@ export function useModel(
 
     return sub;
   });
+
+  useComponentLifecycle(hook);
+  usePeerContext(hook.source);
 
   return hook.proxy;
 }
