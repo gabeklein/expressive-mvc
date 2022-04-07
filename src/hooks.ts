@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { Lifecycle, lifecycle } from './lifecycle';
-import { manage, Model, Stateful } from './model';
+import { CONTROL, Model, Stateful } from './model';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { suspend } from './suspense';
@@ -172,7 +172,7 @@ export function useModel(
 
   const hook = use(refresh => {
     const instance = new Type() as Model;
-    const control = manage(instance);
+    const control = instance[CONTROL];
     const sub = new Subscriber(control, () => refresh);
 
     const release = control.addListener(

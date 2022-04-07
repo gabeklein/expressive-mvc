@@ -19,10 +19,6 @@ export interface Stateful {
   didCreate?(): void;
 };
 
-export function manage(src: Stateful){
-  return src[CONTROL];
-}
-
 export interface Model extends Stateful {
   get: this;
   set: this;
@@ -83,7 +79,7 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    const control = manage(this);
+    const control = this[CONTROL];
 
     if(typeof select == "string")
       select = [select];
@@ -127,7 +123,7 @@ export class Model {
     callback: EffectCallback<any>,
     select?: string[]){
 
-    const control = manage(this);
+    const control = this[CONTROL];
     let target = this;
 
     const effect = createEffect(callback);
@@ -154,7 +150,7 @@ export class Model {
   }
 
   export(subset?: Set<string> | string[]){
-    const { state } = manage(this);
+    const { state } = this[CONTROL];
     const output: BunchOf<any> = {};
 
     for(const key of subset || getOwnPropertyNames(state))
@@ -167,7 +163,7 @@ export class Model {
   update(select: string, callMethod: boolean): PromiseLike<readonly string[]>;
   update(select: string, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean, tag?: any){
-    const control = manage(this);
+    const control = this[CONTROL];
 
     if(typeof arg == "string"){
       control.update(arg);
@@ -202,7 +198,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    manage(instance);
+    instance[CONTROL];
 
     return instance;
   }
