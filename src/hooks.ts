@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import React from 'react';
 
 import { Lifecycle, lifecycle } from './lifecycle';
 import { CONTROL, Model, Stateful } from './model';
@@ -11,7 +11,7 @@ const useElementLifecycle = lifecycle("element");
 const useComponentLifecycle = lifecycle("component");
 
 export function use<T>(init: (trigger: Callback) => T){
-  const [ state, update ] = useState((): T[] => [
+  const [ state, update ] = React.useState((): T[] => [
     init(() => update(state.concat()))
   ]);
 
@@ -63,7 +63,7 @@ export function useNew<T extends Model>(
 export function useLazy<T extends typeof Model>(
   Type: T, callback?: (instance: InstanceOf<T>) => void){
 
-  const instance = useMemo(() => {
+  const instance = React.useMemo(() => {
     const instance = Type.create();
 
     if(callback)
@@ -72,7 +72,7 @@ export function useLazy<T extends typeof Model>(
     return instance;
   }, []);
 
-  useLayoutEffect(() => () => instance.destroy(), []);
+  React.useLayoutEffect(() => () => instance.destroy(), []);
   instance.update("willRender", true);
 
   return instance;
@@ -104,7 +104,7 @@ export function useWatcher(
     return sub;
   });
 
-  useLayoutEffect(() => hook.commit(), []);
+  React.useLayoutEffect(() => hook.commit(), []);
 
   return hook.proxy;
 }
@@ -161,7 +161,7 @@ export function useComputed(
     return sub;
   });
 
-  useLayoutEffect(() => hook.release, []);
+  React.useLayoutEffect(() => hook.release, []);
 
   return hook.proxy;
 }

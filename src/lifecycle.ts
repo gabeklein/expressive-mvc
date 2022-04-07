@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo } from 'react';
+import React from 'react';
 
 import { Model } from './model';
 import { Subscriber } from './subscriber';
@@ -26,7 +26,7 @@ export function lifecycle(prefix: string){
   return function useLifecycle(
     sub: Subscriber, tag?: Key | KeyFactory<any>){
 
-    const emit = useMemo(() => {
+    const emit = React.useMemo(() => {
       const subject = sub.source as Model;
       const id = typeof tag == "function" ? tag(subject) : tag;
       
@@ -42,7 +42,7 @@ export function lifecycle(prefix: string){
       : Lifecycle.WILL_MOUNT  
     )
   
-    useLayoutEffect(() => {
+    React.useLayoutEffect(() => {
       sub.commit();
       emit(Lifecycle.DID_MOUNT);
   
