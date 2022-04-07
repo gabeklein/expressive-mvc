@@ -172,10 +172,8 @@ export function useModel(
 
   const hook = use(refresh => {
     const instance = new Type() as Model;
-    const control = instance[CONTROL];
-    const sub = new Subscriber(control, () => refresh);
-
-    const release = control.addListener(
+    const sub = new Subscriber(instance, () => refresh);
+    const release = sub.parent.addListener(
       (key: string) => {
         if(key == Lifecycle.WILL_UNMOUNT)
           return () => {
