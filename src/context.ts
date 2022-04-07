@@ -57,8 +57,9 @@ export function Consumer(props: ConsumerProps){
 }
 
 function useNewContext(
-  from: Lookup,
   inject?: Model | typeof Model | Collection){
+
+  const from = useLookup();
 
   return React.useMemo(() => {
     if(!inject)
@@ -117,9 +118,8 @@ interface ProvideProps {
 }
 
 export function Provider(props: ProvideProps){
+  const context = useNewContext(props.of);
   const render = props.children;
-  const current = useLookup();
-  const context = useNewContext(current, props.of);
 
   useAppliedProps(context, props);
   React.useLayoutEffect(() => () => context.pop(), []);
