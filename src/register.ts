@@ -9,9 +9,11 @@ export class Lookup {
   private table = new Map<typeof Model, symbol>();
 
   public get local(){
-    return getOwnPropertySymbols(this).map(
-      (symbol): Model => (this as any)[symbol]
-    ) 
+    return [
+      ...new Set(getOwnPropertySymbols(this).map(
+        symbol => (this as any)[symbol] as Model
+      ))
+    ]
   }
 
   private key(T: typeof Model){
