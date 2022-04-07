@@ -1,5 +1,5 @@
 import { issues } from './issues';
-import { Model } from './model';
+import { MVC } from './mvc';
 
 export const Oops = issues({
   GlobalDoesNotExist: (name) =>
@@ -11,7 +11,7 @@ export const Oops = issues({
 
 const Active = new WeakMap<typeof Singleton, Singleton>();
 
-export class Singleton extends Model {
+export class Singleton extends MVC {
   static create<T extends Class>(
     this: T, ...args: any[]){
 

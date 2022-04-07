@@ -1,7 +1,5 @@
 import * as Computed from './compute';
-import { useContext } from './context';
 import { Controller } from './controller';
-import { useActive, useComputed, useModel, useNew, usePassive, useTag, useTap } from './hooks';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -59,18 +57,6 @@ export class Model {
       delete (this as any).on;
       delete (this as any).effect;
     })
-  }
-
-  tap(path?: string | Function, expect?: boolean){
-    return useTap(this, path, expect);
-  }
-
-  tag(id?: Key | KeyFactory<this>){
-    return useTag(this, id);
-  }
-
-  use(callback?: (instance: Model) => void){
-    return useNew(this, callback);
   }
 
   on(
@@ -200,50 +186,6 @@ export class Model {
     instance[CONTROL];
 
     return instance;
-  }
-
-  static new(callback?: (instance: Model) => void){
-    return usePassive(this, callback);
-  }
-
-  static get(key?: boolean | string){
-    const instance = useContext(this, key !== false);
-  
-    return (
-      typeof key == "string" ?
-        (instance as any)[key] :
-        instance
-    )
-  }
-
-  static tap(key?: string, expect?: boolean): any {
-    return this.get().tap(key, expect);
-  }
-
-  static tag(id?: Key | ((target: Model) => Key | undefined)){
-    return this.get().tag(id);
-  }
-
-  static use(callback?: (instance: Model) => void){
-    return useModel(this, callback);
-  }
-
-  static uses(props: BunchOf<any>, only?: string[]){
-    return this.use(instance => {
-      instance.import(props, only);
-    })
-  }
-
-  static using(props: BunchOf<any>, only?: string[]){
-    const instance = this.use();
-    instance.import(props, only);
-    return instance;
-  }
-
-  static meta(path: string | Function): any {
-    return typeof path == "function"
-      ? useComputed(this, path)
-      : useActive(this, path)
   }
 
   static isTypeof<T extends typeof Model>(
