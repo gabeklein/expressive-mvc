@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { use } from './hooks';
+import { use, useTap } from './hooks';
 import { issues } from './issues';
 import { Model } from './model';
 import { getPending } from './peer';
@@ -44,12 +44,12 @@ export function Consumer(props: ConsumerProps){
   const { get, has, children, of: Control } = props;
 
   if(typeof children == "function")
-    return children(Control.tap());
+    return children(useTap(useContext(Control)));
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(Control.get(!!has));
+    callback(useContext(Control, !!has));
   else
     throw Oops.BadConsumerProps()
 
