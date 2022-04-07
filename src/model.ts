@@ -123,7 +123,6 @@ export class Model {
     callback: EffectCallback<any>,
     select?: string[]){
 
-    const control = this[CONTROL];
     let target = this;
 
     const effect = createEffect(callback);
@@ -134,7 +133,7 @@ export class Model {
       return this.on(select, invoke, true);
     }
     
-    const sub = new Subscriber(control, () => invoke);
+    const sub = new Subscriber(this, () => invoke);
     target = sub.proxy;
     invoke();
     return sub.commit();
