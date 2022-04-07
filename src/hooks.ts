@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Lifecycle, lifecycle } from './lifecycle';
-import { CONTROL, Model, Stateful } from './model';
+import { Model, Stateful } from './model';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { suspend } from './suspense';
@@ -26,7 +26,7 @@ export function useTap(
   if(typeof path == "function")
     return useComputed(model, path, expect);
 
-  const proxy = useWatcher(model, path, expect);
+  const proxy = useActive(model, path, expect);
   model.update("willRender", true);
   return proxy;
 }
@@ -60,7 +60,7 @@ export function useNew<T extends Model>(
   return hook.proxy;
 }
 
-export function useLazy<T extends typeof Model>(
+export function usePassive<T extends typeof Model>(
   Type: T, callback?: (instance: InstanceOf<T>) => void){
 
   const instance = React.useMemo(() => {
@@ -78,7 +78,7 @@ export function useLazy<T extends typeof Model>(
   return instance;
 }
 
-export function useWatcher(
+export function useActive(
   target: Stateful,
   focus?: string,
   expected?: boolean){

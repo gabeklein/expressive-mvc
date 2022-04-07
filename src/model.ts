@@ -1,7 +1,7 @@
 import * as Computed from './compute';
-import { useFromContext } from './context';
+import { useContext } from './context';
 import { Controller } from './controller';
-import { useComputed, useLazy, useModel, useNew, useTag, useTap, useWatcher } from './hooks';
+import { useActive, useComputed, useModel, useNew, usePassive, useTag, useTap } from './hooks';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -203,11 +203,11 @@ export class Model {
   }
 
   static new(callback?: (instance: Model) => void){
-    return useLazy(this, callback);
+    return usePassive(this, callback);
   }
 
   static get(key?: boolean | string){
-    const instance = useFromContext(this, key !== false);
+    const instance = useContext(this, key !== false);
   
     return (
       typeof key == "string" ?
@@ -243,7 +243,7 @@ export class Model {
   static meta(path: string | Function): any {
     return typeof path == "function"
       ? useComputed(this, path)
-      : useWatcher(this, path)
+      : useActive(this, path)
   }
 
   static isTypeof<T extends typeof Model>(

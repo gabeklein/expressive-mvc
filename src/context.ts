@@ -22,7 +22,7 @@ export const Oops = issues({
 export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);
 
-export function useFromContext<T extends Class>(
+export function useContext<T extends Class>(
   Type: T, strict?: boolean){
 
   const instance = useLookup().get(Type as any);
