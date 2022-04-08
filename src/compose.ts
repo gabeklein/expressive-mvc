@@ -1,7 +1,7 @@
 import { child } from './attach';
 import { apply } from './controller';
 import { issues } from './issues';
-import { CONTROL, Model } from './model';
+import { getController, Model } from './model';
 import { defineProperty, getOwnPropertyDescriptors } from './util';
 
 const Parent = new WeakMap<{}, {}>();
@@ -62,7 +62,7 @@ export function use<T extends typeof Model>(
             ? next : bootstrap(next);
 
           Parent.set(current, subject);
-          current[CONTROL];
+          getController(current);
         }
         else if(mode === undefined)
           throw Oops.UndefinedNotAllowed(key);

@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { CONTROL, LOCAL, Stateful, UPDATE } from './model';
+import { getController, LOCAL, Stateful, UPDATE } from './model';
 import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
@@ -22,7 +22,7 @@ export class Subscriber {
     public onUpdate: Controller.Listen){
 
     if(!(parent instanceof Controller))
-      parent = parent[CONTROL];
+      parent = getController(parent);
 
     this.parent = parent;
     this.source = parent.subject;

@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { apply, Controller } from './controller';
 import { issues } from './issues';
-import { CONTROL, Model, Stateful } from './model';
+import { getController, Model, Stateful } from './model';
 import { pendingAccess } from './peer';
 import { pendingValue } from './suspense';
 import { createValueEffect, defineLazy, defineProperty, setAlias } from './util';
@@ -39,7 +39,7 @@ export function ref<T>(arg?: InterceptCallback<T> | Model): { current: T } {
       let value = {};
 
       if(typeof arg == "object"){
-        const source = arg[CONTROL];
+        const source = getController(arg);
     
         for(const key in source.state)
           defineLazy(value, key, createRef.bind(source, key));
@@ -112,7 +112,7 @@ export function from<T, R = T>(
 
       // replace source controller in-case different
       if(typeof source == "object")
-        getSource = () => source[CONTROL];
+        getSource = () => getController(source);
 
       // specifically an arrow function (getter factory)
       else if(!source.prototype){

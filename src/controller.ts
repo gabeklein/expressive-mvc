@@ -55,6 +55,7 @@ export namespace Controller {
 }
 
 export class Controller {
+  ready = false;
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
@@ -68,6 +69,9 @@ export class Controller {
   }
 
   public start(){
+    if(this.ready)
+      return;
+
     const { subject } = this;
     
     for(const key in subject){
@@ -88,6 +92,7 @@ export class Controller {
     }
 
     this.emit();
+    this.ready = true;
 
     return this;
   }

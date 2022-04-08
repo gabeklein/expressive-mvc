@@ -25,6 +25,17 @@ export interface Model extends Stateful {
   willDestroy?: Callback;
 }
 
+export function getController(subject: Stateful){
+  const control = subject[CONTROL];
+
+  control.start();
+
+  if(subject.didCreate)
+    subject.didCreate();
+
+  return control;
+}
+
 export class Model {
   static CONTROL = CONTROL;
   static STATE = STATE;
@@ -37,15 +48,8 @@ export class Model {
   constructor(){
     const control = new Controller(this);
 
-    defineLazy(this, CONTROL, () => {
-      this[STATE] = control.state;
-      control.start();
-
-      if(this.didCreate)
-        this.didCreate();
-
-      return control;
-    })
+    define(this, CONTROL, control);
+    define(this, STATE, control.state);
 
     define(this, "get", this);
     define(this, "set", this);
@@ -65,7 +69,7 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    const control = this[CONTROL];
+    const control = getController(this);
 
     if(typeof select == "string")
       select = [select];
@@ -135,7 +139,7 @@ export class Model {
   }
 
   export(subset?: Set<string> | string[]){
-    const { state } = this[CONTROL];
+    const { state } = getController(this);
     const output: BunchOf<any> = {};
 
     for(const key of subset || getOwnPropertyNames(state))
@@ -148,7 +152,7 @@ export class Model {
   update(select: string, callMethod: boolean): PromiseLike<readonly string[]>;
   update(select: string, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean, tag?: any){
-    const control = this[CONTROL];
+    const control = getController(this);
 
     if(typeof arg == "string"){
       control.update(arg);
@@ -183,7 +187,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    instance[CONTROL];
+    getController(instance);
 
     return instance;
   }
