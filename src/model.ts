@@ -203,7 +203,7 @@ export class Model {
 }
 
 defineLazy(Model, CONTROL, function(){
-  return new Controller(this).start();
+  return new Controller(this);
 })
 
 function defer(on: Controller, method: string){
