@@ -1,4 +1,5 @@
 import { Subscriber } from '../src/subscriber';
+import { Controller } from '../src/Controller';
 import { apply, Model } from './adapter';
 
 describe("apply", () => {
@@ -61,52 +62,40 @@ describe("apply", () => {
 })
 
 describe("getter", () => {
-  class Test extends Model {
-    didRunInstruction = jest.fn();
-    didGetSubscriber = jest.fn();
-
-    property = apply((key) => (sub) => {
-      this.didRunInstruction(key);
-      this.didGetSubscriber(sub);
-
-      return "foobar";
-    })
-  }
-
   it("will run instruction on access", () => {
-    const instance = Test.create();
-    const ran = instance.didRunInstruction;
-    
-    expect(ran).not.toBeCalled();
-    expect(instance.property).toBe("foobar");
-    expect(ran).toBeCalledWith("property");
-  })
+    const mockAccess = jest.fn((_subscriber) => "foobar");
+    const mockApply = jest.fn((_key) => mockAccess);
 
-  it("will pass undefined for subscriber", () => {
-    const instance = Test.create();
-    const got = instance.didGetSubscriber;
-    
-    expect(instance.property).toBe("foobar");
-    expect(got).toBeCalledWith(undefined);
-  })
+    class Test extends Model {
+      property = apply(mockApply);
+    }
 
-  it("will pass undefined for subscriber", () => {
     const instance = Test.create();
-    const got = instance.didGetSubscriber;
     
+    expect(mockApply).toBeCalledWith(
+      "property", expect.any(Controller)
+    );
+    expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
-    expect(got).toBeCalledWith(undefined);
+    expect(mockAccess).toBeCalledWith(undefined);
   })
 
   it("will pass subscriber if within one", () => {
+    const didGetValue = jest.fn();
+
+    class Test extends Model {
+      property = apply(() => didGetValue)
+    }
+
     const state = Test.create();
-    const got = state.didGetSubscriber;
 
     state.effect(own => {
-      expect(own.property).toBe("foobar");
+      void own.property;
     });
 
-    expect(got).toBeCalledWith(expect.any(Subscriber));
+    expect(didGetValue).toBeCalledWith(
+      expect.any(Subscriber)
+    );
   });
 })
 
