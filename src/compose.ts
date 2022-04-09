@@ -74,14 +74,21 @@ export function use<T extends typeof Model>(
       }
   
       if(input){
-        current =
-          Model.isTypeof(input) ? new input() :
-          input instanceof Model ? input :
-          typeof input === "function" ? input() :
-          typeof input === "object" ? bootstrap(input) :
-          Oops.BadArgument(typeof input).throw();
+        const next =
+          Model.isTypeof(input)
+            ? new input() :
+          input instanceof Model
+            ? input :
+          typeof input === "function"
+            ? input() :
+          typeof input === "object"
+            ? bootstrap(input)
+            : null;
+
+        if(next === null)
+          throw Oops.BadArgument(typeof input);
   
-        if(current)
+        if(current = next)
           mode = onUpdate(current, true) || mode;
         else if(mode == true)
           throw Oops.MustBeDefined(subject, key);

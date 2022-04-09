@@ -16,10 +16,6 @@ class Issue extends Error {
   warn(){
     console.warn(this.message);
   }
-
-  throw(): never {
-    throw this;
-  }
 }
 
 export function issues<M extends Messages>(register: M){
