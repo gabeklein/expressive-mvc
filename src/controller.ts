@@ -21,6 +21,7 @@ export function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
+    const { subject, state } = this;
     let output = fn.call(this, key, this);
 
     if(typeof output == "function"){
@@ -29,13 +30,13 @@ export function apply<T = any>(
       output = {
         ...getOwnPropertyDescriptor(this.subject, key),
         get(this: Stateful){
-          return getter(this[LOCAL])
+          return getter(state[key], this[LOCAL])
         }
       }
     }
 
     if(output)
-      defineProperty(this.subject, key, output);
+      defineProperty(subject, key, output);
   }
 
   Pending.set(placeholder, setup);
@@ -45,7 +46,7 @@ export function apply<T = any>(
 
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
-export type Getter<T> = (sub?: Subscriber) => T
+export type Getter<T> = (state: T, sub?: Subscriber) => T
 
 export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   void | Getter<T> | PropertyDescriptor;

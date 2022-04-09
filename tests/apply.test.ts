@@ -63,7 +63,7 @@ describe("apply", () => {
 
 describe("getter", () => {
   it("will run instruction on access", () => {
-    const mockAccess = jest.fn((_subscriber) => "foobar");
+    const mockAccess = jest.fn((_value, _subscriber) => "foobar");
     const mockApply = jest.fn((_key) => mockAccess);
 
     class Test extends Model {
@@ -77,7 +77,7 @@ describe("getter", () => {
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
-    expect(mockAccess).toBeCalledWith(undefined);
+    expect(mockAccess).toBeCalledWith(undefined, undefined);
   })
 
   it("will pass subscriber if within one", () => {
@@ -94,7 +94,7 @@ describe("getter", () => {
     });
 
     expect(didGetValue).toBeCalledWith(
-      expect.any(Subscriber)
+      undefined, expect.any(Subscriber)
     );
   });
 })

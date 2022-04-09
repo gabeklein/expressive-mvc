@@ -25,7 +25,7 @@ export namespace Model {
         current: T | null;
     }
 
-    type GetFunction<T> = (within?: Subscriber) => T;
+    type GetFunction<T> = (state: T | undefined, within?: Subscriber) => T;
 
     /**
      * Property initializer, will run upon instance creation.

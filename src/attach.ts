@@ -44,7 +44,7 @@ export function child<T extends Model>(
         sub.watch[key] = init;
       }
     
-      return (local: Subscriber | undefined) => {
+      return (_value, local: Subscriber | undefined) => {
         if(!local)
           return getValue();
     
