@@ -28,7 +28,8 @@ export function apply<T = any>(
       const getter = output;
 
       output = {
-        ...getOwnPropertyDescriptor(this.subject, key),
+        set: this.setter(key),
+        ...getOwnPropertyDescriptor(subject, key),
         get(this: Stateful){
           return getter(state[key], this[LOCAL])
         }

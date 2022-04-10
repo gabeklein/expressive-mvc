@@ -97,6 +97,25 @@ describe("getter", () => {
       undefined, expect.any(Subscriber)
     );
   });
+
+  it("will implement setter by default", async () => {
+    const mockAccess = jest.fn(value => value);
+
+    class Test extends Model {
+      property: string = apply(() => mockAccess);
+    }
+
+    const state = Test.create();
+
+    expect(state.property).toBe(undefined);
+    expect(mockAccess).toBeCalledWith(undefined, undefined);
+
+    state.property = "foo";
+
+    expect(state.property).toBe("foo");
+    expect(mockAccess).toBeCalledTimes(2);
+    expect(mockAccess).toBeCalledWith("foo", undefined);
+  });
 })
 
 describe("custom", () => {
