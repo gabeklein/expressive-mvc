@@ -21,7 +21,7 @@ export namespace Model {
         enumerable?: boolean;
         value?: T;
         writable?: boolean;
-        get?(state: T | undefined, within?: Subscriber): T;
+        get?(current: T | undefined, within?: Subscriber): T;
         set?(value: T): boolean | void;
     }
 

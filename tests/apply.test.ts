@@ -102,7 +102,7 @@ describe("getter", () => {
     const mockAccess = jest.fn(value => value);
 
     class Test extends Model {
-      property: string = apply(() => mockAccess);
+      property = apply(() => mockAccess);
     }
 
     const state = Test.create();
@@ -119,74 +119,33 @@ describe("getter", () => {
 })
 
 describe("custom", () => {
-  function managed<T>(
-    value: T, update: (next: T, state: any) => boolean | void){
-
-    return apply<T>(
-      function manage(key){
-        this.manage(key, value, (next) => update(next, this.state));
-      }
-    )
-  }
-
   it("will prevent update if instruction returns false", async () => {
+    const didSetValue = jest.fn(newValue => {
+      if(newValue == "ignore")
+        return false;
+    });
+
     class Test extends Model {
-      property = managed(false, (value, state) => {
-        // register instruction did run
-        instruction(value);
-        // set value to state manually
-        state.property = value;
-        // block update if value is set to false
-        return value === true;
-      });
+      property = apply(() => {
+        return {
+          value: "foobar",
+          set: didSetValue
+        }
+      })
     }
 
     const instance = Test.create();
-    const instruction = jest.fn();
 
-    expect(instance.property).toBe(false);
+    expect(instance.property).toBe("foobar");
     
-    instance.property = true;
-    expect(instruction).toBeCalledWith(true);
-
-    // expect update event
+    instance.property = "test";
+    expect(didSetValue).toBeCalledWith("test");
+    expect(instance.property).toBe("test");
     await instance.update(true);
-    expect(instance.property).toBe(true);
 
-    instance.property = false;
-    expect(instruction).toBeCalledWith(false);
-    
-    // update should be prevented
+    instance.property = "ignore";
+    expect(didSetValue).toBeCalledWith("ignore");
+    expect(instance.property).toBe("test");
     await instance.update(false);
-    expect(instance.property).toBe(false);
-  })
-
-  it("will delegate set-value if returns boolean", async () => {
-    class Test extends Model {
-      property = managed<boolean | number>(false, (value, state) => {
-        // register instruction did run
-        instruction(value);
-        // set the value manually to some number
-        state.property = Math.random();
-        // block update if value was set to false
-        return value === true;
-      });
-    }
-
-    const instance = Test.create();
-    const instruction = jest.fn();
-
-    expect(instance.property).toBe(false);
-    
-    instance.property = true;
-    expect(instruction).toBeCalledWith(true);
-    await instance.update(true);
-    // instruction overrode incoming value 
-    expect(typeof instance.property).toBe("number");
-
-    instance.property = false;
-    expect(instruction).toBeCalledWith(false);
-    await instance.update(false);
-    expect(typeof instance.property).toBe("number");
   })
 })

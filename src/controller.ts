@@ -40,17 +40,32 @@ export function apply<T = any>(
       }
     }
     else {
-      const { get, set } = output;
+      const { get, set, value } = output;
 
-      desc = { ...output } as any;
+      desc = {};
 
-      if(get)
-        desc!.get = function(this: Stateful){
+      if(output.enumerable)
+        desc.enumerable = true;
+
+      if(output.configurable)
+        desc.configurable = true;
+
+      if("value" in output){
+        state[key] = value;
+        
+        if(!get && !set){
+          defineProperty(subject, key, { value });
+          return;
+        }
+      }
+
+      desc!.get = get
+        ? function(this: Stateful){
           return get(state[key], this[LOCAL]);
         }
+        : () => state[key];
 
-      if(set)
-        desc!.set = this.setter(key, set);
+      desc!.set = this.setter(key, set);
     }
 
     defineProperty(subject, key, desc as any);
@@ -64,14 +79,14 @@ export function apply<T = any>(
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
 export type Setter<T> = (value: T) => boolean | void;
-export type Getter<T> = (state: T, sub?: Subscriber) => T
+export type Getter<T> = (current: T, sub?: Subscriber) => T
 
 interface InstructionDescriptor<T> {
     configurable?: boolean;
     enumerable?: boolean;
     value?: T;
     writable?: boolean;
-    get?(state: T | undefined, within?: Subscriber): T;
+    get?(current: T | undefined, within?: Subscriber): T;
     set?(v: T): boolean | void;
 }
 
