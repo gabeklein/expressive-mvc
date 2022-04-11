@@ -58,15 +58,16 @@ describe("subscriber", () => {
       value = on("foo", this.didSet);
     }
 
-    const state = Test.create();
+    const control = Test.create();
+    const state = control[Model.STATE];
 
-    expect(state.value).toBe("foo");
+    expect(control.value).toBe("foo");
 
-    subscribeTo(state, it => {
+    subscribeTo(control, it => {
       it.value = "bar";
     })
 
-    expect(state.value).toBe("bar");
-    expect(state.didSet).toBeCalledWith("bar");
+    expect(control.value).toBe("bar");
+    expect(control.didSet).toBeCalledWith("bar", state);
   })
 })

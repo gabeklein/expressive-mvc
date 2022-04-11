@@ -20,7 +20,7 @@ export const Oops = issues({
 function createRef(
   this: Controller,
   key: string,
-  cb?: InterceptCallback<any>){
+  cb?: AssignCallback<any>){
 
   const refObjectFunction =
     this.setter(key, cb && createValueEffect(cb));
@@ -33,7 +33,7 @@ function createRef(
   return refObjectFunction;
 }
 
-export function ref<T>(arg?: InterceptCallback<T> | Model): { current: T } {
+export function ref<T>(arg?: AssignCallback<T> | Model): { current: T } {
   return apply(
     function ref(key){
       let value = {};

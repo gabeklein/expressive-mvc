@@ -80,7 +80,7 @@ export function createEffect(
 }
 
 export function createValueEffect<T = any>(
-  callback: InterceptCallback<T>){
+  callback: AssignCallback<T>){
 
   let unSet: ((next: T) => void) | undefined;
 
@@ -88,7 +88,7 @@ export function createValueEffect<T = any>(
     if(typeof unSet == "function")
       unSet(value);
     
-    const out = callback.call(this, value);
+    const out = callback.call(this, value, this);
     
     if(typeof out == "boolean")
       return out;

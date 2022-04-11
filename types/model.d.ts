@@ -22,7 +22,7 @@ export namespace Model {
         value?: T;
         writable?: boolean;
         get?(current: T | undefined, within?: Subscriber): T;
-        set?(value: T): boolean | void;
+        set?(value: T, state: any): boolean | void;
     }
 
     type GetFunction<T> = (state: T | undefined, within?: Subscriber) => T;
@@ -65,7 +65,7 @@ export namespace Model {
         [Key in X]: T[Key] extends ST ? Key : never;
     }[X];
 
-    type HandleValue = (value: any) => boolean | void;
+    type HandleValue = <T>(this: T, value: any, state: T) => boolean | void;
 
     export namespace Controller {
         export type Listen = (key: string, source: Controller) =>

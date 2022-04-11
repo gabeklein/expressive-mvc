@@ -52,7 +52,7 @@ export function use<T extends typeof Model>(
   
       const onUpdate = (
         next: Model | {} | undefined,
-        initial?: boolean) => {
+        initial?: boolean | {}) => {
 
         if(mode === true && !initial)
           throw Oops.IsReadOnly(subject, key);

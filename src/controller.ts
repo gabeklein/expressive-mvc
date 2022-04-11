@@ -76,7 +76,7 @@ export function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export type HandleValue = (this: Stateful, value: any) => boolean | void;
+export type HandleValue = <T>(this: T, value: any, state: T) => boolean | void;
 
 export type Setter<T> = (value: T) => boolean | void;
 export type Getter<T> = (current: T, sub?: Subscriber) => T
@@ -167,7 +167,7 @@ export class Controller {
         return;
 
       if(handler)
-        switch(handler.call(subject, value)){
+        switch(handler.call(subject, value, state)){
           case true:
             this.update(key);
           case false:

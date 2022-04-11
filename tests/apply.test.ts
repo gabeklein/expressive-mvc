@@ -135,16 +135,17 @@ describe("custom", () => {
     }
 
     const instance = Test.create();
+    const state = instance[Model.STATE];
 
     expect(instance.property).toBe("foobar");
     
     instance.property = "test";
-    expect(didSetValue).toBeCalledWith("test");
+    expect(didSetValue).toBeCalledWith("test", state);
     expect(instance.property).toBe("test");
     await instance.update(true);
 
     instance.property = "ignore";
-    expect(didSetValue).toBeCalledWith("ignore");
+    expect(didSetValue).toBeCalledWith("ignore", state);
     expect(instance.property).toBe("test");
     await instance.update(false);
   })
