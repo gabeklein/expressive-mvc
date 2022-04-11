@@ -434,21 +434,13 @@ export abstract class Model {
      */
     static tag <T extends Class, I extends InstanceOf<T>> (this: T, idFactory: (on: I) => Key | void): I;
 
-    /** 
-     * **React Hook** - Fetch and subscribe to *class itself* within a component.
-     * 
-     * This allows you to do pretty meta stuff.
-     * 
-     * Documentation TBD.
-     */
     static meta <T extends Class>(this: T): T;
 
-    /** 
-     * **React Hook** - Fetch and subscribe to value defined on class itself using selectors.
-     * 
-     * Documentation TBD.
-     */
-    static meta <T extends Class, K extends Model.SelectField<T>> (this: T, key?: K): ReturnType<K>;
+    static meta <T extends Class, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
+    static meta <T extends Class, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
+
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T> | T, expect: true): Exclude<T, undefined>;
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T> | T, expect?: boolean): T | undefined;
 
     /**
      * Static equivalent of `x instanceof this`.

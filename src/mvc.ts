@@ -54,9 +54,9 @@ export class MVC extends Model {
     return instance;
   }
 
-  static meta(path: string | Function): any {
+  static meta(path: string | Function, expect?: boolean): any {
     return typeof path == "function"
-      ? useComputed(this, path)
-      : useActive(this, path)
+      ? useComputed(this, path, expect)
+      : useActive(this, path, expect)
   }
 }
