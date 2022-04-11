@@ -248,14 +248,14 @@ export abstract class Model {
     tap(): this;
 
     /** Tracks specific key of this controller within a component. */
-    tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
     tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
+    tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
 
-    tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
     tap <T> (from: (this: this, state: this) => Promise<T>, expect: true): Exclude<T, undefined>;
+    tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
 
-    tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
     tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
+    tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
     
     // Keyed
     on <P = Model.EventsCompat<this>> (keys: [], listener: Model.UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
@@ -395,19 +395,14 @@ export abstract class Model {
     /** 
      * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
      */
-    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
-    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T | undefined;
-    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
-
-    /** 
-     * **React Hook** - Fetch and subscribe to a value on applicable instance within ambient component.
-     * 
-     * **(In Expect Mode)** - Will throw of value is undefined.
-     * This makes return type non-nullable and convenient to use without optional chaining.
-     */
     static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
+    static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
+
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T | undefined;
+
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
+    static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
     /**
      * **React Hook** - Attach to instance of this controller within ambient component.
@@ -432,8 +427,11 @@ export abstract class Model {
     static meta <T extends Class, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
     static meta <T extends Class, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
 
-    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T> | T, expect: true): Exclude<T, undefined>;
-    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T> | T, expect?: boolean): T | undefined;
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T | undefined;
+
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
+    static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
     /**
      * Static equivalent of `x instanceof this`.
