@@ -84,7 +84,7 @@ declare namespace Instruction {
         enumerable?: boolean;
         value?: T;
         writable?: boolean;
-        get: Getter<T>;
+        get?: Getter<T>;
         set?(value: T, state: any): boolean | void;
     }
 }

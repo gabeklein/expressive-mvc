@@ -1,4 +1,4 @@
-import { apply, HandleValue } from './controller';
+import { apply, Controller } from './controller';
 import { issues } from './issues';
 import { pendingFactory, pendingValue } from './suspense';
 import { createValueEffect, defineProperty } from './util';
@@ -29,7 +29,7 @@ export function lazy<T>(value: T): T {
 
 function set(
   factory?: (key: string, subject: unknown) => any,
-  argument?: HandleValue | boolean): any {  
+  argument?: Controller.OnValue | boolean): any {  
 
   return apply(
     function set(key){
@@ -75,7 +75,7 @@ function set(
   )
 }
 
-function on(initial: any, onUpdate: HandleValue){
+function on(initial: any, onUpdate: Controller.OnValue){
   return set(initial && (() => initial), onUpdate)
 }
 
