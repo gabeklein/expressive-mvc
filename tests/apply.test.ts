@@ -120,7 +120,7 @@ describe("getter", () => {
 
 describe("custom", () => {
   it("will prevent update if instruction returns false", async () => {
-    const didSetValue = jest.fn(newValue => {
+    const didSetValue = jest.fn((newValue) => {
       if(newValue == "ignore")
         return false;
     });
@@ -147,6 +147,35 @@ describe("custom", () => {
     instance.property = "ignore";
     expect(didSetValue).toBeCalledWith("ignore", state);
     expect(instance.property).toBe("test");
+    await instance.update(false);
+  })
+
+  it("will delegate value if returns boolean", async () => {
+    let shouldUpdate = true;
+  
+    class Test extends Model {
+      property = apply(key => {
+        return {
+          value: 0,
+          set: (value, state) => {
+            state[key] = value + 10;
+            return shouldUpdate;
+          }
+        }
+      })
+    }
+
+    const instance = Test.create();
+
+    expect(instance.property).toBe(0);
+    
+    instance.property = 10;
+    expect(instance.property).toBe(20);
+    await instance.update(true);
+
+    shouldUpdate = false;
+    instance.property = 0;
+    expect(instance.property).toBe(10);
     await instance.update(false);
   })
 })
