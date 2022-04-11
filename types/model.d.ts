@@ -64,8 +64,6 @@ export namespace Model {
 
     type EventsCompat<T> = keyof T | keyof Lifecycle;
 
-    type SelectField<T> = (arg: Omit<T, keyof Model>) => any;
-
     type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
         [Key in X]: T[Key] extends ST ? Key : never;
     }[X];
@@ -389,11 +387,6 @@ export abstract class Model {
      */
     static get <T extends Class, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
 
-    /**
-     * **React Hook** - Fetch specific value from instance of this controller in context.
-     */
-    static get <T extends Class, I extends InstanceOf<T>, K extends Model.SelectField<I>> (this: T, key?: K): ReturnType<K>;
-    
     /** 
      * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
      */
