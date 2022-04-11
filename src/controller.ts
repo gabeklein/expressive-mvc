@@ -76,28 +76,28 @@ export function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export type HandleValue = <T>(this: T, value: any, state: T) => boolean | void;
+declare namespace Instruction {
+    type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
 
-export type Setter<T> = (value: T) => boolean | void;
-export type Getter<T> = (current: T, sub?: Subscriber) => T
-
-interface InstructionDescriptor<T> {
-    configurable?: boolean;
-    enumerable?: boolean;
-    value?: T;
-    writable?: boolean;
-    get?(current: T | undefined, within?: Subscriber): T;
-    set?(v: T): boolean | void;
+    interface Descriptor<T> {
+        configurable?: boolean;
+        enumerable?: boolean;
+        value?: T;
+        writable?: boolean;
+        get: Getter<T>;
+        set?(value: T, state: any): boolean | void;
+    }
 }
 
-export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-  void | Getter<T> | InstructionDescriptor<T>;
+type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+        void | Instruction.Getter<T> | Instruction.Descriptor<T>;
 
-export namespace Controller {
-  export type Listen = (key: string, source: Controller) => RequestCallback | void;
+declare namespace Controller {
+  type Listen = (key: string, source: Controller) => RequestCallback | void;
+  type OnValue = <T>(this: T, value: any, state: T) => boolean | void;
 }
 
-export class Controller {
+class Controller {
   ready = false;
   public state = {} as BunchOf<any>;
   public frame = new Set<string>();
@@ -143,7 +143,7 @@ export class Controller {
   public manage(
     key: string,
     initial: any,
-    effect?: HandleValue){
+    handler?: Controller.OnValue){
 
     const { state, subject } = this;
 
@@ -152,13 +152,13 @@ export class Controller {
       enumerable: true,
       configurable: true,
       get: () => state[key],
-      set: this.setter(key, effect)
+      set: this.setter(key, handler)
     });
   }
 
   public setter(
     key: string,
-    handler?: HandleValue){
+    handler?: Controller.OnValue){
 
     const { state, subject } = this;
 
@@ -242,3 +242,5 @@ export class Controller {
     })
   }
 }
+
+export { Controller, Instruction }

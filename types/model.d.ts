@@ -70,13 +70,13 @@ export namespace Model {
         [Key in X]: T[Key] extends ST ? Key : never;
     }[X];
 
-    type HandleValue = <T>(this: T, value: any, state: T) => boolean | void;
-
     export namespace Controller {
         type RequestCallback = (keys: readonly string[]) => void;
 
         type OnEvent = (key: string, source: Controller) =>
             RequestCallback | undefined;
+
+        type OnValue = <T>(this: T, value: any, state: T) => boolean | void;
     }
 
     export class Controller {
@@ -88,9 +88,9 @@ export namespace Model {
 
         start(): this;
 
-        manage(key: string, initial: any, effect?: HandleValue): void;
+        manage(key: string, initial: any, effect?: Controller.OnValue): void;
 
-        setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
+        setter(key: string, effect?: Controller.OnValue): (value: any) => boolean | void;
 
         addListener(listener: Controller.OnEvent): Callback;
 
