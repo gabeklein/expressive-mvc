@@ -4,6 +4,12 @@ import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { values } from './util';
 
+type ValuesOf<T> = T[keyof T];
+
+export type Event = ValuesOf<typeof Lifecycle>;
+export type Key = string | symbol | number;
+export type KeyFactory<T> = (target: T) => Key | undefined;
+
 export const Lifecycle = {
   WILL_RENDER: "willRender",
   WILL_UPDATE: "willUpdate",
@@ -12,7 +18,6 @@ export const Lifecycle = {
   DID_MOUNT: "didMount"
 } as const;
 
-export type Event = ValuesOf<typeof Lifecycle>;
 
 export const lifecycleEvents = [
   "didCreate",

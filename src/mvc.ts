@@ -1,5 +1,6 @@
 import { useContext } from './context';
 import { useActive, useComputed, useModel, useNew, usePassive, useTag, useTap } from './hooks';
+import { Key, KeyFactory } from './lifecycle';
 import { Model } from './model';
 
 export class MVC extends Model {

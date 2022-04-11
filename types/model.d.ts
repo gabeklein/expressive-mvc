@@ -1,9 +1,11 @@
 import { Key } from 'react';
 
 import Lifecycle from './lifecycle';
-import { BunchOf, Callback, Class, InstanceOf, RequestCallback, UpdateCallback } from './types';
+import { BunchOf, Class, InstanceOf } from './types';
 
+type Callback = () => void;
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
+type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
 
 type Thenable<T> = {
     then(onFulfilled: (arg: T) => void): void;
@@ -16,26 +18,29 @@ export namespace Model {
         current: T | null;
     }
 
-    interface InstructionDescriptor<T> {
-        configurable?: boolean;
-        enumerable?: boolean;
-        value?: T;
-        writable?: boolean;
-        get?(current: T | undefined, within?: Subscriber): T;
-        set?(value: T, state: any): boolean | void;
-    }
+    type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
 
-    type GetFunction<T> = (state: T | undefined, within?: Subscriber) => T;
+    type EffectCallback<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
     /**
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
     type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-        void | GetFunction<T> | InstructionDescriptor<T>;
+        void | Instruction.Getter<T> | Instruction.Descriptor<T>;
 
-    /** Shallow replacement given all entries of Model */
-    type Overlay<T, R> = { [K in keyof Entries<T>]: R };
+    namespace Instruction {
+        interface Descriptor<T> {
+            configurable?: boolean;
+            enumerable?: boolean;
+            value?: T;
+            writable?: boolean;
+            get?(current: T | undefined, within?: Subscriber): T;
+            set?(value: T, state: any): boolean | void;
+        }
+    
+        type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
+    }
 
     /** Subset of `keyof T` excluding keys defined by base Model */
     type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
@@ -51,8 +56,8 @@ export namespace Model {
         [P in K]: Value<T[P]>;
     }
 
-    /** Object comperable to data which may be found in T. */
-    type Data<T, E = Model> = Partial<Entries<T, E>>;
+    /** Object comperable to data found in T. */
+    type Compat<T, Exclude = Model> = Partial<Entries<T, Exclude>>;
 
     /** Subset of `keyof T` excluding keys defined by base Model, except lifecycle. */
     type Events<T> = Omit<T, Exclude<keyof Model, keyof Lifecycle>>;
@@ -68,14 +73,16 @@ export namespace Model {
     type HandleValue = <T>(this: T, value: any, state: T) => boolean | void;
 
     export namespace Controller {
-        export type Listen = (key: string, source: Controller) =>
+        type RequestCallback = (keys: readonly string[]) => void;
+
+        type OnEvent = (key: string, source: Controller) =>
             RequestCallback | undefined;
     }
 
     export class Controller {
         state: BunchOf<any>;
         subject: {};
-        waiting: Set<RequestCallback>;
+        waiting: Set<Controller.RequestCallback>;
         frame: Set<string>;
         pending: boolean;
 
@@ -85,7 +92,7 @@ export namespace Model {
 
         setter(key: string, effect?: HandleValue): (value: any) => boolean | void;
 
-        addListener(listener: Controller.Listen): Callback;
+        addListener(listener: Controller.OnEvent): Callback;
 
         update(key: string, value?: any): void;
 
@@ -100,13 +107,13 @@ export namespace Model {
         source: any;
         parent: Controller;
         active: boolean;
-        listen: Controller.Listen;
+        listen: Controller.OnEvent;
         dependant: Set<{
             commit(): void;
             release(): void;
         }>;
 
-        follow(key: string, cb?: RequestCallback | undefined): void;
+        follow(key: string, cb?: Controller.RequestCallback | undefined): void;
         commit(): Callback;
         release(): Callback;
         onUpdate(): void;
@@ -196,7 +203,7 @@ export abstract class Model {
      */
     set: this;
 
-    import <O extends Model.Data<this>> (via: O, select?: string[]): void;
+    import <O extends Model.Compat<this>> (via: O, select?: string[]): void;
 
     export(): Model.State<this>;
     export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
@@ -207,9 +214,7 @@ export abstract class Model {
     update(strict: boolean): Promise<readonly string[] | false>;
 
     update(keys: Model.Fields<this>): Thenable<readonly string[]>;
-
     update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
-
     update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<readonly string[]>;
 
     /*
@@ -255,8 +260,8 @@ export abstract class Model {
     tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
     
     // Keyed
-    on <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
-    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
+    on <P = Model.EventsCompat<this>> (keys: [], listener: Model.UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
+    on <P extends Model.EventsCompat<this>> (key: P | P[], listener: Model.UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
     // Squash
     on <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
@@ -265,8 +270,8 @@ export abstract class Model {
     on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
     // Keyed
-    once <P = Model.EventsCompat<this>> (keys: [], listener: UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
-    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: UpdateCallback<this, P>, squash?: false): Callback;
+    once <P = Model.EventsCompat<this>> (keys: [], listener: Model.UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
+    once <P extends Model.EventsCompat<this>> (key: P | P[], listener: Model.UpdateCallback<this, P>, squash?: false): Callback;
     // Squash
     once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
@@ -277,9 +282,9 @@ export abstract class Model {
     once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
     once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
 
-    effect(callback: (this: this, state: this) => void): Callback;
-    effect(callback: (this: this, state: this) => void, select: []): Callback;
-    effect(callback: (this: this, state: this) => void, select: (keyof this)[]): Callback;
+    effect(callback: Model.EffectCallback<this>): Callback;
+    effect(callback: Model.EffectCallback<this>, select: []): Callback;
+    effect(callback: Model.EffectCallback<this>, select: (keyof this)[]): Callback;
 
     /**
      * **React Hook** - Attach to instance of this controller within a component.
@@ -460,7 +465,7 @@ export class Singleton extends Model {
      * If instance does not already exist, one will be created. 
      **/
     static set<T extends Class>(
-        this: T, updates: Model.Data<InstanceOf<T>>
+        this: T, updates: Model.Compat<InstanceOf<T>>
     ): PromiseLike<string[] | false>;
 
     /** Destroy current instance of Singleton, if it exists. */

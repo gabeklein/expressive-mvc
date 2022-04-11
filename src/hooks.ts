@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Lifecycle, lifecycle } from './lifecycle';
+import { Key, KeyFactory, Lifecycle, lifecycle } from './lifecycle';
 import { Model, Stateful } from './model';
 import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';

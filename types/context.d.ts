@@ -9,12 +9,12 @@ export namespace Provider {
     
     type NormalProps<E, I = Existent<E>> =
         & { of: E, children: ReactNode | ((instance: I) => ReactNode) }
-        & Model.Data<I>;
+        & Model.Compat<I>;
 
     // FIX: This fails to exclude properties with same key but different type.
     type MultipleProps<T extends Item> =
         & { of: Collection<T>, children?: ReactNode | (() => ReactNode) }
-        & Model.Data<Existent<T>>;
+        & Model.Compat<Existent<T>>;
 
     type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }

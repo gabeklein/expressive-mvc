@@ -1,5 +1,5 @@
 import Model from '.';
-import { Async, Class, InstanceOf, InterceptCallback } from './types';
+import { Async, Class, InstanceOf } from './types';
 
 /**
  * Run instruction as controller sets itself up.
@@ -39,17 +39,19 @@ export function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
  */
 export function use <T extends {}> (object: T): T;
 
+export namespace child {
+  type Instruction<T> = (this: Model.Controller, key: string) => {
+    get: () => T | undefined,
+    set?: (value: T | undefined) => void
+  }
+}
+
 /**
  * Generic instruction used by `use()` and `tap()` for recursive subscription.
  *
  * @param from - Instruction body is run upon parent create. Return function to fetch current value of field.
  */
-export function child <T extends Model> (
-  from: (this: Model.Controller, key: string) => {
-    get: () => T | undefined,
-    set?: (value: T | undefined) => void
-  }  
-): T;
+export function child <T extends Model> (from: child.Instruction<T>): T;
  
 /**
  * Fetches and assigns the controller which spawned this host.
@@ -87,6 +89,11 @@ export function tap <T extends typeof Model> (Type: T, callback?: (instance?: In
  */
 export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
 
+export namespace on {
+  type Callback<T, S = any> = (this: S, argument: T) =>
+    ((next: T) => void) | Promise<any> | void | boolean;
+}
+
 /**
  * Cause property to synchronously run effect upon update.
  * 
@@ -102,13 +109,18 @@ export function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<
  * 
  * @deprecated will be removed in favor of `set`
  */
-export function on <T> (initialValue: undefined, onUpdate: InterceptCallback<T>): T | undefined;
-export function on <T> (initialValue: T, onUpdate: InterceptCallback<T>): T;
-export function on <T, S> (initialValue: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
-export function on <T, S> (initialValue: T, onUpdate: InterceptCallback<T, S>): T;
+export function on <T> (initialValue: undefined, onUpdate: on.Callback<T>): T | undefined;
+export function on <T> (initialValue: T, onUpdate: on.Callback<T>): T;
+export function on <T, S> (initialValue: undefined, onUpdate: on.Callback<T, S>): T | undefined;
+export function on <T, S> (initialValue: T, onUpdate: on.Callback<T, S>): T;
 
 /** Object with references to all managed values of `T`. */
 export type Refs <T extends Model> = { [P in Model.Fields<T>]: Model.Ref<T[P]> };
+
+export namespace ref {
+  type Callback<T, S = any> = (this: S, argument: T) =>
+    ((next: T) => void) | Promise<any> | void | boolean;
+}
 
 /**
  * Creates an object with references to all managed values.
@@ -128,8 +140,8 @@ export function ref <T extends Model> (target: T): Refs<T>;
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-export function ref <T = HTMLElement> (callback?: InterceptCallback<T>): Model.Ref<T>;
-export function ref <T, S> (callback?: InterceptCallback<T, S>): Model.Ref<T>;
+export function ref <T = HTMLElement> (callback?: ref.Callback<T>): Model.Ref<T>;
+export function ref <T, S> (callback?: ref.Callback<T, S>): Model.Ref<T>;
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.
@@ -237,7 +249,12 @@ export function pending <R, T> (waitFor: (this: T) => Promise<R>): R;
  */
 export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; // ✅
 
-type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
+export namespace set {
+  type Factory<T, S = unknown> = (this: S, key: string, subject: S) => T;
+
+  type Callback<T, S = any> = (this: S, argument: T) =>
+    ((next: T) => void) | Promise<any> | void | boolean;
+}
 
 /**
  * Set property with a placeholder.
@@ -259,8 +276,8 @@ type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
  export function set <T> (value: undefined, required: false): T | undefined;
  export function set <T> (value: undefined, required?: boolean): T;
  
- export function set <T> (value: undefined, onUpdate: InterceptCallback<T>): T | undefined;
- export function set <T, S> (value: undefined, onUpdate: InterceptCallback<T, S>): T | undefined;
+ export function set <T> (value: undefined, onUpdate: set.Callback<T>): T | undefined;
+ export function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefined;
  
  /**
   * Set property with an async function.
@@ -277,14 +294,14 @@ type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
   * @param factory - Callback run to derrive property value.
   * @param required - (default: true) Run factory immediately on creation, otherwise on access.
   */
- export function set <T>(factory: FactoryFunction<Promise<T>>, required: false): T | undefined;
- export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required: false): T | undefined;
+ export function set <T>(factory: set.Factory<Promise<T>>, required: false): T | undefined;
+ export function set <T, S>(factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
  
- export function set <T>(factory: FactoryFunction<Promise<T>>, required?: boolean): T;
- export function set <T, S>(factory: FactoryFunction<Promise<T>, S>, required?: boolean): T;
+ export function set <T>(factory: set.Factory<Promise<T>>, required?: boolean): T;
+ export function set <T, S>(factory: set.Factory<Promise<T>, S>, required?: boolean): T;
  
- export function set <T> (value: FactoryFunction<Promise<T>>, onUpdate: InterceptCallback<T>): T;
- export function set <T, S> (value: FactoryFunction<Promise<T>, S>, onUpdate: InterceptCallback<T, S>): T;
+ export function set <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
+ export function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
  
  /**
   * Set property with a factory function.
@@ -298,12 +315,12 @@ type FactoryFunction<T, S = unknown> = (this: S, key: string, subject: S) => T;
   * @param factory - Callback run to derrive property value.
   * @param required - (default: true) Run factory immediately on creation, otherwise on access.
   */
- export function set <T>(factory: FactoryFunction<T>, required: false): T | undefined;
- export function set <T, S>(factory: FactoryFunction<T, S>, required: false): T | undefined;
+ export function set <T>(factory: set.Factory<T>, required: false): T | undefined;
+ export function set <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
  
- export function set <T>(factory: FactoryFunction<T>, required?: boolean): T;
- export function set <T, S>(factory: FactoryFunction<T, S>, required?: boolean): T;
+ export function set <T>(factory: set.Factory<T>, required?: boolean): T;
+ export function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
  
- export function set <T> (value: FactoryFunction<T>, onUpdate: InterceptCallback<T>): T;
- export function set <T, S> (value: FactoryFunction<T, S>, onUpdate: InterceptCallback<T, S>): T;
+ export function set <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
+ export function set <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
  

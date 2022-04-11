@@ -1,4 +1,6 @@
-import { Key } from "./types";
+declare namespace Lifecycle {
+  type Key = string | symbol | number;
+}
 
 /**
  * Model-Component Lifecycle
@@ -8,17 +10,17 @@ import { Key } from "./types";
  * call these respectively to that component's lifecycle.
  */
 interface Lifecycle {
-  didMount?(tag?: Key): void;
-  willRender?(tag?: Key): void;
-  willUpdate?(tag?: Key): void;
-  willMount?(tag?: Key): void;
-  willUnmount?(tag?: Key): void;
+  didMount?(tag?: Lifecycle.Key): void;
+  willRender?(tag?: Lifecycle.Key): void;
+  willUpdate?(tag?: Lifecycle.Key): void;
+  willMount?(tag?: Lifecycle.Key): void;
+  willUnmount?(tag?: Lifecycle.Key): void;
 
-  elementDidMount?(tag: Key): void;
-  elementWillRender?(tag: Key): void;
-  elementWillUpdate?(tag: Key): void;
-  elementWillMount?(tag: Key): void;
-  elementWillUnmount?(tag: Key): void;
+  elementDidMount?(tag: Lifecycle.Key): void;
+  elementWillRender?(tag: Lifecycle.Key): void;
+  elementWillUpdate?(tag: Lifecycle.Key): void;
+  elementWillMount?(tag: Lifecycle.Key): void;
+  elementWillUnmount?(tag: Lifecycle.Key): void;
 
   componentDidMount?(): void;
   componentWillRender?(): void;
