@@ -70,9 +70,7 @@ describe("use instruction", () => {
 
   it('will accept simple object as new value', async () => {
     class Parent extends Model {
-      child = use({
-        value: "foo"
-      });
+      child = use({ value: "foo" });
     }
 
     const state = Parent.create();
@@ -151,24 +149,10 @@ describe("use instruction", () => {
     expect(state.child.value).toBe("bar");
   })
 
-  it('will complain if assigned in read-only mode', () => {
-    class Parent extends Model {
-      // @ts-ignore
-      child = use(Child, true);
-    }
-  
-    const state = Parent.create();
-    const expected = Oops.IsReadOnly("Parent", "child");
-    const reassign = () => state.child = new Child();
-
-    expect(state.child).toBeInstanceOf(Child);
-    expect(reassign).toThrowError(expected);
-  })
-  
   it('will reset if value is undefined', async () => {
     class Parent extends Model {
       value = "foo";
-      child = use(Child, false);
+      child = use<Child>();
     }
 
     const state = Parent.create();
@@ -178,6 +162,10 @@ describe("use instruction", () => {
       if(it.child)
         void it.child.value;
     })
+
+    state.child = new Child();
+
+    await update();
   
     // Will refresh on sub-value change.
     state.child!.value = "bar";
@@ -224,34 +212,6 @@ describe("use instruction", () => {
     // Will refresh on deletion.
     state.child = undefined;
     await update();
-  })
-
-  it('will complain if undefined while not optional', () => {
-    class Parent extends Model {
-      child = use(Child);
-    }
-
-    const state = Parent.create();
-
-    const expected = Oops.UndefinedNotAllowed("child");
-    const setUndefined = () => {
-      // @ts-ignore
-      state.child = undefined;
-    }
-
-    expect(state.child).toBeInstanceOf(Child);
-    expect(setUndefined).toThrowError(expected);
-  })
-
-  it('will complain if undefined in read-only mode', () => {
-    class Parent extends Model {
-      // @ts-ignore
-      child = use(() => {}, true);
-    }
-
-    const expected = Oops.MustBeDefined("Parent", "child");
-  
-    expect(() => Parent.create()).toThrowError(expected);
   })
 
   it('will throw if bad argument type', () => {

@@ -15,57 +15,22 @@ export function use <T extends Model> (): T | undefined;
 /**
  * Create a new child instance of model.
  */
-export function use <T extends Class> (Type: T): InstanceOf<T>;
-
-/**
- * Create a new child-instance of specified controller, in readonly mode.
- * Will prevent assignment of new value.
- * 
- * **Note:** This is only enforced at runtime. Use
- * [`readonly`](https://www.typescriptlang.org/docs/handbook/2/classes.html#readonly), if writing in typescript.
- */
-export function use <T extends Class> (Type: T, readonly: true): InstanceOf<T>;
-export function use <T extends Model> (from: () => T, readonly: true): T;
-
-/**
- * Create a new child-instance of specified controller, in optional mode.
- * Will allow assignment of undefined, and likewise should be checked before usage.
- */
-export function use <T extends Class> (Type: T, required: false): InstanceOf<T> | undefined;
-export function use <T extends Model> (from: () => T | undefined, required: false): T | undefined;
-
-/**
- * Create a new child-instance of specified controller.
- * 
- * By default, property is non-nullable. If callback returns `true` the first time, will be in readonly mode.
- * If callback returns false, property may also be set to undefined, as needed.
- */
-export function use <T extends Class> (Type: T, callback: (i: InstanceOf<T>) => true): InstanceOf<T>;
-export function use <T extends Class> (Type: T, callback: (i: InstanceOf<T>) => false): InstanceOf<T> | undefined;
-export function use <T extends Class> (Type: T, callback: (i: InstanceOf<T>) => void): InstanceOf<T>;
+export function use <T extends Class> (Type: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T>;
 
 /**
  * Create a new child-instance from factory function.
  */
-export function use <T extends Model> (from: () => T): T;
-export function use <T extends Model> (from: () => T, callback: (i: T) => true): T;
-export function use <T extends Model> (from: () => T | undefined, callback: (i: T) => false): T | undefined;
-export function use <T extends Model> (from: () => T, callback: (i: T) => void): T;
+export function use <T extends Model> (from: () => T, callback?: (i: T) => void): T;
 
 /**
- * Createa child-instance relationship with provided model.
+ * Create child-instance relationship with provided model.
  *
  * Note: If `peer` is not already initialized before parent is
  * (created with `new` as opposed to create method), that model will
  * attach this via `parent()` instruction. It will not, if
  * already active.
  */
-export function use <T extends Model> (peer: T): T;
-export function use <T extends Model> (peer: T, readonly: true): T;
-export function use <T extends Model> (peer: T, required: false): T | undefined;
-export function use <T extends Model> (peer: T, callback: (i: T) => true): T;
-export function use <T extends Model> (peer: T, callback: (i: T) => false): T | undefined;
-export function use <T extends Model> (peer: T, callback: (i: T) => void): T;
+export function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
 
 /**
  * Generate a child controller from specified object. Object's values are be trackable, as would be for a full-model.

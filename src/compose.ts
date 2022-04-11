@@ -38,24 +38,16 @@ function bootstrap<T extends {}>(object: T){
 
 export function use<T extends typeof Model>(
   input?: T | (() => InstanceOf<T>),
-  argument?: ((i: Model | undefined) => boolean) | boolean){
+  argument?: (i: Model | undefined) => boolean){
 
   return child(
     function use(key){
       const { subject } = this;
 
-      // `true` => readonly
-      // `false` => writable, may be undefined
-      // `undefined` => writable (default)
-      let mode = argument;
       let current: Model | undefined;
   
       const onUpdate = (
-        next: Model | {} | undefined,
-        initial?: boolean | {}) => {
-
-        if(mode === true && !initial)
-          throw Oops.IsReadOnly(subject, key);
+        next: Model | {} | undefined) => {
 
         if(next){
           current = next instanceof Model
@@ -64,8 +56,6 @@ export function use<T extends typeof Model>(
           Parent.set(current, subject);
           getController(current);
         }
-        else if(mode === undefined)
-          throw Oops.UndefinedNotAllowed(key);
         else
           current = undefined;
   
@@ -89,12 +79,8 @@ export function use<T extends typeof Model>(
           throw Oops.BadArgument(typeof input);
   
         if(current = next)
-          mode = onUpdate(current, true) || mode;
-        else if(mode == true)
-          throw Oops.MustBeDefined(subject, key);
+          onUpdate(current);
       }
-      else
-        mode = false;
   
       this.manage(key, current, onUpdate);
   
