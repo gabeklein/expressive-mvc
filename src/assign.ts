@@ -33,24 +33,24 @@ function set(
 
   return apply(
     function set(key){
-      let onSet;
-      let onGet: () => void;
+      let set;
+      let get: () => void;
 
       const required =
         argument === true || argument === undefined;
 
       if(factory === undefined)
-        onGet = () => pendingValue(this, key);
+        get = () => pendingValue(this, key);
 
       else if(typeof factory !== "function")
         throw Oops.BadFactory();
 
       else {
-        onGet = pendingFactory(this, key, factory);
+        get = pendingFactory(this, key, factory);
 
         if(required)
           try {
-            onGet();
+            get();
           }
           catch(err){
             if(err instanceof Promise)
@@ -63,17 +63,14 @@ function set(
       }
 
       if(typeof argument == "function")
-        onSet = createValueEffect(argument);
-      else if(required)
-        onSet = (value: any) => {
-          if(value === undefined)
+        set = createValueEffect(argument);
+      else
+        set = (value: any) => {
+          if(value === undefined && required)
             throw Oops.NonOptional(this.subject, key);
         }
   
-      return {
-        set: this.setter(key, onSet),
-        get: onGet
-      }
+      return { set, get }
     }
   )
 }

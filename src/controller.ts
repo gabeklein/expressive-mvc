@@ -23,11 +23,15 @@ export function apply<T = any>(
   function setup(this: Controller, key: string){
     const { subject, state } = this;
     let output = fn.call(this, key, this);
+    let desc: PropertyDescriptor | undefined;
+
+    if(!output)
+      return;
 
     if(typeof output == "function"){
       const getter = output;
 
-      output = {
+      desc = {
         set: this.setter(key),
         ...getOwnPropertyDescriptor(subject, key),
         get(this: Stateful){
@@ -35,9 +39,21 @@ export function apply<T = any>(
         }
       }
     }
+    else {
+      const { get, set } = output;
 
-    if(output)
-      defineProperty(subject, key, output);
+      desc = { ...output } as any;
+
+      if(get)
+        desc!.get = function(this: Stateful){
+          return get(state[key], this[LOCAL]);
+        }
+
+      if(set)
+        desc!.set = this.setter(key, set);
+    }
+
+    defineProperty(subject, key, desc as any);
   }
 
   Pending.set(placeholder, setup);
@@ -47,10 +63,20 @@ export function apply<T = any>(
 
 export type HandleValue = (this: Stateful, value: any) => boolean | void;
 
+export type Setter<T> = (value: T) => boolean | void;
 export type Getter<T> = (state: T, sub?: Subscriber) => T
 
+interface InstructionDescriptor<T> {
+    configurable?: boolean;
+    enumerable?: boolean;
+    value?: T;
+    writable?: boolean;
+    get?(state: T | undefined, within?: Subscriber): T;
+    set?(v: T): boolean | void;
+}
+
 export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-  void | Getter<T> | PropertyDescriptor;
+  void | Getter<T> | InstructionDescriptor<T>;
 
 export namespace Controller {
   export type Listen = (key: string, source: Controller) => RequestCallback | void;

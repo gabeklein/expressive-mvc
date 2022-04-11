@@ -3,15 +3,6 @@ import { Key } from 'react';
 import Lifecycle from './lifecycle';
 import { BunchOf, Callback, Class, InstanceOf, Query, RequestCallback, UpdateCallback } from './types';
 
-interface PropertyDescriptor<T> {
-    configurable?: boolean;
-    enumerable?: boolean;
-    value?: T;
-    writable?: boolean;
-    get?(): T;
-    set?(v: T): void;
-}
-
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
 
 type Thenable<T> = {
@@ -25,6 +16,15 @@ export namespace Model {
         current: T | null;
     }
 
+    interface InstructionDescriptor<T> {
+        configurable?: boolean;
+        enumerable?: boolean;
+        value?: T;
+        writable?: boolean;
+        get?(state: T | undefined, within?: Subscriber): T;
+        set?(value: T): boolean | void;
+    }
+
     type GetFunction<T> = (state: T | undefined, within?: Subscriber) => T;
 
     /**
@@ -32,7 +32,7 @@ export namespace Model {
      * Optional returned callback will run when once upon first access.
     */
     type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-        void | GetFunction<T> | PropertyDescriptor<T>;
+        void | GetFunction<T> | InstructionDescriptor<T>;
 
     /** Shallow replacement given all entries of Model */
     type Overlay<T, R> = { [K in keyof Entries<T>]: R };
