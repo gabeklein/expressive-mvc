@@ -44,7 +44,12 @@ export function use <T extends {}> (object: T): T;
  *
  * @param from - Instruction body is run upon parent create. Return function to fetch current value of field.
  */
-export function child <T extends Model> (from: (this: Model.Controller, key: string) => () => T | undefined): T;
+export function child <T extends Model> (
+  from: (this: Model.Controller, key: string) => {
+    get: () => T | undefined,
+    set?: (value: T | undefined) => void
+  }  
+): T;
  
 /**
  * Fetches and assigns the controller which spawned this host.

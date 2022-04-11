@@ -25,7 +25,9 @@ export function tap<T extends Peer>(
 
   return child(
     function tap(key){
-      return pendingAccess(this.subject, type, key, argument);
+      return {
+        get: pendingAccess(this.subject, type, key, argument)
+      }
     }
   )
 };

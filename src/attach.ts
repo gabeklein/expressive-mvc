@@ -3,7 +3,10 @@ import { Model } from './model';
 import { Subscriber } from './subscriber';
 
 type ChildInstruction<T extends Model> =
-  (this: Controller, key: string) => () => T | undefined;
+  (this: Controller, key: string) => {
+    get: () => T | undefined,
+    set?: (value: T | undefined) => void
+  };
 
 //TODO: sync instruction
 
@@ -14,7 +17,7 @@ export function child<T extends Model>(
   return apply(
     function child(this: Controller, key: string){
       const context = new WeakMap<Subscriber, any>();
-      const getValue = source.call(this, key);
+      const peer = source.call(this, key);
   
       function subscribe(sub: Subscriber){
         let child: Subscriber | undefined;
@@ -27,7 +30,7 @@ export function child<T extends Model>(
             child = undefined;
           }
     
-          const instance = getValue();
+          const instance = peer.get();
     
           if(instance){
             child = new Subscriber(instance, sub.onUpdate);
@@ -44,14 +47,18 @@ export function child<T extends Model>(
         sub.watch[key] = init;
       }
     
-      return (_value, local: Subscriber | undefined) => {
-        if(!local)
-          return getValue();
-    
-        if(!context.has(local))
-          subscribe(local);
-    
-        return context.get(local);
+      return {
+        value: peer.get(),
+        set: peer.set,
+        get(_value, local){
+          if(!local)
+            return peer.get();
+      
+          if(!context.has(local))
+            subscribe(local);
+      
+          return context.get(local);
+        }
       }
     },
     name || source.name

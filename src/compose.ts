@@ -64,7 +64,7 @@ export function use<T extends typeof Model>(
       }
   
       if(input){
-        const next =
+        const initial =
           Model.isTypeof(input)
             ? new input() :
           input instanceof Model
@@ -75,16 +75,17 @@ export function use<T extends typeof Model>(
             ? bootstrap(input)
             : null;
 
-        if(next === null)
+        if(initial)
+          onUpdate(initial);
+
+        else if(initial === null)
           throw Oops.BadArgument(typeof input);
-  
-        if(current = next)
-          onUpdate(current);
       }
   
-      this.manage(key, current, onUpdate);
-  
-      return () => current;
+      return {
+        get: () => current,
+        set: onUpdate
+      }
     }
   )
 }

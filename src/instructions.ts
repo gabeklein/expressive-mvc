@@ -33,8 +33,10 @@ function createRef(
   return refObjectFunction;
 }
 
-export function ref<T>(arg?: AssignCallback<T> | Model): { current: T } {
-  return apply(
+export function ref<T>(
+  arg?: AssignCallback<T> | Model){
+
+  return apply<{ current: T }>(
     function ref(key){
       let value = {};
 
