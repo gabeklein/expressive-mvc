@@ -409,6 +409,8 @@ describe("external", () => {
   })
 
   it('will throw if source is another instruction', () => {
+    Peer.create();
+
     class Test extends Model {
       peer = tap(Peer);
       value = from(this.peer, () => {});
