@@ -1,7 +1,7 @@
 import { Key } from 'react';
 
 import Lifecycle from './lifecycle';
-import { BunchOf, Callback, Class, InstanceOf, Query, RequestCallback, UpdateCallback } from './types';
+import { BunchOf, Callback, Class, InstanceOf, RequestCallback, UpdateCallback } from './types';
 
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
 
