@@ -34,7 +34,10 @@ class Controller {
     for(const key in this.subject)
       this.manage(key);
 
-    this.emit();
+    const handle = new Set(this.waiting);
+    this.waiting.clear();
+    handle.forEach(cb => cb([]));
+
     this.ready = true;
 
     return this;
@@ -105,7 +108,25 @@ class Controller {
       return;
 
     if(!this.frame.size)
-      setTimeout(() => this.emit(), 0);
+      setTimeout(() => {
+        Computed.flush(this);
+
+        const keys = Object.freeze([ ...this.frame ]);
+        const handle = new Set(this.waiting);
+
+        this.waiting.clear();
+        this.frame.clear();
+
+        defineProperty(this.subject, UPDATE, {
+          configurable: true,
+          value: keys
+        })
+
+        handle.forEach(callback => {
+          try { callback(keys) }
+          catch(e){ }
+        })
+      }, 0);
 
     this.frame.add(key);
 
@@ -132,26 +153,6 @@ class Controller {
           throw Oops.NoChaining();
       }
     }
-  }
-
-  private emit(){
-    Computed.flush(this);
-
-    const keys = Object.freeze([ ...this.frame ]);
-    const handle = new Set(this.waiting);
-
-    this.waiting.clear();
-    this.frame.clear();
-
-    defineProperty(this.subject, UPDATE, {
-      configurable: true,
-      value: keys
-    })
-
-    handle.forEach(callback => {
-      try { callback(keys) }
-      catch(e){ }
-    })
   }
 }
 
