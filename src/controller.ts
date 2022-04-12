@@ -10,7 +10,7 @@ export const Oops = issues({
 
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
-})
+});
 
 declare namespace Controller {
   type Listen = (key: string, source: Controller) => RequestCallback | void;
@@ -26,10 +26,6 @@ class Controller {
   protected followers = new Set<Controller.Listen>();
 
   constructor(public subject: Stateful){}
-
-  public get pending(){
-    return this.frame.size > 0;
-  }
 
   public start(){
     if(this.ready)
@@ -122,13 +118,13 @@ class Controller {
   }
 
   public requestUpdate(strict?: boolean): any {
-    if(strict !== undefined && !this.pending === strict)
+    if(strict !== undefined && strict !== this.frame.size > 0)
       return Promise.reject(Oops.StrictUpdate(strict));
 
     return <PromiseLike<readonly string[] | false>> {
       then: (callback) => {
         if(callback)
-          if(this.pending)
+          if(this.frame.size)
             this.waiting.add(callback);
           else
             callback(false);

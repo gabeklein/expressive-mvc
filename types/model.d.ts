@@ -82,7 +82,6 @@ export namespace Model {
         subject: {};
         waiting: Set<Controller.RequestCallback>;
         frame: Set<string>;
-        pending: boolean;
 
         start(): this;
 
