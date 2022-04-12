@@ -1,5 +1,6 @@
 import * as Computed from './compute';
-import { apply, Controller } from './controller';
+import { Controller } from './controller';
+import { apply } from './instruction';
 import { issues } from './issues';
 import { getController, Model, Stateful } from './model';
 import { pendingAccess } from './peer';

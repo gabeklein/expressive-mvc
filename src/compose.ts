@@ -1,5 +1,5 @@
 import { child } from './attach';
-import { apply } from './controller';
+import { apply } from './instruction';
 import { issues } from './issues';
 import { getController, Model } from './model';
 import { defineProperty, getOwnPropertyDescriptors } from './util';

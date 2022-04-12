@@ -1,8 +1,8 @@
 export { child } from './attach';
 export { parent, use } from './compose';
 export { lazy, memo, on, set } from './assign';
+export { apply } from './instruction';
 export { act, from, ref } from './instructions';
-export { apply } from './controller';
 export { tap } from './peer';
 export { pending } from './suspense';
 

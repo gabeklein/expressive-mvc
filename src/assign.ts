@@ -1,4 +1,5 @@
-import { apply, Controller } from './controller';
+import { Controller } from './controller';
+import { apply } from './instruction';
 import { issues } from './issues';
 import { pendingFactory, pendingValue } from './suspense';
 import { createValueEffect, defineProperty } from './util';

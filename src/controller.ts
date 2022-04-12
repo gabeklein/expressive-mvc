@@ -1,7 +1,7 @@
 import * as Computed from './compute';
+import { Pending } from './instruction';
 import { issues } from './issues';
-import { LOCAL, Stateful, UPDATE } from './model';
-import { Subscriber } from './subscriber';
+import { Stateful, UPDATE } from './model';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
@@ -11,86 +11,6 @@ export const Oops = issues({
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
 })
-
-export const Pending = new Map<symbol, Instruction<any>>();
-
-export function apply<T = any>(
-  fn: Instruction<any>, label?: string){
-
-  const name = label || fn.name || "pending";
-  const placeholder = Symbol(`${name} instruction`);
-
-  function setup(this: Controller, key: string){
-    const { subject, state } = this;
-    let output = fn.call(this, key, this);
-    let desc: PropertyDescriptor | undefined;
-
-    if(!output)
-      return;
-
-    if(typeof output == "function"){
-      const getter = output;
-
-      desc = {
-        set: this.setter(key),
-        ...getOwnPropertyDescriptor(subject, key),
-        get(this: Stateful){
-          return getter(state[key], this[LOCAL])
-        }
-      }
-    }
-    else {
-      const { get, set, value } = output;
-
-      desc = {};
-
-      if(output.enumerable)
-        desc.enumerable = true;
-
-      if(output.configurable)
-        desc.configurable = true;
-
-      if("value" in output){
-        state[key] = value;
-        
-        if(!get && !set){
-          defineProperty(subject, key, { value });
-          return;
-        }
-      }
-
-      desc!.get = get
-        ? function(this: Stateful){
-          return get(state[key], this[LOCAL]);
-        }
-        : () => state[key];
-
-      desc!.set = this.setter(key, set);
-    }
-
-    defineProperty(subject, key, desc as any);
-  }
-
-  Pending.set(placeholder, setup);
-
-  return placeholder as unknown as T;
-}
-
-declare namespace Instruction {
-    type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
-
-    interface Descriptor<T> {
-        configurable?: boolean;
-        enumerable?: boolean;
-        value?: T;
-        writable?: boolean;
-        get?: Getter<T>;
-        set?(value: T, state: any): boolean | void;
-    }
-}
-
-type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-        void | Instruction.Getter<T> | Instruction.Descriptor<T>;
 
 declare namespace Controller {
   type Listen = (key: string, source: Controller) => RequestCallback | void;
@@ -243,4 +163,4 @@ class Controller {
   }
 }
 
-export { Controller, Instruction }
+export { Controller }
