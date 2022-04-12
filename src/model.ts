@@ -57,7 +57,7 @@ export class Model {
     defer(control, "on");
     defer(control, "effect");
 
-    control.waiting.add(() => {
+    control.requestUpdate(() => {
       delete (this as any).on;
       delete (this as any).effect;
     })
@@ -207,12 +207,12 @@ defineLazy(Model, CONTROL, function(){
 })
 
 function defer(on: Controller, method: string){
-  const { subject, waiting } = on as any;
+  const { subject } = on as any;
   const real = subject[method];
 
   subject[method] = (...args: any[]) => {
     let done: any;
-    waiting.add(() => {
+    on.requestUpdate(() => {
       done = real.apply(subject, args);
     });
     return () => done();

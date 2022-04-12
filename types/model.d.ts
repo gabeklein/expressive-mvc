@@ -97,6 +97,7 @@ export namespace Model {
         requestUpdate(strict: true): Promise<readonly string[]>;
         requestUpdate(strict: false): Promise<false>;
         requestUpdate(strict: boolean): Promise<readonly string[] | false>;
+        requestUpdate(callback: Controller.RequestCallback): void;
     }
 
     export class Subscriber {

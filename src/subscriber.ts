@@ -79,10 +79,10 @@ export class Subscriber {
         const notify = this.onUpdate(key, source);
     
         if(notify)
-          source.waiting.add(notify);
+          source.requestUpdate(notify);
         
         if(this.notify)
-          source.waiting.add(this.notify);
+          source.requestUpdate(this.notify);
       });
 
     this.active = true;

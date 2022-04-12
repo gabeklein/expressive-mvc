@@ -138,9 +138,14 @@ class Controller {
     }
   }
 
-  public requestUpdate(strict?: boolean): any {
-    if(strict !== undefined && strict !== this.frame.size > 0)
-      return Promise.reject(Oops.StrictUpdate(strict));
+  public requestUpdate(arg?: boolean | RequestCallback): any {
+    if(typeof arg == "function"){
+      this.waiting.add(arg);
+      return;
+    }
+
+    if(typeof arg == "boolean" && arg !== this.frame.size > 0)
+      return Promise.reject(Oops.StrictUpdate(arg));
 
     return <PromiseLike<readonly string[] | false>> {
       then: (callback) => {
