@@ -1,7 +1,7 @@
-import { Controller } from "./controller";
-import { LOCAL, Stateful } from "./model";
-import { Subscriber } from "./subscriber";
-import { defineProperty, getOwnPropertyDescriptor } from "./util";
+import { Controller } from './controller';
+import { LOCAL, Stateful } from './model';
+import { Subscriber } from './subscriber';
+import { defineProperty } from './util';
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
@@ -30,26 +30,20 @@ export function apply<T = any>(
   function setup(this: Controller, key: string){
     const { subject, state } = this;
     let output = fn.call(this, key, this);
-    let desc: PropertyDescriptor | undefined;
+    let desc = {} as PropertyDescriptor;
+
+    let getter: ((state: any, within?: Subscriber | undefined) => any) | undefined;
+    let setter: ((value: any, state: any) => boolean | void) | undefined
 
     if(!output)
       return;
 
-    if(typeof output == "function"){
-      const getter = output;
+    if(typeof output == "function")
+      getter = output;
 
-      desc = {
-        set: this.setter(key),
-        ...getOwnPropertyDescriptor(subject, key),
-        get(this: Stateful){
-          return getter(state[key], this[LOCAL])
-        }
-      }
-    }
     else {
-      const { get, set, value } = output;
-
-      desc = {};
+      getter = output.get;
+      setter = output.set;
 
       if(output.enumerable)
         desc.enumerable = true;
@@ -58,24 +52,27 @@ export function apply<T = any>(
         desc.configurable = true;
 
       if("value" in output){
-        state[key] = value;
+        state[key] = output.value;
         
-        if(!get && !set){
-          defineProperty(subject, key, { value });
+        if(!getter && !setter){
+          defineProperty(subject, key, {
+            value: output.value
+          });
           return;
         }
       }
-
-      desc!.get = get
-        ? function(this: Stateful){
-          return get(state[key], this[LOCAL]);
-        }
-        : () => state[key];
-
-      desc!.set = this.setter(key, set);
     }
 
-    defineProperty(subject, key, desc as any);
+    const set = this.setter(key, setter);
+    const get = getter
+    ? function(this: Stateful){
+      return getter!(state[key], this[LOCAL]);
+    }
+    : () => state[key];
+
+    defineProperty(subject, key, {
+      ...desc, get, set
+    });
   }
 
   Pending.set(placeholder, setup);
