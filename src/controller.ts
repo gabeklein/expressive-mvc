@@ -35,24 +35,8 @@ class Controller {
     if(this.ready)
       return;
 
-    const { subject } = this;
-    
-    for(const key in subject){
-      const desc = getOwnPropertyDescriptor(subject, key);
-
-      if(desc && "value" in desc){
-        const { value } = desc;
-        const instruction = Pending.get(value);
-
-        if(instruction){
-          Pending.delete(value);
-          delete (subject as any)[key];
-          instruction.call(this, key, this);
-        }
-        else if(typeof value !== "function" || /^[A-Z]/.test(key))
-          this.manage(key, value);
-      }
-    }
+    for(const key in this.subject)
+      this.manage(key);
 
     this.emit();
     this.ready = true;
@@ -62,18 +46,30 @@ class Controller {
 
   public manage(
     key: string,
-    initial: any,
     handler?: Controller.OnValue){
 
     const { state, subject } = this;
+    const desc = getOwnPropertyDescriptor(subject, key);
 
-    state[key] = initial;
-    defineProperty(subject, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => state[key],
-      set: this.setter(key, handler)
-    });
+    if(desc && "value" in desc){
+      const { value } = desc;
+      const instruction = Pending.get(value);
+
+      if(instruction){
+        Pending.delete(value);
+        delete (subject as any)[key];
+        instruction.call(this, key, this);
+      }
+      else if(typeof value !== "function" || /^[A-Z]/.test(key)){
+        state[key] = value;
+        defineProperty(subject, key, {
+          enumerable: true,
+          configurable: true,
+          get: () => state[key],
+          set: this.setter(key, handler)
+        });
+      }
+    }
   }
 
   public setter(
