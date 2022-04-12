@@ -25,6 +25,23 @@ export interface Model extends Stateful {
   willDestroy?: Callback;
 }
 
+export function ensure(
+  subject: Stateful,
+  callback: (control: Controller) => Callback){
+
+  const control = subject[CONTROL];
+
+  if(!control.ready){
+    let done: any;
+    control.requestUpdate(() => {
+      done = callback(control);
+    });
+    return () => done();
+  }
+
+  return callback(control);
+}
+
 export function getController(subject: Stateful){
   const control = subject[CONTROL];
 
@@ -53,14 +70,6 @@ export class Model {
 
     define(this, "get", this);
     define(this, "set", this);
-
-    defer(control, "on");
-    defer(control, "effect");
-
-    control.requestUpdate(() => {
-      delete (this as any).on;
-      delete (this as any).effect;
-    })
   }
 
   on(
@@ -69,31 +78,31 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    const control = getController(this);
+    return ensure(this, control => {
+      if(typeof select == "string")
+        select = [select];
+      else if(!select.length)
+        select = getOwnPropertyNames(control.state)
 
-    if(typeof select == "string")
-      select = [select];
-    else if(!select.length)
-      select = getOwnPropertyNames(control.state)
+      const callback: RequestCallback = squash
+        ? handler.bind(this)
+        : frame => frame
+          .filter(k => select.includes(k))
+          .forEach(k => handler.call(this, control.state[k], k))
 
-    const callback: RequestCallback = squash
-      ? handler.bind(this)
-      : frame => frame
-        .filter(k => select.includes(k))
-        .forEach(k => handler.call(this, control.state[k], k))
+      const trigger: RequestCallback = once
+        ? frame => { remove(); callback(frame) }
+        : callback;
 
-    const trigger: RequestCallback = once
-      ? frame => { remove(); callback(frame) }
-      : callback;
+      Computed.ensure(control, select);
 
-    Computed.ensure(control, select);
+      const remove = control.addListener(key => {
+        if(select.includes(key))
+          return trigger;
+      });
 
-    const remove = control.addListener(key => {
-      if(select.includes(key))
-        return trigger;
+      return remove;
     });
-
-    return remove;
   }
 
   once(
@@ -123,10 +132,12 @@ export class Model {
       return this.on(select, invoke, true);
     }
     
-    const sub = new Subscriber(this, () => invoke);
-    target = sub.proxy;
-    invoke();
-    return sub.commit();
+    return ensure(this, control => {
+      const sub = new Subscriber(control, () => invoke);
+      target = sub.proxy;
+      invoke();
+      return sub.commit();
+    })
   }
 
   import(
@@ -205,16 +216,3 @@ export class Model {
 defineLazy(Model, CONTROL, function(){
   return new Controller(this);
 })
-
-function defer(on: Controller, method: string){
-  const { subject } = on as any;
-  const real = subject[method];
-
-  subject[method] = (...args: any[]) => {
-    let done: any;
-    on.requestUpdate(() => {
-      done = real.apply(subject, args);
-    });
-    return () => done();
-  }
-}
