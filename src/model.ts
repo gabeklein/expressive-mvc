@@ -79,25 +79,25 @@ export class Model {
     once?: boolean){
 
     return ensure(this, control => {
-      if(typeof select == "string")
-        select = [select];
-      else if(!select.length)
-        select = getOwnPropertyNames(control.state)
+      const keys = 
+        typeof select == "string" ? [select] :
+        !select.length ? getOwnPropertyNames(control.state) :
+        select;
+
+      Computed.ensure(control, keys);
 
       const callback: RequestCallback = squash
         ? handler.bind(this)
         : frame => frame
-          .filter(k => select.includes(k))
+          .filter(k => keys.includes(k))
           .forEach(k => handler.call(this, control.state[k], k))
 
       const trigger: RequestCallback = once
         ? frame => { remove(); callback(frame) }
         : callback;
 
-      Computed.ensure(control, select);
-
       const remove = control.addListener(key => {
-        if(select.includes(key))
+        if(keys.includes(key))
           return trigger;
       });
 
