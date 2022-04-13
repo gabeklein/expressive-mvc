@@ -86,7 +86,7 @@ export namespace Model {
 
         start(): this;
 
-        manage(key: string, initial: any, effect?: Controller.OnValue): void;
+        manage(key: string, effect?: Controller.OnValue): void;
 
         setter(key: string, effect?: Controller.OnValue): (value: any) => boolean | void;
 
