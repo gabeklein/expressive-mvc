@@ -63,7 +63,6 @@ class Controller {
         state[key] = value;
         defineProperty(subject, key, {
           enumerable: true,
-          configurable: true,
           get: () => state[key],
           set: this.setter(key, handler)
         });
