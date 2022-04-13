@@ -6,6 +6,7 @@ import { BunchOf, Class, InstanceOf } from './types';
 type Callback = () => void;
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
 type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
+type Including<T> = T | (string & Record<never, never>);
 
 type Thenable<T> = {
     then(onFulfilled: (arg: T) => void): void;
@@ -62,7 +63,7 @@ export namespace Model {
     /** Subset of `keyof T` excluding keys defined by base Model, except lifecycle. */
     type Events<T> = Omit<T, Exclude<keyof Model, keyof Lifecycle>>;
 
-    type EventsCompat<T> = keyof T | keyof Lifecycle;
+    type EventsCompat<T> = Including<keyof T | keyof Lifecycle>;
 
     type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
         [Key in X]: T[Key] extends ST ? Key : never;
@@ -211,9 +212,9 @@ export abstract class Model {
     update(strict: false): Promise<false>;
     update(strict: boolean): Promise<readonly string[] | false>;
 
-    update(keys: Model.Fields<this>): Thenable<readonly string[]>;
-    update(keys: Model.Fields<this>, callMethod: boolean): PromiseLike<readonly string[]>;
-    update<T>(keys: Model.Fields<this>, argument: T): PromiseLike<readonly string[]>;
+    update(keys: Including<Model.Fields<this>>): Thenable<readonly string[]>;
+    update(keys: Including<Model.Fields<this>>, callMethod: boolean): PromiseLike<readonly string[]>;
+    update<T>(keys: Including<Model.Fields<this>>, argument: T): PromiseLike<readonly string[]>;
 
     /*
     Issue with self-reference, using fallback.

@@ -18,6 +18,13 @@ it("will send synthetic event", async () => {
   expect(update).toContain("foo");
 })
 
+it("will send arbitrary event", async () => {
+  const test = Test.create();
+  test.update("foobar");
+  
+  const update = await test.update(true);
+  expect(update).toContain("foobar");
+})
 it("will resolve after event is handled", async () => {
   const test = Test.create();
   const update = await test.update("foo");
