@@ -64,27 +64,6 @@ describe("method", () => {
     expect(mock).toBeCalledTimes(2)
   })
 
-  it('will watch for any value', async () => {
-    const state = TestValues.create();
-    const mock = jest.fn();
-
-    state.effect(mock, []);
-  
-    state.value1 = 2;
-
-    // wait for update event, thus queue flushed
-    await state.update()
-    
-    state.value2 = 3;
-    state.value3 = 4;
-
-    // wait for update event to flush queue
-    await state.update()
-    
-    // expect two syncronous groups of updates.
-    expect(mock).toBeCalledTimes(3)
-  })
-
   it("will call return-function on subsequent update", async () => {
     class Test extends Model {
       value1 = 1;

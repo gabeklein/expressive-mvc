@@ -127,16 +127,20 @@ export class Model {
     const effect = createEffect(callback);
     const invoke = () => effect.call(target, target);
 
-    if(select){
-      invoke();
-      return this.on(select, invoke, true);
-    }
-    
     return ensure(this, control => {
-      const sub = new Subscriber(control, () => invoke);
-      target = sub.proxy;
+      if(!select){
+        const sub = new Subscriber(control, () => invoke);
+        target = sub.proxy;
+        invoke();
+        return sub.commit();
+      }
+
       invoke();
-      return sub.commit();
+
+      return control.addListener(key => {
+        if(select.includes(key))
+          return invoke;
+      });
     })
   }
 
