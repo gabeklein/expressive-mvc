@@ -31,7 +31,7 @@ export function ensure(
 
   const control = subject[CONTROL];
 
-  if(!control.ready){
+  if(!control.state){
     let done: any;
     control.requestUpdate(() => {
       done = callback(control);
@@ -45,7 +45,8 @@ export function ensure(
 export function getController(subject: Stateful){
   const control = subject[CONTROL];
 
-  control.start();
+  if(!control.state)
+    control.start();
 
   if(subject.didCreate)
     subject.didCreate();

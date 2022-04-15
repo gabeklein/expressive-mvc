@@ -18,8 +18,7 @@ declare namespace Controller {
 }
 
 class Controller {
-  ready = false;
-  public state = {} as BunchOf<any>;
+  public state!: BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
 
@@ -28,8 +27,7 @@ class Controller {
   constructor(public subject: Stateful){}
 
   public start(){
-    if(this.ready)
-      return;
+    this.state = {};
 
     for(const key in this.subject)
       this.manage(key);
@@ -37,8 +35,6 @@ class Controller {
     const handle = new Set(this.waiting);
     this.waiting.clear();
     handle.forEach(cb => cb([]));
-
-    this.ready = true;
 
     return this;
   }
