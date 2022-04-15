@@ -68,11 +68,13 @@ describe("uses", () => {
       bar: "bar"
     }
 
-    const { result } = renderHook(() => {
-      return Test.uses(mockExternal).export();
+    const render = renderHook(() => {
+      return Test.uses(mockExternal);
     });
 
-    expect(result.current).toMatchObject(mockExternal);
+    const state = render.result.current.export();
+
+    expect(state).toMatchObject(mockExternal);
   })
 
   it("will apply select values", () => {
@@ -81,14 +83,54 @@ describe("uses", () => {
       bar: "bar"
     }
 
-    const { result } = renderHook(() => {
-      return Test.uses(mockExternal, ["foo"]).export();
+    const render = renderHook(() => {
+      return Test.uses(mockExternal, ["foo"]);
     });
 
-    expect(result.current).toMatchObject({
+    const state = render.result.current.export();
+
+    expect(state).toMatchObject({
       bar: undefined,
       foo: "foo"
     });
+  })
+
+  it("will override (untracked) arrow functions", () => {
+    class Test extends Model {
+      foobar = () => "Hello world!";
+    }
+
+    const mockExternal = {
+      foobar: () => "Goodbye cruel world!"
+    }
+
+    const render = renderHook(() => {
+      return Test.uses(mockExternal);
+    });
+
+    const { foobar } = render.result.current;
+
+    expect(foobar).toBe(mockExternal.foobar);
+  })
+
+  it("will not override prototype methods", () => {
+    class Test extends Model {
+      foobar(){
+        return "Hello world!";
+      };
+    }
+
+    const mockExternal = {
+      foobar: () => "Goodbye cruel world!"
+    }
+
+    const render = renderHook(() => {
+      return Test.uses(mockExternal);
+    });
+
+    const { foobar } = render.result.current;
+
+    expect(foobar).not.toBe(mockExternal.foobar);
   })
 })
 
