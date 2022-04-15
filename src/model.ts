@@ -138,6 +138,9 @@ export class Model {
 
       invoke();
 
+      if(!select.length)
+        select.push("willDestroy");
+
       return control.addListener(key => {
         if(select.includes(key))
           return invoke;

@@ -108,6 +108,33 @@ describe("method", () => {
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
   })
+
+  it('will callback on willDestroy by default', async () => {
+    const didCreate = jest.fn();
+    const willDestroy = jest.fn();
+
+    class Test extends Model {
+      constructor(){
+        super();
+
+        this.effect(() => {
+          didCreate();
+          return () => {
+            willDestroy();
+          };
+        }, []);
+      }
+    }
+
+    const test = Test.create();
+
+    expect(didCreate).toBeCalled();
+
+    test.destroy();
+    await test.update();
+
+    expect(willDestroy).toBeCalled();
+  })
 })
 
 describe("subscriber", () => {
