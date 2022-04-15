@@ -63,13 +63,13 @@ export class Model {
   static [UPDATE]: readonly string[];
 
   constructor(){
-    const control = new Controller(this);
-
-    define(this, CONTROL, control);
-    define(this, STATE, control.state);
-
+    define(this, CONTROL, new Controller(this));
     define(this, "get", this);
     define(this, "set", this);
+  }
+
+  get [STATE](){
+    return this[CONTROL].state;
   }
 
   on(
