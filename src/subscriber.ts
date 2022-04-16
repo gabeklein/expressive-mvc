@@ -26,7 +26,8 @@ export class Subscriber {
 
     this.parent = parent;
     this.source = parent.subject;
-    this.proxy = create(parent.subject);
+
+    const proxy = this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
     defineLazy(this.proxy, WHY, () => {
@@ -41,49 +42,46 @@ export class Subscriber {
       return update;
     });
 
-    for(const key in parent.state)
-      this.spy(key);
-  }
-
-  public spy(key: string){
-    const { proxy } = this;
-    const existing =
-      getOwnPropertyDescriptor(this.source, key)!;
-
-    const isUsing = () => {
-      this.watch[key] = true;
-      delete proxy[key];
-      return proxy[key];
+    for(const key in parent.state){
+      const existing =
+        getOwnPropertyDescriptor(this.source, key)!;
+  
+      const isUsing = () => {
+        this.watch[key] = true;
+        delete proxy[key];
+        return proxy[key];
+      }
+  
+      setAlias(isUsing, `tap ${key}`);
+      defineProperty(proxy, key, {
+        set: existing.set,
+        get: isUsing,
+        configurable: true,
+        enumerable: true
+      })
     }
-
-    setAlias(isUsing, `tap ${key}`);
-    defineProperty(proxy, key, {
-      set: existing.set,
-      get: isUsing,
-      configurable: true,
-      enumerable: true
-    })
   }
 
   public commit(){
-    const onDone =
-      this.parent.addListener((key, source) => {
-        const handler = this.watch[key];
-    
-        if(!handler)
-          return;
-    
-        if(typeof handler == "function")
-          handler();
-    
-        const notify = this.onUpdate(key, source);
-    
-        if(notify)
-          source.requestUpdate(notify);
-        
-        if(this.notify)
-          source.requestUpdate(this.notify);
-      });
+    const { parent } = this;
+
+    const onDone = parent.addListener(key => {
+      const handler = this.watch[key];
+  
+      if(!handler)
+        return;
+  
+      if(typeof handler == "function")
+        handler();
+  
+      const notify = this.onUpdate(key, parent);
+  
+      if(notify)
+        parent.requestUpdate(notify);
+      
+      if(this.notify)
+        parent.requestUpdate(this.notify);
+    });
 
     this.active = true;
     this.dependant.forEach(x => x.commit());
