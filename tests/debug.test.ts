@@ -103,7 +103,7 @@ describe("update property", () => {
       update = state[Model.WHY];
     })
 
-    expect(update).toMatchObject([]);
+    expect(update).toBeUndefined();
 
     test.value1 = 2;
     test.value2 = 3;
@@ -111,7 +111,7 @@ describe("update property", () => {
     fullUpdate = await test.update();
 
     // sanity check
-    expect(update).not.toMatchObject(fullUpdate);
+    expect(update).not.toStrictEqual(fullUpdate);
     expect(fullUpdate).toContain("value2");
 
     expect(update).toContain("value1");

@@ -1,6 +1,6 @@
 import { Controller } from './controller';
-import { getController, LOCAL, Stateful, WHY } from './model';
-import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { getController, LOCAL, Stateful, UPDATE } from './model';
+import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
   commit(): void;
@@ -14,8 +14,8 @@ export class Subscriber {
   public watch = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
   public parent: Controller;
-  public notify?: RequestCallback;
   public release!: Callback;
+  public commit: () => () => void;
 
   constructor(
     parent: Controller | Stateful,
@@ -29,18 +29,23 @@ export class Subscriber {
 
     const proxy = this.proxy = create(parent.subject);
 
+    const DEBUG: RequestCallback = (keys) => {
+      UPDATE.set(proxy, 
+        keys.filter(k => k in this.watch)  
+      );
+    }
+
     define(proxy, LOCAL, this);
-    defineLazy(this.proxy, WHY, () => {
-      const update: string[] = [];
-  
-      this.notify = keys => {
-        update.splice(0, update.length,
-          ...keys.filter(k => k in this.watch)  
-        )
+    defineProperty(this, "proxy", {
+      get: () => {
+        if(UPDATE.has(proxy))
+          setImmediate(() => {
+            UPDATE.delete(proxy);
+          })
+
+        return proxy;
       }
-  
-      return update;
-    });
+    })
 
     for(const key in parent.state){
       const existing =
@@ -60,35 +65,34 @@ export class Subscriber {
         enumerable: true
       })
     }
-  }
 
-  public commit(){
-    const { parent } = this;
+    this.commit = () => {
+      const { parent } = this;
 
-    const onDone = parent.addListener(key => {
-      const handler = this.watch[key];
+      const onDone = parent.addListener(key => {
+        const handler = this.watch[key];
   
-      if(!handler)
-        return;
+        if(!handler)
+          return;
   
-      if(typeof handler == "function")
-        handler();
+        if(typeof handler == "function")
+          handler();
   
-      const notify = this.onUpdate(key, parent);
+        const notify = this.onUpdate(key, parent);
   
-      if(notify)
-        parent.requestUpdate(notify);
-      
-      if(this.notify)
-        parent.requestUpdate(this.notify);
-    });
+        if(notify){
+          parent.requestUpdate(DEBUG);
+          parent.requestUpdate(notify);
+        }
+      });
 
-    this.active = true;
-    this.dependant.forEach(x => x.commit());
+      this.active = true;
+      this.dependant.forEach(x => x.commit());
 
-    return this.release = () => {
-      this.dependant.forEach(x => x.release());
-      onDone();
+      return this.release = () => {
+        this.dependant.forEach(x => x.release());
+        onDone();
+      }
     }
   }
 }

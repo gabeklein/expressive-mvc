@@ -17,6 +17,8 @@ export interface Stateful {
   didCreate?(): void;
 };
 
+export const UPDATE = new WeakMap<{}, readonly string[]>();
+
 export interface Model extends Stateful {
   get: this;
   set: this;
@@ -73,6 +75,10 @@ export class Model {
     return this[CONTROL].state;
   }
 
+  get [WHY](){
+    return UPDATE.get(this);
+  }
+
   on(
     select: string | string[],
     handler: Function,
@@ -123,17 +129,23 @@ export class Model {
     callback: EffectCallback<any>,
     select?: string[]){
 
-    let target = this;
-
     const effect = createEffect(callback);
-    const invoke = () => effect.call(target, target);
 
     return ensure(this, control => {
       if(!select){
         const sub = new Subscriber(control, () => invoke);
-        target = sub.proxy;
+        const invoke = () => {
+          const x = sub.proxy;
+          effect.call(x, x);
+        }
+
         invoke();
+
         return sub.commit();
+      }
+
+      const invoke = () => {
+        effect.call(this.get, this.get);
       }
 
       invoke();
