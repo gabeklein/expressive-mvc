@@ -13,17 +13,8 @@ export const Oops = issues({
   UnexpectedParent: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 
-  UndefinedNotAllowed: (key) =>
-    `Child property ${key} may not be undefined.`,
-
   BadArgument: (type) =>
     `Instruction \`use\` cannot accept argument type of ${type}.`,
-
-  IsReadOnly: (owner, key) =>
-    `${owner}.${key} is set to read-only, but tried to reassign assign.`,
-
-  MustBeDefined: (owner, key) =>
-    `${owner}.${key} must have initial value, as a read-only property.`
 })
 
 function bootstrap<T extends {}>(object: T){
