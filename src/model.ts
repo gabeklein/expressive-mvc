@@ -3,14 +3,14 @@ import { Controller } from './controller';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
-export const CONTROL = Symbol("control");
-export const UPDATE = Symbol("update");
-export const LOCAL = Symbol("local");
-export const STATE = Symbol("state");
+export const CONTROL = Symbol("CONTROL");
+export const WHY = Symbol("UPDATE");
+export const LOCAL = Symbol("LOCAL");
+export const STATE = Symbol("STATE");
 
 export interface Stateful {
   [CONTROL]: Controller;
-  [UPDATE]?: readonly string[];
+  [WHY]?: readonly string[];
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 
@@ -58,10 +58,10 @@ export class Model {
   static CONTROL = CONTROL;
   static STATE = STATE;
   static LOCAL = LOCAL;
-  static WHY = UPDATE;
+  static WHY = WHY;
 
   static [CONTROL]: Controller;
-  static [UPDATE]: readonly string[];
+  static [WHY]: readonly string[];
 
   constructor(){
     define(this, CONTROL, new Controller(this));

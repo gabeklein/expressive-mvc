@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { Pending } from './instruction';
 import { issues } from './issues';
-import { Stateful, UPDATE } from './model';
+import { Stateful, WHY } from './model';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
@@ -112,7 +112,7 @@ class Controller {
         this.waiting.clear();
         this.frame.clear();
 
-        defineProperty(this.subject, UPDATE, {
+        defineProperty(this.subject, WHY, {
           configurable: true,
           value: keys
         })

@@ -120,7 +120,7 @@ export namespace Model {
 }
 
 declare const CONTROL: unique symbol;
-declare const UPDATE: unique symbol;
+declare const WHY: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
@@ -141,7 +141,7 @@ export abstract class Model {
      * If accessed directly, will contain all keys from last push.
      * If within a subscribed function, will contain only keys which explicitly caused a refresh.
      **/
-    [UPDATE]?: readonly string[];
+    [WHY]?: readonly string[];
 
     /**
      * Circular reference to `this` controller.
@@ -322,7 +322,7 @@ export abstract class Model {
     static LOCAL: typeof LOCAL;
 
     /** Use symbol to access keys affected by last update. */
-    static WHY: typeof UPDATE;
+    static WHY: typeof WHY;
 
     /**
      * Creates a new instance of this controller.

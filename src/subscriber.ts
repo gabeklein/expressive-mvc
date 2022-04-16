@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { getController, LOCAL, Stateful, UPDATE } from './model';
+import { getController, LOCAL, Stateful, WHY } from './model';
 import { create, define, defineLazy, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
@@ -29,7 +29,7 @@ export class Subscriber {
     this.proxy = create(parent.subject);
 
     define(this.proxy, LOCAL, this);
-    defineLazy(this.proxy, UPDATE, () => {
+    defineLazy(this.proxy, WHY, () => {
       const update: string[] = [];
   
       this.notify = keys => {
