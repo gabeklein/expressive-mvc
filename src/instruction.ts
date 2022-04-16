@@ -29,49 +29,41 @@ export function apply<T = any>(
 
   function setup(this: Controller, key: string){
     const { subject, state } = this;
+
     let output = fn.call(this, key, this);
     let desc = {} as PropertyDescriptor;
-
-    let getter: ((state: any, within?: Subscriber | undefined) => any) | undefined;
-    let setter: ((value: any, state: any) => boolean | void) | undefined
+    let get: ((state: any, within?: Subscriber | undefined) => any) | undefined;
+    let set: ((value: any, state: any) => boolean | void) | undefined
 
     if(!output)
       return;
 
     if(typeof output == "function")
-      getter = output;
+      get = output;
 
     else {
-      getter = output.get;
-      setter = output.set;
+      ({ get, set, ...desc } = output);
 
-      if(output.enumerable)
-        desc.enumerable = true;
-
-      if(output.configurable)
-        desc.configurable = true;
-
-      if("value" in output){
-        state[key] = output.value;
+      if("value" in desc){
+        state[key] = desc.value;
         
-        if(!getter && !setter){
-          defineProperty(subject, key, {
-            value: output.value
-          });
+        if(get || set)
+          delete desc.value;
+        else {
+          defineProperty(subject, key, desc);
           return;
         }
       }
     }
 
-    const set = this.setter(key, setter);
-    const get = getter
-    ? function(this: Stateful){
-      return getter!(state[key], this[LOCAL]);
-    }
-    : () => state[key];
-
     defineProperty(subject, key, {
-      ...desc, get, set
+      ...desc,
+      set: this.setter(key, set),
+      get: get
+        ? function(this: Stateful){
+          return get!(state[key], this[LOCAL]);
+        }
+        : () => state[key]
     });
   }
 
