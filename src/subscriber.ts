@@ -39,9 +39,9 @@ export class Subscriber {
     defineProperty(this, "proxy", {
       get: () => {
         if(UPDATE.has(proxy))
-          setImmediate(() => {
+          setTimeout(() => {
             UPDATE.delete(proxy);
-          })
+          }, 0);
 
         return proxy;
       }

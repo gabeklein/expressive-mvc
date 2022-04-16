@@ -114,9 +114,9 @@ class Controller {
 
         UPDATE.set(this.subject, keys);
 
-        setImmediate(() => {
+        setTimeout(() => {
           UPDATE.delete(this.subject);
-        });
+        }, 0);
 
         handle.forEach(callback => {
           try { callback(keys) }
