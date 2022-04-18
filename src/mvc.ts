@@ -1,5 +1,5 @@
 import { useContext } from './context';
-import { useActive, useComputed, useModel, useNew, usePassive, useTag, useTap } from './hooks';
+import { useActive, useComputed, useModel, useWithLifecycle, usePassive, useTag, useTap } from './hooks';
 import { Key, KeyFactory } from './lifecycle';
 import { Model } from './model';
 
@@ -13,7 +13,7 @@ export class MVC extends Model {
   }
 
   use(callback?: (instance: Model) => void){
-    return useNew(this, callback);
+    return useWithLifecycle(this, callback);
   }
 
   static new(callback?: (instance: Model) => void){

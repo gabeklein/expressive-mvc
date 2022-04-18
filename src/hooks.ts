@@ -44,7 +44,7 @@ export function useTag<T extends Model>(
   return hook.proxy;
 }
 
-export function useNew<T extends Model>(
+export function useWithLifecycle<T extends Model>(
   model: T,
   callback?: (instance: T) => void){
     
