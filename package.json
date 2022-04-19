@@ -29,7 +29,7 @@
     "prebuild": "rm -rf lib/",
     "preversion": "npm run test && npm run build",
     "publish:beta": "npm version prerelease --preid=beta",
-    "postversion": "npm publish"
+    "postversion": "npm publish --tag next"
   },
   "peerDependencies": {
     "react": ">=17.0.2"
