@@ -113,21 +113,15 @@ describe("method", () => {
     const didCreate = jest.fn();
     const willDestroy = jest.fn();
 
-    class Test extends Model {
-      constructor(){
-        super();
-
-        this.effect(() => {
-          didCreate();
-          return () => {
-            willDestroy();
-          };
-        }, []);
-      }
-    }
+    class Test extends Model {}
 
     const test = Test.create();
 
+    test.effect(() => {
+      didCreate();
+      return willDestroy;
+    }, []);
+    
     expect(didCreate).toBeCalled();
 
     test.destroy();

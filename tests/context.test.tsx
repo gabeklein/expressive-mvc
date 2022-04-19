@@ -57,7 +57,9 @@ describe("Provider", () => {
 
     const result = render(
       <Provider of={Foo}>
-        <Consumer of={Foo} has={i => i.willDestroy = didUnmount} />
+        <Consumer of={Foo} has={i => {
+          i.effect(() => didUnmount, []);
+        }} />
       </Provider>
     );
 
@@ -158,56 +160,61 @@ describe("Provider", () => {
   })
 
   it("will destroy created model on unmount", () => {
-    const didDestroy = jest.fn();
+    const willDestroy = jest.fn();
 
-    class Test extends Model {
-      destroy = didDestroy
-    }
-
-    const rendered = render(
-      <Provider of={Test}>
-        <Consumer of={Test} get={i => expect(i).toBeInstanceOf(Test)} />
-      </Provider>
-    );
-
-    rendered.unmount();
-    expect(didDestroy).toBeCalled();
-  })
-
-  it("will destroy multiple created on unmount", () => {
-    const didDestroy = jest.fn();
-
-    class Test extends Model {
-      willDestroy = didDestroy;
-    }
+    class Test extends Model {}
 
     const rendered = render(
       <Provider of={{ Test }}>
-        <Consumer of={Test} get={i => expect(i).toBeInstanceOf(Test)} />
+        <Consumer of={Test} has={i => {
+          expect(i).toBeInstanceOf(Test)
+          i.effect(() => willDestroy, []);
+        }} />
       </Provider>
     );
 
     rendered.unmount();
-    expect(didDestroy).toBeCalled();
+    expect(willDestroy).toBeCalled();
+  })
+
+  it("will destroy multiple created on unmount", () => {
+    const willDestroy = jest.fn();
+
+    class Foo extends Model {}
+    class Bar extends Model {}
+
+    const rendered = render(
+      <Provider of={{ Foo, Bar }}>
+        <Consumer of={Foo} has={i => {
+          i.effect(() => willDestroy, []);
+        }} />
+        <Consumer of={Bar} has={i => {
+          i.effect(() => willDestroy, []);
+        }} />
+      </Provider>
+    );
+
+    rendered.unmount();
+    expect(willDestroy).toBeCalledTimes(2);
   })
 
   it("will not destroy given instance on unmount", () => {
-    const didDestroy = jest.fn();
+    const didUnmount = jest.fn();
 
-    class Test extends Model {
-      willDestroy = didDestroy;
-    }
+    class Test extends Model {}
 
     const instance = Test.create();
 
     const rendered = render(
       <Provider of={{ instance }}>
-        <Consumer of={Test} get={i => expect(i).toBe(instance)} />
+        <Consumer of={Test} has={i => {
+          i.effect(() => didUnmount, []);
+        }} />
       </Provider>
     );
 
     rendered.unmount();
-    expect(didDestroy).not.toBeCalled();
+    expect(didUnmount).not.toBeCalled();
   })
 
 

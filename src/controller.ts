@@ -21,6 +21,7 @@ class Controller {
   public state!: BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
+  public onDestroy = new Set<Callback>();
 
   protected followers = new Set<Controller.Listen>();
 

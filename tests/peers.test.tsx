@@ -125,7 +125,7 @@ describe("callback", () => {
     )
   })
 
-  it("will not run before didCreate", () => {
+  it.skip("will not run before didCreate", () => {
     class Bar extends Model {
       didCreate = jest.fn();
 

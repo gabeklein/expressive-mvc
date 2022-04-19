@@ -13,8 +13,6 @@ export interface Stateful {
   [WHY]?: readonly string[];
   [LOCAL]?: Subscriber;
   [STATE]?: any;
-
-  didCreate?(): void;
 };
 
 export const UPDATE = new WeakMap<{}, readonly string[]>();
@@ -22,9 +20,6 @@ export const UPDATE = new WeakMap<{}, readonly string[]>();
 export interface Model extends Stateful {
   get: this;
   set: this;
-
-  didCreate?: Callback;
-  willDestroy?: Callback;
 }
 
 export function ensure(
@@ -49,9 +44,6 @@ export function getController(subject: Stateful){
 
   if(!control.state)
     control.start();
-
-  if(subject.didCreate)
-    subject.didCreate();
 
   return control;
 }
@@ -150,8 +142,12 @@ export class Model {
 
       invoke();
 
-      if(!select.length)
-        select.push("willDestroy");
+      if(!select.length){
+        control.onDestroy.add(invoke);
+        return () => {
+          control.onDestroy.delete(invoke);
+        }
+      }
 
       return control.addListener(key => {
         if(select.includes(key))
@@ -205,7 +201,10 @@ export class Model {
   }
 
   destroy(){
-    this.update("willDestroy", true);
+    ensure(this, control => {
+      control.onDestroy.forEach(x => x());
+      return () => {};
+    })
   }
 
   toString(){

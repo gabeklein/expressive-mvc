@@ -230,18 +230,6 @@ export abstract class Model {
      */
     destroy(): void;
 
-    /**
-     * Callback for when a controller is fully activated and about to be in use.
-     * 
-     * Invoke after initial state has been locked, and instance is now aware of what values should be tracked.
-     */
-    didCreate?(): void;
-
-    /**
-     * Callback for when a controller is about to expire.
-     */
-    willDestroy?(): void;
-
     /** Attaches this controller to a component. */
     tap(): this;
 
