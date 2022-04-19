@@ -1,14 +1,9 @@
 import React from 'react';
 
-import { Key, KeyFactory, Lifecycle, lifecycle } from './lifecycle';
 import { Model, Stateful } from './model';
-import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
 import { suspend } from './suspense';
 import { defineProperty } from './util';
-
-const useElementLifecycle = lifecycle("element");
-const useComponentLifecycle = lifecycle("component");
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = React.useState((): T[] => [
@@ -26,38 +21,7 @@ export function useTap(
   if(typeof path == "function")
     return useComputed(model, path, expect);
 
-  const proxy = useActive(model, path, expect);
-  model.update("willRender", true);
-  return proxy;
-}
-
-export function useTag<T extends Model>(
-  model: T,
-  id?: Key | KeyFactory<T>){
-
-  const hook = use(refresh => (
-    new Subscriber(model, () => refresh)
-  ));
-
-  useElementLifecycle(hook, id || 0);
-  
-  return hook.proxy;
-}
-
-export function useWithLifecycle<T extends Model>(
-  model: T,
-  callback?: (instance: T) => void){
-    
-  const hook = use(refresh => {
-    if(callback)
-      callback(model);
-
-    return new Subscriber(model, () => refresh);
-  });
-
-  useComponentLifecycle(hook);
-  
-  return hook.proxy;
+  return useActive(model, path, expect);
 }
 
 export function usePassive<T extends typeof Model>(
@@ -73,7 +37,6 @@ export function usePassive<T extends typeof Model>(
   }, []);
 
   React.useLayoutEffect(() => () => instance.destroy(), []);
-  instance.update("willRender", true);
 
   return instance;
 }
@@ -167,21 +130,15 @@ export function useComputed(
 }
 
 export function useModel(
-  Type: Class,
+  source: Class | Model,
   callback?: (instance: Model) => void){
 
   const hook = use(refresh => {
-    const instance = new Type() as Model;
+    const instance =
+      typeof source == "function" ?
+        new source() as Model : source;
+
     const sub = new Subscriber(instance, () => refresh);
-    const release = sub.parent.addListener(
-      (key: string) => {
-        if(key == Lifecycle.WILL_UNMOUNT)
-          return () => {
-            instance.destroy();
-            release();
-          }
-      }
-    );
 
     if(callback)
       callback(instance);
@@ -189,8 +146,16 @@ export function useModel(
     return sub;
   });
 
-  useComponentLifecycle(hook);
-  usePeerContext(hook.source);
+  React.useLayoutEffect(() => {
+    hook.commit();
+
+    return () => {
+      hook.release();
+
+      if(hook.source !== source)
+        hook.source.destroy();
+    }
+  }, []);
 
   return hook.proxy;
 }

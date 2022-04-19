@@ -1,19 +1,15 @@
 import { useContext } from './context';
-import { useActive, useComputed, useModel, useWithLifecycle, usePassive, useTag, useTap } from './hooks';
-import { Key, KeyFactory } from './lifecycle';
+import { useActive, useComputed, useModel, usePassive, useTap } from './hooks';
 import { Model } from './model';
+import { usePeerContext } from './peer';
 
 export class MVC extends Model {
   tap(path?: string | Function, expect?: boolean){
     return useTap(this, path, expect);
   }
 
-  tag(id?: Key | KeyFactory<this>){
-    return useTag(this, id);
-  }
-
   use(callback?: (instance: Model) => void){
-    return useWithLifecycle(this, callback);
+    return useModel(this, callback);
   }
 
   static new(callback?: (instance: Model) => void){
@@ -34,12 +30,10 @@ export class MVC extends Model {
     return this.get().tap(key, expect);
   }
 
-  static tag(id?: Key | ((target: Model) => Key | undefined)){
-    return this.get().tag(id);
-  }
-
   static use(callback?: (instance: Model) => void){
-    return useModel(this, callback);
+    const instance = useModel(this, callback);
+    usePeerContext(instance.get);    
+    return instance;
   }
 
   static uses(props: BunchOf<any>, only?: string[]){

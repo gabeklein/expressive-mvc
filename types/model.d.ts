@@ -1,6 +1,4 @@
-import { Key } from 'react';
 
-import Lifecycle from './lifecycle';
 import { BunchOf, Class, InstanceOf } from './types';
 
 type Callback = () => void;
@@ -60,10 +58,10 @@ export namespace Model {
     /** Object comperable to data found in T. */
     type Compat<T, Exclude = Model> = Partial<Entries<T, Exclude>>;
 
-    /** Subset of `keyof T` excluding keys defined by base Model, except lifecycle. */
-    type Events<T> = Omit<T, Exclude<keyof Model, keyof Lifecycle>>;
+    /** Subset of `keyof T` excluding keys defined by base Model. */
+    type Events<T> = Omit<T, keyof Model>;
 
-    type EventsCompat<T> = Including<keyof T | keyof Lifecycle>;
+    type EventsCompat<T> = Including<keyof T>;
 
     type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
         [Key in X]: T[Key] extends ST ? Key : never;
@@ -124,7 +122,6 @@ declare const WHY: unique symbol;
 declare const LOCAL: unique symbol;
 declare const STATE: unique symbol;
 
-export interface Model extends Lifecycle {}
 export abstract class Model {
     /** Controller for this instance. */
     [CONTROL]: Model.Controller;
@@ -286,28 +283,8 @@ export abstract class Model {
     effect(callback: Model.EffectCallback<this>, select: (keyof this)[]): Callback;
 
     /**
-     * **React Hook** - Attach to instance of this controller within a component.
-     * 
-     * This method will fire lifecycle events on given controller.
-     * 
-     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
-     */
-    tag(id?: any): this;
-
-     /**
-      * **React Hook** - Subscribe to instance of controller within a component.
-      * 
-      * This method will fire lifecycle events on given controller (as element)..
-      * 
-      * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
-      */
-    tag(idFactory: (idFactory: this) => any): this;
-
-    /**
      * **React Hook** - Subscribe to instance of controller within a component.
-     * 
-     * This method will fire lifecycle events on given controller (as component).
-     * 
+     *
      * @param callback - Run once before subscription begins.
      */
     use(callback?: (instance: this) => void): this;
@@ -336,8 +313,7 @@ export abstract class Model {
     /**
      * **React Hook** - Spawn and maintain a controller from within a component.
      * 
-     * Differs from `use()` in lacking subscription and lifecycle events.
-     * Much more efficient if you don't need hook-based features.
+     * More efficient than `use()` if you don't need hook-based features.
      * 
      * @param callback - Run after creation of instance.
      */
@@ -404,24 +380,6 @@ export abstract class Model {
 
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
     static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
-
-    /**
-     * **React Hook** - Attach to instance of this controller within ambient component.
-     * 
-     * This method will fire lifecycle events on given controller.
-     * 
-     * @param id - Argument passed to controller-lifecycle methods. Use to identify the consumer.
-     */
-    static tag <T extends Class, I extends InstanceOf<T>> (this: T, id?: Key): I;
-
-    /**
-     * **React Hook** - Attach to instance of this controller within ambient component.
-     * 
-     * This method will fire lifecycle events on given controller.
-     * 
-     * @param idFactory - Will be invoked with fetched instance. Use this to register a tag as-needed.
-     */
-    static tag <T extends Class, I extends InstanceOf<T>> (this: T, idFactory: (on: I) => Key | void): I;
 
     static meta <T extends Class>(this: T): T;
 

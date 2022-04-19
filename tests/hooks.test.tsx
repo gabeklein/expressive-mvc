@@ -1,44 +1,51 @@
 import React from 'react';
 
 import { Oops as Global } from '../src/singleton';
-import { Model, Provider, render, renderHook, Singleton, use } from './adapter';
+import { Model, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };
 
-describe("use (instance)", () => {
+describe("use", () => {
   class Test extends Model {
     value = "foo";
   };
 
-  it("will run callback", () => {
+  it("will use a given instance", () => {
     const instance = Test.create();
-    const callback = jest.fn();
+    const render = renderHook(() => instance.use());
+    const result = render.result.current;
 
-    renderHook(() => instance.use(callback));
-    expect(callback).toHaveBeenCalledWith(instance);
+    expect(result).toStrictEqual(instance);
+
   })
 
-  it("will subscribe to instance of controller", async () => {
-    const instance = Test.create();
+  it("will create instance given a class", () => {
+    const render = renderHook(() => Test.use());
+    const result = render.result.current;
 
-    const { result, waitForNextUpdate } =
-      renderHook(() => instance.use());
-
-    expect(result.current.value).toBe("foo");
-
-    instance.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("bar");
+    expect(result).toBeInstanceOf(Test);
   })
-})
 
-describe("use (static)", () => {
-  class Test extends Model {
-    value = "foo";
-  };
+  it("will destroy instance of given class", () => {
+    const didDestroy = jest.fn();
+
+    class Test extends Model {
+      destroy(){
+        super.destroy();
+        didDestroy();
+      }
+    }
+
+    const render = renderHook(() => Test.use());
+
+    expect(didDestroy).not.toBeCalled();
+    render.unmount();
+    expect(didDestroy).toBeCalled();
+  })
 
   it("will run callback", () => {
     const callback = jest.fn();
+
     renderHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
@@ -48,7 +55,6 @@ describe("use (static)", () => {
       renderHook(() => Test.use());
 
     expect(result.current.value).toBe("foo");
-
     result.current.value = "bar";
 
     await waitForNextUpdate(opts);
@@ -220,47 +226,6 @@ describe("new", () => {
     unmount();
 
     expect(destroy).toBeCalled();
-  })
-})
-
-describe("tag", () => {
-  class Test extends Model {
-    value = "foo";
-  }
-
-  it("will subscribe to instance", async () => {
-    const control = Test.create();
-
-    const { result, waitForNextUpdate } =
-      renderHook(() => control.tag("value"));
-
-    expect(result.current.value).toBe("foo");
-  
-    control.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("bar");
-  })
-
-  it("will subscribe from context", async () => {
-    const mock = jest.fn();
-
-    class Test extends Model {
-      value = "foo";
-      willMount = mock;
-    }
-    
-    const Inner = () => {
-      Test.tag("foobar");
-      return null;
-    }
-    
-    render(
-      <Provider of={Test}>
-        <Inner />
-      </Provider>
-    )
-
-    expect(mock).toBeCalledWith("foobar");
   })
 })
 
