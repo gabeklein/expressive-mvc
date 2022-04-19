@@ -24,16 +24,18 @@ export interface Model extends Stateful {
 
 export function ensure(
   subject: Stateful,
-  callback: (control: Controller) => Callback){
+  callback: (control: Controller) => Callback | void){
 
   const control = subject[CONTROL];
 
   if(!control.state){
-    let done: any;
+    let done: Callback | void;
+
     control.requestUpdate(() => {
       done = callback(control);
     });
-    return () => done();
+
+    return () => done && done();
   }
 
   return callback(control);
@@ -203,7 +205,6 @@ export class Model {
   destroy(){
     ensure(this, control => {
       control.onDestroy.forEach(x => x());
-      return () => {};
     })
   }
 
