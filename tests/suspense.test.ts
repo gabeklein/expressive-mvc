@@ -1,5 +1,5 @@
 import { Oops } from '../src/suspense';
-import { Model, pending, set, testAsync, testSuspense } from './adapter';
+import { Model, pending, set, mockAsync, mockSuspense } from './adapter';
 
 describe("empty", () => {
   it('will suspend if value is accessed before set', async () => {
@@ -7,8 +7,8 @@ describe("empty", () => {
       foobar = set<string>();
     }
 
-    const test = testSuspense();
-    const promise = testAsync();
+    const test = mockSuspense();
+    const promise = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -31,7 +31,7 @@ describe("empty", () => {
       foobar = set<string>();
     }
 
-    const test = testSuspense();
+    const test = mockSuspense();
     const instance = Test.create();
 
     instance.foobar = "foo!";
@@ -50,9 +50,9 @@ describe("set async", () => {
       value = set(promise.await);
     }
 
-    const test = testSuspense();
-    const promise = testAsync();
-    const didRender = testAsync();
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const didRender = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -69,7 +69,7 @@ describe("set async", () => {
   })
 
   it("will seem to throw error outside react", () => {
-    const promise = testAsync();
+    const promise = mockAsync();
 
     class Test extends Model {
       value = set(promise.await);
@@ -83,7 +83,7 @@ describe("set async", () => {
   })
 
   it('will refresh and throw if async rejects', async () => {
-    const promise = testAsync();
+    const promise = mockAsync();
     const expected = new Error("oh foo");
 
     class Test extends Model {
@@ -93,9 +93,9 @@ describe("set async", () => {
       })
     }
 
-    const test = testSuspense();
+    const test = mockSuspense();
     const instance = Test.create();
-    const didThrow = testAsync();
+    const didThrow = mockAsync();
 
     test.renderHook(() => {
       try {
@@ -129,8 +129,8 @@ describe("set async", () => {
       }
     }
 
-    const test = testSuspense();
-    const didRender = testAsync();
+    const test = mockSuspense();
+    const didRender = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -154,8 +154,8 @@ describe("computed", () => {
   }
 
   it("will suspend if value is undefined", async () => {
-    const test = testSuspense();
-    const promise = testAsync();
+    const test = mockSuspense();
+    const promise = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -188,7 +188,7 @@ describe("computed", () => {
   })
 
   it("will return immediately if value is defined", async () => {
-    const test = testSuspense();
+    const test = mockSuspense();
     const instance = Test.create();
 
     instance.source = "foobar!";
@@ -205,8 +205,8 @@ describe("computed", () => {
   })
 
   it("will not resolve if value stays undefined", async () => {
-    const test = testSuspense();
-    const promise = testAsync();
+    const test = mockSuspense();
+    const promise = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {

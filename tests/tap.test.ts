@@ -1,4 +1,4 @@
-import { Model, renderHook, testAsync, testSuspense, use } from './adapter';
+import { mockAsync, mockSuspense, Model, renderHook, use } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -123,7 +123,7 @@ describe("async", () => {
   };
 
   it('will return undefined then refresh', async () => {
-    const promise = testAsync<string>();
+    const promise = mockAsync<string>();
     const control = Test.create();
 
     const { result, waitForNextUpdate } = renderHook(() => {
@@ -139,7 +139,7 @@ describe("async", () => {
   });
 
   it('will not refresh via subscription', async () => {
-    const promise = testAsync<string>();
+    const promise = mockAsync<string>();
     const control = Test.create();
 
     const { result, waitForNextUpdate } = renderHook(() => {
@@ -165,8 +165,8 @@ describe("suspense", () => {
   }
 
   it('will suspend if property undefined', async () => {
-    const test = testSuspense();
-    const promise = testAsync();
+    const test = mockSuspense();
+    const promise = mockAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
@@ -184,8 +184,8 @@ describe("suspense", () => {
 
   it('will suspend strict compute', async () => {
     const instance = Test.create();
-    const promise = testAsync();
-    const test = testSuspense();
+    const promise = mockAsync();
+    const test = mockSuspense();
 
     const didRender = jest.fn();
     const didCompute = jest.fn();
@@ -220,8 +220,8 @@ describe("suspense", () => {
 
   it('will suspend strict async', async () => {
     const instance = Test.create();
-    const promise = testAsync();
-    const test = testSuspense();
+    const promise = mockAsync();
+    const test = mockSuspense();
 
     test.renderHook(() => {
       instance.tap(async () => {

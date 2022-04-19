@@ -51,7 +51,7 @@ export function subscribeTo<T extends Public.Model>(
   }
 }
 
-export function testAsync<T = void>(){
+export function mockAsync<T = void>(){
   const pending =
     new Set<[Function, Function]>();
 
@@ -68,8 +68,8 @@ export function testAsync<T = void>(){
   }
 }
 
-export function testSuspense(){
-  const promise = testAsync();
+export function mockSuspense(){
+  const promise = mockAsync();
 
   let renderHook!: () => void;
   let didRender = false;
