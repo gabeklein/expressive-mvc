@@ -188,15 +188,6 @@ export function from <T extends Class, R> (source: T, compute: (this: InstanceOf
  * Will update automatically as input values change.
  */
 export function from <R, T> (source: T, compute: (this: T, on: T) => R): R;
- 
-/**
- * Flag property as not to be tracked. Useful if changes often with no real-time impact.
- *
- * @param value - starting value of property.
- * 
- * @deprecated will be removed in major version 1.0
- */
-export function lazy <T> (value?: T): T;
 
 /**
  * Pending value. Will suspend unless value is already defined,

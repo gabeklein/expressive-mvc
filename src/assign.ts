@@ -2,7 +2,7 @@ import { Controller } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
 import { pendingFactory, pendingValue } from './suspense';
-import { createValueEffect, defineProperty } from './util';
+import { createValueEffect } from './util';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 
@@ -14,19 +14,6 @@ export const Oops = issues({
   FactoryFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`
 })
-
-export function lazy<T>(value: T): T {
-  return apply(
-    function lazy(key){
-      const source = this.subject as any;
-
-      source[key] = value;
-      defineProperty(this.state, key, {
-        get: () => source[key]
-      });
-    }
-  );
-}
 
 function set(
   factory?: (key: string, subject: unknown) => any,

@@ -1,6 +1,6 @@
 export { child } from './attach';
 export { parent, use } from './compose';
-export { lazy, on, set } from './assign';
+export { on, set } from './assign';
 export { apply } from './instruction';
 export { act, from, ref } from './instructions';
 export { tap } from './peer';
