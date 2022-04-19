@@ -188,18 +188,6 @@ export function from <T extends Class, R> (source: T, compute: (this: InstanceOf
  * Will update automatically as input values change.
  */
 export function from <R, T> (source: T, compute: (this: T, on: T) => R): R;
-
-/**
- * Memoized value. Computes and stores a value returned by provided factory. 
- * Equivalent to a getter, sans the automatic updates.
- *
- * @param compute - Factory for memoized value.
- * @param lazy - Wait until accessed to introduce value.
- * 
- * @deprecated will be removed in favor of `set`
- */
-export function memo <R> (compute: () => R, lazy?: boolean): R;
-export function memo <R, T> (compute: (this: T) => R, lazy?: boolean): R;
  
 /**
  * Flag property as not to be tracked. Useful if changes often with no real-time impact.

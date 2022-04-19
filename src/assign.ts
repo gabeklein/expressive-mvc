@@ -82,6 +82,5 @@ function on(initial: any, onUpdate: Controller.OnValue){
 
 export {
   on,
-  set,
-  set as memo
+  set
 }
