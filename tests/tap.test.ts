@@ -166,16 +166,18 @@ describe("suspense", () => {
 
   it('will suspend if property undefined', async () => {
     const test = testSuspense();
+    const promise = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       instance.tap("value", true);
+      promise.resolve();
     })
   
     test.assertDidSuspend(true);
 
     instance.value = "foo!";
-    await instance.once("willRender");
+    await promise.await();
 
     test.assertDidRender(true);
   })

@@ -74,11 +74,9 @@ export function testSuspense(){
   let renderHook!: () => void;
   let didRender = false;
   let didSuspend = false;
-  let didThrow: Error | undefined;
 
   const reset = () => {
     didSuspend = didRender = false;
-    didThrow = undefined;
   }
 
   const Waiting = () => {
@@ -90,15 +88,6 @@ export function testSuspense(){
     try {
       didRender = true;
       renderHook();
-    }
-    catch(err: any){
-      // let suspense do it's thing
-      if(err instanceof Promise)
-        throw err;
-
-      // log and supress otherwise
-      didThrow = err;
-      return null;
     }
     finally {
       promise.resolve();
@@ -128,14 +117,6 @@ export function testSuspense(){
     },
     assertDidSuspend(yes: boolean){
       expect(didSuspend).toBe(yes);
-      reset();
-    },
-    assertDidThrow(error: Error | false){
-      if(error)
-        expect(didThrow).toBe(error);
-      else
-        expect(didThrow).toBeUndefined();
-
       reset();
     }
   }

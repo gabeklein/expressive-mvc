@@ -8,10 +8,12 @@ describe("empty", () => {
     }
 
     const test = testSuspense();
+    const promise = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       instance.tap("foobar");
+      promise.resolve();
     })
   
     test.assertDidSuspend(true);
@@ -19,7 +21,7 @@ describe("empty", () => {
     instance.foobar = "foo!";
 
     // expect refresh caused by update
-    await instance.once("willRender");
+    await promise.await();
 
     test.assertDidRender(true);
   })
@@ -48,18 +50,20 @@ describe("set async", () => {
       value = set(promise.await);
     }
 
-    const promise = testAsync();
     const test = testSuspense();
+    const promise = testAsync();
+    const didRender = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       void instance.tap().value;
+      didRender.resolve();
     })
   
     test.assertDidSuspend(true);
 
     promise.resolve();
-    await instance.update();
+    await didRender.await();
 
     test.assertDidRender(true);
   })
@@ -91,9 +95,18 @@ describe("set async", () => {
 
     const test = testSuspense();
     const instance = Test.create();
+    const didThrow = testAsync();
 
     test.renderHook(() => {
-      void instance.tap().value;
+      try {
+        void instance.tap().value;
+      }
+      catch(err: any){
+        if(err instanceof Promise)
+          throw err;
+        else
+          didThrow.resolve(err);
+      }
     })
   
     test.assertDidSuspend(true);
@@ -101,7 +114,9 @@ describe("set async", () => {
     promise.resolve();
     await instance.update();
 
-    test.assertDidThrow(expected);
+    const error = await didThrow.await();
+
+    expect(error).toBe(expected);
   })
   
   it('will bind async function to self', async () => {
@@ -115,15 +130,15 @@ describe("set async", () => {
     }
 
     const test = testSuspense();
+    const didRender = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       void instance.tap().value;
+      didRender.resolve();
     });
 
-    await instance.update();
-
-    test.assertDidThrow(false);
+    await didRender.await();
   })
 })
 
@@ -140,17 +155,19 @@ describe("computed", () => {
 
   it("will suspend if value is undefined", async () => {
     const test = testSuspense();
+    const promise = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       instance.tap("value");
+      promise.resolve();
     })
 
     test.assertDidSuspend(true);
 
     instance.source = "foobar!";
 
-    await instance.once("willRender");
+    await promise.await();
 
     test.assertDidRender(true);
   })
@@ -189,10 +206,12 @@ describe("computed", () => {
 
   it("will not resolve if value stays undefined", async () => {
     const test = testSuspense();
+    const promise = testAsync();
     const instance = Test.create();
 
     test.renderHook(() => {
       instance.tap("value");
+      promise.resolve();
     })
 
     test.assertDidSuspend(true);
@@ -215,7 +234,7 @@ describe("computed", () => {
     instance.source = "foobar!";
 
     // we do expect a render this time
-    await instance.once("willRender");
+    await promise.await();
 
     test.assertDidRender(true);
   })
