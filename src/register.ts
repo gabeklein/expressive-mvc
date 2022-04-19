@@ -77,7 +77,7 @@ export class Lookup {
     for(const key of getOwnPropertySymbols(this)){
       const entry = getOwnPropertyDescriptor(this, key)!;
 
-      if(entry.writable)
+      if(entry.writable && entry.value)
         entry.value.destroy();
     }
   }
