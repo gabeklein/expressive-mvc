@@ -1,4 +1,4 @@
-import { useContext } from './context';
+import { useFromContext } from './context';
 import { useActive, useComputed, useModel, usePassive, useTap } from './hooks';
 import { Model } from './model';
 import { usePeerContext } from './peer';
@@ -16,14 +16,8 @@ export class MVC extends Model {
     return usePassive(this, callback);
   }
 
-  static get(key?: boolean | string){
-    const instance = useContext(this, key !== false);
-  
-    return (
-      typeof key == "string" ?
-        (instance as any)[key] :
-        instance
-    )
+  static get(arg?: boolean | string){
+    return useFromContext(this, arg);
   }
 
   static tap(key?: string, expect?: boolean): any {

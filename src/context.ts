@@ -22,15 +22,17 @@ export const Oops = issues({
 export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);
 
-export function useContext<T extends Class>(
-  Type: T, strict?: boolean){
+export function useFromContext<T extends Class>(
+  Type: T, arg?: boolean | string){
 
   const instance = useLookup().get(Type as any);
 
-  if(!instance && strict)
+  if(!instance && arg !== false)
     throw Oops.NothingInContext(Type.name);
 
-  return instance as InstanceOf<T>;
+  return typeof arg == "string" ?
+    (instance as any)[arg] :
+    instance as InstanceOf<T>
 }
 
 interface ConsumerProps {
@@ -44,12 +46,12 @@ export function Consumer(props: ConsumerProps){
   const { get, has, children, of: Control } = props;
 
   if(typeof children == "function")
-    return children(useTap(useContext(Control)));
+    return children(useTap(useFromContext(Control)));
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(useContext(Control, !!has));
+    callback(useFromContext(Control, !!has));
   else
     throw Oops.BadConsumerProps()
 
