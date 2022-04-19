@@ -109,25 +109,42 @@ describe("method", () => {
     expect(mock).toBeCalledTimes(3);
   })
 
-  it('will callback on willDestroy by default', async () => {
-    const didCreate = jest.fn();
-    const willDestroy = jest.fn();
-
+  it('will call on create by default', async () => {
     class Test extends Model {}
 
+    const didCreate = jest.fn();
     const test = Test.create();
 
-    test.effect(() => {
-      didCreate();
-      return willDestroy;
-    }, []);
+    test.effect(didCreate, []);
     
     expect(didCreate).toBeCalled();
+  })
 
+  it('will callback on willDestroy by default', async () => {
+    class Test extends Model {}
+
+    const willDestroy = jest.fn();
+    const test = Test.create();
+
+    test.effect(() => willDestroy, []);
     test.destroy();
-    await test.update();
 
     expect(willDestroy).toBeCalled();
+  })
+
+  it('will cancel destroy callback', async () => {
+    class Test extends Model {}
+
+    const willDestroy = jest.fn();
+    const test = Test.create();
+
+    const cancel =
+      test.effect(() => willDestroy, []);
+
+    cancel();
+    test.destroy();
+
+    expect(willDestroy).not.toBeCalled();
   })
 })
 
