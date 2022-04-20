@@ -1,8 +1,8 @@
 import * as Computed from './compute';
-import { Controller } from './controller';
+import { Controller, getController } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
-import { getController, Model, Stateful } from './model';
+import { Model, Stateful } from './model';
 import { pendingAccess } from './peer';
 import { pendingValue } from './suspense';
 import { createValueEffect, defineLazy, defineProperty, setAlias } from './util';

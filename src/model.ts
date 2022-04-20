@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller } from './controller';
+import { Controller, ensure, getController } from './controller';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -20,34 +20,6 @@ export const UPDATE = new WeakMap<{}, readonly string[]>();
 export interface Model extends Stateful {
   get: this;
   set: this;
-}
-
-export function ensure(
-  subject: Stateful,
-  callback: (control: Controller) => Callback | void){
-
-  const control = subject[CONTROL];
-
-  if(!control.state){
-    let done: Callback | void;
-
-    control.requestUpdate(() => {
-      done = callback(control);
-    });
-
-    return () => done && done();
-  }
-
-  return callback(control);
-}
-
-export function getController(subject: Stateful){
-  const control = subject[CONTROL];
-
-  if(!control.state)
-    control.start();
-
-  return control;
 }
 
 export class Model {

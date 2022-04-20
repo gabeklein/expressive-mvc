@@ -183,18 +183,18 @@ export abstract class Model {
     /**
      * Circular reference to `this` controller.
      * 
-     * Useful mnemonic to update values on a controller from within a component.
-     * 
-     * ---
+     * Shortcut is mainly to update values, while having destructured already.
      * 
      * ```js
-     * const { active, set } = MyToggle.use();
-     * 
-     * return (
-     *  <div onClick={() => set.active = !active}>
-     *    Toggle is {active ? "active" : "inactive"}!
-     *  </div>
-     * )
+     * const Example = () => {
+     *   const { active, set } = MyToggle.use();
+     *   
+     *   return (
+     *    <div onClick={() => set.active = !active}>
+     *      Toggle is {active ? "active" : "inactive"}!
+     *    </div>
+     *   )
+     * }
      * ``` 
      */
     set: this;

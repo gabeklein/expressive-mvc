@@ -1,7 +1,8 @@
 import { child } from './attach';
+import { getController } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
-import { getController, Model } from './model';
+import { Model } from './model';
 import { defineProperty, getOwnPropertyDescriptors } from './util';
 
 const Parent = new WeakMap<{}, {}>();

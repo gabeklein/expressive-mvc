@@ -1,7 +1,7 @@
 import * as Computed from './compute';
 import { Pending } from './instruction';
 import { issues } from './issues';
-import { Stateful, UPDATE } from './model';
+import { CONTROL, Stateful, UPDATE } from './model';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
@@ -156,6 +156,34 @@ class Controller {
       }
     }
   }
+}
+
+export function ensure(
+  subject: Stateful,
+  callback: (control: Controller) => Callback | void){
+
+  const control = subject[CONTROL];
+
+  if(!control.state){
+    let done: Callback | void;
+
+    control.requestUpdate(() => {
+      done = callback(control);
+    });
+
+    return () => done && done();
+  }
+
+  return callback(control);
+}
+
+export function getController(subject: Stateful){
+  const control = subject[CONTROL];
+
+  if(!control.state)
+    control.start();
+
+  return control;
 }
 
 export { Controller }
