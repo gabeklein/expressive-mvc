@@ -35,8 +35,6 @@ class Controller {
       this.manage(key);
 
     this.emit([]);
-
-    return this;
   }
 
   public manage(
