@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller, getController } from './controller';
+import { Controller, control } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
@@ -42,7 +42,7 @@ export function ref<T>(
       let value = {};
 
       if(typeof arg == "object"){
-        const source = getController(arg);
+        const source = control(arg);
     
         for(const key in source.state)
           defineLazy(value, key, createRef.bind(source, key));
@@ -115,7 +115,7 @@ export function from<T, R = T>(
 
       // replace source controller in-case different
       if(typeof source == "object")
-        getSource = () => getController(source);
+        getSource = () => control(source);
 
       // specifically an arrow function (getter factory)
       else if(!source.prototype){

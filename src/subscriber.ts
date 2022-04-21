@@ -1,4 +1,4 @@
-import { Controller, getController } from './controller';
+import { Controller, control } from './controller';
 import { LOCAL, Stateful, UPDATE } from './model';
 import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
@@ -22,7 +22,7 @@ export class Subscriber {
     public onUpdate: Controller.Listen){
 
     if(!(parent instanceof Controller))
-      parent = getController(parent);
+      parent = control(parent);
 
     this.parent = parent;
     this.source = parent.subject;

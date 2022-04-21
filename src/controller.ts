@@ -158,32 +158,31 @@ class Controller {
   }
 }
 
-export function ensure(
-  subject: Stateful,
-  callback: (control: Controller) => Callback | void){
+type EnsureCallback = (control: Controller) => Callback | void;
 
+export function control(subject: Stateful): Controller;
+export function control(subject: Stateful, cb: EnsureCallback): Callback;
+export function control(subject: Stateful, cb?: EnsureCallback){
   const control = subject[CONTROL];
+
+  if(!cb){
+    if(!control.state)
+      control.start();
+
+    return control;
+  }
 
   if(!control.state){
     let done: Callback | void;
 
     control.requestUpdate(() => {
-      done = callback(control);
+      done = cb(control);
     });
 
     return () => done && done();
   }
 
-  return callback(control);
-}
-
-export function getController(subject: Stateful){
-  const control = subject[CONTROL];
-
-  if(!control.state)
-    control.start();
-
-  return control;
+  return cb(control);
 }
 
 export { Controller }

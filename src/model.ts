@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller, ensure, getController } from './controller';
+import { Controller, control } from './controller';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -51,7 +51,7 @@ export class Model {
     squash?: boolean,
     once?: boolean){
 
-    return ensure(this, control => {
+    return control(this, control => {
       const keys = 
         typeof select == "string" ? [select] :
         !select.length ? getOwnPropertyNames(control.state) :
@@ -97,7 +97,7 @@ export class Model {
 
     const effect = createEffect(callback);
 
-    return ensure(this, control => {
+    return control(this, control => {
       if(!select){
         const sub = new Subscriber(control, () => invoke);
         const invoke = () => {
@@ -140,7 +140,7 @@ export class Model {
   }
 
   export(subset?: Set<string> | string[]){
-    const { state } = getController(this);
+    const { state } = control(this);
     const output: BunchOf<any> = {};
 
     for(const key of subset || getOwnPropertyNames(state))
@@ -153,10 +153,10 @@ export class Model {
   update(select: string, callMethod: boolean): PromiseLike<readonly string[]>;
   update(select: string, tag?: any): PromiseLike<readonly string[]>;
   update(arg?: string | boolean, tag?: any){
-    const control = getController(this);
+    const target = control(this);
 
     if(typeof arg == "string"){
-      control.update(arg);
+      target.update(arg);
 
       if(1 in arguments && arg in this){
         const method = (this as any)[arg];
@@ -171,11 +171,11 @@ export class Model {
       arg = undefined;
     }
 
-    return control.requestUpdate(arg);
+    return target.requestUpdate(arg);
   }
 
   destroy(){
-    ensure(this, control => {
+    control(this, control => {
       control.onDestroy.forEach(x => x());
     })
   }
@@ -190,7 +190,7 @@ export class Model {
     const instance: InstanceOf<T> = 
       new (this as any)(...args);
 
-    getController(instance);
+    control(instance);
 
     return instance;
   }

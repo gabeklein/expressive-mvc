@@ -1,5 +1,5 @@
 import { child } from './attach';
-import { getController } from './controller';
+import { control } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
 import { Model } from './model';
@@ -46,7 +46,7 @@ export function use<T extends typeof Model>(
             ? next : bootstrap(next);
 
           Parent.set(current, subject);
-          getController(current);
+          control(current);
         }
         else
           current = undefined;
