@@ -14,14 +14,13 @@ export function use<T>(init: (trigger: Callback) => T){
 }
 
 export function useTap(
-  model: Model,
+  model: Stateful,
   path?: string | Function,
   expect?: boolean){
 
-  if(typeof path == "function")
-    return useComputed(model, path, expect);
-
-  return useActive(model, path, expect);
+  return typeof path == "function"
+    ? useComputed(model, path, expect)
+    : useActive(model, path, expect);
 }
 
 export function usePassive<T extends typeof Model>(
@@ -75,7 +74,7 @@ export function useActive(
 export function useComputed(
   target: Stateful,
   compute: Function,
-  expected?: boolean){
+  suspend?: boolean){
 
   const hook = use(refresh => {
     const sub = new Subscriber(target, () => update);
@@ -110,16 +109,14 @@ export function useComputed(
       }
     }
 
-    const get = expected
-      ? () => {
-        if(value === undefined)
+    defineProperty(sub, "proxy", {
+      get(){
+        if(value === undefined && suspend)
           throw new Promise<void>(res => retry = res);
 
         return value;
       }
-      : () => value
-
-    defineProperty(sub, "proxy", { get });
+    });
 
     return sub;
   });

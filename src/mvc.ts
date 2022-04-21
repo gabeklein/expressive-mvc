@@ -1,5 +1,5 @@
 import { useFromContext } from './context';
-import { useActive, useComputed, useModel, usePassive, useTap } from './hooks';
+import { useModel, usePassive, useTap } from './hooks';
 import { Model } from './model';
 import { usePeerContext } from './peer';
 
@@ -12,16 +12,16 @@ export class MVC extends Model {
     return useModel(this, callback);
   }
 
-  static new(callback?: (instance: Model) => void){
-    return usePassive(this, callback);
-  }
-
   static get(arg?: boolean | string){
     return useFromContext(this, arg);
   }
 
   static tap(key?: string, expect?: boolean): any {
     return this.get().tap(key, expect);
+  }
+
+  static new(callback?: (instance: Model) => void){
+    return usePassive(this, callback);
   }
 
   static use(callback?: (instance: Model) => void){
@@ -43,8 +43,6 @@ export class MVC extends Model {
   }
 
   static meta(path: string | Function, expect?: boolean): any {
-    return typeof path == "function"
-      ? useComputed(this, path, expect)
-      : useActive(this, path, expect)
+    return useTap(this, path, expect);
   }
 }
