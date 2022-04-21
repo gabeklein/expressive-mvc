@@ -82,7 +82,7 @@ export namespace Model {
         waiting: Set<Controller.RequestCallback>;
         frame: Set<string>;
 
-        start(): this;
+        start(): void;
 
         manage(key: string, effect?: Controller.OnValue): void;
 
