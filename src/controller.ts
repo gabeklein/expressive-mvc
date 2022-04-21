@@ -118,7 +118,9 @@ class Controller {
 
         handle.forEach(callback => {
           try { callback(keys) }
-          catch(e){ }
+          catch(err){
+            console.error(err);
+          }
         })
       }, 0);
 
