@@ -86,7 +86,7 @@ export namespace Model {
 
         manage(key: string, effect?: Controller.OnValue): void;
 
-        setter(key: string, effect?: Controller.OnValue): (value: any) => boolean | void;
+        ref(key: string, effect?: Controller.OnValue): (value: any) => boolean | void;
 
         addListener(listener: Controller.OnEvent): Callback;
 

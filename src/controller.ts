@@ -61,13 +61,13 @@ class Controller {
         defineProperty(subject, key, {
           enumerable: true,
           get: () => state[key],
-          set: this.setter(key, handler)
+          set: this.ref(key, handler)
         });
       }
     }
   }
 
-  public setter(
+  public ref(
     key: string,
     handler?: Controller.OnValue){
 

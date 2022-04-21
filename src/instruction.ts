@@ -58,7 +58,7 @@ export function apply<T = any>(
 
     defineProperty(subject, key, {
       ...desc,
-      set: this.setter(key, set),
+      set: this.ref(key, set),
       get: get
         ? function(this: Stateful){
           return get!(state[key], this[LOCAL]);

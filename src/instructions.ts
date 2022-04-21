@@ -24,7 +24,7 @@ function createRef(
   cb?: AssignCallback<any>){
 
   const refObjectFunction =
-    this.setter(key, cb && createValueEffect(cb));
+    this.ref(key, cb && createValueEffect(cb));
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
