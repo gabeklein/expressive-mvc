@@ -1,5 +1,6 @@
 import * as Computed from './compute';
-import { Controller, control } from './controller';
+import { control, Controller } from './controller';
+import { UPDATE } from './dispatch';
 import { Subscriber } from './subscriber';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -14,8 +15,6 @@ export interface Stateful {
   [LOCAL]?: Subscriber;
   [STATE]?: any;
 };
-
-export const UPDATE = new WeakMap<{}, readonly string[]>();
 
 export interface Model extends Stateful {
   get: this;

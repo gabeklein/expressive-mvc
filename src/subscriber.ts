@@ -1,5 +1,6 @@
 import { Controller, control } from './controller';
-import { LOCAL, Stateful, UPDATE } from './model';
+import { applyUpdate } from './dispatch';
+import { LOCAL, Stateful } from './model';
 import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
@@ -28,20 +29,17 @@ export class Subscriber {
     this.source = parent.subject;
 
     const proxy = this.proxy = create(parent.subject);
+    let reset: Callback | undefined;
 
     const DEBUG: RequestCallback = (keys) => {
-      UPDATE.set(proxy, 
-        keys.filter(k => k in this.watch)  
-      );
+      reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
     }
 
     define(proxy, LOCAL, this);
     defineProperty(this, "proxy", {
       get: () => {
-        if(UPDATE.has(proxy))
-          setTimeout(() => {
-            UPDATE.delete(proxy);
-          }, 0);
+        if(reset)
+          setTimeout(reset, 0);
 
         return proxy;
       }

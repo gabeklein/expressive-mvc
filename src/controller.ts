@@ -1,7 +1,8 @@
 import * as Computed from './compute';
+import { applyUpdate } from './dispatch';
 import { Pending } from './instruction';
 import { issues } from './issues';
-import { CONTROL, Stateful, UPDATE } from './model';
+import { CONTROL, Stateful } from './model';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
@@ -113,11 +114,7 @@ class Controller {
         this.waiting.clear();
         this.frame.clear();
 
-        UPDATE.set(this.subject, keys);
-
-        setTimeout(() => {
-          UPDATE.delete(this.subject);
-        }, 0);
+        applyUpdate(this.subject, keys)();
 
         handle.forEach(callback => {
           try { callback(keys) }
