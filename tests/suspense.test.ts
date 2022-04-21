@@ -219,8 +219,8 @@ describe("computed", () => {
     instance.random = 1;
 
     // update to value is expected
-    const pending = instance.update(true);
-    await expect(pending).resolves.toContain("value");
+    const pending = await instance.update(true);
+    expect(pending).toContain("random");
 
     // value will still be undefined
     expect(instance.export().value).toBe(undefined);
