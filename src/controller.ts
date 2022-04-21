@@ -34,9 +34,7 @@ class Controller {
     for(const key in this.subject)
       this.manage(key);
 
-    const handle = new Set(this.waiting);
-    this.waiting.clear();
-    handle.forEach(cb => cb([]));
+    this.emit([]);
 
     return this;
   }
@@ -97,6 +95,19 @@ class Controller {
     }
   }
 
+  public emit(keys: readonly string[]){
+    const waiting = [ ...this.waiting ];
+
+    this.waiting.clear();
+    applyUpdate(this.subject, keys)();
+
+    for(const callback of waiting)
+      try { callback(keys) }
+      catch(err){
+        console.error(err);
+      }
+  }
+
   public update(key: string, value?: any){
     if(1 in arguments)
       this.state[key] = value;
@@ -109,19 +120,9 @@ class Controller {
         Computed.flush(this);
 
         const keys = Object.freeze([ ...this.frame ]);
-        const handle = new Set(this.waiting);
 
-        this.waiting.clear();
         this.frame.clear();
-
-        applyUpdate(this.subject, keys)();
-
-        handle.forEach(callback => {
-          try { callback(keys) }
-          catch(err){
-            console.error(err);
-          }
-        })
+        this.emit(keys);
       }, 0);
 
     this.frame.add(key);
