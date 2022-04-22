@@ -22,10 +22,10 @@ export const Oops = issues({
 export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);
 
-export function useFromContext<T extends Class>(
+export function useFromContext<T extends typeof Model>(
   Type: T, arg?: boolean | string){
 
-  const instance = useLookup().get(Type as any);
+  const instance = useLookup().get(Type);
 
   if(!instance && arg !== false)
     throw Oops.NothingInContext(Type.name);
