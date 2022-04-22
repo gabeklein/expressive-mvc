@@ -169,46 +169,8 @@ export function from <R, T> (compute: (property: string) => (this: T, state: T) 
  * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value.
  * Will update automatically as input values change.
  */
-export function from <R, T> (source: T, compute: (this: T, on: T) => R): R;
-
-/**
- * Pending value. Will suspend unless value is already defined,
- * suspense resolves when a value is then aquired.
- * 
- * @deprecated will be removed in favor of `set`
- */
-export function pending <T = boolean> (): T;
-
-/**
- * Suspend during the execution of given function to obtain value.
- * 
- * @param waitFor - Async function to suspend for.
- * 
- * @deprecated will be removed in favor of `set`
- */
-export function pending (waitFor: () => Promise<void>): undefined;
-export function pending <T> (waitFor: (this: T) => Promise<void>): undefined;
-export function pending <R> (waitFor: () => Promise<R>): R;
-export function pending <R, T> (waitFor: (this: T) => Promise<R>): R;
-
-/**
- * Suspend for a computed value, returned by syncronous function.
- *
- * If accessed while computing to undefined, will throw a promise. Function is subscribed
- * and will re-evaluate anytime used properties change. Once function returns any value,
- * outstanding promises resolve and are not thrown on subsequent access of this property.
- * 
- * Similar to `from`, compute function will only run when inputs change and not upon access.
- *
- * This behavior is recursive. If return value _becomes_ undefined, property
- * access will throw Promises again, awaiting its next value.
- *
- * @param source - Source object, from which computed value will be a subscriber.
- *
- * @param compute - Compute function returns output value. Bound to a subscriber of source.
- * Will re-run automatically as input values change.
- */
-export function pending <R, T> (source: T, compute: (this: T, on: T) => R): R; // ✅
+export function from <R, T> (source: T, compute: (this: T, on: T) => R | void, suspense: true): R;
+export function from <R, T> (source: T, compute: (this: T, on: T) => R, suspense?: boolean): R;
 
 export namespace set {
   type Factory<T, S = unknown> = (this: S, key: string, subject: S) => T;

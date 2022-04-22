@@ -20,7 +20,6 @@ export const use = Source.use as typeof Public.use;
 export const act = Source.act as typeof Public.act;
 export const from = Source.from as typeof Public.from;
 export const parent = Source.parent as typeof Public.parent;
-export const pending = Source.pending as typeof Public.pending;
 
 export function subscribeTo<T extends Public.Model>(
   target: T,

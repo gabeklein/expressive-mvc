@@ -1,30 +1,10 @@
-import { set } from './assign';
 import { Controller } from './controller';
-import { from } from './instructions';
 import { issues } from './issues';
-import { Model } from './model';
 
 export const Oops = issues({
   ValueNotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`
 })
-
-type ComputeFunction<T, O = any> = (this: O, on: O) => T;
-
-/* deprecated - ignore coverage */
-/* istanbul ignore next */
-export function pending<T = void>(
-  source: (() => Promise<T>) | Model | typeof Model,
-  compute?: ComputeFunction<T>){
-
-  if(source === undefined)
-    return set();
-
-  if(typeof source == "function" && !source.prototype)
-    return set(source as any);
-
-  return from(source as any, compute, true);
-}
 
 /**
  * Get value, suspend instead if undefined.

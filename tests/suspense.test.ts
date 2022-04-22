@@ -1,5 +1,5 @@
 import { Oops } from '../src/suspense';
-import { Model, pending, set, mockAsync, mockSuspense } from './adapter';
+import { Model, from, set, mockAsync, mockSuspense } from './adapter';
 
 describe("empty", () => {
   it('will suspend if value is accessed before set', async () => {
@@ -147,10 +147,10 @@ describe("computed", () => {
     random = 0;
     source?: string = undefined;
 
-    value = pending(this, x => {
+    value = from(this, x => {
       void x.random;
       return x.source;
-    });
+    }, true);
   }
 
   it("will suspend if value is undefined", async () => {

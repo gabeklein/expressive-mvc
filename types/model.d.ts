@@ -1,4 +1,3 @@
-
 import { BunchOf, Class, InstanceOf } from './types';
 
 type Callback = () => void;
