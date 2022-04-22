@@ -1,5 +1,5 @@
 import * as Computed from './compute';
-import { Controller, control } from './controller';
+import { control, Controller } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
 import { Model, Stateful } from './model';

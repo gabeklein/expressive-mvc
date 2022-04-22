@@ -1,7 +1,7 @@
+import { Controller } from '../controller';
+import { CONTROL, Model } from '../model';
 import { useFromContext } from './context';
-import { Controller } from './controller';
 import { useModel, useNew, useTap } from './hooks';
-import { CONTROL, Model } from './model';
 import { usePeerContext } from './peer';
 
 export class MVC extends Model {

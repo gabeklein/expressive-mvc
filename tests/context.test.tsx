@@ -1,7 +1,7 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
-import { Oops } from '../src/context';
+import { Oops } from '../src/react/context';
 import { Consumer, Model, Provider, render } from './adapter';
 
 class Foo extends Model {

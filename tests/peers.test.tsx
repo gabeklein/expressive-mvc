@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Oops } from '../src/peer';
+import { Oops } from '../src/react/peer';
 import { Consumer, Model, Provider, render, Singleton, subscribeTo, tap } from './adapter';
 
 describe("tap instruction", () => {

@@ -1,8 +1,8 @@
-import { child } from './attach';
+import { child } from '../attach';
+import { issues } from '../issues';
+import { Model, Stateful } from '../model';
+import { Lookup } from '../register';
 import { useLookup } from './context';
-import { issues } from './issues';
-import { Model, Stateful } from './model';
-import { Lookup } from './register';
 import { Singleton } from './singleton';
 
 export const Oops = issues({

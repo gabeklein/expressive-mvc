@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Oops as Global } from '../src/singleton';
+import { Oops as Global } from '../src/react/singleton';
 import { Model, render, renderHook, Singleton, use } from './adapter';
 
 const opts = { timeout: 100 };

@@ -1,9 +1,9 @@
 import React from 'react';
 
-import { Model, Stateful } from './model';
-import { Subscriber } from './subscriber';
-import { suspend } from './suspense';
-import { defineProperty } from './util';
+import { Model, Stateful } from '../model';
+import { Subscriber } from '../subscriber';
+import { suspend } from '../suspense';
+import { defineProperty } from '../util';
 
 export function use<T>(init: (trigger: Callback) => T){
   const [ state, update ] = React.useState((): T[] => [

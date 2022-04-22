@@ -1,4 +1,4 @@
-import { issues } from './issues';
+import { issues } from '../issues';
 import { MVC } from './mvc';
 
 export const Oops = issues({

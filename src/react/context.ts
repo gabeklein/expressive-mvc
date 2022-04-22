@@ -1,12 +1,12 @@
 import React from 'react';
 
+import { issues } from '../issues';
+import { Model } from '../model';
+import { Collection, Lookup } from '../register';
+import { Subscriber } from '../subscriber';
+import { entries } from '../util';
 import { use, useTap } from './hooks';
-import { issues } from './issues';
-import { Model } from './model';
 import { getPending } from './peer';
-import { Collection, Lookup } from './register';
-import { Subscriber } from './subscriber';
-import { entries } from './util';
 
 export const Oops = issues({
   NoProviderType: () =>

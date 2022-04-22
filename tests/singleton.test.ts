@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react-hooks";
-import { Oops } from "../src/singleton";
+import { Oops } from "../src/react/singleton";
 import { Singleton } from "./adapter";
 
 describe("singleton", () => {
