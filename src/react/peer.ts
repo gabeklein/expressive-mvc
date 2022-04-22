@@ -1,4 +1,3 @@
-import { child } from '../attach';
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
@@ -13,24 +12,12 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
 })
 
-type Peer = typeof Model | typeof Singleton;
-type ApplyPeer = (context: Lookup) => void;
-type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
+export type Peer = typeof Model | typeof Singleton;
+export type ApplyPeer = (context: Lookup) => void;
+export type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
 
 const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
-
-export function tap<T extends Peer>(
-  type: T, argument?: boolean | PeerCallback<T>){
-
-  return child(
-    function tap(key){
-      return {
-        get: pendingAccess(this.subject, type, key, argument)
-      }
-    }
-  )
-};
 
 export function pendingAccess<T extends Peer>(
   from: Stateful,

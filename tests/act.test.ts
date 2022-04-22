@@ -1,4 +1,4 @@
-import { Oops as Instruct } from '../src/instructions';
+import { Oops as Instruct } from '../src/instruction/act';
 import { act, Model } from './adapter';
 
 class Test extends Model {

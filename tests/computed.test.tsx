@@ -1,5 +1,5 @@
 import { Oops } from '../src/compute';
-import { Oops as Instruction } from '../src/instructions';
+import { Oops as Instruction } from '../src/instruction/from';
 import { from, Model, Singleton, tap, use } from './adapter';
 
 describe("computed", () => {

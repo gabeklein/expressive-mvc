@@ -1,8 +1,8 @@
-import { Controller } from './controller';
-import { apply } from './instruction';
-import { issues } from './issues';
-import { pendingFactory, pendingValue } from './suspense';
-import { createValueEffect } from './util';
+import { Controller } from '../controller';
+import { apply } from './apply';
+import { issues } from '../issues';
+import { pendingFactory, pendingValue } from '../suspense';
+import { createValueEffect } from '../util';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 

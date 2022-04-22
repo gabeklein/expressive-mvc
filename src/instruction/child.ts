@@ -1,7 +1,7 @@
-import { Controller } from './controller';
-import { apply } from './instruction';
-import { Model } from './model';
-import { Subscriber } from './subscriber';
+import { Controller } from '../controller';
+import { apply } from './apply';
+import { Model } from '../model';
+import { Subscriber } from '../subscriber';
 
 type ChildInstruction<T extends Model> =
   (this: Controller, key: string) => {

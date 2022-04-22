@@ -1,4 +1,4 @@
-import { Oops as Assign } from '../src/assign';
+import { Oops as Assign } from '../src/instruction/set';
 import { Oops as Util } from '../src/util';
 import { Model, set } from './adapter';
 

@@ -1,4 +1,4 @@
-import { Oops } from '../src/compose';
+import { Oops } from '../src/instruction/use';
 import { Model, parent, subscribeTo, use } from './adapter';
 
 describe("use instruction", () => {

@@ -1,6 +1,6 @@
 import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
-import { Pending } from './instruction';
+import { Pending } from './instruction/apply';
 import { issues } from './issues';
 import { CONTROL, Stateful } from './model';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
