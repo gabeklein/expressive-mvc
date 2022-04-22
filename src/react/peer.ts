@@ -1,7 +1,7 @@
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
-import { useLookup } from './context';
+import { useLookup } from './hooks';
 import { Singleton } from './singleton';
 
 export const Oops = issues({

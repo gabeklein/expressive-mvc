@@ -6,7 +6,8 @@ export { ref } from './instruction/ref';
 export { set } from './instruction/set';
 export { parent, use } from './instruction/use';
 
-export { Consumer, Provider } from './react/context';
 export { MVC as Model, MVC as default } from './react/mvc';
+export { Consumer } from './react/consumer';
+export { Provider } from './react/provider';
 export { Singleton } from './react/singleton';
 export { tap } from './react/tap';

@@ -1,7 +1,8 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
-import { Oops } from '../src/react/context';
+import { Oops as Context } from '../src/react/hooks';
+import { Oops as Provide } from '../src/react/provider';
 import { Consumer, Model, Provider, render } from './adapter';
 
 class Foo extends Model {
@@ -38,7 +39,7 @@ describe("get", () => {
     const test = () => render(<Hook />);
 
     expect(test).toThrowError(
-      Oops.NothingInContext(Test.name)
+      Context.NothingInContext(Test.name)
     );
   })
 })
@@ -242,7 +243,7 @@ describe("Provider", () => {
     // @ts-ignore
     const test = () => render(<Provider />);
 
-    expect(test).toThrow(Oops.NoProviderType());
+    expect(test).toThrow(Provide.NoProviderType());
   })
 })
 
@@ -313,7 +314,7 @@ describe("Consumer", () => {
     )
 
     expect(test).toThrowError(
-      Oops.NothingInContext(Bar.name)
+      Context.NothingInContext(Bar.name)
     );
   })
 

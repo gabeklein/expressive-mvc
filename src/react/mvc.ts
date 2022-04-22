@@ -1,7 +1,6 @@
 import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
-import { useFromContext } from './context';
-import { useModel, useNew, useTap } from './hooks';
+import { useAmbient, useModel, useNew, useTap } from './hooks';
 import { usePeerContext } from './peer';
 
 export class MVC extends Model {
@@ -16,7 +15,7 @@ export class MVC extends Model {
   }
 
   static get(arg?: boolean | string){
-    return useFromContext(this, arg);
+    return useAmbient(this, arg);
   }
 
   static tap(key?: string, expect?: boolean): any {

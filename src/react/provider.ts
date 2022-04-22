@@ -1,0 +1,90 @@
+import React from 'react';
+
+import { issues } from '../issues';
+import { Model } from '../model';
+import { Collection, Lookup } from '../register';
+import { Subscriber } from '../subscriber';
+import { entries } from '../util';
+import { LookupContext, use, useLookup } from './hooks';
+import { getPending } from './peer';
+
+export const Oops = issues({
+  NoProviderType: () =>
+    `Provider 'of' prop must be Model, typeof Model or a collection of them.`
+})
+
+interface ProvideProps {
+  of?: typeof Model | Model | Collection;
+  children: React.ReactNode | ((instance?: any) => React.ReactNode);
+}
+
+export function Provider(props: ProvideProps){
+  const context = useNewContext(props.of);
+  const render = props.children;
+
+  useAppliedProps(context, props);
+  React.useLayoutEffect(() => () => context.pop(), []);
+
+  return React.createElement(LookupContext.Provider, { value: context },
+    typeof render == "function"
+      ? React.createElement(RenderFunction, { context, render })
+      : render
+  );
+}
+
+function useNewContext(
+  inject?: Model | typeof Model | Collection){
+
+  const from = useLookup();
+
+  return React.useMemo(() => {
+    if(!inject)
+      throw Oops.NoProviderType();
+    
+    const context = from.push(inject);
+
+    for(const instance of context.local)
+      if(instance)
+        for(const apply of getPending(instance))
+          apply(context)
+
+    return context;
+  }, []);
+}
+
+function useAppliedProps(within: Lookup, props: {}){
+  const update = React.useMemo(() => {
+    const targets = within.local;
+
+    return function integrate(props: {}){
+      for(const [key, value] of entries(props))
+        if(key != "of" && key != "children")
+          for(const into of targets)
+            if(into && key in into)
+              (into as any)[key] = value;
+    };
+  }, []);
+
+  update(props);
+}
+
+interface RenderFunctionProps {
+  context: Lookup;
+  render: Function;
+}
+
+function RenderFunction(props: RenderFunctionProps): any {
+  const hook = use(refresh => {
+    const targets = props.context.local;
+
+    if(targets.length == 1)
+      return new Subscriber(targets[0], () => refresh);
+
+    return {} as Subscriber;
+  });
+
+  if(hook.commit)
+    React.useLayoutEffect(() => hook.commit(), []);
+
+  return props.render(hook.proxy);
+}
