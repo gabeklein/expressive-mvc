@@ -1,4 +1,4 @@
-import { Model, on, subscribeTo } from './adapter';
+import { Model, set, subscribeTo } from './adapter';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -55,7 +55,7 @@ describe("subscriber", () => {
   it('will not obstruct set-behavior', () => {
     class Test extends Model {
       didSet = jest.fn();
-      value = on("foo", this.didSet);
+      value = set(() => "foo", this.didSet);
     }
 
     const control = Test.create();

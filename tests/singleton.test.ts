@@ -35,7 +35,7 @@ describe("singleton", () => {
     expect(Global.get(false)).toBeUndefined();
   })
   
-  it("will destroy active instance on reset", () => {
+  it("will throw if Global does not exist", () => {
     const hook = renderHook(() => Global.tap());
     const expected = Oops.GlobalDoesNotExist(Global.name);
     

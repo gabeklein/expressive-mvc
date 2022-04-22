@@ -15,7 +15,7 @@ export const Oops = issues({
     `Generating initial value for ${model}.${key} failed.`
 })
 
-function set(
+export function set(
   factory?: (key: string, subject: unknown) => any,
   argument?: Controller.OnValue | boolean): any {  
 
@@ -61,13 +61,4 @@ function set(
       return { set, get }
     }
   )
-}
-
-function on(initial: any, onUpdate: Controller.OnValue){
-  return set(initial && (() => initial), onUpdate)
-}
-
-export {
-  on,
-  set
 }

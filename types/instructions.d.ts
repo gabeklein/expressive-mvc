@@ -94,26 +94,6 @@ export namespace on {
     ((next: T) => void) | Promise<any> | void | boolean;
 }
 
-/**
- * Cause property to synchronously run effect upon update.
- * 
- * Callback may return an effect callback, Promise (ignored), or a boolean.
- * 
- * If a boolean is returned explicitly, new value will be dropped. Useful to override.
- * 
- * - `false` will prevent update.
- * - `true` will emit update (unchanged).
- *
- * @param initialValue - Beginning value of host property.
- * @param onUpdate - Effect-callback fired upon set of host property.
- * 
- * @deprecated will be removed in favor of `set`
- */
-export function on <T> (initialValue: undefined, onUpdate: on.Callback<T>): T | undefined;
-export function on <T> (initialValue: T, onUpdate: on.Callback<T>): T;
-export function on <T, S> (initialValue: undefined, onUpdate: on.Callback<T, S>): T | undefined;
-export function on <T, S> (initialValue: T, onUpdate: on.Callback<T, S>): T;
-
 /** Object with references to all managed values of `T`. */
 export type Refs <T extends Model> = { [P in Model.Fields<T>]: Model.Ref<T[P]> };
 
