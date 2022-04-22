@@ -3,7 +3,6 @@ import { Controller, control } from './controller';
 import { apply } from './instruction';
 import { issues } from './issues';
 import { Model, Stateful } from './model';
-import { pendingAccess } from './peer';
 import { pendingValue } from './suspense';
 import { createValueEffect, defineLazy, defineProperty, setAlias } from './util';
 
@@ -122,10 +121,6 @@ export function from<T, R = T>(
         setter = source.call(subject, key);
         getSource = () => this;
       }
-
-      // is a peer Model (constructor)
-      else if(Model.isTypeof(source))
-        getSource = pendingAccess(subject, source, key, true);
 
       // Regular function is too ambiguous so not allowed.
       else
