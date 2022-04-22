@@ -100,7 +100,9 @@ class Controller {
     applyUpdate(this.subject, keys)();
 
     for(const callback of waiting)
-      try { callback(keys) }
+      try {
+        callback(keys)
+      }
       catch(err){
         console.error(err);
       }

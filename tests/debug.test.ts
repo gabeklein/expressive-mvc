@@ -185,3 +185,31 @@ describe("toString", () => {
     expect(String(test)).toBe("Test");
   })
 })
+
+describe("errors", () => {
+  const warn = jest
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  afterEach(() => warn.mockReset());
+  afterAll(() => warn.mockRestore())
+
+  it("will log update errors in the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const expected = new Error("Goodbye cruel world!")
+    const test = Test.create();
+
+    test.on("value", () => {
+      throw expected;
+    });
+
+    test.value = 2;
+
+    await test.update();
+
+    expect(warn).toBeCalledWith(expected);
+  });
+})
