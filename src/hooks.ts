@@ -19,11 +19,11 @@ export function useTap(
   expect?: boolean){
 
   return typeof path == "function"
-    ? useComputed(model, path, expect)
-    : useActive(model, path, expect);
+    ? useFrom(model, path, expect)
+    : useHere(model, path, expect);
 }
 
-export function usePassive<T extends typeof Model>(
+export function useNew<T extends typeof Model>(
   Type: T, callback?: (instance: InstanceOf<T>) => void){
 
   const instance = React.useMemo(() => {
@@ -40,7 +40,7 @@ export function usePassive<T extends typeof Model>(
   return instance;
 }
 
-export function useActive(
+export function useHere(
   target: Stateful,
   focus?: string,
   expected?: boolean){
@@ -71,7 +71,7 @@ export function useActive(
   return hook.proxy;
 }
 
-export function useComputed(
+export function useFrom(
   target: Stateful,
   compute: Function,
   suspend?: boolean){

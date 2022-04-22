@@ -1,5 +1,5 @@
 import { useFromContext } from './context';
-import { useModel, usePassive, useTap } from './hooks';
+import { useModel, useNew, useTap } from './hooks';
 import { Model } from './model';
 import { usePeerContext } from './peer';
 
@@ -17,11 +17,11 @@ export class MVC extends Model {
   }
 
   static tap(key?: string, expect?: boolean): any {
-    return this.get().tap(key, expect);
+    return useTap(this.get(), key, expect);
   }
 
   static new(callback?: (instance: Model) => void){
-    return usePassive(this, callback);
+    return useNew(this, callback);
   }
 
   static use(callback?: (instance: Model) => void){
