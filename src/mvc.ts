@@ -1,9 +1,12 @@
 import { useFromContext } from './context';
+import { Controller } from './controller';
 import { useModel, useNew, useTap } from './hooks';
-import { Model } from './model';
+import { CONTROL, Model } from './model';
 import { usePeerContext } from './peer';
 
 export class MVC extends Model {
+  static [CONTROL]: Controller;
+
   tap(path?: string | Function, expect?: boolean){
     return useTap(this, path, expect);
   }
@@ -43,6 +46,6 @@ export class MVC extends Model {
   }
 
   static meta(path: string | Function, expect?: boolean): any {
-    return useTap(this, path, expect);
+    return useTap(() => this, path, expect);
   }
 }

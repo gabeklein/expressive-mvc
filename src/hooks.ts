@@ -14,13 +14,13 @@ export function use<T>(init: (trigger: Callback) => T){
 }
 
 export function useTap(
-  model: Stateful,
+  model: (() => Stateful) | Stateful,
   path?: string | Function,
   expect?: boolean){
 
   return typeof path == "function"
     ? useFrom(model, path, expect)
-    : useHere(model, path, expect);
+    : useModel(model, path, expect);
 }
 
 export function useNew<T extends typeof Model>(
@@ -40,44 +40,16 @@ export function useNew<T extends typeof Model>(
   return instance;
 }
 
-export function useHere(
-  target: Stateful,
-  focus?: string,
-  expected?: boolean){
-
-  const hook = use(refresh => {
-    const sub = new Subscriber(target, () => refresh);
-
-    if(focus){
-      const source = sub.proxy;
-
-      defineProperty(sub, "proxy", {
-        get(){
-          const value = source[focus];
-
-          if(value === undefined && expected)
-            throw suspend(sub.parent, focus)
-
-          return value;
-        }
-      })
-    }
-
-    return sub;
-  });
-
-  React.useLayoutEffect(() => hook.commit(), []);
-
-  return hook.proxy;
-}
-
 export function useFrom(
-  target: Stateful,
+  target: (() => Stateful) | Stateful,
   compute: Function,
   suspend?: boolean){
 
-  const hook = use(refresh => {
-    const sub = new Subscriber(target, () => update);
+  const local = use(refresh => {
+    const instance =
+      typeof target == "function" ? target() : target;
+
+    const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);
@@ -121,38 +93,57 @@ export function useFrom(
     return sub;
   });
 
-  React.useLayoutEffect(() => hook.release, []);
+  React.useLayoutEffect(() => local.release, []);
 
-  return hook.proxy;
+  return local.proxy;
 }
 
 export function useModel(
-  source: Class | Model,
-  callback?: (instance: Model) => void){
+  source: (new () => Model) | (() => Stateful) | Stateful,
+  arg?: string | ((instance: Stateful) => void) | {},
+  expected?: boolean){
 
-  const hook = use(refresh => {
+  const local = use(refresh => {
     const instance =
       typeof source == "function" ?
-        new source() as Model : source;
+        "prototype" in source ?
+          new (source as any)() as Model :
+          (source as any)() :
+        source;
 
     const sub = new Subscriber(instance, () => refresh);
 
-    if(callback)
-      callback(instance);
+    if(typeof arg === "function")
+      arg(instance);
+
+    else if(typeof arg == "string"){
+      const source = sub.proxy;
+
+      defineProperty(sub, "proxy", {
+        get(){
+          const value = source[arg];
+
+          if(value === undefined && expected)
+            throw suspend(sub.parent, arg)
+
+          return value;
+        }
+      })
+    }
 
     return sub;
   });
 
   React.useLayoutEffect(() => {
-    hook.commit();
+    local.commit();
 
     return () => {
-      hook.release();
+      local.release();
 
-      if(hook.source !== source)
-        hook.source.destroy();
+      if(local.source !== source)
+        local.source.destroy();
     }
   }, []);
 
-  return hook.proxy;
+  return local.proxy;
 }
