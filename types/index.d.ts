@@ -1,7 +1,7 @@
 export {
     Model,
     Model as default,
-    Singleton
+    Global
 } from './model';
 
 export * from './context';

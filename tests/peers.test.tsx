@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Oops } from '../src/react/peer';
-import { Consumer, Model, Provider, render, Singleton, subscribeTo, tap } from './adapter';
+import { Consumer, Global, Model, Provider, render, subscribeTo, tap } from './adapter';
 
 describe("tap instruction", () => {
   class Foo extends Model {
@@ -147,14 +147,14 @@ describe("callback", () => {
 describe("singleton", () => {
   it("will attach to model", () => {
     class Foo extends Model {
-      global = tap(Global);
+      global = tap(TestGlobal);
     }
 
-    class Global extends Singleton {
+    class TestGlobal extends Global {
       value = "bar";
     }
 
-    Global.create();
+    TestGlobal.create();
 
     const Test = () => {
       const { global } = Foo.use();
@@ -166,25 +166,25 @@ describe("singleton", () => {
   })
 
   it("will attach to another singleton", () => {
-    class Peer extends Singleton {}
-    class Global extends Singleton {
+    class Peer extends Global {}
+    class Test extends Global {
       peer = tap(Peer);
     }
     
     const peer = Peer.create();
-    const global = Global.create();    
+    const global = Test.create();    
 
     expect(global.peer).toBe(peer);
   })
 
   it("will throw if tries to attach Model", () => {
     class Normal extends Model {}
-    class Global extends Singleton {
+    class TestGlobal extends Global {
       notPossible = tap(Normal);
     }
 
-    const attempt = () => Global.create();
-    const issue = Oops.CantAttachGlobal(Global.name, Normal.name);
+    const attempt = () => TestGlobal.create();
+    const issue = Oops.CantAttachGlobal(TestGlobal.name, Normal.name);
 
     expect(attempt).toThrowError(issue);
   })

@@ -1,18 +1,18 @@
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
+import { Global } from './global';
 import { useLookup } from './hooks';
-import { Singleton } from './singleton';
 
 export const Oops = issues({
   CantAttachGlobal: (parent, child) =>
-    `Singleton '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
+    `Global '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
 
   AmbientRequired: (requested, requester, key) =>
     `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
 })
 
-export type Peer = typeof Model | typeof Singleton;
+export type Peer = typeof Model | typeof Global;
 export type ApplyPeer = (context: Lookup) => void;
 export type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
 

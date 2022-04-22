@@ -9,13 +9,13 @@ export const Oops = issues({
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
-const Active = new WeakMap<typeof Singleton, Singleton>();
+const Active = new WeakMap<typeof Global, Global>();
 
-export class Singleton extends MVC {
+export class Global extends MVC {
   static create<T extends Class>(
     this: T, ...args: any[]){
 
-    const Type: typeof Singleton = this as any;
+    const Type: typeof Global = this as any;
 
     if(Active.has(Type))
       throw Oops.GlobalExists(this.name);
@@ -27,7 +27,7 @@ export class Singleton extends MVC {
     return instance as InstanceOf<T>;
   }
 
-  static set<T extends typeof Singleton>(
+  static set<T extends typeof Global>(
     this: T, updates: Partial<InstanceOf<T>>){
 
     const instance = Active.get(this) || this.create();

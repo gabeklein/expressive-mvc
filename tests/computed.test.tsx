@@ -1,6 +1,6 @@
 import { Oops } from '../src/compute';
 import { Oops as Instruction } from '../src/instruction/from';
-import { from, Model, Singleton, tap, use } from './adapter';
+import { from, Global, Model, tap, use } from './adapter';
 
 describe("computed", () => {
   class Child extends Model {
@@ -248,7 +248,7 @@ describe("failures", () => {
   })
 
   it('will throw if source is another instruction', () => {
-    class Peer extends Singleton {
+    class Peer extends Global {
       value = 1;
     }
 
@@ -364,7 +364,7 @@ describe("factory", () => {
 })
 
 // describe("external", () => {
-//   class Peer extends Singleton {
+//   class Peer extends Global {
 //     value = 1;
 //   }
 
@@ -411,7 +411,7 @@ describe("factory", () => {
 //     );
 //   })
 
-//   it('will accept Singleton as source', () => {
+//   it('will accept Global as source', () => {
 //     Peer.create();
 
 //     class Test extends Model {

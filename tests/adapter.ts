@@ -8,7 +8,7 @@ export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
 export const Model = Source.Model as unknown as typeof Public.Model;
-export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
+export const Global = Source.Global as unknown as typeof Public.Global;
 export const Provider = Source.Provider as unknown as typeof Public.Provider;
 export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
 

@@ -387,7 +387,7 @@ export abstract class Model {
     static isTypeof <T extends Class>(this: T, subject: any): subject is T;
 }
 
-export class Singleton extends Model {
+export class Global extends Model {
     /**
      * Update the active instance of this class.
      * Returns a thenable; resolves after successful update.
@@ -397,6 +397,6 @@ export class Singleton extends Model {
         this: T, updates: Model.Compat<InstanceOf<T>>
     ): PromiseLike<string[] | false>;
 
-    /** Destroy current instance of Singleton, if it exists. */
+    /** Destroy current instance of Global, if it exists. */
     static reset(): void;
 }

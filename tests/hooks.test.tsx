@@ -1,7 +1,7 @@
 import React from 'react';
 
-import { Oops as Global } from '../src/react/singleton';
-import { Model, render, renderHook, Singleton, use } from './adapter';
+import { Oops } from '../src/react/global';
+import { Global, Model, render, renderHook, use } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -169,7 +169,7 @@ describe("using", () => {
 })
 
 describe("get", () => {
-  class Test extends Singleton {
+  class Test extends Global {
     value = 1;
   }
 
@@ -194,7 +194,7 @@ describe("get", () => {
 
   it("will complain if not-found in expect mode", () => {
     const { result } = renderHook(() => Test.get(true));
-    const expected = Global.GlobalDoesNotExist(Test.name);
+    const expected = Oops.GlobalDoesNotExist(Test.name);
 
     expect(() => result.current).toThrowError(expected);
   })
