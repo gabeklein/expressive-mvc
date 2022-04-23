@@ -363,63 +363,67 @@ describe("factory", () => {
   })
 })
 
-// describe("external", () => {
-//   class Peer extends Global {
-//     value = 1;
-//   }
+/*
+Feature is temporarily removed - evaluating usefulness.
 
-//   afterEach(() => Peer.reset());
+describe("external", () => {
+  class Peer extends Global {
+    value = 1;
+  }
 
-//   it('will accept source other than \'this\'', async () => {
-//     const peer = Peer.create();
+  afterEach(() => Peer.reset());
 
-//     class Test extends Model {
-//       value = from(peer, state => state.value + 1);
-//     }
+  it('will accept source other than \'this\'', async () => {
+    const peer = Peer.create();
+
+    class Test extends Model {
+      value = from(peer, state => state.value + 1);
+    }
     
-//     const test = Test.create();
+    const test = Test.create();
 
-//     expect(test.value).toBe(2);
+    expect(test.value).toBe(2);
 
-//     peer.value = 2;
+    peer.value = 2;
 
-//     await test.update(true);
+    await test.update(true);
 
-//     expect(test.value).toBe(3);
-//   });
+    expect(test.value).toBe(3);
+  });
 
-//   it('will accept Model in-context as source', () => {
-//     class Peer extends Model {
-//       value = 1;
-//     }
+  it('will accept Model in-context as source', () => {
+    class Peer extends Model {
+      value = 1;
+    }
 
-//     class Test extends Model {
-//       value = from(Peer, state => state.value + 1);
-//     }
+    class Test extends Model {
+      value = from(Peer, state => state.value + 1);
+    }
 
-//     const Component = () => {
-//       const test = Test.use();
+    const Component = () => {
+      const test = Test.use();
 
-//       expect(test.value).toBe(2);
-//       return null;
-//     }
+      expect(test.value).toBe(2);
+      return null;
+    }
 
-//     render(
-//       <Provider of={Peer}>
-//         <Component />
-//       </Provider>
-//     );
-//   })
+    render(
+      <Provider of={Peer}>
+        <Component />
+      </Provider>
+    );
+  })
 
-//   it('will accept Global as source', () => {
-//     Peer.create();
+  it('will accept Global as source', () => {
+    Peer.create();
 
-//     class Test extends Model {
-//       value = from(Peer, state => state.value + 1);
-//     }
+    class Test extends Model {
+      value = from(Peer, state => state.value + 1);
+    }
     
-//     const test = Test.create();
+    const test = Test.create();
 
-//     expect(test.value).toBe(2);
-//   })
-// })
+    expect(test.value).toBe(2);
+  })
+})
+*/
