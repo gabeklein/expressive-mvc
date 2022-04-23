@@ -26,7 +26,7 @@ declare namespace from {
  * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value. Will update automatically as input values change.
  * @param suspend - Value will throw suspense when evaulating to undefined.
  */
-function from <R, T> (source: T, compute: (this: T, on: T) => R | void, suspend: true): R;
+function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend: true): Exclude<R, undefined>;
 function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolean): R;
 
 /**
@@ -35,7 +35,7 @@ function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boole
  * @param compute - Factory function to generate a getter to subscribe dependancies.
  * @param suspend - Value will throw suspense when evaulating to undefined.
  */
-function from <R, T> (compute: (property: string) => (this: T, state: T) => R | void, suspend: true): R;
+function from <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
 function from <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
 
 function from<R, T>(
