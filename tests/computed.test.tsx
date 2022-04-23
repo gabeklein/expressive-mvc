@@ -184,11 +184,22 @@ describe("computed", () => {
 })
 
 describe("failures", () => {
-  const { error, warn } = console;
-  
+  const warn = jest
+    .spyOn(global.console, "warn")
+    .mockImplementation(() => {});
+
+  const error = jest
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  afterEach(() => {
+    warn.mockReset();
+    error.mockReset();
+  });
+
   afterAll(() => {
-    console.warn = warn;
-    console.error = error;
+    warn.mockReset();
+    error.mockRestore();
   });
 
   class Subject extends Model {
@@ -201,7 +212,6 @@ describe("failures", () => {
     const state = Subject.create();
     const attempt = () => state.never;
 
-    const warn = console.warn = jest.fn();
     const failed = Oops.ComputeFailed(Subject.name, "never", true);
 
     expect(attempt).toThrowError();
@@ -212,7 +222,6 @@ describe("failures", () => {
     const state = Subject.create();
     const attempt = () => state.once("never");
 
-    const warn = console.warn = jest.fn();
     const failed = Oops.ComputeFailed(Subject.name, "never", true);
     const early = Oops.ComputedEarly("never");
 
@@ -233,8 +242,6 @@ describe("failures", () => {
       })
     }
 
-    const warn = console.warn = jest.fn();
-    const error = console.error = jest.fn();
     const state = Test.create();
     const failed = Oops.ComputeFailed(Test.name, "value", false);
 
