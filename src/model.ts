@@ -125,15 +125,6 @@ interface Model extends Stateful {
 }
 
 class Model {
-  /** Use symbol to access controller of a model. */
-  static CONTROL = CONTROL;
-  /** Use symbol to access current state of a model. */
-  static STATE = STATE;
-  /** Use symbol to access current subscriber of a model in a live context (e.g. hook or effect). */
-  static LOCAL = LOCAL;
-  /** Use symbol to access keys affected by last update. */
-  static WHY = WHY;
-
   static [CONTROL]: Controller;
   static [WHY]: readonly string[];
 
