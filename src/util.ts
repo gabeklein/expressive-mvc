@@ -1,4 +1,5 @@
 import { issues } from './issues';
+import { Model } from './model';
 
 export const Oops = issues({
   BadEffectCallback: () =>
@@ -61,7 +62,7 @@ export function setAlias<T extends Function>(
 }
 
 export function createEffect(
-  callback: EffectCallback<any>){
+  callback: Model.Effect<any>){
 
   let unSet: Callback | Promise<any> | void;
 

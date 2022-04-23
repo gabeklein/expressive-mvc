@@ -2,29 +2,14 @@ import { Controller } from '../controller';
 import { LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
+import { Instruction } from './type';
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
-declare namespace Instruction {
-  type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
-
-  interface Descriptor<T> {
-    configurable?: boolean;
-    enumerable?: boolean;
-    value?: T;
-    writable?: boolean;
-    get?: Getter<T>;
-    set?(value: T, state: any): boolean | void;
-  }
-}
-
-type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-  void | Instruction.Getter<T> | Instruction.Descriptor<T>;
-
-  /**
+/**
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
- **/
+ */
 function apply <T = any> (instruction: Instruction<T>, name?: string): T;
 
 function apply<T = any>(
@@ -78,4 +63,4 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export { apply, Instruction }
+export { apply }

@@ -31,7 +31,7 @@ export class Global extends MVC {
    * Update the active instance of this class.
    * Returns a thenable; resolves after successful update.
    * If instance does not already exist, one will be created. 
-   **/
+   */
   static set<T extends typeof Global>(
     this: T, updates: Partial<InstanceOf<T>>){
 

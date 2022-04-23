@@ -24,46 +24,31 @@ export interface Stateful {
    * 
    * If accessed directly, will contain all keys from last push.
    * If within a subscribed function, will contain only keys which explicitly caused a refresh.
-   **/
+   */
   [WHY]?: readonly string[];
 };
 
 declare namespace Model {
+  type OnUpdate<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+
+  type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
+
   /** Exotic value, actual value is contained. */
   interface Ref<T = any> {
       (next: T): void;
       current: T | null;
   }
 
-  type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
-
-  type EffectCallback<T> = (this: T, argument: T) => Callback | Promise<any> | void;
-
-  /**
-   * Property initializer, will run upon instance creation.
-   * Optional returned callback will run when once upon first access.
-  */
-  type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-      void | Instruction.Getter<T> | Instruction.Descriptor<T>;
-
-  namespace Instruction {
-      interface Descriptor<T> {
-          configurable?: boolean;
-          enumerable?: boolean;
-          value?: T;
-          writable?: boolean;
-          get?(current: T | undefined, within?: Subscriber): T;
-          set?(value: T, state: any): boolean | void;
-      }
-  
-      type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
-  }
-
   /** Subset of `keyof T` excluding keys defined by base Model */
-  type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
+  type Fields<T, U extends Model = Model> = Exclude<keyof T, keyof U> & string;
+
+  type Events<T, U extends Model = Model> = Extends<Exclude<keyof T, keyof U> & string>;
 
   /** Object containing data found in T. */
-  type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
+  type Entries<T, U extends Model = Model> = Pick<T, Fields<T, U>>;
+
+  /** Object comperable to data found in T. */
+  type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
 
   /** Actual value stored in state. */
   type Value<R> = R extends Ref<infer T> ? T : R;
@@ -73,15 +58,7 @@ declare namespace Model {
       [P in K]: Value<T[P]>;
   }
 
-  /** Object comperable to data found in T. */
-  type Compat<T, Exclude = Model> = Partial<Entries<T, Exclude>>;
-
-  /** Subset of `keyof T` excluding keys defined by base Model. */
-  type Events<T> = Omit<T, keyof Model>;
-
-  type EventsCompat<T> = Including<keyof T>;
-
-  type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
+  type Typeof<T, ST, X extends keyof T = Fields<T>> = {
       [Key in X]: T[Key] extends ST ? Key : never;
   }[X];
 }
@@ -174,16 +151,16 @@ class Model {
     return UPDATE.get(this);
   }
 
-  on <P = Model.EventsCompat<this>> (keys: [], listener: Model.UpdateCallback<this, P>, squash?: boolean, once?: boolean): Callback;
-  on <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on <P = Model.Events<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: Model.UpdateCallback<this, P>, squash?: boolean, once?: boolean): Callback;
-  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  on <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
+  on <P extends Model.Events<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P extends Model.Events<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on <P extends Model.Events<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  on(
-    select: string | string[],
+  on <P extends Model.Events<this>> (
+    select: P | P[],
     handler: Function,
     squash?: boolean,
     once?: boolean){
@@ -215,33 +192,33 @@ class Model {
     });
   }
 
-  once <P = Model.EventsCompat<this>> (keys: [], listener: Model.UpdateCallback<this, P>, squash?: false, once?: boolean): Callback;
-  once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  once <P = Model.EventsCompat<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once <P = Model.Events<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false, once?: boolean): Callback;
+  once <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: Model.UpdateCallback<this, P>, squash?: false): Callback;
-  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
-  once <P extends Model.EventsCompat<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
-  once <P extends Model.EventsCompat<this>> (key: P | P[]): Promise<P[]>;
+  once <P extends Model.Events<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
+  once <P extends Model.Events<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+  once <P extends Model.Events<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
+  once <P extends Model.Events<this>> (key: P | P[]): Promise<P[]>;
 
-  once(
-    select: string | string[],
+  once <P extends Model.Events<this>> (
+    select: P | P[],
     callback?: UpdateCallback<any, any>,
     squash?: boolean){
 
     if(callback)
       return this.on(select, callback, squash, true);
 
-    return new Promise<string[]>(resolve => {
+    return new Promise<P[]>(resolve => {
       this.on(select, resolve, true, true);
     });
   }
 
-  effect(callback: Model.EffectCallback<this>): Callback;
-  effect(callback: Model.EffectCallback<this>, select: []): Callback;
-  effect(callback: Model.EffectCallback<this>, select: (keyof this)[]): Callback;
-  effect(callback: EffectCallback<this>, select?: (keyof this)[]){
+  effect(callback: Model.Effect<this>): Callback;
+  effect(callback: Model.Effect<this>, select: []): Callback;
+  effect(callback: Model.Effect<this>, select: (keyof this)[]): Callback;
+  effect(callback: Model.Effect<this>, select?: (keyof this)[]){
     const effect = createEffect(callback);
 
     return control(this, control => {
@@ -304,9 +281,9 @@ class Model {
   update(strict: false): Promise<false>;
   update(strict: boolean): Promise<readonly string[] | false>;
 
-  update(keys: Including<Model.Fields<this>>): PromiseLike<readonly string[]>;
-  update(keys: Including<Model.Fields<this>>, callMethod: boolean): PromiseLike<readonly string[]>;
-  update<T>(keys: Including<Model.Fields<this>>, argument: T): PromiseLike<readonly string[]>;
+  update(keys: Model.Events<this>): PromiseLike<readonly string[]>;
+  update(keys: Model.Events<this>, callMethod: boolean): PromiseLike<readonly string[]>;
+  update<T>(keys: Model.Events<this>, argument: T): PromiseLike<readonly string[]>;
 
   update(arg?: any, tag?: any): any {
     const target = control(this);

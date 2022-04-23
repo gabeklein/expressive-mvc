@@ -35,7 +35,7 @@ describe("subscriber", () => {
      * we did not access value2 in above accessor,
      * subscriber assumes we don't care about updates
      * to this property, so it'l drop relevant events
-     **/ 
+     */ 
     state.value2 = 3;
     await update(false);
   });

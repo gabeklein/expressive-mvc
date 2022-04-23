@@ -10,4 +10,6 @@ type AssignCallback<T, S = any> = (this: S, argument: T, thisArg: S) => ((next: 
 type UpdateCallback<T, P extends keyof T> = (this: T, value: T[P], changed: P) => void;
 
 type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
-type Including<T> = T | (string & Record<never, never>);
+
+/** Including but not limited to T. */
+type Extends<T> = T | (string & Record<never, never>);
