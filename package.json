@@ -17,10 +17,8 @@
   ],
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
-  "types": "types/index.d.ts",
   "files": [
-    "lib",
-    "types"
+    "lib"
   ],
   "scripts": {
     "build": "rollup --config",
