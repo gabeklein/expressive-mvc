@@ -2,7 +2,7 @@ import React from 'react';
 import { act } from 'react-test-renderer';
 
 import { Consumer, Model, Provider } from '../src';
-import { Oops as Context } from '../src/react/hooks';
+import { Oops as Context } from '../src/react/useInContext';
 import { Oops as Provide } from '../src/react/provider';
 import { render } from './adapter';
 

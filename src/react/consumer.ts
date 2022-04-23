@@ -1,7 +1,8 @@
 import React from 'react';
 
 import { issues } from '../issues';
-import { useInContext, useTap } from './hooks';
+import { useInContext } from './useInContext';
+import { useTap } from './useTap';
 
 export const Oops = issues({
   BadConsumerProps: () =>

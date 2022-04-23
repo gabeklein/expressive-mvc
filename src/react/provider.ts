@@ -5,8 +5,9 @@ import { Model } from '../model';
 import { Collection, Lookup } from '../register';
 import { Subscriber } from '../subscriber';
 import { entries } from '../util';
-import { LookupContext, use, useLookup } from './hooks';
+import { use} from './hooks';
 import { getPending } from './peer';
+import { LookupContext, useLookup } from './useInContext';
 
 export const Oops = issues({
   NoProviderType: () =>

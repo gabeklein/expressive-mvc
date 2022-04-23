@@ -1,7 +1,10 @@
 import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
-import { useInContext, useModel, useNew, useTap } from './hooks';
 import { usePeerContext } from './peer';
+import { useInContext } from './useInContext';
+import { useModel } from './useModel';
+import { useNew } from './useNew';
+import { useTap } from './useTap';
 
 export class MVC extends Model {
   static [CONTROL]: Controller;

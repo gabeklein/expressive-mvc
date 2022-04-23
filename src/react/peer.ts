@@ -2,7 +2,7 @@ import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
 import { Global } from './global';
-import { useLookup } from './hooks';
+import { useLookup } from './useInContext';
 
 export const Oops = issues({
   CantAttachGlobal: (parent, child) =>
