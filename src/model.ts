@@ -29,36 +29,39 @@ export interface Stateful {
 };
 
 declare namespace Model {
-  type OnUpdate<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+  export { Controller };
+  export { Subscriber };
 
-  type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
+  export type OnUpdate<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+
+  export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
   /** Exotic value, actual value is contained. */
-  interface Ref<T = any> {
+  export interface Ref<T = any> {
       (next: T): void;
       current: T | null;
   }
 
   /** Subset of `keyof T` excluding keys defined by base Model */
-  type Fields<T, U extends Model = Model> = Exclude<keyof T, keyof U> & string;
+  export type Fields<T, U extends Model = Model> = Exclude<keyof T, keyof U> & string;
 
-  type Events<T, U extends Model = Model> = Extends<Exclude<keyof T, keyof U> & string>;
+  export type Events<T, U extends Model = Model> = Extends<Exclude<keyof T, keyof U> & string>;
 
   /** Object containing data found in T. */
-  type Entries<T, U extends Model = Model> = Pick<T, Fields<T, U>>;
+  export type Entries<T, U extends Model = Model> = Pick<T, Fields<T, U>>;
 
   /** Object comperable to data found in T. */
-  type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
+  export type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
 
   /** Actual value stored in state. */
-  type Value<R> = R extends Ref<infer T> ? T : R;
+  export type Value<R> = R extends Ref<infer T> ? T : R;
 
   /** Values from current state of given controller. */
-  type State<T, K extends keyof T = Fields<T, Model>> = {
+  export type State<T, K extends keyof T = Fields<T, Model>> = {
       [P in K]: Value<T[P]>;
   }
 
-  type Typeof<T, ST, X extends keyof T = Fields<T>> = {
+  export type Typeof<T, ST, X extends keyof T = Fields<T>> = {
       [Key in X]: T[Key] extends ST ? Key : never;
   }[X];
 }
