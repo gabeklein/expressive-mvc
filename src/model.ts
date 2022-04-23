@@ -28,6 +28,64 @@ export interface Stateful {
   [WHY]?: readonly string[];
 };
 
+declare namespace Model {
+  /** Exotic value, actual value is contained. */
+  interface Ref<T = any> {
+      (next: T): void;
+      current: T | null;
+  }
+
+  type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+
+  type EffectCallback<T> = (this: T, argument: T) => Callback | Promise<any> | void;
+
+  /**
+   * Property initializer, will run upon instance creation.
+   * Optional returned callback will run when once upon first access.
+  */
+  type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+      void | Instruction.Getter<T> | Instruction.Descriptor<T>;
+
+  namespace Instruction {
+      interface Descriptor<T> {
+          configurable?: boolean;
+          enumerable?: boolean;
+          value?: T;
+          writable?: boolean;
+          get?(current: T | undefined, within?: Subscriber): T;
+          set?(value: T, state: any): boolean | void;
+      }
+  
+      type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
+  }
+
+  /** Subset of `keyof T` excluding keys defined by base Model */
+  type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
+
+  /** Object containing data found in T. */
+  type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
+
+  /** Actual value stored in state. */
+  type Value<R> = R extends Ref<infer T> ? T : R;
+
+  /** Values from current state of given controller. */
+  type State<T, K extends keyof T = Fields<T, Model>> = {
+      [P in K]: Value<T[P]>;
+  }
+
+  /** Object comperable to data found in T. */
+  type Compat<T, Exclude = Model> = Partial<Entries<T, Exclude>>;
+
+  /** Subset of `keyof T` excluding keys defined by base Model. */
+  type Events<T> = Omit<T, keyof Model>;
+
+  type EventsCompat<T> = Including<keyof T>;
+
+  type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
+      [Key in X]: T[Key] extends ST ? Key : never;
+  }[X];
+}
+
 interface Model extends Stateful {
   /**
    * Circular reference to `this` controller.
@@ -87,64 +145,6 @@ interface Model extends Stateful {
   * ``` 
   */
   set: this;
-}
-
-declare namespace Model {
-  /** Exotic value, actual value is contained. */
-  interface Ref<T = any> {
-      (next: T): void;
-      current: T | null;
-  }
-
-  type UpdateCallback<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
-
-  type EffectCallback<T> = (this: T, argument: T) => Callback | Promise<any> | void;
-
-  /**
-   * Property initializer, will run upon instance creation.
-   * Optional returned callback will run when once upon first access.
-  */
-  type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-      void | Instruction.Getter<T> | Instruction.Descriptor<T>;
-
-  namespace Instruction {
-      interface Descriptor<T> {
-          configurable?: boolean;
-          enumerable?: boolean;
-          value?: T;
-          writable?: boolean;
-          get?(current: T | undefined, within?: Subscriber): T;
-          set?(value: T, state: any): boolean | void;
-      }
-  
-      type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
-  }
-
-  /** Subset of `keyof T` excluding keys defined by base Model */
-  type Fields<T, E = Model> = Exclude<keyof T, keyof E>;
-
-  /** Object containing data found in T. */
-  type Entries<T, E = Model> = Pick<T, Fields<T, E>>;
-
-  /** Actual value stored in state. */
-  type Value<R> = R extends Ref<infer T> ? T : R;
-
-  /** Values from current state of given controller. */
-  type State<T, K extends keyof T = Fields<T, Model>> = {
-      [P in K]: Value<T[P]>;
-  }
-
-  /** Object comperable to data found in T. */
-  type Compat<T, Exclude = Model> = Partial<Entries<T, Exclude>>;
-
-  /** Subset of `keyof T` excluding keys defined by base Model. */
-  type Events<T> = Omit<T, keyof Model>;
-
-  type EventsCompat<T> = Including<keyof T>;
-
-  type Typeof<T, ST, X extends keyof T = Exclude<keyof T, keyof Model>> = {
-      [Key in X]: T[Key] extends ST ? Key : never;
-  }[X];
 }
 
 class Model {
