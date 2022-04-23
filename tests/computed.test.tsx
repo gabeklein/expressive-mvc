@@ -20,7 +20,7 @@ describe("computed", () => {
     })
   }
   
-  it('will trigger when input changes', async () => {
+  it('will reevaluate when inputs change', async () => {
     const state = Subject.create();
   
     state.seconds = 30;
@@ -40,7 +40,7 @@ describe("computed", () => {
     expect(state.minutes).toEqual(1);
   })
 
-  it('will trigger when nested input changes', async () => {
+  it('will trigger when nested inputs change', async () => {
     const state = Subject.create();
 
     expect(state.nested).toBe("foo");
@@ -58,7 +58,7 @@ describe("computed", () => {
     expect(state.nested).toBe("foo");
   })
 
-  it('will compute immediately if expected', () => {
+  it('will compute immediately if needed', () => {
     const mock = jest.fn();
 
     class Test extends Subject {
@@ -71,7 +71,7 @@ describe("computed", () => {
     Test.create();
   })
 
-  it('will squash multiple-input updates', async () => {
+  it('will be squashed with regular updates', async () => {
     const exec = jest.fn();
     const emit = jest.fn();
 
@@ -88,7 +88,7 @@ describe("computed", () => {
         return state.a + state.b + state.x.value;
       })
 
-      // make sure multi-source updates work
+      // sanity check; multi-source updates do work
       x = use(Inner);
     }
 
