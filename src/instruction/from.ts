@@ -41,18 +41,16 @@ function from <R, T> (compute: (property: string) => (this: T, state: T) => R, s
 function from<R, T>(
   source: from.Factory<T> | Stateful,
   setter?: from.Function<T> | boolean,
-  arg?: boolean | from.Getter): R {
+  arg?: boolean): R {
 
   return apply(
     function from(key){
       const { subject } = this;
 
       let getSource: () => Controller;
-      let getter: from.Getter | undefined = undefined;
+      let getter: from.Getter | undefined;
 
-      if(typeof arg == "function")
-        getter = arg;
-      else if(arg === true || setter === true)
+      if(arg === true || setter === true)
         getter = pendingValue;
 
       if(typeof setter == "boolean")
@@ -62,7 +60,7 @@ function from<R, T>(
       if(typeof source == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      // replace source controller in-case different
+      // replace source controller in-case it is different
       if(typeof source == "object")
         getSource = () => control(source);
 
