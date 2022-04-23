@@ -78,39 +78,6 @@ interface Model extends Stateful {
    * Circular reference to `this` controller.
    * 
    * Useful to obtain full reference where one has already destructured.
-   * 
-   * ---
-   * 
-   * **Retrieve root object after destructure:**
-   * 
-   * ```js
-   * const { active, get: instance } = MyModel.use();
-   * ```
-   * Is equivalent to:
-   * ```js
-   * const instance = MyModel.use();
-   * const { active } = instance;
-   * ```
-   * ---
-   * 
-   * **Access values without watch:**
-   * 
-   * Also useful to "peek" values without indicating you
-   * want them watched, via built-in hook.
-   * 
-   * ```js
-   * const { firstName, get } = Hello.use();
-   * 
-   * return (
-   *   <div onClick={() => {
-   *      alert(`Hello ${firstName} ${get.lastName}`)
-   *   }}>
-   *     Hello {firstName}
-   *   </div>
-   * )
-   * ```
-   * Here, it would be a waste to trigger an update every time lastName changes (say, due to an input).
-   * Using `get.lastName` allows us to obtain the value only when needed.
    */
   get: this;
 
@@ -118,18 +85,6 @@ interface Model extends Stateful {
   * Circular reference to `this` controller.
   * 
   * Shortcut is mainly to update values, while having destructured already.
-  * 
-  * ```js
-  * const Example = () => {
-  *   const { active, set } = MyToggle.use();
-  *   
-  *   return (
-  *    <div onClick={() => set.active = !active}>
-  *      Toggle is {active ? "active" : "inactive"}!
-  *    </div>
-  *   )
-  * }
-  * ``` 
   */
   set: this;
 }
