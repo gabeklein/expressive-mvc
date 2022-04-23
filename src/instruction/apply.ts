@@ -18,10 +18,16 @@ declare namespace Instruction {
   }
 }
 
-export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   void | Instruction.Getter<T> | Instruction.Descriptor<T>;
 
-export function apply<T = any>(
+  /**
+ * Run instruction as controller sets itself up.
+ * This will specialize the behavior of a given property.
+ **/
+function apply <T = any> (instruction: Instruction<T>, name?: string): T;
+
+function apply<T = any>(
   fn: Instruction<any>, label?: string){
 
   const name = label || fn.name || "pending";
@@ -71,3 +77,5 @@ export function apply<T = any>(
 
   return placeholder as unknown as T;
 }
+
+export { apply, Instruction }

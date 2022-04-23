@@ -27,6 +27,11 @@ export class Global extends MVC {
     return instance as InstanceOf<T>;
   }
 
+  /**
+   * Update the active instance of this class.
+   * Returns a thenable; resolves after successful update.
+   * If instance does not already exist, one will be created. 
+   **/
   static set<T extends typeof Global>(
     this: T, updates: Partial<InstanceOf<T>>){
 
@@ -48,6 +53,7 @@ export class Global extends MVC {
     )
   }
 
+  /** Destroy current instance of Global, if it exists. */
   static reset(){
     const current = Active.get(this);
 

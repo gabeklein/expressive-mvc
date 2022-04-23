@@ -1,4 +1,5 @@
-import { mockAsync, mockSuspense, Model, renderHook, use } from './adapter';
+import { Model, use } from '../src';
+import { mockAsync, mockSuspense, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
@@ -183,7 +184,7 @@ describe("suspense", () => {
   })
 
   it('will suspend strict compute', async () => {
-    const instance = Test.create();
+    const instance = Test.create() as Test;
     const promise = mockAsync();
     const test = mockSuspense();
 

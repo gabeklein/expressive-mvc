@@ -1,5 +1,7 @@
-import { Oops } from '../src/instruction/use';
-import { Model, parent, subscribeTo, use } from './adapter';
+import { Model, parent, use } from '../src';
+import { Oops as Parent } from '../src/instruction/parent';
+import { Oops as Use } from '../src/instruction/use';
+import { subscribeTo } from './adapter';
 
 describe("use instruction", () => {
   class Child extends Model {
@@ -220,7 +222,7 @@ describe("use instruction", () => {
       child = use(1);
     }
 
-    const expected = Oops.BadArgument("number");
+    const expected = Use.BadArgument("number");
     const attempt = () => Parent.create();
 
     expect(attempt).toThrowError(expected)
@@ -252,7 +254,7 @@ describe("parent instruction", () => {
     const attempt = () => 
       NonStandalone.create();
 
-    const error = Oops.ParentRequired(
+    const error = Parent.ParentRequired(
       Detatched.name, NonStandalone.name
     )
 
@@ -280,7 +282,7 @@ describe("parent instruction", () => {
     }
 
     const attempt = () => Unexpected.create();
-    const error = Oops.UnexpectedParent(
+    const error = Parent.UnexpectedParent(
       Expected.name, Adopted.name, Unexpected.name
     )
 

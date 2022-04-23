@@ -3,16 +3,21 @@ import { apply } from './apply';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 
-type ChildInstruction<T extends Model> =
-  (this: Controller, key: string) => {
+declare namespace child {
+  type Instruction<T> = (this: Controller, key: string) => {
     get: () => T | undefined,
     set?: (value: T | undefined) => void
-  };
-
-//TODO: sync instruction
-
-export function child<T extends Model>(
-  source: ChildInstruction<T>,
+  }
+}
+  
+/**
+ * Generic instruction used by `use()` and `tap()` for recursive subscription.
+ *
+ * @param source - Instruction body is run upon parent create. Return function to fetch current value of field.
+ * @param name - Name of custom instruction.
+ */
+function child<T extends Model>(
+  source: child.Instruction<T>,
   name?: string){
 
   return apply(
@@ -65,3 +70,5 @@ export function child<T extends Model>(
     name || source.name
   )
 }
+
+export { child }

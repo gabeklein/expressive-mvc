@@ -4,7 +4,8 @@ export { child } from './instruction/child';
 export { from } from './instruction/from';
 export { ref } from './instruction/ref';
 export { set } from './instruction/set';
-export { parent, use } from './instruction/use';
+export { use } from './instruction/use';
+export { parent } from './instruction/parent';
 
 export { MVC as Model, MVC as default } from './react/mvc';
 export { Consumer } from './react/consumer';

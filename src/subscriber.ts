@@ -8,19 +8,19 @@ type Listener = {
   release(): void;
 }
 
-export class Subscriber {
-  public proxy: any;
-  public source: any;
+export class Subscriber <T extends Stateful = any> {
+  public proxy: T;
+  public source: T;
   public active = false;
   public watch = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
-  public parent: Controller;
+  public parent: Controller<T>;
   public release!: Callback;
   public commit: () => () => void;
 
   constructor(
-    parent: Controller | Stateful,
-    public onUpdate: Controller.Listen){
+    parent: Controller<T> | T,
+    public onUpdate: Controller.OnEvent){
 
     if(!(parent instanceof Controller))
       parent = control(parent);

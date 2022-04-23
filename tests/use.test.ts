@@ -1,4 +1,4 @@
-import { Model, use } from './adapter';
+import { Model, use } from '../src';
 
 describe("use", () => {
   const WORLD = "Hello World!";

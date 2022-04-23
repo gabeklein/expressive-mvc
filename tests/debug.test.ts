@@ -1,4 +1,5 @@
-import { from, Model } from './adapter';
+import { from, Model } from '../src';
+import { CONTROL, LOCAL, STATE, WHY } from '../src/model';
 
 describe("update method", () => {
   class Control extends Model {
@@ -81,7 +82,7 @@ describe("update property", () => {
     test.value2 = 3;
 
     const update = await test.update();
-    const updated = test[Model.WHY];
+    const updated = test[WHY];
 
     expect(update).toStrictEqual(updated);
 
@@ -99,7 +100,7 @@ describe("update property", () => {
       void state.value1;
       void state.value3;
 
-      update = state[Model.WHY];
+      update = state[WHY];
     })
 
     expect(update).toBeUndefined();
@@ -144,14 +145,14 @@ describe("Model", () => {
   }
 
   it("will expose symbols", () => {
-    expect(Model.CONTROL).toBeDefined()
-    expect(Model.STATE).toBeDefined()
-    expect(Model.LOCAL).toBeDefined()
+    expect(CONTROL).toBeDefined()
+    expect(STATE).toBeDefined()
+    expect(LOCAL).toBeDefined()
   })
 
   it("will expose instance controller", () => {
     const instance = FooBar.create();
-    const controller = instance[Model.CONTROL];
+    const controller = instance[CONTROL];
 
     expect(controller).toBeDefined();
   })
@@ -159,7 +160,7 @@ describe("Model", () => {
   it("will expose instance state", () => {
     const instance = FooBar.create();
     const exported = instance.export();
-    const state = instance[Model.STATE];
+    const state = instance[STATE];
 
     expect(state).toMatchObject(exported);
   })
@@ -167,11 +168,11 @@ describe("Model", () => {
   it("will expose subscriber within listener", () => {
     const instance = FooBar.create();
 
-    expect(instance[Model.LOCAL]).toBeUndefined();
+    expect(instance[LOCAL]).toBeUndefined();
 
     instance.effect(local => {
-      expect(local[Model.CONTROL]).toBe(instance[Model.CONTROL]);
-      expect(local[Model.LOCAL]).toBeDefined();
+      expect(local[CONTROL]).toBe(instance[CONTROL]);
+      expect(local[LOCAL]).toBeDefined();
     })
   })
 })

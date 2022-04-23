@@ -1,6 +1,7 @@
 import { Subscriber } from '../src/subscriber';
 import { Controller } from '../src/Controller';
-import { apply, Model } from './adapter';
+import { STATE } from '../src/model';
+import { apply, Model } from '../src';
 
 describe("apply", () => {
   class Test extends Model {
@@ -135,7 +136,7 @@ describe("custom", () => {
     }
 
     const instance = Test.create();
-    const state = instance[Model.STATE];
+    const state = instance[STATE];
 
     expect(instance.property).toBe("foobar");
     

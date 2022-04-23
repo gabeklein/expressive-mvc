@@ -1,4 +1,4 @@
-import { Model, ref } from './adapter';
+import { Model, ref } from '../src';
 
 describe("single", () => {
   class Subject extends Model {

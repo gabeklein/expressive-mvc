@@ -1,4 +1,4 @@
-import { from, Model } from './adapter';
+import { from, Model } from '../src';
 
 describe("on method", () => {
   class Subject extends Model {

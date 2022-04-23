@@ -1,5 +1,6 @@
+import { from, Model, set } from '../src';
 import { Oops } from '../src/suspense';
-import { Model, from, set, mockAsync, mockSuspense } from './adapter';
+import { mockAsync, mockSuspense } from './adapter';
 
 describe("empty", () => {
   it('will suspend if value is accessed before set', async () => {
@@ -131,7 +132,7 @@ describe("set async", () => {
 
     const test = mockSuspense();
     const didRender = mockAsync();
-    const instance = Test.create();
+    const instance = Test.create() as Test;
 
     test.renderHook(() => {
       void instance.tap().value;

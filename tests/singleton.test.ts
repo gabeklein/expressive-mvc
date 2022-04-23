@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-hooks';
 
 import { Oops } from '../src/react/global';
-import { Global } from './adapter';
+import { Global } from '../src';
 
 describe("singleton", () => {
   class Test extends Global {

@@ -1,27 +1,27 @@
 import { createElement, Suspense } from 'react';
 import { create as render } from 'react-test-renderer';
 
-import * as Public from '../';
 import * as Source from '../src';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
-export const Model = Source.Model as unknown as typeof Public.Model;
-export const Global = Source.Global as unknown as typeof Public.Global;
-export const Provider = Source.Provider as unknown as typeof Public.Provider;
-export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
+export {
+  Model,
+  Global,
+  Provider,
+  Consumer,
+  act,
+  apply,
+  set,
+  ref,
+  tap,
+  from,
+  parent,
+  use
+} from "../src";
 
-export const apply = Source.apply as typeof Public.apply;
-export const set = Source.set as typeof Public.set;
-export const tap = Source.tap as typeof Public.tap;
-export const ref = Source.ref as typeof Public.ref;
-export const use = Source.use as typeof Public.use;
-export const act = Source.act as typeof Public.act;
-export const from = Source.from as typeof Public.from;
-export const parent = Source.parent as typeof Public.parent;
-
-export function subscribeTo<T extends Public.Model>(
+export function subscribeTo<T extends Source.Model>(
   target: T,
   accessor: (self: T) => void){
 

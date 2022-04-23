@@ -1,4 +1,6 @@
-import { Model, set, subscribeTo } from './adapter';
+import { Model, set } from '../src';
+import { STATE } from '../src/model';
+import { subscribeTo } from './adapter';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -59,7 +61,7 @@ describe("subscriber", () => {
     }
 
     const control = Test.create();
-    const state = control[Model.STATE];
+    const state = control[STATE];
 
     expect(control.value).toBe("foo");
 

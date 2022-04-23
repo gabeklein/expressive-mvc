@@ -1,7 +1,8 @@
 import React from 'react';
 
+import { Consumer, Global, Model, Provider, tap } from '../src';
 import { Oops } from '../src/react/peer';
-import { Consumer, Global, Model, Provider, render, subscribeTo, tap } from './adapter';
+import { render, subscribeTo } from './adapter';
 
 describe("tap instruction", () => {
   class Foo extends Model {

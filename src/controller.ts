@@ -14,21 +14,22 @@ export const Oops = issues({
 });
 
 declare namespace Controller {
-  type Listen = (key: string, source: Controller) => RequestCallback | void;
+  type RequestCallback = (keys: readonly string[]) => void;
+  type OnEvent = (key: string, source: Controller) => RequestCallback | void;
   type OnValue = <T>(this: T, value: any, state: T) => boolean | void;
 }
 
-class Controller {
+class Controller<T extends Stateful = any> {
   public state!: BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
   public onDestroy = new Set<Callback>();
 
-  protected followers = new Set<Controller.Listen>();
+  protected followers = new Set<Controller.OnEvent>();
 
-  constructor(public subject: Stateful){}
+  constructor(public subject: T){}
 
-  public start(){
+  start(){
     this.state = {};
 
     for(const key in this.subject)
@@ -37,10 +38,7 @@ class Controller {
     this.emit([]);
   }
 
-  public manage(
-    key: string,
-    handler?: Controller.OnValue){
-
+  manage(key: string, handler?: Controller.OnValue){
     const { state, subject } = this;
     const desc = getOwnPropertyDescriptor(subject, key);
 
@@ -64,10 +62,7 @@ class Controller {
     }
   }
 
-  public ref(
-    key: string,
-    handler?: Controller.OnValue){
-
+  ref(key: string, handler?: Controller.OnValue){
     const { state, subject } = this;
 
     return (value: any) => {
@@ -86,14 +81,14 @@ class Controller {
     }
   }
 
-  public addListener(listener: Controller.Listen){
+  addListener(listener: Controller.OnEvent){
     this.followers.add(listener);
     return () => {
       this.followers.delete(listener)
     }
   }
 
-  public emit(keys: readonly string[]){
+  emit(keys: readonly string[]){
     const waiting = [ ...this.waiting ];
 
     this.waiting.clear();
@@ -108,7 +103,7 @@ class Controller {
       }
   }
 
-  public update(key: string, value?: any){
+  update(key: string, value?: any){
     if(1 in arguments)
       this.state[key] = value;
 
@@ -135,7 +130,12 @@ class Controller {
     }
   }
 
-  public requestUpdate(arg?: boolean | RequestCallback): any {
+  requestUpdate(): PromiseLike<readonly string[] | false>;
+  requestUpdate(strict: true): Promise<readonly string[]>;
+  requestUpdate(strict: false): Promise<false>;
+  requestUpdate(strict: boolean): Promise<readonly string[] | false>;
+  requestUpdate(callback: Controller.RequestCallback): void;
+  requestUpdate(arg?: boolean | RequestCallback): any {
     if(typeof arg == "function"){
       this.waiting.add(arg);
       return;
@@ -158,11 +158,11 @@ class Controller {
   }
 }
 
-type EnsureCallback = (control: Controller) => Callback | void;
+type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
 
-export function control(subject: Stateful): Controller;
-export function control(subject: Stateful, cb: EnsureCallback): Callback;
-export function control(subject: Stateful, cb?: EnsureCallback){
+export function control<T extends Stateful>(subject: T): Controller<T>;
+export function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
+export function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   const control = subject[CONTROL];
 
   if(!cb){

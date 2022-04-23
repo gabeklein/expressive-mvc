@@ -13,7 +13,8 @@
     },
     "include": [
         "src",
-        "types"
+        "types",
+        "tests"
     ],
     "exclude": [
         "tests"

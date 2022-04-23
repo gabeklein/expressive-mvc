@@ -13,12 +13,24 @@ export const Oops = issues({
     `Provider 'of' prop must be Model, typeof Model or a collection of them.`
 })
 
-interface ProvideProps {
-  of?: typeof Model | Model | Collection;
-  children: React.ReactNode | ((instance?: any) => React.ReactNode);
+declare namespace Provider {
+  type Item = Model | typeof Model;
+  type Collection<T extends Item> = T[] | { [key: string]: T };
+  type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
+  
+  type NormalProps<E, I = Existent<E>> =
+      & { of: E, children: React.ReactNode | ((instance: I) => React.ReactNode) }
+      & Model.Compat<I>;
+
+  // FIX: This fails to exclude properties with same key but different type.
+  type MultipleProps<T extends Item> =
+      & { of: Collection<T>, children?: React.ReactNode | (() => React.ReactNode) }
+      & Model.Compat<Existent<T>>;
+
+  type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
-export function Provider(props: ProvideProps){
+function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const context = useNewContext(props.of);
   const render = props.children;
 
@@ -31,6 +43,8 @@ export function Provider(props: ProvideProps){
       : render
   );
 }
+
+export { Provider };
 
 function useNewContext(
   inject?: Model | typeof Model | Collection){

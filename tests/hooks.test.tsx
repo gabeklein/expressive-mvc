@@ -1,7 +1,8 @@
 import React from 'react';
 
+import { Global, Model, use } from '../src';
 import { Oops } from '../src/react/global';
-import { Global, Model, render, renderHook, use } from './adapter';
+import { render, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 

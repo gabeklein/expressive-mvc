@@ -1,4 +1,7 @@
-import { BunchOf, Class, InstanceOf } from './types';
+export type Async<T = any> = (this: T, ...args: any[]) => Promise<any>;
+export type BunchOf<T> = { [key: string]: T };
+export type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+export type Class = new (...args: any[]) => any;
 
 type Callback = () => void;
 type Argument<T> = T extends (arg: infer U) => any ? U : never;
@@ -24,7 +27,7 @@ export namespace Model {
      * Property initializer, will run upon instance creation.
      * Optional returned callback will run when once upon first access.
     */
-    type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+    type Instruction<T, M> = (this: Controller, key: string, thisArg: Controller) =>
         void | Instruction.Getter<T> | Instruction.Descriptor<T>;
 
     namespace Instruction {
