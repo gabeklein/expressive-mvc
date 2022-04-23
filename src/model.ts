@@ -42,12 +42,19 @@ declare namespace Model {
       current: T | null;
   }
 
-  /** Subset of `keyof T` excluding keys defined by base Model */
+  /**
+   * Subset of `keyof T` excluding keys defined by base Model.
+   * 
+   * **Note**: This excludes all keys which are not of type `string` (only those are managed).
+   **/
   export type Fields<T, U extends Model = Model> = Exclude<keyof T, keyof U> & string;
 
-  export type Events<T, U extends Model = Model> = Extends<Exclude<keyof T, keyof U> & string>;
+  /**
+   * Including but not limited to `keyof T` which are not defined by base Model.
+   **/
+  export type Events<T, U extends Model = Model> = Extends<Fields<T, U>>;
 
-  /** Object containing data found in T. */
+  /** Object containing managed entries found in T. */
   export type Entries<T, U extends Model = Model> = Pick<T, Fields<T, U>>;
 
   /** Object comperable to data found in T. */
@@ -56,14 +63,14 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
 
-  /** Values from current state of given controller. */
-  export type State<T, K extends keyof T = Fields<T, Model>> = {
+  /**
+   * Values from current state of given controller.
+   * 
+   * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
+   */
+  export type From<T, K extends Fields<T, Model> = Fields<T, Model>> = {
       [P in K]: Value<T[P]>;
   }
-
-  export type Typeof<T, ST, X extends keyof T = Fields<T>> = {
-      [Key in X]: T[Key] extends ST ? Key : never;
-  }[X];
 }
 
 interface Model extends Stateful {
@@ -257,8 +264,8 @@ class Model {
         (this as any)[key] = source[key];
   }
 
-  export(): Model.State<this>;
-  export <P extends Model.Fields<this>> (select: P[]): Model.State<this, P>;
+  export(): Model.From<this>;
+  export <P extends Model.Fields<this>> (select: P[]): Model.From<this, P>;
 
   export(subset?: Set<string> | string[]){
     const { state } = control(this);
