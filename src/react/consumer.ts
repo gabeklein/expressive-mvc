@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { issues } from '../issues';
-import { useAmbient, useTap } from './hooks';
+import { useInContext, useTap } from './hooks';
 
 export const Oops = issues({
   BadConsumerProps: () =>
@@ -45,12 +45,12 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const { get, has, children, of: Control } = props as any;
 
   if(typeof children == "function")
-    return children(useTap(useAmbient(Control)));
+    return children(useTap(useInContext(Control)));
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(useAmbient(Control, !!has));
+    callback(useInContext(Control, !!has));
   else
     throw Oops.BadConsumerProps()
 

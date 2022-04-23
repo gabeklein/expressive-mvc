@@ -23,7 +23,7 @@ export function use<T>(init: (trigger: Callback) => T){
   return state[0];
 }
 
-export function useAmbient<T extends typeof Model>(
+export function useInContext<T extends typeof Model>(
   Type: T, arg?: boolean | string){
 
   const instance = useLookup().get(Type);

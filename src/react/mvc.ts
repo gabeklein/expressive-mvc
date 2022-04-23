@@ -1,6 +1,6 @@
 import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
-import { useAmbient, useModel, useNew, useTap } from './hooks';
+import { useInContext, useModel, useNew, useTap } from './hooks';
 import { usePeerContext } from './peer';
 
 export class MVC extends Model {
@@ -51,7 +51,7 @@ export class MVC extends Model {
   static get <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
 
   static get <T extends typeof MVC> (this: T, required?: boolean){
-    return useAmbient(this, required);
+    return useInContext(this, required);
   }
 
   /** 
