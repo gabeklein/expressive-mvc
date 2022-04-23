@@ -19,8 +19,10 @@ declare namespace Controller {
   type OnValue = <T>(this: T, value: any, state: T) => boolean | void;
 }
 
+const READY = new WeakSet<Controller>();
+
 class Controller<T extends Stateful = any> {
-  public state!: BunchOf<any>;
+  public state = {} as BunchOf<any>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
   public onDestroy = new Set<Callback>();
@@ -30,8 +32,6 @@ class Controller<T extends Stateful = any> {
   constructor(public subject: T){}
 
   start(){
-    this.state = {};
-
     for(const key in this.subject)
       this.manage(key);
 
@@ -164,15 +164,18 @@ export function control<T extends Stateful>(subject: T): Controller<T>;
 export function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
 export function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   const control = subject[CONTROL];
+  const ready = READY.has(control);
 
   if(!cb){
-    if(!control.state)
+    if(!ready){
+      READY.add(control);
       control.start();
+    }
 
     return control;
   }
 
-  if(!control.state){
+  if(!ready){
     let done: Callback | void;
 
     control.requestUpdate(() => {
