@@ -5,8 +5,19 @@ import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
 import { use } from './hooks';
 
+function useFrom <T extends Stateful, R> (
+  source: (() => T) | T,
+  compute: (this: T, from: T) => R,
+  expect: true
+): Exclude<R, undefined>;
 
-export function useFrom(
+function useFrom <T extends Stateful, R> (
+  source: (() => T) | T,
+  compute: (this: T, from: T) => R,
+  expect?: boolean
+): R;
+
+function useFrom(
   target: (() => Stateful) | Stateful,
   compute: Function,
   suspend?: boolean) {
@@ -63,3 +74,5 @@ export function useFrom(
 
   return local.proxy;
 }
+
+export { useFrom }

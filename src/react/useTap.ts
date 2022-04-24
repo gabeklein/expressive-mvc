@@ -21,9 +21,21 @@ function useTap <T extends Stateful, K extends Model.Field<T>> (
   expect?: boolean
 ): T[K];
 
+function useTap <T extends Stateful, R> (
+  source: (() => T) | T,
+  compute: (this: T, from: T) => R,
+  expect: true
+): Exclude<R, undefined>;
+
+function useTap <T extends Stateful, R> (
+  source: (() => T) | T,
+  compute: (this: T, from: T) => R,
+  expect?: boolean
+): R;
+
 function useTap <T extends Stateful> (
   source: (() => T) | T,
-  path?: Model.Field<T> | Function,
+  path?: Model.Field<T> | ((this: T, from: T) => any),
   expect?: boolean) {
 
   if(typeof path == "function")
