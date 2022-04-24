@@ -38,6 +38,11 @@ class Controller<T extends Stateful = any> {
     this.emit([]);
   }
 
+  stop(){
+    this.followers.clear();
+    this.onDestroy.forEach(x => x());
+  }
+
   manage(key: string, handler?: Controller.OnValue){
     const { state, subject } = this;
     const desc = getOwnPropertyDescriptor(subject, key);
