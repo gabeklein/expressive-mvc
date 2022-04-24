@@ -41,19 +41,19 @@ export class MVC extends Model {
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends typeof MVC> (this: T, required?: true): InstanceOf<T>;
+  static get <T extends Class> (this: T, required?: true): InstanceOf<T>;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends typeof MVC> (this: T, required: boolean): InstanceOf<T> | undefined;
+  static get <T extends Class> (this: T, required: boolean): InstanceOf<T> | undefined;
 
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
+  static get <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
 
   static get <T extends typeof MVC> (this: T, required?: boolean){
     return useInContext(this, required);
@@ -62,16 +62,16 @@ export class MVC extends Model {
   /** 
    * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
    */
-  static tap <T extends typeof MVC> (this: T): InstanceOf<T>;
+  static tap <T extends Class> (this: T): InstanceOf<T>;
 
-  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect?: boolean): I[K];
+  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
+  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect?: boolean): I[K];
 
-  static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
+  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
+  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
 
-  static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
+  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
+  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
   static tap (key?: string | Function, expect?: boolean): any {
     return useTap(this.get(), key as any, expect);
@@ -109,16 +109,16 @@ export class MVC extends Model {
     return instance;
   }
 
-  static meta <T extends typeof MVC>(this: T): T;
+  static meta <T extends Class>(this: T): T;
 
-  static meta <T extends typeof MVC, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
-  static meta <T extends typeof MVC, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
+  static meta <T extends Class, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
+  static meta <T extends Class, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
 
-  static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
+  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
+  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
 
-  static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
-  static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
+  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
+  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
   static meta (path?: string | Function, expect?: boolean): any {
     return useTap(() => this, path as any, expect);
