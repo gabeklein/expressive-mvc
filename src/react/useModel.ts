@@ -6,21 +6,34 @@ import { suspend } from '../suspense';
 import { defineProperty } from '../util';
 import { use } from './hooks';
 
-export function useModel(
+function useModel <T extends Class, I extends InstanceOf<T>> (
+  source: T,
+  arg?: Model.Field<I> | ((instance: I) => void) | {},
+  expected?: boolean
+): I;
+
+function useModel <T extends Stateful> (
+  source: (() => T) | T,
+  arg?: Model.Field<T> | ((instance: T) => void) | {},
+  expected?: boolean
+): T;
+
+function useModel(
   source: (new () => Model) | (() => Stateful) | Stateful,
   arg?: string | ((instance: Stateful) => void) | {},
   expected?: boolean) {
 
   const local = use(refresh => {
-    const instance = typeof source == "function" ?
-      "prototype" in source ?
-        new (source as any)() as Model :
-        (source as any)() :
-      source;
+    const instance =
+      typeof source == "function" ?
+        "prototype" in source ?
+          new (source as any)() :
+          (source as any)() :
+        source;
 
     const sub = new Subscriber(instance, () => refresh);
 
-    if (typeof arg === "function")
+    if (typeof arg == "function")
       arg(instance);
 
     else if (typeof arg == "string") {
@@ -54,3 +67,5 @@ export function useModel(
 
   return local.proxy;
 }
+
+export { useModel }
