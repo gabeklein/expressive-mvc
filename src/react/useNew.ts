@@ -2,7 +2,6 @@ import React from 'react';
 
 import { Model } from '../model';
 
-
 export function useNew<T extends typeof Model>(
   Type: T, callback?: (instance: InstanceOf<T>) => void) {
 

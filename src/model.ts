@@ -42,15 +42,23 @@ declare namespace Model {
       current: T | null;
   }
 
+  /** Properties of T, only which are methods. */
+  export type Methods<T> = {
+    [K in keyof T]:
+      T[K] extends Ref ? never :
+      T[K] extends Function ? K :
+      never;
+  }[keyof T];
+
   /**
-   * Subset of `keyof T` excluding keys defined by base Model.
+   * Subset of `keyof T` which are not methods or defined by base Model U.
    * 
    * **Note**: This excludes all keys which are not of type `string` (only those are managed).
    **/
-  export type Fields<T, U extends Model = Model> = Exclude<keyof T, keyof U> & string;
+  export type Fields<T, U extends Model = Model> = Exclude<keyof T & string, keyof U | Methods<T>>;
 
   /**
-   * Including but not limited to `keyof T` which are not defined by base Model.
+   * Including but not limited to `keyof T` which are not methods or defined by base Model.
    **/
   export type Events<T, U extends Model = Model> = Extends<Fields<T, U>>;
 
