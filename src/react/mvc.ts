@@ -12,8 +12,8 @@ export class MVC extends Model {
   /** Attaches this controller to a component. */
   tap(): this;
 
-  tap <K extends Model.Fields<this>> (key: K, expect: true): Exclude<this[K], undefined>;
-  tap <K extends Model.Fields<this>> (key: K, expect?: boolean): this[K];
+  tap <K extends Model.Field<this>> (key: K, expect: true): Exclude<this[K], undefined>;
+  tap <K extends Model.Field<this>> (key: K, expect?: boolean): this[K];
 
   tap <T> (from: (this: this, state: this) => Promise<T>, expect: true): Exclude<T, undefined>;
   tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
@@ -51,7 +51,7 @@ export class MVC extends Model {
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K): I[K];
+  static get <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
 
   static get <T extends typeof MVC> (this: T, required?: boolean){
     return useInContext(this, required);
@@ -62,8 +62,8 @@ export class MVC extends Model {
    */
   static tap <T extends typeof MVC> (this: T): InstanceOf<T>;
 
-  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Fields<I>> (this: T, key: K, expect?: boolean): I[K];
+  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
+  static tap <T extends typeof MVC, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect?: boolean): I[K];
 
   static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
   static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;

@@ -13,7 +13,7 @@ declare namespace ref {
   }
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> = { [P in Model.Fields<T>]: Model.Ref<T[P]> };
+  type Proxy<T extends Model> = { [P in Model.Field<T>]: Model.Ref<T[P]> };
 }
 
 /**

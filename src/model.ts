@@ -29,10 +29,12 @@ export interface Stateful {
 };
 
 declare namespace Model {
+  type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
+
   export { Controller };
   export { Subscriber };
 
-  export type OnUpdate<T, P> = (this: T, value: IfApplicable<T, P>, changed: P) => void;
+  export type OnUpdate<T, P> = (this: T, value: IfApplicable<Field<T>, P>, changed: P) => void;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
@@ -55,15 +57,15 @@ declare namespace Model {
    * 
    * **Note**: This excludes all keys which are not of type `string` (only those are managed).
    **/
-  export type Fields<T, U extends Model = Model> = Exclude<keyof T & string, keyof U | Methods<T>>;
+  export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U | Methods<T>>;
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
    **/
-  export type Events<T, U extends Model = Model> = Extends<Fields<T, U>>;
+  export type Event<T, U extends Model = Model> = Extends<Field<T, U>>;
 
   /** Object containing managed entries found in T. */
-  export type Entries<T, U extends Model = Model> = Pick<T, Fields<T, U>>;
+  export type Entries<T, U extends Model = Model> = Pick<T, Field<T, U>>;
 
   /** Object comperable to data found in T. */
   export type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
@@ -76,8 +78,8 @@ declare namespace Model {
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type From<T, K extends Fields<T, Model> = Fields<T, Model>> = {
-      [P in K]: Value<T[P]>;
+  export type Values<T, K extends Field<T, Model> = Field<T, Model>> = {
+    [P in K]: Value<T[P]>;
   }
 }
 
@@ -115,15 +117,15 @@ class Model {
     return UPDATE.get(this);
   }
 
-  on <P = Model.Events<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
-  on <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  on <P extends Model.Events<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
-  on <P extends Model.Events<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  on <P extends Model.Events<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  on <P extends Model.Events<this>> (
+  on <P extends Model.Event<this>> (
     select: P | P[],
     handler: Function,
     squash?: boolean,
@@ -156,17 +158,17 @@ class Model {
     });
   }
 
-  once <P = Model.Events<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false, once?: boolean): Callback;
-  once <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  once <P = Model.Events<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
 
-  once <P extends Model.Events<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
-  once <P extends Model.Events<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
-  once <P extends Model.Events<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
-  once <P extends Model.Events<this>> (key: P | P[]): Promise<P[]>;
+  once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
+  once <P extends Model.Event<this>> (key: P | P[]): Promise<P[]>;
 
-  once <P extends Model.Events<this>> (
+  once <P extends Model.Event<this>> (
     select: P | P[],
     callback?: UpdateCallback<any, any>,
     squash?: boolean){
@@ -227,8 +229,8 @@ class Model {
         (this as any)[key] = source[key];
   }
 
-  export(): Model.From<this>;
-  export <P extends Model.Fields<this>> (select: P[]): Model.From<this, P>;
+  export(): Model.Values<this>;
+  export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
   export(subset?: Set<string> | string[]){
     const { state } = control(this);
@@ -245,9 +247,9 @@ class Model {
   update(strict: false): Promise<false>;
   update(strict: boolean): Promise<readonly string[] | false>;
 
-  update(keys: Model.Events<this>): PromiseLike<readonly string[]>;
-  update(keys: Model.Events<this>, callMethod: boolean): PromiseLike<readonly string[]>;
-  update<T>(keys: Model.Events<this>, argument: T): PromiseLike<readonly string[]>;
+  update(keys: Model.Event<this>): PromiseLike<readonly string[]>;
+  update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly string[]>;
+  update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly string[]>;
 
   update(arg?: any, tag?: any): any {
     const target = control(this);
