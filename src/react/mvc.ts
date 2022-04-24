@@ -22,7 +22,7 @@ export class MVC extends Model {
   tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
 
   tap(path?: string | Function, expect?: boolean){
-    return useTap(this, path, expect);
+    return useTap(this, path as any, expect);
   }
 
   /**
@@ -71,8 +71,8 @@ export class MVC extends Model {
   static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
   static tap <T, M extends typeof MVC, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
-  static tap <T extends typeof MVC> (key?: string | Function, expect?: boolean): any {
-    return useTap(this.get(), key, expect);
+  static tap (key?: string | Function, expect?: boolean): any {
+    return useTap(this.get(), key as any, expect);
   }
 
   /**
@@ -116,6 +116,6 @@ export class MVC extends Model {
   static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
   static meta <T extends typeof MVC> (path?: string | Function, expect?: boolean): any {
-    return useTap(() => this, path, expect);
+    return useTap(() => this, path as any, expect);
   }
 }

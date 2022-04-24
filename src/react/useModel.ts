@@ -2,26 +2,21 @@ import React from 'react';
 
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
-import { suspend } from '../suspense';
-import { defineProperty } from '../util';
 import { use } from './hooks';
 
 function useModel <T extends Class, I extends InstanceOf<T>> (
   source: T,
-  arg?: Model.Field<I> | ((instance: I) => void) | {},
-  expected?: boolean
+  callback?: (instance: I) => void
 ): I;
 
 function useModel <T extends Stateful> (
   source: (() => T) | T,
-  arg?: Model.Field<T> | ((instance: T) => void) | {},
-  expected?: boolean
+  callback?: (instance: T) => void
 ): T;
 
 function useModel(
   source: (new () => Model) | (() => Stateful) | Stateful,
-  arg?: string | ((instance: Stateful) => void) | {},
-  expected?: boolean) {
+  callback?: (instance: Stateful) => void) {
 
   const local = use(refresh => {
     const instance =
@@ -33,23 +28,8 @@ function useModel(
 
     const sub = new Subscriber(instance, () => refresh);
 
-    if (typeof arg == "function")
-      arg(instance);
-
-    else if (typeof arg == "string") {
-      const source = sub.proxy;
-
-      defineProperty(sub, "proxy", {
-        get() {
-          const value = source[arg];
-
-          if (value === undefined && expected)
-            throw suspend(sub.parent, arg);
-
-          return value;
-        }
-      });
-    }
+    if (typeof callback == "function")
+      callback(instance);
 
     return sub;
   });
