@@ -1,51 +1,83 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { use } from './hooks';
 
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  callback?: (instance: I) => void
-): I;
+function useModel <T extends Stateful> (
+  source: (() => T) | T,
+  watch?: Model.Field<T>[],
+  callback?: (instance: T) => void
+): T;
 
 function useModel <T extends Stateful> (
   source: (() => T) | T,
   callback?: (instance: T) => void
 ): T;
 
+function useModel <T extends Class, I extends InstanceOf<T>> (
+  source: T,
+  watch: Model.Field<I>[],
+  callback?: (instance: I) => void
+): I;
+
+function useModel <T extends Class, I extends InstanceOf<T>> (
+  source: T,
+  callback?: (instance: I) => void
+): I;
+
 function useModel(
   source: (new () => Model) | (() => Stateful) | Stateful,
-  callback?: (instance: Stateful) => void) {
+  arg?: ((instance: Stateful) => void) | string[],
+  callback?: ((instance: Stateful) => void)) {
 
-  const local = use(refresh => {
-    const instance =
-      typeof source == "function" ?
-        "prototype" in source ?
-          new (source as any)() :
-          (source as any)() :
-        source;
+  const instance = React.useMemo(() => {
+    const cb = callback || arg;
+    const instance = typeof source == "function" ?
+      "prototype" in source ?
+        new (source as any)() :
+        (source as any)() :
+      source;
 
-    const sub = new Subscriber(instance, () => refresh);
+    if(typeof cb == "function")
+      cb(instance);
 
-    if (typeof callback == "function")
-      callback(instance);
-
-    return sub;
-  });
-
-  React.useLayoutEffect(() => {
-    local.commit();
-
-    return () => {
-      local.release();
-
-      if (local.source !== source)
-        local.source.destroy();
-    };
+    return instance;
   }, []);
 
-  return local.proxy;
+  if(Array.isArray(arg)){
+    const update = useState(0)[1];
+  
+    React.useLayoutEffect(() => {  
+      if(arg.length && instance instanceof Model)
+        instance.on(arg, () => update(x => x+1), true);
+
+      return () => {
+        if(Model.isTypeof(source))
+          instance.destroy();
+      }
+    }, []);
+  
+    return instance
+  }
+  else {
+    const local = use(refresh => {
+      return new Subscriber(instance, () => refresh);
+    });
+  
+    React.useLayoutEffect(() => {
+      local.commit();
+  
+      return () => {
+        local.release();
+  
+        if(Model.isTypeof(source))
+          local.source.destroy();
+      };
+    }, []);
+  
+    return local.proxy;
+  }
 }
 
 export { useModel }

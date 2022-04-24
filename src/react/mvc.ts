@@ -3,7 +3,6 @@ import { CONTROL, Model } from '../model';
 import { usePeerContext } from './peer';
 import { useInContext } from './useInContext';
 import { useModel } from './useModel';
-import { useNew } from './useNew';
 import { useTap } from './useTap';
 
 export class MVC extends Model {
@@ -30,8 +29,11 @@ export class MVC extends Model {
    *
    * @param callback - Run once before subscription begins.
    */
-  use(callback?: (instance: this) => void){
-    return useModel(this, callback);
+  use(watch: Model.Field<this>[], callback?: (instance: this) => void): this;
+  use(callback?: (instance: this) => void): this;
+
+  use(arg?: any, callback?: (instance: this) => void) {
+    return useModel(this, arg, callback);
   }
 
   /**
@@ -82,12 +84,15 @@ export class MVC extends Model {
    * 
    * @param callback - Run after creation of instance.
    */
-  static new <T extends typeof MVC> (this: T, callback?: (instance: InstanceOf<T>) => void){
-    return useNew(this, callback);
+  static new <T extends Class> (this: T, callback?: (instance: InstanceOf<T>) => void){
+    return useModel(this, [], callback);
   }
 
-  static use <T extends typeof MVC> (this: T, callback?: (instance: InstanceOf<T>) => void){
-    const instance = useModel(this, callback);
+  static use <T extends Class, I extends InstanceOf<T>> (this: T, watch: Model.Field<I>[], callback?: (instance: I) => void): I;
+  static use <T extends Class, I extends InstanceOf<T>> (this: T, callback?: (instance: I) => void): I;
+
+  static use <T extends typeof MVC> (this: T, arg: any, callback?: (instance: InstanceOf<T>) => void){
+    const instance = useModel(this, arg, callback);
     usePeerContext(instance.get);    
     return instance;
   }
@@ -115,7 +120,7 @@ export class MVC extends Model {
   static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
   static meta <T, M extends typeof MVC> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
-  static meta <T extends typeof MVC> (path?: string | Function, expect?: boolean): any {
+  static meta (path?: string | Function, expect?: boolean): any {
     return useTap(() => this, path as any, expect);
   }
 }
