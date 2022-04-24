@@ -39,6 +39,9 @@ class Controller<T extends Stateful = any> {
   }
 
   stop(){
+    for(const key in this.state)
+      delete (this.subject as any)[key];
+
     this.followers.clear();
     this.onDestroy.forEach(x => x());
   }
