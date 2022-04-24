@@ -34,7 +34,7 @@ declare namespace Model {
   export { Controller };
   export { Subscriber };
 
-  export type OnUpdate<T, P> = (this: T, value: IfApplicable<Field<T>, P>, changed: P) => void;
+  export type OnUpdate<T, P> = (this: T, value: IfApplicable<keyof T, P>, changed: P) => void;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
@@ -57,7 +57,8 @@ declare namespace Model {
    * 
    * **Note**: This excludes all keys which are not of type `string` (only those are managed).
    **/
-  export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U | Methods<T>>;
+  // TODO: Should exclude methods
+  export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U>;
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
