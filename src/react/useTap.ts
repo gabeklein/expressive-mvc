@@ -7,7 +7,21 @@ import { defineProperty } from '../util';
 import { use } from './hooks';
 import { useFrom } from './useFrom';
 
-export function useTap <T extends Stateful> (
+function useTap <T extends Stateful> (source: (() => T) | T): T;
+
+function useTap <T extends Stateful, K extends Model.Field<T>> (
+  source: (() => T) | T,
+  path: K,
+  expect: true
+): Exclude<T[K], undefined>;
+
+function useTap <T extends Stateful, K extends Model.Field<T>> (
+  source: (() => T) | T,
+  path: K,
+  expect?: boolean
+): T[K];
+
+function useTap <T extends Stateful> (
   source: (() => T) | T,
   path?: Model.Field<T> | Function,
   expect?: boolean) {
@@ -44,3 +58,5 @@ export function useTap <T extends Stateful> (
   
   return local.proxy;
 }
+
+export { useTap }
