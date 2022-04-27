@@ -1,6 +1,7 @@
 import { control } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
+import { Class, InstanceOf } from '../types';
 import { defineProperty, getOwnPropertyDescriptors } from '../util';
 import { child } from './child';
 import { Parent } from './parent';

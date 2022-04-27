@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
+import { Class, InstanceOf } from '../types';
 import { use } from './hooks';
 
 function useModel <T extends Stateful> (

@@ -3,6 +3,7 @@ import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
 import { issues } from './issues';
 import { CONTROL, Stateful } from './model';
+import { BunchOf, Callback, RequestCallback } from './types';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({

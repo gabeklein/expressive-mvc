@@ -2,6 +2,7 @@ import * as Computed from './compute';
 import { control, Controller } from './controller';
 import { UPDATE } from './dispatch';
 import { Subscriber } from './subscriber';
+import { BunchOf, Callback, Class, InstanceOf, RequestCallback } from './types';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 export const CONTROL = Symbol("CONTROL");

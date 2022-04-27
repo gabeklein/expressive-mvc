@@ -3,6 +3,7 @@ import React from 'react';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Lookup } from '../register';
+import { InstanceOf } from '../types';
 
 export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);

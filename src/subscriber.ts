@@ -1,6 +1,7 @@
-import { Controller, control } from './controller';
+import { control, Controller } from './controller';
 import { applyUpdate } from './dispatch';
 import { LOCAL, Stateful } from './model';
+import { BunchOf, Callback, RequestCallback } from './types';
 import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {

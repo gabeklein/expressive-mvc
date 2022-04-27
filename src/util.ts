@@ -1,5 +1,6 @@
 import { issues } from './issues';
 import { Model } from './model';
+import { Callback } from './types';
 
 export const Oops = issues({
   BadEffectCallback: () =>

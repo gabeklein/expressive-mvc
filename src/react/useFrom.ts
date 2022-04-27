@@ -2,6 +2,7 @@ import React from 'react';
 
 import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
+import { Callback, RequestCallback } from '../types';
 import { defineProperty } from '../util';
 import { use } from './hooks';
 

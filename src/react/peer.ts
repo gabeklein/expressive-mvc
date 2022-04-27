@@ -1,6 +1,7 @@
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
+import { InstanceOf } from '../types';
 import { Global } from './global';
 import { useLookup } from './useInContext';
 

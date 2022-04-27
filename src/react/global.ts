@@ -1,4 +1,5 @@
 import { issues } from '../issues';
+import { Class, InstanceOf } from '../types';
 import { MVC } from './mvc';
 
 export const Oops = issues({

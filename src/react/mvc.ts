@@ -1,5 +1,6 @@
 import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
+import { Class, InstanceOf } from '../types';
 import { usePeerContext } from './peer';
 import { useInContext } from './useInContext';
 import { useModel } from './useModel';

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { issues } from '../issues';
+import { Class } from '../types';
 import { useInContext } from './useInContext';
 import { useTap } from './useTap';
 

@@ -1,6 +1,7 @@
 import { Controller } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
+import { RequestCallback } from './types';
 import { defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({

@@ -1,4 +1,5 @@
 import { Model } from './model';
+import { BunchOf } from './types';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './util';
 
 export type Collection =

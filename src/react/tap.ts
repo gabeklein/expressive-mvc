@@ -1,4 +1,5 @@
 import { child } from '../instruction/child';
+import { Class, InstanceOf } from '../types';
 import { Peer, PeerCallback, pendingAccess } from './peer';
 
 /**

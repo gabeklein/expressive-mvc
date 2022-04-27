@@ -1,5 +1,6 @@
 import { issues } from '../issues';
 import { Model } from '../model';
+import { InstanceOf } from '../types';
 import { apply } from './apply';
 
 export const Parent = new WeakMap<{}, {}>();
