@@ -20,3 +20,5 @@ declare namespace Instruction {
    set?(value: T, state: any): boolean | void;
  }
 }
+
+export { Instruction }

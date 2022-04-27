@@ -2,7 +2,7 @@ import { Controller } from '../controller';
 import { LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
-import { Instruction } from './type';
+import { Instruction } from './types';
 
 export const Pending = new Map<symbol, Instruction<any>>();
 
