@@ -37,7 +37,7 @@ function ref <T extends Model> (target: T): ref.Proxy<T>;
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
 function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 
-function ref<T>(arg?: AssignCallback<T> | Model){
+function ref<T>(arg?: ref.Callback<T> | Model){
   return apply(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
@@ -61,7 +61,7 @@ export { ref }
 function createRef(
   this: Controller,
   key: string,
-  cb?: AssignCallback<any>){
+  cb?: ref.Callback<any>){
 
   const refObjectFunction =
     this.ref(key, cb && createValueEffect(cb));

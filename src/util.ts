@@ -80,6 +80,10 @@ export function createEffect(
   }
 }
 
+export type AssignCallback<T> =
+  (this: any, argument: T, thisArg: any) =>
+    ((next: T) => void) | Promise<any> | void | boolean;
+
 export function createValueEffect<T = any>(
   callback: AssignCallback<T>){
 
