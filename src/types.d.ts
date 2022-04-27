@@ -1,4 +1,3 @@
-type Async<T = any> = (...args: any[]) => Promise<T>;
 type BunchOf<T> = { [key: string]: T };
 type Callback = () => void;
 type Class = new (...args: any[]) => any;

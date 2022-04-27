@@ -2,6 +2,8 @@ import { issues } from '../issues';
 import { defineProperty, setAlias } from '../util';
 import { apply } from './apply';
 
+type Async<T = any> = (...args: any[]) => Promise<T>;
+
 export const Oops = issues({
   DuplicateAction: (key) =>
     `Invoked action ${key} but one is already active.`
