@@ -30,6 +30,8 @@ export interface Stateful {
 
 declare namespace Model {
   type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
+  /** Including but not limited to T. */
+  type Extends<T> = T | (string & Record<never, never>);
 
   export { Controller };
   export { Subscriber };
