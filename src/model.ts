@@ -30,15 +30,13 @@ export interface Stateful {
 };
 
 declare namespace Model {
-  type IfApplicable<T extends {}, K> = K extends keyof T ? T[K] : undefined;
-
   /** Including but not limited to T. */
   type Extends<T> = T | (string & Record<never, never>);
 
   export { Controller };
   export { Subscriber };
 
-  export type OnUpdate<T, P> = (this: T, value: IfApplicable<keyof T, P>, changed: P) => void;
+  export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
@@ -77,6 +75,9 @@ declare namespace Model {
 
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
+
+  /** Actual value belonging to a managed property. */
+  export type ValueOf<T extends {}, K> = K extends keyof T ? Value<T[K]> : undefined;
 
   /**
    * Values from current state of given controller.
