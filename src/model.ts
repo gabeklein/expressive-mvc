@@ -46,7 +46,7 @@ declare namespace Model {
       current: T | null;
   }
 
-  /** Properties of T, only which are methods. */
+  /** Properties of T, of which are methods. */
   export type Methods<T> = {
     [K in keyof T]:
       T[K] extends Ref ? never :
