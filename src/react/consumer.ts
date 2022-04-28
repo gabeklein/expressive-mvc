@@ -47,7 +47,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const { get, has, children, of: Control } = props as any;
 
   if(typeof children == "function")
-    return children(useTap(useInContext(Control)));
+    return children(useTap(Control));
 
   const callback = has || get;
 

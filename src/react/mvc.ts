@@ -75,7 +75,7 @@ export class MVC extends Model {
   static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
 
   static tap (key?: string | Function, expect?: boolean): any {
-    return useTap(this.get(), key as any, expect);
+    return useTap(this, key as any, expect);
   }
 
   /**

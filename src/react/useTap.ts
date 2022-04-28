@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
@@ -6,46 +6,68 @@ import { suspend } from '../suspense';
 import { defineProperty } from '../util';
 import { use } from './hooks';
 import { useFrom } from './useFrom';
+import { useInContext } from './useInContext';
 
-function useTap <T extends Stateful> (source: (() => T) | T): T;
+namespace useTap {
+  export interface Tappable {
+    new (): Stateful;
+    new (...args: any[]): Stateful;
+    get?: () => Stateful;
+  }
+}
+
+function useTap <T extends Stateful> (source: T | (() => T)): T;
 
 function useTap <T extends Stateful, K extends Model.Field<T>> (
-  source: (() => T) | T,
+  source: T | (() => T) | useTap.Tappable,
   path: K,
   expect: true
 ): Exclude<T[K], undefined>;
 
 function useTap <T extends Stateful, K extends Model.Field<T>> (
-  source: (() => T) | T,
+  source: T | (() => T) | useTap.Tappable,
   path: K,
   expect?: boolean
 ): T[K];
 
 function useTap <T extends Stateful, R> (
-  source: (() => T) | T,
+  source: T | (() => T) | useTap.Tappable,
   compute: (this: T, from: T) => R,
   expect: true
 ): Exclude<R, undefined>;
 
 function useTap <T extends Stateful, R> (
-  source: (() => T) | T,
+  source: T | (() => T) | useTap.Tappable,
   compute: (this: T, from: T) => R,
   expect?: boolean
 ): R;
 
 function useTap <T extends Stateful> (
-  source: (() => T) | T,
+  source: T | (() => T) | useTap.Tappable,
   path?: Model.Field<T> | ((this: T, from: T) => any),
   expect?: boolean) {
 
+  const instance = useMemo(() => {
+    if(typeof source == "object")
+      return () => source;
+
+    if("get" in source)
+      return () => source.get!();
+
+    if(typeof source == "function"){
+      if("prototype" in source)
+        return () => useInContext(source as any);
+      else
+        return source;
+    }
+
+    throw new Error();
+  }, [])() as T;
+
   if(typeof path == "function")
-    return useFrom(source, path, expect);
+    return useFrom(instance, path, expect);
 
   const local = use(refresh => {
-    const instance =
-      typeof source == "function" ?
-        source() : source;
-
     const sub = new Subscriber(instance, () => refresh);
 
     if(typeof path == "string"){

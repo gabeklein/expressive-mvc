@@ -19,14 +19,12 @@ function useFrom <T extends Stateful, R> (
 ): R;
 
 function useFrom(
-  target: (() => Stateful) | Stateful,
+  target: Stateful,
   compute: Function,
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const instance = typeof target == "function" ? target() : target;
-
-    const sub = new Subscriber(instance, () => update);
+    const sub = new Subscriber(target, () => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);
