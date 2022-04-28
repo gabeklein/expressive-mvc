@@ -173,6 +173,34 @@ describe("computed", () => {
     test.assertDidRender(true);
   })
 
+  it("will suspend in method mode", async () => {
+    class Test extends Model {
+      source?: string = undefined;
+      value = from(() => this.getValue, true);
+  
+      getValue(){
+        return this.source;
+      }
+    }
+
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+      promise.resolve();
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.source = "foobar!";
+
+    await promise.await();
+
+    test.assertDidRender(true);
+  })
+
   it("will seem to throw error outside react", () => {
     const instance = Test.create();
     const expected = Oops.ValueNotReady(instance, "value");
