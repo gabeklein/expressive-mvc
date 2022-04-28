@@ -1,7 +1,7 @@
 import { control, Controller } from './controller';
 import { applyUpdate } from './dispatch';
-import { LOCAL, Stateful } from './model';
-import { BunchOf, Callback, RequestCallback } from './types';
+import { LOCAL, Model, Stateful } from './model';
+import { Callback, RequestCallback } from './types';
 import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 type Listener = {
@@ -12,12 +12,15 @@ type Listener = {
 export class Subscriber <T extends Stateful = any> {
   public proxy: T;
   public source: T;
-  public active = false;
-  public watch = {} as BunchOf<Callback | true>;
-  public dependant = new Set<Listener>();
   public parent: Controller<T>;
   public release!: Callback;
   public commit: () => () => void;
+
+  public active = false;
+  public dependant = new Set<Listener>();
+  public watch = {} as {
+    [key in Model.Event<T>]: Callback | true;
+  }
 
   constructor(
     parent: Controller<T> | T,
@@ -51,7 +54,7 @@ export class Subscriber <T extends Stateful = any> {
         getOwnPropertyDescriptor(parent.subject, key)!;
 
       const isUsing = () => {
-        this.watch[key] = true;
+        this.watch[key as Model.Field<T>] = true;
         delete proxy[key];
         return proxy[key];
       }

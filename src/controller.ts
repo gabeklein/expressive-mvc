@@ -2,8 +2,8 @@ import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
 import { issues } from './issues';
-import { CONTROL, Stateful } from './model';
-import { BunchOf, Callback, RequestCallback } from './types';
+import { CONTROL, Model, Stateful } from './model';
+import { Callback, RequestCallback } from './types';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
@@ -15,15 +15,16 @@ export const Oops = issues({
 });
 
 declare namespace Controller {
-  type RequestCallback = (keys: readonly string[]) => void;
-  type OnEvent = (key: string, source: Controller) => RequestCallback | void;
-  type OnValue = <T>(this: T, value: any, state: T) => boolean | void;
+  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => RequestCallback | void;
+  
+  // TODO: implement value type
+  type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
 }
 
 const READY = new WeakSet<Controller>();
 
 class Controller<T extends Stateful = any> {
-  public state = {} as BunchOf<any>;
+  public state = {} as Model.Values<T>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
   public onDestroy = new Set<Callback>();
@@ -34,7 +35,7 @@ class Controller<T extends Stateful = any> {
 
   start(){
     for(const key in this.subject)
-      this.manage(key);
+      this.manage(key as unknown as Model.Field<T>);
 
     this.emit([]);
   }
@@ -47,7 +48,7 @@ class Controller<T extends Stateful = any> {
     this.onDestroy.forEach(x => x());
   }
 
-  manage(key: string, handler?: Controller.OnValue){
+  manage(key: Model.Field<T>, handler?: Controller.OnValue<T>){
     const { state, subject } = this;
     const desc = getOwnPropertyDescriptor(subject, key);
 
@@ -71,7 +72,7 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  ref(key: string, handler?: Controller.OnValue){
+  ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
     const { state, subject } = this;
 
     return (value: any) => {
@@ -90,14 +91,14 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  addListener(listener: Controller.OnEvent){
+  addListener(listener: Controller.OnEvent<T>){
     this.followers.add(listener);
     return () => {
       this.followers.delete(listener)
     }
   }
 
-  emit(keys: readonly string[]){
+  emit(keys: readonly Model.Event<T>[]){
     const waiting = [ ...this.waiting ];
 
     this.waiting.clear();
@@ -112,9 +113,9 @@ class Controller<T extends Stateful = any> {
       }
   }
 
-  update(key: string, value?: any){
+  update(key: Model.Event<T>, value?: any){
     if(1 in arguments)
-      this.state[key] = value;
+      this.state[key as Model.Field<T>] = value;
 
     if(this.frame.has(key))
       return;
@@ -139,11 +140,11 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  requestUpdate(): PromiseLike<readonly string[] | false>;
-  requestUpdate(strict: true): Promise<readonly string[]>;
+  requestUpdate(): PromiseLike<readonly Model.Event<T>[] | false>;
+  requestUpdate(strict: true): Promise<readonly Model.Event<T>[]>;
   requestUpdate(strict: false): Promise<false>;
-  requestUpdate(strict: boolean): Promise<readonly string[] | false>;
-  requestUpdate(callback: Controller.RequestCallback): void;
+  requestUpdate(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
+  requestUpdate(callback: (keys: readonly Model.Event<T>[]) => void): void;
   requestUpdate(arg?: boolean | RequestCallback): any {
     if(typeof arg == "function"){
       this.waiting.add(arg);
@@ -153,7 +154,7 @@ class Controller<T extends Stateful = any> {
     if(typeof arg == "boolean" && arg !== this.frame.size > 0)
       return Promise.reject(Oops.StrictUpdate(arg));
 
-    return <PromiseLike<readonly string[] | false>> {
+    return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
         if(callback)
           if(this.frame.size)

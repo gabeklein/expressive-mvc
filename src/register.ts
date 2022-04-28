@@ -1,10 +1,9 @@
 import { Model } from './model';
-import { BunchOf } from './types';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './util';
 
 export type Collection =
   | Array<Model | typeof Model>
-  | BunchOf<Model | typeof Model>;
+  | { [anything: string]: Model | typeof Model };
 
 export class Lookup {
   private table = new Map<typeof Model, symbol>();

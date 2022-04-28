@@ -27,10 +27,10 @@ function useModel <T extends Class, I extends InstanceOf<T>> (
   callback?: (instance: I) => void
 ): I;
 
-function useModel(
-  source: (new () => Model) | Stateful,
-  arg?: ((instance: Stateful) => void) | string[],
-  callback?: ((instance: Stateful) => void)) {
+function useModel <T extends Model | Stateful> (
+  source: (new () => T) | T,
+  arg?: ((instance: T) => void) | Model.Event<T>[],
+  callback?: ((instance: T) => void)) {
 
   const instance = React.useMemo(() => {
     const cb = callback || arg;
@@ -51,8 +51,8 @@ function useModel(
         instance.on(arg, () => update(x => x+1), true);
 
       return () => {
-        if(Model.isTypeof(source) && instance instanceof source)
-          instance.destroy();
+        if(Model.isTypeof(source))
+          (instance as Model).destroy();
       }
     }, []);
   
@@ -69,8 +69,8 @@ function useModel(
       return () => {
         local.release();
   
-        if(Model.isTypeof(source) && instance instanceof source)
-          instance.destroy();
+        if(Model.isTypeof(source))
+          (instance as Model).destroy();
       };
     }, []);
   

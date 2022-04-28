@@ -6,7 +6,7 @@ import { useInContext } from './useInContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
-export class MVC extends Model {
+class MVC extends Model {
   static [CONTROL]: Controller;
 
   /** Attaches this controller to a component. */
@@ -125,3 +125,5 @@ export class MVC extends Model {
     return useTap(() => this, path as any, expect);
   }
 }
+
+export { MVC };

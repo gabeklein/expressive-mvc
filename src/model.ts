@@ -2,7 +2,7 @@ import * as Computed from './compute';
 import { control, Controller } from './controller';
 import { UPDATE } from './dispatch';
 import { Subscriber } from './subscriber';
-import { BunchOf, Callback, Class, InstanceOf, RequestCallback } from './types';
+import { Callback, Class, InstanceOf, RequestCallback } from './types';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 export const CONTROL = Symbol("CONTROL");
@@ -26,7 +26,7 @@ export interface Stateful {
    * If accessed directly, will contain all keys from last push.
    * If within a subscribed function, will contain only keys which explicitly caused a refresh.
    */
-  [WHY]?: readonly string[];
+  [WHY]?: readonly Model.Event<this>[];
 };
 
 declare namespace Model {
@@ -148,7 +148,7 @@ class Model {
         ? handler.bind(this)
         : frame => frame
           .filter(k => keys.includes(k))
-          .forEach(k => handler.call(this, control.state[k], k))
+          .forEach(k => handler.call(this, control.state[k as Model.Field<this>], k))
 
       const trigger: RequestCallback = once
         ? frame => { remove(); callback(frame) }
@@ -188,8 +188,8 @@ class Model {
 
   effect(callback: Model.Effect<this>): Callback;
   effect(callback: Model.Effect<this>, select: []): Callback;
-  effect(callback: Model.Effect<this>, select: (keyof this)[]): Callback;
-  effect(callback: Model.Effect<this>, select?: (keyof this)[]){
+  effect(callback: Model.Effect<this>, select: Model.Event<this>[]): Callback;
+  effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
 
     return control(this, control => {
@@ -219,7 +219,7 @@ class Model {
       }
 
       return control.addListener(key => {
-        if(select.includes(key as keyof this))
+        if(select.includes(key))
           return invoke;
       });
     })
@@ -237,24 +237,27 @@ class Model {
   export(): Model.Values<this>;
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
-  export(subset?: Set<string> | string[]){
+  export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
     const { state } = control(this);
-    const output: BunchOf<any> = {};
+    const output = {} as Model.Values<this, P>;
+    
+    if(!subset)
+      subset = getOwnPropertyNames(state) as P[];
 
-    for(const key of subset || getOwnPropertyNames(state))
-      output[key] = (state as any)[key];
+    for(const key of subset)
+      output[key] = state[key];
 
     return output;
   }
 
-  update(): PromiseLike<readonly string[] | false>;
-  update(strict: true): Promise<readonly string[]>;
+  update(): PromiseLike<readonly Model.Event<this>[] | false>;
+  update(strict: true): Promise<readonly Model.Event<this>[]>;
   update(strict: false): Promise<false>;
-  update(strict: boolean): Promise<readonly string[] | false>;
+  update(strict: boolean): Promise<readonly Model.Event<this>[] | false>;
 
-  update(keys: Model.Event<this>): PromiseLike<readonly string[]>;
-  update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly string[]>;
-  update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly string[]>;
+  update(keys: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
+  update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
+  update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
   update(arg?: any, tag?: any): any {
     const target = control(this);
