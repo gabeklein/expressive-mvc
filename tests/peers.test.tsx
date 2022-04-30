@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Consumer, Global, Model, Provider, tap } from '../src';
-import { Oops } from '../src/react/peer';
+import { Oops } from '../src/react/tap';
 import { render, subscribeTo } from './adapter';
 
 describe("tap instruction", () => {

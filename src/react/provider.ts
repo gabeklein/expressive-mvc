@@ -6,8 +6,8 @@ import { Collection, Lookup } from '../register';
 import { Subscriber } from '../subscriber';
 import { Class } from '../types';
 import { entries } from '../util';
-import { use} from './hooks';
-import { getPending } from './peer';
+import { use } from './hooks';
+import { getPending } from './tap';
 import { LookupContext, useLookup } from './useInContext';
 
 export const Oops = issues({
