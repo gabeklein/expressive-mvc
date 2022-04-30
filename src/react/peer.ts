@@ -21,21 +21,21 @@ const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 export function pendingAccess<T extends Peer>(
-  from: Stateful,
-  type: T,
+  recipient: Stateful,
+  targetType: T,
   key: string,
   argument?: boolean | PeerCallback<T>){
 
-  if("set" in type)
-    return () => type.get() as InstanceOf<T>;
+  if("set" in targetType)
+    return () => targetType.get() as InstanceOf<T>;
 
-  if("set" in from.constructor)
-    throw Oops.CantAttachGlobal(from, type.name);
+  if("set" in recipient.constructor)
+    throw Oops.CantAttachGlobal(recipient, targetType.name);
 
   let instance: InstanceOf<T> | undefined;
 
-  getPending(from).push(context => {
-    instance = context.get(type);
+  getPending(recipient).push(context => {
+    instance = context.get(targetType);
 
     if(typeof argument == "function"){
       if(argument(instance) === false)
@@ -43,7 +43,7 @@ export function pendingAccess<T extends Peer>(
     }
 
     else if(!instance && argument)
-      throw Oops.AmbientRequired(type.name, from, key);
+      throw Oops.AmbientRequired(targetType.name, recipient, key);
   })
 
   return () => instance;
