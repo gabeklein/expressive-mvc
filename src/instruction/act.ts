@@ -53,7 +53,7 @@ function act<T extends Async>(task: T){
 
       return {
         value: invoke as T,
-        writable: false
+        set: false
       };
     }
   )

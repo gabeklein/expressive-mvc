@@ -2,9 +2,9 @@ import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
 import { issues } from './issues';
-import { CONTROL, Model, Stateful } from './model';
+import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
-import { defineProperty, getOwnPropertyDescriptor } from './util';
+import { defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -24,6 +24,7 @@ declare namespace Controller {
 const READY = new WeakSet<Controller>();
 
 class Controller<T extends Stateful = any> {
+  public proxy: Model.Entries<T>;
   public state = {} as Model.Values<T>;
   public frame = new Set<string>();
   public waiting = new Set<RequestCallback>();
@@ -31,7 +32,9 @@ class Controller<T extends Stateful = any> {
 
   protected followers = new Set<Controller.OnEvent>();
 
-  constructor(public subject: T){}
+  constructor(public subject: T){
+    this.proxy = Object.create(subject);
+  }
 
   start(){
     for(const key in this.subject)
@@ -48,28 +51,77 @@ class Controller<T extends Stateful = any> {
     this.onDestroy.forEach(x => x());
   }
 
-  manage(key: Model.Field<T>, handler?: Controller.OnValue<T>){
-    const { state, subject } = this;
-    const desc = getOwnPropertyDescriptor(subject, key);
+  manage(key: Model.Field<T>){
+    const { proxy, state, subject } = this;
+    const property = getOwnPropertyDescriptor(subject, key);
 
-    if(desc && "value" in desc){
-      const { value } = desc;
-      const instruction = Pending.get(value);
+    if(!property || !("value" in property))
+      return;
 
-      if(instruction){
-        Pending.delete(value);
-        delete (subject as any)[key];
-        instruction.call(this, key, this);
+    let entry = property.value;
+
+    if(typeof entry == "function")
+      return;
+
+    let onGet: any;
+    let onSet: any;
+    let enumerable: any;
+    let skip: boolean | undefined;
+
+    const instruction = Pending.get(entry);
+
+    if(instruction){
+      Pending.delete(entry);
+      delete subject[key];
+      const desc = instruction.call(this, key, this);
+    
+      if(desc){
+        if("value" in desc)
+          state[key] = desc.value as any;
+  
+        onSet = desc.set;
+        onGet = desc.get;
+        enumerable = desc.enumerable;
       }
-      else if(typeof value !== "function" || /^[A-Z]/.test(key)){
-        state[key] = value;
-        defineProperty(subject, key, {
-          enumerable: true,
-          get: () => state[key],
-          set: this.ref(key, handler)
-        });
-      }
+      else
+        skip = true;
     }
+    else
+      state[key] = entry;
+
+    const setter = onSet !== false
+      ? this.ref(key, onSet)
+      : undefined;
+
+    if(!skip)
+      defineProperty(subject, key, {
+        enumerable,
+        set: setter,
+        get: onGet
+          ? () => onGet!(state[key])
+          : () => state[key]
+      });
+
+    function tap(this: Stateful){
+      const context = this[LOCAL];
+
+      if(context && !context.watch[key])
+        context.watch[key] = true;
+
+      return onGet
+        ? onGet(state[key], context)
+        : subject[key];
+    }
+
+    setAlias(tap, `tap ${key}`);
+
+    const existing = getOwnPropertyDescriptor(subject, key) || {};
+
+    defineProperty(proxy, key, {
+      enumerable,
+      set: existing.set,
+      get: tap
+    })
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){

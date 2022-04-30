@@ -51,7 +51,7 @@ function ref<T>(arg?: ref.Callback<T> | Model){
       else 
         value = createRef.call(this, key, arg);
 
-      return { value };
+      return { value, explicit: true };
     }
   )
 }

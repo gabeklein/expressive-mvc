@@ -78,7 +78,7 @@ describe("getter", () => {
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
-    expect(mockAccess).toBeCalledWith(undefined, undefined);
+    expect(mockAccess).toBeCalledWith(undefined);
   })
 
   it("will pass subscriber if within one", () => {
@@ -109,13 +109,13 @@ describe("getter", () => {
     const state = Test.create();
 
     expect(state.property).toBe(undefined);
-    expect(mockAccess).toBeCalledWith(undefined, undefined);
+    expect(mockAccess).toBeCalledWith(undefined);
 
     state.property = "foo";
 
     expect(state.property).toBe("foo");
     expect(mockAccess).toBeCalledTimes(2);
-    expect(mockAccess).toBeCalledWith("foo", undefined);
+    expect(mockAccess).toBeCalledWith("foo");
   });
 })
 

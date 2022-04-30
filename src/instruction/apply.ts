@@ -1,10 +1,8 @@
 import { Controller } from '../controller';
-import { LOCAL, Stateful } from '../model';
-import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
 import { Instruction } from './types';
 
-export const Pending = new Map<symbol, Instruction<any>>();
+export const Pending = new Map<symbol, Instruction.Runner<any>>();
 
 /**
  * Run instruction as controller sets itself up.
@@ -19,43 +17,20 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
-    const { subject, state } = this;
-
     let output = fn.call(this, key, this);
-    let desc = {} as PropertyDescriptor;
-    let get: ((state: any, within?: Subscriber | undefined) => any) | undefined;
-    let set: ((value: any, state: any) => boolean | void) | undefined
 
     if(!output)
       return;
 
-    if(typeof output == "function")
-      get = output;
-
-    else {
-      ({ get, set, ...desc } = output);
-
-      if("value" in desc){
-        state[key] = desc.value;
-        
-        if(get || set)
-          delete desc.value;
-        else {
-          defineProperty(subject, key, desc);
-          return;
-        }
-      }
+    if("explicit" in output){
+      defineProperty(this.subject, key, output);
+      return;
     }
 
-    defineProperty(subject, key, {
-      ...desc,
-      set: this.ref(key, set),
-      get: get
-        ? function(this: Stateful){
-          return get!(state[key], this[LOCAL]);
-        }
-        : () => state[key]
-    });
+    if(typeof output == "function")
+      return { get: output };
+    else
+      return output;
   }
 
   Pending.set(placeholder, setup);

@@ -58,7 +58,7 @@ function use<T extends typeof Model>(
   argument?: (i: InstanceOf<T> | undefined) => void){
 
   return child(
-    function use(key){
+    function use(){
       const { subject } = this;
 
       let current: Model | undefined;

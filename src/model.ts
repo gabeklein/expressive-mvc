@@ -226,9 +226,12 @@ class Model {
     })
   }
 
+  // TODO: account for exotic properties
   import <O extends Model.Compat<this>> (source: O, select?: (keyof O)[]){
+    const { subject } = control(this);
+
     if(!select)
-      select = getOwnPropertyNames(this) as (keyof O)[];
+      select = getOwnPropertyNames(subject) as (keyof O)[];
 
     for(const key of select)
       if(key in source)

@@ -2,7 +2,7 @@ import { control, Controller } from './controller';
 import { applyUpdate } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
-import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { create, define, defineProperty } from './util';
 
 type Listener = {
   commit(): void;
@@ -10,7 +10,7 @@ type Listener = {
 }
 
 export class Subscriber <T extends Stateful = any> {
-  public proxy: T;
+  public proxy!: T;
   public source: T;
   public parent: Controller<T>;
   public release!: Callback;
@@ -31,42 +31,24 @@ export class Subscriber <T extends Stateful = any> {
 
     this.parent = parent;
     this.source = parent.subject;
-
-    const proxy = this.proxy = create(parent.subject);
     let reset: Callback | undefined;
 
     const DEBUG: RequestCallback = (keys) => {
       reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
     }
 
+    const proxy = create(parent.proxy);
+
     define(proxy, LOCAL, this);
     defineProperty(this, "proxy", {
-      get: () => {
+      configurable: true,
+      get(){
         if(reset)
           setTimeout(reset, 0);
 
         return proxy;
       }
     })
-
-    for(const key in parent.state){
-      const existing =
-        getOwnPropertyDescriptor(parent.subject, key)!;
-
-      const isUsing = () => {
-        this.watch[key as Model.Field<T>] = true;
-        delete proxy[key];
-        return proxy[key];
-      }
-  
-      setAlias(isUsing, `tap ${key}`);
-      defineProperty(proxy, key, {
-        set: existing.set,
-        get: isUsing,
-        configurable: true,
-        enumerable: true
-      })
-    }
 
     this.commit = () => {
       const { parent } = this;
