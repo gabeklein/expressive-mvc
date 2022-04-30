@@ -16,8 +16,7 @@ describe("use", () => {
     const render = renderHook(() => instance.use());
     const result = render.result.current;
 
-    expect(result).toStrictEqual(instance);
-
+    expect(result).toMatchObject(instance);
   })
 
   it("will create instance given a class", () => {
