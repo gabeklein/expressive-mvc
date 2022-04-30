@@ -34,8 +34,8 @@
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.0.1",
-    "@testing-library/react-hooks": "^7.0.0",
-    "@types/jest": "^26.0.23",
+    "@testing-library/react-hooks": "^8.0.0",
+    "@types/jest": "^27.4.1",
     "@types/node": "^15.12.4",
     "@types/react": "^17.0.11",
     "jest": "^27.0.4",
