@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { control } from '../controller';
 
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
@@ -68,7 +69,8 @@ function useTap <T extends Stateful> (
     return useFrom(instance, path, expect);
 
   const local = use(refresh => {
-    const sub = new Subscriber(instance, () => refresh);
+    const parent = control(instance);
+    const sub = new Subscriber(parent, () => refresh);
 
     if(typeof path == "string"){
       const source = sub.proxy;
@@ -78,7 +80,7 @@ function useTap <T extends Stateful> (
           const value = source[path];
 
           if (value === undefined && expect)
-            throw suspend(sub.parent, path);
+            throw suspend(parent, path);
 
           return value;
         }

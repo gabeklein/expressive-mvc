@@ -11,8 +11,6 @@ type Listener = {
 
 export class Subscriber <T extends Stateful = any> {
   public proxy!: T;
-  public source: T;
-  public parent: Controller<T>;
   public release!: Callback;
   public commit: () => () => void;
 
@@ -29,8 +27,6 @@ export class Subscriber <T extends Stateful = any> {
     if(!(parent instanceof Controller))
       parent = control(parent);
 
-    this.parent = parent;
-    this.source = parent.subject;
     let reset: Callback | undefined;
 
     const DEBUG: RequestCallback = (keys) => {
@@ -51,9 +47,8 @@ export class Subscriber <T extends Stateful = any> {
     })
 
     this.commit = () => {
-      const { parent } = this;
-
-      const onDone = parent.addListener(key => {
+      const control = parent as Controller;
+      const onDone = control.addListener(key => {
         const handler = this.watch[key];
   
         if(!handler)
@@ -62,11 +57,11 @@ export class Subscriber <T extends Stateful = any> {
         if(typeof handler == "function")
           handler();
   
-        const notify = this.onUpdate(key, parent);
+        const notify = this.onUpdate(key, control);
   
         if(notify){
-          parent.requestUpdate(DEBUG);
-          parent.requestUpdate(notify);
+          control.requestUpdate(DEBUG);
+          control.requestUpdate(notify);
         }
       });
 
