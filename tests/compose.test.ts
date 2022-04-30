@@ -52,9 +52,7 @@ describe("use instruction", () => {
 
   it('will accept simple object', async () => {
     class Parent extends Model {
-      child = use({
-        value: "foo"
-      });
+      child = use({ value: "foo" });
     }
 
     const state = Parent.create();
