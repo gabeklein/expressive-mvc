@@ -29,10 +29,6 @@ export class Subscriber <T extends Stateful = any> {
 
     let reset: Callback | undefined;
 
-    const DEBUG: RequestCallback = (keys) => {
-      reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
-    }
-
     const proxy = create(parent.proxy);
 
     define(proxy, LOCAL, this);
@@ -48,7 +44,7 @@ export class Subscriber <T extends Stateful = any> {
 
     this.commit = () => {
       const control = parent as Controller;
-      const onDone = control.addListener(key => {
+      const release = control.addListener(key => {
         const handler = this.watch[key];
   
         if(!handler)
@@ -58,9 +54,12 @@ export class Subscriber <T extends Stateful = any> {
           handler();
   
         const notify = this.onUpdate(key, control);
+        const getWhy: RequestCallback = (keys) => {
+          reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
+        }
   
         if(notify){
-          control.requestUpdate(DEBUG);
+          control.requestUpdate(getWhy);
           control.requestUpdate(notify);
         }
       });
@@ -70,7 +69,7 @@ export class Subscriber <T extends Stateful = any> {
 
       return this.release = () => {
         this.dependant.forEach(x => x.release());
-        onDone();
+        release();
       }
     }
   }
