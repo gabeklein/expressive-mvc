@@ -13,52 +13,52 @@ declare namespace child {
 /**
  * Generic instruction used by `use()` and `tap()` for recursive subscription.
  *
- * @param source - Instruction body is run upon parent create. Return function to fetch current value of field.
+ * @param instruction - Instruction body is run upon parent create. Return function to fetch current value of field.
  * @param name - Name of custom instruction.
  */
 function child<T extends Model>(
-  source: child.Instruction<T>,
+  instruction: child.Instruction<T>,
   name?: string){
 
   return apply(
     function child(this: Controller, key: string){
       const context = new WeakMap<Subscriber, any>();
-      const peer = source.call(this, key);
+      const source = instruction.call(this, key);
   
-      function subscribe(sub: Subscriber){
+      function subscribe(parent: Subscriber){
         let child: Subscriber | undefined;
     
         function init(){
           if(child){
             child.release();
-            sub.dependant.delete(child);
-            context.set(sub, undefined);
+            parent.dependant.delete(child);
+            context.set(parent, undefined);
             child = undefined;
           }
     
-          const instance = peer.get();
+          const instance = source.get();
     
           if(instance){
-            child = new Subscriber(instance, sub.onUpdate);
+            child = new Subscriber(instance, parent.onUpdate);
       
-            if(sub.active)
+            if(parent.active)
               child.commit();
       
-            sub.dependant.add(child);
-            context.set(sub, child.proxy);
+            parent.dependant.add(child);
+            context.set(parent, child.proxy);
           }
         }
 
         init();
-        sub.watch[key] = init;
+        parent.watch[key] = init;
       }
     
       return {
-        value: peer.get(),
-        set: peer.set,
+        value: source.get(),
+        set: source.set,
         get(_value, local){
           if(!local)
-            return peer.get();
+            return source.get();
       
           if(!context.has(local))
             subscribe(local);
@@ -67,7 +67,7 @@ function child<T extends Model>(
         }
       }
     },
-    name || source.name
+    name || instruction.name
   )
 }
 
