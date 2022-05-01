@@ -4,7 +4,7 @@ import { Pending } from './instruction/apply';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
-import { defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -222,11 +222,20 @@ class Controller<T extends Stateful = any> {
 
 type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
 
-export function control<T extends Stateful>(subject: T): Controller<T>;
-export function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
-export function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
-  const control = subject[CONTROL];
+function control<T extends Stateful>(subject: T): Controller<T>;
+function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
+
+/** Initialize controller even if not a stateful object. */
+function control<T extends {}>(subject: T): Controller<T & Stateful>;
+
+function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
+  let control = subject[CONTROL];
   const ready = READY.has(control);
+
+  if(!control){
+    control = new Controller(subject as unknown as Stateful);
+    define(subject, CONTROL, control);
+  }
 
   if(!cb){
     if(!ready){
@@ -250,4 +259,4 @@ export function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   return cb(control);
 }
 
-export { Controller }
+export { Controller, control }

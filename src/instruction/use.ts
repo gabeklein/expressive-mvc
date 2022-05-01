@@ -1,8 +1,7 @@
-import { control, Controller } from '../controller';
+import { control } from '../controller';
 import { issues } from '../issues';
-import { CONTROL, Model, Stateful } from '../model';
+import { Model, Stateful } from '../model';
 import { Class, InstanceOf } from '../types';
-import { define } from '../util';
 import { child } from './child';
 import { Parent } from './parent';
 
@@ -46,11 +45,6 @@ function use<T extends typeof Model>(
   
       const onUpdate = (next: Stateful | undefined) => {
         if(next){
-          if(!(CONTROL in next))
-            define(next, CONTROL, 
-              new Controller(next as unknown as Stateful)
-            );
-
           Parent.set(next, subject);
           control(next);
         }
