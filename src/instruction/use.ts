@@ -1,6 +1,6 @@
 import { control } from '../controller';
 import { issues } from '../issues';
-import { Model, Stateful } from '../model';
+import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { child } from './child';
 import { Parent } from './parent';
@@ -43,7 +43,7 @@ function use<T extends typeof Model>(
     function use(key){
       const { subject } = this;
   
-      const onUpdate = (next: Stateful | undefined) => {
+      const onUpdate = (next: {} | undefined) => {
         this.state[key] = next;
 
         if(next){

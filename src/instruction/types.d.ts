@@ -12,7 +12,7 @@ type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   | void;
 
 declare namespace Instruction {
-  type Getter<T> = (state: T | undefined, within?: Subscriber) => T;
+  type Getter<T> = (state: T, within?: Subscriber) => T;
 
   type Runner<T> = (this: Controller, key: string, on: Controller) => Instruction.Descriptor<T> | undefined;
 

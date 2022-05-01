@@ -1,11 +1,10 @@
 import { Controller } from '../controller';
-import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { apply } from './apply';
 
 declare namespace child {
   type Instruction<T> = (this: Controller, key: string) =>
-    ((value: T | undefined) => void) | void;
+    ((value: T) => void) | void;
 }
   
 /**
@@ -14,7 +13,7 @@ declare namespace child {
  * @param instruction - Instruction body is run upon parent create. Return function to fetch current value of field.
  * @param name - Name of custom instruction.
  */
-function child<T extends Model>(
+function child<T extends {}>(
   instruction: child.Instruction<T>,
   name?: string){
 
