@@ -22,7 +22,7 @@ declare namespace Instruction {
     value?: T;
     writable?: boolean;
     get?: Getter<T>;
-    set?: ((value: T, state: any) => boolean | void) | false;
+    set?: ((value: T, state: any) => boolean | void) | false | void;
   }
 
   interface ExplicitDescriptor extends PropertyDescriptor {

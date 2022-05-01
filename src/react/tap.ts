@@ -51,20 +51,17 @@ function tap<T extends Peer>(
 
   return child(
     function tap(key){
-      let get: () => InstanceOf<T> | undefined;
-
       if("set" in type)
-        get = () => type.get() as InstanceOf<T>;
+        this.state[key] = type.get();
+
       else {
         const { subject } = this;
 
         if("set" in subject.constructor)
           throw Oops.CantAttachGlobal(subject, type.name);
   
-        let instance: InstanceOf<T> | undefined;
-  
         getPending(subject).push(context => {
-          instance = context.get(type);
+          let instance = context.get(type);
   
           if(typeof argument == "function"){
             if(argument(instance) === false)
@@ -73,12 +70,10 @@ function tap<T extends Peer>(
   
           else if(!instance && argument)
             throw Oops.AmbientRequired(type.name, subject, key);
-        })
-  
-        get = () => instance;
-      }
 
-      return { get }
+          this.state[key] = instance;
+        })
+      }
     }
   )
 };

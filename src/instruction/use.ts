@@ -11,16 +11,6 @@ export const Oops = issues({
     `Instruction \`use\` cannot accept argument type of ${type}.`,
 })
 
-function bootstrap<T extends {}>(object: T){
-  const breakdown = getOwnPropertyDescriptors(object);
-  const control = new Model();
-
-  for(const key in breakdown)
-    defineProperty(control, key, breakdown[key]);
-    
-  return control as T & Model;
-}
-
 /**
  * Create a placeholder for specified Model type.
  */
@@ -58,30 +48,30 @@ function use<T extends typeof Model>(
   argument?: (i: InstanceOf<T> | undefined) => void){
 
   return child(
-    function use(){
+    function use(key){
       const { subject } = this;
-
-      let current: Model | undefined;
   
-      const onUpdate = (
-        next: Model | {} | undefined) => {
+      const onUpdate = (next: Model | {} | undefined) => {
+        let value: Model | undefined;
 
         if(next){
-          current = next instanceof Model
+          value = next instanceof Model
             ? next : bootstrap(next);
 
-          Parent.set(current, subject);
-          control(current);
+          Parent.set(value, subject);
+          control(value);
         }
-        else
-          current = undefined;
+
+        this.state[key] = value;
   
         if(typeof argument == "function")
-          return argument(current as InstanceOf<T>);
+          argument(value as InstanceOf<T>);
+
+        return true;
       }
   
       if(input){
-        const initial =
+        const value =
           Model.isTypeof(input)
             ? new input() :
           input instanceof Model
@@ -92,19 +82,26 @@ function use<T extends typeof Model>(
             ? bootstrap(input)
             : null;
 
-        if(initial)
-          onUpdate(initial);
-
-        else if(initial === null)
+        if(value === null)
           throw Oops.BadArgument(typeof input);
+
+        if(value)
+          onUpdate(value);
       }
   
-      return {
-        get: () => current,
-        set: onUpdate
-      }
+      return onUpdate;
     }
   )
+}
+
+function bootstrap<T extends {}>(object: T){
+  const breakdown = getOwnPropertyDescriptors(object);
+  const control = new Model();
+
+  for(const key in breakdown)
+    defineProperty(control, key, breakdown[key]);
+    
+  return control as T & Model;
 }
 
 export { use }

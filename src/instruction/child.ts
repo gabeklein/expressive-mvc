@@ -1,13 +1,11 @@
 import { Controller } from '../controller';
-import { apply } from './apply';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
+import { apply } from './apply';
 
 declare namespace child {
-  type Instruction<T> = (this: Controller, key: string) => {
-    get: () => T | undefined,
-    set?: (value: T | undefined) => void
-  }
+  type Instruction<T> = (this: Controller, key: string) =>
+    ((value: T | undefined) => void) | void;
 }
   
 /**
@@ -23,12 +21,12 @@ function child<T extends Model>(
   return apply(
     function child(this: Controller, key: string){
       const context = new WeakMap<Subscriber, any>();
-      const source = instruction.call(this, key);
+      const set = instruction.call(this, key);
   
-      function subscribe(parent: Subscriber){
+      const subscribe = (parent: Subscriber) => {
         let child: Subscriber | undefined;
     
-        function init(){
+        const init = () => {
           if(child){
             child.release();
             parent.dependant.delete(child);
@@ -36,7 +34,7 @@ function child<T extends Model>(
             child = undefined;
           }
     
-          const instance = source.get();
+          const instance = this.state[key];
     
           if(instance){
             child = new Subscriber(instance, parent.onUpdate);
@@ -54,11 +52,10 @@ function child<T extends Model>(
       }
     
       return {
-        value: source.get(),
-        set: source.set,
-        get(_value, local){
+        set,
+        get(value, local){
           if(!local)
-            return source.get();
+            return value;
       
           if(!context.has(local))
             subscribe(local);
