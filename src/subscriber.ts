@@ -30,6 +30,7 @@ export class Subscriber <T extends Stateful = any> {
     let reset: Callback | undefined;
 
     const proxy = create(parent.proxy);
+    const controller = parent;
 
     define(proxy, LOCAL, this);
     defineProperty(this, "proxy", {
@@ -42,27 +43,28 @@ export class Subscriber <T extends Stateful = any> {
       }
     })
 
+    const onEvent = (key: string) => {
+      const handler = this.watch[key];
+
+      if(!handler)
+        return;
+
+      if(typeof handler == "function")
+        handler();
+
+      const notify = this.onUpdate(key, controller);
+      const getWhy: RequestCallback = (keys) => {
+        reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
+      }
+
+      if(notify){
+        controller.requestUpdate(getWhy);
+        controller.requestUpdate(notify);
+      }
+    }
+
     this.commit = () => {
-      const control = parent as Controller;
-      const release = control.addListener(key => {
-        const handler = this.watch[key];
-  
-        if(!handler)
-          return;
-  
-        if(typeof handler == "function")
-          handler();
-  
-        const notify = this.onUpdate(key, control);
-        const getWhy: RequestCallback = (keys) => {
-          reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
-        }
-  
-        if(notify){
-          control.requestUpdate(getWhy);
-          control.requestUpdate(notify);
-        }
-      });
+      const release = controller.addListener(onEvent);
 
       this.active = true;
       this.dependant.forEach(x => x.commit());
