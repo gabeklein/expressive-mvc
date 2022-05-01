@@ -44,12 +44,12 @@ function use<T extends typeof Model>(
       const { subject } = this;
   
       const onUpdate = (next: Stateful | undefined) => {
+        this.state[key] = next;
+
         if(next){
           Parent.set(next, subject);
           control(next);
         }
-
-        this.state[key] = next;
   
         if(typeof argument == "function")
           argument(next as InstanceOf<T>);
