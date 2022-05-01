@@ -1,9 +1,9 @@
 import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
-import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
+import { Subscriber } from './subscriber';
 import { Callback, RequestCallback } from './types';
 import { define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
 
@@ -53,7 +53,7 @@ class Controller<T extends Stateful = any> {
   }
 
   manage(key: Model.Field<T>){
-    const { state, subject } = this;
+    const { proxy, state, subject } = this;
     const property = getOwnPropertyDescriptor(subject, key);
 
     if(!property || !("value" in property))
@@ -90,40 +90,78 @@ class Controller<T extends Stateful = any> {
     else
       state[key] = entry;
 
+    const set =
+      onSet !== false
+        ? this.ref(key, onSet)
+        : undefined;
+
     if(!skip)
       defineProperty(subject, key, {
         enumerable,
-        set: onSet !== false
-          ? this.ref(key, onSet)
-          : undefined,
+        set,
         get: onGet
           ? () => onGet!(state[key])
           : () => state[key]
       });
 
-    this.observe(key, onGet);
-  }
-
-  observe(key: Model.Field<T>, handler: Instruction.Getter<any>){
-    const { proxy, state, subject } = this;
+    const getRecursive = this.deep(key);
 
     function get(this: Stateful){
-      const context = this[LOCAL];
+      const local = this[LOCAL];
+      const value = state[key];
 
-      if(context && !context.watch[key])
-        context.watch[key] = true;
+      if(local){
+        if(typeof value == "object" && CONTROL in value)
+          return getRecursive(local);
+        else if(!local.watch[key])
+          local.watch[key] = true;
+      }
 
-      return handler
-        ? handler(state[key], context)
-        : subject[key];
+      return onGet ? onGet(value, local) : value;
     }
 
     setAlias(get, `tap ${key}`);
 
-    const { enumerable, set } =
-      getOwnPropertyDescriptor(subject, key) || {};
+    defineProperty(proxy, key, { enumerable, get, set });
+  }
 
-    defineProperty(proxy, key, { set, get, enumerable });
+  deep(key: Model.Field<T>){
+    const context = new WeakMap<Subscriber, any>();
+
+    const subscribe = (parent: Subscriber) => {
+      let child: Subscriber | undefined;
+  
+      const init = () => {
+        if(child){
+          child.release();
+          parent.dependant.delete(child);
+          context.set(parent, undefined);
+          child = undefined;
+        }
+  
+        const value = this.state[key];
+  
+        if(value && CONTROL in value){
+          child = new Subscriber(value as Stateful, parent.onUpdate);
+    
+          if(parent.active)
+            child.commit();
+    
+          parent.dependant.add(child);
+          context.set(parent, child.proxy);
+        }
+      }
+
+      init();
+      parent.watch[key] = init;
+    }
+
+    return (local: Subscriber) => {
+      if(!context.has(local))
+        subscribe(local);
+
+      return context.get(local);
+    }
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){

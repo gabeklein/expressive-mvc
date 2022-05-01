@@ -2,7 +2,7 @@ import { control } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
-import { child } from './child';
+import { apply } from './apply';
 import { Parent } from './parent';
 
 export const Oops = issues({
@@ -39,7 +39,7 @@ function use<T extends typeof Model>(
   input?: T | (() => InstanceOf<T>),
   argument?: (i: InstanceOf<T> | undefined) => void){
 
-  return child(
+  return apply(
     function use(key){
       const { subject } = this;
   
@@ -74,7 +74,9 @@ function use<T extends typeof Model>(
           onUpdate(value);
       }
   
-      return onUpdate;
+      return {
+        set: onUpdate
+      };
     }
   )
 }

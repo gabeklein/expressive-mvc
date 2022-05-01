@@ -1,4 +1,4 @@
-import { child } from '../instruction/child';
+import { apply } from '../instruction/apply';
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
 import { Lookup } from '../register';
@@ -49,7 +49,7 @@ function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
 function tap<T extends Peer>(
   type: T, argument?: boolean | PeerCallback<T>){
 
-  return child(
+  return apply(
     function tap(key){
       if("set" in type)
         this.state[key] = type.get();
@@ -74,6 +74,8 @@ function tap<T extends Peer>(
           this.state[key] = instance;
         })
       }
+
+      return {}
     }
   )
 };
