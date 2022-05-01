@@ -1,6 +1,7 @@
 import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
+import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
@@ -52,7 +53,7 @@ class Controller<T extends Stateful = any> {
   }
 
   manage(key: Model.Field<T>){
-    const { proxy, state, subject } = this;
+    const { state, subject } = this;
     const property = getOwnPropertyDescriptor(subject, key);
 
     if(!property || !("value" in property))
@@ -89,39 +90,40 @@ class Controller<T extends Stateful = any> {
     else
       state[key] = entry;
 
-    const setter = onSet !== false
-      ? this.ref(key, onSet)
-      : undefined;
-
     if(!skip)
       defineProperty(subject, key, {
         enumerable,
-        set: setter,
+        set: onSet !== false
+          ? this.ref(key, onSet)
+          : undefined,
         get: onGet
           ? () => onGet!(state[key])
           : () => state[key]
       });
 
-    function tap(this: Stateful){
+    this.observe(key, onGet);
+  }
+
+  observe(key: Model.Field<T>, handler: Instruction.Getter<any>){
+    const { proxy, state, subject } = this;
+
+    function get(this: Stateful){
       const context = this[LOCAL];
 
       if(context && !context.watch[key])
         context.watch[key] = true;
 
-      return onGet
-        ? onGet(state[key], context)
+      return handler
+        ? handler(state[key], context)
         : subject[key];
     }
 
-    setAlias(tap, `tap ${key}`);
+    setAlias(get, `tap ${key}`);
 
-    const existing = getOwnPropertyDescriptor(subject, key) || {};
+    const { enumerable, set } =
+      getOwnPropertyDescriptor(subject, key) || {};
 
-    defineProperty(proxy, key, {
-      enumerable,
-      set: existing.set,
-      get: tap
-    })
+    defineProperty(proxy, key, { set, get, enumerable });
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
