@@ -9,10 +9,12 @@ type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   | Instruction.Getter<T> 
   | Instruction.ExplicitDescriptor
   | Instruction.Descriptor<T>
+  | Instruction.RecursiveDescriptor<T>
   | void;
 
 declare namespace Instruction {
   type Getter<T> = (state: T, within?: Subscriber) => T;
+  type Setter<T> = (value: T, state: any) => boolean | void;
 
   type Runner<T> = (this: Controller, key: string, on: Controller) => Instruction.Descriptor<T> | undefined;
 
@@ -22,11 +24,18 @@ declare namespace Instruction {
     value?: T;
     writable?: boolean;
     get?: Getter<T>;
-    set?: ((value: T, state: any) => boolean | void) | false | void;
+    set?: Setter<T> | false | void;
   }
 
   interface ExplicitDescriptor extends PropertyDescriptor {
     explicit: true;
+  }
+
+  interface RecursiveDescriptor<T> {
+    recursive: true;
+    enumerable?: boolean;
+    value?: T;
+    set?: Setter<T> | false | void;
   }
 }
 

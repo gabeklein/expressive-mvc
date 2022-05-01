@@ -1,4 +1,6 @@
 import { Controller } from '../controller';
+import { CONTROL, Stateful } from '../model';
+import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
 import { Instruction } from './types';
 
@@ -27,6 +29,12 @@ function apply<T = any>(
       return;
     }
 
+    if("recursive" in output)
+      output = {
+        ...output,
+        get: recursive(this, key)
+      }
+
     if(typeof output == "function")
       return { get: output };
     else
@@ -36,6 +44,49 @@ function apply<T = any>(
   Pending.set(placeholder, setup);
 
   return placeholder as unknown as T;
+}
+
+function recursive(source: Controller, key: string){
+  const context = new WeakMap<Subscriber, any>();
+
+  const subscribe = (parent: Subscriber) => {
+    let child: Subscriber | undefined;
+
+    const init = () => {
+      if(child){
+        child.release();
+        parent.dependant.delete(child);
+        context.set(parent, undefined);
+        child = undefined;
+      }
+
+      const value = source.state[key];
+
+      if(value && CONTROL in value){
+        child = new Subscriber(value as Stateful, parent.onUpdate);
+  
+        if(parent.active)
+          child.commit();
+  
+        parent.dependant.add(child);
+        context.set(parent, child.proxy);
+      }
+    }
+
+    init();
+    parent.watch[key] = init;
+  }
+
+  return (value: any, local: Subscriber | undefined) => {
+    if(!local)
+      return value;
+
+    if(!context.has(local))
+      subscribe(local);
+
+    return context.get(local);
+  }
+
 }
 
 export { apply }

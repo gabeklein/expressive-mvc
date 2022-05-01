@@ -75,7 +75,8 @@ function use<T extends typeof Model>(
       }
   
       return {
-        set: onUpdate
+        set: onUpdate,
+        recursive: true
       };
     }
   )

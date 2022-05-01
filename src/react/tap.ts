@@ -75,7 +75,9 @@ function tap<T extends Peer>(
         })
       }
 
-      return {}
+      return {
+        recursive: true
+      }
     }
   )
 };
