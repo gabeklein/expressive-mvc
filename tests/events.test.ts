@@ -171,17 +171,24 @@ describe("on method", () => {
     expect(callback).toBeCalledWith("seconds")
   })
 
-  it.skip('will call for computed as raw event', async () => {
+  it('will call for computed as raw event', async () => {
     const state = Subject.create();
-    const callback = jest.fn();
+    const onImmediate = jest.fn();
+    const onFrame = jest.fn();
 
-    state.on(key => callback(key));
+    state.on(key => {
+      onImmediate(key);
+      return () => onFrame(key);
+    });
 
     void state.minutes;
 
     state.seconds = 60;
 
-    expect(callback).toBeCalledWith("minutes");
+    await state.update();
+
+    expect(onImmediate).toBeCalledWith("minutes");
+    expect(onFrame).toBeCalledWith("minutes");
   })
 })
 
