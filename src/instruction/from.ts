@@ -74,7 +74,7 @@ function from<R, T>(
       else
         throw Oops.BadComputedSource(subject, key, source);
 
-      Computed.prepare(this, key, getSource, setter!, getter);
+      return Computed.prepare(this, key, getSource, setter!, getter);
     }
   )
 }

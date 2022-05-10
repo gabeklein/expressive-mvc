@@ -44,10 +44,6 @@ export function prepare(
 
   register.set(key, info);
 
-  const current = getter
-    ? () => getter(parent, key)
-    : () => state[key];
-
   function compute(initial?: boolean){
     try {
       return setter.call(sub.proxy, sub.proxy);
@@ -100,12 +96,6 @@ export function prepare(
       writable: true
     })
 
-    defineProperty(subject, key, {
-      enumerable: true,
-      configurable: true,
-      get: current
-    });
-
     try {
       state[key] = compute(true);
     }
@@ -125,8 +115,6 @@ export function prepare(
           info.priority = peer.priority + 1;
       }
     }
-
-    return current();
   }
 
   setAlias(update, `try ${key}`);
@@ -136,12 +124,20 @@ export function prepare(
   INIT.add(create);
   INFO.set(update, info);
 
-  for(const on of [state, subject])
-    defineProperty(on, key, {
-      get: create,
-      configurable: true,
-      enumerable: true
-    })
+  defineProperty(state, key, {
+    get: create,
+    configurable: true,
+    enumerable: true
+  })
+
+  return () => {
+    if(!sub)
+      create();
+
+    return getter
+      ? getter(parent, key)
+      : state[key];
+  }
 }
 
 export function ensure(
@@ -150,7 +146,7 @@ export function ensure(
   type Initial = (early?: boolean) => void;
 
   for(const key of keys){
-    const desc = getOwnPropertyDescriptor(on.subject, key);
+    const desc = getOwnPropertyDescriptor(on.state, key);
     const getter = desc && desc.get;
   
     if(INIT.has(getter!))
