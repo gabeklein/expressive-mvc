@@ -123,6 +123,8 @@ class Model {
     return UPDATE.get(this);
   }
 
+  on <P = Model.Event<this>> (event: (key: P) => RequestCallback | void): Callback;
+
   on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
@@ -132,12 +134,15 @@ class Model {
   on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (
-    select: P | P[],
-    handler: Function,
+    select: P | P[] | ((key: any) => RequestCallback | void),
+    handler?: Function,
     squash?: boolean,
     once?: boolean){
 
     return control(this, control => {
+      if(typeof select == "function")
+        return control.addListener(select);
+
       const keys = 
         typeof select == "string" ? [select] :
         !select.length ? getOwnPropertyNames(control.state) :
@@ -146,10 +151,10 @@ class Model {
       Computed.ensure(control, keys);
 
       const callback: RequestCallback = squash
-        ? handler.bind(this)
+        ? handler!.bind(this)
         : frame => frame
           .filter(k => keys.includes(k))
-          .forEach(k => handler.call(this, control.state[k as Model.Field<this>], k))
+          .forEach(k => handler!.call(this, control.state[k as Model.Field<this>], k))
 
       const trigger: RequestCallback = once
         ? frame => { remove(); callback(frame) }
