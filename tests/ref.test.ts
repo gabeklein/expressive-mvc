@@ -91,6 +91,14 @@ describe("single", () => {
 
     expect(state).toMatchObject(values);
   })
+
+  it('will be accessible from a proxy', () => {
+    const test = Subject.create();
+
+    test.effect(state => {
+      expect(state.ref1).not.toBeUndefined();
+    })
+  })
 })
 
 describe("proxy", () => {

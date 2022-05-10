@@ -66,7 +66,6 @@ class Controller<T extends Stateful = any> {
     let onGet: any;
     let onSet: any;
     let enumerable: any;
-    let skip: boolean | undefined;
 
     const instruction = Pending.get(entry);
 
@@ -74,17 +73,16 @@ class Controller<T extends Stateful = any> {
       Pending.delete(entry);
       delete subject[key];
       const desc = instruction.call(this, key, this);
-    
-      if(desc){
-        if("value" in desc)
-          state[key] = desc.value as any;
-  
-        onSet = desc.set;
-        onGet = desc.get;
-        enumerable = desc.enumerable;
-      }
-      else
-        skip = true;
+
+      if(!desc)
+        return;
+
+      if("value" in desc)
+        state[key] = desc.value as any;
+
+      onSet = desc.set;
+      onGet = desc.get;
+      enumerable = desc.enumerable;
     }
     else
       state[key] = entry;
@@ -93,15 +91,6 @@ class Controller<T extends Stateful = any> {
       onSet !== false
         ? this.ref(key, onSet)
         : undefined;
-
-    if(!skip)
-      defineProperty(subject, key, {
-        enumerable,
-        set,
-        get: onGet
-          ? () => onGet!(state[key])
-          : () => state[key]
-      });
 
     function get(this: Stateful){
       const local = this[LOCAL];
@@ -115,7 +104,19 @@ class Controller<T extends Stateful = any> {
 
     setAlias(get, `tap ${key}`);
 
-    defineProperty(proxy, key, { enumerable, get, set });
+    defineProperty(subject, key, {
+      enumerable,
+      set,
+      get: onGet
+        ? () => onGet!(state[key])
+        : () => state[key]
+    });
+
+    defineProperty(proxy, key, {
+      enumerable,
+      set,
+      get
+    });
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
