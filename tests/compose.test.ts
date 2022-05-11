@@ -230,10 +230,10 @@ describe("use instruction", () => {
 describe("parent instruction", () => {
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = use(Bar as any) as Bar;
+      child = use(Bar);
     }
     class Bar extends Model {
-      parent = parent(Foo as any) as Foo;
+      parent = parent(Foo);
     }
 
     const foo = Foo.create();
@@ -246,7 +246,7 @@ describe("parent instruction", () => {
   it("throws when required parent is absent :(", () => {
     class Detatched extends Model {}
     class NonStandalone extends Model {
-      expects = parent(Detatched, true);
+      expects = parent(Detatched);
     }
 
     const attempt = () => 
@@ -259,10 +259,10 @@ describe("parent instruction", () => {
     expect(attempt).toThrowError(error);
   })
 
-  it("retuns undefined if expected not set", () => {
+  it("retuns undefined if set not-required", () => {
     class MaybeParent extends Model {}
     class StandAlone extends Model {
-      maybe = parent(MaybeParent);
+      maybe = parent(MaybeParent, false);
     }
 
     const instance = StandAlone.create();

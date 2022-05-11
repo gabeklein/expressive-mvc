@@ -21,10 +21,10 @@ export const Oops = issues({
  * @param Expects - Type of controller compatible with this class. 
  * @param required - Throw if controller is created independantly.
  */
- function parent <T extends typeof Model> (Expects: T, required: true): InstanceOf<T>;
- function parent <T extends typeof Model> (Expects: T, required?: false): InstanceOf<T> | undefined;
+function parent <T extends typeof Model> (Expects: T, required: false): InstanceOf<T> | undefined;
+function parent <T extends typeof Model> (Expects: T, required?: true): InstanceOf<T>;
   
- function parent<T extends typeof Model>(
+function parent<T extends typeof Model>(
    Expects: T, required?: boolean){
  
    return apply(
@@ -34,7 +34,7 @@ export const Oops = issues({
        const expected = Expects.name;
    
        if(!value){
-         if(required)
+         if(required !== false)
            throw Oops.ParentRequired(expected, child);
        }
        else if(!(value instanceof Expects))
