@@ -1,6 +1,7 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
+import { Model as BaseModel } from '../src/model';
 import { Consumer, Model, Provider, useTap } from '../src';
 import { Oops as Context } from '../src/react/useInContext';
 import { Oops as Provide } from '../src/react/provider';
@@ -45,10 +46,10 @@ describe("get", () => {
   })
 })
 
-describe.only("useTap", () => {
-  class Test extends Model {}
+describe("useTap", () => {
+  class Test extends BaseModel {}
 
-  it("will get instance from context", () => {
+  it("will get base-model from context", () => {
     const Hook = () => {
       const value = useTap(Test);
       expect(value).toBeInstanceOf(Test);
