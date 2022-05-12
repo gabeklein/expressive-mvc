@@ -59,16 +59,40 @@ describe("computed", () => {
   })
 
   it('will compute immediately if needed', () => {
-    const mock = jest.fn();
+    const mockFactory = jest.fn(() => "foobar");
 
-    class Test extends Subject {
+    class Test extends Model {
+      value = from(() => mockFactory);
+
       constructor(){
         super();
-        this.on("minutes", mock);
+        this.on("value", () => {});
       }
     }
 
-    Test.create();
+    const test = Test.create();
+
+    expect(mockFactory).toBeCalled();
+    expect(test.value).toBe("foobar");
+  })
+
+  it("will compute immediately if exported", () => {
+    const mockFactory = jest.fn(() => "foobar");
+
+    class Test extends Model {
+      value = from(() => mockFactory);
+
+      constructor(){
+        super();
+        this.on("value", () => {});
+      }
+    }
+
+    const test = Test.create();
+    const values = test.export();
+
+    expect(mockFactory).toBeCalled();
+    expect(values.value).toBe("foobar");
   })
 
   it('will be squashed with regular updates', async () => {
@@ -273,7 +297,7 @@ describe("failures", () => {
 })
 
 describe("circular", () => {
-  it("may access own previous value", async () => {
+  it("will access own previous value", async () => {
     class Test extends Model {
       multiplier = 0;
       previous: any;
@@ -370,9 +394,7 @@ describe("factory", () => {
   })
 })
 
-/*
-Feature is temporarily removed - evaluating usefulness.
-
+/* Feature is temporarily removed - evaluating usefulness.
 describe("external", () => {
   class Peer extends Global {
     value = 1;

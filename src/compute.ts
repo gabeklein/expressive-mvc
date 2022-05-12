@@ -97,7 +97,7 @@ export function prepare(
     })
 
     try {
-      state[key] = compute(true);
+      return state[key] = compute(true);
     }
     catch(e){
       if(early)
@@ -130,14 +130,9 @@ export function prepare(
     enumerable: true
   })
 
-  return () => {
-    if(!sub)
-      create();
-
-    return getter
-      ? getter(parent, key)
-      : state[key];
-  }
+  return getter
+    ? () => getter(parent, key)
+    : {};
 }
 
 export function ensure(
