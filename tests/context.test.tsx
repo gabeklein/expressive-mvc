@@ -1,7 +1,7 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
-import { Consumer, Model, Provider } from '../src';
+import { Consumer, Model, Provider, useTap } from '../src';
 import { Oops as Context } from '../src/react/useInContext';
 import { Oops as Provide } from '../src/react/provider';
 import { render } from './adapter';
@@ -41,6 +41,24 @@ describe("get", () => {
 
     expect(test).toThrowError(
       Context.NothingInContext(Test.name)
+    );
+  })
+})
+
+describe.only("useTap", () => {
+  class Test extends Model {}
+
+  it("will get instance from context", () => {
+    const Hook = () => {
+      const value = useTap(Test);
+      expect(value).toBeInstanceOf(Test);
+      return null;
+    }
+
+    render(
+      <Provider of={Test}>
+        <Hook />
+      </Provider>
     );
   })
 })

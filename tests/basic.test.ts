@@ -66,3 +66,20 @@ describe("basics", () => {
     expect(state.get.value).toBe(2)
   })
 })
+
+describe("expectations", () => {
+  it("will ignore getters and setters", () => {
+    class Test extends Model {
+      foo = "foo";
+
+      get bar(){
+        return "bar";
+      }
+    }
+
+    const test = Test.create();
+
+    expect(test.bar).toBe("bar");
+    expect(test.export()).not.toContain("bar");
+  })
+})

@@ -1,13 +1,21 @@
 import React from 'react';
 
-import { Global, Model, use } from '../src';
+import { Global, Model, use, useModel } from '../src';
 import { Oops } from '../src/react/global';
 import { render, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
 describe("useModel", () => {
-  it.todo("supports factory function")
+  it("will use factory function", () => {
+    class Test extends Model {}
+
+    const instance = Test.create();
+    const render = renderHook(() => useModel(() => instance));
+    const result = render.result.current;
+
+    expect(result).toStrictEqual(instance);
+  })
 })
 
 describe("use", () => {
@@ -20,7 +28,7 @@ describe("use", () => {
     const render = renderHook(() => instance.use());
     const result = render.result.current;
 
-    expect(result).toMatchObject(instance);
+    expect(result).toStrictEqual(instance);
   })
 
   it("will create instance given a class", () => {
