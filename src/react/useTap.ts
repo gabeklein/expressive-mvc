@@ -55,14 +55,10 @@ function useTap <T extends Stateful> (
     if("get" in source)
       return () => source.get!();
 
-    if(typeof source == "function"){
-      if("prototype" in source)
-        return () => useInContext(source as any);
-      else
-        return source;
-    }
-
-    throw new Error();
+    if("prototype" in source)
+      return () => useInContext(source as any);
+    else
+      return source;
   }, [])() as T;
 
   if(typeof path == "function")
