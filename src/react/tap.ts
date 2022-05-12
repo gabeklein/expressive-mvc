@@ -33,7 +33,7 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
  *  - If inadequate and not required, conditionally return false.
  */
 function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) => void | true): InstanceOf<T>;
-function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) => void | false): InstanceOf<T> | undefined;
+function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) => void | boolean): InstanceOf<T> | undefined;
 
 /**
  * Find and attach most applicable instance of Model via context.
@@ -44,7 +44,8 @@ function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) =
  * @param Type - Type of controller to attach to property. 
  * @param required - Throw if instance of Type cannot be found.
  */
-function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T>;
+function tap <T extends Class> (Type: T, required: true): InstanceOf<T>;
+function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T> | undefined;
 
 function tap<T extends Peer>(
   type: T, argument?: boolean | PeerCallback<T>){
@@ -71,7 +72,7 @@ function tap<T extends Peer>(
           else if(!instance && argument)
             throw Oops.AmbientRequired(type.name, subject, key);
 
-          this.state[key] = instance;
+          this.update(key, instance);
         })
       }
 
