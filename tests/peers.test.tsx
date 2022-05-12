@@ -143,6 +143,10 @@ describe("callback", () => {
       </Provider>
     )
   })
+
+  it.todo("will suspend if required until processed")
+  it.todo("will return undefined if not required")
+  it.todo("will update key when resolved")
 })
 
 describe("singleton", () => {

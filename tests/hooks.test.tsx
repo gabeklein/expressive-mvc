@@ -6,6 +6,10 @@ import { render, renderHook } from './adapter';
 
 const opts = { timeout: 100 };
 
+describe("useModel", () => {
+  it.todo("supports factory function")
+})
+
 describe("use", () => {
   class Test extends Model {
     value = "foo";
