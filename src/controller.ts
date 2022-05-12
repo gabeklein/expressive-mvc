@@ -48,14 +48,9 @@ class Controller<T extends Stateful = any> {
     this.onDestroy.forEach(x => x());
   }
 
-  manage(key: Model.Field<T>){
+  private manage(key: Model.Field<T>){
     const { proxy, state, subject } = this;
-    const property = getOwnPropertyDescriptor(subject, key);
-
-    if(!property || !("value" in property))
-      return;
-
-    let entry = property.value;
+    const { value: entry } = getOwnPropertyDescriptor(subject, key)!;
 
     if(typeof entry == "function")
       return;
