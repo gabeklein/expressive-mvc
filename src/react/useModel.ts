@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+import { control } from '../controller';
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { Class, InstanceOf } from '../types';
@@ -28,14 +29,20 @@ function useModel <T extends Class, I extends InstanceOf<T>> (
 ): I;
 
 function useModel <T extends Model | Stateful> (
-  source: (new () => T) | T,
+  source: any,
   arg?: ((instance: T) => void) | Model.Event<T>[],
   callback?: ((instance: T) => void)) {
 
   const instance = React.useMemo(() => {
     const cb = callback || arg;
-    const instance = typeof source == "function" ?
-      new source() : source;
+    const instance: T =
+      typeof source == "function" ?
+        source.prototype instanceof Model ?
+          new source() :
+          source() : 
+        source;
+
+    control(instance);
 
     if(typeof cb == "function")
       cb(instance);
