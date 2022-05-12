@@ -324,7 +324,7 @@ class Model {
    * 
    * Will determine if provided class is a subtype of this one. 
    */
-  static isTypeof<T extends typeof Model>(
+  static isTypeof<T extends new () => Model>(
     this: T, maybe: any): maybe is T {
 
     return (

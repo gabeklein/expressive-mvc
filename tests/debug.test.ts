@@ -131,10 +131,18 @@ describe("update property", () => {
 
 describe("isTypeof method", () => {
   class Test extends Model {}
-  class Test2 extends Test {}
   
   it("will assert if Model extends another", () => {
-    expect(Test.isTypeof(Test2)).toBeTruthy();
+    class Test2 extends Test {}
+
+    expect(Test.isTypeof(Test2)).toBe(true);
+  })
+  
+  it("will be falsy if not super", () => {
+    class NotATest extends Model {}
+
+    expect(Model.isTypeof(NotATest)).toBe(true);
+    expect(Test.isTypeof(NotATest)).toBe(false);
   })
 })
 
