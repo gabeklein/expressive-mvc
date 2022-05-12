@@ -1,6 +1,6 @@
+import { Model, set } from '../src';
 import { Oops as Assign } from '../src/instruction/set';
 import { Oops as Util } from '../src/util';
-import { Model, set } from '../src';
 
 describe("optional", () => {
   it("will throw if set to undefined", () => {

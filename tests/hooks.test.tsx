@@ -16,6 +16,31 @@ describe("useModel", () => {
 
     expect(result).toStrictEqual(instance);
   })
+
+  it("will subscriber to specified keys", async () => {
+    class Test extends Model {
+      foo = "foo";
+      bar = "bar";
+    }
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      const control = useModel(Test, ["foo"]);
+
+      void control.foo;
+      void control.bar;
+      
+      return control;
+    });
+
+    expect(result.current.foo).toBe("foo");
+    result.current.foo = "bar";
+
+    await waitForNextUpdate(opts);
+    expect(result.current.foo).toBe("bar");
+
+    result.current.bar = "foo";
+    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
+  })
 })
 
 describe("use", () => {

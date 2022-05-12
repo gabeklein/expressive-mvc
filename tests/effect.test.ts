@@ -1,5 +1,5 @@
-import { Oops } from '../src/util';
 import { from, Model } from '../src';
+import { Oops } from '../src/util';
 
 describe("method", () => {
   class TestValues extends Model {

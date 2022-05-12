@@ -1,6 +1,6 @@
+import { from, Global, Model, tap, use } from '../src';
 import { Oops } from '../src/compute';
 import { Oops as Instruction } from '../src/instruction/from';
-import { from, Global, Model, tap, use } from '../src';
 
 describe("computed", () => {
   class Child extends Model {

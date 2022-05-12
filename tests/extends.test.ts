@@ -1,4 +1,4 @@
-import { Model } from "./adapter";
+import { Model } from "../src";
 
 describe("computed", () => {
   class Parent extends Model {

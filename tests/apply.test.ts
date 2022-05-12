@@ -1,7 +1,7 @@
-import { Subscriber } from '../src/subscriber';
+import { apply, Model } from '../src';
 import { Controller } from '../src/Controller';
 import { STATE } from '../src/model';
-import { apply, Model } from '../src';
+import { Subscriber } from '../src/subscriber';
 
 describe("apply", () => {
   class Test extends Model {

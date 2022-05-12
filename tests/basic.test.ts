@@ -1,4 +1,4 @@
-import { Model } from "./adapter";
+import { Model } from '../src';
 
 class Subject extends Model {
   value: number;

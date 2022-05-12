@@ -6,21 +6,6 @@ import * as Source from '../src';
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
-export {
-  Model,
-  Global,
-  Provider,
-  Consumer,
-  act,
-  apply,
-  set,
-  ref,
-  tap,
-  from,
-  parent,
-  use
-} from "../src";
-
 export function subscribeTo<T extends Source.Model>(
   target: T,
   accessor: (self: T) => void){

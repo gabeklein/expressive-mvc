@@ -1,4 +1,4 @@
-import { Model } from "./adapter";
+import { Model } from "../src";
 
 class Test extends Model {
   foo = "foo";
