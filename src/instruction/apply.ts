@@ -24,7 +24,7 @@ function apply<T = any>(
     if(!output)
       return;
 
-    if("explicit" in output){
+    if("explicit" in output && output.explicit){
       defineProperty(this.subject, key, output);
       return;
     }
