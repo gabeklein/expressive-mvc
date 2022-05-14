@@ -21,16 +21,15 @@ export class Subscriber <T extends Stateful = any> {
   }
 
   constructor(
-    parent: Controller<T> | T,
+    target: Controller<T> | T,
     public onUpdate: Controller.OnEvent){
 
-    if(!(parent instanceof Controller))
-      parent = control(parent);
-
-    let reset: Callback | undefined;
+    const parent = target instanceof Controller
+      ? target : control(target);
 
     const proxy = create(parent.proxy);
-    const controller = parent;
+
+    let reset: Callback | undefined;
 
     define(proxy, LOCAL, this);
     defineProperty(this, "proxy", {
@@ -52,19 +51,19 @@ export class Subscriber <T extends Stateful = any> {
       if(typeof handler == "function")
         handler();
 
-      const notify = this.onUpdate(key, controller);
+      const notify = this.onUpdate(key, parent);
       const getWhy: RequestCallback = (keys) => {
         reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
       }
 
       if(notify){
-        controller.requestUpdate(getWhy);
-        controller.requestUpdate(notify);
+        parent.requestUpdate(getWhy);
+        parent.requestUpdate(notify);
       }
     }
 
     this.commit = () => {
-      const release = controller.addListener(onEvent);
+      const release = parent.addListener(onEvent);
 
       this.active = true;
       this.dependant.forEach(x => x.commit());
