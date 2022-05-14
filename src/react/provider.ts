@@ -100,7 +100,7 @@ function RenderFunction(props: RenderFunctionProps): any {
   });
 
   if(hook.commit)
-    React.useLayoutEffect(() => hook.commit(), []);
+    React.useLayoutEffect(hook.commit, []);
 
   return props.render(hook.proxy);
 }

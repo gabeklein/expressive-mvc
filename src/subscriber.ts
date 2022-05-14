@@ -42,10 +42,10 @@ export class Subscriber <T extends Stateful = any> {
       }
     })
 
-    const onEvent = (key: string) => {
+    const release = parent.addListener(key => {
       const handler = this.watch[key];
 
-      if(!handler)
+      if(!handler || !this.active)
         return;
 
       if(typeof handler == "function")
@@ -60,18 +60,18 @@ export class Subscriber <T extends Stateful = any> {
         parent.requestUpdate(getWhy);
         parent.requestUpdate(notify);
       }
-    }
+    });
 
     this.commit = () => {
-      const release = parent.addListener(onEvent);
-
       this.active = true;
       this.dependant.forEach(x => x.commit());
 
-      return this.release = () => {
-        this.dependant.forEach(x => x.release());
-        release();
-      }
+      return this.release;
+    }
+
+    this.release = () => {
+      this.dependant.forEach(x => x.release());
+      release();
     }
   }
 }

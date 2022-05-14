@@ -52,7 +52,7 @@ function useFrom(
       update = () => {
         const next = compute.call(spy, spy);
 
-        if (value != next)
+        if(value != next)
           set(next);
       };
     }
