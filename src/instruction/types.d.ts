@@ -10,13 +10,14 @@ type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   | Instruction.ExplicitDescriptor
   | Instruction.Descriptor<T>
   | Instruction.RecursiveDescriptor<T>
+  | boolean
   | void;
 
 declare namespace Instruction {
   type Getter<T> = (state: T, within?: Subscriber) => T;
   type Setter<T> = (value: T, state: any) => boolean | void;
 
-  type Runner<T> = (this: Controller, key: string, on: Controller) => Instruction.Descriptor<T> | undefined;
+  type Runner<T> = (this: Controller, key: string, on: Controller) => Instruction.Descriptor<T> | boolean | undefined;
 
   interface Descriptor<T> {
     configurable?: boolean;

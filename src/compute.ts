@@ -130,9 +130,8 @@ export function prepare(
     enumerable: true
   })
 
-  return getter
-    ? () => getter(parent, key)
-    : {};
+  if(getter)
+    return () => getter(parent, key);
 }
 
 export function ensure(

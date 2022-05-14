@@ -66,15 +66,17 @@ class Controller<T extends Stateful = any> {
       delete subject[key];
       const desc = instruction.call(this, key, this);
 
-      if(!desc)
+      if(desc === false)
         return;
 
-      if("value" in desc)
-        state[key] = desc.value as any;
+      if(typeof desc == "object"){
+        if("value" in desc)
+          state[key] = desc.value as any;
 
-      onSet = desc.set;
-      onGet = desc.get;
-      enumerable = desc.enumerable;
+        onSet = desc.set;
+        onGet = desc.get;
+        enumerable = desc.enumerable;
+      }
     }
     else
       state[key] = entry;
