@@ -1,209 +1,8 @@
-import React from 'react';
-
-import { Global, Model, use, useModel } from '../src';
+import { Global, Model, use } from '../src';
 import { Oops } from '../src/react/global';
-import { render, renderHook } from './adapter';
+import { renderHook } from './adapter';
 
 const opts = { timeout: 100 };
-
-describe("useModel", () => {
-  it("will use factory function", () => {
-    class Test extends Model {}
-
-    const instance = Test.create();
-    const render = renderHook(() => useModel(() => instance));
-    const result = render.result.current;
-
-    expect(result).toStrictEqual(instance);
-  })
-
-  it("will subscriber to specified keys", async () => {
-    class Test extends Model {
-      foo = "foo";
-      bar = "bar";
-    }
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      const control = useModel(Test, ["foo"]);
-
-      void control.foo;
-      void control.bar;
-      
-      return control;
-    });
-
-    expect(result.current.foo).toBe("foo");
-    result.current.foo = "bar";
-
-    await waitForNextUpdate(opts);
-    expect(result.current.foo).toBe("bar");
-
-    result.current.bar = "foo";
-    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
-  })
-})
-
-describe("use", () => {
-  class Test extends Model {
-    value = "foo";
-  };
-
-  it("will use a given instance", () => {
-    const instance = Test.create();
-    const render = renderHook(() => instance.use());
-    const result = render.result.current;
-
-    expect(result).toStrictEqual(instance);
-  })
-
-  it("will create instance given a class", () => {
-    const render = renderHook(() => Test.use());
-    const result = render.result.current;
-
-    expect(result).toBeInstanceOf(Test);
-  })
-
-  it("will destroy instance of given class", () => {
-    const didDestroy = jest.fn();
-
-    class Test extends Model {
-      destroy(){
-        super.destroy();
-        didDestroy();
-      }
-    }
-
-    const render = renderHook(() => Test.use());
-
-    expect(didDestroy).not.toBeCalled();
-    render.unmount();
-    expect(didDestroy).toBeCalled();
-  })
-
-  it("will run callback", () => {
-    const callback = jest.fn();
-
-    renderHook(() => Test.use(callback));
-    expect(callback).toHaveBeenCalledWith(expect.any(Test));
-  })
-
-  it("will subscribe to instance of controller", async () => {
-    const { result, waitForNextUpdate } =
-      renderHook(() => Test.use());
-
-    expect(result.current.value).toBe("foo");
-    result.current.value = "bar";
-
-    await waitForNextUpdate(opts);
-    expect(result.current.value).toBe("bar");
-  })
-})
-
-describe("uses", () => {
-  class Test extends Model {
-    foo?: string = undefined;
-    bar?: string = undefined;
-  }
-
-  it("will apply values", () => {
-    const mockExternal = {
-      foo: "foo",
-      bar: "bar"
-    }
-
-    const render = renderHook(() => {
-      return Test.uses(mockExternal);
-    });
-
-    const state = render.result.current.export();
-
-    expect(state).toMatchObject(mockExternal);
-  })
-
-  it("will apply select values", () => {
-    const mockExternal = {
-      foo: "foo",
-      bar: "bar"
-    }
-
-    const render = renderHook(() => {
-      return Test.uses(mockExternal, ["foo"]);
-    });
-
-    const state = render.result.current.export();
-
-    expect(state).toMatchObject({
-      bar: undefined,
-      foo: "foo"
-    });
-  })
-
-  it("will override (untracked) arrow functions", () => {
-    class Test extends Model {
-      foobar = () => "Hello world!";
-    }
-
-    const mockExternal = {
-      foobar: () => "Goodbye cruel world!"
-    }
-
-    const render = renderHook(() => {
-      return Test.uses(mockExternal);
-    });
-
-    const { foobar } = render.result.current;
-
-    expect(foobar).toBe(mockExternal.foobar);
-  })
-
-  it("will not override prototype methods", () => {
-    class Test extends Model {
-      foobar(){
-        return "Hello world!";
-      };
-    }
-
-    const mockExternal = {
-      foobar: () => "Goodbye cruel world!"
-    }
-
-    const render = renderHook(() => {
-      return Test.uses(mockExternal);
-    });
-
-    const { foobar } = render.result.current;
-
-    expect(foobar).not.toBe(mockExternal.foobar);
-  })
-})
-
-describe("using", () => {
-  class Test extends Model {
-    foo?: string = undefined;
-    bar?: string = undefined;
-  }
-
-  it("will apply values per-render", async () => {
-    let instance!: Test;
-
-    const TestComponent = (props: any) => {
-      ({ get: instance } = Test.using(props));
-      return null;
-    }
-
-    const rendered = render(<TestComponent />);
-
-    expect(instance).toBeInstanceOf(Test);
-
-    const update = instance.update();
-
-    rendered.update(<TestComponent foo="foo" bar="bar" />);
-
-    expect(await update).toEqual(
-      expect.arrayContaining(["foo", "bar"])
-    );
-  })
-})
 
 describe("get", () => {
   class Test extends Global {
@@ -222,9 +21,7 @@ describe("get", () => {
 
   it("will get instance value", () => {
     Test.create();
-    const { result } = renderHook(() => {
-      return Test.get("value");
-    });
+    const { result } = renderHook(() => Test.get("value"));
 
     expect(result.current).toBe(1);
   })
@@ -234,35 +31,6 @@ describe("get", () => {
     const expected = Oops.GlobalDoesNotExist(Test.name);
 
     expect(() => result.current).toThrowError(expected);
-  })
-})
-
-describe("new", () => {
-  class Test extends Model {
-    value = 1;
-    destroy = jest.fn();
-  }
-
-  it("will get instance value", () => {
-    const { result } = renderHook(() => Test.new());
-
-    expect(result.current).toBeInstanceOf(Test);
-  });
-
-  it("will run callback after creation", () => {
-    const callback = jest.fn();
-    renderHook(() => Test.new(callback));
-    expect(callback).toHaveBeenCalledWith(expect.any(Test));
-  })
-
-  it("will destroy on unmount", () => {
-    const { result, unmount } = renderHook(() => Test.new());
-    const { destroy } = result.current!;
-
-    expect(result.current).toBeInstanceOf(Test);
-    unmount();
-
-    expect(destroy).toBeCalled();
   })
 })
 
@@ -309,7 +77,10 @@ describe("meta", () => {
   })
 
   it('will track child controller values', async () => {
-    const { result: { current }, waitForNextUpdate } = renderHook(() => {
+    const {
+      result: { current },
+      waitForNextUpdate
+    } = renderHook(() => {
       const meta = Parent.meta();
       void meta.child.value;
       return meta;
