@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
 import { Class, InstanceOf } from '../types';
