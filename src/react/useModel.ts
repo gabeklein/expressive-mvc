@@ -4,18 +4,8 @@ import { control } from '../controller';
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { Class, InstanceOf } from '../types';
+import { getOwnPropertyNames } from '../util';
 import { use } from './hooks';
-
-function useModel <T extends Stateful> (
-  source: (() => T) | T,
-  watch?: Model.Field<T>[],
-  callback?: (instance: T) => void
-): T;
-
-function useModel <T extends Stateful> (
-  source: (() => T) | T,
-  callback?: (instance: T) => void
-): T;
 
 function useModel <T extends Class, I extends InstanceOf<T>> (
   source: T,
@@ -28,13 +18,36 @@ function useModel <T extends Class, I extends InstanceOf<T>> (
   callback?: (instance: I) => void
 ): I;
 
+function useModel <T extends Class, I extends InstanceOf<T>> (
+  source: T,
+  apply: Model.Compat<I>,
+  keys?: Model.Event<I>[]
+): I;
+
+function useModel <T extends Stateful> (
+  source: (() => T) | T,
+  watch?: Model.Field<T>[],
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Stateful> (
+  source: (() => T) | T,
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Stateful> (
+  source: (() => T) | T,
+  apply: Model.Compat<T>,
+  keys?: Model.Event<T>[]
+): T;
+
 function useModel <T extends Model | Stateful> (
   source: any,
-  arg?: ((instance: T) => void) | Model.Event<T>[],
-  callback?: ((instance: T) => void)) {
+  arg?: ((instance: T) => void) | Model.Event<T>[] | Model.Compat<T>,
+  arg2?: ((instance: T) => void) | Model.Field<T>[]){
 
   const instance = React.useMemo(() => {
-    const cb = callback || arg;
+    const cb = arg2 || arg;
     const instance: T =
       typeof source == "function" ?
         source.prototype instanceof Model ?
@@ -63,12 +76,27 @@ function useModel <T extends Model | Stateful> (
       }
     }, []);
   
-    return instance
+    return instance;
   }
   else {
-    const local = use(refresh => {
-      return new Subscriber(instance, () => refresh);
-    });
+    const local = use(refresh => (
+      new Subscriber(instance, () => refresh)
+    ));
+
+    if(typeof arg == "object"){
+      local.active = false;
+
+      if(typeof arg2 !== "object")
+        arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
+      
+      for(const key of arg2)
+        if(key in arg)
+          (instance as any)[key] = arg[key];
+      
+      React.useLayoutEffect(() => {
+        local.active = true;
+      });
+    }
   
     React.useLayoutEffect(() => {
       local.commit();

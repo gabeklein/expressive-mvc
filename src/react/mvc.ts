@@ -98,13 +98,17 @@ class MVC extends Model {
     return instance;
   }
 
-  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D, only?: (keyof D)[]){
+  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (
+    this: T, data: D, only?: (keyof D & string)[]){
+
     return this.use(instance => {
       instance.import(data, only);
     })
   }
 
-  static using <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (this: T, data: D, only?: (keyof D)[]){
+  static using <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (
+    this: T, data: D, only?: (keyof D & string)[]){
+
     const instance = this.use();
     instance.import(data, only);
     return instance;
