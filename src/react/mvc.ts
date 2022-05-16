@@ -114,6 +114,9 @@ class MVC extends Model {
     return instance;
   }
 
+  /**
+   * @deprecated consider doing this manually - not worth minor efficiency gain over using.
+  */
   static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Model.Compat<I>> (
     this: T, apply: D, keys?: (keyof D)[]){
 
@@ -122,6 +125,9 @@ class MVC extends Model {
     })
   }
 
+  /**
+   * @deprecated is now replaced by overload of `use` method.
+  */
   static using <T extends typeof MVC, I extends InstanceOf<T>> (
     this: T,
     apply: Model.Compat<I>,
