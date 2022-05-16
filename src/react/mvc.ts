@@ -91,27 +91,43 @@ class MVC extends Model {
     return useModel(this, [], callback);
   }
 
-  static use <T extends Class, I extends InstanceOf<T>> (this: T, watch: Model.Field<I>[], callback?: (instance: I) => void): I;
-  static use <T extends Class, I extends InstanceOf<T>> (this: T, callback?: (instance: I) => void): I;
+  static use <T extends Class, I extends InstanceOf<T>> (
+    this: T,
+    watch: Model.Field<I>[],
+    callback?: (instance: I) => void
+  ): I;
 
-  static use <T extends typeof MVC> (this: T, arg: any, callback?: (instance: InstanceOf<T>) => void){
-    const instance = useModel(this, arg, callback);
+  static use <T extends Class, I extends InstanceOf<T>> (
+    this: T,
+    callback?: (instance: I) => void
+  ): I;
+
+  static use <T extends Class, I extends InstanceOf<T>> (
+    this: T,
+    apply: Model.Compat<I>,
+    keys?: Model.Event<I>[]
+  ): I;
+
+  static use <T extends typeof MVC> (this: T, a: any, b?: any){
+    const instance = useModel(this, a, b);
     usePeerContext(instance.get);    
     return instance;
   }
 
-  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (
-    this: T, data: D, only?: (keyof D & string)[]){
+  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Model.Compat<I>> (
+    this: T, apply: D, keys?: (keyof D)[]){
 
     return this.use(instance => {
-      instance.import(data, only);
+      instance.import(apply, keys);
     })
   }
 
-  static using <T extends typeof MVC, I extends InstanceOf<T>, D extends Partial<I>> (
-    this: T, data: D, only?: (keyof D & string)[]){
+  static using <T extends typeof MVC, I extends InstanceOf<T>> (
+    this: T,
+    apply: Model.Compat<I>,
+    keys?: Model.Event<I>[]){
 
-    return useModel(this, data, only);
+    return this.use(apply, keys);
   }
 
   static meta <T extends Class>(this: T): T;
