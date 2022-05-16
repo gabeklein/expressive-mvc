@@ -10,7 +10,7 @@ describe("update method", () => {
     });
   }
 
-  it("provides promise resolving next update", async () => {
+  it("provides promise resolving on next update", async () => {
     const control = Control.create();
     
     control.foo = 2;
@@ -20,7 +20,7 @@ describe("update method", () => {
     await control.update();
   })
 
-  it("resolves keys next update involved", async () => {
+  it("resolves to keys next update", async () => {
     const control = Control.create();
 
     control.foo = 2;
