@@ -1,4 +1,4 @@
-import { Global, Model, use } from '../src';
+import { Global, Model, set, use } from '../src';
 import { Oops } from '../src/react/global';
 import { renderHook } from './adapter';
 
@@ -31,6 +31,20 @@ describe("get", () => {
     const expected = Oops.GlobalDoesNotExist(Test.name);
 
     expect(() => result.current).toThrowError(expected);
+  })
+})
+
+describe("new", () => {
+  it('will import values if where an object', () => {
+    class Test extends Model {
+      value = set<string>();
+    }
+
+    const render = renderHook(() => {
+      return Test.new({ value: "foo" });
+    });
+
+    expect(render.result.current.value).toBe("foo");
   })
 })
 

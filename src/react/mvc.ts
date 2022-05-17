@@ -1,12 +1,15 @@
 /* istanbul ignore file */
+import React from 'react';
 
-import { Controller } from '../controller';
+import { control, Controller } from '../controller';
 import { CONTROL, Model } from '../model';
 import { Class, InstanceOf } from '../types';
+import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
 import { useInContext } from './useInContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
+
 
 class MVC extends Model {
   static [CONTROL]: Controller;
@@ -87,8 +90,26 @@ class MVC extends Model {
    * 
    * @param callback - Run after creation of instance.
    */
-  static new <T extends Class> (this: T, callback?: (instance: InstanceOf<T>) => void){
-    return useModel(this, [], callback);
+  static new <T extends Class, I extends InstanceOf<T>> (this: T, callback?: (instance: I) => void): I;
+  static new <T extends Class, I extends InstanceOf<T>> (this: T, apply: Model.Compat<I>): I;
+
+  static new <T extends Class, I extends InstanceOf<T>> (this: T, arg?: ((instance: I) => void) | Model.Compat<I>){
+    return React.useMemo(() => {
+      const instance: I = new this();
+  
+      control(instance);
+  
+      if(typeof arg == "function")
+        arg(instance);
+
+      else if(arg)
+        getOwnPropertyNames(instance).forEach(key => {
+          if(key in arg)
+            instance[key] = arg[key];
+        })
+  
+      return instance;
+    }, []);
   }
 
   static use <T extends Class, I extends InstanceOf<T>> (
