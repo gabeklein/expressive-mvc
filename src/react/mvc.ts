@@ -94,7 +94,7 @@ class MVC extends Model {
   static new <T extends Class, I extends InstanceOf<T>> (this: T, apply: Model.Compat<I>): I;
 
   static new <T extends Class, I extends InstanceOf<T>> (this: T, arg?: ((instance: I) => void) | Model.Compat<I>){
-    return React.useMemo(() => {
+    const instance = React.useMemo(() => {
       const instance: I = new this();
   
       control(instance);
@@ -110,6 +110,10 @@ class MVC extends Model {
   
       return instance;
     }, []);
+
+    usePeerContext(instance.get);
+
+    return instance;
   }
 
   static use <T extends Class, I extends InstanceOf<T>> (
