@@ -1,4 +1,5 @@
 import { issues } from '../issues';
+import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { MVC } from './mvc';
 
@@ -41,6 +42,25 @@ export class Global extends MVC {
     return instance.update();
   }
 
+  /**
+   * **React Hook** - Fetch most instance of this controller from context, if it exists.
+   * 
+   * @param required - If false, may return undefined.
+   */
+  static get <T extends Class> (this: T, required?: true): InstanceOf<T>;
+
+  /**
+   * **React Hook** - Fetch most instance of this controller from context.
+   * 
+   * @param required - Unless false, will throw where instance cannot be found.
+   */
+  static get <T extends Class> (this: T, required: boolean): InstanceOf<T> | undefined;
+
+  /**
+   * **React Hook** - Fetch specific value from instance of this controller in context.
+   */
+  static get <T extends Class, K extends Model.Field<InstanceOf<T>>> (this: T, key: K): InstanceOf<T>[K];
+   
   static get(arg?: boolean | string){
     const instance = Active.get(this);
 
