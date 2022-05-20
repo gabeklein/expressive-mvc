@@ -2,7 +2,19 @@ import { Model, set } from '../src';
 import { Oops as Assign } from '../src/instruction/set';
 import { Oops as Util } from '../src/util';
 
-describe("optional", () => {
+describe("required", () => {
+  it("will compute pending value immediately", () => {
+    const factory = jest.fn(async () => "Hello World");
+
+    class Test extends Model {
+      value = set(factory);
+    }
+
+    Test.create();
+
+    expect(factory).toBeCalled();
+  })
+
   it("will throw if set to undefined", () => {
     class Test extends Model {
       value = set(() => "foo");
@@ -15,35 +27,33 @@ describe("optional", () => {
     expect(() => test.value = undefined).toThrowError(expected);
     expect(() => test.value = "bar").not.toThrow();
   })
+})
 
-  it("will throw while required set to true", () => {
+describe("optional", () => {
+  it("will only compute when needed", () => {
+    const factory = jest.fn(async () => "Hello World");
+
     class Test extends Model {
-      value = set<string>(undefined, true);
+      value = set(factory, false);
     }
 
-    const test = Test.create();
-    const expected = Assign.NonOptional(test, "value");
+    Test.create();
 
-    test.value = "foo";
-
-    // @ts-ignore
-    expect(() => test.value = undefined).toThrowError(expected);
-    expect(() => test.value = "bar").not.toThrow();
+    expect(factory).not.toBeCalled();
   })
 
-  it("will not throw if required value remains undefined", () => {
+  it("will not throw if value remains undefined", () => {
     class Test extends Model {
-      value = set<string>(undefined, true);
+      value = set<string>(undefined, false);
     }
 
     const test = Test.create();
 
-    // @ts-ignore
     expect(() => test.value = undefined).not.toThrowError();
     expect(() => test.value = "bar").not.toThrow();
   })
 
-  it("will not throw while required set to false", () => {
+  it("will not throw if value set to undefined", () => {
     class Test extends Model {
       value = set(() => "bar", false);
     }
