@@ -15,6 +15,20 @@ describe("required", () => {
     expect(factory).toBeCalled();
   })
 
+  it("will emit when async resolved", async () => {
+    class Test extends Model {
+      value = set(() => Promise.resolve("foobar"));
+    }
+
+    const test = Test.create();
+
+    expect(() => test.value).toThrow(expect.any(Promise));
+
+    await test.once("value");
+
+    expect(test.value).toBe("foobar");
+  })
+
   it("will throw if set to undefined", () => {
     class Test extends Model {
       value = set(() => "foo");

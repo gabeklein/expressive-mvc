@@ -24,11 +24,11 @@ export function pendingValue<T = any>(
 }
 
 export function pendingFactory(
-  via: Controller,
+  this: Controller,
   key: string,
   fn: (key: string, subject: unknown) => any){
 
-  const { subject, state } = via;
+  const { subject, state } = this;
   let waiting: Promise<any> | undefined;
   let error: any;
 
@@ -57,7 +57,10 @@ export function pendingFactory(
 
       output
         .catch(err => error = err)
-        .then(out => state[key] = out)
+        .then(out => {
+          state[key] = out;
+          this.update(key);
+        })
         .finally(() => waiting = undefined)
 
       throw waiting = Object.assign(output, {
