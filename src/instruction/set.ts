@@ -8,10 +8,7 @@ export const Oops = issues({
     `Property ${Parent}.${key} is marked as required.`,
 
   BadFactory: () =>
-    `Set instruction can only accept a factory or undefined.`,
-
-  FactoryFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`
+    `Set instruction can only accept a factory or undefined.`
 })
 
 declare namespace set {
@@ -108,20 +105,7 @@ function set(
         throw Oops.BadFactory();
 
       else {
-        get = pendingFactory.call(this, key, factory);
-
-        if(required)
-          try {
-            get();
-          }
-          catch(err){
-            if(err instanceof Promise)
-              void 0;
-            else {
-              Oops.FactoryFailed(this.subject, key).warn();
-              throw err;
-            }
-          }
+        get = pendingFactory.call(this, key, factory, required);
       }
 
       if(typeof argument == "function")

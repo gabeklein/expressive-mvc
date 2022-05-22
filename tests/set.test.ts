@@ -1,5 +1,6 @@
 import { Model, set } from '../src';
 import { Oops as Assign } from '../src/instruction/set';
+import { Oops as Suspense } from '../src/suspense';
 import { Oops as Util } from '../src/util';
 
 describe("required", () => {
@@ -244,7 +245,7 @@ describe("memoize", () => {
       })
     }
 
-    const failed = Assign.FactoryFailed(Test.name, "memoized");
+    const failed = Suspense.FactoryFailed(Test.name, "memoized");
   
     expect(() => Test.create()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);

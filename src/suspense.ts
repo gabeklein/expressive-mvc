@@ -3,7 +3,10 @@ import { issues } from './issues';
 
 export const Oops = issues({
   ValueNotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
+    `Value ${model}.${key} value is not yet available.`,
+
+    FactoryFailed: (model, key) =>
+      `Generating initial value for ${model}.${key} failed.`
 })
 
 /**
@@ -26,21 +29,14 @@ export function pendingValue<T = any>(
 export function pendingFactory(
   this: Controller,
   key: string,
-  fn: (key: string, subject: unknown) => any){
+  fn: (key: string, subject: unknown) => any,
+  immediate: boolean){
 
   const { subject, state } = this;
   let waiting: Promise<any> | undefined;
   let error: any;
 
-  return () => {
-    if(waiting)
-      throw waiting;
-
-    if(error)
-      throw error;
-
-    if(key in state)
-      return state[key];
+  const init = () => {
 
     let output;
 
@@ -71,6 +67,32 @@ export function pendingFactory(
     else {
       return state[key] = output;
     }
+  }
+
+  if(immediate)
+    try {
+      init();
+    }
+    catch(err){
+      if(err instanceof Promise)
+        void 0;
+      else {
+        Oops.FactoryFailed(this.subject, key).warn();
+        throw err;
+      }
+    }
+
+  return () => {
+    if(waiting)
+      throw waiting;
+
+    if(error)
+      throw error;
+
+    if(key in state)
+      return state[key];
+
+    return init();
   }
 }
 
