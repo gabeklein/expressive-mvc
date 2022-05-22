@@ -141,6 +141,30 @@ describe("callback", () => {
     expect(callback).toBeCalledWith("bar");
   })
 
+  it('will ignore effect promise', () => {
+    class Subject extends Model {
+      property = set<any>(undefined, async () => {});
+    }
+
+    const state = Subject.create();
+
+    expect(() => state.property = "bar").not.toThrow();
+  })
+
+  it('will throw on bad effect return', () => {
+    class Subject extends Model {
+      // @ts-ignore
+      property = set<any>(undefined, () => 3);
+    }
+
+    const expected = Util.BadEffectCallback();
+    const state = Subject.create();
+
+    expect(() => state.property = "bar").toThrow(expected);
+  })
+})
+
+describe("intercept", () => {
   it('will prevent update if callback returns false', async () => {
     class Subject extends Model {
       test = set(() => "foo", value => {
@@ -172,28 +196,6 @@ describe("callback", () => {
 
     await state.update(true);
     expect(state.test).toBe("foo");
-  })
-
-  it('will ignore effect promise', () => {
-    class Subject extends Model {
-      property = set<any>(undefined, async () => {});
-    }
-
-    const state = Subject.create();
-
-    expect(() => state.property = "bar").not.toThrow();
-  })
-
-  it('will throw on bad effect return', () => {
-    class Subject extends Model {
-      // @ts-ignore
-      property = set<any>(undefined, () => 3);
-    }
-
-    const expected = Util.BadEffectCallback();
-    const state = Subject.create();
-
-    expect(() => state.property = "bar").toThrow(expected);
   })
 })
 
