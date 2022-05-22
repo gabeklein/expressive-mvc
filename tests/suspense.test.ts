@@ -1,6 +1,6 @@
 import { from, Model, set } from '../src';
 import { Oops } from '../src/suspense';
-import { mockAsync, mockSuspense } from './adapter';
+import { mockAsync, mockSuspense, timeout, ensure } from './adapter';
 
 describe("empty", () => {
   it('will suspend if value is accessed before set', async () => {
@@ -85,12 +85,11 @@ describe("set async", () => {
 
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
-    const expected = new Error("oh foo");
 
     class Test extends Model {
       value = set(async () => {
         await promise.await();
-        throw expected;
+        throw "oh no";
       })
     }
 
@@ -109,15 +108,14 @@ describe("set async", () => {
           didThrow.resolve(err);
       }
     })
-  
+
     test.assertDidSuspend(true);
 
     promise.resolve();
-    await instance.update();
 
     const error = await didThrow.await();
 
-    expect(error).toBe(expected);
+    expect(error).toBe("oh no");
   })
   
   it('will bind async function to self', async () => {
@@ -140,6 +138,79 @@ describe("set async", () => {
     });
 
     await didRender.await();
+  })
+})
+
+describe("nested set", () => {
+  const greet = mockAsync<string>();
+  const name = mockAsync<string>();
+  
+  class Mock extends Model {
+    greet = set(greet.await);
+    name = set(name.await);
+  }
+
+  it("will suspend a factory", async () => {
+    const didEvaluate = jest.fn();
+
+    class Test extends Mock {
+      value = set(() => {
+        didEvaluate();
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+    const pending = ensure(() => test.value);
+
+    greet.resolve("Hello");
+    await timeout();
+    name.resolve("World");
+
+    const value = await pending;
+
+    expect(value).toBe("Hello World");
+    expect(didEvaluate).toBeCalledTimes(3);
+  })
+
+  it("will suspend async factory", async () => {
+    const didEvaluate = jest.fn();
+
+    class Test extends Mock {
+      value = set(() => {
+        didEvaluate();
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+    const pending = ensure(() => test.value);
+
+    await greet.resolve("Hello");
+    await timeout();
+    await name.resolve("World");
+
+    const value = await pending;
+
+    expect(value).toBe("Hello World");
+    expect(didEvaluate).toBeCalledTimes(3);
+  })
+
+  it("will not suspend if already resolved", async () => {
+    class Test extends Model {
+      greet = set(async () => "Hello");
+      name = set(async () => "World");
+
+      value = set(() => {
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+
+    await test.once("value");
+
+    expect(test.value).toBe("Hello World");
   })
 })
 

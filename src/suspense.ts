@@ -33,40 +33,50 @@ export function pendingFactory(
   immediate: boolean){
 
   const { subject, state } = parent;
-  let waiting: Promise<any> | undefined;
+  let pending: Promise<any> | undefined;
   let error: any;
 
-  const init = () => {
-
-    let output;
-
+  const compute = (): any => {
     try {
-      output = fn.call(subject, key, subject);
+      return fn.call(subject, key, subject);
     }
     catch(err){
-      throw error = err;
+      if(err instanceof Promise)
+        return err.then(compute);
+      else
+        throw error = err;
     }
+  }
+
+  const init = () => {
+    const output = compute();
 
     if(output instanceof Promise){
       const issue =
         Oops.ValueNotReady(subject, key);
-
-      output
-        .catch(err => error = err)
-        .then(out => {
-          state[key] = out;
+  
+      pending = output
+        .catch((err) => {
+          if(err instanceof Promise)
+            return err.then(compute);
+          else
+            error = err;
+        })
+        .then(value => {
+          return state[key] = value;
+        })
+        .finally(() => {
+          pending = undefined;
           parent.update(key);
         })
-        .finally(() => waiting = undefined)
-
-      throw waiting = Object.assign(output, {
+  
+      Object.assign(pending, {
         message: issue.message,
         stack: issue.stack
       });
     }
-    else {
-      return state[key] = output;
-    }
+
+    return state[key] = output;
   }
 
   if(immediate)
@@ -74,17 +84,13 @@ export function pendingFactory(
       init();
     }
     catch(err){
-      if(err instanceof Promise)
-        void 0;
-      else {
-        Oops.FactoryFailed(subject, key).warn();
-        throw err;
-      }
+      Oops.FactoryFailed(subject, key).warn();
+      throw err;
     }
 
   return () => {
-    if(waiting)
-      throw waiting;
+    if(pending)
+      throw pending;
 
     if(error)
       throw error;
@@ -92,7 +98,12 @@ export function pendingFactory(
     if(key in state)
       return state[key];
 
-    return init();
+    let output = init();
+
+    if(pending)
+      throw pending;
+    else
+      return output;
   }
 }
 
