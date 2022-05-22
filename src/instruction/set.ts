@@ -105,7 +105,7 @@ function set(
         throw Oops.BadFactory();
 
       else {
-        get = pendingFactory.call(this, key, factory, required);
+        get = pendingFactory(this, key, factory, required);
       }
 
       if(typeof argument == "function")

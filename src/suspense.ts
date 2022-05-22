@@ -27,12 +27,12 @@ export function pendingValue<T = any>(
 }
 
 export function pendingFactory(
-  this: Controller,
+  parent: Controller,
   key: string,
   fn: (key: string, subject: unknown) => any,
   immediate: boolean){
 
-  const { subject, state } = this;
+  const { subject, state } = parent;
   let waiting: Promise<any> | undefined;
   let error: any;
 
@@ -55,7 +55,7 @@ export function pendingFactory(
         .catch(err => error = err)
         .then(out => {
           state[key] = out;
-          this.update(key);
+          parent.update(key);
         })
         .finally(() => waiting = undefined)
 
@@ -77,7 +77,7 @@ export function pendingFactory(
       if(err instanceof Promise)
         void 0;
       else {
-        Oops.FactoryFailed(this.subject, key).warn();
+        Oops.FactoryFailed(subject, key).warn();
         throw err;
       }
     }
