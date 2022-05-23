@@ -104,3 +104,27 @@ export function createValueEffect<T = any>(
       throw Oops.BadEffectCallback()
   }
 }
+
+export function suspenseBoundary(fn: () => any): any {
+  const retry = (err: unknown) => {
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  const compute = (): any => {
+    try {
+      const output = fn();
+  
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
+}

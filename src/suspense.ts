@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { issues } from './issues';
+import { suspenseBoundary } from './util';
 
 export const Oops = issues({
   ValueNotReady: (model, key) =>
@@ -36,40 +37,23 @@ export function pendingFactory(
   let pending: Promise<any> | undefined;
   let error: any;
 
-  const compute = (): any => {
-    try {
-      return fn.call(subject, key, subject);
-    }
-    catch(err){
-      if(err instanceof Promise)
-        return err.then(compute);
-      else
-        throw error = err;
-    }
-  }
-
   const init = () => {
-    const output = compute();
+    const output = suspenseBoundary(() => {
+      return fn.call(subject, key, subject);
+    });
 
     if(output instanceof Promise){
-      const issue =
-        Oops.ValueNotReady(subject, key);
-  
       pending = output
-        .catch((err) => {
-          if(err instanceof Promise)
-            return err.then(compute);
-          else
-            error = err;
-        })
-        .then(value => {
-          return state[key] = value;
-        })
+        .catch(err => error = err)
+        .then(val => state[key] = val)
         .finally(() => {
           pending = undefined;
           parent.update(key);
         })
   
+      const issue =
+        Oops.ValueNotReady(subject, key);
+
       Object.assign(pending, {
         message: issue.message,
         stack: issue.stack

@@ -177,7 +177,7 @@ describe("nested set", () => {
     const didEvaluate = jest.fn();
 
     class Test extends Mock {
-      value = set(() => {
+      value = set(async () => {
         didEvaluate();
         return this.greet + " " + this.name;
       });
@@ -186,9 +186,9 @@ describe("nested set", () => {
     const test = Test.create();
     const pending = ensure(() => test.value);
 
-    await greet.resolve("Hello");
+    greet.resolve("Hello");
     await timeout();
-    await name.resolve("World");
+    name.resolve("World");
 
     const value = await pending;
 

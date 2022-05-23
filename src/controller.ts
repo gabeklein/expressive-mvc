@@ -107,9 +107,7 @@ class Controller<T extends Stateful = any> {
     });
 
     defineProperty(proxy, key, {
-      enumerable,
-      set,
-      get
+      enumerable, get, set
     });
   }
 
