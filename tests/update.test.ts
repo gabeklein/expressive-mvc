@@ -62,6 +62,16 @@ describe("dispatch", () => {
     expect(update).toContain("foo");
   })
   
+  it("will squash updates which exist", async () => {
+    const test = Test.create();
+
+    test.foo = "bar";
+    test.update("foo");
+    
+    const update = await test.update(true);
+    expect(update).toContain("foo");
+  })
+  
   it("will send arbitrary event", async () => {
     const test = Test.create();
     test.update("foobar");
@@ -69,6 +79,7 @@ describe("dispatch", () => {
     const update = await test.update(true);
     expect(update).toContain("foobar");
   })
+
   it("will resolve after event is handled", async () => {
     const test = Test.create();
     const update = await test.update("foo");
