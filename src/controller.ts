@@ -1,6 +1,6 @@
-import * as Computed from './compute';
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
+import { flush } from './instruction/from';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
@@ -163,7 +163,7 @@ class Controller<T extends Stateful = any> {
 
     if(!this.frame.size)
       setTimeout(() => {
-        Computed.flush(this);
+        flush(this);
 
         const keys = Object.freeze([ ...this.frame ]);
 

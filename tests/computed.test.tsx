@@ -1,6 +1,5 @@
 import { from, Global, Model, tap, use } from '../src';
-import { Oops } from '../src/compute';
-import { Oops as Instruction } from '../src/instruction/from';
+import { Oops } from '../src/instruction/from';
 
 describe("computed", () => {
   class Child extends Model {
@@ -290,7 +289,7 @@ describe("failures", () => {
       value = from(this.peer, () => {});
     }
 
-    const expected = Instruction.PeerNotAllowed("Test", "value");
+    const expected = Oops.PeerNotAllowed("Test", "value");
 
     expect(() => Test.create()).toThrow(expected);
   })
@@ -388,7 +387,7 @@ describe("factory", () => {
       value = from(factory);
     }
 
-    const expected = Instruction.BadComputedSource("Test", "value", factory);
+    const expected = Oops.BadComputedSource("Test", "value", factory);
 
     expect(() => Test.create()).toThrow(expected);
   })

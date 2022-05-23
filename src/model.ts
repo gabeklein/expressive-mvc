@@ -1,6 +1,6 @@
-import * as Computed from './compute';
 import { control, Controller } from './controller';
 import { UPDATE } from './dispatch';
+import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
 import { Callback, Class, InstanceOf, RequestCallback } from './types';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
@@ -148,7 +148,7 @@ class Model {
         !select.length ? getOwnPropertyNames(control.state) :
         select;
 
-      Computed.ensure(control, keys);
+      ensure(control, keys);
 
       const callback: RequestCallback = squash
         ? handler!.bind(this)
