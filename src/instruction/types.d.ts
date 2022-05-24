@@ -26,6 +26,7 @@ declare namespace Instruction {
     writable?: boolean;
     get?: Getter<T>;
     set?: Setter<T> | false;
+    suspense?: boolean;
   }
 
   interface ExplicitDescriptor extends PropertyDescriptor {
@@ -37,6 +38,7 @@ declare namespace Instruction {
     enumerable?: boolean;
     value?: T;
     set?: Setter<T> | false;
+    suspense?: boolean;
   }
 }
 

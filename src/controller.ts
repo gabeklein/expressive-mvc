@@ -74,6 +74,24 @@ class Controller<T extends Stateful = any> {
         if("value" in desc)
           state[key] = desc.value as any;
 
+        else if(desc.suspense){
+          const promise = new Promise(resolve => {
+            defineProperty(state, key, {
+              configurable: true,
+              get(){
+                throw promise;
+              },
+              set(value){
+                resolve(value);
+                defineProperty(state, key, {
+                  writable: true,
+                  value
+                })
+              }
+            })
+          })
+        }
+
         onSet = desc.set;
         onGet = desc.get;
         enumerable = desc.enumerable;
