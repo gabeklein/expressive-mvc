@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Consumer, Global, Model, Provider, tap } from '../src';
+import { Consumer, Global, Model, Provider, set, tap } from '../src';
 import { Oops } from '../src/react/tap';
 import { render, subscribeTo } from './adapter';
 
@@ -278,5 +278,41 @@ describe("context", () => {
     );
 
     expect(didRender).toBeCalledTimes(2);
+  })
+})
+
+describe("suspense", () => {
+  it("will whatever", async () => {
+    class Foo extends Model {
+      bar = tap(Bar, true);
+
+      value = set(() => {
+        const { bar } = this;
+        const { value } = bar;
+
+        return value;
+      }, false);
+    };
+  
+    class Bar extends Model {
+      value = "foobar";
+    };
+
+    const didRender = jest.fn();
+
+    const Inner = () => {
+      const foo = Foo.new();
+      expect(foo.value).toBe("foobar");
+      didRender();
+      return null;
+    }
+
+    render(
+      <Provider of={Bar}>
+        <Inner />
+      </Provider>
+    );
+
+    expect(didRender).toBeCalled();
   })
 })

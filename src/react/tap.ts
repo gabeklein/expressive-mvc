@@ -53,31 +53,33 @@ function tap<T extends Peer>(
   return apply(
     function tap(key){
       if("set" in type)
-        this.state[key] = type.get();
+        return {
+          recursive: true,
+          value: type.get()
+        }
 
-      else {
-        const { subject } = this;
+      const { subject } = this;
 
-        if("set" in subject.constructor)
-          throw Oops.CantAttachGlobal(subject, type.name);
-  
-        getPending(subject).push(context => {
-          let instance = context.get(type);
-  
-          if(typeof argument == "function"){
-            if(argument(instance) === false)
-              instance = undefined;
-          }
-  
-          else if(!instance && argument)
-            throw Oops.AmbientRequired(type.name, subject, key);
+      if("set" in subject.constructor)
+        throw Oops.CantAttachGlobal(subject, type.name);
 
-          this.update(key, instance);
-        })
-      }
+      getPending(subject).push(context => {
+        let instance = context.get(type);
+
+        if(typeof argument == "function"){
+          if(argument(instance) === false)
+            instance = undefined;
+        }
+
+        else if(!instance && argument)
+          throw Oops.AmbientRequired(type.name, subject, key);
+
+        this.update(key, instance);
+      })
 
       return {
-        recursive: true
+        recursive: true,
+        suspense: true
       }
     }
   )
