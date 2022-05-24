@@ -21,24 +21,28 @@ function apply<T = any>(
   function setup(this: Controller, key: string){
     let output = fn.call(this, key, this);
 
-    if(typeof output == "function")
-      return { get: output };
-
-    if(typeof output !== "object")
-      return output || undefined;
-
-    if("explicit" in output && output.explicit){
-      defineProperty(this.subject, key, output);
-      return false;
-    }
-
-    if("recursive" in output)
-      output = {
-        ...output,
-        get: recursive(this, key)
+    switch(typeof output){
+      case "function":
+        return { get: output };
+        
+      case "object": {
+        if("explicit" in output && output.explicit){
+          defineProperty(this.subject, key, output);
+          return false;
+        }
+    
+        if("recursive" in output && output.recursive)
+          return {
+            ...output,
+            get: recursive(this, key)
+          }
       }
 
-    return output;
+      case "boolean":
+        return output;
+    }
+
+    return;
   }
 
   Pending.set(placeholder, setup);

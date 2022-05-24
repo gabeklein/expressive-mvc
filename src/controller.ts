@@ -1,6 +1,7 @@
 import { applyUpdate } from './dispatch';
 import { Pending } from './instruction/apply';
 import { flush } from './instruction/from';
+import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
@@ -55,8 +56,8 @@ class Controller<T extends Stateful = any> {
     if(typeof entry == "function")
       return;
 
-    let onGet: any;
-    let onSet: any;
+    let onGet: Instruction.Getter<any> | undefined;
+    let onSet: Instruction.Setter<any> | false | undefined;
     let enumerable: any;
 
     const instruction = Pending.get(entry);
