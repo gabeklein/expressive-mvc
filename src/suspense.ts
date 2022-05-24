@@ -31,7 +31,7 @@ export function pendingFactory(
   parent: Controller,
   key: string,
   fn: (key: string, subject: unknown) => any,
-  immediate: boolean){
+  required: boolean){
 
   const { subject, state } = parent;
   let pending: Promise<any> | undefined;
@@ -63,7 +63,7 @@ export function pendingFactory(
     return state[key] = output;
   }
 
-  if(immediate)
+  if(required)
     try {
       init();
     }
@@ -74,7 +74,10 @@ export function pendingFactory(
 
   return () => {
     if(pending)
-      throw pending;
+      if(required !== false)
+        throw pending;
+      else
+        return undefined;
 
     if(error)
       throw error;
