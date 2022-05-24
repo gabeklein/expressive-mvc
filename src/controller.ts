@@ -88,28 +88,25 @@ class Controller<T extends Stateful = any> {
         : undefined;
 
     function get(this: Stateful){
-      const local = this[LOCAL];
       const value = state[key];
+      const local = this[LOCAL];
 
       if(local && !local.watch[key])
-          local.watch[key] = true;
+        local.watch[key] = true;
 
-      return onGet ? onGet(value, local) : value;
+      return onGet
+        ? local
+          ? onGet(value, local)
+          : onGet(value)
+        : value;
     }
 
     setAlias(get, `tap ${key}`);
 
-    defineProperty(subject, key, {
-      enumerable,
-      set,
-      get: onGet
-        ? () => onGet!(state[key])
-        : () => state[key]
-    });
-
-    defineProperty(proxy, key, {
-      enumerable, get, set
-    });
+    for(const x of [subject, proxy])
+      defineProperty(x, key, {
+        enumerable, get, set
+      });
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
