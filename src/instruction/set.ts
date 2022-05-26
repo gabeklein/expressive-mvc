@@ -154,17 +154,21 @@ export function pendingFactory(
           pending = undefined;
           parent.update(key);
         })
-  
-      const issue =
-        Oops.ValueNotReady(subject, key);
-
-      Object.assign(pending, {
-        message: issue.message,
-        stack: issue.stack
-      });
     }
 
     return state[key] = output;
+  }
+
+  const suspend = () => {
+    const issue =
+      Oops.ValueNotReady(subject, key);
+
+    Object.assign(pending, {
+      message: issue.message,
+      stack: issue.stack
+    });
+
+    throw pending;
   }
 
   if(required)
@@ -178,10 +182,10 @@ export function pendingFactory(
 
   return () => {
     if(pending)
-      if(required !== false)
-        throw pending;
-      else
+      if(required === false)
         return undefined;
+      else
+        suspend();
 
     if(error)
       throw error;
@@ -192,7 +196,7 @@ export function pendingFactory(
     let output = init();
 
     if(pending)
-      throw pending;
+      suspend();
     else
       return output;
   }
