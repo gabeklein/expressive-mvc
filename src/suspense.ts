@@ -6,26 +6,9 @@ export const Oops = issues({
   ValueNotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
 
-    FactoryFailed: (model, key) =>
-      `Generating initial value for ${model}.${key} failed.`
+  FactoryFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`
 })
-
-/**
- * Get value, suspend instead if undefined.
- * 
- * Throws suspense promise also interpretable as an error.
- * React could handle it but other contexts probably not.
- */
-export function pendingValue<T = any>(
-  via: Controller, key: string): T {
-
-  const value = via.state[key];
-
-  if(value === undefined)
-    throw suspend(via, key);
-
-  return value;
-}
 
 export function pendingFactory(
   parent: Controller,

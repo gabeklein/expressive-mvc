@@ -1,6 +1,6 @@
 import { apply } from './apply';
 import { issues } from '../issues';
-import { pendingFactory, pendingValue } from '../suspense';
+import { pendingFactory } from '../suspense';
 import { createValueEffect } from '../util';
 
 export const Oops = issues({
@@ -93,20 +93,20 @@ function set(
   return apply(
     function set(key){
       let set;
-      let get: () => void;
+      let get: (() => void) | undefined;
+      let suspense: boolean | undefined;
 
       const required =
         argument === true || argument === undefined;
 
       if(factory === undefined)
-        get = () => pendingValue(this, key);
+        suspense = true;
 
-      else if(typeof factory !== "function")
-        throw Oops.BadFactory();
-
-      else {
+      else if(typeof factory === "function")
         get = pendingFactory(this, key, factory, required);
-      }
+
+      else
+        throw Oops.BadFactory();
 
       if(typeof argument == "function")
         set = createValueEffect(argument);
@@ -116,7 +116,11 @@ function set(
             throw Oops.NonOptional(this.subject, key);
         }
   
-      return { set, get }
+      return {
+        set,
+        get,
+        suspense
+      }
     }
   )
 }

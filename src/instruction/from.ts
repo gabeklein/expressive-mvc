@@ -2,7 +2,7 @@ import { control, Controller } from '../controller';
 import { issues } from '../issues';
 import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
-import { pendingValue } from '../suspense';
+import { suspend } from '../suspense';
 import { RequestCallback } from '../types';
 import { defineProperty, getOwnPropertyDescriptor } from '../util';
 import { apply } from './apply';
@@ -69,9 +69,7 @@ function from<R, T>(
 
       let getSource: () => Controller;
       let getter: from.Getter | undefined;
-
-      if(arg2 === true || arg1 === true)
-        getter = pendingValue;
+      let required = arg2 === true || arg1 === true;
 
       if(typeof arg1 == "boolean")
         arg1 = undefined;
@@ -189,9 +187,18 @@ function from<R, T>(
         configurable: true,
         enumerable: true
       })
-    
-      if(getter)
-        return () => getter!(parent, key);
+
+      return () => {
+        const value = parent.state[key];
+
+        if(value === undefined && required)
+          throw suspend(this, key);
+
+        if(getter)
+          return getter(parent, key);
+
+        return value;
+      }
     }
   )
 }
