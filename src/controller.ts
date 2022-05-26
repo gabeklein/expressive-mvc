@@ -60,6 +60,7 @@ class Controller<T extends Stateful = any> {
     let onGet: Instruction.Getter<any> | undefined;
     let onSet: Instruction.Setter<any> | false | undefined;
     let enumerable: any;
+    let suspense: boolean | undefined;
 
     const instruction = Pending.get(entry);
 
@@ -75,26 +76,9 @@ class Controller<T extends Stateful = any> {
         if("value" in desc)
           state[key] = desc.value as any;
 
-        else if(desc.suspense){
-          const promise = new Promise(resolve => {
-            defineProperty(state, key, {
-              configurable: true,
-              get(){
-                throw promise;
-              },
-              set(value){
-                resolve(value);
-                defineProperty(state, key, {
-                  writable: true,
-                  value
-                })
-              }
-            })
-          })
-        }
-
         onSet = desc.set;
         onGet = desc.get;
+        suspense = desc.suspense;
         enumerable = desc.enumerable;
       }
     }
@@ -106,7 +90,15 @@ class Controller<T extends Stateful = any> {
         ? this.ref(key, onSet)
         : undefined;
 
-    function get(local?: Subscriber){
+    const get = (local?: Subscriber) => {
+      if(!(key in state) && suspense)
+        throw new Promise(res => {
+          this.addListener(k => {
+            if(k == key)
+              res(state[key]);
+          })
+        })
+
       const value = state[key];
 
       if(onGet)
