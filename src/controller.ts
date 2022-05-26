@@ -59,6 +59,7 @@ class Controller<T extends Stateful = any> {
 
     let onGet: Instruction.Getter<any> | undefined;
     let onSet: Instruction.Setter<any> | false | undefined;
+    let set: ((value: any) => void) | undefined;
     let enumerable: any;
     let suspense: boolean | undefined;
 
@@ -85,10 +86,8 @@ class Controller<T extends Stateful = any> {
     else
       state[key] = entry;
 
-    const set =
-      onSet !== false
-        ? this.ref(key, onSet)
-        : undefined;
+    if(onSet !== false)
+      set = this.ref(key, onSet);
 
     const get = (local?: Subscriber) => {
       if(!(key in state) && suspense)
