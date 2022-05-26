@@ -5,6 +5,7 @@ import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
+import { suspend } from './suspense';
 import { Callback, RequestCallback } from './types';
 import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
@@ -91,12 +92,7 @@ class Controller<T extends Stateful = any> {
 
     const get = (local?: Subscriber) => {
       if(!(key in state) && suspense)
-        throw new Promise(res => {
-          this.addListener(k => {
-            if(k == key)
-              res(state[key]);
-          })
-        })
+        throw suspend(this, key);
 
       const value = state[key];
 
