@@ -1,5 +1,5 @@
 import { issues } from '../issues';
-import { defineProperty, setAlias } from '../util';
+import { defineProperty } from '../util';
 import { apply } from './apply';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
@@ -46,7 +46,6 @@ function act<T extends Async>(task: T){
 
       this.state[key] = undefined;
 
-      setAlias(invoke, `run ${key}`);
       defineProperty(invoke, "active", {
         get: () => pending
       })

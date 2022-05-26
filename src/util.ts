@@ -52,12 +52,6 @@ export function defineLazy<T>(
   });
 }
 
-export function setAlias<T extends Function>(
-  func: T, displayName: string){
-
-  assign(func, { displayName });
-}
-
 export function createEffect(
   callback: Model.Effect<any>){
 

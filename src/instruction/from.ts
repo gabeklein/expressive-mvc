@@ -4,7 +4,7 @@ import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { pendingValue } from '../suspense';
 import { RequestCallback } from '../types';
-import { defineProperty, getOwnPropertyDescriptor, setAlias } from '../util';
+import { defineProperty, getOwnPropertyDescriptor } from '../util';
 import { apply } from './apply';
 
 export const Oops = issues({
@@ -180,10 +180,6 @@ function from<R, T>(
           }
         }
       }
-    
-      setAlias(update, `try ${key}`);
-      setAlias(create, `new ${key}`);
-      setAlias(setter!, `run ${key}`);
     
       INIT.add(create);
       INFO.set(update, info);

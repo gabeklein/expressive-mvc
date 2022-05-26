@@ -5,7 +5,7 @@ import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
-import { define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
   StrictUpdate: (expected) => 
@@ -118,8 +118,6 @@ class Controller<T extends Stateful = any> {
           : onGet(value)
         : value;
     }
-
-    setAlias(get, `tap ${key}`);
 
     for(const x of [subject, proxy])
       defineProperty(x, key, {
