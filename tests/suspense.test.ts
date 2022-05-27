@@ -121,23 +121,14 @@ describe("set async", () => {
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
-      value = set(this.method, false);
+      value = set(this.method);
 
       async method(){
-        expect(this).toStrictEqual(instance);
+        expect(this).toBe(instance);
       }
     }
 
-    const test = mockSuspense();
-    const didRender = mockAsync();
-    const instance = Test.create() as Test;
-
-    test.renderHook(() => {
-      void instance.tap().value;
-      didRender.resolve();
-    });
-
-    await didRender.await();
+    const instance = Test.create();
   })
 })
 
