@@ -68,7 +68,6 @@ function from<R, T>(
       const { subject, state } = this;
 
       let getSource: () => Controller;
-      let getter: from.Getter | undefined;
       let required = arg2 === true || arg1 === true;
 
       if(typeof arg1 == "boolean")
@@ -193,9 +192,6 @@ function from<R, T>(
 
         if(value === undefined && required)
           throw suspend(this, key);
-
-        if(getter)
-          return getter(parent, key);
 
         return value;
       }
