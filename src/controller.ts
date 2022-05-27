@@ -10,8 +10,8 @@ import { Callback, RequestCallback } from './types';
 import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
 export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict update() did ${expected ? "not " : ""}find pending updates.`,
+  StrictUpdate: () => 
+    `Strict update() did not find pending updates.`,
 
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
@@ -200,13 +200,13 @@ class Controller<T extends Stateful = any> {
       return;
     }
 
-    if(typeof arg == "boolean" && arg !== this.frame.size > 0)
-      return Promise.reject(Oops.StrictUpdate(arg));
+    if(arg === true && this.frame.size < 1)
+      return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
         if(callback)
-          if(this.frame.size)
+          if(this.frame.size || arg !== false)
             this.waiting.add(callback);
           else
             callback(false);

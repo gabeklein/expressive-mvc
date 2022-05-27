@@ -39,7 +39,7 @@ export class Global extends MVC {
 
     const instance = Active.get(this) || this.create();
     instance.import(updates);
-    return instance.update();
+    return instance.update(false);
   }
 
   /**

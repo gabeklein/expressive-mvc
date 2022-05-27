@@ -167,7 +167,6 @@ describe("computed", () => {
 
     // initialize D, should cascade to dependancies
     expect(test.D).toBe(6);
-    await test.update();
 
     // should evaluate in order, by use
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -177,7 +176,7 @@ describe("computed", () => {
 
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.update();
+    const updated = await test.update(true);
 
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);

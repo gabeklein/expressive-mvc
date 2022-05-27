@@ -31,7 +31,7 @@ describe("update method", () => {
 
   it('resolves immediately when no updates pending', async () => {
     const control = Control.create();
-    const update = await control.update();
+    const update = await control.update(false);
 
     expect(update).toBe(false);
   })
@@ -39,16 +39,6 @@ describe("update method", () => {
   it('rejects if no update pending in strict mode', async () => {
     const control = Control.create();
     const update = control.update(true);
-
-    await expect(update).rejects.toThrowError();
-  })
-
-  it('rejects if update not expected in strict mode', async () => {
-    const control = Control.create();
-
-    control.foo = 2;
-
-    const update = control.update(false);
 
     await expect(update).rejects.toThrowError();
   })
