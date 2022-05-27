@@ -154,12 +154,17 @@ export function pendingFactory(
           pending = undefined;
           parent.update(key);
         })
+
+      return;
     }
 
     return state[key] = output;
   }
 
   const suspend = () => {
+    if(required === false)
+      return undefined;
+
     const issue =
       Oops.ValueNotReady(subject, key);
 
@@ -182,10 +187,7 @@ export function pendingFactory(
 
   return () => {
     if(pending)
-      if(required === false)
-        return undefined;
-      else
-        suspend();
+      return suspend();
 
     if(error)
       throw error;
@@ -195,10 +197,9 @@ export function pendingFactory(
 
     let output = init();
 
-    if(pending)
-      suspend();
-    else
-      return output;
+    return pending
+      ? suspend()
+      : output;
   }
 }
 

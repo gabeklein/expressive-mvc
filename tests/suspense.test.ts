@@ -330,5 +330,25 @@ describe("computed", () => {
     test.assertDidRender(true);
   })
 
+  it("will return undefined if not required", async () => {
+    const promise = mockAsync<string>();
+    const mock = jest.fn();
+    
+    class Test extends Model {
+      value = set(promise.await, false);
+    }
+
+    const test = Test.create();
+
+    test.effect(state => mock(state.value));
+
+    expect(mock).toBeCalledWith(undefined);
+
+    promise.resolve("foobar");
+    await test.update();
+
+    expect(mock).toBeCalledWith("foobar");
+  })
+
   it.todo("will start suspense if value becomes undefined");
 })
