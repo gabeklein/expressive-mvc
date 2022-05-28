@@ -1,11 +1,9 @@
-import { Controller } from '../controller';
+import { Controller, PENDING } from '../controller';
 import { CONTROL, LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
 import { Instruction } from './types';
-
-export const Pending = new Map<symbol, Instruction.Runner<any>>();
 
 /**
  * Run instruction as controller sets itself up.
@@ -22,7 +20,7 @@ function apply<T = any>(
   function setup(this: Controller, key: string){
     const { proxy, state, subject } = this;
 
-    Pending.delete(placeholder);
+    PENDING.delete(placeholder);
     delete subject[key];
 
     let output = fn.call(this, key, this);
@@ -91,7 +89,7 @@ function apply<T = any>(
     });
   }
 
-  Pending.set(placeholder, setup);
+  PENDING.set(placeholder, setup);
 
   return placeholder as unknown as T;
 }

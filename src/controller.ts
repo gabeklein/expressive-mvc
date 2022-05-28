@@ -1,6 +1,6 @@
 import { applyUpdate } from './dispatch';
-import { Pending } from './instruction/apply';
 import { flush } from './instruction/from';
+import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
@@ -21,6 +21,7 @@ declare namespace Controller {
   type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
 }
 
+const PENDING = new Map<symbol, Instruction.Runner<any>>();
 const READY = new WeakSet<Controller>();
 
 class Controller<T extends Stateful = any> {
@@ -56,7 +57,7 @@ class Controller<T extends Stateful = any> {
       return;
 
     if(typeof entry == "symbol"){
-      const instruction = Pending.get(entry);
+      const instruction = PENDING.get(entry);
 
     if(instruction)
       instruction.call(this, key, this);
@@ -222,4 +223,4 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   return cb(control);
 }
 
-export { Controller, control }
+export { PENDING, Controller, control }
