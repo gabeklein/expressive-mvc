@@ -1,6 +1,7 @@
-import { Model, set } from '../src';
-import { Oops as Assign } from '../src/instruction/set';
-import { Oops as Util } from '../src/util';
+import { Model, set } from '..';
+import { ensure, mockAsync, mockSuspense, mockTimeout } from '../../tests/adapter';
+import { Oops as Util } from '../util';
+import { Oops as Assign } from './set';
 
 describe("required", () => {
   it("will compute pending value immediately", () => {
@@ -76,6 +77,49 @@ describe("optional", () => {
 
     expect(() => test.value = undefined).not.toThrow();
     expect(() => test.value = "foo").not.toThrow();
+  })
+})
+
+describe("empty", () => {
+  it('will suspend if value is accessed before set', async () => {
+    class Test extends Model {
+      foobar = set<string>();
+    }
+
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("foobar");
+      promise.resolve();
+    })
+  
+    test.assertDidSuspend(true);
+
+    instance.foobar = "foo!";
+
+    // expect refresh caused by update
+    await promise.await();
+
+    test.assertDidRender(true);
+  })
+
+  it('will not suspend if value is defined', async () => {
+    class Test extends Model {
+      foobar = set<string>();
+    }
+
+    const test = mockSuspense();
+    const instance = Test.create();
+
+    instance.foobar = "foo!";
+
+    test.renderHook(() => {
+      instance.tap("foobar");
+    })
+  
+    test.assertDidRender(true);
   })
 })
 
@@ -198,7 +242,7 @@ describe("intercept", () => {
   })
 })
 
-describe("memoize", () => {
+describe("memo", () => {
   const { error, warn } = console;
 
   afterAll(() => {
@@ -261,5 +305,165 @@ describe("memoize", () => {
     const expected = Assign.BadFactory();
 
     expect(() => Test.create()).toThrowError(expected);
+  })
+})
+
+describe("async", () => {
+  it('will auto-suspend if assessed value is async', async () => {
+    class Test extends Model {
+      value = set(promise.await);
+    }
+
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const didRender = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      void instance.tap().value;
+      didRender.resolve();
+    })
+  
+    test.assertDidSuspend(true);
+
+    promise.resolve();
+    await didRender.await();
+
+    test.assertDidRender(true);
+  })
+
+  it("will seem to throw error outside react", () => {
+    const promise = mockAsync();
+
+    class Test extends Model {
+      value = set(promise.await);
+    }
+
+    const instance = Test.create();
+    const exprected = Assign.ValueNotReady(instance, "value");
+
+    expect(() => instance.value).toThrowError(exprected);
+    promise.resolve();
+  })
+
+  it('will refresh and throw if async rejects', async () => {
+    const promise = mockAsync();
+
+    class Test extends Model {
+      value = set(async () => {
+        await promise.await();
+        throw "oh no";
+      })
+    }
+
+    const test = mockSuspense();
+    const instance = Test.create();
+    const didThrow = mockAsync();
+
+    test.renderHook(() => {
+      try {
+        void instance.tap().value;
+      }
+      catch(err: any){
+        if(err instanceof Promise)
+          throw err;
+        else
+          didThrow.resolve(err);
+      }
+    })
+
+    test.assertDidSuspend(true);
+
+    promise.resolve();
+
+    const error = await didThrow.await();
+
+    expect(error).toBe("oh no");
+  })
+  
+  it('will bind async function to self', async () => {
+    class Test extends Model {
+      // methods lose implicit this
+      value = set(this.method);
+
+      async method(){
+        expect(this).toBe(instance);
+      }
+    }
+
+    const instance = Test.create();
+  })
+})
+
+describe("nested suspense", () => {
+  const greet = mockAsync<string>();
+  const name = mockAsync<string>();
+  
+  class Mock extends Model {
+    greet = set(greet.await);
+    name = set(name.await);
+  }
+
+  it("will suspend a factory", async () => {
+    const didEvaluate = jest.fn();
+
+    class Test extends Mock {
+      value = set(() => {
+        didEvaluate();
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+    const pending = ensure(() => test.value);
+
+    greet.resolve("Hello");
+    await mockTimeout();
+    name.resolve("World");
+
+    const value = await pending;
+
+    expect(value).toBe("Hello World");
+    expect(didEvaluate).toBeCalledTimes(3);
+  })
+
+  it("will suspend async factory", async () => {
+    const didEvaluate = jest.fn();
+
+    class Test extends Mock {
+      value = set(async () => {
+        didEvaluate();
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+    const pending = ensure(() => test.value);
+
+    greet.resolve("Hello");
+    await mockTimeout();
+    name.resolve("World");
+
+    const value = await pending;
+
+    expect(value).toBe("Hello World");
+    expect(didEvaluate).toBeCalledTimes(3);
+  })
+
+  it("will not suspend if already resolved", async () => {
+    class Test extends Model {
+      greet = set(async () => "Hello");
+      name = set(async () => "World");
+
+      value = set(() => {
+        return this.greet + " " + this.name;
+      });
+    }
+    
+    const test = Test.create();
+
+    await test.once("value");
+
+    expect(test.value).toBe("Hello World");
   })
 })

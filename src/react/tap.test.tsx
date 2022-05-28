@@ -1,8 +1,8 @@
 import React from 'react';
 
-import { Consumer, Global, Model, Provider, set, tap } from '../src';
-import { Oops } from '../src/react/tap';
-import { render, subscribeTo } from './adapter';
+import { Consumer, Global, Model, Provider, set, tap } from '..';
+import { render, subscribeTo } from '../../tests/adapter';
+import { Oops } from './tap';
 
 describe("tap instruction", () => {
   class Foo extends Model {
@@ -126,12 +126,17 @@ describe("callback", () => {
     )
   })
 
-  it.skip("will not run before didCreate", () => {
+  it("will not run before first effect", () => {
+    const didInit = jest.fn();
+
     class Bar extends Model {
-      didCreate = jest.fn();
+      constructor(){
+        super();
+        this.effect(didInit, []);
+      }
 
       foo = tap(Foo, () => {
-        expect(this.didCreate).toHaveBeenCalled();
+        expect(didInit).toHaveBeenCalled();
       });
     }
 

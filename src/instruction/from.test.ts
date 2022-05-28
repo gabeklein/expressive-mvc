@@ -1,5 +1,8 @@
-import { from, Global, Model, tap, use } from '../src';
-import { Oops } from '../src/instruction/from';
+import { from, Global, Model, tap, use } from '..';
+import { mockAsync, mockSuspense } from '../../tests/adapter';
+import { Oops as Suspense } from '../suspense';
+import { Oops } from './from';
+import { set } from './set';
 
 describe("computed", () => {
   class Child extends Model {
@@ -390,6 +393,154 @@ describe("factory", () => {
 
     expect(() => Test.create()).toThrow(expected);
   })
+})
+
+describe("suspense", () => {
+  class Test extends Model {
+    random = 0;
+    source?: string = undefined;
+
+    value = from(this, x => {
+      void x.random;
+      return x.source;
+    }, true);
+  }
+
+  it("will suspend if value is undefined", async () => {
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+      promise.resolve();
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.source = "foobar!";
+
+    await promise.await();
+
+    test.assertDidRender(true);
+  })
+
+  it("will suspend in method mode", async () => {
+    class Test extends Model {
+      source?: string = undefined;
+      value = from(() => this.getValue, true);
+  
+      getValue(){
+        return this.source;
+      }
+    }
+
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+      promise.resolve();
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.source = "foobar!";
+
+    await promise.await();
+
+    test.assertDidRender(true);
+  })
+
+  it("will seem to throw error outside react", () => {
+    const instance = Test.create();
+    const expected = Suspense.ValueNotReady(instance, "value");
+    let didThrow: Error | undefined;
+
+    try {
+      void instance.value;
+    }
+    catch(err: any){
+      didThrow = err;
+    }
+
+    expect(String(didThrow)).toBe(String(expected));
+  })
+
+  it("will return immediately if value is defined", async () => {
+    const test = mockSuspense();
+    const instance = Test.create();
+
+    instance.source = "foobar!";
+
+    let value: string | undefined;
+
+    test.renderHook(() => {
+      value = instance.tap("value");
+    })
+
+    test.assertDidRender(true);
+
+    expect(value).toBe("foobar!");
+  })
+
+  it("will not resolve if value stays undefined", async () => {
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      instance.tap("value");
+      promise.resolve();
+    })
+
+    test.assertDidSuspend(true);
+
+    instance.random = 1;
+
+    // update to value is expected
+    const pending = await instance.update(true);
+    expect(pending).toContain("random");
+
+    // value will still be undefined
+    expect(instance.export().value).toBe(undefined);
+
+    // give react a moment to render (if it were)
+    await new Promise(res => setTimeout(res, 100));
+
+    // expect no action - value still is undefined
+    test.assertDidRender(false);
+  
+    instance.source = "foobar!";
+
+    // we do expect a render this time
+    await promise.await();
+
+    test.assertDidRender(true);
+  })
+
+  it("will return undefined if not required", async () => {
+    const promise = mockAsync<string>();
+    const mock = jest.fn();
+    
+    class Test extends Model {
+      value = set(promise.await, false);
+    }
+
+    const test = Test.create();
+
+    test.effect(state => mock(state.value));
+
+    expect(mock).toBeCalledWith(undefined);
+
+    promise.resolve("foobar");
+    await test.update();
+
+    expect(mock).toBeCalledWith("foobar");
+  })
+
+  it.todo("will start suspense if value becomes undefined");
 })
 
 /* Feature is temporarily removed - evaluating usefulness.

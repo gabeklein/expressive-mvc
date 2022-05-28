@@ -1,7 +1,7 @@
 import React from 'react';
 
-import { Model, useModel } from '../src';
-import { render, renderHook } from './adapter';
+import { Model, useModel } from '..';
+import { render, renderHook } from '../../tests/adapter';
 
 const opts = { timeout: 100 };
 

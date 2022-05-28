@@ -1,47 +1,62 @@
-import { Model } from "../src";
+import { from, Model } from "../src";
 
-describe("basics", () => {
-  class Subject extends Model {
-    value = 1;
+describe("assertion", () => {
+  class Control extends Model {
+    foo = 1;
+    bar = 2;
+    baz = from(this, state => {
+      return state.bar + 1;
+    });
   }
 
-  it('will update when a value changes', async () => {
-    const state = Subject.create();
+  it("provides promise resolving on next update", async () => {
+    const control = Control.create();
     
-    expect(state.value).toBe(1);
-
-    state.value = 2
-    await state.update(true);
-
-    expect(state.value).toBe(2);
+    control.foo = 2;
+    await control.update();
+    
+    control.bar = 3;
+    await control.update();
   })
 
-  it('will not update if value is same', async () => {
-    const state = Subject.create();
-    
-    expect(state.value).toBe(1);
+  it("resolves to keys next update", async () => {
+    const control = Control.create();
 
-    state.value = 1
-    await state.update(false);
+    control.foo = 2;
+
+    const updated = await control.update();
+    expect(updated).toMatchObject(["foo"]);
   })
-  
-  it('accepts update from within a method', async () => {
-    class Subject extends Model {
-      value = 1;
-    
-      setValue = (to: number) => {
-        this.value = to;
-      }
-    }
 
-    const state = Subject.create();
-    
-    state.setValue(3);
-    await state.update(true);
+  it('resolves immediately when no updates pending', async () => {
+    const control = Control.create();
+    const update = await control.update(false);
 
-    expect(state.value).toBe(3)
+    expect(update).toBe(false);
+  })
+
+  it('rejects if no update pending in strict mode', async () => {
+    const control = Control.create();
+    const update = control.update(true);
+
+    await expect(update).rejects.toThrowError();
+  })
+
+  it("includes getters in batch which trigger them", async () => {
+    const control = Control.create();
+
+    // we must evaluate baz because it can't be
+    // subscribed to without this happening atleast once. 
+    expect(control.baz).toBe(3);
+
+    control.bar = 3;
+
+    const update = await control.update();
+
+    expect(update).toMatchObject(["bar", "baz"]);
   })
 })
+
 
 describe("dispatch", () => {
   class Test extends Model {

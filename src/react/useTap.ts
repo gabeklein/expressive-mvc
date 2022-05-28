@@ -5,7 +5,7 @@ import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
-import { use } from './hooks';
+import { use } from './use';
 import { useFrom } from './useFrom';
 import { useInContext } from './useInContext';
 

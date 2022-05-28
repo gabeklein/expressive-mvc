@@ -111,7 +111,7 @@ export function mockSuspense(){
   }
 }
 
-export function timeout(ms = 0){
+export function mockTimeout(ms = 0){
   return new Promise(res => setTimeout(res, ms));
 }
 

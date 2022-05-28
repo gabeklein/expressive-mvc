@@ -4,7 +4,7 @@ import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { Callback, RequestCallback } from '../types';
 import { defineProperty } from '../util';
-import { use } from './hooks';
+import { use } from './use';
 
 function useFrom <T extends Stateful, R> (
   source: (() => T) | T,

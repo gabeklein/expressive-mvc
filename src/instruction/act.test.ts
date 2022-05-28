@@ -1,5 +1,5 @@
-import { act, Model } from '../src';
-import { Oops as Instruct } from '../src/instruction/act';
+import { act, Model } from '..';
+import { Oops as Instruct } from './act';
 
 class Test extends Model {
   test = act(this.wait);

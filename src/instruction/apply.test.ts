@@ -1,9 +1,9 @@
-import { apply, Model } from '../src';
-import { Controller } from '../src/Controller';
-import { STATE } from '../src/model';
-import { Subscriber } from '../src/subscriber';
+import { apply, Model } from '..';
+import { Controller } from '../Controller';
+import { STATE } from '../model';
+import { Subscriber } from '../subscriber';
 
-describe("apply", () => {
+describe("instruction", () => {
   class Test extends Model {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();

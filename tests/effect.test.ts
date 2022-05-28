@@ -1,7 +1,7 @@
 import { from, Model } from '../src';
 import { Oops } from '../src/util';
 
-describe("method", () => {
+describe("explicit", () => {
   class TestValues extends Model {
     value1 = 1;
     value2 = 2;
@@ -148,7 +148,7 @@ describe("method", () => {
   })
 })
 
-describe("subscriber", () => {
+describe("implicit", () => {
   class TestValues extends Model {
     value1 = 1;
     value2 = 2;

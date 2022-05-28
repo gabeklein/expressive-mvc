@@ -5,7 +5,7 @@ import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
-import { use } from './hooks';
+import { use } from './use';
 
 function useModel <T extends Class, I extends InstanceOf<T>> (
   source: T,
