@@ -24,8 +24,6 @@ export function apply(
   let enumerable: any;
   let suspense: boolean | undefined;
 
-  Pending.delete(placeholder);
-  delete subject[key];
   const desc = instruction.call(on, key, on);
 
   if(desc === false)

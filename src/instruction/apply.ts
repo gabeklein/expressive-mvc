@@ -19,6 +19,9 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
+    Pending.delete(placeholder);
+    delete this.subject[key];
+
     let output = fn.call(this, key, this);
 
     switch(typeof output){
