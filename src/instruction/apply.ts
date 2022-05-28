@@ -1,6 +1,7 @@
 import { Controller } from '../controller';
-import { CONTROL, Stateful } from '../model';
+import { CONTROL, LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
+import { suspend } from '../suspense';
 import { defineProperty } from '../util';
 import { Instruction } from './types';
 
@@ -19,33 +20,75 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
+    const { proxy, state, subject } = this;
+
     Pending.delete(placeholder);
-    delete this.subject[key];
+    delete subject[key];
 
     let output = fn.call(this, key, this);
 
-    switch(typeof output){
-      case "function":
-        return { get: output };
-        
-      case "object": {
-        if("explicit" in output && output.explicit){
-          defineProperty(this.subject, key, output);
-          return false;
-        }
-    
-        if("recursive" in output && output.recursive)
-          return {
-            ...output,
-            get: recursive(this, key)
-          }
-      }
+    if(typeof output == "boolean")
+      return output;
 
-      case "boolean":
-        return output;
+    if(typeof output == "function")
+      output = { get: output };
+
+    if(typeof output != "object")
+      return;
+      
+    if("explicit" in output && output.explicit){
+      defineProperty(subject, key, output);
+      return false;
     }
 
-    return;
+    if("recursive" in output && output.recursive)
+      output = {
+        ...output,
+        get: recursive(this, key)
+      }
+
+    const desc = output as Instruction.Descriptor<any>;
+
+    if("value" in desc)
+      state[key] = desc.value as any;
+
+    let onGet = desc.get;
+    let onSet = desc.set;
+    let enumerable = desc.enumerable;
+    let suspense = desc.suspense;
+    let set = onSet === false
+      ? undefined
+      : this.ref(key, onSet);
+
+    const get = (local?: Subscriber) => {
+      if(!(key in state) && suspense)
+        throw suspend(this, key);
+
+      const value = state[key];
+
+      if(onGet)
+        return local
+          ? onGet(value, local)
+          : onGet(value)
+
+      return value;
+    }
+
+    defineProperty(subject, key, {
+      enumerable, set, get
+    });
+
+    defineProperty(proxy, key, {
+      enumerable, set,
+      get(){
+        const local = this[LOCAL];
+
+        if(local && !local.watch[key])
+          local.watch[key] = true;
+
+        return get(local);
+      }
+    });
   }
 
   Pending.set(placeholder, setup);

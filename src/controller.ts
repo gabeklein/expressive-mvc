@@ -1,5 +1,5 @@
 import { applyUpdate } from './dispatch';
-import { apply } from './instruction';
+import { Pending } from './instruction/apply';
 import { flush } from './instruction/from';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
@@ -56,7 +56,10 @@ class Controller<T extends Stateful = any> {
       return;
 
     if(typeof entry == "symbol"){
-      apply(this, key, entry);
+      const instruction = Pending.get(entry);
+
+    if(instruction)
+      instruction.call(this, key, this);
       return;
     }
 
