@@ -1,6 +1,6 @@
 import { applyUpdate } from './dispatch';
+import { Instruction } from './instruction/apply';
 import { flush } from './instruction/from';
-import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Callback, RequestCallback } from './types';
