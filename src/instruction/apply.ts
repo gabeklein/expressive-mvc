@@ -20,7 +20,8 @@ declare namespace Instruction {
   type Getter<T> = (state: T, within?: Subscriber) => T;
   type Setter<T> = (value: T, state: any) => boolean | void;
 
-  type Runner<T> = (this: Controller, key: string, on: Controller) => Instruction.Descriptor<T> | boolean | undefined;
+  type Runner<T> = (this: Controller, key: string, on: Controller) =>
+    Instruction.Descriptor<T> | boolean | undefined;
 
   interface Descriptor<T> {
     configurable?: boolean;
@@ -105,7 +106,7 @@ function apply<T = any>(
 
       const local = this[LOCAL];
 
-      if(local && !local.watch[key])
+      if(local && !(key in local.watch))
         local.watch[key] = true;
 
       const value = state[key];

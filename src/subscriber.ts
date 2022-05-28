@@ -17,7 +17,7 @@ export class Subscriber <T extends Stateful = any> {
   public active = false;
   public dependant = new Set<Listener>();
   public watch = {} as {
-    [key in Model.Event<T>]: Callback | true;
+    [key in Model.Event<T>]: Callback | boolean;
   }
 
   constructor(
