@@ -1,11 +1,8 @@
 import { applyUpdate } from './dispatch';
-import { Pending } from './instruction/apply';
+import { apply } from './instruction';
 import { flush } from './instruction/from';
-import { Instruction } from './instruction/types';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
-import { Subscriber } from './subscriber';
-import { suspend } from './suspense';
 import { Callback, RequestCallback } from './types';
 import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
@@ -58,66 +55,32 @@ class Controller<T extends Stateful = any> {
     if(typeof entry == "function")
       return;
 
-    let onGet: Instruction.Getter<any> | undefined;
-    let onSet: Instruction.Setter<any> | false | undefined;
-    let set: ((value: any) => void) | undefined;
-    let enumerable: any;
-    let suspense: boolean | undefined;
-
-    const instruction = Pending.get(entry);
-
-    if(instruction){
-      Pending.delete(entry);
-      delete subject[key];
-      const desc = instruction.call(this, key, this);
-
-      if(desc === false)
-        return;
-
-      if(typeof desc == "object"){
-        if("value" in desc)
-          state[key] = desc.value as any;
-
-        onSet = desc.set;
-        onGet = desc.get;
-        suspense = desc.suspense;
-        enumerable = desc.enumerable;
-      }
+    if(typeof entry == "symbol"){
+      apply(this, key, entry);
+      return;
     }
-    else
-      state[key] = entry;
 
-    if(onSet !== false)
-      set = this.ref(key, onSet);
+    state[key] = entry;
 
-    const get = (local?: Subscriber) => {
-      if(!(key in state) && suspense)
-        throw suspend(this, key);
-
-      const value = state[key];
-
-      if(onGet)
-        return local
-          ? onGet(value, local)
-          : onGet(value)
-
-      return value;
-    }
+    const set = this.ref(key);
 
     defineProperty(subject, key, {
-      enumerable, set, get
+      enumerable: false,
+      get: () => state[key],
+      set
     });
 
     defineProperty(proxy, key, {
-      enumerable, set,
+      enumerable: false,
       get(){
         const local = this[LOCAL];
 
         if(local && !local.watch[key])
           local.watch[key] = true;
 
-        return get(local);
-      }
+        return state[key];
+      },
+      set
     });
   }
 

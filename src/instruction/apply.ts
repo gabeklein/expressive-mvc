@@ -90,7 +90,6 @@ function recursive(source: Controller, key: string){
 
     return context.get(local);
   }
-
 }
 
 export { apply }
