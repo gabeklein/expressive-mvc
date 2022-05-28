@@ -59,14 +59,12 @@ function apply<T = any>(
 
   function setup(this: Controller, key: string){
     const { proxy, state, subject } = this;
+    const control = this;
 
     PENDING.delete(placeholder);
     delete subject[key];
 
     let output = fn.call(this, key, this);
-
-    if(typeof output == "boolean")
-      return output;
 
     if(typeof output == "function")
       output = { get: output };
@@ -90,43 +88,38 @@ function apply<T = any>(
     if("value" in desc)
       state[key] = desc.value as any;
 
-    let onGet = desc.get;
-    let onSet = desc.set;
-    let enumerable = desc.enumerable;
-    let suspense = desc.suspense;
+    const {
+      get: onGet,
+      set: onSet,
+      enumerable,
+      suspense
+    } = desc;
+
     let set = onSet === false
       ? undefined
       : this.ref(key, onSet);
 
-    const get = (local?: Subscriber) => {
+    function get(this: Stateful){
       if(!(key in state) && suspense)
-        throw suspend(this, key);
+        throw suspend(control, key);
+
+      const local = this[LOCAL];
+
+      if(local && !local.watch[key])
+        local.watch[key] = true;
 
       const value = state[key];
 
-      if(onGet)
-        return local
-          ? onGet(value, local)
-          : onGet(value)
+      if(!onGet)
+        return value;
 
-      return value;
+      return local
+        ? onGet(value, local)
+        : onGet(value)
     }
 
-    defineProperty(subject, key, {
-      enumerable, set, get
-    });
-
-    defineProperty(proxy, key, {
-      enumerable, set,
-      get(){
-        const local = this[LOCAL];
-
-        if(local && !local.watch[key])
-          local.watch[key] = true;
-
-        return get(local);
-      }
-    });
+    for(const x of [subject, proxy])
+      defineProperty(x, key, { enumerable, get, set });
   }
 
   PENDING.set(placeholder, setup);
