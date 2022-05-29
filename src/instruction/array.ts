@@ -1,21 +1,53 @@
-import { Subscriber } from "../subscriber";
-import { apply } from "./apply"
+import { Stateful } from '../model';
+import { Subscriber } from '../subscriber';
+import { Callback } from '../types';
+import { apply } from './apply';
+
+interface Managed<T> extends Stateful {}
+
+class Managed<T> extends Array<T> {
+  lastUpdate = [0, 0];
+
+  update: (from: number, to: number) => void;
+
+  constructor(onUpdate: Callback){
+    super();
+
+    this.update = (from: number, to: number) => {
+      this.lastUpdate = [from, to];
+      onUpdate();
+    }
+  }
+
+  push(...items: T[]): number {
+    const length = this.length;
+    const end = super.push(...items);
+
+    this.update(length, end);
+    return end;
+  }
+
+  unshift(...items: T[]): number {
+    const end = super.push(...items);
+    
+    this.update(0, end);
+    return end;
+  }
+
+  splice(start: number, deleteCount?: number): T[];
+  splice(start: number, deleteCount: number, ...items: T[]): T[];
+  splice(start: any, deleteCount: any, ...rest: any[]): T[] {
+    this.update(start, deleteCount !== rest.length ? Infinity : deleteCount);
+
+    return super.splice(start, deleteCount, ...rest);
+  }
+}
 
 function array<T = any>(){
   return apply<T[]>(
     function array(key){
       const context = new WeakMap<Subscriber, any>();
-      const value: T[] = [];
-      const abstract = Object.create(value);
-
-      let lastA = 0;
-      let lastB = 0;
-
-      abstract.push = (...items: any[]) => {
-        lastA = value.length;
-        lastB = value.push(...items);
-        this.update(key);
-      }
+      const value = new Managed<T>(() => this.update(key));
 
       const subscribe = (parent: Subscriber) => {
         let rangeA = 0;
@@ -24,6 +56,8 @@ function array<T = any>(){
         const local = Object.create(value);
         const update = parent.onUpdate(key, this)!;
         const onUpdate = () => {
+          const [lastA, lastB] = value.lastUpdate;
+
           if(rangeA <= lastB && rangeB >= lastA)
             return update;
         }
@@ -45,7 +79,7 @@ function array<T = any>(){
       }
       
       return {
-        value: abstract,
+        value,
         set: false,
         get(value, local){
           if(!local)
