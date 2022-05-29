@@ -131,10 +131,10 @@ function apply<T = any>(
 function recursive(source: Controller, key: string){
   const context = new WeakMap<Subscriber, any>();
 
-  const subscribe = (parent: Subscriber) => {
+  function subscribe(parent: Subscriber){
     let child: Subscriber | undefined;
 
-    const init = () => {
+    function init(){
       if(child){
         child.release();
         parent.dependant.delete(child);
