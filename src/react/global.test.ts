@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react-hooks';
 import { Global } from '..';
 import { Oops } from './global';
 
-describe("singleton", () => {
+describe("init", () => {
   class Test extends Global {
     value = 1;
   }

@@ -172,7 +172,7 @@ describe("tap method", () => {
   })
 })
 
-describe("tap computed", () => {
+describe("tap method computed", () => {
   class Test extends MVC {
     foo = 1;
     bar = 2;
@@ -236,7 +236,7 @@ describe("tap computed", () => {
   })
 })
 
-describe("tap async", () => {
+describe("tap method async", () => {
   class Test extends MVC {
     foo = "bar";
   };
@@ -278,7 +278,7 @@ describe("tap async", () => {
   });
 })
 
-describe("tap suspense", () => {
+describe("tap method suspense", () => {
   class Test extends MVC {
     value?: string = undefined;
   }

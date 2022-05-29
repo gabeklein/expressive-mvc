@@ -82,7 +82,7 @@ it("will throw if not found where required", () => {
   );
 })
 
-it("will eagerly select extension", () => {
+it("will eagerly select extended class", () => {
   render(
     <Provider of={Baz}>
       <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
