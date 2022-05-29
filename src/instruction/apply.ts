@@ -129,9 +129,7 @@ function apply<T = any>(
 }
 
 function recursive(source: Controller, key: string){
-  const context = new WeakMap<Subscriber, any>();
-
-  function subscribe(parent: Subscriber){
+  return forSubscriber((parent, context) => {
     let child: Subscriber | undefined;
 
     function init(){
@@ -157,17 +155,29 @@ function recursive(source: Controller, key: string){
 
     init();
     parent.watch[key] = init;
-  }
+  })
+}
+
+function forSubscriber<T extends any>(
+  fn: (sub: Subscriber, set: WeakMap<Subscriber, T>) => T | undefined
+){
+  const context = new WeakMap<Subscriber, T>();
 
   return (value: any, local: Subscriber | undefined) => {
     if(!local)
       return value;
 
-    if(!context.has(local))
-      subscribe(local);
+    if(!context.has(local)){
+      const output = fn(local, context);
+
+      if(output){
+        context.set(local, output);
+        return output;
+      }
+    }
 
     return context.get(local);
   }
 }
 
-export { apply, Instruction }
+export { apply, forSubscriber, Instruction }

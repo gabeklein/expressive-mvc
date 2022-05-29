@@ -1,7 +1,6 @@
 import { Stateful } from '../model';
-import { Subscriber } from '../subscriber';
 import { Callback } from '../types';
-import { apply } from './apply';
+import { apply, forSubscriber } from './apply';
 
 interface Managed<T> extends Stateful {}
 
@@ -46,50 +45,42 @@ class Managed<T> extends Array<T> {
 function array<T = any>(){
   return apply<T[]>(
     function array(key){
-      const context = new WeakMap<Subscriber, any>();
-      const value = new Managed<T>(() => this.update(key));
+      const array = new Managed<T>(() => this.update(key));
+      const access = forSubscriber(context => {
+        const local = Object.create(array);
+        const update = context.onUpdate(key, this)!;
 
-      const subscribe = (parent: Subscriber) => {
         let rangeA = 0;
         let rangeB = 0;
 
-        const local = Object.create(value);
-        const update = parent.onUpdate(key, this)!;
-        const onUpdate = () => {
-          const [lastA, lastB] = value.lastUpdate;
+        function onUpdate(){
+          const [lastA, lastB] = array.lastUpdate;
 
           if(rangeA <= lastB && rangeB >= lastA)
             return update;
         }
 
         function listen(eventA: number, eventB: number){
-          if(!parent.active){
-            parent.watch[key] = onUpdate;
-            rangeA = Math.min(rangeA, eventA);
-            rangeB = Math.max(rangeB, eventB);
-          }
+          if(context.active)
+            return;
+
+          context.watch[key] = onUpdate;
+          rangeA = Math.min(rangeA, eventA);
+          rangeB = Math.max(rangeB, eventB);
         }
 
         local[Symbol.iterator] = () => {
           listen(0, Infinity);
-          return value[Symbol.iterator]();
+          return array[Symbol.iterator]();
         }
 
-        context.set(parent, local);
-      }
-      
+        return local;
+      })
+
       return {
-        value,
+        get: access,
         set: false,
-        get(value, local){
-          if(!local)
-            return value;
-
-          if(!context.has(local))
-            subscribe(local);
-
-          return context.get(local);
-        }
+        value: array
       }
     }
   )
