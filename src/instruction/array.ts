@@ -1,8 +1,5 @@
-import { Stateful } from '../model';
 import { Callback } from '../types';
 import { apply, forSubscriber } from './apply';
-
-interface Managed<T> extends Stateful {}
 
 class Managed<T> extends Array<T> {
   lastUpdate = [0, 0];
