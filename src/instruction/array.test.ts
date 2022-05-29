@@ -22,3 +22,9 @@ it("will update on push to array", async () => {
   expect(mock).toBeCalledTimes(2);
   expect(mock).toBeCalledWith(["hello"]);
 })
+
+it.todo("will subscribe to a specific slice");
+it.todo("will update only spliced range");
+it.todo("will update all after spliced range");
+it.todo("will watch specific indicies");
+it.todo("will subscribe to model values")
