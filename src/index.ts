@@ -1,4 +1,5 @@
 export { act } from './instruction/act';
+export { array } from './instruction/array';
 export { apply } from './instruction/apply';
 export { from } from './instruction/from';
 export { ref } from './instruction/ref';
