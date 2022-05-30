@@ -33,3 +33,27 @@ export function suspend(
     stack: error.stack
   });
 }
+
+export function mayRetry(fn: () => any): any {
+  const retry = (err: unknown) => {
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  const compute = (): any => {
+    try {
+      const output = fn();
+  
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
+}

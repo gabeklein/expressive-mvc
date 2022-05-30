@@ -1,7 +1,8 @@
 import { apply } from './apply';
 import { issues } from '../issues';
-import { createValueEffect, suspenseBoundary } from '../util';
+import { createValueEffect } from '../util';
 import { Controller } from '../controller';
+import { mayRetry } from '../suspense';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 
@@ -142,7 +143,7 @@ export function pendingFactory(
   let error: any;
 
   const init = () => {
-    const output = suspenseBoundary(() => {
+    const output = mayRetry(() => {
       return fn.call(subject, key, subject);
     });
 
