@@ -1,4 +1,5 @@
 import { issues } from '../issues';
+import { mayRetry } from '../suspense';
 import { defineProperty } from '../util';
 import { apply } from './apply';
 
@@ -27,7 +28,7 @@ function act<T extends Async>(task: T){
     function act(key){
       let pending = false;
 
-      const invoke = (...args: any[]) => {
+      const invoke = async (...args: any[]) => {
         if(pending)
           return Promise.reject(
             Oops.DuplicateAction(key)
@@ -36,12 +37,15 @@ function act<T extends Async>(task: T){
         pending = true;
         this.update(key);
 
-        return new Promise(res => {
-          res(task.apply(this.subject, args));
-        }).finally(() => {
+        try {
+          return await mayRetry(() => (
+            task.apply(this.subject, args)
+          ))
+        }
+        finally {
           pending = false;
           this.update(key);
-        })
+        }
       }
 
       this.state[key] = undefined;

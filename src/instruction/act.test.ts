@@ -1,5 +1,6 @@
 import { act, Model } from '..';
 import { Oops as Instruct } from './act';
+import { set } from './set';
 
 class Test extends Model {
   test = act(this.wait);
@@ -85,4 +86,29 @@ it("will complain if property is redefined", () => {
   const assign = () => state.test = 0 as any;
 
   expect(assign).toThrowError();
+})
+
+it("will internally retry on suspense", async () => {
+  class Test extends Model {
+    value = set<string>();
+
+    getValue = act(async () => {
+      didInvoke();
+      return this.value;
+    })
+  }
+
+  const didInvoke = jest.fn();
+  const test = Test.create();
+  const value = test.getValue();
+
+  expect(didInvoke).toBeCalled();
+  await test.update(true);
+
+  test.value = "foobar";
+
+  await expect(value).resolves.toBe("foobar");
+  await test.update(true);
+
+  expect(didInvoke).toBeCalledTimes(2);
 })
