@@ -2,6 +2,7 @@ import { control, Controller } from './controller';
 import { UPDATE } from './dispatch';
 import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
+import { mayRetry } from './suspense';
 import { Callback, Class, InstanceOf, RequestCallback } from './types';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
@@ -199,20 +200,30 @@ class Model {
     const effect = createEffect(callback);
 
     return control(this, control => {
+      let busy = false;
+      let inject = this.get;
+
+      const invoke = () => {
+        if(busy)
+          return;
+
+        const output = mayRetry(() => {
+          effect.call(inject, inject);
+        })
+
+        if(output instanceof Promise){
+          output.finally(() => busy = false);
+          busy = true;
+        }
+      }
+
       if(!select){
         const sub = new Subscriber(control, () => invoke);
-        const invoke = () => {
-          const x = sub.proxy;
-          effect.call(x, x);
-        }
 
+        inject = sub.proxy;
         invoke();
 
         return sub.commit();
-      }
-
-      const invoke = () => {
-        effect.call(this.get, this.get);
       }
 
       invoke();

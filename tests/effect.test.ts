@@ -1,4 +1,4 @@
-import { from, Model } from '../src';
+import { from, Model, set } from '../src';
 import { Oops } from '../src/util';
 
 describe("explicit", () => {
@@ -303,3 +303,75 @@ describe("implicit", () => {
     expect(attempt).not.toThrowError();
   })
 });
+
+describe("suspense", () => {
+  class Test extends Model {
+    value = set<string>();
+    other = "foo";
+  }
+
+  it("will retry", async () => {
+    const test = Test.create();
+    const didTry = jest.fn();
+    const didInvoke = jest.fn();
+    
+    test.effect($ => {
+      didTry();
+      didInvoke($.value);
+    });
+
+    expect(didTry).toBeCalled();
+    expect(didInvoke).not.toBeCalled();
+
+    test.value = "foobar";
+
+    await test.update();
+    expect(didInvoke).toBeCalledWith("foobar");
+  })
+
+  it("will still subscribe", async () => {
+    const test = Test.create();
+    const didTry = jest.fn();
+    const didInvoke = jest.fn();
+    
+    test.effect($ => {
+      didTry();
+      didInvoke($.value);
+    });
+
+    test.value = "foo";
+
+    await test.update();
+    expect(didInvoke).toBeCalledWith("foo");
+
+    test.value = "bar";
+
+    await test.update();
+    expect(didInvoke).toBeCalledWith("bar");
+    expect(didTry).toBeCalledTimes(3);
+  })
+
+  it("will not update while pending", async () => {
+    const test = Test.create();
+    const didTry = jest.fn();
+    const didInvoke = jest.fn();
+    
+    test.effect($ => {
+      didTry();
+      didInvoke($.value);
+    }, ["value", "other"]);
+
+    expect(didTry).toBeCalledTimes(1);
+
+    test.other = "bar";
+
+    await test.update();
+    expect(didTry).toBeCalledTimes(1);
+
+    test.value = "foo";
+
+    await test.update();
+    expect(didInvoke).toBeCalledWith("foo");
+    expect(didTry).toBeCalledTimes(2);
+  })
+})
