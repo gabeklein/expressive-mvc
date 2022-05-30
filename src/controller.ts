@@ -38,8 +38,23 @@ class Controller<T extends Stateful = any> {
   }
 
   start(){
-    for(const key in this.subject)
-      this.manage(key as unknown as Model.Field<T>);
+    for(const key in this.subject){
+      const { value: entry } = getOwnPropertyDescriptor(this.subject, key)!;
+
+      if(typeof entry == "function")
+        continue;
+  
+      if(typeof entry == "symbol"){
+        const instruction = PENDING.get(entry);
+  
+        if(instruction)
+          instruction.call(this, key, this);
+
+        continue;
+      }
+
+      this.manage(key as any, entry);
+    }
 
     this.emit([]);
   }
@@ -49,22 +64,10 @@ class Controller<T extends Stateful = any> {
     this.onDestroy.forEach(x => x());
   }
 
-  private manage(key: Model.Field<T>){
+  manage(key: Model.Field<T>, value: any){
     const { proxy, state, subject } = this;
-    const { value: entry } = getOwnPropertyDescriptor(subject, key)!;
 
-    if(typeof entry == "function")
-      return;
-
-    if(typeof entry == "symbol"){
-      const instruction = PENDING.get(entry);
-
-    if(instruction)
-      instruction.call(this, key, this);
-      return;
-    }
-
-    state[key] = entry;
+    state[key] = value;
 
     const set = this.ref(key);
 
