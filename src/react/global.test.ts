@@ -23,7 +23,7 @@ describe("init", () => {
   })
 
   it("will throw if cannot get instance", () => {
-    const expected = Oops.GlobalDoesNotExist(Test.name);
+    const expected = Oops.DoesNotExist(Test.name);
 
     expect(() => Test.get()).toThrowError(expected);
   })
@@ -38,7 +38,7 @@ describe("init", () => {
   
   it("will throw if Global does not exist", () => {
     const hook = renderHook(() => Test.tap());
-    const expected = Oops.GlobalDoesNotExist(Test.name);
+    const expected = Oops.DoesNotExist(Test.name);
     
     expect(() => hook.result.current).toThrowError(expected);
   })
@@ -52,7 +52,7 @@ describe("init", () => {
   
   it("will complain already exists", () => {
     Test.create();
-    const expected = Oops.GlobalExists(Test.name);
+    const expected = Oops.AlreadyExists(Test.name);
     
     expect(() => Test.create()).toThrowError(expected);
   })

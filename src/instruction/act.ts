@@ -6,7 +6,7 @@ import { apply } from './apply';
 type Async<T = any> = (...args: any[]) => Promise<T>;
 
 export const Oops = issues({
-  DuplicateAction: (key) =>
+  DuplicatePending: (key) =>
     `Invoked action ${key} but one is already active.`
 })
 
@@ -31,7 +31,7 @@ function act<T extends Async>(task: T){
       const invoke = async (...args: any[]) => {
         if(pending)
           return Promise.reject(
-            Oops.DuplicateAction(key)
+            Oops.DuplicatePending(key)
           )
 
         pending = true;

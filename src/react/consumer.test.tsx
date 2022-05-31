@@ -78,7 +78,7 @@ it("will throw if not found where required", () => {
   )
 
   expect(test).toThrowError(
-    Oops.NothingInContext(Bar.name)
+    Oops.NotFound(Bar.name)
   );
 })
 

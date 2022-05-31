@@ -210,7 +210,7 @@ it("will throw if lackiing `for` prop", () => {
   // @ts-ignore
   const test = () => render(<Provider />);
 
-  expect(test).toThrow(Oops.NoProviderType());
+  expect(test).toThrow(Oops.NoType());
 })
 
 it("will throw on deprecated `of` prop", () => {

@@ -6,7 +6,7 @@ import { useLocal } from './useLocal';
 import { useTap } from './useTap';
 
 export const Oops = issues({
-  BadConsumerProps: () =>
+  BadProps: () =>
     `Provider expects either a render function, 'get' or 'has' props.`
 })
 
@@ -66,7 +66,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   if(typeof callback == "function")
     callback(useLocal(type, !!has));
   else
-    throw Oops.BadConsumerProps()
+    throw Oops.BadProps()
 
   return null;
 }

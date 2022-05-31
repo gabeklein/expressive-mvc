@@ -1,5 +1,5 @@
 import { act, Model } from '..';
-import { Oops as Instruct } from './act';
+import { Oops } from './act';
 import { set } from './set';
 
 class Test extends Model {
@@ -61,7 +61,7 @@ it("will emit method key before/after activity", async () => {
 
 it("will throw immediately if already in-progress", () => {
   const { test } = Test.create();
-  const expected = Instruct.DuplicateAction("test");
+  const expected = Oops.DuplicatePending("test");
 
   test();
   expect(() => test()).rejects.toThrowError(expected);

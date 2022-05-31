@@ -6,10 +6,10 @@ import { apply } from './apply';
 export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
-  ParentRequired: (expects, child) => 
+  Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 
-  UnexpectedParent: (expects, child, got) =>
+  Unexpected: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 })
 
@@ -35,10 +35,10 @@ function parent<T extends typeof Model>(
    
        if(!value){
          if(required !== false)
-           throw Oops.ParentRequired(expected, child);
+           throw Oops.Required(expected, child);
        }
        else if(!(value instanceof Expects))
-         throw Oops.UnexpectedParent(expected, child, value);
+         throw Oops.Unexpected(expected, child, value);
    
        return { value };
      }

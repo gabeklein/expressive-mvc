@@ -9,7 +9,7 @@ export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);
 
 export const Oops = issues({
-  NothingInContext: (name) =>
+  NotFound: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`
 })
 
@@ -19,7 +19,7 @@ export function useLocal<T extends typeof Model>(
   const instance = useLookup().get(Type);
 
   if (!instance && arg !== false)
-    throw Oops.NothingInContext(Type.name);
+    throw Oops.NotFound(Type.name);
 
   return typeof arg == "string" ?
     (instance as any)[arg] :

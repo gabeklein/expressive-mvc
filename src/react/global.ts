@@ -4,10 +4,10 @@ import { Class, InstanceOf } from '../types';
 import { MVC } from './mvc';
 
 export const Oops = issues({
-  GlobalDoesNotExist: (name) =>
+  DoesNotExist: (name) =>
     `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() instead.`,
     
-  GlobalExists: (name) =>
+  AlreadyExists: (name) =>
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
@@ -20,7 +20,7 @@ export class Global extends MVC {
     const Type: typeof Global = this as any;
 
     if(Active.has(Type))
-      throw Oops.GlobalExists(this.name);
+      throw Oops.AlreadyExists(this.name);
 
     const instance = super.create(...args);
 
@@ -65,7 +65,7 @@ export class Global extends MVC {
     const instance = Active.get(this);
 
     if(!instance && arg !== false)
-      throw Oops.GlobalDoesNotExist(this.name);
+      throw Oops.DoesNotExist(this.name);
 
     return (
       typeof arg == "string" ?

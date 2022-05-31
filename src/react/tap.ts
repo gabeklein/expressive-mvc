@@ -7,7 +7,7 @@ import { Global } from './global';
 import { useLookup } from './useLocal';
 
 export const Oops = issues({
-  CantAttachGlobal: (parent, child) =>
+  NotAllowed: (parent, child) =>
     `Global '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
 
   AmbientRequired: (requested, requester, key) =>
@@ -61,7 +61,7 @@ function tap<T extends Peer>(
       const { subject } = this;
 
       if("set" in subject.constructor)
-        throw Oops.CantAttachGlobal(subject, type.name);
+        throw Oops.NotAllowed(subject, type.name);
 
       getPending(subject).push(context => {
         let instance = context.get(type);

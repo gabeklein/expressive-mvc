@@ -1,7 +1,7 @@
 import { from, Global, Model, tap, use } from '..';
 import { mockAsync, mockSuspense } from '../../tests/adapter';
 import { Oops as Suspense } from '../suspense';
-import { Oops } from './from';
+import { Oops as Compute } from './from';
 import { set } from './set';
 
 describe("computed", () => {
@@ -237,7 +237,7 @@ describe("failures", () => {
     const state = Subject.create();
     const attempt = () => state.never;
 
-    const failed = Oops.ComputeFailed(Subject.name, "never", true);
+    const failed = Compute.Failed(Subject.name, "never", true);
 
     expect(attempt).toThrowError();
     expect(warn).toBeCalledWith(failed.message);
@@ -247,8 +247,8 @@ describe("failures", () => {
     const state = Subject.create();
     const attempt = () => state.once("never");
 
-    const failed = Oops.ComputeFailed(Subject.name, "never", true);
-    const early = Oops.ComputedEarly("never");
+    const failed = Compute.Failed(Subject.name, "never", true);
+    const early = Compute.Early("never");
 
     expect(attempt).rejects.toThrowError();
     expect(warn).toBeCalledWith(failed.message);
@@ -268,7 +268,7 @@ describe("failures", () => {
     }
 
     const state = Test.create();
-    const failed = Oops.ComputeFailed(Test.name, "value", false);
+    const failed = Compute.Failed(Test.name, "value", false);
 
     state.once("value");
     state.shouldFail = true;
@@ -291,7 +291,7 @@ describe("failures", () => {
       value = from(this.peer, () => {});
     }
 
-    const expected = Oops.PeerNotAllowed("Test", "value");
+    const expected = Compute.PeerNotAllowed("Test", "value");
 
     expect(() => Test.create()).toThrow(expected);
   })
@@ -389,7 +389,7 @@ describe("factory", () => {
       value = from(factory);
     }
 
-    const expected = Oops.BadComputedSource("Test", "value", factory);
+    const expected = Compute.BadSource("Test", "value", factory);
 
     expect(() => Test.create()).toThrow(expected);
   })
@@ -455,7 +455,7 @@ describe("suspense", () => {
 
   it("will seem to throw error outside react", () => {
     const instance = Test.create();
-    const expected = Suspense.ValueNotReady(instance, "value");
+    const expected = Suspense.NotReady(instance, "value");
     let didThrow: Error | undefined;
 
     try {

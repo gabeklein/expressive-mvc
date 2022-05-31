@@ -1,5 +1,5 @@
 import { Model, parent, use } from '..';
-import { Oops as Parent } from './parent';
+import { Oops } from './parent';
 
 it("creates parent-child relationship", () => {
   class Foo extends Model {
@@ -25,7 +25,7 @@ it("throws when required parent is absent :(", () => {
   const attempt = () => 
     NonStandalone.create();
 
-  const error = Parent.ParentRequired(
+  const error = Oops.Required(
     Detatched.name, NonStandalone.name
   )
 
@@ -53,7 +53,7 @@ it("throws if parent is of incorrect type", () => {
   }
 
   const attempt = () => Unexpected.create();
-  const error = Parent.UnexpectedParent(
+  const error = Oops.Unexpected(
     Expected.name, Adopted.name, Unexpected.name
   )
 

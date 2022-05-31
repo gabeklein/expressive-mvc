@@ -194,7 +194,7 @@ describe("singleton", () => {
     }
 
     const attempt = () => TestGlobal.create();
-    const issue = Oops.CantAttachGlobal(TestGlobal.name, Normal.name);
+    const issue = Oops.NotAllowed(TestGlobal.name, Normal.name);
 
     expect(attempt).toThrowError(issue);
   })

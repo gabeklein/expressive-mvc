@@ -200,7 +200,7 @@ describe("callback", () => {
       property = set<any>(undefined, () => 3);
     }
 
-    const expected = Util.BadEffectCallback();
+    const expected = Util.BadCallback();
     const state = Subject.create();
 
     expect(() => state.property = "bar").toThrow(expected);
@@ -290,7 +290,7 @@ describe("memo", () => {
       })
     }
 
-    const failed = Assign.FactoryFailed(Test.name, "memoized");
+    const failed = Assign.Failed(Test.name, "memoized");
   
     expect(() => Test.create()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);
@@ -340,7 +340,7 @@ describe("async", () => {
     }
 
     const instance = Test.create();
-    const exprected = Assign.ValueNotReady(instance, "value");
+    const exprected = Assign.NotReady(instance, "value");
 
     expect(() => instance.value).toThrowError(exprected);
     promise.resolve();

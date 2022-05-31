@@ -11,10 +11,10 @@ export const Oops = issues({
   BadFactory: () =>
     `Set instruction can only accept a factory or undefined.`,
 
-  ValueNotReady: (model, key) =>
+  NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
 
-  FactoryFailed: (model, key) =>
+  Failed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`
 })
 
@@ -167,7 +167,7 @@ export function pendingFactory(
       return undefined;
 
     const issue =
-      Oops.ValueNotReady(subject, key);
+      Oops.NotReady(subject, key);
 
     Object.assign(pending, {
       message: issue.message,
@@ -182,7 +182,7 @@ export function pendingFactory(
       init();
     }
     catch(err){
-      Oops.FactoryFailed(subject, key).warn();
+      Oops.Failed(subject, key).warn();
       throw err;
     }
 

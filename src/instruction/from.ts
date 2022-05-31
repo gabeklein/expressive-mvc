@@ -8,16 +8,16 @@ import { defineProperty, getOwnPropertyDescriptor } from '../util';
 import { apply } from './apply';
 
 export const Oops = issues({
-  BadComputedSource: (model, property, got) =>
+  BadSource: (model, property, got) =>
     `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
 
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
-  ComputeFailed: (parent, property, initial) =>
+  Failed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
 
-  ComputedEarly: (property) => 
+  Early: (property) => 
     `Note: Computed values don't run until accessed, except when subscribed to. '${property}' getter may have run earlier than intended.`
 });
 
@@ -89,7 +89,7 @@ function from<R, T>(
 
       // Regular function is too ambiguous so not allowed.
       else
-        throw Oops.BadComputedSource(subject, key, source);
+        throw Oops.BadSource(subject, key, source);
 
       let sub: Subscriber;
     
@@ -110,7 +110,7 @@ function from<R, T>(
           return setter!.call(sub.proxy, sub.proxy);
         }
         catch(err){
-          Oops.ComputeFailed(subject, key, !!initial).warn();
+          Oops.Failed(subject, key, !!initial).warn();
           throw err;
         }
       }
@@ -162,7 +162,7 @@ function from<R, T>(
         }
         catch(e){
           if(early)
-            Oops.ComputedEarly(key).warn();
+            Oops.Early(key).warn();
     
           throw e;
         }

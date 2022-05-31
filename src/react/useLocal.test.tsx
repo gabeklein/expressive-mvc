@@ -33,7 +33,7 @@ describe("get", () => {
     const test = () => render(<Hook />);
 
     expect(test).toThrowError(
-      Oops.NothingInContext(Test.name)
+      Oops.NotFound(Test.name)
     );
   })
 })

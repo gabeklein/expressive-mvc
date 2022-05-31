@@ -11,7 +11,7 @@ import { use } from './use';
 import { LookupContext, useLookup } from './useLocal';
 
 export const Oops = issues({
-  NoProviderType: () =>
+  NoType: () =>
     "Provider 'of' prop must be Model, typeof Model or a collection of them.",
 
   PropDeprecated: () =>
@@ -71,7 +71,7 @@ function useNewContext(
 
   return React.useMemo(() => {
     if(!inject)
-      throw Oops.NoProviderType();
+      throw Oops.NoType();
     
     const context = from.push(inject);
 

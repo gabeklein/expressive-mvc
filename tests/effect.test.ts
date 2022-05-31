@@ -285,7 +285,7 @@ describe("implicit", () => {
 
   it("will throw if effect returns non-function", () => {
     const state = TestValues.create();
-    const expected = Oops.BadEffectCallback();
+    const expected = Oops.BadCallback();
     const attempt = () => {
       // @ts-ignore
       state.effect(() => "foobar");

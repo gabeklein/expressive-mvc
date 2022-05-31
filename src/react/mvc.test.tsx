@@ -30,7 +30,7 @@ describe("get method", () => {
 
   it("will complain if not-found in expect mode", () => {
     const { result } = renderHook(() => Test.get(true));
-    const expected = Oops.GlobalDoesNotExist(Test.name);
+    const expected = Oops.DoesNotExist(Test.name);
 
     expect(() => result.current).toThrowError(expected);
   })

@@ -4,7 +4,7 @@ import { Model } from './model';
 import type { Callback } from './types';
 
 export const Oops = issues({
-  BadEffectCallback: () =>
+  BadCallback: () =>
     `Callback for effect-callback may only return a function.`
 })
 
@@ -68,7 +68,7 @@ export function createEffect(
       unSet = undefined;
 
     if(unSet && typeof unSet !== "function")
-      throw Oops.BadEffectCallback()
+      throw Oops.BadCallback()
   }
 }
 
@@ -96,6 +96,6 @@ export function createValueEffect<T = any>(
     if(typeof out == "function")
       unSet = out;
     else
-      throw Oops.BadEffectCallback()
+      throw Oops.BadCallback()
   }
 }
