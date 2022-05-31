@@ -347,7 +347,3 @@ class Model {
 }
 
 export { Model }
-
-defineLazy(Model, CONTROL, function(){
-  return new Controller(this);
-})
