@@ -5,7 +5,7 @@ import { render } from '../../tests/adapter';
 import { Model } from '../model';
 import { Consumer } from './consumer';
 import { MVC } from './mvc';
-import { Oops as Provide, Provider } from './provider';
+import { Oops, Provider } from './provider';
 
 class Foo extends MVC {
   value?: string = undefined;
@@ -206,9 +206,16 @@ it("will provide a mix of state and models", () => {
   )
 })
 
-it("will throw if no `of` or `for` prop given", () => {
+it("will throw if lackiing `for` prop", () => {
   // @ts-ignore
   const test = () => render(<Provider />);
 
-  expect(test).toThrow(Provide.NoProviderType());
+  expect(test).toThrow(Oops.NoProviderType());
+})
+
+it("will throw on deprecated `of` prop", () => {
+  // @ts-ignore
+  const test = () => render(<Provider of={Foo} />);
+
+  expect(test).toThrow(Oops.PropDeprecated());
 })
