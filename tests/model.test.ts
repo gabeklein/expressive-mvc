@@ -25,15 +25,26 @@ it('will send arguments to constructor', () => {
   expect(state.value).toBe(3);
 })
   
-it('defines get/set as circular references', async () => {
+it('will assign get as a circular reference', async () => {
   const state = Subject.create();
   
   expect(state.get.value).toBe(1);
 
-  state.set.value = 2;
+  state.value = 2;
   await state.update(true);
   
   expect(state.get.value).toBe(2)
+})
+  
+it('will assign set as a utility', async () => {
+  const state = Subject.create();
+  
+  expect(state.value).toBe(1);
+
+  state.set("value", 2);
+  await state.update(true);
+  
+  expect(state.value).toBe(2)
 })
 
 it("will ignore getters and setters", () => {

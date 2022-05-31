@@ -1,4 +1,4 @@
-import { control, Controller } from './controller';
+import { control, Controller, ready } from './controller';
 import { UPDATE } from './dispatch';
 import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
@@ -56,6 +56,13 @@ declare namespace Model {
       never;
   }[keyof T];
 
+  export type Refs<T extends Model> = {
+    <K extends Field<T>>(key: K, value: T[K]): void;
+  } & { 
+    // TODO: Type sensitivity
+    [P in Field<T>]: (next: any) => void;
+  };
+
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
    * 
@@ -100,11 +107,12 @@ interface Model extends Stateful {
   get: this;
 
   /**
-  * Circular reference to `this` controller.
+  * Setter utility
   * 
-  * Shortcut is mainly to update values, while having destructured already.
+  * Can be used to set (and force-update) values.
+  * Shortcut to update values, contains refs for all controlled values.
   */
-  set: this;
+  set: Model.Refs<this>;
 }
 
 class Model {
@@ -112,9 +120,22 @@ class Model {
   static [WHY]: readonly string[];
 
   constructor(){
-    define(this, CONTROL, new Controller(this));
+    const control = new Controller(this);
+
+    define(this, CONTROL, control);
     define(this, "get", this);
-    define(this, "set", this);
+    defineLazy(this, "set", () => {
+      const assign = (key: any, value: any) => {
+        control.update(key, value);
+      }
+
+      ready(control);
+      
+      for(const key of getOwnPropertyNames(control.proxy))
+        define(assign, key, control.ref(key as any));
+
+      return assign;
+    });
   }
 
   get [STATE]() {

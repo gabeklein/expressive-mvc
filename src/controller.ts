@@ -39,6 +39,8 @@ class Controller<T extends Stateful = any> {
   }
 
   start(){
+    READY.add(this);
+
     for(const key in this.subject){
       const { value: entry } = getOwnPropertyDescriptor(this.subject, key)!;
 
@@ -198,33 +200,33 @@ function control<T extends {}>(subject: T): Controller<T & Stateful>;
 
 function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   let control = subject[CONTROL];
-  const ready = READY.has(control);
 
   if(!control){
     control = new Controller(subject as unknown as Stateful);
     define(subject, CONTROL, control);
   }
 
-  if(!cb){
-    if(!ready){
-      READY.add(control);
-      control.start();
-    }
-
-    return control;
-  }
-
-  if(!ready){
-    let done: Callback | void;
-
-    control.requestUpdate(() => {
-      done = cb(control);
-    });
-
-    return () => done && done();
-  }
-
-  return cb(control);
+  return ready(control, cb);
 }
 
-export { PENDING, Controller, control }
+function ready<T extends Stateful>(
+  control: Controller<T>, cb?: EnsureCallback<T>){
+
+  const ready = READY.has(control);
+
+  if(!ready){
+    if(cb){
+      let done: Callback | void;
+
+      control.requestUpdate(() => done = cb(control));
+  
+      return () => done && done();
+    }
+
+    control.start();
+  }
+
+  return cb ? cb(control) : control;
+}
+
+export { PENDING, Controller, control, ready }
