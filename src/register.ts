@@ -30,7 +30,7 @@ export class Lookup {
   public get(T: typeof Model){
     return (this as any)[this.key(T)];
   }
-  
+
   public push(I: Model | typeof Model | Collection){
     const next = create(this) as this;
 

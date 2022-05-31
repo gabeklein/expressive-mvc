@@ -19,12 +19,12 @@ function use <T extends Model> (): T | undefined;
   * Create a new child instance of model.
   */
 function use <T extends Class> (Type: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T>;
- 
+
  /**
   * Create a managed child from factory function.
   */
 function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
- 
+
  /**
   * Create child-instance relationship with provided model.
   *
@@ -42,7 +42,7 @@ function use<T extends typeof Model>(
   return apply(
     function use(key){
       const { subject } = this;
-  
+
       const onUpdate = (next: {} | undefined) => {
         this.state[key] = next;
 
@@ -50,13 +50,13 @@ function use<T extends typeof Model>(
           Parent.set(next, subject);
           control(next);
         }
-  
+
         if(typeof argument == "function")
           argument(next as InstanceOf<T>);
 
         return true;
       }
-  
+
       if(input){
         const value =
           Model.isTypeof(input)
@@ -73,7 +73,7 @@ function use<T extends typeof Model>(
         if(value)
           onUpdate(value);
       }
-  
+
       return {
         set: onUpdate,
         recursive: true

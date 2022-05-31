@@ -54,7 +54,7 @@ describe("meta method", () => {
   class Child extends MVC {
     value = "foo";
   }
-  
+
   class Parent extends MVC {
     static value = "foo";
     static value2 = "bar";
@@ -62,7 +62,7 @@ describe("meta method", () => {
   }
 
   beforeEach(() => Parent.value = "foo");
-  
+
   it('will track static values', async () => {
     const render = renderHook(() => {
       const meta = Parent.meta();
@@ -79,7 +79,7 @@ describe("meta method", () => {
     await render.waitForNextUpdate(opts);
     expect(render.result.current).toBe("baz");
   })
-  
+
   it('will track specific value', async () => {
     const render = renderHook(() => {
       return Parent.meta(x => x.value2);
@@ -101,19 +101,19 @@ describe("meta method", () => {
       void meta.child.value;
       return meta;
     });
-  
+
     expect(current.child.value).toBe("foo");
-  
+
     // Will refresh on sub-value change.
     current.child.value = "bar";
     await waitForNextUpdate(opts);
     expect(current.child.value).toBe("bar");
-  
+
     // Will refresh on repalcement.
     current.child = new Child();
     await waitForNextUpdate(opts);
     expect(current.child.value).toBe("foo");
-  
+
     // Fresh subscription still works.
     current.child.value = "bar";
     await waitForNextUpdate(opts);
@@ -127,12 +127,12 @@ describe("tap method", () => {
     empty = undefined;
     child = use(Child);
   }
-  
+
   class Child extends MVC {
     value = "foo"
     grandchild = new GrandChild();
   }
-  
+
   class GrandChild extends MVC {
     value = "bar"
   }
@@ -142,30 +142,30 @@ describe("tap method", () => {
 
     const { result, waitForNextUpdate } =
       renderHook(() => parent.tap("value"))
-  
+
     expect(result.current).toBe("foo");
-  
+
     parent.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
   })
-  
+
   it('will access child controller', async () => {
     const parent = Parent.create();
     const { result, waitForNextUpdate } = renderHook(() => {
       return parent.tap("child").value;
     })
-  
+
     expect(result.current).toBe("foo");
-  
+
     parent.child.value = "bar"
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
-  
+
     parent.child = new Child();
     await waitForNextUpdate(opts);
     expect(result.current).toBe("foo");
-  
+
     parent.child.value = "bar"
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
@@ -198,7 +198,7 @@ describe("tap method computed", () => {
     const parent = Test.create();
     const { result, waitForNextUpdate } =
       renderHook(() => parent.tap(x => x.foo + x.bar));
-  
+
     expect(result.current).toBe(3);
 
     parent.foo = 2;
@@ -292,7 +292,7 @@ describe("tap method suspense", () => {
       instance.tap("value", true);
       promise.resolve();
     })
-  
+
     test.assertDidSuspend(true);
 
     instance.value = "foo!";
@@ -312,14 +312,14 @@ describe("tap method suspense", () => {
     test.renderHook(() => {
       promise.resolve();
       didRender();
-    
+
       instance.tap(state => {
         didCompute();
         if(state.value == "foobar")
           return true;
       }, true);
     })
-  
+
     test.assertDidSuspend(true);
 
     expect(didCompute).toBeCalledTimes(1);
@@ -347,7 +347,7 @@ describe("tap method suspense", () => {
         await promise.await();
       }, true);
     })
-  
+
     test.assertDidSuspend(true);
 
     promise.resolve();

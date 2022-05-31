@@ -84,12 +84,12 @@ export function createValueEffect<T = any>(
   return function(this: any, value: any){
     if(typeof unSet == "function")
       unSet(value);
-    
+
     const out = callback.call(this, value, this);
-    
+
     if(typeof out == "boolean")
       return out;
-    
+
     if(!out || out instanceof Promise)
       return;
 

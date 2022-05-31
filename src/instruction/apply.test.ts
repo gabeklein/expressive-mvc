@@ -53,9 +53,9 @@ describe("instruction", () => {
     const ran = instance.didRunGetter;
 
     instance.effect(x => void x.property);
-    
+
     expect(ran).toBeCalledWith("property");
-    
+
     void instance.property;
 
     expect(ran).toBeCalledTimes(2);
@@ -72,7 +72,7 @@ describe("getter", () => {
     }
 
     const instance = Test.create();
-    
+
     expect(mockApply).toBeCalledWith(
       "property", expect.any(Controller)
     );
@@ -139,7 +139,7 @@ describe("custom", () => {
     const state = instance[STATE];
 
     expect(instance.property).toBe("foobar");
-    
+
     instance.property = "test";
     expect(didSetValue).toBeCalledWith("test", state);
     expect(instance.property).toBe("test");
@@ -153,7 +153,7 @@ describe("custom", () => {
 
   it("will delegate value if returns boolean", async () => {
     let shouldUpdate = true;
-  
+
     class Test extends Model {
       property = apply(key => {
         return {
@@ -169,7 +169,7 @@ describe("custom", () => {
     const instance = Test.create();
 
     expect(instance.property).toBe(0);
-    
+
     instance.property = 10;
     expect(instance.property).toBe(20);
     await instance.update(true);

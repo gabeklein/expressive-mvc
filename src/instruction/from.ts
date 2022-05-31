@@ -92,19 +92,19 @@ function from<R, T>(
         throw Oops.BadSource(subject, key, source);
 
       let sub: Subscriber;
-    
+
       const setter = arg1;
       const info: GetterInfo = { key, parent, priority: 1 };
-    
+
       let register = USED.get(parent)!;
-    
+
       if(!register){
         register = new Map<string, GetterInfo>();
         USED.set(parent, register);
       }
-    
+
       register.set(key, info);
-    
+
       function compute(initial?: boolean){
         try {
           return setter!.call(sub.proxy, sub.proxy);
@@ -114,10 +114,10 @@ function from<R, T>(
           throw err;
         }
       }
-    
+
       function update(){
         let value;
-    
+
         try {
           value = compute(false);
         }
@@ -131,56 +131,56 @@ function from<R, T>(
           }
         }
       }
-    
+
       function defer(_key: string, from: Controller){
         let pending = KEYS.get(from);
-    
+
         if(!pending)
           KEYS.set(from, pending = []);
-    
+
         if(info.parent !== from)
           update();
         else {
           const after = pending.findIndex(peer => (
             info.priority > INFO.get(peer)!.priority
           ));
-    
+
           pending.splice(after + 1, 0, update);
         }
       }
-    
+
       function create(early?: boolean){
         sub = new Subscriber(getSource(), defer);
-    
+
         defineProperty(state, key, {
           value: undefined,
           writable: true
         })
-    
+
         try {
           return state[key] = compute(true);
         }
         catch(e){
           if(early)
             Oops.Early(key).warn();
-    
+
           throw e;
         }
         finally {
           sub.commit();
-    
+
           for(const key in sub.watch){
             const peer = register.get(key);
-        
+
             if(peer && peer.priority >= info.priority)
               info.priority = peer.priority + 1;
           }
         }
       }
-    
+
       INIT.add(create);
       INFO.set(update, info);
-    
+
       defineProperty(state, key, {
         get: create,
         configurable: true,
@@ -207,7 +207,7 @@ export function ensure(
   for(const key of keys){
     const desc = getOwnPropertyDescriptor(on.state, key);
     const getter = desc && desc.get;
-  
+
     if(INIT.has(getter!))
       (getter as Initial)(true);
   }

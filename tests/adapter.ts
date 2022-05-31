@@ -19,7 +19,7 @@ export function subscribeTo<T extends Source.Model>(
 
   // ignore initial scan-phase
   didTrigger.mockReset();
-  
+
   return async (isExpected = true) => {
     await new Promise(res => setTimeout(res, 0));
 
@@ -91,7 +91,7 @@ export function mockSuspense(){
     },
     renderHook(fn: () => void){
       renderHook = fn;
-  
+
       render(
         createElement(Suspense, {
           fallback: createElement(Waiting),

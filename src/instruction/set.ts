@@ -44,10 +44,10 @@ function set <T = any>(): T;
   */
 function set <T> (value: undefined, required: false): T | undefined;
 function set <T> (value: undefined, required?: boolean): T;
- 
+
 function set <T> (value: undefined, onUpdate: set.Callback<T>): T | undefined;
 function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefined;
- 
+
  /**
   * Set property with an async function.
   * 
@@ -65,13 +65,13 @@ function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefi
   */
 function set <T>(factory: set.Factory<Promise<T>>, required: false): T | undefined;
 function set <T, S>(factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
- 
+
 function set <T>(factory: set.Factory<Promise<T>>, required?: boolean): T;
 function set <T, S>(factory: set.Factory<Promise<T>, S>, required?: boolean): T;
- 
+
 function set <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
- 
+
  /**
   * Set property with a factory function.
   * 
@@ -86,10 +86,10 @@ function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T
   */
 function set <T>(factory: set.Factory<T>, required: false): T | undefined;
 function set <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
- 
+
 function set <T>(factory: set.Factory<T>, required?: boolean): T;
 function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
- 
+
 function set <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
 
@@ -122,7 +122,7 @@ function set(
           if(value === undefined && required)
             throw Oops.NonOptional(this.subject, key);
         }
-  
+
       return {
         set,
         get,

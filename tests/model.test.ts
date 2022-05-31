@@ -24,26 +24,26 @@ it('will send arguments to constructor', () => {
 
   expect(state.value).toBe(3);
 })
-  
+
 it('will assign get as a circular reference', async () => {
   const state = Subject.create();
-  
+
   expect(state.is.value).toBe(1);
 
   state.value = 2;
   await state.update(true);
-  
+
   expect(state.is.value).toBe(2)
 })
-  
+
 it('will assign set as a utility', async () => {
   const state = Subject.create();
-  
+
   expect(state.value).toBe(1);
 
   state.set("value", 2);
   await state.update(true);
-  
+
   expect(state.value).toBe(2)
 })
 
@@ -64,7 +64,7 @@ it("will ignore getters and setters", () => {
 
 it('will update when a value changes', async () => {
   const state = Subject.create();
-  
+
   expect(state.value).toBe(1);
 
   state.value = 2
@@ -75,7 +75,7 @@ it('will update when a value changes', async () => {
 
 it('will not update if value is same', async () => {
   const state = Subject.create();
-  
+
   expect(state.value).toBe(1);
 
   state.value = 1
@@ -85,14 +85,14 @@ it('will not update if value is same', async () => {
 it('accepts update from within a method', async () => {
   class Subject extends Model {
     value = 1;
-  
+
     setValue = (to: number) => {
       this.value = to;
     }
   }
 
   const state = Subject.create();
-  
+
   state.setValue(3);
   await state.update(true);
 

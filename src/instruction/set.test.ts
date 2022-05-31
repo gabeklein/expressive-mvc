@@ -94,7 +94,7 @@ describe("empty", () => {
       instance.tap("foobar");
       promise.resolve();
     })
-  
+
     test.assertDidSuspend(true);
 
     instance.foobar = "foo!";
@@ -118,7 +118,7 @@ describe("empty", () => {
     test.renderHook(() => {
       instance.tap("foobar");
     })
-  
+
     test.assertDidRender(true);
   })
 })
@@ -134,7 +134,7 @@ describe("callback", () => {
     const state = Subject.create();
     const callback = jest.fn()
     const event = jest.fn();
-  
+
     expect(callback).not.toBeCalled();
     state.once("test", event);
 
@@ -144,7 +144,7 @@ describe("callback", () => {
     await state.update(true)
     expect(event).toBeCalledWith(1, "test");
   })
-  
+
   it('will invoke return-callback on overwrite', async () => {
     class Subject extends Model {
       test = set<number>(undefined, () => {
@@ -153,10 +153,10 @@ describe("callback", () => {
         }
       });
     }
-    
+
     const callback = jest.fn()
     const state = Subject.create();
-  
+
     state.test = 1;
 
     await state.update(true);
@@ -166,17 +166,17 @@ describe("callback", () => {
     await state.update(true);
     expect(callback).toBeCalledWith(true);
   })
-  
+
   it('will assign a default value', async () => {
     class Subject extends Model {
       test = set(() => "foo", value => {
         callback(value);
       });
     }
-    
+
     const callback = jest.fn()
     const state = Subject.create();
-  
+
     expect(state.test).toBe("foo");
     state.test = "bar";
 
@@ -215,10 +215,10 @@ describe("intercept", () => {
         return false;
       });
     }
-    
+
     const callback = jest.fn()
     const state = Subject.create();
-  
+
     expect(state.test).toBe("foo");
     state.test = "bar";
 
@@ -231,9 +231,9 @@ describe("intercept", () => {
     class Subject extends Model {
       test = set(() => "foo", value => true);
     }
-  
+
     const state = Subject.create();
-  
+
     expect(state.test).toBe("foo");
     state.test = "bar";
 
@@ -291,7 +291,7 @@ describe("memo", () => {
     }
 
     const failed = Assign.Failed(Test.name, "memoized");
-  
+
     expect(() => Test.create()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);
   })
@@ -323,7 +323,7 @@ describe("async", () => {
       void instance.tap().value;
       didRender.resolve();
     })
-  
+
     test.assertDidSuspend(true);
 
     promise.resolve();
@@ -380,7 +380,7 @@ describe("async", () => {
 
     expect(error).toBe("oh no");
   })
-  
+
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
@@ -398,7 +398,7 @@ describe("async", () => {
 describe("nested suspense", () => {
   const greet = mockAsync<string>();
   const name = mockAsync<string>();
-  
+
   class Mock extends Model {
     greet = set(greet.await);
     name = set(name.await);
@@ -413,7 +413,7 @@ describe("nested suspense", () => {
         return this.greet + " " + this.name;
       });
     }
-    
+
     const test = Test.create();
     const pending = ensure(() => test.value);
 
@@ -436,7 +436,7 @@ describe("nested suspense", () => {
         return this.greet + " " + this.name;
       });
     }
-    
+
     const test = Test.create();
     const pending = ensure(() => test.value);
 
@@ -459,7 +459,7 @@ describe("nested suspense", () => {
         return this.greet + " " + this.name;
       });
     }
-    
+
     const test = Test.create();
 
     await test.once("value");

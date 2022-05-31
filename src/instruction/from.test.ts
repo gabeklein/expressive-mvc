@@ -12,7 +12,7 @@ describe("computed", () => {
   class Subject extends Model {
     child = use(Child);
     seconds = 0;
-    
+
     minutes = from(this, state => {
       return Math.floor(state.seconds / 60);
     })
@@ -21,23 +21,23 @@ describe("computed", () => {
       return state.child.value;
     })
   }
-  
+
   it('will reevaluate when inputs change', async () => {
     const state = Subject.create();
-  
+
     state.seconds = 30;
-  
+
     await state.update(true);
-  
+
     expect(state.seconds).toEqual(30);
     expect(state.minutes).toEqual(0);
-  
+
     await state.update(false);
-    
+
     state.seconds = 60;
-  
+
     await state.update(true);
-  
+
     expect(state.seconds).toEqual(60);
     expect(state.minutes).toEqual(1);
   })
@@ -46,7 +46,7 @@ describe("computed", () => {
     const state = Subject.create();
 
     expect(state.nested).toBe("foo");
-  
+
     state.child.value = "bar";
     await state.update(true);
 
@@ -189,9 +189,9 @@ describe("computed", () => {
   it("will create a computed from method", async () => {
     class Hello extends Model {
       friend = "World";
-  
+
       greeting = from(() => this.generateGreeting);
-  
+
       generateGreeting(){
         return `Hello ${this.friend}!`;
       }
@@ -384,7 +384,7 @@ describe("factory", () => {
     function factory(){
       return () => "foobar";
     }
-    
+
     class Test extends Model {
       value = from(factory);
     }
@@ -429,7 +429,7 @@ describe("suspense", () => {
     class Test extends Model {
       source?: string = undefined;
       value = from(() => this.getValue, true);
-  
+
       getValue(){
         return this.source;
       }
@@ -511,7 +511,7 @@ describe("suspense", () => {
 
     // expect no action - value still is undefined
     test.assertDidRender(false);
-  
+
     instance.source = "foobar!";
 
     // we do expect a render this time
@@ -523,7 +523,7 @@ describe("suspense", () => {
   it("will return undefined if not required", async () => {
     const promise = mockAsync<string>();
     const mock = jest.fn();
-    
+
     class Test extends Model {
       value = set(promise.await, false);
     }
@@ -557,7 +557,7 @@ describe("external", () => {
     class Test extends Model {
       value = from(peer, state => state.value + 1);
     }
-    
+
     const test = Test.create();
 
     expect(test.value).toBe(2);
@@ -598,7 +598,7 @@ describe("external", () => {
     class Test extends Model {
       value = from(Peer, state => state.value + 1);
     }
-    
+
     const test = Test.create();
 
     expect(test.value).toBe(2);

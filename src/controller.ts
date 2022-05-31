@@ -17,7 +17,7 @@ export const Oops = issues({
 
 declare namespace Controller {
   type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => RequestCallback | void;
-  
+
   // TODO: implement value type
   type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
 }
@@ -46,10 +46,10 @@ class Controller<T extends Stateful = any> {
 
       if(typeof entry == "function")
         continue;
-  
+
       if(typeof entry == "symbol"){
         const instruction = PENDING.get(entry);
-  
+
         if(instruction)
           instruction.call(this, key, this);
 
@@ -213,7 +213,7 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       let done: Callback | void;
 
       control.requestUpdate(() => done = cb(control));
-  
+
       return () => done && done();
     }
 

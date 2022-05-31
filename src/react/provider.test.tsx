@@ -81,7 +81,7 @@ it("will refresh render function as a subscriber", async () => {
     test.value = "foobar";
     await test.update(true);
   })
-  
+
   expect(didRender).toBeCalledWith("foobar");
 })
 
@@ -184,7 +184,6 @@ it("will not destroy given instance on unmount", () => {
   rendered.unmount();
   expect(didUnmount).not.toBeCalled();
 })
-
 
 it("will create all models in given array", () => {
   render(

@@ -19,18 +19,18 @@ describe("explicit", () => {
       "value3",
       "value4",
     ]);
-  
+
     state.value1 = 2;
 
     // wait for update event, thus queue flushed
     await state.update()
-    
+
     state.value2 = 3;
     state.value3 = 4;
 
     // wait for update event to flush queue
     await state.update()
-    
+
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(3)
   })
@@ -40,12 +40,12 @@ describe("explicit", () => {
     const mock = jest.fn();
 
     state.effect(mock, ["value1", "value2"]);
-  
+
     state.value1 = 2;
     state.value2 = 3;
 
     await state.update()
-    
+
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
@@ -55,11 +55,11 @@ describe("explicit", () => {
     const mock = jest.fn();
 
     state.effect(mock, ["value3", "value4"]);
-  
+
     state.value3 = 4;
 
     await state.update()
-    
+
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
@@ -75,7 +75,7 @@ describe("explicit", () => {
 
     const state = Test.create();
     const mock = jest.fn();
-    
+
     state.effect(state.testEffect, ["value1"]);
 
     expect(mock).not.toBeCalled();
@@ -116,7 +116,7 @@ describe("explicit", () => {
     const test = Test.create();
 
     test.effect(didCreate, []);
-    
+
     expect(didCreate).toBeCalled();
   })
 
@@ -166,7 +166,7 @@ describe("implicit", () => {
       void value1, value2, value3;
       mock();
     });
-  
+
     state.value1 = 2;
     await state.update();
 
@@ -176,7 +176,7 @@ describe("implicit", () => {
     state.value2 = 4;
     state.value3 = 4;
     await state.update();
-  
+
     /**
      * must invoke once to detect subscription
      * 
@@ -201,7 +201,7 @@ describe("implicit", () => {
     }
 
     state.effect(testEffect);
-  
+
     state.value1 = 2;
     await state.update();
 
@@ -224,12 +224,12 @@ describe("implicit", () => {
       void self.value2;
       mock();
     });
-  
+
     state.value1 = 2;
     state.value2 = 3;
 
     await state.update()
-    
+
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
@@ -243,11 +243,11 @@ describe("implicit", () => {
       void self.value4;
       mock();
     });
-  
+
     state.value3 = 4;
 
     await state.update()
-    
+
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
@@ -314,7 +314,7 @@ describe("suspense", () => {
     const test = Test.create();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
-    
+
     test.effect($ => {
       didTry();
       didInvoke($.value);
@@ -333,7 +333,7 @@ describe("suspense", () => {
     const test = Test.create();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
-    
+
     test.effect($ => {
       didTry();
       didInvoke($.value);
@@ -355,7 +355,7 @@ describe("suspense", () => {
     const test = Test.create();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
-    
+
     test.effect($ => {
       didTry();
       didInvoke($.value);

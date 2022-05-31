@@ -137,7 +137,7 @@ class Model {
       const assign = (key: any, value: any) => {
         controller.update(key, value);
       }
-      
+
       for(const key of getOwnPropertyNames(controller.proxy))
         define(assign, key, controller.ref(key as any));
 
@@ -289,7 +289,7 @@ class Model {
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
     const { state } = control(this);
     const output = {} as Model.Values<this, P>;
-    
+
     if(!subset)
       subset = getOwnPropertyNames(state) as P[];
 

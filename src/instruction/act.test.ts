@@ -22,7 +22,7 @@ it("will pass arguments to wrapped function", async () => {
   const control = Test.create();
   const input = Symbol("unique");
   const output = control.test(input);
-  
+
   await expect(output).resolves.toBe(input);
 })
 

@@ -6,7 +6,7 @@ import { MVC } from './mvc';
 export const Oops = issues({
   DoesNotExist: (name) =>
     `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() instead.`,
-    
+
   AlreadyExists: (name) =>
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
@@ -60,7 +60,7 @@ export class Global extends MVC {
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
   static get <T extends Class, K extends Model.Field<InstanceOf<T>>> (this: T, key: K): InstanceOf<T>[K];
-   
+
   static get(arg?: boolean | string){
     const instance = Active.get(this);
 

@@ -14,7 +14,7 @@ declare namespace Consumer {
   type HasProps<E extends Class> = {
       /** @deprecated - use for instead */
       of?: never;
-      
+
       /** Type of controller to fetch from context. */
       for: E;
 
@@ -24,22 +24,22 @@ declare namespace Consumer {
        */
       has: (value: InstanceType<E>) => void;
   }
-  
+
   type GetProps<E extends Class> = {
       /** @deprecated - use for instead */
       of?: never;
-      
+
       /** Type of controller to fetch from context. */
       for: E;
 
       /** Getter function. Is called on every natural render of this component. */
       get: (value: InstanceType<E> | undefined) => void;
   }
-  
+
   type RenderProps<E extends Class> = {
       /** @deprecated - use for instead */
       of?: never;
-      
+
       /** Type of controller to fetch from context. */
       for: E;
 

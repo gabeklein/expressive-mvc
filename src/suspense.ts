@@ -45,7 +45,7 @@ export function mayRetry(fn: () => any): any {
   const compute = (): any => {
     try {
       const output = fn();
-  
+
       return output instanceof Promise
         ? output.catch(retry)
         : output;

@@ -97,7 +97,7 @@ function usePeerContext(subject: Model){
 
   if(pending){
     const local = useLookup();
-  
+
     for(const init of pending)
       init(local);
 

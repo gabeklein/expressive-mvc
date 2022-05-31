@@ -87,7 +87,7 @@ function useTap <T extends Stateful> (
   });
 
   React.useLayoutEffect(local.commit, []);
-  
+
   return local.proxy;
 }
 

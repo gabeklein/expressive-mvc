@@ -180,7 +180,7 @@ describe("singleton", () => {
     class Test extends Global {
       peer = tap(Peer);
     }
-    
+
     const peer = Peer.create();
     const global = Test.create();    
 
@@ -298,7 +298,7 @@ describe("suspense", () => {
         return value;
       }, false);
     };
-  
+
     class Bar extends Model {
       value = "foobar";
     };

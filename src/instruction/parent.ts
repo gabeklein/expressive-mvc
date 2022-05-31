@@ -23,26 +23,26 @@ export const Oops = issues({
  */
 function parent <T extends typeof Model> (Expects: T, required: false): InstanceOf<T> | undefined;
 function parent <T extends typeof Model> (Expects: T, required?: true): InstanceOf<T>;
-  
+
 function parent<T extends typeof Model>(
    Expects: T, required?: boolean){
- 
+
    return apply(
      function parent(){
        const child = this.subject;
        const value = Parent.get(child) as InstanceOf<T>;
        const expected = Expects.name;
-   
+
        if(!value){
          if(required !== false)
            throw Oops.Required(expected, child);
        }
        else if(!(value instanceof Expects))
          throw Oops.Unexpected(expected, child, value);
-   
+
        return { value };
      }
    );
  }
- 
+
  export { parent }

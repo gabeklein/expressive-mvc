@@ -25,7 +25,7 @@ class Managed<T> extends Array<T> {
 
   unshift(...items: T[]): number {
     const end = super.push(...items);
-    
+
     this.update(0, end);
     return end;
   }

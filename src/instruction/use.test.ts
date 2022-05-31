@@ -30,7 +30,7 @@ it('will track recursively', async () => {
 
 it('will accept instance', async () => {
   const child = Child.create();
-  
+
   class Parent extends Model {
     child = use(child);
   }
@@ -50,7 +50,7 @@ it('will accept instance', async () => {
 
 it('will run callback', () => {
   const callback = jest.fn();
-  
+
   class Parent extends Model {
     child = use(Child, callback);
   }

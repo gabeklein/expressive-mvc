@@ -22,7 +22,7 @@ declare namespace Provider {
   type Item = Model | typeof Model;
   type Collection<T extends Item> = T[] | { [key: string]: T };
   type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
-  
+
   type NormalProps<E, I = Existent<E>> =
       & {
         /** @deprecated use for instead. */
@@ -72,7 +72,7 @@ function useNewContext(
   return React.useMemo(() => {
     if(!inject)
       throw Oops.NoType();
-    
+
     const context = from.push(inject);
 
     for(const instance of context.local)

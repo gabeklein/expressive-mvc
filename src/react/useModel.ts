@@ -65,7 +65,7 @@ function useModel <T extends Model | Stateful> (
 
   if(Array.isArray(arg)){
     const update = useState(0)[1];
-  
+
     React.useLayoutEffect(() => {  
       if(arg.length && instance instanceof Model)
         instance.on(arg, () => update(x => x+1), true);
@@ -75,7 +75,7 @@ function useModel <T extends Model | Stateful> (
           (instance as Model).destroy();
       }
     }, []);
-  
+
     return instance;
   }
   else {
@@ -88,27 +88,27 @@ function useModel <T extends Model | Stateful> (
 
       if(typeof arg2 !== "object")
         arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
-      
+
       for(const key of arg2)
         if(key in arg)
           (instance as any)[key] = arg[key];
-      
+
       React.useLayoutEffect(() => {
         local.active = true;
       });
     }
-  
+
     React.useLayoutEffect(() => {
       local.commit();
-  
+
       return () => {
         local.release();
-  
+
         if(Model.isTypeof(source))
           (instance as Model).destroy();
       };
     }, []);
-  
+
     return local.proxy;
   }
 }

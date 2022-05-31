@@ -72,7 +72,7 @@ function apply<T = any>(
 
     if(typeof output != "object")
       return;
-      
+
     if("explicit" in output && output.explicit){
       defineProperty(subject, key, output);
       return false;
@@ -144,10 +144,10 @@ function recursive(source: Controller, key: string){
 
       if(value && CONTROL in value){
         child = new Subscriber(value as Stateful, parent.onUpdate);
-  
+
         if(parent.active)
           child.commit();
-  
+
         parent.dependant.add(child);
         context.set(parent, child.proxy);
       }

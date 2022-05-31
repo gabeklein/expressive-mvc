@@ -8,7 +8,7 @@ class Test extends Model {
 it("will update on push to array", async () => {
   const test = Test.create();
   const mock = jest.fn();
-  
+
   test.effect(state => {
     mock([ ...state.values ]);
   })
@@ -26,7 +26,7 @@ it("will update on push to array", async () => {
 it("will update on unshift to array", async () => {
   const test = Test.create();
   const mock = jest.fn();
-  
+
   test.effect(state => {
     mock([ ...state.values ]);
   })
@@ -44,7 +44,7 @@ it("will update on unshift to array", async () => {
 it("will update on splice to array", async () => {
   const test = Test.create();
   const mock = jest.fn();
-  
+
   test.effect(state => {
     mock([ ...state.values ]);
   })

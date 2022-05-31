@@ -3,13 +3,13 @@ import { CONTROL, LOCAL, STATE, WHY } from '../src/model';
 
 describe("isTypeof", () => {
   class Test extends Model {}
-  
+
   it("will assert if Model extends another", () => {
     class Test2 extends Test {}
 
     expect(Test.isTypeof(Test2)).toBe(true);
   })
-  
+
   it("will be falsy if not super", () => {
     class NotATest extends Model {}
 
@@ -112,7 +112,7 @@ describe("WHY", () => {
 
     // sanity check
     expect(fullUpdate).not.toContain("value1");
-    
+
     expect(update).toContain("value3");
     expect(fullUpdate).toContain("value3");
   })
@@ -120,7 +120,7 @@ describe("WHY", () => {
 
 describe("toString", () => {
   class Test extends Model {};
-  
+
   it("Model will cast to string as class name", () => {
     const test = Test.create();
     expect(String(test)).toBe("Test");

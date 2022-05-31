@@ -96,9 +96,9 @@ class MVC extends Model {
   static new <T extends Class, I extends InstanceOf<T>> (this: T, arg?: ((instance: I) => void) | Model.Compat<I>){
     const instance = React.useMemo(() => {
       const instance: I = new this();
-  
+
       control(instance);
-  
+
       if(typeof arg == "function")
         arg(instance);
 
@@ -107,7 +107,7 @@ class MVC extends Model {
           if(key in arg)
             instance[key] = arg[key];
         })
-  
+
       return instance;
     }, []);
 

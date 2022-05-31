@@ -24,7 +24,7 @@ describe("hook", () => {
 
     expect(result).toBeInstanceOf(Test);
   })
-  
+
   it("will use factory function", () => {
     const instance = Test.create();
     const render = renderHook(() => useModel(() => instance));
@@ -104,14 +104,14 @@ describe("specific", () => {
     foo = "foo";
     bar = "bar";
   }
-  
+
   it("will subscribe to only keys specified", async () => {
     const { result, waitForNextUpdate } = renderHook(() => {
       const control = useModel(Test, ["foo"]);
 
       void control.foo;
       void control.bar;
-      
+
       return control;
     });
 
