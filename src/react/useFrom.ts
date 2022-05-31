@@ -34,7 +34,7 @@ function useFrom(
     const set = (next: any) => {
       value = next;
 
-      if (retry) {
+      if(retry) {
         retry();
         retry = undefined;
       }
@@ -43,7 +43,7 @@ function useFrom(
         refresh();
     };
 
-    if (value instanceof Promise) {
+    if(value instanceof Promise) {
       value.then(set);
       value = undefined;
     }
@@ -59,7 +59,7 @@ function useFrom(
 
     defineProperty(sub, "proxy", {
       get() {
-        if (value === undefined && suspend)
+        if(value === undefined && suspend)
           throw new Promise<void>(res => retry = res);
 
         return value;

@@ -18,7 +18,7 @@ export function useLocal<T extends typeof Model>(
 
   const instance = useLookup().get(Type);
 
-  if (!instance && arg !== false)
+  if(!instance && arg !== false)
     throw Oops.NotFound(Type.name);
 
   return typeof arg == "string" ?

@@ -75,7 +75,7 @@ function useTap <T extends Stateful> (
         get() {
           const value = source[path];
 
-          if (value === undefined && expect)
+          if(value === undefined && expect)
             throw suspend(parent, path);
 
           return value;
