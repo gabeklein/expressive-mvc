@@ -27,7 +27,7 @@
     "test": "jest --collectCoverage",
     "prebuild": "rm -rf lib/",
     "preversion": "npm run test && npm run build",
-    "postversion": "npm publish"
+    "postversion": "git push & npm publish"
   },
   "peerDependencies": {
     "react": ">=17.0.2"
