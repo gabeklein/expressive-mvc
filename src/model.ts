@@ -1,4 +1,4 @@
-import { control, Controller, ready } from './controller';
+import { control, Controller } from './controller';
 import { UPDATE } from './dispatch';
 import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
@@ -44,8 +44,8 @@ declare namespace Model {
 
   /** Exotic value, actual value is contained. */
   export interface Ref<T = any> {
-      (next: T): void;
-      current: T | null;
+    (next: T): void;
+    current: T | null;
   }
 
   /** Properties of T, of which are methods. */
@@ -120,19 +120,16 @@ class Model {
   static [WHY]: readonly string[];
 
   constructor(){
-    const control = new Controller(this);
-
-    define(this, CONTROL, control);
+    define(this, CONTROL, new Controller(this));
     define(this, "get", this);
     defineLazy(this, "set", () => {
+      const controller = control(this);
       const assign = (key: any, value: any) => {
-        control.update(key, value);
+        controller.update(key, value);
       }
-
-      ready(control);
       
-      for(const key of getOwnPropertyNames(control.proxy))
-        define(assign, key, control.ref(key as any));
+      for(const key of getOwnPropertyNames(controller.proxy))
+        define(assign, key, controller.ref(key as any));
 
       return assign;
     });

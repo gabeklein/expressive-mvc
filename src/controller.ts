@@ -206,12 +206,6 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     define(subject, CONTROL, control);
   }
 
-  return ready(control, cb);
-}
-
-function ready<T extends Stateful>(
-  control: Controller<T>, cb?: EnsureCallback<T>){
-
   const ready = READY.has(control);
 
   if(!ready){
@@ -229,4 +223,4 @@ function ready<T extends Stateful>(
   return cb ? cb(control) : control;
 }
 
-export { PENDING, Controller, control, ready }
+export { PENDING, Controller, control }
