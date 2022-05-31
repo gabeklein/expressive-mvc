@@ -5,7 +5,7 @@ import { Model } from '../model';
 import { Consumer } from './consumer';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops as Context } from './useInContext';
+import { Oops } from './useLocal';
 
 class Foo extends MVC {
   value?: string = undefined;
@@ -78,7 +78,7 @@ it("will throw if not found where required", () => {
   )
 
   expect(test).toThrowError(
-    Context.NothingInContext(Bar.name)
+    Oops.NothingInContext(Bar.name)
   );
 })
 

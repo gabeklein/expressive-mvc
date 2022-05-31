@@ -3,7 +3,7 @@ import React from 'react';
 import { render } from '../../tests/adapter';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops as Context } from './useInContext';
+import { Oops } from './useLocal';
 
 describe("get", () => {
   class Test extends MVC {
@@ -33,7 +33,7 @@ describe("get", () => {
     const test = () => render(<Hook />);
 
     expect(test).toThrowError(
-      Context.NothingInContext(Test.name)
+      Oops.NothingInContext(Test.name)
     );
   })
 })

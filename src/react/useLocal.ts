@@ -13,7 +13,7 @@ export const Oops = issues({
     `Couldn't find ${name} in context; did you forget to use a Provider?`
 })
 
-export function useInContext<T extends typeof Model>(
+export function useLocal<T extends typeof Model>(
   Type: T, arg?: boolean | string) {
 
   const instance = useLookup().get(Type);

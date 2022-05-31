@@ -6,7 +6,7 @@ import { CONTROL, Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
-import { useInContext } from './useInContext';
+import { useLocal } from './useLocal';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
@@ -62,7 +62,7 @@ class MVC extends Model {
   static get <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
 
   static get <T extends typeof MVC> (this: T, required?: boolean){
-    return useInContext(this, required);
+    return useLocal(this, required);
   }
 
   /** 

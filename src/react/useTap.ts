@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
-import { control } from '../controller';
 
+import { control } from '../controller';
 import { Model, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
 import { use } from './use';
 import { useFrom } from './useFrom';
-import { useInContext } from './useInContext';
+import { useLocal } from './useLocal';
 
 namespace useTap {
   export interface Tappable {
@@ -56,7 +56,7 @@ function useTap <T extends Stateful> (
       return () => source.get!();
 
     if("prototype" in source)
-      return () => useInContext(source as any);
+      return () => useLocal(source as any);
     else
       return source;
   }, [])() as T;

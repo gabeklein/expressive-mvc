@@ -15,6 +15,6 @@ export { Global } from './react/global';
 export { tap } from './react/tap';
 
 export { useFrom } from './react/useFrom';
-export { useInContext } from './react/useInContext';
+export { useLocal } from './react/useLocal';
 export { useModel } from './react/useModel';
 export { useTap } from './react/useTap';
