@@ -3,8 +3,9 @@ import { UPDATE } from './dispatch';
 import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
-import { Callback, Class, InstanceOf, RequestCallback } from './types';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
+
+import type { Callback, Class, InstanceOf, RequestCallback } from './types';
 
 export const CONTROL = Symbol("CONTROL");
 export const WHY = Symbol("UPDATE");

@@ -1,8 +1,9 @@
 import { control, Controller } from './controller';
 import { applyUpdate } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
-import { Callback, RequestCallback } from './types';
 import { create, define, defineProperty } from './util';
+
+import type { Callback, RequestCallback } from './types';
 
 type Listener = {
   commit(): void;
