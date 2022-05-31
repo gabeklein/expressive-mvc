@@ -23,7 +23,7 @@ describe("tap instruction", () => {
     }
 
     render(
-      <Provider of={bar}>
+      <Provider for={bar}>
         <Test />
       </Provider>
     );
@@ -43,7 +43,7 @@ describe("tap instruction", () => {
     }
 
     render(
-      <Provider of={bar}>
+      <Provider for={bar}>
         <Child />
       </Provider>
     )
@@ -90,9 +90,9 @@ describe("callback", () => {
 
   it("will run on attachment of model", () => {
     render(
-      <Provider of={Foo}>
-        <Provider of={Bar}>
-          <Consumer of={Bar} has={bar => {
+      <Provider for={Foo}>
+        <Provider for={Bar}>
+          <Consumer for={Bar} has={bar => {
             expect(bar.didTap).toBeCalledWith(expect.any(Foo));
           }}/>
         </Provider>
@@ -102,8 +102,8 @@ describe("callback", () => {
 
   it("will pass undefined if not found", () => {
     render(
-      <Provider of={Bar}>
-        <Consumer of={Bar} has={bar => {
+      <Provider for={Bar}>
+        <Consumer for={Bar} has={bar => {
           expect(bar.didTap).toHaveBeenCalledWith(undefined);
         }}/>
       </Provider>
@@ -116,9 +116,9 @@ describe("callback", () => {
     }
 
     render(
-      <Provider of={Foo}>
-        <Provider of={Bar}>
-          <Consumer of={Bar} has={bar => {
+      <Provider for={Foo}>
+        <Provider for={Bar}>
+          <Consumer for={Bar} has={bar => {
             expect(bar.foo).toBe(undefined);
           }}/>
         </Provider>
@@ -141,8 +141,8 @@ describe("callback", () => {
     }
 
     render(
-      <Provider of={Foo}>
-        <Provider of={Bar}>
+      <Provider for={Foo}>
+        <Provider for={Bar}>
           {null}
         </Provider>
       </Provider>
@@ -229,7 +229,7 @@ describe("context", () => {
     }
 
     render(
-      <Provider of={{ Foo, Bar }}>
+      <Provider for={{ Foo, Bar }}>
         <Inner />
       </Provider>
     );
@@ -237,9 +237,9 @@ describe("context", () => {
 
   it("will still access when created by provider", () => {
     render(
-      <Provider of={Bar}>
-        <Provider of={Foo}>
-          <Consumer of={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
+      <Provider for={Bar}>
+        <Provider for={Foo}>
+          <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
         </Provider>
       </Provider>
     );
@@ -254,9 +254,9 @@ describe("context", () => {
     }
 
     render(
-      <Provider of={{ Foo, Bar }}>
-        <Consumer of={Bar} has={i => expect(i.foo.bar).toBe(i)} />
-        <Consumer of={Foo} has={i => expect(i.bar.foo).toBe(i)} />
+      <Provider for={{ Foo, Bar }}>
+        <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
+        <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
       </Provider>
     );
   });
@@ -271,13 +271,13 @@ describe("context", () => {
     }
 
     const x = render(
-      <Provider of={Bar}>
+      <Provider for={Bar}>
         <Inner />
       </Provider>
     );
 
     x.update(
-      <Provider of={Bar}>
+      <Provider for={Bar}>
         <Inner />
       </Provider>
     );
@@ -313,7 +313,7 @@ describe("suspense", () => {
     }
 
     render(
-      <Provider of={Bar}>
+      <Provider for={Bar}>
         <Inner />
       </Provider>
     );

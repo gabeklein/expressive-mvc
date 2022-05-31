@@ -18,7 +18,7 @@ describe("get", () => {
     }
 
     render(
-      <Provider of={Test}>
+      <Provider for={Test}>
         <Hook />
       </Provider>
     );

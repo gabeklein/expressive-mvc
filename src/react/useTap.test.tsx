@@ -15,7 +15,7 @@ it("will get base-model from context", () => {
   }
 
   render(
-    <Provider of={Test}>
+    <Provider for={Test}>
       <Hook />
     </Provider>
   );

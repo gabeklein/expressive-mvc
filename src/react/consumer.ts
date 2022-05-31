@@ -12,8 +12,12 @@ export const Oops = issues({
 
 declare namespace Consumer {
   type HasProps<E extends Class> = {
+      /** @deprecated - use for instead */
+      of?: never;
+      
       /** Type of controller to fetch from context. */
-      of: E;
+      for: E;
+
       /**
        * Getter function. Is called on every natural render of this component.
        * Will throw if usable instance cannot be found in context.
@@ -22,15 +26,23 @@ declare namespace Consumer {
   }
   
   type GetProps<E extends Class> = {
+      /** @deprecated - use for instead */
+      of?: never;
+      
       /** Type of controller to fetch from context. */
-      of: E;
+      for: E;
+
       /** Getter function. Is called on every natural render of this component. */
       get: (value: InstanceType<E> | undefined) => void;
   }
   
   type RenderProps<E extends Class> = {
+      /** @deprecated - use for instead */
+      of?: never;
+      
       /** Type of controller to fetch from context. */
-      of: E;
+      for: E;
+
       /**
        * Render function, will receive instance of desired controller.
        *
@@ -44,15 +56,15 @@ declare namespace Consumer {
 }
 
 function Consumer<T extends Class>(props: Consumer.Props<T>){
-  const { get, has, children, of: Control } = props as any;
+  const { get, has, children, for: type } = props as any;
 
   if(typeof children == "function")
-    return children(useTap(Control));
+    return children(useTap(type));
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(useLocal(Control, !!has));
+    callback(useLocal(type, !!has));
   else
     throw Oops.BadConsumerProps()
 

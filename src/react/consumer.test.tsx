@@ -17,12 +17,12 @@ it("will handle complex arrangement", () => {
   const instance = Foo.create();
 
   render(
-    <Provider of={instance}>
-      <Provider of={Baz}>
-        <Provider of={{ Bar }}>
-          <Consumer of={Foo} get={i => expect(i).toBe(instance)} />
-          <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
-          <Consumer of={Baz} get={i => expect(i).toBeInstanceOf(Baz)} />
+    <Provider for={instance}>
+      <Provider for={Baz}>
+        <Provider for={{ Bar }}>
+          <Consumer for={Foo} get={i => expect(i).toBe(instance)} />
+          <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+          <Consumer for={Baz} get={i => expect(i).toBeInstanceOf(Baz)} />
         </Provider>
       </Provider>
     </Provider>
@@ -44,8 +44,8 @@ it("will render with instance for child-function", async () => {
   }
 
   render(
-    <Provider of={instance}>
-      <Consumer of={Test}>
+    <Provider for={instance}>
+      <Consumer for={Test}>
         {onRender}
       </Consumer>
     </Provider>
@@ -57,9 +57,9 @@ it("will render with instance for child-function", async () => {
 it("will throw if expected-prop missing", () => {
   const instance = Foo.create();
   const attempt = () => render(
-    <Provider of={instance}>
+    <Provider for={instance}>
       { /* @ts-ignore */}
-      <Consumer of={Foo} />
+      <Consumer for={Foo} />
     </Provider>
   );
 
@@ -68,13 +68,13 @@ it("will throw if expected-prop missing", () => {
 
 it("will pass undefined if not found for get-prop", () => {
   render(
-    <Consumer of={Bar} get={i => expect(i).toBeUndefined()} />
+    <Consumer for={Bar} get={i => expect(i).toBeUndefined()} />
   )
 })
 
 it("will throw if not found where required", () => {
   const test = () => render(
-    <Consumer of={Bar} has={i => void i} />
+    <Consumer for={Bar} has={i => void i} />
   )
 
   expect(test).toThrowError(
@@ -84,17 +84,17 @@ it("will throw if not found where required", () => {
 
 it("will eagerly select extended class", () => {
   render(
-    <Provider of={Baz}>
-      <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
+    <Provider for={Baz}>
+      <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
     </Provider>
   )
 })
 
 it("will select closest instance of same type", () => {
   render(
-    <Provider of={Foo} value="outer">
-      <Provider of={Foo} value="inner">
-        <Consumer of={Foo} has={i => expect(i.value).toBe("inner")} />
+    <Provider for={Foo} value="outer">
+      <Provider for={Foo} value="inner">
+        <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
       </Provider>
     </Provider>
   )
@@ -102,9 +102,9 @@ it("will select closest instance of same type", () => {
 
 it("will select closest match over best match", () => {
   render(
-    <Provider of={Bar}>
-      <Provider of={Baz}>
-        <Consumer of={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
+    <Provider for={Bar}>
+      <Provider for={Baz}>
+        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
       </Provider>
     </Provider>
   )

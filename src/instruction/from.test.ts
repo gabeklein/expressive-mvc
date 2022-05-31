@@ -586,7 +586,7 @@ describe("external", () => {
     }
 
     render(
-      <Provider of={Peer}>
+      <Provider for={Peer}>
         <Component />
       </Provider>
     );
