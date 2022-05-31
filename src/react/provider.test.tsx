@@ -44,7 +44,7 @@ it("will accept render function when model given", () => {
           // instance injected should be a subscribe-clone.
           expect(instance).not.toBe(i);
           // get actual instance via circular-get property.
-          expect(instance.get).toBe(i);
+          expect(instance.is).toBe(i);
         }} />
       }}
     </Provider>

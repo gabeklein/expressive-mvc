@@ -28,12 +28,12 @@ it('will send arguments to constructor', () => {
 it('will assign get as a circular reference', async () => {
   const state = Subject.create();
   
-  expect(state.get.value).toBe(1);
+  expect(state.is.value).toBe(1);
 
   state.value = 2;
   await state.update(true);
   
-  expect(state.get.value).toBe(2)
+  expect(state.is.value).toBe(2)
 })
   
 it('will assign set as a utility', async () => {

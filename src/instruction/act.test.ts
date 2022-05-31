@@ -41,18 +41,18 @@ it("will set active to true for run-duration", async () => {
 
 it("will emit method key before/after activity", async () => {
   let update: readonly string[];
-  const { test, get } = Test.create();
+  const { test, is } = Test.create();
 
   expect(test.active).toBe(false);
 
   const result = test("foobar");
-  update = await get.update(true);
+  update = await is.update(true);
 
   expect(test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
-  update = await get.update(true);
+  update = await is.update(true);
 
   expect(test.active).toBe(false);
   expect(update).toContain("test");

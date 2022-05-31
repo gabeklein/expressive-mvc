@@ -44,7 +44,7 @@ describe("subscriber", () => {
     const state = Subject.create();
     const update = subscribeTo(state, it => {
       void it.value;
-      void it.get.value2;
+      void it.is.value2;
     })
 
     state.value = 2;
