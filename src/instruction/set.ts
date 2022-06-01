@@ -1,8 +1,7 @@
-import { apply } from './apply';
 import { issues } from '../issues';
-import { createValueEffect } from '../util';
-import { Controller } from '../controller';
 import { mayRetry } from '../suspense';
+import { createValueEffect } from '../util';
+import { apply } from './apply';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 
@@ -99,18 +98,82 @@ function set(
 
   return apply(
     function set(key){
+      const { subject, state } = this;
+      const required =
+        argument === true || argument === undefined;
+
       let set;
       let get: (() => void) | undefined;
       let suspense: boolean | undefined;
 
-      const required =
-        argument === true || argument === undefined;
-
       if(factory === undefined)
         suspense = true;
 
-      else if(typeof factory === "function")
-        get = pendingFactory(this, key, factory, required);
+      else if(typeof factory === "function"){
+        let pending: Promise<any> | undefined;
+        let error: any;
+      
+        const init = () => {
+          const output = mayRetry(() => {
+            return factory.call(subject, key, subject);
+          });
+      
+          if(output instanceof Promise){
+            pending = output
+              .catch(err => error = err)
+              .then(val => state[key] = val)
+              .finally(() => {
+                pending = undefined;
+                this.update(key);
+              })
+
+            return;
+          }
+
+          return state[key] = output;
+        }
+
+        const suspend = () => {
+          if(required === false)
+            return undefined;
+
+          const issue =
+            Oops.NotReady(subject, key);
+
+          Object.assign(pending, {
+            message: issue.message,
+            stack: issue.stack
+          });
+
+          throw pending;
+        }
+
+        if(required)
+          try {
+            init();
+          }
+          catch(err){
+            Oops.Failed(subject, key).warn();
+            throw err;
+          }
+
+        get = () => {
+          if(pending)
+            return suspend();
+
+          if(error)
+            throw error;
+
+          if(key in state)
+            return state[key];
+
+          let output = init();
+
+          return pending
+            ? suspend()
+            : output;
+        }
+      }
 
       else
         throw Oops.BadFactory();
@@ -120,7 +183,7 @@ function set(
       else
         set = (value: any) => {
           if(value === undefined && required)
-            throw Oops.NonOptional(this.subject, key);
+            throw Oops.NonOptional(subject, key);
         }
 
       return {
@@ -130,78 +193,6 @@ function set(
       }
     }
   )
-}
-
-export function pendingFactory(
-  parent: Controller,
-  key: string,
-  fn: (key: string, subject: unknown) => any,
-  required: boolean){
-
-  const { subject, state } = parent;
-  let pending: Promise<any> | undefined;
-  let error: any;
-
-  const init = () => {
-    const output = mayRetry(() => {
-      return fn.call(subject, key, subject);
-    });
-
-    if(output instanceof Promise){
-      pending = output
-        .catch(err => error = err)
-        .then(val => state[key] = val)
-        .finally(() => {
-          pending = undefined;
-          parent.update(key);
-        })
-
-      return;
-    }
-
-    return state[key] = output;
-  }
-
-  const suspend = () => {
-    if(required === false)
-      return undefined;
-
-    const issue =
-      Oops.NotReady(subject, key);
-
-    Object.assign(pending, {
-      message: issue.message,
-      stack: issue.stack
-    });
-
-    throw pending;
-  }
-
-  if(required)
-    try {
-      init();
-    }
-    catch(err){
-      Oops.Failed(subject, key).warn();
-      throw err;
-    }
-
-  return () => {
-    if(pending)
-      return suspend();
-
-    if(error)
-      throw error;
-
-    if(key in state)
-      return state[key];
-
-    let output = init();
-
-    return pending
-      ? suspend()
-      : output;
-  }
 }
 
 export { set }
