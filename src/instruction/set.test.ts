@@ -295,17 +295,6 @@ describe("memo", () => {
     expect(() => Test.create()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);
   })
-
-  it("will throw on bad argument", () => {
-    class Test extends Model {
-      // @ts-ignore
-      memoized = set("foobar");
-    }
-
-    const expected = Assign.BadFactory();
-
-    expect(() => Test.create()).toThrowError(expected);
-  })
 })
 
 describe("async", () => {
@@ -327,6 +316,30 @@ describe("async", () => {
     test.assertDidSuspend(true);
 
     promise.resolve();
+    await didRender.await();
+
+    test.assertDidRender(true);
+  })
+
+  it('will suspend for a supplied promise', async () => {
+    const promise = mockAsync<string>();
+
+    class Test extends Model {
+      value = set(promise.await());
+    }
+
+    const test = mockSuspense();
+    const didRender = mockAsync();
+    const instance = Test.create();
+
+    test.renderHook(() => {
+      void instance.tap().value;
+      didRender.resolve();
+    })
+
+    test.assertDidSuspend(true);
+
+    promise.resolve("hello");
     await didRender.await();
 
     test.assertDidRender(true);

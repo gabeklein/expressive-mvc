@@ -1,14 +1,11 @@
-import { issues } from '../issues';
-import { mayRetry } from '../suspense';
-import { createValueEffect } from '../util';
 import { apply } from './apply';
+import { issues } from '../issues';
+import { createValueEffect } from '../util';
+import { mayRetry } from '../suspense';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 
     `Property ${Parent}.${key} is marked as required.`,
-
-  BadFactory: () =>
-    `Set instruction can only accept a factory or undefined.`,
 
   NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
@@ -62,11 +59,11 @@ function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefi
   * @param factory - Callback run to derrive property value.
   * @param required - (default: true) Run factory immediately on creation, otherwise on access.
   */
-function set <T>(factory: set.Factory<Promise<T>>, required: false): T | undefined;
-function set <T, S>(factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
+function set <T> (factory: set.Factory<Promise<T>>, required: false): T | undefined;
+function set <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
 
-function set <T>(factory: set.Factory<Promise<T>>, required?: boolean): T;
-function set <T, S>(factory: set.Factory<Promise<T>, S>, required?: boolean): T;
+function set <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
+function set <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
 
 function set <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
@@ -92,8 +89,22 @@ function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
 function set <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
 
+/**
+ * Assign a property with result of a promise.
+ */
+function set <T> (factory: Promise<T>, required: false): T | undefined;
+function set <T> (factory: Promise<T>, required?: boolean): T;
+function set <T> (value: Promise<T>, onUpdate: set.Callback<T>): T;
+
+/**
+ * Assign a property.
+ */
+function set <T> (factory: T, required: false): T | undefined;
+function set <T> (factory: T, required?: boolean): T;
+function set <T> (value: T, onUpdate: set.Callback<T>): T;
+
 function set(
-  factory?: (key: string, subject: unknown) => any,
+  factory?: any,
   argument?: set.Callback<any> | boolean): any {  
 
   return apply(
@@ -109,15 +120,15 @@ function set(
       if(factory === undefined)
         suspense = true;
 
-      else if(typeof factory === "function"){
+      else {
         let pending: Promise<any> | undefined;
         let error: any;
-      
+
         const init = () => {
-          const output = mayRetry(() => {
-            return factory.call(subject, key, subject);
-          });
-      
+          const output = typeof factory == "function" ?
+            mayRetry(() => factory.call(subject, key, subject)) :
+            factory;
+
           if(output instanceof Promise){
             pending = output
               .catch(err => error = err)
@@ -174,9 +185,6 @@ function set(
             : output;
         }
       }
-
-      else
-        throw Oops.BadFactory();
 
       if(typeof argument == "function")
         set = createValueEffect(argument);
