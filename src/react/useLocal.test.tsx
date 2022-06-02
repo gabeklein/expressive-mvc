@@ -3,7 +3,7 @@ import React from 'react';
 import { render } from '../../tests/adapter';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './useLocal';
+import { Oops, useLocal } from './useLocal';
 
 describe("get", () => {
   class Test extends MVC {
@@ -12,7 +12,7 @@ describe("get", () => {
 
   it("will get instance of model", () => {
     const Hook = () => {
-      const value = Test.get("value");
+      const value = useLocal(Test, "value");
       expect(value).toBe("foo")
       return null;
     }
@@ -26,7 +26,7 @@ describe("get", () => {
 
   it("will fail if not found", () => {
     const Hook = () => {
-      Test.get();
+      useLocal(Test);
       return null;
     }
 
