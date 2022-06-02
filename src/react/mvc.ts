@@ -67,7 +67,7 @@ class MVC extends Model {
    * Effect callback will run once if found, throw if not found.
    * Returned function is called on unmount.
    */
-  static get <T extends Class, I extends InstanceOf<T>> (Type: T, effect: (found: I) => Callback | void): I;
+  static get <T extends Class, I extends InstanceOf<T>> (type: T, effect: (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
     return useLocal(this, arg);
