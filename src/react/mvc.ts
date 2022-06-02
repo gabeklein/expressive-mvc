@@ -3,7 +3,7 @@ import React from 'react';
 
 import { control, Controller } from '../controller';
 import { CONTROL, Model } from '../model';
-import { Class, InstanceOf } from '../types';
+import { Callback, Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
 import { useLocal } from './useLocal';
@@ -61,8 +61,16 @@ class MVC extends Model {
    */
   static get <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
 
-  static get <T extends typeof MVC> (this: T, required?: boolean){
-    return useLocal(this, required);
+  /**
+   * **React Hook** - Fetch instance.
+   * 
+   * Effect callback will run once if found, throw if not found.
+   * Returned function is called on unmount.
+   */
+  static get <T extends Class, I extends InstanceOf<T>> (Type: T, effect: (found: I) => Callback | void): I;
+
+  static get <T extends typeof MVC> (this: T, arg: any){
+    return useLocal(this, arg);
   }
 
   /** 
