@@ -47,14 +47,14 @@ export class Global extends MVC {
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends Class> (this: T, required?: true): InstanceOf<T>;
+  static get <T extends Class> (this: T, required: false): InstanceOf<T> | undefined;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends Class> (this: T, required: boolean): InstanceOf<T> | undefined;
+  static get <T extends Class> (this: T, required?: boolean): InstanceOf<T>;
 
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
