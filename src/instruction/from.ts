@@ -30,7 +30,7 @@ type GetterInfo = {
 const INIT = new WeakSet<Function>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
-const KEYS = new WeakMap<Controller, RequestCallback[]>();
+const KEYS = new WeakMap<Set<string>, RequestCallback[]>();
 
 declare namespace from {
   type Function<T, O=any> = (this: O, on: O) => T;
@@ -133,10 +133,10 @@ function from<R, T>(
       }
 
       function defer(_key: string, from: Controller){
-        let pending = KEYS.get(from);
+        let pending = KEYS.get(from.frame!);
 
         if(!pending)
-          KEYS.set(from, pending = []);
+          KEYS.set(from.frame!, pending = []);
 
         if(info.parent !== from)
           update();
@@ -213,23 +213,21 @@ export function ensure(
   }
 }
 
-export function flush(on: Controller){
-  const handled = on.frame!;
-  const pending = KEYS.get(on);
+export function flush(frame: Set<string>){
+  const pending = KEYS.get(frame);
 
   if(!pending)
     return;
 
   while(pending.length){
-    const why = [ ...handled ];
     const compute = pending.shift()!;
     const { key } = INFO.get(compute)!;
 
-    if(!handled.has(key))
-      compute(why);
+    if(!frame.has(key))
+      compute([ ...frame ]);
   }
 
-  KEYS.delete(on);
+  KEYS.delete(frame);
 }
 
 export { from }

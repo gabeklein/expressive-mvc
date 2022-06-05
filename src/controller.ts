@@ -128,7 +128,7 @@ class Controller<T extends Stateful = any> {
       this.frame = new Set();
 
       setTimeout(() => {
-        flush(this);
+        flush(this.frame!);
 
         const keys = Object.freeze([ ...this.frame! ]);
 
