@@ -214,7 +214,7 @@ export function ensure(
 }
 
 export function flush(on: Controller){
-  const handled = on.frame;
+  const handled = on.frame!;
   const pending = KEYS.get(on);
 
   if(!pending)

@@ -28,10 +28,10 @@ const READY = new WeakSet<Controller>();
 class Controller<T extends Stateful = any> {
   public proxy: Model.Entries<T>;
   public state = {} as Model.Values<T>;
-  public frame = new Set<string>();
-  public waiting = new Set<RequestCallback>();
+  public frame?: Set<string>;
   public onDestroy = new Set<Callback>();
 
+  private waiting = new Set<RequestCallback>();
   protected followers = new Set<Controller.OnEvent>();
 
   constructor(public subject: T){
@@ -59,7 +59,7 @@ class Controller<T extends Stateful = any> {
       this.manage(key as any, entry);
     }
 
-    this.emit([]);
+    this.flush([]);
   }
 
   stop(){
@@ -120,7 +120,36 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  emit(keys: readonly Model.Event<T>[]){
+  update(key: Model.Event<T>, value?: any){
+    if(1 in arguments)
+      this.state[key as Model.Field<T>] = value;
+
+    if(!this.frame){
+      this.frame = new Set();
+
+      setTimeout(() => {
+        flush(this);
+
+        const keys = Object.freeze([ ...this.frame! ]);
+
+        this.frame = undefined;
+        this.flush(keys);
+      }, 0);
+    }
+    else if(this.frame.has(key))
+      return;
+
+    this.frame.add(key);
+
+    for(const callback of this.followers){
+      const event = callback(key, this);
+
+      if(typeof event == "function")
+        this.waiting.add(event);
+    }
+  }
+
+  flush(keys: readonly Model.Event<T>[]){
     const waiting = [ ...this.waiting ];
 
     this.waiting.clear();
@@ -135,33 +164,6 @@ class Controller<T extends Stateful = any> {
       }
   }
 
-  update(key: Model.Event<T>, value?: any){
-    if(1 in arguments)
-      this.state[key as Model.Field<T>] = value;
-
-    if(this.frame.has(key))
-      return;
-
-    if(!this.frame.size)
-      setTimeout(() => {
-        flush(this);
-
-        const keys = Object.freeze([ ...this.frame ]);
-
-        this.frame.clear();
-        this.emit(keys);
-      }, 0);
-
-    this.frame.add(key);
-
-    for(const callback of this.followers){
-      const event = callback(key, this);
-
-      if(typeof event == "function")
-        this.waiting.add(event);
-    }
-  }
-
   requestUpdate(): PromiseLike<readonly Model.Event<T>[] | false>;
   requestUpdate(strict: true): Promise<readonly Model.Event<T>[]>;
   requestUpdate(strict: false): Promise<false>;
@@ -173,13 +175,13 @@ class Controller<T extends Stateful = any> {
       return;
     }
 
-    if(arg === true && this.frame.size < 1)
+    if(arg === true && !this.frame)
       return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
         if(callback)
-          if(this.frame.size || arg !== false)
+          if(this.frame || arg !== false)
             this.waiting.add(callback);
           else
             callback(false);
