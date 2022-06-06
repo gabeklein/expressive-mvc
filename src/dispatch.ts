@@ -15,5 +15,5 @@ export function applyUpdate(
 }
 
 export function getUpdate<T extends {}>(subject: T){
-  return UPDATE.get(subject) as readonly Model.Field<T>[] || [];
+  return UPDATE.get(subject) as readonly Model.Field<T>[];
 }
