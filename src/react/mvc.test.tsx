@@ -1,5 +1,5 @@
 import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
-import { put } from '../instruction/put';
+import { set } from '../instruction/set';
 import { use } from '../instruction/use';
 import { Global, Oops } from './global';
 import { MVC } from './mvc';
@@ -39,7 +39,7 @@ describe("get method", () => {
 describe("new method", () => {
   it('will import values if where an object', () => {
     class Test extends MVC {
-      value = put<string>();
+      value = set<string>();
     }
 
     const render = renderHook(() => {

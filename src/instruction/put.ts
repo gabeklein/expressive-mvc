@@ -21,29 +21,6 @@ declare namespace set {
     ((next: T) => void) | Promise<any> | void | boolean;
 }
 
-/**
- * Set property with a placeholder.
- * 
- * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
- * `Promise`/`Error` (ala: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
- */
-function put <T = any>(): T;
-
- /**
-  * Set property with starting value `undefined`.
-  * 
-  * If required and accessed while still empty, React Suspense will be thrown.
-  * Property will reject any assignment of undefined.
-  * 
-  * @param value - Starting value of host property (undefined).
-  * @param required - Property will suspend callee if undefined at time of access.
-  */
-function put <T> (value: undefined, required: false): T | undefined;
-function put <T> (value: undefined, required?: boolean): T;
-
-function put <T> (value: undefined, onUpdate: set.Callback<T>): T | undefined;
-function put <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefined;
-
  /**
   * Set property with an async function.
   * 
@@ -110,80 +87,72 @@ function put(
   return apply(
     function set(key){
       const { subject, state } = this;
-      const required =
-        argument === true || argument === undefined;
+      const required = argument === true || argument === undefined;
 
       let set;
       let get: (() => void) | undefined;
-      let suspense: boolean | undefined;
+      let pending: Promise<any> | undefined;
+      let error: any;
 
-      if(factory === undefined)
-        suspense = true;
+      const init = () => {
+        const output = typeof factory == "function" ?
+          mayRetry(() => factory.call(subject, key, subject)) :
+          factory;
 
-      else {
-        let pending: Promise<any> | undefined;
-        let error: any;
+        if(output instanceof Promise){
+          pending = output
+            .catch(err => error = err)
+            .then(val => state[key] = val)
+            .finally(() => {
+              pending = undefined;
+              this.update(key);
+            })
 
-        const init = () => {
-          const output = typeof factory == "function" ?
-            mayRetry(() => factory.call(subject, key, subject)) :
-            factory;
-
-          if(output instanceof Promise){
-            pending = output
-              .catch(err => error = err)
-              .then(val => state[key] = val)
-              .finally(() => {
-                pending = undefined;
-                this.update(key);
-              })
-
-            return;
-          }
-
-          return state[key] = output;
+          return;
         }
 
-        const suspend = () => {
-          if(required === false)
-            return undefined;
+        return state[key] = output;
+      }
 
-          const issue =
-            Oops.NotReady(subject, key);
+      const suspend = () => {
+        if(required === false)
+          return undefined;
 
-          Object.assign(pending, {
-            message: issue.message,
-            stack: issue.stack
-          });
+        const issue =
+          Oops.NotReady(subject, key);
 
-          throw pending;
+        Object.assign(pending, {
+          message: issue.message,
+          stack: issue.stack
+        });
+
+        throw pending;
+      }
+
+      if(required)
+        try {
+          init();
+        }
+        catch(err){
+          Oops.Failed(subject, key).warn();
+          throw err;
         }
 
-        if(required)
-          try {
-            init();
-          }
-          catch(err){
-            Oops.Failed(subject, key).warn();
-            throw err;
-          }
+      get = () => {
+        if(pending)
+          return suspend();
 
-        get = () => {
-          if(pending)
-            return suspend();
+        if(error)
+          throw error;
 
-          if(error)
-            throw error;
+        if(key in state)
+          return state[key];
 
-          if(key in state)
-            return state[key];
+        let output = init();
 
-          let output = init();
-
-          return pending
-            ? suspend()
-            : output;
-        }
+        return pending
+          ? suspend()
+          : output;
       }
 
       if(typeof argument == "function")
@@ -196,8 +165,7 @@ function put(
 
       return {
         set,
-        get,
-        suspense
+        get
       }
     }
   )

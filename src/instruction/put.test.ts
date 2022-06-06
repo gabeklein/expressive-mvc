@@ -32,7 +32,7 @@ describe("required", () => {
 
   it("will throw if put to undefined", () => {
     class Test extends Model {
-      value = put(() => "foo");
+      value = put("foo");
     }
 
     const test = Test.create();
@@ -59,7 +59,7 @@ describe("optional", () => {
 
   it("will not throw if value remains undefined", () => {
     class Test extends Model {
-      value = put<string>(undefined, false);
+      value?: string = put(undefined, false);
     }
 
     const test = Test.create();
@@ -68,9 +68,9 @@ describe("optional", () => {
     expect(() => test.value = "bar").not.toThrow();
   })
 
-  it("will not throw if value put to undefined", () => {
+  it("will not throw if value set to undefined", () => {
     class Test extends Model {
-      value = put(() => "bar", false);
+      value = put("bar", false);
     }
 
     const test = Test.create();
@@ -80,53 +80,10 @@ describe("optional", () => {
   })
 })
 
-describe("empty", () => {
-  it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
-      foobar = put<string>();
-    }
-
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("foobar");
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.foobar = "foo!";
-
-    // expect refresh caused by update
-    await promise.await();
-
-    test.assertDidRender(true);
-  })
-
-  it('will not suspend if value is defined', async () => {
-    class Test extends Model {
-      foobar = put<string>();
-    }
-
-    const test = mockSuspense();
-    const instance = Test.create();
-
-    instance.foobar = "foo!";
-
-    test.renderHook(() => {
-      instance.tap("foobar");
-    })
-
-    test.assertDidRender(true);
-  })
-})
-
 describe("callback", () => {
-  it('will invoke callback on property put', async () => {
+  it('will invoke callback on property update', async () => {
     class Subject extends Model {
-      test = put<number>(undefined, value => {
+      test = put<number>(0, value => {
         callback(value + 1);
       });
     }
@@ -147,7 +104,7 @@ describe("callback", () => {
 
   it('will invoke return-callback on overwrite', async () => {
     class Subject extends Model {
-      test = put<number>(undefined, () => {
+      test = put<number>(0, () => {
         return () => {
           callback(true);
         }
@@ -186,7 +143,7 @@ describe("callback", () => {
 
   it('will ignore effect promise', () => {
     class Subject extends Model {
-      property = put<any>(undefined, async () => {});
+      property = put<any>(0, async () => {});
     }
 
     const state = Subject.create();
@@ -197,7 +154,7 @@ describe("callback", () => {
   it('will throw on bad effect return', () => {
     class Subject extends Model {
       // @ts-ignore
-      property = put<any>(undefined, () => 3);
+      property = put<any>(0, () => 3);
     }
 
     const expected = Util.BadCallback();

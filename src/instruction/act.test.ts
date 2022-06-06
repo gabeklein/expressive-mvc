@@ -1,6 +1,6 @@
 import { act, Model } from '..';
 import { Oops } from './act';
-import { put } from './put';
+import { set } from './set';
 
 class Test extends Model {
   test = act(this.wait);
@@ -90,7 +90,7 @@ it("will complain if property is redefined", () => {
 
 it("will internally retry on suspense", async () => {
   class Test extends Model {
-    value = put<string>();
+    value = set<string>();
 
     getValue = act(async () => {
       didInvoke();
