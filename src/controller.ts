@@ -59,7 +59,7 @@ class Controller<T extends Stateful = any> {
       this.manage(key as any, entry);
     }
 
-    this.flush([]);
+    this.flush();
   }
 
   stop(){
@@ -130,10 +130,7 @@ class Controller<T extends Stateful = any> {
       setTimeout(() => {
         flush(this.frame!);
 
-        const keys = Object.freeze([ ...this.frame! ]);
-
-        this.frame = undefined;
-        this.flush(keys);
+        this.flush();
       }, 0);
     }
     else if(this.frame.has(key))
@@ -149,10 +146,13 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  flush(keys: readonly Model.Event<T>[]){
-    const waiting = [ ...this.waiting ];
+  flush(){
+    const waiting = Array.from(this.waiting);
+    const keys = Array.from(this.frame || []);
 
+    this.frame = undefined;
     this.waiting.clear();
+
     applyUpdate(this.subject, keys)();
 
     for(const callback of waiting)
@@ -175,7 +175,7 @@ class Controller<T extends Stateful = any> {
       return;
     }
 
-    if(arg === true && !this.frame)
+    if(!this.frame && arg === true)
       return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
