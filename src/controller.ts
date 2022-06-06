@@ -166,20 +166,22 @@ class Controller<T extends Stateful = any> {
   requestUpdate(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
   requestUpdate(callback: Callback): void;
   requestUpdate(arg?: boolean | Callback): any {
+    const { frame, subject, waiting } = this;
+
     if(typeof arg == "function"){
-      this.waiting.add(arg);
+      waiting.add(arg);
       return;
     }
 
-    if(!this.frame.size && arg === true)
+    if(!frame.size && arg === true)
       return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
         if(callback)
-          if(this.frame.size || arg !== false)
-            this.waiting.add(() => {
-              callback(getUpdate(this.subject));
+          if(frame.size || arg !== false)
+            waiting.add(() => {
+              callback(getUpdate(subject));
             });
           else
             callback(false);
@@ -194,8 +196,6 @@ type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback |
 
 function control<T extends Stateful>(subject: T): Controller<T>;
 function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
-
-/** Initialize controller even if not a stateful object. */
 function control<T extends {}>(subject: T): Controller<T & Stateful>;
 
 function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
