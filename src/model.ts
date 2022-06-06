@@ -239,7 +239,7 @@ class Model {
 
     return control(this, control => {
       let busy = false;
-      let inject = this.get;
+      let inject = this.is;
 
       const invoke = () => {
         if(busy)
