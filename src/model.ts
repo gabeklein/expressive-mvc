@@ -173,12 +173,12 @@ class Model {
       if(typeof select == "function")
         return control.addListener(select);
 
-      const keys = 
+      const selection = 
         typeof select == "string" ? [select] :
         !select.length ? getOwnPropertyNames(control.state) :
         select;
 
-      ensure(control, keys);
+      ensure(control, selection);
 
       const callback = squash
         ? () => {
@@ -186,13 +186,13 @@ class Model {
         }
         : () => {
           getUpdate(this)
-            .filter(k => keys.includes(k))
+            .filter(k => selection.includes(k))
             .forEach(k => {
               handler!.call(this, control.state[k], k)
             })
         }
 
-      const trigger = once
+      const onEvent = once
         ? () => {
           remove();
           callback();
@@ -200,8 +200,8 @@ class Model {
         : callback;
 
       const remove = control.addListener(key => {
-        if(keys.includes(key))
-          return trigger;
+        if(selection.includes(key))
+          return onEvent;
       });
 
       return remove;
