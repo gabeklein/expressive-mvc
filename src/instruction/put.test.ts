@@ -1,14 +1,14 @@
-import { Model, set } from '..';
+import { Model, put } from '..';
 import { ensure, mockAsync, mockSuspense, mockTimeout } from '../../tests/adapter';
 import { Oops as Util } from '../util';
-import { Oops as Assign } from './set';
+import { Oops as Assign } from './put';
 
 describe("required", () => {
   it("will compute pending value immediately", () => {
     const factory = jest.fn(async () => "Hello World");
 
     class Test extends Model {
-      value = set(factory);
+      value = put(factory);
     }
 
     Test.create();
@@ -18,7 +18,7 @@ describe("required", () => {
 
   it("will emit when async resolved", async () => {
     class Test extends Model {
-      value = set(() => Promise.resolve("foobar"));
+      value = put(() => Promise.resolve("foobar"));
     }
 
     const test = Test.create();
@@ -30,9 +30,9 @@ describe("required", () => {
     expect(test.value).toBe("foobar");
   })
 
-  it("will throw if set to undefined", () => {
+  it("will throw if put to undefined", () => {
     class Test extends Model {
-      value = set(() => "foo");
+      value = put(() => "foo");
     }
 
     const test = Test.create();
@@ -49,7 +49,7 @@ describe("optional", () => {
     const factory = jest.fn(async () => "Hello World");
 
     class Test extends Model {
-      value = set(factory, false);
+      value = put(factory, false);
     }
 
     Test.create();
@@ -59,7 +59,7 @@ describe("optional", () => {
 
   it("will not throw if value remains undefined", () => {
     class Test extends Model {
-      value = set<string>(undefined, false);
+      value = put<string>(undefined, false);
     }
 
     const test = Test.create();
@@ -68,9 +68,9 @@ describe("optional", () => {
     expect(() => test.value = "bar").not.toThrow();
   })
 
-  it("will not throw if value set to undefined", () => {
+  it("will not throw if value put to undefined", () => {
     class Test extends Model {
-      value = set(() => "bar", false);
+      value = put(() => "bar", false);
     }
 
     const test = Test.create();
@@ -81,9 +81,9 @@ describe("optional", () => {
 })
 
 describe("empty", () => {
-  it('will suspend if value is accessed before set', async () => {
+  it('will suspend if value is accessed before put', async () => {
     class Test extends Model {
-      foobar = set<string>();
+      foobar = put<string>();
     }
 
     const test = mockSuspense();
@@ -107,7 +107,7 @@ describe("empty", () => {
 
   it('will not suspend if value is defined', async () => {
     class Test extends Model {
-      foobar = set<string>();
+      foobar = put<string>();
     }
 
     const test = mockSuspense();
@@ -124,9 +124,9 @@ describe("empty", () => {
 })
 
 describe("callback", () => {
-  it('will invoke callback on property set', async () => {
+  it('will invoke callback on property put', async () => {
     class Subject extends Model {
-      test = set<number>(undefined, value => {
+      test = put<number>(undefined, value => {
         callback(value + 1);
       });
     }
@@ -147,7 +147,7 @@ describe("callback", () => {
 
   it('will invoke return-callback on overwrite', async () => {
     class Subject extends Model {
-      test = set<number>(undefined, () => {
+      test = put<number>(undefined, () => {
         return () => {
           callback(true);
         }
@@ -169,7 +169,7 @@ describe("callback", () => {
 
   it('will assign a default value', async () => {
     class Subject extends Model {
-      test = set(() => "foo", value => {
+      test = put(() => "foo", value => {
         callback(value);
       });
     }
@@ -186,7 +186,7 @@ describe("callback", () => {
 
   it('will ignore effect promise', () => {
     class Subject extends Model {
-      property = set<any>(undefined, async () => {});
+      property = put<any>(undefined, async () => {});
     }
 
     const state = Subject.create();
@@ -197,7 +197,7 @@ describe("callback", () => {
   it('will throw on bad effect return', () => {
     class Subject extends Model {
       // @ts-ignore
-      property = set<any>(undefined, () => 3);
+      property = put<any>(undefined, () => 3);
     }
 
     const expected = Util.BadCallback();
@@ -210,7 +210,7 @@ describe("callback", () => {
 describe("intercept", () => {
   it('will prevent update if callback returns false', async () => {
     class Subject extends Model {
-      test = set(() => "foo", value => {
+      test = put(() => "foo", value => {
         callback(value);
         return false;
       });
@@ -229,7 +229,7 @@ describe("intercept", () => {
 
   it('will block value if callback returns true', async () => {
     class Subject extends Model {
-      test = set(() => "foo", value => true);
+      test = put(() => "foo", value => true);
     }
 
     const state = Subject.create();
@@ -254,12 +254,12 @@ describe("memo", () => {
     ranMemo = jest.fn();
     ranLazyMemo = jest.fn();
 
-    memoized = set(() => {
+    memoized = put(() => {
       this.ranMemo();
       return "foobar";
     });
 
-    memoLazy = set(() => {
+    memoLazy = put(() => {
       this.ranLazyMemo();
       return "foobar";
     }, false);
@@ -285,7 +285,7 @@ describe("memo", () => {
     const warn = console.warn = jest.fn();
 
     class Test extends Model {
-      memoized = set(() => {
+      memoized = put(() => {
         throw new Error("Foobar")
       })
     }
@@ -300,7 +300,7 @@ describe("memo", () => {
 describe("async", () => {
   it('will auto-suspend if assessed value is async', async () => {
     class Test extends Model {
-      value = set(promise.await);
+      value = put(promise.await);
     }
 
     const test = mockSuspense();
@@ -325,7 +325,7 @@ describe("async", () => {
     const promise = mockAsync<string>();
 
     class Test extends Model {
-      value = set(promise.await());
+      value = put(promise.await());
     }
 
     const test = mockSuspense();
@@ -349,7 +349,7 @@ describe("async", () => {
     const promise = mockAsync();
 
     class Test extends Model {
-      value = set(promise.await);
+      value = put(promise.await);
     }
 
     const instance = Test.create();
@@ -363,7 +363,7 @@ describe("async", () => {
     const promise = mockAsync();
 
     class Test extends Model {
-      value = set(async () => {
+      value = put(async () => {
         await promise.await();
         throw "oh no";
       })
@@ -397,7 +397,7 @@ describe("async", () => {
   it('will bind async function to self', async () => {
     class Test extends Model {
       // methods lose implicit this
-      value = set(this.method);
+      value = put(this.method);
 
       async method(){
         expect(this).toBe(instance);
@@ -413,15 +413,15 @@ describe("nested suspense", () => {
   const name = mockAsync<string>();
 
   class Mock extends Model {
-    greet = set(greet.await);
-    name = set(name.await);
+    greet = put(greet.await);
+    name = put(name.await);
   }
 
   it("will suspend a factory", async () => {
     const didEvaluate = jest.fn();
 
     class Test extends Mock {
-      value = set(() => {
+      value = put(() => {
         didEvaluate();
         return this.greet + " " + this.name;
       });
@@ -444,7 +444,7 @@ describe("nested suspense", () => {
     const didEvaluate = jest.fn();
 
     class Test extends Mock {
-      value = set(async () => {
+      value = put(async () => {
         didEvaluate();
         return this.greet + " " + this.name;
       });
@@ -465,10 +465,10 @@ describe("nested suspense", () => {
 
   it("will not suspend if already resolved", async () => {
     class Test extends Model {
-      greet = set(async () => "Hello");
-      name = set(async () => "World");
+      greet = put(async () => "Hello");
+      name = put(async () => "World");
 
-      value = set(() => {
+      value = put(() => {
         return this.greet + " " + this.name;
       });
     }

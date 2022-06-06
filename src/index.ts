@@ -3,7 +3,7 @@ export { array } from './instruction/array';
 export { apply } from './instruction/apply';
 export { from } from './instruction/from';
 export { ref } from './instruction/ref';
-export { set } from './instruction/set';
+export { put } from './instruction/put';
 export { use } from './instruction/use';
 export { parent } from './instruction/parent';
 

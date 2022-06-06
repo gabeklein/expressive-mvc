@@ -1,7 +1,7 @@
-import { apply } from './apply';
 import { issues } from '../issues';
-import { createValueEffect } from '../util';
 import { mayRetry } from '../suspense';
+import { createValueEffect } from '../util';
+import { apply } from './apply';
 
 export const Oops = issues({
   NonOptional: (Parent, key) => 
@@ -27,7 +27,7 @@ declare namespace set {
  * Property cannot be accessed until it is defined. If accessed while undefined, a hybrid
  * `Promise`/`Error` (ala: [Suspense](https://reactjs.org/docs/concurrent-mode-suspense.html)) will be thrown.
  */
-function set <T = any>(): T;
+function put <T = any>(): T;
 
  /**
   * Set property with starting value `undefined`.
@@ -38,11 +38,11 @@ function set <T = any>(): T;
   * @param value - Starting value of host property (undefined).
   * @param required - Property will suspend callee if undefined at time of access.
   */
-function set <T> (value: undefined, required: false): T | undefined;
-function set <T> (value: undefined, required?: boolean): T;
+function put <T> (value: undefined, required: false): T | undefined;
+function put <T> (value: undefined, required?: boolean): T;
 
-function set <T> (value: undefined, onUpdate: set.Callback<T>): T | undefined;
-function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefined;
+function put <T> (value: undefined, onUpdate: set.Callback<T>): T | undefined;
+function put <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefined;
 
  /**
   * Set property with an async function.
@@ -59,14 +59,14 @@ function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T | undefi
   * @param factory - Callback run to derrive property value.
   * @param required - (default: true) Run factory immediately on creation, otherwise on access.
   */
-function set <T> (factory: set.Factory<Promise<T>>, required: false): T | undefined;
-function set <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
+function put <T> (factory: set.Factory<Promise<T>>, required: false): T | undefined;
+function put <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
 
-function set <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
-function set <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
+function put <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
+function put <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
 
-function set <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
-function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
+function put <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
+function put <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
 
  /**
   * Set property with a factory function.
@@ -80,30 +80,30 @@ function set <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T
   * @param factory - Callback run to derrive property value.
   * @param required - (default: true) Run factory immediately on creation, otherwise on access.
   */
-function set <T>(factory: set.Factory<T>, required: false): T | undefined;
-function set <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
+function put <T>(factory: set.Factory<T>, required: false): T | undefined;
+function put <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
 
-function set <T>(factory: set.Factory<T>, required?: boolean): T;
-function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
+function put <T>(factory: set.Factory<T>, required?: boolean): T;
+function put <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
 
-function set <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
-function set <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
+function put <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
+function put <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
 
 /**
  * Assign a property with result of a promise.
  */
-function set <T> (factory: Promise<T>, required: false): T | undefined;
-function set <T> (factory: Promise<T>, required?: boolean): T;
-function set <T> (value: Promise<T>, onUpdate: set.Callback<T>): T;
+function put <T> (factory: Promise<T>, required: false): T | undefined;
+function put <T> (factory: Promise<T>, required?: boolean): T;
+function put <T> (value: Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
  * Assign a property.
  */
-function set <T> (factory: T, required: false): T | undefined;
-function set <T> (factory: T, required?: boolean): T;
-function set <T> (value: T, onUpdate: set.Callback<T>): T;
+function put <T> (factory: T, required: false): T | undefined;
+function put <T> (factory: T, required?: boolean): T;
+function put <T> (value: T, onUpdate: set.Callback<T>): T;
 
-function set(
+function put(
   factory?: any,
   argument?: set.Callback<any> | boolean): any {  
 
@@ -203,4 +203,4 @@ function set(
   )
 }
 
-export { set }
+export { put }

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Consumer, Global, Model, Provider, set, tap } from '..';
+import { Consumer, Global, Model, Provider, put, tap } from '..';
 import { render, subscribeTo } from '../../tests/adapter';
 import { Oops } from './tap';
 
@@ -291,7 +291,7 @@ describe("suspense", () => {
     class Foo extends Model {
       bar = tap(Bar, true);
 
-      value = set(() => {
+      value = put(() => {
         const { bar } = this;
         const { value } = bar;
 

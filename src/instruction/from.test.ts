@@ -2,7 +2,7 @@ import { from, Global, Model, tap, use } from '..';
 import { mockAsync, mockSuspense } from '../../tests/adapter';
 import { Oops as Suspense } from '../suspense';
 import { Oops as Compute } from './from';
-import { set } from './set';
+import { put } from './put';
 
 describe("computed", () => {
   class Child extends Model {
@@ -525,7 +525,7 @@ describe("suspense", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise.await, false);
+      value = put(promise.await, false);
     }
 
     const test = Test.create();
