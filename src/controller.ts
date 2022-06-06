@@ -28,7 +28,7 @@ const READY = new WeakSet<Controller>();
 class Controller<T extends Stateful = any> {
   public proxy: Model.Entries<T>;
   public state = {} as Model.Values<T>;
-  public frame?: Set<string>;
+  public frame = new Set<string>();
   public onDestroy = new Set<Callback>();
 
   private waiting = new Set<RequestCallback>();
@@ -124,15 +124,11 @@ class Controller<T extends Stateful = any> {
     if(1 in arguments)
       this.state[key as Model.Field<T>] = value;
 
-    if(!this.frame){
-      this.frame = new Set();
-
+    if(!this.frame.size)
       setTimeout(() => {
         flush(this.frame!);
-
         this.flush();
       }, 0);
-    }
     else if(this.frame.has(key))
       return;
 
@@ -148,9 +144,9 @@ class Controller<T extends Stateful = any> {
 
   flush(){
     const waiting = Array.from(this.waiting);
-    const keys = Array.from(this.frame || []);
+    const keys = Array.from(this.frame);
 
-    this.frame = undefined;
+    this.frame.clear();
     this.waiting.clear();
 
     applyUpdate(this.subject, keys)();
@@ -175,13 +171,13 @@ class Controller<T extends Stateful = any> {
       return;
     }
 
-    if(!this.frame && arg === true)
+    if(!this.frame.size && arg === true)
       return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
         if(callback)
-          if(this.frame || arg !== false)
+          if(this.frame.size || arg !== false)
             this.waiting.add(callback);
           else
             callback(false);
