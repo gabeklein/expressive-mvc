@@ -154,11 +154,9 @@ class Model {
   }
 
   on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
-
   on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
-
   on <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
@@ -212,7 +210,6 @@ class Model {
   once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
-
   once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
@@ -234,6 +231,7 @@ class Model {
   effect(callback: Model.Effect<this>): Callback;
   effect(callback: Model.Effect<this>, select: []): Callback;
   effect(callback: Model.Effect<this>, select: Model.Event<this>[]): Callback;
+
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
 
@@ -312,7 +310,6 @@ class Model {
   update(strict: true): Promise<readonly Model.Event<this>[]>;
   update(strict: false): Promise<false>;
   update(strict: boolean): Promise<readonly Model.Event<this>[] | false>;
-
   update(keys: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
   update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
   update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
