@@ -1,4 +1,4 @@
-import { Model, put } from '../src';
+import { Model, set } from '../src';
 import { STATE } from '../src/model';
 import { subscribeTo } from './adapter';
 
@@ -57,7 +57,7 @@ describe("subscriber", () => {
   it('will not obstruct set-behavior', () => {
     class Test extends Model {
       didSet = jest.fn();
-      value = put(() => "foo", this.didSet);
+      value = set("foo", this.didSet);
     }
 
     const control = Test.create();

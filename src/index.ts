@@ -4,6 +4,7 @@ export { apply } from './instruction/apply';
 export { from } from './instruction/from';
 export { ref } from './instruction/ref';
 export { put } from './instruction/put';
+export { set } from './instruction/set';
 export { use } from './instruction/use';
 export { parent } from './instruction/parent';
 
