@@ -16,10 +16,9 @@ export const Oops = issues({
 });
 
 declare namespace Controller {
-  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => Callback | void;
-
   // TODO: implement value type
   type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
+  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => Callback | void;
 }
 
 const PENDING = new Map<symbol, Instruction.Runner<any>>();
@@ -42,13 +41,13 @@ class Controller<T extends Stateful = any> {
     READY.add(this);
 
     for(const key in this.subject){
-      const { value: entry } = getOwnPropertyDescriptor(this.subject, key)!;
+      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
 
-      if(typeof entry == "function")
+      if(typeof value == "function")
         continue;
 
-      if(typeof entry == "symbol"){
-        const instruction = PENDING.get(entry);
+      if(typeof value == "symbol"){
+        const instruction = PENDING.get(value);
 
         if(instruction)
           instruction.call(this, key, this);
@@ -56,7 +55,7 @@ class Controller<T extends Stateful = any> {
         continue;
       }
 
-      this.manage(key as any, entry);
+      this.manage(key as any, value);
     }
 
     this.flush();
@@ -68,19 +67,18 @@ class Controller<T extends Stateful = any> {
   }
 
   manage(key: Model.Field<T>, value: any){
-    const { proxy, state, subject } = this;
+    const { state } = this;
+    const set = this.ref(key);
 
     state[key] = value;
 
-    const set = this.ref(key);
-
-    defineProperty(subject, key, {
+    defineProperty(this.subject, key, {
       enumerable: false,
       get: () => state[key],
       set
     });
 
-    defineProperty(proxy, key, {
+    defineProperty(this.proxy, key, {
       enumerable: false,
       get(){
         const local = this[LOCAL];
@@ -121,18 +119,20 @@ class Controller<T extends Stateful = any> {
   }
 
   update(key: Model.Event<T>, value?: any){
+    const { frame } = this;
+
     if(1 in arguments)
       this.state[key as Model.Field<T>] = value;
 
-    if(!this.frame.size)
+    if(!frame.size)
       setTimeout(() => {
-        flush(this.frame!);
+        flush(frame!);
         this.flush();
       }, 0);
-    else if(this.frame.has(key))
+    else if(frame.has(key))
       return;
 
-    this.frame.add(key);
+    frame.add(key);
 
     for(const callback of this.followers){
       const event = callback(key, this);
