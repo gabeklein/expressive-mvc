@@ -1,11 +1,11 @@
 import { control, Controller } from './controller';
-import { UPDATE } from './dispatch';
+import { getUpdate, UPDATE } from './dispatch';
 import { ensure } from './instruction/from';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
-import type { Callback, Class, InstanceOf, RequestCallback } from './types';
+import type { Callback, Class, InstanceOf } from './types';
 
 export const CONTROL = Symbol("CONTROL");
 export const WHY = Symbol("UPDATE");
@@ -153,7 +153,7 @@ class Model {
     return UPDATE.get(this);
   }
 
-  on <P = Model.Event<this>> (event: (key: P) => RequestCallback | void): Callback;
+  on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
 
   on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
@@ -164,7 +164,7 @@ class Model {
   on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (
-    select: P | P[] | ((key: any) => RequestCallback | void),
+    select: P | P[] | ((key: any) => Callback | void),
     handler?: Function,
     squash?: boolean,
     once?: boolean){
@@ -180,14 +180,23 @@ class Model {
 
       ensure(control, keys);
 
-      const callback: RequestCallback = squash
-        ? handler!.bind(this)
-        : frame => frame
-          .filter(k => keys.includes(k))
-          .forEach(k => handler!.call(this, control.state[k as Model.Field<this>], k))
+      const callback = squash
+        ? () => {
+          handler!.call(this, getUpdate(this))
+        }
+        : () => {
+          getUpdate(this)
+            .filter(k => keys.includes(k))
+            .forEach(k => {
+              handler!.call(this, control.state[k], k)
+            })
+        }
 
-      const trigger: RequestCallback = once
-        ? frame => { remove(); callback(frame) }
+      const trigger = once
+        ? () => {
+          remove();
+          callback();
+        }
         : callback;
 
       const remove = control.addListener(key => {

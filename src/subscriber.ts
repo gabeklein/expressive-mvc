@@ -1,9 +1,9 @@
 import { control, Controller } from './controller';
-import { applyUpdate } from './dispatch';
+import { applyUpdate, getUpdate } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
 import { create, define, defineProperty } from './util';
 
-import type { Callback, RequestCallback } from './types';
+import type { Callback } from './types';
 
 type Listener = {
   commit(): void;
@@ -28,6 +28,7 @@ export class Subscriber <T extends Stateful = any> {
     const parent = target instanceof Controller
       ? target : control(target);
 
+    const subject = parent.subject;
     const proxy = create(parent.proxy);
 
     let reset: Callback | undefined;
@@ -53,8 +54,10 @@ export class Subscriber <T extends Stateful = any> {
         handler();
 
       const notify = this.onUpdate(key, parent);
-      const getWhy: RequestCallback = (keys) => {
-        reset = applyUpdate(proxy, keys.filter(k => k in this.watch));
+      const getWhy: Callback = () => {
+        const update = getUpdate(subject);
+        const applicable = update.filter(k => k in this.watch);
+        reset = applyUpdate(proxy, applicable);
       }
 
       if(notify){

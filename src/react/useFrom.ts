@@ -2,9 +2,10 @@ import React from 'react';
 
 import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
-import { Callback, RequestCallback } from '../types';
 import { defineProperty } from '../util';
 import { use } from './use';
+
+import type { Callback } from '../types';
 
 function useFrom <T extends Stateful, R> (
   source: (() => T) | T,
@@ -28,7 +29,7 @@ function useFrom(
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);
-    let update: RequestCallback | undefined;
+    let update: Callback | undefined;
     let retry: Callback | undefined;
 
     const set = (next: any) => {

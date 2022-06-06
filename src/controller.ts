@@ -1,11 +1,11 @@
-import { applyUpdate } from './dispatch';
+import { applyUpdate, getUpdate } from './dispatch';
 import { Instruction } from './instruction/apply';
 import { flush } from './instruction/from';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
-import type { Callback, RequestCallback } from './types';
+import type { Callback } from './types';
 
 export const Oops = issues({
   StrictUpdate: () => 
@@ -16,7 +16,7 @@ export const Oops = issues({
 });
 
 declare namespace Controller {
-  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => RequestCallback | void;
+  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => Callback | void;
 
   // TODO: implement value type
   type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
@@ -31,7 +31,7 @@ class Controller<T extends Stateful = any> {
   public frame = new Set<string>();
   public onDestroy = new Set<Callback>();
 
-  private waiting = new Set<RequestCallback>();
+  private waiting = new Set<Callback>();
   protected followers = new Set<Controller.OnEvent>();
 
   constructor(public subject: T){
@@ -153,7 +153,7 @@ class Controller<T extends Stateful = any> {
 
     for(const callback of waiting)
       try {
-        callback(keys)
+        callback();
       }
       catch(err){
         console.error(err);
@@ -164,8 +164,8 @@ class Controller<T extends Stateful = any> {
   requestUpdate(strict: true): Promise<readonly Model.Event<T>[]>;
   requestUpdate(strict: false): Promise<false>;
   requestUpdate(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
-  requestUpdate(callback: (keys: readonly Model.Event<T>[]) => void): void;
-  requestUpdate(arg?: boolean | RequestCallback): any {
+  requestUpdate(callback: Callback): void;
+  requestUpdate(arg?: boolean | Callback): any {
     if(typeof arg == "function"){
       this.waiting.add(arg);
       return;
@@ -178,7 +178,9 @@ class Controller<T extends Stateful = any> {
       then: (callback) => {
         if(callback)
           if(this.frame.size || arg !== false)
-            this.waiting.add(callback);
+            this.waiting.add(() => {
+              callback(getUpdate(this.subject));
+            });
           else
             callback(false);
         else

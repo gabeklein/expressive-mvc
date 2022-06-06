@@ -3,7 +3,7 @@ import { issues } from '../issues';
 import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
-import { RequestCallback } from '../types';
+import { Callback } from '../types';
 import { defineProperty, getOwnPropertyDescriptor } from '../util';
 import { apply } from './apply';
 
@@ -30,7 +30,7 @@ type GetterInfo = {
 const INIT = new WeakSet<Function>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
-const KEYS = new WeakMap<Set<string>, RequestCallback[]>();
+const KEYS = new WeakMap<Set<string>, Callback[]>();
 
 declare namespace from {
   type Function<T, O=any> = (this: O, on: O) => T;
@@ -224,7 +224,7 @@ export function flush(frame: Set<string>){
     const { key } = INFO.get(compute)!;
 
     if(!frame.has(key))
-      compute([ ...frame ]);
+      compute();
   }
 
   KEYS.delete(frame);
