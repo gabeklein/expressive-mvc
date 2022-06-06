@@ -178,15 +178,15 @@ class Controller<T extends Stateful = any> {
 
     return <PromiseLike<readonly Model.Event<T>[] | false>> {
       then: (callback) => {
-        if(callback)
-          if(frame.size || arg !== false)
-            waiting.add(() => {
-              callback(getUpdate(subject));
-            });
-          else
-            callback(false);
-        else
+        if(!callback)
           throw Oops.NoChaining();
+
+        if(frame.size || arg !== false)
+          waiting.add(() => {
+            callback(getUpdate(subject));
+          });
+        else
+          callback(false);
       }
     }
   }
