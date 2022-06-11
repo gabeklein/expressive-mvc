@@ -45,7 +45,7 @@ export class Subscriber <T extends Stateful = any> {
     })
 
     const release = parent.addListener(key => {
-      const handler = this.watch[key];
+      const handler = this.watch[key as string];
 
       if(!handler || !this.active)
         return;

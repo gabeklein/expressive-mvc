@@ -18,7 +18,7 @@ export const Oops = issues({
 declare namespace Controller {
   // TODO: implement value type
   type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
-  type OnEvent<T = any> = (key: Model.Event<T>, source: Controller) => Callback | void;
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
 const PENDING = new Map<symbol, Instruction.Runner<any>>();
@@ -28,7 +28,6 @@ class Controller<T extends Stateful = any> {
   public proxy: Model.Entries<T>;
   public state = {} as Model.Values<T>;
   public frame = new Set<string>();
-  public onDestroy = new Set<Callback>();
 
   private waiting = new Set<Callback>();
   protected followers = new Set<Controller.OnEvent>();
@@ -62,8 +61,10 @@ class Controller<T extends Stateful = any> {
   }
 
   stop(){
+    const listeners = [ ...this.followers ];
+
     this.followers.clear();
-    this.onDestroy.forEach(x => x());
+    listeners.forEach(x => x(null, this));
   }
 
   manage(key: Model.Field<T>, value: any){

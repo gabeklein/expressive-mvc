@@ -132,7 +132,7 @@ function from<R, T>(
         }
       }
 
-      function defer(_key: string, from: Controller){
+      function defer(_key: string | null, from: Controller){
         let pending = KEYS.get(from.frame!);
 
         if(!pending)

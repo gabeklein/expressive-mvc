@@ -198,7 +198,7 @@ class Model {
         : callback;
 
       const remove = control.addListener(key => {
-        if(selection.includes(key))
+        if(selection.includes(key as string))
           return onEvent;
       });
 
@@ -264,15 +264,12 @@ class Model {
 
       invoke();
 
-      if(!select.length){
-        control.onDestroy.add(invoke);
-        return () => {
-          control.onDestroy.delete(invoke);
+      return control.addListener((key) => {
+        if(key === null){
+          if(!select.length)
+            invoke();
         }
-      }
-
-      return control.addListener(key => {
-        if(select.includes(key))
+        else if(select.includes(key))
           return invoke;
       });
     })
