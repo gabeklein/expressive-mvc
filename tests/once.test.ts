@@ -1,4 +1,5 @@
 import { from, Model } from '../src';
+import { Oops } from '../src/model';
 
 class Subject extends Model {
   seconds = 0;
@@ -32,9 +33,25 @@ it('will return promise with update keys', async () => {
 
   state.seconds = 30;
 
-  const updated = await pending;
+  await expect(pending).resolves.toBeUndefined();
+})
 
-  expect(updated).toMatchObject(["seconds"]);
+it('will reject promise on timeout', async () => {
+  const state = Subject.create();
+  const promise = state.once("seconds", 0);
+  const expected = Oops.Timeout(["seconds"], "0ms");
+
+  await expect(promise).rejects.toThrow(expected);
+})
+
+it('will reject promise on destroy state', async () => {
+  const state = Subject.create();
+  const promise = state.once("seconds");
+  const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
+
+  state.destroy();
+
+  await expect(promise).rejects.toThrow(expected);
 })
 
 it('will call for all simultaneous', async () => {

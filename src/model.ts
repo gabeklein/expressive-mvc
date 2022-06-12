@@ -6,6 +6,12 @@ import { mayRetry } from './suspense';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
+import { issues } from './issues';
+
+export const Oops = issues({
+  Timeout: (keys, timeout) => 
+    `No update for [${keys}] within ${timeout}.`
+});
 
 export const CONTROL = Symbol("CONTROL");
 export const WHY = Symbol("UPDATE");
@@ -213,18 +219,44 @@ class Model {
   once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
-  once <P extends Model.Event<this>> (key: P | P[]): Promise<P[]>;
+  once <P extends Model.Event<this>> (key: P | P[], timeout?: number): Promise<void>;
 
   once <P extends Model.Event<this>> (
     select: P | P[],
-    callback?: Model.OnUpdate<any, any>,
+    argument?: Model.OnUpdate<any, any> | number,
     squash?: boolean){
 
-    if(callback)
-      return this.on(select, callback, squash, true);
+    if(typeof argument == "function")
+      return this.on(select, argument, squash, true);
 
-    return new Promise<P[]>(resolve => {
-      this.on(select, resolve, true, true);
+    if(typeof select == "string")
+      select = [ select ];
+
+    return new Promise<void>((resolve, reject) => {
+      const invoke = (key?: string | null) => {
+        if(!key){
+          clear();
+          reject(
+            Oops.Timeout(select,
+              typeof argument == "number"
+                ? `${argument}ms`
+                : `lifetime of ${this}`
+            )
+          );
+        }
+        else if((select as string[]).includes(key)){
+          clear();
+          return resolve;
+        }
+      }
+
+      const clear = control(this, x => {
+        ensure(x, select as P[]);
+        return x.addListener(invoke);
+      })
+
+      if(typeof argument == "number")
+        setTimeout(invoke, argument);
     });
   }
 
