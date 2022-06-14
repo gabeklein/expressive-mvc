@@ -1,6 +1,5 @@
 import { apply, Model } from '..';
 import { Controller } from '../Controller';
-import { STATE } from '../model';
 import { Subscriber } from '../subscriber';
 
 describe("instruction", () => {
@@ -135,20 +134,19 @@ describe("custom", () => {
       })
     }
 
-    const instance = Test.create();
-    const state = instance[STATE];
+    const test = Test.create();
 
-    expect(instance.property).toBe("foobar");
+    expect(test.property).toBe("foobar");
 
-    instance.property = "test";
-    expect(didSetValue).toBeCalledWith("test", state);
-    expect(instance.property).toBe("test");
-    await instance.update(true);
+    test.property = "test";
+    expect(didSetValue).toBeCalledWith("test", expect.anything());
+    expect(test.property).toBe("test");
+    await test.update(true);
 
-    instance.property = "ignore";
-    expect(didSetValue).toBeCalledWith("ignore", state);
-    expect(instance.property).toBe("test");
-    await instance.update(false);
+    test.property = "ignore";
+    expect(didSetValue).toBeCalledWith("ignore", expect.anything());
+    expect(test.property).toBe("test");
+    await test.update(false);
   })
 
   it("will delegate value if returns boolean", async () => {

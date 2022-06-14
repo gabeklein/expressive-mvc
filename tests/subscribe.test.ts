@@ -1,5 +1,4 @@
 import { Model, set } from '../src';
-import { STATE } from '../src/model';
 import { subscribeTo } from './adapter';
 
 describe("subscriber", () => {
@@ -60,16 +59,15 @@ describe("subscriber", () => {
       value = set("foo", this.didSet);
     }
 
-    const control = Test.create();
-    const state = control[STATE];
+    const test = Test.create();
 
-    expect(control.value).toBe("foo");
+    expect(test.value).toBe("foo");
 
-    subscribeTo(control, it => {
+    subscribeTo(test, it => {
       it.value = "bar";
     })
 
-    expect(control.value).toBe("bar");
-    expect(control.didSet).toBeCalledWith("bar", state);
+    expect(test.value).toBe("bar");
+    expect(test.didSet).toBeCalledWith("bar", test);
   })
 })
