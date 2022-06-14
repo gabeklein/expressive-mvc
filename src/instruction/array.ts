@@ -1,3 +1,4 @@
+import { Subscriber } from '../subscriber';
 import { Callback } from '../types';
 import { apply, forSubscriber } from './apply';
 
@@ -33,7 +34,10 @@ class Managed<T> extends Array<T> {
   splice(start: number, deleteCount?: number): T[];
   splice(start: number, deleteCount: number, ...items: T[]): T[];
   splice(start: any, deleteCount: any, ...rest: any[]): T[] {
-    this.update(start, deleteCount !== rest.length ? Infinity : deleteCount);
+    const end =
+      deleteCount !== rest.length ? Infinity : deleteCount;
+
+    this.update(start, end);
 
     return super.splice(start, deleteCount, ...rest);
   }
@@ -42,8 +46,11 @@ class Managed<T> extends Array<T> {
 function array<T = any>(){
   return apply<T[]>(
     function array(key){
-      const array = new Managed<T>(() => this.update(key));
-      const access = forSubscriber(context => {
+      const array = new Managed<T>(() => {
+        this.update(key);
+      });
+
+      const getLocal = (context: Subscriber) => {
         const local = Object.create(array);
         const update = context.onUpdate(key, this)!;
 
@@ -72,10 +79,10 @@ function array<T = any>(){
         }
 
         return local;
-      })
+      }
 
       return {
-        get: access,
+        get: forSubscriber(getLocal),
         set: false,
         value: array
       }
