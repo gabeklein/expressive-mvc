@@ -26,7 +26,7 @@ export interface Stateful {
   [LOCAL]?: Subscriber;
 
   /** Current state of this instance. */
-  [STATE]?: this;
+  [STATE]?: Model.Values<this>;
 
   /**
    * Last update causing a refresh to subscribers.
@@ -152,7 +152,7 @@ class Model {
   }
 
   get [STATE]() {
-    return this[CONTROL].state as this;
+    return this.export();
   }
 
   get [WHY](){
