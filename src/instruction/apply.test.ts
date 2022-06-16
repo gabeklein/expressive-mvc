@@ -139,12 +139,12 @@ describe("custom", () => {
     expect(test.property).toBe("foobar");
 
     test.property = "test";
-    expect(didSetValue).toBeCalledWith("test", expect.anything());
+    expect(didSetValue).toBeCalledWith("test");
     expect(test.property).toBe("test");
     await test.update(true);
 
     test.property = "ignore";
-    expect(didSetValue).toBeCalledWith("ignore", expect.anything());
+    expect(didSetValue).toBeCalledWith("ignore");
     expect(test.property).toBe("test");
     await test.update(false);
   })
@@ -153,11 +153,11 @@ describe("custom", () => {
     let shouldUpdate = true;
 
     class Test extends Model {
-      property = apply(key => {
+      property = apply((key, control) => {
         return {
           value: 0,
-          set: (value, state) => {
-            state[key] = value + 10;
+          set: (value: any) => {
+            control.set(key, value + 10);
             return shouldUpdate;
           }
         }

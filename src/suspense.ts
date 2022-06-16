@@ -18,7 +18,7 @@ export function suspend(
     const release = source.addListener(forKey => {
       if(forKey == key)
         return () => {
-          if(source.state[key] !== undefined){
+          if(source.get(key) !== undefined){
             release();
             resolve();
           }

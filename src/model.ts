@@ -179,7 +179,7 @@ class Model {
 
       const selection = 
         typeof select == "string" ? [select] :
-        !select.length ? getOwnPropertyNames(control.state) :
+        !select.length ? control.keys :
         select;
 
       ensure(control, selection);
@@ -190,9 +190,9 @@ class Model {
         }
         : () => {
           getUpdate(this)
-            .filter(k => selection.includes(k))
+            .filter(k => selection.includes(k as any))
             .forEach(k => {
-              handler!.call(this, control.state[k], k)
+              handler!.call(this, control.get(k), k)
             })
         }
 
@@ -204,7 +204,7 @@ class Model {
         : callback;
 
       const remove = control.addListener(key => {
-        if(selection.includes(key as string))
+        if(selection.includes(key as any))
           return onEvent;
       });
 
@@ -323,14 +323,15 @@ class Model {
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
-    const { state } = control(this);
+    const self = control(this);
     const output = {} as Model.Values<this, P>;
 
-    if(!subset)
-      subset = getOwnPropertyNames(state) as P[];
-
-    for(const key of subset)
-      output[key] = state[key];
+    if(subset)
+      for(const key of subset)
+        (output as any)[key] = self.get(key);
+    else
+      for(const key of self.keys)
+        (output as any)[key] = self.get(key);
 
     return output;
   }
@@ -347,7 +348,7 @@ class Model {
     const target = control(this);
 
     if(typeof arg == "string"){
-      target.update(arg);
+      target.update(arg as Model.Field<this>);
 
       if(1 in arguments && arg in this){
         const method = (this as any)[arg];

@@ -44,7 +44,7 @@ function use<T extends typeof Model>(
       const { subject } = this;
 
       const onUpdate = (next: {} | undefined) => {
-        this.state[key] = next;
+        this.set(key, next);
 
         if(next){
           Parent.set(next, subject);

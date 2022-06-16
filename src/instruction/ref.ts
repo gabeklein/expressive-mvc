@@ -45,7 +45,7 @@ function ref<T>(arg?: ref.Callback<T> | Model){
       if(typeof arg == "object"){
         const source = control(arg);
 
-        for(const key in source.state)
+        for(const key of source.keys)
           defineLazy(value, key, createRef.bind(source, key));
       }
       else 
@@ -68,7 +68,7 @@ function createRef(
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
-    get: () => this.state[key]
+    get: () => this.get(key)
   })
 
   return refObjectFunction as ref.Object;

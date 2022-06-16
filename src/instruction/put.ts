@@ -86,7 +86,7 @@ function put(
 
   return apply(
     function set(key){
-      const { subject, state } = this;
+      const { subject } = this;
       const required = argument === true || argument === undefined;
 
       let set;
@@ -102,7 +102,7 @@ function put(
         if(output instanceof Promise){
           pending = output
             .catch(err => error = err)
-            .then(val => state[key] = val)
+            .then(val => this.set(key, val))
             .finally(() => {
               pending = undefined;
               this.update(key);
@@ -111,7 +111,7 @@ function put(
           return;
         }
 
-        return state[key] = output;
+        return this.set(key, output);
       }
 
       const suspend = () => {
@@ -145,8 +145,8 @@ function put(
         if(error)
           throw error;
 
-        if(key in state)
-          return state[key];
+        if(this.has(key))
+          return this.get(key);
 
         let output = init();
 

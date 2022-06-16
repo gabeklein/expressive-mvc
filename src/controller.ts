@@ -17,7 +17,7 @@ export const Oops = issues({
 
 declare namespace Controller {
   // TODO: implement value type
-  type OnValue<T = any, S = Model.Values<T>> = (this: T, value: any, state: S) => boolean | void;
+  type OnValue<T = any> = (this: T, value: any) => boolean | void;
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
@@ -34,6 +34,22 @@ class Controller<T extends Stateful = any> {
 
   constructor(public subject: T){
     this.proxy = Object.create(subject);
+  }
+
+  get keys(){
+    return Object.getOwnPropertyNames(this.state) as Model.Field<T>[];
+  }
+
+  has(key: Model.Field<T>){
+    return key in this.state;
+  }
+
+  get(key: Model.Field<T>){
+    return this.state[key];
+  }
+
+  set(key: Model.Field<T>, value: any){
+    return this.state[key] = value;
   }
 
   start(){
@@ -68,14 +84,14 @@ class Controller<T extends Stateful = any> {
   }
 
   manage(key: Model.Field<T>, value: any){
-    const { state } = this;
+    const get = () => this.get(key);
     const set = this.ref(key);
 
-    state[key] = value;
+    this.set(key, value);
 
     defineProperty(this.subject, key, {
       enumerable: false,
-      get: () => state[key],
+      get,
       set
     });
 
@@ -87,21 +103,19 @@ class Controller<T extends Stateful = any> {
         if(local && !local.watch[key])
           local.watch[key] = true;
 
-        return state[key];
+        return get();
       },
       set
     });
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
-    const { state, subject } = this;
-
     return (value: any) => {
-      if(state[key] == value)
+      if(this.get(key) == value)
         return;
 
       if(handler)
-        switch(handler.call(subject, value, state)){
+        switch(handler.call(this.subject, value)){
           case true:
             this.update(key);
           case false:
@@ -119,17 +133,18 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  update(key: Model.Event<T>, value?: any){
+  update(key: Model.Field<T>, value?: any){
     const { frame } = this;
 
     if(1 in arguments)
-      this.state[key as Model.Field<T>] = value;
+      this.set(key, value);
 
     if(!frame.size)
       setTimeout(() => {
         flush(frame!);
         this.flush();
       }, 0);
+
     else if(frame.has(key))
       return;
 

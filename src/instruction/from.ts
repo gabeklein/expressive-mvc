@@ -125,7 +125,7 @@ function from<R, T>(
           console.error(e);
         }
         finally {
-          if(state[key] !== value){
+          if(parent.get(key) !== value){
             parent.update(key, value);
             return value;
           }
@@ -158,7 +158,7 @@ function from<R, T>(
         })
 
         try {
-          return state[key] = compute(true);
+          parent.set(key, compute(true));
         }
         catch(e){
           if(early)
@@ -188,7 +188,7 @@ function from<R, T>(
       })
 
       return () => {
-        const value = parent.state[key];
+        const value = parent.get(key);
 
         if(value === undefined && required)
           throw suspend(this, key);

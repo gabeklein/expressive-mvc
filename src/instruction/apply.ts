@@ -18,7 +18,7 @@ type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
 
 declare namespace Instruction {
   type Getter<T> = (state: T, within?: Subscriber) => T;
-  type Setter<T> = (value: T, state: any) => boolean | void;
+  type Setter<T> = (value: T) => boolean | void;
 
   type Runner<T> = (this: Controller, key: string, on: Controller) =>
     Instruction.Descriptor<T> | boolean | undefined;
@@ -59,7 +59,7 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
-    const { proxy, state, subject } = this;
+    const { proxy, subject } = this;
     const control = this;
 
     PENDING.delete(placeholder);
@@ -87,7 +87,7 @@ function apply<T = any>(
     const desc = output as Instruction.Descriptor<any>;
 
     if("value" in desc)
-      state[key] = desc.value as any;
+      this.set(key, desc.value);
 
     const {
       get: onGet,
@@ -101,7 +101,7 @@ function apply<T = any>(
       : this.ref(key, onSet);
 
     function get(this: Stateful){
-      if(!(key in state) && suspense)
+      if(!control.has(key) && suspense)
         throw suspend(control, key);
 
       const local = this[LOCAL];
@@ -109,7 +109,7 @@ function apply<T = any>(
       if(local && !(key in local.watch))
         local.watch[key] = true;
 
-      const value = state[key];
+      const value = control.get(key);
 
       if(!onGet)
         return value;
@@ -140,7 +140,7 @@ function recursive(source: Controller, key: string){
         child = undefined;
       }
 
-      const value = source.state[key];
+      const value = source.get(key);
 
       if(value && CONTROL in value){
         child = new Subscriber(value as Stateful, parent.onUpdate);

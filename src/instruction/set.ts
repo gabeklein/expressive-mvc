@@ -35,7 +35,7 @@ function set(
   return apply(
     function set(key){
       if(value !== undefined)
-        this.state[key] = value;
+        this.set(key, value);
 
       return {
         suspense: true,
