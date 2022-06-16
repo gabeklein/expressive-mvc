@@ -27,6 +27,7 @@ type GetterInfo = {
   priority: number;
 }
 
+const EARLY = new WeakSet<Controller>();
 const INIT = new WeakSet<Function>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
@@ -149,7 +150,7 @@ function from<R, T>(
         }
       }
 
-      function create(early?: boolean){
+      function create(){
         sub = new Subscriber(getSource(), defer);
 
         defineProperty(state, key, {
@@ -161,7 +162,7 @@ function from<R, T>(
           parent.set(key, compute(true));
         }
         catch(e){
-          if(early)
+          if(EARLY.has(parent))
             Oops.Early(key).warn();
 
           throw e;
@@ -199,18 +200,18 @@ function from<R, T>(
   )
 }
 
-export function ensure(
-  on: Controller, keys: string[]){
-
-  type Initial = (early?: boolean) => void;
+export function ensure(on: Controller, keys: string[]){
+  EARLY.add(on);
 
   for(const key of keys){
     const desc = getOwnPropertyDescriptor(on.state, key);
     const getter = desc && desc.get;
 
     if(INIT.has(getter!))
-      (getter as Initial)(true);
+      getter!();
   }
+
+  EARLY.delete(on);
 }
 
 export function flush(frame: Set<string>){
