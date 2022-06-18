@@ -81,7 +81,33 @@ function apply<T = any>(
     if("recursive" in output && output.recursive)
       output = {
         ...output,
-        get: recursive(this, key)
+        get: forSubscriber((parent, context) => {
+          let child: Subscriber | undefined;
+      
+          const init = () => {
+            if(child){
+              child.release();
+              parent.dependant.delete(child);
+              context.set(parent, undefined);
+              child = undefined;
+            }
+      
+            const value = this.get(key);
+      
+            if(value && CONTROL in value){
+              child = new Subscriber(value as Stateful, parent.onUpdate);
+      
+              if(parent.active)
+                child.commit();
+      
+              parent.dependant.add(child);
+              context.set(parent, child.proxy);
+            }
+          }
+      
+          init();
+          parent.watch[key] = init;
+        })
       }
 
     const desc = output as Instruction.Descriptor<any>;
@@ -126,36 +152,6 @@ function apply<T = any>(
   PENDING.set(placeholder, setup);
 
   return placeholder as unknown as T;
-}
-
-function recursive(source: Controller, key: string){
-  return forSubscriber((parent, context) => {
-    let child: Subscriber | undefined;
-
-    function init(){
-      if(child){
-        child.release();
-        parent.dependant.delete(child);
-        context.set(parent, undefined);
-        child = undefined;
-      }
-
-      const value = source.get(key);
-
-      if(value && CONTROL in value){
-        child = new Subscriber(value as Stateful, parent.onUpdate);
-
-        if(parent.active)
-          child.commit();
-
-        parent.dependant.add(child);
-        context.set(parent, child.proxy);
-      }
-    }
-
-    init();
-    parent.watch[key] = init;
-  })
 }
 
 function forSubscriber<T extends any>(
