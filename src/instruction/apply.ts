@@ -78,37 +78,47 @@ function apply<T = any>(
       return false;
     }
 
-    if("recursive" in output && output.recursive)
+    if("recursive" in output && output.recursive){
+      const context = new WeakMap<Subscriber, T | undefined>();
+
       output = {
         ...output,
-        get: forSubscriber((parent, context) => {
-          let child: Subscriber | undefined;
+        get: (value: any, local: Subscriber | undefined) => {
+          if(!local)
+            return this.get(key);
       
-          const init = () => {
-            if(child){
-              child.release();
-              parent.dependant.delete(child);
-              context.set(parent, undefined);
-              child = undefined;
+          if(!context.has(local)){
+            let child: Subscriber | undefined;
+    
+            const init = () => {
+              if(child){
+                child.release();
+                local.dependant.delete(child);
+                context.set(local, undefined);
+                child = undefined;
+              }
+        
+              const value = this.get(key);
+        
+              if(value && CONTROL in value){
+                child = new Subscriber(value as Stateful, local.onUpdate);
+        
+                if(local.active)
+                  child.commit();
+        
+                local.dependant.add(child);
+                context.set(local, child.proxy);
+              }
             }
-      
-            const value = this.get(key);
-      
-            if(value && CONTROL in value){
-              child = new Subscriber(value as Stateful, parent.onUpdate);
-      
-              if(parent.active)
-                child.commit();
-      
-              parent.dependant.add(child);
-              context.set(parent, child.proxy);
-            }
+        
+            init();
+            local.watch[key] = init;
           }
       
-          init();
-          parent.watch[key] = init;
-        })
+          return context.get(local);
+        }
       }
+    }
 
     const desc = output as Instruction.Descriptor<any>;
 
@@ -154,26 +164,4 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-function forSubscriber<T extends any>(
-  fn: (sub: Subscriber, set: WeakMap<Subscriber, T>) => T | undefined
-){
-  const context = new WeakMap<Subscriber, T>();
-
-  return (value: any, local: Subscriber | undefined) => {
-    if(!local)
-      return value;
-
-    if(!context.has(local)){
-      const output = fn(local, context);
-
-      if(output){
-        context.set(local, output);
-        return output;
-      }
-    }
-
-    return context.get(local);
-  }
-}
-
-export { apply, forSubscriber, Instruction }
+export { apply, Instruction }

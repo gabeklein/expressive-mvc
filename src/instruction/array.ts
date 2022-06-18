@@ -1,6 +1,6 @@
 import { Subscriber } from '../subscriber';
 import { Callback } from '../types';
-import { apply, forSubscriber } from './apply';
+import { apply } from './apply';
 
 class Managed<T> extends Array<T> {
   lastUpdate = [0, 0];
@@ -46,6 +46,7 @@ class Managed<T> extends Array<T> {
 function array<T = any>(){
   return apply<T[]>(
     function array(key){
+      const context = new WeakMap<Subscriber, T>();
       const array = new Managed<T>(() => {
         this.update(key);
       });
@@ -82,7 +83,19 @@ function array<T = any>(){
       }
 
       return {
-        get: forSubscriber(getLocal),
+        get: (value: any, local: Subscriber | undefined) => {
+          if(!local)
+            return value;
+
+          if(context.has(local))
+            return context.get(local);
+            
+          const output = getLocal(local);
+
+          context.set(local, output);
+
+          return output;
+        },
         set: false,
         value: array
       }
