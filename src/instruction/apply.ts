@@ -17,7 +17,7 @@ type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
   | void;
 
 declare namespace Instruction {
-  type Getter<T> = (state: T, within?: Subscriber) => T;
+  type Getter<T> = (within?: Subscriber) => T;
   type Setter<T> = (value: T) => boolean | void;
 
   type Runner<T> = (this: Controller, key: string, on: Controller) =>
@@ -83,7 +83,7 @@ function apply<T = any>(
 
       output = {
         ...output,
-        get: (value: any, local: Subscriber | undefined) => {
+        get: (local: Subscriber | undefined) => {
           if(!local)
             return this.get(key);
       
@@ -151,8 +151,8 @@ function apply<T = any>(
         return value;
 
       return local
-        ? onGet(value, local)
-        : onGet(value)
+        ? onGet(local)
+        : onGet()
     }
 
     for(const x of [subject, proxy])
