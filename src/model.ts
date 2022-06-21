@@ -363,7 +363,7 @@ class Model {
       arg = undefined;
     }
 
-    return target.requestUpdate(arg);
+    return target.request(arg);
   }
 
   /** 

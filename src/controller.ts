@@ -72,7 +72,7 @@ class Controller<T extends Stateful = any> {
         continue;
       }
 
-      this.manage(key as any, value);
+      this.add(key as any, value);
     }
 
     this.flush();
@@ -85,7 +85,7 @@ class Controller<T extends Stateful = any> {
     listeners.forEach(x => x(null, this));
   }
 
-  manage(key: Model.Field<T>, value: any){
+  add(key: Model.Field<T>, value: any){
     const get = () => this.get(key);
     const set = this.ref(key);
 
@@ -178,12 +178,12 @@ class Controller<T extends Stateful = any> {
       }
   }
 
-  requestUpdate(): PromiseLike<readonly Model.Event<T>[] | false>;
-  requestUpdate(strict: true): Promise<readonly Model.Event<T>[]>;
-  requestUpdate(strict: false): Promise<false>;
-  requestUpdate(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
-  requestUpdate(callback: Callback): void;
-  requestUpdate(arg?: boolean | Callback): any {
+  request(): PromiseLike<readonly Model.Event<T>[] | false>;
+  request(strict: true): Promise<readonly Model.Event<T>[]>;
+  request(strict: false): Promise<false>;
+  request(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
+  request(callback: Callback): void;
+  request(arg?: boolean | Callback): any {
     const { frame, subject, waiting } = this;
 
     if(typeof arg == "function"){
@@ -228,7 +228,7 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     if(cb){
       let done: Callback | void;
 
-      control.requestUpdate(() => done = cb(control));
+      control.request(() => done = cb(control));
 
       return () => done && done();
     }

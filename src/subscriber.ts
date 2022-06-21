@@ -61,8 +61,8 @@ export class Subscriber <T extends Stateful = any> {
       }
 
       if(notify){
-        parent.requestUpdate(getWhy);
-        parent.requestUpdate(notify);
+        parent.request(getWhy);
+        parent.request(notify);
       }
     });
 
