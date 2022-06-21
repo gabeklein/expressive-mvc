@@ -25,15 +25,12 @@ const PENDING = new Map<symbol, Instruction.Runner<any>>();
 const STATE = new Map<Stateful, Map<any, any>>();
 
 class Controller<T extends Stateful = any> {
-  public proxy: Model.Entries<T>;
   public frame = new Set<string>();
 
   private waiting = new Set<Callback>();
   protected followers = new Set<Controller.OnEvent>();
 
-  constructor(public subject: T){
-    this.proxy = Object.create(subject);
-  }
+  constructor(public subject: T){}
 
   get state(){
     return STATE.get(this.subject)!;
@@ -86,28 +83,21 @@ class Controller<T extends Stateful = any> {
   }
 
   add(key: Model.Field<T>, value: any){
-    const get = () => this.get(key);
-    const set = this.ref(key);
+    const { state } = this;
 
     this.set(key, value);
 
     defineProperty(this.subject, key, {
       enumerable: false,
-      get,
-      set
-    });
-
-    defineProperty(this.proxy, key, {
-      enumerable: false,
+      set: this.ref(key),
       get(){
         const local = this[LOCAL];
 
         if(local && !local.watch[key])
           local.watch[key] = true;
 
-        return get();
-      },
-      set
+        return state.get(key);
+      }
     });
   }
 

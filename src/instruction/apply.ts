@@ -59,7 +59,7 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
-    const { proxy, subject } = this;
+    const { subject } = this;
     const control = this;
 
     PENDING.delete(placeholder);
@@ -151,8 +151,7 @@ function apply<T = any>(
       return control.get(key);
     }
 
-    for(const x of [subject, proxy])
-      defineProperty(x, key, { enumerable, get, set });
+    defineProperty(subject, key, { enumerable, get, set });
   }
 
   PENDING.set(placeholder, setup);

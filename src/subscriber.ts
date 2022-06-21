@@ -29,7 +29,7 @@ export class Subscriber <T extends Stateful = any> {
       ? target : control(target);
 
     const subject = parent.subject;
-    const proxy = create(parent.proxy);
+    const proxy = create(parent.subject);
 
     let reset: Callback | undefined;
 
