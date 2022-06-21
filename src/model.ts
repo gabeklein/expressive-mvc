@@ -144,7 +144,7 @@ class Model {
         controller.update(key, value);
       }
 
-      for(const key of getOwnPropertyNames(controller.proxy))
+      for(const key of controller.keys)
         define(assign, key, controller.ref(key as any));
 
       return assign;
@@ -177,12 +177,11 @@ class Model {
       if(typeof select == "function")
         return control.addListener(select);
 
-      const selection = 
+      const keys = 
         typeof select == "string" ? [select] :
-        !select.length ? Object.getOwnPropertyNames(control.proxy) :
-        select;
+        select.length ? select : control.keys;
 
-      ensure(control, selection);
+      ensure(control, keys);
 
       const callback = squash
         ? () => {
@@ -190,7 +189,7 @@ class Model {
         }
         : () => {
           getUpdate(this)
-            .filter(k => selection.includes(k as any))
+            .filter(k => keys.includes(k as any))
             .forEach(k => {
               handler!.call(this, control.get(k), k)
             })
@@ -204,7 +203,7 @@ class Model {
         : callback;
 
       const remove = control.addListener(key => {
-        if(selection.includes(key as any))
+        if(keys.includes(key as any))
           return onEvent;
       });
 
