@@ -103,6 +103,7 @@ function from<R, T>(
       }
 
       register.set(key, info);
+      parent.set(key, undefined);
 
       function compute(initial?: boolean){
         try {
@@ -151,8 +152,6 @@ function from<R, T>(
       function create(){
         sub = new Subscriber(getSource(), defer);
 
-        parent.set(key, undefined);
-
         try {
           const value = compute(true);
           parent.set(key, value);
@@ -179,8 +178,7 @@ function from<R, T>(
       INFO.set(update, info);
 
       return () => {
-        const value = this.has(key)
-          ? this.get(key) : create();
+        const value = sub ? this.get(key) : create();
 
         if(value === undefined && required)
           throw suspend(this, key);
