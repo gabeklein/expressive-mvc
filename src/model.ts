@@ -325,13 +325,10 @@ class Model {
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
     const self = control(this);
     const output = {} as Model.Values<this, P>;
+    const keys = subset || self.keys;
 
-    if(subset)
-      for(const key of subset)
-        (output as any)[key] = self.get(key);
-    else
-      for(const key of self.keys)
-        (output as any)[key] = self.get(key);
+    for(const key of keys)
+      (output as any)[key] = self.get(key);
 
     return output;
   }
