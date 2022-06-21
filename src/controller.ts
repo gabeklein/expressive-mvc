@@ -22,10 +22,10 @@ declare namespace Controller {
 }
 
 const PENDING = new Map<symbol, Instruction.Runner<any>>();
+const STATE = new Map<Stateful, Map<any, any>>();
 
 class Controller<T extends Stateful = any> {
   public proxy: Model.Entries<T>;
-  public state!: Map<any, any>;
   public frame = new Set<string>();
 
   private waiting = new Set<Callback>();
@@ -33,6 +33,10 @@ class Controller<T extends Stateful = any> {
 
   constructor(public subject: T){
     this.proxy = Object.create(subject);
+  }
+
+  get state(){
+    return STATE.get(this.subject)!;
   }
 
   get keys(){
@@ -53,8 +57,6 @@ class Controller<T extends Stateful = any> {
   }
 
   start(){
-    this.state = new Map();
-
     for(const key in this.subject){
       const { value } = getOwnPropertyDescriptor(this.subject, key)!;
 
@@ -222,7 +224,7 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     define(subject, CONTROL, control);
   }
 
-  if(!("state" in control)){
+  if(!STATE.has(subject)){
     if(cb){
       let done: Callback | void;
 
@@ -231,6 +233,7 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       return () => done && done();
     }
 
+    STATE.set(subject, new Map());
     control.start();
   }
 
