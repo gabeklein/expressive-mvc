@@ -26,7 +26,7 @@ const READY = new WeakSet<Controller>();
 
 class Controller<T extends Stateful = any> {
   public proxy: Model.Entries<T>;
-  public state = {} as Model.Values<T>;
+  public state = new Map();
   public frame = new Set<string>();
 
   private waiting = new Set<Callback>();
@@ -37,19 +37,20 @@ class Controller<T extends Stateful = any> {
   }
 
   get keys(){
-    return Object.getOwnPropertyNames(this.state) as Model.Field<T>[];
+    return [ ...this.state.keys() ] as Model.Field<T>[];
   }
 
   has(key: Model.Field<T>){
-    return "value" in (Object.getOwnPropertyDescriptor(this.state, key) || {})
+    return this.state.has(key);
   }
 
   get(key: Model.Field<T>){
-    return this.state[key];
+    return this.state.get(key);
   }
 
   set(key: Model.Field<T>, value: any){
-    return this.state[key] = value;
+    this.state.set(key, value);
+    return value;
   }
 
   start(){

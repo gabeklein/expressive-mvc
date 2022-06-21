@@ -4,7 +4,6 @@ import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
-import { defineProperty } from '../util';
 import { apply } from './apply';
 
 export const Oops = issues({
@@ -65,7 +64,7 @@ function from<R, T>(
   return apply(
     function from(key){
       const parent = this;
-      const { subject, state } = this;
+      const { subject } = this;
 
       let getSource: () => Controller;
       let required = arg2 === true || arg1 === true;
@@ -152,10 +151,7 @@ function from<R, T>(
       function create(){
         sub = new Subscriber(getSource(), defer);
 
-        defineProperty(state, key, {
-          value: undefined,
-          writable: true
-        })
+        parent.set(key, undefined);
 
         try {
           const value = compute(true);
