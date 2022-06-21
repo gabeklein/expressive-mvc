@@ -4,7 +4,7 @@ import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
-import { defineProperty, getOwnPropertyDescriptor } from '../util';
+import { defineProperty } from '../util';
 import { apply } from './apply';
 
 export const Oops = issues({
@@ -28,7 +28,6 @@ type GetterInfo = {
 }
 
 const EARLY = new WeakSet<Controller>();
-const INIT = new WeakSet<Function>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
 const KEYS = new WeakMap<Set<string>, Callback[]>();
@@ -159,7 +158,9 @@ function from<R, T>(
         })
 
         try {
-          parent.set(key, compute(true));
+          const value = compute(true);
+          parent.set(key, value);
+          return value;
         }
         catch(e){
           if(EARLY.has(parent))
@@ -179,17 +180,11 @@ function from<R, T>(
         }
       }
 
-      INIT.add(create);
       INFO.set(update, info);
 
-      defineProperty(state, key, {
-        get: create,
-        configurable: true,
-        enumerable: true
-      })
-
       return () => {
-        const value = parent.get(key);
+        const value = this.has(key)
+          ? this.get(key) : create();
 
         if(value === undefined && required)
           throw suspend(this, key);
@@ -203,13 +198,11 @@ function from<R, T>(
 export function ensure(on: Controller, keys: string[]){
   EARLY.add(on);
 
-  for(const key of keys){
-    const desc = getOwnPropertyDescriptor(on.state, key);
-    const getter = desc && desc.get;
-
-    if(INIT.has(getter!))
-      getter!();
-  }
+  for(const key of keys)
+    try {
+      void on.subject[key];
+    }
+    catch(e){}
 
   EARLY.delete(on);
 }

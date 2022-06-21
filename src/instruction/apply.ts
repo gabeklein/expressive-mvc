@@ -145,14 +145,10 @@ function apply<T = any>(
       if(local && !(key in local.watch))
         local.watch[key] = true;
 
-      const value = control.get(key);
+      if(onGet)
+        return local ? onGet(local) : onGet();
 
-      if(!onGet)
-        return value;
-
-      return local
-        ? onGet(local)
-        : onGet()
+      return control.get(key);
     }
 
     for(const x of [subject, proxy])

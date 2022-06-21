@@ -41,7 +41,7 @@ class Controller<T extends Stateful = any> {
   }
 
   has(key: Model.Field<T>){
-    return key in this.state;
+    return "value" in (Object.getOwnPropertyDescriptor(this.state, key) || {})
   }
 
   get(key: Model.Field<T>){

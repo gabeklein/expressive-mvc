@@ -179,7 +179,7 @@ class Model {
 
       const selection = 
         typeof select == "string" ? [select] :
-        !select.length ? control.keys :
+        !select.length ? Object.getOwnPropertyNames(control.proxy) :
         select;
 
       ensure(control, selection);
