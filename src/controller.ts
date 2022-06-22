@@ -36,10 +36,6 @@ class Controller<T extends Stateful = any> {
     return STATE.get(this.subject)!;
   }
 
-  get keys(){
-    return [ ...this.state.keys() ] as Model.Field<T>[];
-  }
-
   start(){
     for(const key in this.subject){
       const { value } = getOwnPropertyDescriptor(this.subject, key)!;

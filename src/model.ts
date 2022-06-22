@@ -144,8 +144,8 @@ class Model {
         controller.update(key, value);
       }
 
-      for(const key of controller.keys)
-        define(assign, key, controller.ref(key as any));
+      for(const key of controller.state.keys())
+        define(assign, key, controller.ref(key));
 
       return assign;
     });
@@ -178,8 +178,8 @@ class Model {
         return control.addListener(select);
 
       const keys = 
-        typeof select == "string" ? [select] :
-        select.length ? select : control.keys;
+        typeof select == "string" ? [ select ] :
+        select.length ? select : [ ...control.state.keys() ];
 
       ensure(control, keys);
 
