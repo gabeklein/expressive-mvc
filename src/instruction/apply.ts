@@ -1,8 +1,10 @@
-import { Controller, PENDING } from '../controller';
+import { Controller } from '../controller';
 import { CONTROL, LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
+
+const PENDING = new Map<symbol, Instruction.Runner<any>>();
 
 /**
  * Property initializer, will run upon instance creation.
@@ -159,4 +161,4 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export { apply, Instruction }
+export { apply, Instruction, PENDING }

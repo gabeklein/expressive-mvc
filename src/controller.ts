@@ -1,5 +1,5 @@
 import { applyUpdate, getUpdate } from './dispatch';
-import { Instruction } from './instruction/apply';
+import { PENDING } from './instruction/apply';
 import { flush } from './instruction/from';
 import { issues } from './issues';
 import { CONTROL, LOCAL, Model, Stateful } from './model';
@@ -21,7 +21,6 @@ declare namespace Controller {
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
-const PENDING = new Map<symbol, Instruction.Runner<any>>();
 const STATE = new Map<Stateful, Map<any, any>>();
 
 class Controller<T extends Stateful = any> {
