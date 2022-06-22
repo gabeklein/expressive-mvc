@@ -68,7 +68,7 @@ function createRef(
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
-    get: () => this.get(key)
+    get: () => this.state.get(key)
   })
 
   return refObjectFunction as ref.Object;

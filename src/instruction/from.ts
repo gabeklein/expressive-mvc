@@ -64,7 +64,7 @@ function from<R, T>(
   return apply(
     function from(key){
       const parent = this;
-      const { subject } = this;
+      const { subject, state } = this;
 
       let getSource: () => Controller;
       let required = arg2 === true || arg1 === true;
@@ -103,7 +103,7 @@ function from<R, T>(
       }
 
       register.set(key, info);
-      parent.set(key, undefined);
+      state.set(key, undefined);
 
       function compute(initial?: boolean){
         try {
@@ -125,7 +125,7 @@ function from<R, T>(
           console.error(e);
         }
         finally {
-          if(parent.get(key) !== value){
+          if(state.get(key) !== value){
             parent.update(key, value);
             return value;
           }
@@ -154,7 +154,7 @@ function from<R, T>(
 
         try {
           const value = compute(true);
-          parent.set(key, value);
+          state.set(key, value);
           return value;
         }
         catch(e){
@@ -178,7 +178,7 @@ function from<R, T>(
       INFO.set(update, info);
 
       return () => {
-        const value = sub ? this.get(key) : create();
+        const value = sub ? state.get(key) : create();
 
         if(value === undefined && required)
           throw suspend(this, key);

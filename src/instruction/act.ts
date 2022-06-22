@@ -48,7 +48,7 @@ function act<T extends Async>(task: T){
         }
       }
 
-      this.set(key, undefined);
+      this.state.set(key, undefined);
 
       defineProperty(invoke, "active", {
         get: () => pending

@@ -191,7 +191,7 @@ class Model {
           getUpdate(this)
             .filter(k => keys.includes(k as any))
             .forEach(k => {
-              handler!.call(this, control.get(k), k)
+              handler!.call(this, control.state.get(k), k)
             })
         }
 
@@ -322,12 +322,12 @@ class Model {
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
-    const self = control(this);
+    const { state } = control(this);
     const output = {} as Model.Values<this, P>;
-    const keys = subset || self.keys;
+    const keys = subset || state.keys();
 
     for(const key of keys)
-      (output as any)[key] = self.get(key);
+      (output as any)[key] = state.get(key);
 
     return output;
   }

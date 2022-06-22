@@ -85,7 +85,7 @@ function array<T = any>(){
       return {
         get: (local: Subscriber | undefined) => {
           if(!local)
-            return this.get(key);
+            return this.state.get(key);
 
           if(context.has(local))
             return context.get(local);

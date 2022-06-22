@@ -41,13 +41,11 @@ function use<T extends typeof Model>(
 
   return apply(
     function use(key){
-      const { subject } = this;
-
       const onUpdate = (next: {} | undefined) => {
-        this.set(key, next);
+        this.state.set(key, next);
 
         if(next){
-          Parent.set(next, subject);
+          Parent.set(next, this.subject);
           control(next);
         }
 

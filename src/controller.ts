@@ -40,19 +40,6 @@ class Controller<T extends Stateful = any> {
     return [ ...this.state.keys() ] as Model.Field<T>[];
   }
 
-  has(key: Model.Field<T>){
-    return this.state.has(key);
-  }
-
-  get(key: Model.Field<T>){
-    return this.state.get(key);
-  }
-
-  set(key: Model.Field<T>, value: any){
-    this.state.set(key, value);
-    return value;
-  }
-
   start(){
     for(const key in this.subject){
       const { value } = getOwnPropertyDescriptor(this.subject, key)!;
@@ -85,7 +72,7 @@ class Controller<T extends Stateful = any> {
   add(key: Model.Field<T>, value: any){
     const { state } = this;
 
-    this.set(key, value);
+    state.set(key, value);
 
     defineProperty(this.subject, key, {
       enumerable: false,
@@ -103,7 +90,7 @@ class Controller<T extends Stateful = any> {
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
     return (value: any) => {
-      if(this.get(key) == value)
+      if(this.state.get(key) == value)
         return;
 
       if(handler)
@@ -129,7 +116,7 @@ class Controller<T extends Stateful = any> {
     const { frame } = this;
 
     if(1 in arguments)
-      this.set(key, value);
+      this.state.set(key, value);
 
     if(!frame.size)
       setTimeout(() => {
@@ -218,7 +205,9 @@ function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     if(cb){
       let done: Callback | void;
 
-      control.request(() => done = cb(control));
+      control.request(() => {
+        done = cb(control);
+      });
 
       return () => done && done();
     }

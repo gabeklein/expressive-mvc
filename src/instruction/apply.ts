@@ -59,7 +59,7 @@ function apply<T = any>(
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Controller, key: string){
-    const { subject } = this;
+    const { subject, state } = this;
     const control = this;
 
     PENDING.delete(placeholder);
@@ -85,7 +85,7 @@ function apply<T = any>(
         ...output,
         get: (local: Subscriber | undefined) => {
           if(!local)
-            return this.get(key);
+            return state.get(key);
       
           if(!context.has(local)){
             let child: Subscriber | undefined;
@@ -98,7 +98,7 @@ function apply<T = any>(
                 child = undefined;
               }
         
-              const value = this.get(key);
+              const value = state.get(key);
         
               if(value && CONTROL in value){
                 child = new Subscriber(value as Stateful, local.onUpdate);
@@ -123,7 +123,7 @@ function apply<T = any>(
     const desc = output as Instruction.Descriptor<any>;
 
     if("value" in desc)
-      this.set(key, desc.value);
+      state.set(key, desc.value);
 
     const {
       get: onGet,
@@ -137,7 +137,7 @@ function apply<T = any>(
       : this.ref(key, onSet);
 
     function get(this: Stateful){
-      if(!control.has(key) && suspense)
+      if(!state.has(key) && suspense)
         throw suspend(control, key);
 
       const local = this[LOCAL];
@@ -148,7 +148,7 @@ function apply<T = any>(
       if(onGet)
         return local ? onGet(local) : onGet();
 
-      return control.get(key);
+      return state.get(key);
     }
 
     defineProperty(subject, key, { enumerable, get, set });
