@@ -1,5 +1,6 @@
-import { control, Controller } from '../controller';
+import { Controller } from '../controller';
 import { Model } from '../model';
+import { ensure } from '../stateful';
 import { createValueEffect, defineLazy, defineProperty } from '../util';
 import { apply } from './apply';
 
@@ -43,7 +44,7 @@ function ref<T>(arg?: ref.Callback<T> | Model){
       let value: ref.Object | ref.Proxy<any> = {};
 
       if(typeof arg == "object"){
-        const source = control(arg);
+        const source = ensure(arg);
 
         for(const key of source.state.keys())
           defineLazy(value, key, createRef.bind(source, key));

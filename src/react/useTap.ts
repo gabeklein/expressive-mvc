@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 
-import { control } from '../controller';
 import { Model, Stateful } from '../model';
+import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
@@ -65,7 +65,7 @@ function useTap <T extends Stateful> (
     return useFrom(instance, path, expect);
 
   const local = use(refresh => {
-    const parent = control(instance);
+    const parent = ensure(instance);
     const sub = new Subscriber(parent, () => refresh);
 
     if(typeof path == "string"){

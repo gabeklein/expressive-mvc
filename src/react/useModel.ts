@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
-import { control } from '../controller';
 import { Model, Stateful } from '../model';
+import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
@@ -55,7 +55,7 @@ function useModel <T extends Model | Stateful> (
           source() : 
         source;
 
-    control(instance);
+    ensure(instance);
 
     if(typeof cb == "function")
       cb(instance);

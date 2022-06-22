@@ -1,12 +1,13 @@
-import { control, Controller } from './controller';
+import { Controller } from './controller';
 import { getUpdate, UPDATE } from './dispatch';
-import { ensure } from './instruction/from';
+import { evaluate } from './instruction/from';
+import { issues } from './issues';
+import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
-import { issues } from './issues';
 
 export const Oops = issues({
   Timeout: (keys, timeout) => 
@@ -139,7 +140,7 @@ class Model {
     define(this, "get", this);
     define(this, "is", this);
     defineLazy(this, "set", () => {
-      const controller = control(this);
+      const controller = ensure(this);
       const assign = (key: any, value: any) => {
         controller.update(key, value);
       }
@@ -173,7 +174,7 @@ class Model {
     squash?: boolean,
     once?: boolean){
 
-    return control(this, control => {
+    return ensure(this, control => {
       if(typeof select == "function")
         return control.addListener(select);
 
@@ -181,7 +182,7 @@ class Model {
         typeof select == "string" ? [ select ] :
         select.length ? select : [ ...control.state.keys() ];
 
-      ensure(control, keys);
+      evaluate(control, keys);
 
       const callback = squash
         ? () => {
@@ -249,8 +250,8 @@ class Model {
         }
       }
 
-      const clear = control(this, x => {
-        ensure(x, select as P[]);
+      const clear = ensure(this, x => {
+        evaluate(x, select as P[]);
         return x.addListener(invoke);
       })
 
@@ -266,7 +267,7 @@ class Model {
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
 
-    return control(this, control => {
+    return ensure(this, control => {
       let busy = false;
       let inject = this.is;
 
@@ -308,7 +309,7 @@ class Model {
 
   // TODO: account for exotic properties
   import <O extends Model.Compat<this>> (source: O, select?: (keyof O)[]){
-    const { subject } = control(this);
+    const { subject } = ensure(this);
 
     if(!select)
       select = getOwnPropertyNames(subject) as (keyof O)[];
@@ -322,7 +323,7 @@ class Model {
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
-    const { state } = control(this);
+    const { state } = ensure(this);
     const output = {} as Model.Values<this, P>;
     const keys = subset || state.keys();
 
@@ -341,7 +342,7 @@ class Model {
   update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
   update(arg?: any, tag?: any): any {
-    const target = control(this);
+    const target = ensure(this);
 
     if(typeof arg == "string"){
       target.update(arg as Model.Field<this>);
@@ -366,7 +367,7 @@ class Model {
    * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
    */
   destroy(){
-    control(this).stop();
+    ensure(this).stop();
   }
 
   toString(){
@@ -386,7 +387,7 @@ class Model {
     const instance = 
       new (this as any)(...args);
 
-    control(instance);
+    ensure(instance);
 
     return instance;
   }

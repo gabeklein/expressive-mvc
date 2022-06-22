@@ -1,9 +1,8 @@
 import { applyUpdate, getUpdate } from './dispatch';
-import { PENDING } from './instruction/apply';
 import { flush } from './instruction/from';
 import { issues } from './issues';
-import { CONTROL, LOCAL, Model, Stateful } from './model';
-import { define, defineProperty, getOwnPropertyDescriptor } from './util';
+import { Model, Stateful } from './model';
+import { STATE } from './stateful';
 
 import type { Callback } from './types';
 
@@ -21,8 +20,6 @@ declare namespace Controller {
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
-const STATE = new Map<Stateful, Map<any, any>>();
-
 class Controller<T extends Stateful = any> {
   public frame = new Set<string>();
 
@@ -35,52 +32,11 @@ class Controller<T extends Stateful = any> {
     return STATE.get(this.subject)!;
   }
 
-  start(){
-    for(const key in this.subject){
-      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-
-      if(typeof value == "function")
-        continue;
-
-      if(typeof value == "symbol"){
-        const instruction = PENDING.get(value);
-
-        if(instruction)
-          instruction.call(this, key, this);
-
-        continue;
-      }
-
-      this.add(key as any, value);
-    }
-
-    this.flush();
-  }
-
   stop(){
     const listeners = [ ...this.followers ];
 
     this.followers.clear();
     listeners.forEach(x => x(null, this));
-  }
-
-  add(key: Model.Field<T>, value: any){
-    const { state } = this;
-
-    state.set(key, value);
-
-    defineProperty(this.subject, key, {
-      enumerable: false,
-      set: this.ref(key),
-      get(){
-        const local = this[LOCAL];
-
-        if(local && !local.watch[key])
-          local.watch[key] = true;
-
-        return state.get(key);
-      }
-    });
   }
 
   ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
@@ -182,36 +138,4 @@ class Controller<T extends Stateful = any> {
   }
 }
 
-type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
-
-function control<T extends Stateful>(subject: T): Controller<T>;
-function control<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
-function control<T extends {}>(subject: T): Controller<T & Stateful>;
-
-function control<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
-  let control = subject[CONTROL];
-
-  if(!control){
-    control = new Controller(subject as unknown as Stateful);
-    define(subject, CONTROL, control);
-  }
-
-  if(!STATE.has(subject)){
-    if(cb){
-      let done: Callback | void;
-
-      control.request(() => {
-        done = cb(control);
-      });
-
-      return () => done && done();
-    }
-
-    STATE.set(subject, new Map());
-    control.start();
-  }
-
-  return cb ? cb(control) : control;
-}
-
-export { PENDING, Controller, control }
+export { Controller }

@@ -1,8 +1,9 @@
 /* istanbul ignore file */
 import React from 'react';
 
-import { control, Controller } from '../controller';
+import { Controller } from '../controller';
 import { CONTROL, Model } from '../model';
+import { ensure } from '../stateful';
 import { Callback, Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
@@ -99,7 +100,7 @@ class MVC extends Model {
     const instance = React.useMemo(() => {
       const instance: I = new this();
 
-      control(instance);
+      ensure(instance);
 
       if(typeof arg == "function")
         arg(instance);

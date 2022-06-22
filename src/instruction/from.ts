@@ -1,6 +1,7 @@
-import { control, Controller } from '../controller';
+import { Controller } from '../controller';
 import { issues } from '../issues';
 import { Stateful } from '../model';
+import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
@@ -78,7 +79,7 @@ function from<R, T>(
 
       // replace source controller in-case it is different
       if(typeof source == "object")
-        getSource = () => control(source);
+        getSource = () => ensure(source);
 
       // specifically an arrow function (getter factory)
       else if(!source.prototype){
@@ -189,7 +190,7 @@ function from<R, T>(
   )
 }
 
-export function ensure(on: Controller, keys: string[]){
+export function evaluate(on: Controller, keys: string[]){
   EARLY.add(on);
 
   for(const key of keys)

@@ -1,6 +1,6 @@
-import { control } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
+import { ensure } from '../stateful';
 import { Class, InstanceOf } from '../types';
 import { apply } from './apply';
 import { Parent } from './parent';
@@ -46,7 +46,7 @@ function use<T extends typeof Model>(
 
         if(next){
           Parent.set(next, this.subject);
-          control(next);
+          ensure(next);
         }
 
         if(typeof argument == "function")

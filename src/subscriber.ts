@@ -1,6 +1,7 @@
-import { control, Controller } from './controller';
+import { Controller } from './controller';
 import { applyUpdate, getUpdate } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
+import { ensure } from './stateful';
 import { create, define, defineProperty } from './util';
 
 import type { Callback } from './types';
@@ -26,7 +27,7 @@ export class Subscriber <T extends Stateful = any> {
     public onUpdate: Controller.OnEvent){
 
     const parent = target instanceof Controller
-      ? target : control(target);
+      ? target : ensure(target);
 
     const subject = parent.subject;
     const proxy = create(parent.subject);
