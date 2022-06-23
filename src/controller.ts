@@ -63,7 +63,7 @@ class Controller<T extends Stateful = any> {
     if(!frame.size)
       setTimeout(() => {
         flush(frame!);
-        this.flush();
+        this.emit();
       }, 0);
 
     else if(frame.has(key))
@@ -79,7 +79,7 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  flush(){
+  emit(){
     const waiting = Array.from(this.waiting);
     const keys = Array.from(this.frame);
 

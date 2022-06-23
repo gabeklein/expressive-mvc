@@ -66,7 +66,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       });
     }
 
-    control.flush();
+    control.emit();
   }
 
   return cb ? cb(control) : control;
