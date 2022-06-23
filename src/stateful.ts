@@ -26,7 +26,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     if(cb){
       let done: Callback | void;
 
-      control.request(() => {
+      control.waiting.add(() => {
         done = cb(control);
       });
 

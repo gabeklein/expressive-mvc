@@ -11,7 +11,13 @@ import type { Callback, Class, InstanceOf } from './types';
 
 export const Oops = issues({
   Timeout: (keys, timeout) => 
-    `No update for [${keys}] within ${timeout}.`
+    `No update for [${keys}] within ${timeout}.`,
+
+  StrictUpdate: () => 
+    `Strict update() did not find pending updates.`,
+
+  NoChaining: () =>
+    `Then called with undefined; update promise will never catch nor supports chaining.`
 });
 
 export const CONTROL = Symbol("CONTROL");
@@ -360,7 +366,27 @@ class Model {
       arg = undefined;
     }
 
-    return target.request(arg);
+    if(typeof arg == "function"){
+      target.waiting.add(arg);
+      return;
+    }
+
+    if(!target.frame.size && arg === true)
+      return Promise.reject(Oops.StrictUpdate());
+
+    return <PromiseLike<readonly Model.Event<this>[] | false>> {
+      then: (callback) => {
+        if(!callback)
+          throw Oops.NoChaining();
+
+        if(target.frame.size || arg !== false)
+          target.waiting.add(() => {
+            callback(getUpdate(this));
+          });
+        else
+          callback(false);
+      }
+    }
   }
 
   /** 

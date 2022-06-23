@@ -1,18 +1,9 @@
-import { applyUpdate, getUpdate } from './dispatch';
+import { applyUpdate } from './dispatch';
 import { flush } from './instruction/from';
-import { issues } from './issues';
 import { Model, Stateful } from './model';
 import { STATE } from './stateful';
 
 import type { Callback } from './types';
-
-export const Oops = issues({
-  StrictUpdate: () => 
-    `Strict update() did not find pending updates.`,
-
-  NoChaining: () =>
-    `Then called with undefined; update promise will never catch nor supports chaining.`
-});
 
 declare namespace Controller {
   // TODO: implement value type
@@ -23,7 +14,7 @@ declare namespace Controller {
 class Controller<T extends Stateful = any> {
   public frame = new Set<string>();
 
-  private waiting = new Set<Callback>();
+  public waiting = new Set<Callback>();
   protected followers = new Set<Controller.OnEvent>();
 
   constructor(public subject: T){}
@@ -104,37 +95,6 @@ class Controller<T extends Stateful = any> {
       catch(err){
         console.error(err);
       }
-  }
-
-  request(): PromiseLike<readonly Model.Event<T>[] | false>;
-  request(strict: true): Promise<readonly Model.Event<T>[]>;
-  request(strict: false): Promise<false>;
-  request(strict: boolean): Promise<readonly Model.Event<T>[] | false>;
-  request(callback: Callback): void;
-  request(arg?: boolean | Callback): any {
-    const { frame, subject, waiting } = this;
-
-    if(typeof arg == "function"){
-      waiting.add(arg);
-      return;
-    }
-
-    if(!frame.size && arg === true)
-      return Promise.reject(Oops.StrictUpdate());
-
-    return <PromiseLike<readonly Model.Event<T>[] | false>> {
-      then: (callback) => {
-        if(!callback)
-          throw Oops.NoChaining();
-
-        if(frame.size || arg !== false)
-          waiting.add(() => {
-            callback(getUpdate(subject));
-          });
-        else
-          callback(false);
-      }
-    }
   }
 }
 
