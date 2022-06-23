@@ -13,7 +13,6 @@ declare namespace Controller {
 
 class Controller<T extends Stateful = any> {
   public frame = new Set<string>();
-
   public waiting = new Set<Callback>();
   protected followers = new Set<Controller.OnEvent>();
 
@@ -60,14 +59,14 @@ class Controller<T extends Stateful = any> {
     if(1 in arguments)
       this.state.set(key, value);
 
-    if(!frame.size)
+    if(frame.has(key))
+      return;
+
+    else if(!frame.size)
       setTimeout(() => {
         flush(frame!);
         this.emit();
       }, 0);
-
-    else if(frame.has(key))
-      return;
 
     frame.add(key);
 

@@ -47,9 +47,7 @@ function array<T = any>(){
   return apply<T[]>(
     function array(key){
       const context = new WeakMap<Subscriber, T>();
-      const array = new Managed<T>(() => {
-        this.update(key);
-      });
+      const array = new Managed<T>(() => this.update(key));
 
       const getLocal = (context: Subscriber) => {
         const local = Object.create(array);
@@ -58,14 +56,14 @@ function array<T = any>(){
         let rangeA = 0;
         let rangeB = 0;
 
-        function onUpdate(){
+        const onUpdate = () => {
           const [lastA, lastB] = array.lastUpdate;
 
           if(rangeA <= lastB && rangeB >= lastA)
             return update;
         }
 
-        function listen(eventA: number, eventB: number){
+        const listen = (eventA: number, eventB: number) => {
           if(context.active)
             return;
 
@@ -83,6 +81,8 @@ function array<T = any>(){
       }
 
       return {
+        value: array,
+        set: false,
         get: (local: Subscriber | undefined) => {
           if(!local)
             return this.state.get(key);
@@ -95,9 +95,7 @@ function array<T = any>(){
           context.set(local, output);
 
           return output;
-        },
-        set: false,
-        value: array
+        }
       }
     }
   )
