@@ -1,4 +1,4 @@
-import { Model } from "..";
+import { Model } from "../..";
 import { array } from "./array";
 
 class Test extends Model {

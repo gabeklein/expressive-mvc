@@ -1,6 +1,6 @@
-import { Subscriber } from '../subscriber';
-import { Callback } from '../types';
-import { apply } from './apply';
+import { Subscriber } from '../../subscriber';
+import { Callback } from '../../types';
+import { apply } from '../apply';
 
 class Managed<T> extends Array<T> {
   lastUpdate = [0, 0];

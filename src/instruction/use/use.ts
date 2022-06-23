@@ -1,9 +1,9 @@
-import { issues } from '../issues';
-import { Model } from '../model';
-import { ensure } from '../stateful';
-import { Class, InstanceOf } from '../types';
-import { apply } from './apply';
-import { Parent } from './parent';
+import { issues } from '../../issues';
+import { Model } from '../../model';
+import { ensure } from '../../stateful';
+import { Class, InstanceOf } from '../../types';
+import { apply } from '../apply';
+import { Parent } from '../parent';
 
 export const Oops = issues({
   BadArgument: (type) =>
