@@ -80,47 +80,11 @@ function apply<T = any>(
       return false;
     }
 
-    if("recursive" in output && output.recursive){
-      const context = new WeakMap<Subscriber, T | undefined>();
-
+    if("recursive" in output && output.recursive)
       output = {
         ...output,
-        get: (local: Subscriber | undefined) => {
-          if(!local)
-            return state.get(key);
-      
-          if(!context.has(local)){
-            let child: Subscriber | undefined;
-    
-            const init = () => {
-              if(child){
-                child.release();
-                local.dependant.delete(child);
-                context.set(local, undefined);
-                child = undefined;
-              }
-        
-              const value = state.get(key);
-        
-              if(value && CONTROL in value){
-                child = new Subscriber(value as Stateful, local.onUpdate);
-        
-                if(local.active)
-                  child.commit();
-        
-                local.dependant.add(child);
-                context.set(local, child.proxy);
-              }
-            }
-        
-            init();
-            local.watch[key] = init;
-          }
-      
-          return context.get(local);
-        }
+        get: getRecursive(key, this)
       }
-    }
 
     const desc = output as Instruction.Descriptor<any>;
 
@@ -134,7 +98,7 @@ function apply<T = any>(
       suspense
     } = desc;
 
-    let set = onSet === false
+    const set = onSet === false
       ? undefined
       : this.ref(key, onSet);
 
@@ -159,6 +123,45 @@ function apply<T = any>(
   PENDING.set(placeholder, setup);
 
   return placeholder as unknown as T;
+}
+
+function getRecursive(key: string, from: Controller){
+  const context = new WeakMap<Subscriber, Stateful | undefined>();
+
+  return (local: Subscriber | undefined) => {
+    if(!local)
+      return from.state.get(key);
+
+    if(!context.has(local)){
+      let child: Subscriber | undefined;
+
+      const init = () => {
+        if(child){
+          child.release();
+          local.dependant.delete(child);
+          context.set(local, undefined);
+          child = undefined;
+        }
+  
+        const value = from.state.get(key);
+  
+        if(value && CONTROL in value){
+          child = new Subscriber(value as Stateful, local.onUpdate);
+  
+          if(local.active)
+            child.commit();
+  
+          local.dependant.add(child);
+          context.set(local, child.proxy);
+        }
+      }
+  
+      init();
+      local.watch[key] = init;
+    }
+
+    return context.get(local);
+  }
 }
 
 export { apply, Instruction, PENDING }
