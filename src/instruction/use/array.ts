@@ -17,7 +17,7 @@ class Managed<T> extends Array<T> {
   }
 
   push(...items: T[]): number {
-    const length = this.length;
+    const { length } = this;
     const end = super.push(...items);
 
     this.update(length, end);
