@@ -13,8 +13,8 @@ type Listener = {
 
 export class Subscriber <T extends Stateful = any> {
   public proxy!: T;
+  public commit: () => Callback;
   public release!: Callback;
-  public commit: () => () => void;
 
   public active = false;
   public dependant = new Set<Listener>();
@@ -26,10 +26,10 @@ export class Subscriber <T extends Stateful = any> {
     target: Controller<T> | T,
     public onUpdate: Controller.OnEvent){
 
-    const parent = target instanceof Controller
-      ? target : ensure(target);
+    const parent =
+      target instanceof Controller
+        ? target : ensure(target);
 
-    const subject = parent.subject;
     const proxy = create(parent.subject);
 
     let reset: Callback | undefined;
@@ -56,7 +56,7 @@ export class Subscriber <T extends Stateful = any> {
 
       const notify = this.onUpdate(key, parent);
       const getWhy: Callback = () => {
-        const update = getUpdate(subject);
+        const update = getUpdate(parent.subject);
         const applicable = update.filter(k => k in this.watch);
         reset = applyUpdate(proxy, applicable);
       }
