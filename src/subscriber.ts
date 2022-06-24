@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { applyUpdate, getUpdate } from './dispatch';
+import { getUpdate, UPDATE } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
 import { ensure } from './stateful';
 import { create, define, defineProperty } from './util';
@@ -58,7 +58,12 @@ export class Subscriber <T extends Stateful = any> {
       const getWhy: Callback = () => {
         const update = getUpdate(parent.subject);
         const applicable = update.filter(k => k in this.watch);
-        reset = applyUpdate(proxy, applicable);
+
+        UPDATE.set(proxy, applicable);
+
+        reset = () => {
+          setTimeout(() => UPDATE.delete(proxy), 0);
+        }
       }
 
       if(notify){
