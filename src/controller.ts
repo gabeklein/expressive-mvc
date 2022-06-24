@@ -1,5 +1,4 @@
-import { emitUpdate } from './dispatch';
-import { flush } from './instruction/from';
+import { setUpdate } from './dispatch';
 import { Model, Stateful } from './model';
 import { STATE } from './stateful';
 
@@ -14,7 +13,7 @@ declare namespace Controller {
 class Controller<T extends Stateful = any> {
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
-  protected followers = new Set<Controller.OnEvent>();
+  public followers = new Set<Controller.OnEvent>();
 
   constructor(public subject: T){}
 
@@ -35,28 +34,6 @@ class Controller<T extends Stateful = any> {
       this.followers.delete(listener)
     }
   }
-
-  update(key: Model.Field<T>){
-    const { followers, frame, waiting } = this;
-
-    if(frame.has(key))
-      return;
-
-    else if(!frame.size)
-      setTimeout(() => {
-        flush(frame!);
-        emitUpdate(this);
-      }, 0);
-
-    frame.add(key);
-
-    for(const callback of followers){
-      const event = callback(key, this);
-
-      if(typeof event == "function")
-        waiting.add(event);
-    }
-  }
 }
 
 export function createRef<T extends Stateful>(
@@ -73,13 +50,13 @@ export function createRef<T extends Stateful>(
     if(handler)
       switch(handler.call(subject, value)){
         case true:
-          control.update(key);
+          setUpdate(control, key);
         case false:
           return;
       }
 
     state.set(key, value);
-    control.update(key);
+    setUpdate(control, key);
   }
 }
 

@@ -1,5 +1,5 @@
 import { Controller, createRef } from './controller';
-import { getUpdate, UPDATE } from './dispatch';
+import { getUpdate, setUpdate, UPDATE } from './dispatch';
 import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
@@ -148,7 +148,7 @@ class Model {
       const controller = ensure(this);
       const assign = (key: any, value: any) => {
         controller.state.set(key, value);
-        controller.update(key);
+        setUpdate(controller, key);
       }
 
       for(const key of controller.state.keys())
@@ -356,7 +356,7 @@ class Model {
     const target = ensure(this);
 
     if(typeof arg == "string"){
-      target.update(arg as Model.Field<this>);
+      setUpdate(target, arg as Model.Field<this>);
 
       if(1 in arguments && arg in this){
         const method = (this as any)[arg];

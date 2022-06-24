@@ -1,3 +1,4 @@
+import { setUpdate } from '../dispatch';
 import { issues } from '../issues';
 import { mayRetry } from '../suspense';
 import { defineProperty } from '../util';
@@ -35,7 +36,7 @@ function act<T extends Async>(task: T){
           )
 
         pending = true;
-        this.update(key);
+        setUpdate(this, key);
 
         try {
           return await mayRetry(() => (
@@ -44,7 +45,7 @@ function act<T extends Async>(task: T){
         }
         finally {
           pending = false;
-          this.update(key);
+          setUpdate(this, key);
         }
       }
 

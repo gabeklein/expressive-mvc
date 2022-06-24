@@ -1,3 +1,4 @@
+import { setUpdate } from '../dispatch';
 import { apply } from '../instruction/apply';
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
@@ -75,7 +76,7 @@ function tap<T extends Peer>(
           throw Oops.AmbientRequired(type.name, subject, key);
 
         this.state.set(key, instance);
-        this.update(key);
+        setUpdate(this, key);
       })
 
       return {

@@ -1,4 +1,5 @@
 import { Controller } from '../controller';
+import { setUpdate } from '../dispatch';
 import { issues } from '../issues';
 import { Stateful } from '../model';
 import { ensure } from '../stateful';
@@ -121,7 +122,7 @@ function from<R, T>(
         finally {
           if(state.get(key) !== value){
             parent.state.set(key, value);
-            parent.update(key);
+            setUpdate(parent, key);
             return value;
           }
         }
