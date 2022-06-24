@@ -66,9 +66,9 @@ function from<R, T>(
     function from(key){
       const parent = this;
       const { subject, state } = this;
+      const required = arg2 === true || arg1 === true;
 
       let getSource: () => Controller;
-      let required = arg2 === true || arg1 === true;
 
       if(typeof arg1 == "boolean")
         arg1 = undefined;
@@ -91,27 +91,24 @@ function from<R, T>(
       else
         throw Oops.BadSource(subject, key, source);
 
-      let sub: Subscriber;
-
       const setter = arg1;
       const info: GetterInfo = { key, parent, priority: 1 };
 
+      let sub: Subscriber;
       let register = USED.get(parent)!;
 
-      if(!register){
-        register = new Map<string, GetterInfo>();
-        USED.set(parent, register);
-      }
+      if(!register)
+        USED.set(parent, register = new Map());
 
-      register.set(key, info);
       state.set(key, undefined);
+      register.set(key, info);
 
-      function compute(initial?: boolean){
+      function compute(initial: boolean){
         try {
           return setter!.call(sub.proxy, sub.proxy);
         }
         catch(err){
-          Oops.Failed(subject, key, !!initial).warn();
+          Oops.Failed(subject, key, initial).warn();
           throw err;
         }
       }
