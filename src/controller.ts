@@ -29,24 +29,6 @@ class Controller<T extends Stateful = any> {
     listeners.forEach(x => x(null, this));
   }
 
-  ref(key: Model.Field<T>, handler?: Controller.OnValue<T>){
-    return (value: any) => {
-      if(this.state.get(key) == value)
-        return;
-
-      if(handler)
-        switch(handler.call(this.subject, value)){
-          case true:
-            this.update(key);
-          case false:
-            return;
-        }
-
-      this.state.set(key, value);
-      this.update(key);
-    }
-  }
-
   addListener(listener: Controller.OnEvent<T>){
     this.followers.add(listener);
     return () => {
@@ -74,6 +56,30 @@ class Controller<T extends Stateful = any> {
       if(typeof event == "function")
         waiting.add(event);
     }
+  }
+}
+
+export function createRef<T extends Stateful>(
+  control: Controller<T>,
+  key: Model.Field<T>,
+  handler?: Controller.OnValue<T>){
+
+  const { subject, state } = control;
+
+  return (value: any) => {
+    if(state.get(key) == value)
+      return;
+
+    if(handler)
+      switch(handler.call(subject, value)){
+        case true:
+          control.update(key);
+        case false:
+          return;
+      }
+
+    state.set(key, value);
+    control.update(key);
   }
 }
 

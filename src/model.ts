@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Controller, createRef } from './controller';
 import { getUpdate, UPDATE } from './dispatch';
 import { issues } from './issues';
 import { ensure } from './stateful';
@@ -152,7 +152,7 @@ class Model {
       }
 
       for(const key of controller.state.keys())
-        define(assign, key, controller.ref(key));
+        define(assign, key, createRef(controller, key));
 
       return assign;
     });

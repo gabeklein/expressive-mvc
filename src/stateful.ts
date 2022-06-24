@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Controller, createRef } from './controller';
 import { emitUpdate } from './dispatch';
 import { PENDING } from './instruction/apply';
 import { CONTROL, LOCAL, Stateful } from './model';
@@ -55,7 +55,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
 
       defineProperty(subject, key, {
         enumerable: false,
-        set: control.ref(key as any),
+        set: createRef(control, key as any),
         get(){
           const local = this[LOCAL];
 

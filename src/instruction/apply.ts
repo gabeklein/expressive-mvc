@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Controller, createRef } from '../controller';
 import { CONTROL, LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
@@ -100,7 +100,7 @@ function apply<T = any>(
 
     const set = onSet === false
       ? undefined
-      : this.ref(key, onSet);
+      : createRef(this, key, onSet);
 
     function get(this: Stateful){
       if(!state.has(key) && suspense)

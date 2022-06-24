@@ -1,3 +1,4 @@
+import { createRef } from '../controller';
 import { Model } from '../model';
 import { createValueEffect, defineProperty } from '../util';
 import { apply } from './apply';
@@ -29,7 +30,7 @@ function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 function ref<T>(callback?: ref.Callback<T>){
   return apply(
     function ref(key){
-      const value = this.ref(key, 
+      const value = createRef(this, key,
         callback && createValueEffect(callback)  
       );
     
