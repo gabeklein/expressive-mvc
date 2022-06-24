@@ -19,7 +19,7 @@ export function setUpdate<T extends Stateful>(
 
   else if(!frame.size)
     setTimeout(() => {
-      flush(frame!);
+      flush(control);
       emitUpdate(control);
     }, 0);
 
