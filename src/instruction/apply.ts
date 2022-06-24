@@ -127,10 +127,11 @@ function apply<T = any>(
 
 function getRecursive(key: string, from: Controller){
   const context = new WeakMap<Subscriber, Stateful | undefined>();
+  const { state } = from;
 
   return (local: Subscriber | undefined) => {
     if(!local)
-      return from.state.get(key);
+      return state.get(key);
 
     if(!context.has(local)){
       let child: Subscriber | undefined;
@@ -143,7 +144,7 @@ function getRecursive(key: string, from: Controller){
           child = undefined;
         }
   
-        const value = from.state.get(key);
+        const value = state.get(key);
   
         if(value && CONTROL in value){
           child = new Subscriber(value as Stateful, local.onUpdate);
