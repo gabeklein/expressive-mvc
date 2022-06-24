@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { emitUpdate } from './dispatch';
 import { PENDING } from './instruction/apply';
 import { CONTROL, LOCAL, Stateful } from './model';
 import { Callback } from './types';
@@ -66,7 +67,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       });
     }
 
-    control.emit();
+    emitUpdate(control);
   }
 
   return cb ? cb(control) : control;

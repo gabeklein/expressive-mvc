@@ -1,4 +1,4 @@
-import { applyUpdate } from './dispatch';
+import { emitUpdate } from './dispatch';
 import { flush } from './instruction/from';
 import { Model, Stateful } from './model';
 import { STATE } from './stateful';
@@ -55,7 +55,7 @@ class Controller<T extends Stateful = any> {
   }
 
   update(key: Model.Field<T>){
-    const { frame } = this;
+    const { followers, frame, waiting } = this;
 
     if(frame.has(key))
       return;
@@ -63,35 +63,17 @@ class Controller<T extends Stateful = any> {
     else if(!frame.size)
       setTimeout(() => {
         flush(frame!);
-        this.emit();
+        emitUpdate(this);
       }, 0);
 
     frame.add(key);
 
-    for(const callback of this.followers){
+    for(const callback of followers){
       const event = callback(key, this);
 
       if(typeof event == "function")
-        this.waiting.add(event);
+        waiting.add(event);
     }
-  }
-
-  emit(){
-    const waiting = Array.from(this.waiting);
-    const keys = Array.from(this.frame);
-
-    this.frame.clear();
-    this.waiting.clear();
-
-    applyUpdate(this.subject, keys)();
-
-    for(const callback of waiting)
-      try {
-        callback();
-      }
-      catch(err){
-        console.error(err);
-      }
   }
 }
 
