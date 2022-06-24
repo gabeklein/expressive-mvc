@@ -1,5 +1,5 @@
 import { Controller } from './controller';
-import { getUpdate, UPDATE } from './dispatch';
+import { addListener, getUpdate, UPDATE } from './dispatch';
 import { LOCAL, Model, Stateful } from './model';
 import { ensure } from './stateful';
 import { create, define, defineProperty } from './util';
@@ -45,7 +45,7 @@ export class Subscriber <T extends Stateful = any> {
       }
     })
 
-    const release = parent.addListener(key => {
+    const release = addListener(parent, key => {
       const handler = this.watch[key as string];
 
       if(!handler || !this.active)

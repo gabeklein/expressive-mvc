@@ -56,3 +56,22 @@ export function emitUpdate(control: Controller){
       console.error(err);
     }
 }
+
+export function addListener<T extends Stateful>(
+  control: Controller<T>,
+  listener: Controller.OnEvent<T>){
+
+  control.followers.add(listener);
+  return () => {
+    control.followers.delete(listener)
+  }
+}
+
+export function clearListeners<T extends Stateful>(
+  control: Controller<T>){
+
+  const listeners = [ ...control.followers ];
+
+  control.followers.clear();
+  listeners.forEach(x => x(null, control));
+}

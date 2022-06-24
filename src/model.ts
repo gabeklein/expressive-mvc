@@ -1,5 +1,5 @@
 import { Controller, createRef } from './controller';
-import { getUpdate, setUpdate, UPDATE } from './dispatch';
+import { addListener, clearListeners, getUpdate, setUpdate, UPDATE } from './dispatch';
 import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
@@ -182,7 +182,7 @@ class Model {
 
     return ensure(this, control => {
       if(typeof select == "function")
-        return control.addListener(select);
+        return addListener(control, select);
 
       const keys = 
         typeof select == "string" ? [ select ] :
@@ -211,7 +211,7 @@ class Model {
         }
         : callback;
 
-      const remove = control.addListener(key => {
+      const remove = addListener(control, key => {
         if(keys.includes(key as any))
           return onEvent;
       });
@@ -263,7 +263,7 @@ class Model {
           try { void (this as any)[key] }
           catch(e){}
 
-        return x.addListener(invoke);
+        return addListener(x, invoke);
       })
 
       if(typeof argument == "number")
@@ -307,7 +307,7 @@ class Model {
 
       invoke();
 
-      return control.addListener((key) => {
+      return addListener(control, key => {
         if(key === null){
           if(!select.length)
             invoke();
@@ -398,7 +398,7 @@ class Model {
    * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
    */
   destroy(){
-    ensure(this).stop();
+    clearListeners(ensure(this));
   }
 
   toString(){

@@ -20,20 +20,6 @@ class Controller<T extends Stateful = any> {
   get state(){
     return STATE.get(this.subject)!;
   }
-
-  stop(){
-    const listeners = [ ...this.followers ];
-
-    this.followers.clear();
-    listeners.forEach(x => x(null, this));
-  }
-
-  addListener(listener: Controller.OnEvent<T>){
-    this.followers.add(listener);
-    return () => {
-      this.followers.delete(listener)
-    }
-  }
 }
 
 export function createRef<T extends Stateful>(
