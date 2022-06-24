@@ -243,18 +243,6 @@ describe("failures", () => {
     expect(warn).toBeCalledWith(failed.message);
   })
 
-  it('will warn if throws early', () => {
-    const state = Subject.create();
-    const attempt = () => state.once("never");
-
-    const failed = Compute.Failed(Subject.name, "never", true);
-    const early = Compute.Early("never");
-
-    expect(attempt).rejects.toThrowError();
-    expect(warn).toBeCalledWith(failed.message);
-    expect(warn).toBeCalledWith(early.message);
-  })
-
   it('will warn if throws on update', async () => {
     class Test extends Model {
       shouldFail = false;

@@ -1,6 +1,5 @@
 import { Controller } from './controller';
 import { getUpdate, UPDATE } from './dispatch';
-import { evaluate } from './instruction/from';
 import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
@@ -188,7 +187,9 @@ class Model {
         typeof select == "string" ? [ select ] :
         select.length ? select : [ ...control.state.keys() ];
 
-      evaluate(control, keys);
+      for(const key of keys)
+        try { void (this as any)[key] }
+        catch(e){}
 
       const callback = squash
         ? () => {
@@ -257,7 +258,10 @@ class Model {
       }
 
       const clear = ensure(this, x => {
-        evaluate(x, select as P[]);
+        for(const key of select)
+          try { void (this as any)[key] }
+          catch(e){}
+
         return x.addListener(invoke);
       })
 

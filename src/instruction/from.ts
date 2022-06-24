@@ -15,10 +15,7 @@ export const Oops = issues({
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
   Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
-
-  Early: (property) => 
-    `Note: Computed values don't run until accessed, except when subscribed to. '${property}' getter may have run earlier than intended.`
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
 type GetterInfo = {
@@ -27,7 +24,6 @@ type GetterInfo = {
   priority: number;
 }
 
-const EARLY = new WeakSet<Controller>();
 const INFO = new WeakMap<Function, GetterInfo>();
 const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
 const KEYS = new WeakMap<Set<string>, Callback[]>();
@@ -156,9 +152,6 @@ function from<R, T>(
           return value;
         }
         catch(e){
-          if(EARLY.has(parent))
-            Oops.Early(key).warn();
-
           throw e;
         }
         finally {
@@ -186,19 +179,6 @@ function from<R, T>(
     }
   )
 }
-
-export function evaluate(on: Controller, keys: string[]){
-  EARLY.add(on);
-
-  for(const key of keys)
-    try {
-      void on.subject[key];
-    }
-    catch(e){}
-
-  EARLY.delete(on);
-}
-
 export function flush(frame: Set<string>){
   const pending = KEYS.get(frame);
 
