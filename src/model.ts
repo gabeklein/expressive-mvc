@@ -354,6 +354,7 @@ class Model {
 
   update(arg?: any, tag?: any): any {
     const target = ensure(this);
+    const { frame, waiting } = target;
 
     if(typeof arg == "string"){
       setUpdate(target, arg as Model.Field<this>);
@@ -372,11 +373,11 @@ class Model {
     }
 
     if(typeof arg == "function"){
-      target.waiting.add(arg);
+      waiting.add(arg);
       return;
     }
 
-    if(!target.frame.size && arg === true)
+    if(!frame.size && arg === true)
       return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<this>[] | false>> {
@@ -384,8 +385,8 @@ class Model {
         if(!callback)
           throw Oops.NoChaining();
 
-        if(target.frame.size || arg !== false)
-          target.waiting.add(() => {
+        if(frame.size || arg !== false)
+          waiting.add(() => {
             callback(getUpdate(this));
           });
         else
