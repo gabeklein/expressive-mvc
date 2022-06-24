@@ -42,7 +42,8 @@ class Controller<T extends Stateful = any> {
             return;
         }
 
-      this.update(key, value);
+      this.state.set(key, value);
+      this.update(key);
     }
   }
 
@@ -53,11 +54,8 @@ class Controller<T extends Stateful = any> {
     }
   }
 
-  update(key: Model.Field<T>, value?: any){
+  update(key: Model.Field<T>){
     const { frame } = this;
-
-    if(1 in arguments)
-      this.state.set(key, value);
 
     if(frame.has(key))
       return;

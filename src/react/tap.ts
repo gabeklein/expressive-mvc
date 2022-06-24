@@ -74,7 +74,8 @@ function tap<T extends Peer>(
         else if(!instance && argument)
           throw Oops.AmbientRequired(type.name, subject, key);
 
-        this.update(key, instance);
+        this.state.set(key, instance);
+        this.update(key);
       })
 
       return {

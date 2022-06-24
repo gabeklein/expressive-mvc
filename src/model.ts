@@ -147,7 +147,8 @@ class Model {
     defineLazy(this, "set", () => {
       const controller = ensure(this);
       const assign = (key: any, value: any) => {
-        controller.update(key, value);
+        controller.state.set(key, value);
+        controller.update(key);
       }
 
       for(const key of controller.state.keys())

@@ -120,7 +120,8 @@ function from<R, T>(
         }
         finally {
           if(state.get(key) !== value){
-            parent.update(key, value);
+            parent.state.set(key, value);
+            parent.update(key);
             return value;
           }
         }
