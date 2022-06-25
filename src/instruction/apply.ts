@@ -109,8 +109,8 @@ function apply<T = any>(
 
       const local = this[LOCAL];
 
-      if(local && !local.using.has(key))
-        local.using.set(key, true);
+      if(local)
+        local.add(key);
 
       return onGet
         ? onGet(local)
@@ -158,7 +158,7 @@ function getRecursive(key: string, from: Controller){
       }
   
       init();
-      local.using.set(key, init);
+      local.add(key, init);
     }
 
     return context.get(local);

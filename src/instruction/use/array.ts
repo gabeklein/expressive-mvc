@@ -67,7 +67,7 @@ function array<T = any>(){
           if(context.active)
             return;
 
-          context.using.set(key, onUpdate);
+          context.add(key, onUpdate);
           rangeA = Math.min(rangeA, eventA);
           rangeB = Math.max(rangeB, eventB);
         }

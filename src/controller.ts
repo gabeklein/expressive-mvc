@@ -54,8 +54,8 @@ class Controller<T extends Stateful = any> {
       get(){
         const local = this[LOCAL] as Subscriber;
 
-        if(local && !local.using.has(key))
-          local.using.set(key, true);
+        if(local)
+          local.add(key);
 
         return state.get(key);
       }

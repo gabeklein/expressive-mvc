@@ -145,7 +145,8 @@ function from<R, T>(
       }
 
       function create(){
-        sub = getSource().subscribe(defer);
+        const control = getSource();
+        sub = control.subscribe(defer);
 
         try {
           const value = compute(true);
@@ -158,7 +159,7 @@ function from<R, T>(
         finally {
           sub.commit();
 
-          for(const [ key ] of sub.using){
+          for(const key of control.state.keys()){
             const peer = register.get(key);
 
             if(peer && peer.priority >= info.priority)
