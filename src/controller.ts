@@ -1,6 +1,5 @@
 import { flush } from './instruction/from';
 import { Model, Stateful } from './model';
-import { STATE } from './stateful';
 
 import type { Callback } from './types';
 
@@ -17,15 +16,12 @@ declare namespace Controller {
 }
 
 class Controller<T extends Stateful = any> {
+  public state!: Map<any, any>;
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
   public followers = new Set<Controller.OnEvent>();
 
   constructor(public subject: T){}
-
-  get state(){
-    return STATE.get(this.subject)!;
-  }
 
   addListener(listener: Controller.OnEvent<T>){
     this.followers.add(listener);

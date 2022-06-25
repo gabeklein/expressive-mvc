@@ -4,8 +4,6 @@ import { CONTROL, LOCAL, Stateful } from './model';
 import { Callback } from './types';
 import { define, defineProperty, getOwnPropertyDescriptor } from './util';
 
-const STATE = new Map<Stateful, Map<any, any>>();
-
 type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
 
 function ensure<T extends Stateful>(subject: T): Controller<T>;
@@ -20,7 +18,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     define(subject, CONTROL, control);
   }
 
-  let state = STATE.get(subject);
+  let { state } = control;
 
   if(!state){
     if(cb){
@@ -33,7 +31,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       return () => done && done();
     }
 
-    STATE.set(subject, state = new Map());
+    control.state = state = new Map();
 
     for(const key in subject){
       const { value } = getOwnPropertyDescriptor(subject, key)!;
@@ -72,4 +70,4 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   return cb ? cb(control) : control;
 }
 
-export { ensure, STATE, PENDING }
+export { ensure, PENDING }
