@@ -1,8 +1,8 @@
 import { Controller } from './controller';
 import { PENDING } from './instruction/apply';
-import { CONTROL, LOCAL, Stateful } from './model';
+import { CONTROL, Stateful } from './model';
 import { Callback } from './types';
-import { define, defineProperty, getOwnPropertyDescriptor } from './util';
+import { define } from './util';
 
 type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
 
@@ -33,36 +33,8 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
 
     control.state = state = new Map();
 
-    for(const key in subject){
-      const { value } = getOwnPropertyDescriptor(subject, key)!;
-
-      if(typeof value == "function")
-        continue;
-
-      if(typeof value == "symbol"){
-        const instruction = PENDING.get(value);
-
-        if(instruction)
-          instruction.call(control, key, control);
-
-        continue;
-      }
-
-      state.set(key, value);
-
-      defineProperty(subject, key, {
-        enumerable: false,
-        set: control.ref(key as any),
-        get(){
-          const local = this[LOCAL];
-
-          if(local && !local.watch[key])
-            local.watch[key] = true;
-
-          return state!.get(key);
-        }
-      });
-    }
+    for(const key in subject)
+      control.add(key);
 
     control.emit();
   }

@@ -1,7 +1,9 @@
 import { flush } from './instruction/from';
-import { Model, Stateful } from './model';
+import { LOCAL, Model, Stateful } from './model';
+import { PENDING } from './stateful';
 
 import type { Callback } from './types';
+import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 const UPDATE = new WeakMap<{}, readonly string[]>();
 
@@ -28,6 +30,38 @@ class Controller<T extends Stateful = any> {
     return () => {
       this.followers.delete(listener)
     }
+  }
+
+  add(key: keyof T & string){
+    const { subject, state } = this;
+    const { value } = getOwnPropertyDescriptor(subject, key)!;
+
+    if(typeof value == "function")
+      return;
+
+    if(typeof value == "symbol"){
+      const instruction = PENDING.get(value);
+
+      if(instruction)
+        instruction.call(this, key, this);
+
+      return;
+    }
+
+    state.set(key, value);
+
+    defineProperty(subject, key, {
+      enumerable: false,
+      set: this.ref(key as any),
+      get(){
+        const local = this[LOCAL];
+
+        if(local && !local.watch[key])
+          local.watch[key] = true;
+
+        return state!.get(key);
+      }
+    });
   }
 
   ref(
