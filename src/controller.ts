@@ -20,29 +20,28 @@ class Controller<T extends Stateful = any> {
   get state(){
     return STATE.get(this.subject)!;
   }
-}
 
-export function createRef<T extends Stateful>(
-  control: Controller<T>,
-  key: Model.Field<T>,
-  handler?: Controller.OnValue<T>){
-
-  const { subject, state } = control;
-
-  return (value: any) => {
-    if(state.get(key) == value)
-      return;
-
-    if(handler)
-      switch(handler.call(subject, value)){
-        case true:
-          setUpdate(control, key);
-        case false:
-          return;
-      }
-
-    state.set(key, value);
-    setUpdate(control, key);
+  ref(
+    key: Model.Field<T>,
+    handler?: Controller.OnValue<T>){
+  
+    const { subject, state } = this;
+  
+    return (value: any) => {
+      if(state.get(key) == value)
+        return;
+  
+      if(handler)
+        switch(handler.call(subject, value)){
+          case true:
+            setUpdate(this, key);
+          case false:
+            return;
+        }
+  
+      state.set(key, value);
+      setUpdate(this, key);
+    }
   }
 }
 
