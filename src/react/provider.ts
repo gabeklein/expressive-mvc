@@ -3,6 +3,7 @@ import React from 'react';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Collection, Lookup } from '../register';
+import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { Class } from '../types';
 import { entries } from '../util';
@@ -90,7 +91,7 @@ function useAppliedProps(within: Lookup, props: {}){
 
     return function integrate(props: {}){
       for(const [key, value] of entries(props))
-        if(["of", "for", "children"].indexOf(key) < 0)
+        if(!["of", "for", "children"].includes(key))
           for(const into of targets)
             if(into && key in into)
               (into as any)[key] = value;
@@ -109,8 +110,10 @@ function RenderFunction(props: RenderFunctionProps): any {
   const hook = use(refresh => {
     const targets = props.context.local;
 
-    if(targets.length == 1)
-      return new Subscriber(targets[0], () => refresh);
+    if(targets.length == 1){
+      const control = ensure(targets[0]);
+      return new Subscriber(control, () => refresh);
+    }
 
     return {} as Subscriber;
   });

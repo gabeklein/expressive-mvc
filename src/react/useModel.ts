@@ -80,7 +80,7 @@ function useModel <T extends Model | Stateful> (
   }
   else {
     const local = use(refresh => (
-      new Subscriber(instance, () => refresh)
+      new Subscriber(ensure(instance), () => refresh)
     ));
 
     if(typeof arg == "object"){

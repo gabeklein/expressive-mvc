@@ -6,6 +6,7 @@ import { defineProperty } from '../util';
 import { use } from './use';
 
 import type { Callback } from '../types';
+import { ensure } from '../stateful';
 
 function useFrom <T extends Stateful, R> (
   source: (() => T) | T,
@@ -25,7 +26,7 @@ function useFrom(
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = new Subscriber(target, () => update);
+    const sub = new Subscriber(ensure(target), () => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);

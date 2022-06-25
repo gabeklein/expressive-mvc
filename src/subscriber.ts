@@ -1,6 +1,5 @@
 import { getUpdate, Controller, UPDATE } from './controller';
 import { LOCAL, Stateful } from './model';
-import { ensure } from './stateful';
 import { create, define, defineProperty } from './util';
 
 import type { Callback } from './types';
@@ -20,12 +19,8 @@ export class Subscriber <T extends Stateful = any> {
   public using = new Map<any, Callback | boolean>();
 
   constructor(
-    target: Controller<T> | T,
+    parent: Controller<T>,
     public onUpdate: Controller.OnEvent){
-
-    const parent =
-      target instanceof Controller
-        ? target : ensure(target);
 
     const proxy = create(parent.subject);
 

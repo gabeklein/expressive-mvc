@@ -1,5 +1,6 @@
 import { Controller } from '../controller';
 import { CONTROL, LOCAL, Stateful } from '../model';
+import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { defineProperty } from '../util';
@@ -147,7 +148,7 @@ function getRecursive(key: string, from: Controller){
         const value = state.get(key);
   
         if(value && CONTROL in value){
-          child = new Subscriber(value as Stateful, local.onUpdate);
+          child = new Subscriber(ensure(value as Stateful), local.onUpdate);
   
           if(local.active)
             child.commit();
