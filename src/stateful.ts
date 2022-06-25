@@ -18,9 +18,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     define(subject, CONTROL, control);
   }
 
-  let { state } = control;
-
-  if(!state){
+  if(!control.state){
     if(cb){
       let done: Callback | void;
 
@@ -31,7 +29,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
       return () => done && done();
     }
 
-    control.state = state = new Map();
+    control.state = new Map();
 
     for(const key in subject)
       control.add(key);
