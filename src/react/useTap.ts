@@ -4,7 +4,6 @@ import { Model, Stateful } from '../model';
 import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
-import { defineProperty } from '../util';
 import { use } from './use';
 import { useFrom } from './useFrom';
 import { useLocal } from './useLocal';
@@ -64,29 +63,20 @@ function useTap <T extends Stateful> (
   if(typeof path == "function")
     return useFrom(instance, path, expect);
 
-  const local = use(refresh => {
-    const parent = ensure(instance);
-    const sub = new Subscriber(parent, () => refresh);
-
-    if(typeof path == "string"){
-      const source = sub.proxy;
-
-      defineProperty(sub, "proxy", {
-        get() {
-          const value = source[path];
-
-          if(value === undefined && expect)
-            throw suspend(parent, path);
-
-          return value;
-        }
-      });
-    }
-
-    return sub;
-  });
+  const local = use(refresh => (
+    new Subscriber(ensure(instance), () => refresh)
+  ));
 
   React.useLayoutEffect(local.commit, []);
+  
+  if(typeof path !== "undefined"){
+    const value = local.proxy[path];
+
+    if(value === undefined && expect)
+      throw suspend(ensure(instance), path);
+
+    return value;
+  }
 
   return local.proxy;
 }
