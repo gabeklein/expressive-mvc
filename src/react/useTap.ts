@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 
 import { Model, Stateful } from '../model';
 import { ensure } from '../stateful';
-import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { use } from './use';
 import { useFrom } from './useFrom';
@@ -64,7 +63,7 @@ function useTap <T extends Stateful> (
     return useFrom(instance, path, expect);
 
   const local = use(refresh => (
-    new Subscriber(ensure(instance), () => refresh)
+    ensure(instance).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(local.commit, []);

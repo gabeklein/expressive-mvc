@@ -145,7 +145,7 @@ function from<R, T>(
       }
 
       function create(){
-        sub = new Subscriber(getSource(), defer);
+        sub = getSource().subscribe(defer);
 
         try {
           const value = compute(true);

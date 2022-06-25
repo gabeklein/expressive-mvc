@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 import { Model, Stateful } from '../model';
 import { ensure } from '../stateful';
-import { Subscriber } from '../subscriber';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { use } from './use';
@@ -80,7 +79,7 @@ function useModel <T extends Model | Stateful> (
   }
   else {
     const local = use(refresh => (
-      new Subscriber(ensure(instance), () => refresh)
+      ensure(instance).subscribe(() => refresh)
     ));
 
     if(typeof arg == "object"){

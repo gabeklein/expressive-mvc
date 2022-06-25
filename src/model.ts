@@ -296,7 +296,7 @@ class Model {
       }
 
       if(!select){
-        const sub = new Subscriber(control, () => invoke);
+        const sub = control.subscribe(() => invoke);
 
         inject = sub.proxy;
         invoke();

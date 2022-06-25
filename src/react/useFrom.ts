@@ -1,7 +1,6 @@
 import React from 'react';
 
 import { Stateful } from '../model';
-import { Subscriber } from '../subscriber';
 import { defineProperty } from '../util';
 import { use } from './use';
 
@@ -26,7 +25,7 @@ function useFrom(
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = new Subscriber(ensure(target), () => update);
+    const sub = ensure(target).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);

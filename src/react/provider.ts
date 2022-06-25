@@ -110,10 +110,8 @@ function RenderFunction(props: RenderFunctionProps): any {
   const hook = use(refresh => {
     const targets = props.context.local;
 
-    if(targets.length == 1){
-      const control = ensure(targets[0]);
-      return new Subscriber(control, () => refresh);
-    }
+    if(targets.length == 1)
+      return ensure(targets[0]).subscribe(() => refresh);
 
     return {} as Subscriber;
   });

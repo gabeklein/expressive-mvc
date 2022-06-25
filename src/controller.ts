@@ -26,6 +26,10 @@ class Controller<T extends Stateful = any> {
 
   constructor(public subject: T){}
 
+  subscribe(callback: Controller.OnEvent<T>){
+    return new Subscriber<T>(this, callback);
+  }
+
   add(key: keyof T & string){
     const { subject, state } = this;
     const { value } = getOwnPropertyDescriptor(subject, key)!;

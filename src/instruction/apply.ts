@@ -148,7 +148,7 @@ function getRecursive(key: string, from: Controller){
         const value = state.get(key);
   
         if(value && CONTROL in value){
-          child = new Subscriber(ensure(value as Stateful), local.onUpdate);
+          child = ensure(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();
