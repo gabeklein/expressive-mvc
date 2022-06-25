@@ -29,14 +29,12 @@ export class Subscriber <T extends Stateful = any> {
 
     const proxy = create(parent.subject);
 
-    let reset: Callback | undefined;
-
     define(proxy, LOCAL, this);
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
-        if(reset)
-          setTimeout(reset, 0);
+        if(UPDATE.has(proxy))
+          setTimeout(() => UPDATE.delete(proxy), 0);
 
         return proxy;
       }
@@ -58,10 +56,6 @@ export class Subscriber <T extends Stateful = any> {
         const applicable = update.filter(k => this.using.has(k));
 
         UPDATE.set(proxy, applicable);
-
-        reset = () => {
-          setTimeout(() => UPDATE.delete(proxy), 0);
-        }
       }
 
       if(notify){
