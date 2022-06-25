@@ -18,10 +18,7 @@ export function setUpdate<T extends Stateful>(
     return;
 
   else if(!frame.size)
-    setTimeout(() => {
-      flush(control);
-      emitUpdate(control);
-    }, 0);
+    setTimeout(emitUpdate, 0, control);
 
   frame.add(key);
 
@@ -35,6 +32,8 @@ export function setUpdate<T extends Stateful>(
 
 export function emitUpdate(control: Controller){
   const { frame, subject, waiting } = control;
+
+  flush(control);
 
   const callback = Array.from(waiting);
   const keys = Array.from(frame);
