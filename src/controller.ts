@@ -26,13 +26,6 @@ class Controller<T extends Stateful = any> {
 
   constructor(public subject: T){}
 
-  addListener(listener: Controller.OnEvent<T>){
-    this.followers.add(listener);
-    return () => {
-      this.followers.delete(listener)
-    }
-  }
-
   add(key: keyof T & string){
     const { subject, state } = this;
     const { value } = getOwnPropertyDescriptor(subject, key)!;
@@ -63,6 +56,13 @@ class Controller<T extends Stateful = any> {
         return state.get(key);
       }
     });
+  }
+
+  addListener(listener: Controller.OnEvent<T>){
+    this.followers.add(listener);
+    return () => {
+      this.followers.delete(listener)
+    }
   }
 
   ref(
