@@ -112,10 +112,9 @@ function apply<T = any>(
       if(local && !local.using.has(key))
         local.using.set(key, true);
 
-      if(onGet)
-        return local ? onGet(local) : onGet();
-
-      return state.get(key);
+      return onGet
+        ? onGet(local)
+        : state.get(key);
     }
 
     defineProperty(subject, key, { enumerable, get, set });

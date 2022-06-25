@@ -77,7 +77,7 @@ describe("getter", () => {
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
-    expect(mockAccess).toBeCalledWith();
+    expect(mockAccess).toBeCalledWith(undefined);
   })
 
   it("will pass subscriber if within one", () => {
