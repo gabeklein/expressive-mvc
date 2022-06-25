@@ -99,9 +99,9 @@ function apply<T = any>(
       suspense
     } = desc;
 
-    const set = onSet === false
-      ? undefined
-      : this.ref(key, onSet);
+    const set = onSet !== false
+      ? this.ref(key, onSet)
+      : undefined;
 
     function get(this: Stateful){
       if(!state.has(key) && suspense)
