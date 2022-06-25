@@ -158,7 +158,7 @@ function from<R, T>(
         finally {
           sub.commit();
 
-          for(const key in sub.watch){
+          for(const [ key ] of sub.using){
             const peer = register.get(key);
 
             if(peer && peer.priority >= info.priority)

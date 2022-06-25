@@ -1,5 +1,5 @@
 import { getUpdate, Controller, UPDATE } from './controller';
-import { LOCAL, Model, Stateful } from './model';
+import { LOCAL, Stateful } from './model';
 import { ensure } from './stateful';
 import { create, define, defineProperty } from './util';
 
@@ -17,9 +17,7 @@ export class Subscriber <T extends Stateful = any> {
 
   public active = false;
   public dependant = new Set<Listener>();
-  public watch = {} as {
-    [key in Model.Event<T>]: Callback | boolean;
-  }
+  public using = new Map<any, Callback | boolean>();
 
   constructor(
     target: Controller<T> | T,
@@ -45,10 +43,10 @@ export class Subscriber <T extends Stateful = any> {
     })
 
     const release = parent.addListener(key => {
-      const handler = this.watch[key as string];
-
-      if(!handler || !this.active)
+      if(!this.active || !this.using.has(key))
         return;
+
+      const handler = this.using.get(key);
 
       if(typeof handler == "function")
         handler();
@@ -57,7 +55,7 @@ export class Subscriber <T extends Stateful = any> {
   
       const getWhy: Callback = () => {
         const update = getUpdate(parent.subject);
-        const applicable = update.filter(k => k in this.watch);
+        const applicable = update.filter(k => this.using.has(k));
 
         UPDATE.set(proxy, applicable);
 

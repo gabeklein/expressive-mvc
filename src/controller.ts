@@ -1,6 +1,7 @@
 import { flush } from './instruction/from';
 import { LOCAL, Model, Stateful } from './model';
 import { PENDING } from './stateful';
+import { Subscriber } from './subscriber';
 
 import type { Callback } from './types';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
@@ -54,12 +55,12 @@ class Controller<T extends Stateful = any> {
       enumerable: false,
       set: this.ref(key as any),
       get(){
-        const local = this[LOCAL];
+        const local = this[LOCAL] as Subscriber;
 
-        if(local && !local.watch[key])
-          local.watch[key] = true;
+        if(local && !local.using.has(key))
+          local.using.set(key, true);
 
-        return state!.get(key);
+        return state.get(key);
       }
     });
   }
