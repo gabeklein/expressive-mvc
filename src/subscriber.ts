@@ -54,6 +54,7 @@ export class Subscriber <T extends Stateful = any> {
         handler();
 
       const notify = this.onUpdate(key, parent);
+  
       const getWhy: Callback = () => {
         const update = getUpdate(parent.subject);
         const applicable = update.filter(k => k in this.watch);

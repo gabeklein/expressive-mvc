@@ -50,7 +50,7 @@ function array<T = any>(){
       const array = new Managed<T>(() => this.update(key));
 
       const getLocal = (context: Subscriber) => {
-        const local = Object.create(array);
+        const proxy = Object.create(array);
         const update = context.onUpdate(key, this)!;
 
         let rangeA = 0;
@@ -72,12 +72,12 @@ function array<T = any>(){
           rangeB = Math.max(rangeB, eventB);
         }
 
-        local[Symbol.iterator] = () => {
+        proxy[Symbol.iterator] = () => {
           listen(0, Infinity);
           return array[Symbol.iterator]();
         }
 
-        return local;
+        return proxy;
       }
 
       return {
