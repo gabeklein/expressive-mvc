@@ -1,5 +1,4 @@
 import { Controller } from './controller';
-import { addListener } from './dispatch';
 import { issues } from './issues';
 
 export const Oops = issues({
@@ -16,7 +15,7 @@ export function suspend(
     Oops.NotReady(source.subject, key);
 
   const promise = new Promise<void>(resolve => {
-    const release = addListener(source, forKey => {
+    const release = source.addListener(forKey => {
       if(forKey == key)
         return () => {
           if(source.state.get(key) !== undefined){

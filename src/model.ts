@@ -1,5 +1,4 @@
-import { Controller } from './controller';
-import { addListener, clearListeners, getUpdate, setUpdate, UPDATE } from './dispatch';
+import { Controller, getUpdate, UPDATE } from './controller';
 import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
@@ -148,7 +147,7 @@ class Model {
       const controller = ensure(this);
       const assign = (key: any, value: any) => {
         controller.state.set(key, value);
-        setUpdate(controller, key);
+        controller.update(key);
       }
 
       for(const key of controller.state.keys())
@@ -182,7 +181,7 @@ class Model {
 
     return ensure(this, control => {
       if(typeof select == "function")
-        return addListener(control, select);
+        return control.addListener(select);
 
       const keys = 
         typeof select == "string" ? [ select ] :
@@ -211,7 +210,7 @@ class Model {
         }
         : callback;
 
-      const remove = addListener(control, key => {
+      const remove = control.addListener(key => {
         if(keys.includes(key as any))
           return onEvent;
       });
@@ -263,7 +262,7 @@ class Model {
           try { void (this as any)[key] }
           catch(e){}
 
-        return addListener(x, invoke);
+        return x.addListener(invoke);
       })
 
       if(typeof argument == "number")
@@ -307,7 +306,7 @@ class Model {
 
       invoke();
 
-      return addListener(control, key => {
+      return control.addListener(key => {
         if(key === null){
           if(!select.length)
             invoke();
@@ -357,7 +356,7 @@ class Model {
     const { frame, waiting } = target;
 
     if(typeof arg == "string"){
-      setUpdate(target, arg as Model.Field<this>);
+      target.update(arg as Model.Field<this>);
 
       if(1 in arguments && arg in this){
         const method = (this as any)[arg];
@@ -399,7 +398,7 @@ class Model {
    * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
    */
   destroy(){
-    clearListeners(ensure(this));
+    ensure(this).clear();
   }
 
   toString(){

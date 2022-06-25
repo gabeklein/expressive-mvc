@@ -1,4 +1,3 @@
-import { setUpdate } from '../../dispatch';
 import { Subscriber } from '../../subscriber';
 import { Callback } from '../../types';
 import { apply } from '../apply';
@@ -48,7 +47,7 @@ function array<T = any>(){
   return apply<T[]>(
     function array(key){
       const context = new WeakMap<Subscriber, T>();
-      const array = new Managed<T>(() => setUpdate(this, key));
+      const array = new Managed<T>(() => this.update(key));
 
       const getLocal = (context: Subscriber) => {
         const local = Object.create(array);

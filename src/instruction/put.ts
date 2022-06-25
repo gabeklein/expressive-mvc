@@ -1,4 +1,3 @@
-import { setUpdate } from '../dispatch';
 import { issues } from '../issues';
 import { mayRetry } from '../suspense';
 import { createValueEffect } from '../util';
@@ -109,7 +108,7 @@ function put(
             })
             .finally(() => {
               pending = undefined;
-              setUpdate(this, key);
+              this.update(key);
             })
 
           return;
