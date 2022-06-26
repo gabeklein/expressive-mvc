@@ -51,7 +51,6 @@ function array<T = any>(){
 
       const getLocal = (context: Subscriber) => {
         const proxy = Object.create(array);
-        const update = context.onUpdate(key, this)!;
 
         let rangeA = 0;
         let rangeB = 0;
@@ -60,7 +59,7 @@ function array<T = any>(){
           const [lastA, lastB] = array.lastUpdate;
 
           if(rangeA <= lastB && rangeB >= lastA)
-            return update;
+            return true;
         }
 
         const listen = (eventA: number, eventB: number) => {

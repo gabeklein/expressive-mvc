@@ -155,6 +155,8 @@ function getRecursive(key: string, from: Controller){
           local.dependant.add(child);
           context.set(local, child.proxy);
         }
+
+        return true;
       }
   
       init();
