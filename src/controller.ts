@@ -93,13 +93,35 @@ class Controller<T extends Stateful = any> {
   }
 
   update(key: Model.Field<T>){
-    const { followers, frame, waiting } = this;
+    const { followers, frame, subject, waiting } = this;
   
     if(frame.has(key))
       return;
   
     else if(!frame.size)
-      setTimeout(() => this.emit(), 0);
+      setTimeout(() => {
+        flush(this);
+      
+        const callback = Array.from(waiting);
+        const keys = Array.from(frame);
+      
+        frame.clear();
+        waiting.clear();
+      
+        UPDATE.set(subject, keys);
+      
+        setTimeout(() => {
+          UPDATE.delete(subject);
+        }, 0);
+      
+        for(const cb of callback)
+          try {
+            cb();
+          }
+          catch(err){
+            console.error(err);
+          }
+      }, 0);
   
     frame.add(key);
   
@@ -109,32 +131,6 @@ class Controller<T extends Stateful = any> {
       if(typeof event == "function")
         waiting.add(event);
     }
-  }
-
-  emit(){
-    const { frame, subject, waiting } = this;
-  
-    flush(this);
-  
-    const callback = Array.from(waiting);
-    const keys = Array.from(frame);
-  
-    frame.clear();
-    waiting.clear();
-  
-    UPDATE.set(subject, keys);
-  
-    setTimeout(() => {
-      UPDATE.delete(subject);
-    }, 0);
-  
-    for(const cb of callback)
-      try {
-        cb();
-      }
-      catch(err){
-        console.error(err);
-      }
   }
 
   clear(){

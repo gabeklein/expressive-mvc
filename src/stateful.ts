@@ -19,10 +19,12 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   }
 
   if(!control.state){
+    const { waiting } = control;
+
     if(cb){
       let done: Callback | void;
 
-      control.waiting.add(() => {
+      waiting.add(() => {
         done = cb(control);
       });
 
@@ -34,7 +36,12 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     for(const key in subject)
       control.add(key);
 
-    control.emit();
+    const callback = Array.from(waiting);
+
+    waiting.clear();
+    
+    for(const cb of callback)
+      cb();
   }
 
   return cb ? cb(control) : control;
