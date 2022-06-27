@@ -22,6 +22,23 @@ it("will update on set", async () => {
   expect(mock).toBeCalledWith(true);
 })
 
+it("will update on delete", async () => {
+  const test = Test.create();
+  const mock = jest.fn((state: Test) => {
+    state.values.has("foo");
+  });
+
+  test.effect(mock);
+
+  test.values.add("foo");
+  await test.update(true);
+
+  test.values.delete("foo");
+  await test.update(true);
+
+  expect(mock).toBeCalledTimes(3);
+})
+
 it("will not update on unwatched key", async () => {
   const test = Test.create();
   const mock = jest.fn();
@@ -38,18 +55,26 @@ it("will not update on unwatched key", async () => {
   expect(mock).toBeCalledTimes(1);
 })
 
-it("will update for any key if iterated", async () => {
+it("will update for any key where iterated", async () => {
   const test = Test.create();
-  const mock = jest.fn();
 
-  test.effect($ => {
-    mock([ ...$.values ]);
-  })
+  const mockIterator = jest.fn(({ values }: Test) => void [...values]);
+  const mockValues = jest.fn(({ values }: Test) => void values.values());
+  const mockKeys = jest.fn(({ values }: Test) => void values.keys());
+  const mockEntries = jest.fn(({ values }: Test) => void values.entries());
+
+  test.effect(mockIterator);
+  test.effect(mockEntries);
+  test.effect(mockValues);
+  test.effect(mockKeys);
 
   test.values.add("foo");
   await test.update(true);
 
-  expect(mock).toBeCalledTimes(2);
+  expect(mockIterator).toBeCalledTimes(2);
+  expect(mockEntries).toBeCalledTimes(2);
+  expect(mockValues).toBeCalledTimes(2);
+  expect(mockKeys).toBeCalledTimes(2);
 })
 
 it("will update on clear", async () => {
