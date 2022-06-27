@@ -5,6 +5,7 @@ import { Class, InstanceOf } from '../../types';
 import { apply } from '../apply';
 import { Parent } from '../parent';
 import { managedMap } from './map';
+import { managedSet } from './set';
 
 export const Oops = issues({
   BadArgument: (type) =>
@@ -41,7 +42,7 @@ function use<T extends typeof Model>(
   argument?: (i: InstanceOf<T> | undefined) => void){
 
   return apply(
-    function use(key){
+    function use(key): any {
       const { state, subject } = this;
 
       if(typeof input === "function")
@@ -54,6 +55,9 @@ function use<T extends typeof Model>(
 
       if(input instanceof Map)
         return managedMap(this, key, input);
+
+      if(input instanceof Set)
+        return managedSet(this, key, input);
 
       function onUpdate(next: {} | undefined){
         state.set(key, next);
