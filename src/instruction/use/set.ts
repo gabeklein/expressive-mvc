@@ -2,6 +2,8 @@ import { Controller } from '../../controller';
 import { Subscriber } from '../../subscriber';
 import { create, defineProperty } from '../../util';
 
+const ANY = Symbol("any");
+
 export function managedSet<K>(
   control: Controller,
   property: any,
@@ -29,7 +31,7 @@ export function managedSet<K>(
     control.state.set(property, next);
 
     if(!initial)
-      emit(true);
+      emit(ANY);
 
     managed.add = (k) => {
       emit(k);
@@ -42,7 +44,7 @@ export function managedSet<K>(
     };
 
     managed.clear = () => {
-      emit(true);
+      emit(ANY);
       value.clear();
     }
   }
@@ -60,7 +62,7 @@ export function managedSet<K>(
     context.set(local, proxy);
 
     local.add(property, () => {
-      if(using.has(true) || lastUpdate.has(true) && using.size)
+      if(using.has(ANY) || lastUpdate.has(ANY) && using.size)
         return true;
 
       for(const key of lastUpdate)
@@ -79,28 +81,28 @@ export function managedSet<K>(
     };
 
     proxy.values = () => {
-      watch(true);
+      watch(ANY);
       return value.values();
     }
 
     proxy.keys = () => {
-      watch(true);
+      watch(ANY);
       return value.keys();
     }
 
     proxy.entries = () => {
-      watch(true);
+      watch(ANY);
       return value.entries();
     }
 
     proxy[Symbol.iterator] = () => {
-      watch(true);
+      watch(ANY);
       return value[Symbol.iterator]();
     };
 
     defineProperty(proxy, "size", {
       get(){
-        watch(true);
+        watch(ANY);
         return value.size;
       }
     })
