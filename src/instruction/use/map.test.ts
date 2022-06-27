@@ -23,6 +23,13 @@ it("will update on set", async () => {
   expect(mock).toBeCalledTimes(3);
 })
 
+it("will allow normal methods outside proxy", () => {
+  const { map } = Test.create();
+
+  map.set("foo", "bar");
+  expect(map.get("foo")).toBe("bar");
+})
+
 it("will squash simulaneous updates", async () => {
   const test = Test.create();
   const mock = jest.fn((state: Test) => {

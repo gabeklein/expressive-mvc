@@ -9,8 +9,9 @@ export function managedMap<K, V>(
   property: any,
   initial: Map<K, V>){
 
-  const context = new WeakMap<Subscriber, Map<K, V>>();
   const lastUpdate = new Set();
+  const context = new WeakMap<Subscriber, Map<K, V>>();
+  const assoc = new WeakMap<Map<K, V>, (key: any) => void>();
 
   let managed: Map<K, V>;
   let value: Map<K, V>;
@@ -33,6 +34,13 @@ export function managedMap<K, V>(
     if(!initial)
       emit(ANY);
 
+    const watch = (key: any, on: Map<any, any>) => {
+      const local = assoc.get(on);
+
+      if(local)
+        local(key);
+    };
+
     managed.set = (k, v) => {
       emit(k);
       return value.set(k, v);
@@ -47,6 +55,43 @@ export function managedMap<K, V>(
       emit(ANY);
       value.clear();
     }
+
+    managed.get = function(key){
+      watch(key, this);
+      return value.get(key);
+    };
+
+    managed.has = function(key){
+      watch(key, this);
+      return value.has(key);
+    };
+
+    managed.values = function(){
+      watch(ANY, this);
+      return value.values();
+    }
+
+    managed.keys = function(){
+      watch(ANY, this);
+      return value.keys();
+    }
+
+    managed.entries = function(){
+      watch(ANY, this);
+      return value.entries();
+    }
+
+    managed[Symbol.iterator] = function(){
+      watch(ANY, this);
+      return value[Symbol.iterator]();
+    };
+
+    defineProperty(managed, "size", {
+      get(){
+        watch(ANY, this);
+        return value.size;
+      }
+    })
   }
 
   function getValue(local?: Subscriber){
@@ -60,6 +105,10 @@ export function managedMap<K, V>(
     const using = new Set();
 
     context.set(local, proxy);
+    assoc.set(proxy, (key) => {
+      if(!local.active)
+        using.add(key);
+    });
 
     local.add(property, () => {
       if(using.has(ANY) || lastUpdate.has(ANY) && using.size)
@@ -69,48 +118,6 @@ export function managedMap<K, V>(
         if(using.has(key))
           return true;
     });
-
-    const watch = (key: any) => {
-      if(!local.active)
-        using.add(key);
-    };
-
-    proxy.get = (key) => {
-      watch(key);
-      return value.get(key);
-    };
-
-    proxy.has = (key) => {
-      watch(key);
-      return value.has(key);
-    };
-
-    proxy.values = () => {
-      watch(ANY);
-      return value.values();
-    }
-
-    proxy.keys = () => {
-      watch(ANY);
-      return value.keys();
-    }
-
-    proxy.entries = () => {
-      watch(ANY);
-      return value.entries();
-    }
-
-    proxy[Symbol.iterator] = () => {
-      watch(ANY);
-      return value[Symbol.iterator]();
-    };
-
-    defineProperty(proxy, "size", {
-      get(){
-        watch(ANY);
-        return value.size;
-      }
-    })
 
     return proxy;
   }

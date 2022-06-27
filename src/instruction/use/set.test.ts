@@ -22,6 +22,13 @@ it("will update on set", async () => {
   expect(mock).toBeCalledWith(true);
 })
 
+it("will allow normal methods outside proxy", () => {
+  const { values } = Test.create();
+
+  values.add("foo");
+  expect(values.has("foo")).toBe(true);
+})
+
 it("will update on delete", async () => {
   const test = Test.create();
   const mock = jest.fn((state: Test) => {
