@@ -7,20 +7,20 @@ class Test extends Model {
 
 it("will update on set", async () => {
   const test = Test.create();
-  const mock = jest.fn();
+  const mock = jest.fn((state: Test) => {
+    state.map.get("foo");
+    state.map.has("bar");
+  });
 
-  test.effect(($) => {
-    mock($.map.get("hello"));
-  })
+  test.effect(mock);
 
-  expect(mock).toBeCalledWith(undefined);
-
-  test.map.set("hello", "world");
-
+  test.map.set("foo", "bar");
   await test.update(true);
 
-  expect(mock).toBeCalledTimes(2);
-  expect(mock).toBeCalledWith("world");
+  test.map.set("bar", "foo");
+  await test.update(true);
+
+  expect(mock).toBeCalledTimes(3);
 })
 
 it("will not update on unwatched key", async () => {
@@ -32,7 +32,6 @@ it("will not update on unwatched key", async () => {
   })
 
   test.map.set("foo", "false");
-
   await test.update(true);
 
   expect(mock).toBeCalledTimes(1);
@@ -47,7 +46,6 @@ it("will update for any key if iterated", async () => {
   })
 
   test.map.set("foo", "bar");
-
   await test.update(true);
 
   expect(mock).toBeCalledTimes(2);
@@ -63,7 +61,6 @@ it("will update on clear", async () => {
   })
 
   test.map.clear();
-
   await test.update(true);
 
   expect(mock).toBeCalledTimes(2);
@@ -78,7 +75,6 @@ it("will update on new value", async () => {
   })
 
   test.map = new Map();
-
   await test.update(true);
 
   expect(mock).toBeCalledTimes(2);
@@ -97,7 +93,6 @@ it("will update size for any change", async () => {
   expect(mock).toBeCalledWith(0);
 
   test.map.set("foo", "bar");
-
   await test.update(true);
 
   expect(mock).toBeCalledWith(1);
