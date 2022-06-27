@@ -4,6 +4,7 @@ import { ensure } from '../../stateful';
 import { Class, InstanceOf } from '../../types';
 import { apply } from '../apply';
 import { Parent } from '../parent';
+import { managedMap } from './map';
 
 export const Oops = issues({
   BadArgument: (type) =>
@@ -49,6 +50,9 @@ function use<T extends typeof Model>(
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);
+
+      if(input instanceof Map)
+        return managedMap(this, key, input);
 
       function onUpdate(next: {} | undefined){
         state.set(key, next);
