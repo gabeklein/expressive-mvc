@@ -46,7 +46,8 @@ function use<T extends typeof Model>(
 
       if(typeof input === "function")
         input = Model.isTypeof(input)
-          ? new input() as InstanceOf<T> : input();
+          ? new input() as InstanceOf<T>
+          : input();
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);

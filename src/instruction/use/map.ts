@@ -83,11 +83,6 @@ export function managedMap<K, V>(
       return value.has(key);
     };
 
-    proxy[Symbol.iterator] = () => {
-      watch(true);
-      return value[Symbol.iterator]();
-    };
-
     proxy.values = () => {
       watch(true);
       return value.values();
@@ -102,6 +97,11 @@ export function managedMap<K, V>(
       watch(true);
       return value.entries();
     }
+
+    proxy[Symbol.iterator] = () => {
+      watch(true);
+      return value[Symbol.iterator]();
+    };
 
     defineProperty(proxy, "size", {
       get(){
