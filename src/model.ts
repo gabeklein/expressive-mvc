@@ -371,11 +371,6 @@ class Model {
       arg = undefined;
     }
 
-    if(typeof arg == "function"){
-      waiting.add(arg);
-      return;
-    }
-
     if(!frame.size && arg === true)
       return Promise.reject(Oops.StrictUpdate());
 
