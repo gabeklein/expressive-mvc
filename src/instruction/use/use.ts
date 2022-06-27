@@ -36,14 +36,21 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
 function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
 
 function use<T extends typeof Model>(
-  input?: T | (() => InstanceOf<T>),
+  input?: T | (() => InstanceOf<T>) | InstanceOf<T>,
   argument?: (i: InstanceOf<T> | undefined) => void){
 
   return apply(
     function use(key){
       const { state, subject } = this;
 
-      const onUpdate = (next: {} | undefined) => {
+      if(typeof input === "function")
+        input = Model.isTypeof(input)
+          ? new input() as InstanceOf<T> : input();
+
+      else if(input && typeof input !== "object")
+        throw Oops.BadArgument(typeof input);
+
+      function onUpdate(next: {} | undefined){
         state.set(key, next);
 
         if(next){
@@ -57,22 +64,8 @@ function use<T extends typeof Model>(
         return true;
       }
 
-      if(input){
-        const value =
-          Model.isTypeof(input)
-            ? new input() :
-          typeof input === "object"
-            ? input :
-          typeof input === "function"
-            ? input()
-            : null;
-
-        if(value === null)
-          throw Oops.BadArgument(typeof input);
-
-        if(value)
-          onUpdate(value);
-      }
+      if(input)
+        onUpdate(input);
 
       return {
         set: onUpdate,
