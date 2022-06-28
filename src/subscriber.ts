@@ -51,8 +51,6 @@ export class Subscriber <T extends Stateful = any> {
           notify = callback;
         else if(callback === true)
           notify = this.onUpdate(key, parent);
-        else
-          return;
       }
       else
         notify = this.onUpdate(key, parent);
