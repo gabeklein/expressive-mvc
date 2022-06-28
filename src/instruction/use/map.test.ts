@@ -159,13 +159,30 @@ it("will update size for any change", async () => {
     mock($.map.size);
   })
 
-  test.map = new Map();
-
   expect(mock).toBeCalledWith(0);
 
   test.map.set("foo", "bar");
   await test.update(true);
 
   expect(mock).toBeCalledWith(1);
+})
 
+it("will update size on full replacement", async () => {
+  const test = Test.create();
+  const mock = jest.fn();
+
+  test.effect($ => {
+    mock($.map.size);
+  })
+
+  expect(mock).toBeCalledWith(0);
+
+  test.map = new Map([
+    ["foo", "foo"],
+    ["bar", "bar"]
+  ])
+
+  await test.update(true);
+
+  expect(mock).toBeCalledWith(2);
 })

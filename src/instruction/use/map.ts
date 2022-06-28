@@ -1,6 +1,6 @@
 import { Controller } from '../../controller';
 import { Subscriber } from '../../subscriber';
-import { create, defineProperty } from '../../util';
+import { create } from '../../util';
 
 const ANY = Symbol("any");
 
@@ -9,12 +9,9 @@ export function managedMap<K, V>(
   property: any,
   initial: Map<K, V>){
 
+  const managed = new ManagedMap(initial, emit);
+  const context = new WeakMap<Subscriber, ManagedMap<K, V>>();
   const lastUpdate = new Set();
-  const context = new WeakMap<Subscriber, Map<K, V>>();
-  const assoc = new WeakMap<Map<K, V>, (key: any) => void>();
-
-  let managed: Map<K, V>;
-  let value: Map<K, V>;
 
   function reset(){
     lastUpdate.clear();
@@ -26,72 +23,10 @@ export function managedMap<K, V>(
     control.waiting.add(reset);
   }
 
-  function setValue(next: Map<K, V>, initial?: boolean){
-    value = next;
-    managed = create(next);
+  function setValue(next: Map<K, V>){
     control.state.set(property, next);
-
-    if(!initial)
-      emit(ANY);
-
-    const watch = (key: any, on: Map<any, any>) => {
-      const local = assoc.get(on);
-
-      if(local)
-        local(key);
-    };
-
-    managed.set = (k, v) => {
-      emit(k);
-      return value.set(k, v);
-    };
-
-    managed.delete = (k) => {
-      emit(k);
-      return value.delete(k);
-    };
-
-    managed.clear = () => {
-      emit(ANY);
-      value.clear();
-    }
-
-    managed.get = function(key){
-      watch(key, this);
-      return value.get(key);
-    };
-
-    managed.has = function(key){
-      watch(key, this);
-      return value.has(key);
-    };
-
-    managed.values = function(){
-      watch(ANY, this);
-      return value.values();
-    }
-
-    managed.keys = function(){
-      watch(ANY, this);
-      return value.keys();
-    }
-
-    managed.entries = function(){
-      watch(ANY, this);
-      return value.entries();
-    }
-
-    managed[Symbol.iterator] = function(){
-      watch(ANY, this);
-      return value[Symbol.iterator]();
-    };
-
-    defineProperty(managed, "size", {
-      get(){
-        watch(ANY, this);
-        return value.size;
-      }
-    })
+    managed.source = next;
+    emit(ANY);
   }
 
   function getValue(local?: Subscriber){
@@ -102,7 +37,7 @@ export function managedMap<K, V>(
       return context.get(local)!;
 
     const refresh = local.onUpdate(property, control)!;
-    const proxy = Object.create(managed) as Map<K, V>;
+    const proxy = create(managed) as ManagedMap<K, V>;
     const using = new Set();
 
     const update = () => {
@@ -116,21 +51,79 @@ export function managedMap<K, V>(
         }
     }
 
+    local.add(property, () => update);
     context.set(local, proxy);
-    assoc.set(proxy, (key) => {
+    proxy.watch = (key) => {
       if(!local.active)
         using.add(key);
-    });
-
-    local.add(property, () => update);
+    }
 
     return proxy;
   }
 
-  setValue(initial, true);
-
   return {
+    value: initial,
     set: setValue,
     get: getValue
+  }
+}
+
+class ManagedMap<K, V> {
+  constructor(
+    public source: Map<K, V>,
+    private emit: (key: K | typeof ANY) => void
+  ){}
+
+  watch(_key: K | typeof ANY){}
+
+  set(key: K, value: V){
+    this.source.set(key, value);
+    this.emit(key);
+    return this;
+  };
+
+  delete(key: K){
+    this.emit(key);
+    return this.source.delete(key);
+  };
+
+  clear(){
+    this.emit(ANY);
+    this.source.clear();
+  }
+
+  get(key: K){
+    this.watch(key);
+    return this.source.get(key);
+  };
+
+  has(key: K){
+    this.watch(key);
+    return this.source.has(key);
+  };
+
+  values(){
+    this.watch(ANY);
+    return this.source.values();
+  }
+
+  keys(){
+    this.watch(ANY);
+    return this.source.keys();
+  }
+
+  entries(){
+    this.watch(ANY);
+    return this.source.entries();
+  };
+
+  [Symbol.iterator](){
+    this.watch(ANY);
+    return this.source[Symbol.iterator]();
+  };
+
+  get size(){
+    this.watch(ANY);
+    return this.source.size;
   }
 }

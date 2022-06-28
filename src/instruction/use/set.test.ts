@@ -148,3 +148,19 @@ it("will update size for any change", async () => {
 
   expect(mock).toBeCalledWith(1);
 })
+
+it("will update size on full replacement", async () => {
+  const test = Test.create();
+  const mock = jest.fn();
+
+  test.effect($ => {
+    mock($.values.size);
+  })
+
+  expect(mock).toBeCalledWith(0);
+
+  test.values = new Set(["foo", "bar"])
+  await test.update(true);
+
+  expect(mock).toBeCalledWith(2);
+})
