@@ -30,7 +30,7 @@ it("will allow normal methods outside proxy", () => {
   expect(map.get("foo")).toBe("bar");
 })
 
-it("will squash simulaneous updates", async () => {
+it("will squash simultaneous updates", async () => {
   const test = Test.create();
   const mock = jest.fn((state: Test) => {
     state.map.get("foo");
@@ -44,6 +44,27 @@ it("will squash simulaneous updates", async () => {
   await test.update(true);
 
   expect(mock).toBeCalledTimes(2);
+})
+
+it("will distrobute simultaneous updates", async () => {
+  const test = Test.create();
+  const mock1 = jest.fn(($: Test) => void $.map.has(1));
+  const mock2 = jest.fn(($: Test) => void $.map.has(2));
+  const mock3 = jest.fn(($: Test) => void $.map.has(3));
+
+  test.effect(mock1);
+  test.effect(mock2);
+  test.effect(mock3);
+
+  test.map.set(1, 1);
+  test.map.set(2, 2);
+  test.map.set(3, 3);
+
+  await test.update();
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(2);
+  expect(mock3).toBeCalledTimes(2);
 })
 
 it("will update on delete", async () => {

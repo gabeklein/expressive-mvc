@@ -96,8 +96,20 @@ export function managedSet<K>(
     if(context.has(local))
       return context.get(local)!;
 
+    const refresh = local.onUpdate(property, control)!;
     const proxy = Object.create(managed) as Set<K>;
     const using = new Set();
+
+    const update = () => {
+      if(using.has(ANY) || lastUpdate.has(ANY) && using.size)
+        refresh();
+
+      else for(const key of lastUpdate)
+        if(using.has(key)){
+          refresh();
+          break;
+        }
+    }
 
     context.set(local, proxy);
     assoc.set(proxy, (key) => {
@@ -105,14 +117,7 @@ export function managedSet<K>(
         using.add(key);
     })
 
-    local.add(property, () => {
-      if(using.has(ANY) || lastUpdate.has(ANY) && using.size)
-        return true;
-
-      for(const key of lastUpdate)
-        if(using.has(key))
-          return true;
-    });
+    local.add(property, () => update);
 
     return proxy;
   }

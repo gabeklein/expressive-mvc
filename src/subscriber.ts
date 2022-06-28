@@ -42,12 +42,20 @@ export class Subscriber <T extends Stateful = any> {
         return;
 
       const handler = using.get(key);
+      let notify: void | Callback;
 
-      if(typeof handler == "function")
-        if(handler() !== true)
+      if(typeof handler == "function"){
+        const callback = handler();
+
+        if(typeof callback == "function")
+          notify = callback;
+        else if(callback === true)
+          notify = this.onUpdate(key, parent);
+        else
           return;
-
-      const notify = this.onUpdate(key, parent);
+      }
+      else
+        notify = this.onUpdate(key, parent);
   
       const getWhy: Callback = () => {
         const update = getUpdate(parent.subject);

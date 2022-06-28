@@ -22,6 +22,27 @@ it("will update on set", async () => {
   expect(mock).toBeCalledWith(true);
 })
 
+it("will distrobute simultaneous updates", async () => {
+  const test = Test.create();
+  const mock1 = jest.fn(($: Test) => void $.values.has(1));
+  const mock2 = jest.fn(($: Test) => void $.values.has(2));
+  const mock3 = jest.fn(($: Test) => void $.values.has(3));
+
+  test.effect(mock1);
+  test.effect(mock2);
+  test.effect(mock3);
+
+  test.values.add(1);
+  test.values.add(2);
+  test.values.add(3);
+
+  await test.update();
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(2);
+  expect(mock3).toBeCalledTimes(2);
+})
+
 it("will allow normal methods outside proxy", () => {
   const { values } = Test.create();
 
