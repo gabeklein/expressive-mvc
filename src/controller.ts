@@ -102,21 +102,18 @@ class Controller<T extends Stateful = any> {
       setTimeout(() => {
         flush(this);
       
-        const callback = Array.from(waiting);
-        const keys = Array.from(frame);
-      
-        frame.clear();
-        waiting.clear();
-      
-        UPDATE.set(subject, keys);
-      
+        UPDATE.set(subject, Array.from(frame));
+
         setTimeout(() => {
           UPDATE.delete(subject);
         }, 0);
       
-        for(const cb of callback)
+        frame.clear();
+      
+        for(const notify of waiting)
           try {
-            cb();
+            waiting.delete(notify);
+            notify();
           }
           catch(err){
             console.error(err);
