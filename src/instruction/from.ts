@@ -109,7 +109,7 @@ function from<R, T>(
         }
       }
 
-      function update(){
+      function refreshValue(){
         let value;
 
         try {
@@ -127,26 +127,28 @@ function from<R, T>(
         }
       }
 
-      function defer(_key: string | null, from: Controller){
+      function dependancyDidUpdate(
+        _key: string | null, from: Controller){
+
         let pending = KEYS.get(from);
 
         if(!pending)
           KEYS.set(from, pending = []);
 
-        if(info.parent !== from)
-          update();
+        if(from !== parent)
+          refreshValue();
         else {
-          const after = pending.findIndex(peer => (
+          const index = pending.findIndex(peer => (
             info.priority > INFO.get(peer)!.priority
           ));
 
-          pending.splice(after + 1, 0, update);
+          pending.splice(index + 1, 0, refreshValue);
         }
       }
 
       function create(){
         const control = getSource();
-        sub = control.subscribe(defer);
+        sub = control.subscribe(dependancyDidUpdate);
 
         try {
           const value = compute(true);
@@ -159,7 +161,7 @@ function from<R, T>(
         finally {
           sub.commit();
 
-          for(const key of control.state.keys()){
+          for(const [ key ] of control.state){
             const peer = register.get(key);
 
             if(peer && peer.priority >= info.priority)
@@ -168,7 +170,7 @@ function from<R, T>(
         }
       }
 
-      INFO.set(update, info);
+      INFO.set(refreshValue, info);
 
       return () => {
         const value = sub ? state.get(key) : create();
@@ -181,6 +183,7 @@ function from<R, T>(
     }
   )
 }
+
 export function flush(control: Controller){
   const pending = KEYS.get(control);
 
