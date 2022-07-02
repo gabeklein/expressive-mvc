@@ -21,12 +21,11 @@ export const Oops = issues({
 type GetterInfo = {
   key: string;
   parent: Controller;
-  priority: number;
 }
 
 const INFO = new WeakMap<Function, GetterInfo>();
-const USED = new WeakMap<Controller, Map<string, GetterInfo>>();
 const KEYS = new WeakMap<Controller, Callback[]>();
+const COMPUTED = new WeakMap<Controller, GetterInfo[]>();
 
 declare namespace from {
   type Function<T, O=any> = (this: O, on: O) => T;
@@ -88,16 +87,15 @@ function from<R, T>(
         throw Oops.BadSource(subject, key, source);
 
       const setter = arg1;
-      const info: GetterInfo = { key, parent, priority: 1 };
+      const info: GetterInfo = { key, parent };
 
       let sub: Subscriber;
-      let register = USED.get(parent)!;
+      let list = COMPUTED.get(parent)!;
 
-      if(!register)
-        USED.set(parent, register = new Map());
+      if(!list)
+        COMPUTED.set(parent, list = []);
 
       state.set(key, undefined);
-      register.set(key, info);
 
       function compute(initial: boolean){
         try {
@@ -128,22 +126,23 @@ function from<R, T>(
       }
 
       function dependancyDidUpdate(
-        _key: string | null, from: Controller){
+        _key: string | null, source: Controller){
 
-        let pending = KEYS.get(from);
+        if(source !== parent){
+          refreshValue();
+          return;
+        }
+
+        let pending = KEYS.get(parent);
 
         if(!pending)
-          KEYS.set(from, pending = []);
+          KEYS.set(parent, pending = []);
 
-        if(from !== parent)
-          refreshValue();
-        else {
-          const index = pending.findIndex(peer => (
-            info.priority > INFO.get(peer)!.priority
-          ));
+        const index = pending.findIndex(peer => (
+          list.indexOf(info) > list.indexOf(INFO.get(peer)!)
+        ));
 
-          pending.splice(index + 1, 0, refreshValue);
-        }
+        pending.splice(index + 1, 0, refreshValue);
       }
 
       function create(){
@@ -160,13 +159,7 @@ function from<R, T>(
         }
         finally {
           sub.commit();
-
-          for(const [ key ] of control.state){
-            const peer = register.get(key);
-
-            if(peer && peer.priority >= info.priority)
-              info.priority = peer.priority + 1;
-          }
+          list.push(info);
         }
       }
 
