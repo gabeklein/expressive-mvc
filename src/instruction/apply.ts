@@ -34,6 +34,7 @@ declare namespace Instruction {
     get?: Getter<T>;
     set?: Setter<T> | false;
     suspense?: boolean;
+    destroy?: () => void;
   }
 
   interface ExplicitDescriptor extends PropertyDescriptor {
@@ -91,6 +92,16 @@ function apply<T = any>(
 
     if("value" in desc)
       state.set(key, desc.value);
+
+    if("destroy" in output){
+      const { destroy } = output;
+
+      if(destroy)
+        this.addListener((key) => {
+          if(key == null)
+            destroy();
+        })
+    }
 
     const {
       get: onGet,
