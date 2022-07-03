@@ -25,7 +25,7 @@ type GetterInfo = {
 
 const INFO = new WeakMap<Function, GetterInfo>();
 const KEYS = new WeakMap<Controller, Callback[]>();
-const COMPUTED = new WeakMap<Controller, GetterInfo[]>();
+const ORDER = new WeakMap<Controller, Callback[]>();
 
 declare namespace from {
   type Function<T, O=any> = (this: O, on: O) => T;
@@ -89,10 +89,10 @@ function from<R, T>(
       const info: GetterInfo = { key, parent: this };
 
       let sub: Subscriber;
-      let list = COMPUTED.get(this)!;
+      let order = ORDER.get(this)!;
 
-      if(!list)
-        COMPUTED.set(this, list = []);
+      if(!order)
+        ORDER.set(this, order = []);
 
       state.set(key, undefined);
 
@@ -137,11 +137,7 @@ function from<R, T>(
         if(!pending)
           KEYS.set(this, pending = []);
 
-        const index = pending.findIndex(peer => (
-          list.indexOf(info) > list.indexOf(INFO.get(peer)!)
-        ));
-
-        pending.splice(index + 1, 0, refreshValue);
+        pending.push(refreshValue);
       }
 
       const create = () => {
@@ -158,7 +154,7 @@ function from<R, T>(
         }
         finally {
           sub.commit();
-          list.push(info);
+          order.push(refreshValue);
         }
       }
 
@@ -182,8 +178,13 @@ export function flush(control: Controller){
   if(!pending)
     return;
 
+  const list = ORDER.get(control)!;
+
   while(pending.length){
-    const compute = pending.shift()!;
+    const compute = pending
+      .sort((a, b) => list.indexOf(b) - list.indexOf(a))
+      .pop()!
+
     const { key } = INFO.get(compute)!;
 
     if(!control.frame.has(key))
