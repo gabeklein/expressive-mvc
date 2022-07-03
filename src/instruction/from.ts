@@ -59,7 +59,6 @@ function from<R, T>(
 
   return apply(
     function from(key){
-      const parent = this;
       const { subject, state } = this;
       const required = arg2 === true || arg1 === true;
 
@@ -87,17 +86,17 @@ function from<R, T>(
         throw Oops.BadSource(subject, key, source);
 
       const setter = arg1;
-      const info: GetterInfo = { key, parent };
+      const info: GetterInfo = { key, parent: this };
 
       let sub: Subscriber;
-      let list = COMPUTED.get(parent)!;
+      let list = COMPUTED.get(this)!;
 
       if(!list)
-        COMPUTED.set(parent, list = []);
+        COMPUTED.set(this, list = []);
 
       state.set(key, undefined);
 
-      function compute(initial: boolean){
+      const compute = (initial: boolean) => {
         try {
           return setter!.call(sub.proxy, sub.proxy);
         }
@@ -107,7 +106,7 @@ function from<R, T>(
         }
       }
 
-      function refreshValue(){
+      const refreshValue = () => {
         let value;
 
         try {
@@ -118,25 +117,25 @@ function from<R, T>(
         }
         finally {
           if(state.get(key) !== value){
-            parent.state.set(key, value);
-            parent.update(key);
+            state.set(key, value);
+            this.update(key);
             return value;
           }
         }
       }
 
-      function dependancyDidUpdate(
-        _key: string | null, source: Controller){
+      const dependancyDidUpdate = (
+        _key: string | null, source: Controller) => {
 
-        if(source !== parent){
+        if(source !== this){
           refreshValue();
           return;
         }
 
-        let pending = KEYS.get(parent);
+        let pending = KEYS.get(this);
 
         if(!pending)
-          KEYS.set(parent, pending = []);
+          KEYS.set(this, pending = []);
 
         const index = pending.findIndex(peer => (
           list.indexOf(info) > list.indexOf(INFO.get(peer)!)
@@ -145,7 +144,7 @@ function from<R, T>(
         pending.splice(index + 1, 0, refreshValue);
       }
 
-      function create(){
+      const create = () => {
         const control = getSource();
         sub = control.subscribe(dependancyDidUpdate);
 
