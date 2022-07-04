@@ -13,11 +13,16 @@ export function managedSet<K>(
   const managed = new ManagedSet(initial, emit);
   const context = new WeakMap<Subscriber, ManagedSet<K>>();
   const observers = new Set<(key: K | typeof ANY) => void>();
-  const frozen = new WeakSet<Subscriber>();
+  const frozen = new Set<Subscriber>();
+
+  function reset(){
+    frozen.clear();
+  }
 
   function emit(key: any){
     observers.forEach(notify => notify(key));
     control.update(property);
+    control.waiting.add(reset);
   }
 
   function init(local: Subscriber){
@@ -54,10 +59,8 @@ export function managedSet<K>(
       if(!local)
         return managed;
   
-      if(context.has(local)){
-        frozen.delete(local);
-        return context.get(local)!;
-      }
+      if(context.has(local))
+        return context.get(local);
 
       return init(local);
     },

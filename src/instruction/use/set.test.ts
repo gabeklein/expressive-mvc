@@ -23,6 +23,22 @@ it("will update on set", async () => {
   expect(mock).toBeCalledWith(true);
 })
 
+it("will squash simultaneous updates", async () => {
+  const test = Test.create();
+  const mock = jest.fn((state: Test) => {
+    state.values.has("foo");
+    state.values.has("bar");
+  });
+
+  test.effect(mock);
+
+  test.values.add("foo");
+  test.values.add("bar");
+  await test.update(true);
+
+  expect(mock).toBeCalledTimes(2);
+})
+
 it("will distrobute simultaneous updates", async () => {
   const test = Test.create();
   const mock1 = jest.fn(($: Test) => void $.values.has(1));
