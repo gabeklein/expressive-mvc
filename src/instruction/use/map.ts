@@ -1,57 +1,49 @@
 import { Controller } from '../../controller';
 import { Subscriber } from '../../subscriber';
 import { create } from '../../util';
+import { Instruction } from '../apply';
 
 const ANY = Symbol("any");
 
 export function managedMap<K, V>(
   control: Controller,
   property: any,
-  initial: Map<K, V>){
-
+  initial: Map<K, V>
+): Instruction.Descriptor<Map<K, V>> {
   const managed = new ManagedMap(initial, emit);
   const context = new WeakMap<Subscriber, ManagedMap<K, V>>();
-  const lastUpdate = new Set();
+  const observers = new Set<(key: K | typeof ANY) => void>();
+  const frozen = new Set<Subscriber>();
 
   function reset(){
-    lastUpdate.clear();
+    frozen.clear();
   }
 
   function emit(key: any){
-    lastUpdate.add(key);
+    observers.forEach(notify => notify(key));
     control.update(property);
     control.waiting.add(reset);
   }
 
-  function setValue(next: Map<K, V>){
-    control.state.set(property, next);
-    managed.source = next;
-    emit(ANY);
-  }
-
-  function getValue(local?: Subscriber){
-    if(!local)
-      return managed;
-
-    if(context.has(local))
-      return context.get(local)!;
-
-    const refresh = local.onUpdate(property, control)!;
+  function init(local: Subscriber){
     const proxy = create(managed) as ManagedMap<K, V>;
     const using = new Set();
 
-    const update = () => {
-      if(using.has(ANY) || lastUpdate.has(ANY) && using.size)
-        refresh();
+    observers.add((key: K | typeof ANY) => {
+      if(frozen.has(local))
+        return;
 
-      else for(const key of lastUpdate)
-        if(using.has(key)){
-          refresh();
-          break;
+      if(using.has(key) || using.has(ANY) || key === ANY && using.size){
+        const refresh = local.onUpdate(property, control);
+
+        if(refresh){
+          frozen.add(local);
+          refresh()
         }
-    }
+      }
+    });
 
-    local.add(property, () => update);
+    local.add(property, false);
     context.set(local, proxy);
     proxy.watch = (key) => {
       if(!local.active)
@@ -63,8 +55,23 @@ export function managedMap<K, V>(
 
   return {
     value: initial,
-    set: setValue,
-    get: getValue
+    get(local): any {
+      if(!local)
+        return managed;
+  
+      if(context.has(local))
+        return context.get(local);
+
+      return init(local);
+    },
+    set(next){
+      managed.source = next;
+      control.state.set(property, next);
+      emit(ANY);
+    },
+    destroy(){
+      observers.clear();
+    }
   }
 }
 
