@@ -16,14 +16,14 @@ export class Subscriber <T extends Stateful = any> {
 
   public active = false;
   public dependant = new Set<Listener>();
-  public add: (key: any, value?: Callback) => void;
+  public add: (key: any, value?: boolean | Callback) => void;
 
   constructor(
     parent: Controller<T>,
     public onUpdate: Controller.OnEvent){
 
     const proxy = create(parent.subject);
-    const using = new Map<any, (() => void | boolean) | boolean>();
+    const using = new Map<any, boolean | (() => Callback | boolean | void)>();
 
     define(proxy, LOCAL, this);
 
@@ -38,7 +38,7 @@ export class Subscriber <T extends Stateful = any> {
     })
 
     const release = parent.addListener(key => {
-      if(!this.active || !using.has(key))
+      if(!this.active)
         return;
 
       const handler = using.get(key);
@@ -52,7 +52,7 @@ export class Subscriber <T extends Stateful = any> {
         else if(callback === true)
           notify = this.onUpdate(key, parent);
       }
-      else
+      else if(handler === true)
         notify = this.onUpdate(key, parent);
   
       const getWhy: Callback = () => {
@@ -81,7 +81,7 @@ export class Subscriber <T extends Stateful = any> {
     }
 
     this.add = (key, value) => {
-      if(value)
+      if(value !== undefined)
         using.set(key, value);
       else if(!using.has(key))
         using.set(key, true);

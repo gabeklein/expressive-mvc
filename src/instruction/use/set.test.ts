@@ -1,5 +1,6 @@
 
 import { Model } from "../..";
+import { from } from "../from";
 import { use } from "./use";
 
 class Test extends Model {
@@ -83,7 +84,7 @@ it("will not update on unwatched key", async () => {
   expect(mock).toBeCalledTimes(1);
 })
 
-it("will update for any key where iterated", async () => {
+it("will update for any where iterated", async () => {
   const test = Test.create();
 
   const mockIterator = jest.fn(({ values }: Test) => void [...values]);
@@ -119,7 +120,7 @@ it("will update on clear", async () => {
   expect(mock).toBeCalledTimes(2);
 })
 
-it("will update on new value", async () => {
+it("will update any key on replacement", async () => {
   const test = Test.create();
   const mock = jest.fn();
 
@@ -133,34 +134,77 @@ it("will update on new value", async () => {
   expect(mock).toBeCalledTimes(2);
 })
 
-it("will update size for any change", async () => {
-  const test = Test.create();
-  const mock = jest.fn();
-
-  test.effect($ => {
-    mock($.values.size);
+describe("size", () => {
+  it("will update for any change", async () => {
+    const test = Test.create();
+    const mock = jest.fn();
+  
+    test.effect($ => {
+      mock($.values.size);
+    })
+  
+    expect(mock).toBeCalledWith(0);
+  
+    test.values.add("foo");
+    await test.update(true);
+  
+    expect(mock).toBeCalledWith(1);
   })
 
-  expect(mock).toBeCalledWith(0);
-
-  test.values.add("foo");
-  await test.update(true);
-
-  expect(mock).toBeCalledWith(1);
+  it("will update on replacement", async () => {
+    const test = Test.create();
+    const mock = jest.fn();
+  
+    test.effect($ => {
+      mock($.values.size);
+    })
+  
+    expect(mock).toBeCalledWith(0);
+  
+    test.values = new Set(["foo", "bar"])
+    await test.update(true);
+  
+    expect(mock).toBeCalledWith(2);
+  })
 })
 
-it("will update size on full replacement", async () => {
-  const test = Test.create();
-  const mock = jest.fn();
-
-  test.effect($ => {
-    mock($.values.size);
+describe("computed", () => {
+  it("will trigger", async () => {
+    class Test extends Model {
+      values = use(new Set());
+      size = from(this, $ => $.values.size);
+    }
+  
+    const test = Test.create();
+    const mock = jest.fn();
+  
+    test.effect($ => mock($.size));
+  
+    expect(mock).toBeCalledWith(0);
+  
+    test.values.add("foo");
+    await test.update(true);
+  
+    expect(mock).toBeCalledTimes(2)
+    expect(mock).toBeCalledWith(1);
   })
+  
+  it("will supress non-applicable", async () => {
+    class Test extends Model {
+      values = use(new Set());
+      size = from(this, $ => $.values.has("bar"));
+    }
+  
+    const test = Test.create();
+    const mock = jest.fn();
+  
+    test.effect($ => mock($.size));
+  
+    expect(mock).toBeCalledWith(false);
+  
+    test.values.add("foo");
+    await test.update(true);
 
-  expect(mock).toBeCalledWith(0);
-
-  test.values = new Set(["foo", "bar"])
-  await test.update(true);
-
-  expect(mock).toBeCalledWith(2);
+    expect(mock).toBeCalledTimes(1);
+  })
 })
