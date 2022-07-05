@@ -12,6 +12,12 @@ export const Oops = issues({
     `Instruction \`use\` cannot accept argument type of ${type}.`,
 })
 
+function use (initial: Set<unknown>): Set<any>;
+function use (initial: Map<unknown, unknown>): Map<any, any>;
+
+function use (from: () => Set<unknown>): Set<any>;
+function use (from: () => Map<unknown, unknown>): Map<any, any>;
+
 /**
  * Create a placeholder for specified Model type.
  */
