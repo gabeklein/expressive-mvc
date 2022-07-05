@@ -21,6 +21,7 @@ it("will update on set", async () => {
   await test.update(true);
 
   expect(mock).toBeCalledWith(true);
+  test.destroy();
 })
 
 it("will squash simultaneous updates", async () => {

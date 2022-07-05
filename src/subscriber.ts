@@ -23,7 +23,7 @@ export class Subscriber <T extends Stateful = any> {
     public onUpdate: Controller.OnEvent){
 
     const proxy = create(parent.subject);
-    const using = new Map<any, boolean | (() => Callback | boolean | void)>();
+    const using = new Map<any, boolean | (() => true | void)>();
 
     define(proxy, LOCAL, this);
 
@@ -47,9 +47,7 @@ export class Subscriber <T extends Stateful = any> {
       if(typeof handler == "function"){
         const callback = handler();
 
-        if(typeof callback == "function")
-          notify = callback;
-        else if(callback === true)
+        if(callback === true)
           notify = this.onUpdate(key, parent);
       }
       else if(handler === true)

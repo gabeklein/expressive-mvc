@@ -29,7 +29,7 @@ export function managedMap<K, V>(
     const proxy = create(managed) as ManagedMap<K, V>;
     const using = new Set();
 
-    observers.add((key: K | typeof ANY) => {
+    observers.add(key => {
       if(frozen.has(local))
         return;
 

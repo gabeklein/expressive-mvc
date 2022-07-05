@@ -21,6 +21,7 @@ it("will update on set", async () => {
   await test.update(true);
 
   expect(mock).toBeCalledTimes(3);
+  test.destroy();
 })
 
 it("will allow normal methods outside proxy", () => {

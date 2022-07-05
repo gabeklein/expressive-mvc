@@ -29,7 +29,7 @@ export function managedSet<K>(
     const proxy = create(managed) as ManagedSet<K>;
     const using = new Set();
 
-    observers.add((key: K | typeof ANY) => {
+    observers.add(key => {
       if(frozen.has(local))
         return;
 
