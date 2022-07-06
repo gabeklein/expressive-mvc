@@ -29,7 +29,7 @@ export function managedMap<K, V>(
     const proxy = create(managed) as ManagedMap<K, V>;
     const using = new Set();
 
-    observers.add(key => {
+    function onEvent(key: K | typeof ANY){
       if(frozen.has(local))
         return;
 
@@ -41,7 +41,16 @@ export function managedMap<K, V>(
           refresh()
         }
       }
-    });
+    };
+
+    local.dependant.add({
+      commit(){
+        observers.add(onEvent);
+      },
+      release(){
+        observers.delete(onEvent);
+      }
+    })
 
     local.add(property, false);
     context.set(local, proxy);

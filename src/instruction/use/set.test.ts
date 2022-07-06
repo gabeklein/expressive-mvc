@@ -151,6 +151,16 @@ it("will update any key on replacement", async () => {
   expect(mock).toBeCalledTimes(2);
 })
 
+it("will subscribe to ANY if not accessed", () => {
+  const test = Test.create();
+  const mock = jest.fn();
+
+  test.effect($ => {
+    mock($.values);
+  })
+
+})
+
 describe("size", () => {
   it("will update for any change", async () => {
     const test = Test.create();
@@ -183,6 +193,33 @@ describe("size", () => {
   
     expect(mock).toBeCalledWith(2);
   })
+})
+
+it("will not memory-leak expired subscriber", async () => {
+  const test = Test.create();
+  const mock1 = jest.fn(($: Test) => void [ ...$.values ]);
+  const mock2 = jest.fn(($: Test) => void [ ...$.values ]);
+
+  const release1 = test.effect(mock1);
+  const release2 = test.effect(mock2);
+
+  expect(mock1).toBeCalledTimes(1);
+  expect(mock2).toBeCalledTimes(1);
+
+  test.values = new Set();
+  await test.update(true);
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(2);
+
+  release1();
+  test.values = new Set();
+  await test.update(true);
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(3);
+
+  release2();
 })
 
 describe("computed", () => {

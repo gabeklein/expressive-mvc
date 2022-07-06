@@ -29,7 +29,7 @@ export function managedSet<K>(
     const proxy = create(managed) as ManagedSet<K>;
     const using = new Set();
 
-    observers.add(key => {
+    function onEvent(key: K | typeof ANY){
       if(frozen.has(local))
         return;
 
@@ -41,7 +41,16 @@ export function managedSet<K>(
           refresh()
         }
       }
-    });
+    }
+
+    local.dependant.add({
+      commit(){
+        observers.add(onEvent);
+      },
+      release(){
+        observers.delete(onEvent);
+      }
+    })
 
     local.add(property, false);
     context.set(local, proxy);

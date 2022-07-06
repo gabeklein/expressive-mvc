@@ -187,3 +187,30 @@ it("will update size on full replacement", async () => {
 
   expect(mock).toBeCalledWith(2);
 })
+
+it("will not memory-leak expired subscriber", async () => {
+  const test = Test.create();
+  const mock1 = jest.fn(($: Test) => void [ ...$.map ]);
+  const mock2 = jest.fn(($: Test) => void [ ...$.map ]);
+
+  const release1 = test.effect(mock1);
+  const release2 = test.effect(mock2);
+
+  expect(mock1).toBeCalledTimes(1);
+  expect(mock2).toBeCalledTimes(1);
+
+  test.map = new Map();
+  await test.update(true);
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(2);
+
+  release1();
+  test.map = new Map();
+  await test.update(true);
+
+  expect(mock1).toBeCalledTimes(2);
+  expect(mock2).toBeCalledTimes(3);
+
+  release2();
+})
