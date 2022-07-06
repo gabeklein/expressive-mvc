@@ -33,7 +33,7 @@ export function managedSet<K>(
       if(frozen.has(local))
         return;
 
-      if(using.has(key) || using.has(ANY) || key === ANY && using.size){
+      if(key === ANY || using.has(key) || using.has(ANY)){
         const refresh = local.onUpdate(property, control);
 
         if(refresh){
