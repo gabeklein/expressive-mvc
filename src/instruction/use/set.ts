@@ -20,9 +20,9 @@ export function managedSet<K>(
   }
 
   function emit(key: any){
-    observers.forEach(notify => notify(key));
-    control.update(property);
     control.waiting.add(reset);
+    control.update(property);
+    observers.forEach(notify => notify(key));
   }
 
   function init(local: Subscriber){
@@ -68,13 +68,9 @@ export function managedSet<K>(
   return {
     value: initial,
     get(local): any {
-      if(!local)
-        return managed;
-  
-      if(context.has(local))
-        return context.get(local);
-
-      return init(local);
+      return local ?
+        context.get(local) || init(local) :
+        managed;
     },
     set(next){
       managed.source = next;
