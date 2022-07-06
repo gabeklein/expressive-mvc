@@ -16,15 +16,9 @@ function keyed<T extends Set<any> | Map<any, any>>(
     never
   );
 
-  const managed =
-    initial instanceof Set ?
-      new StatefulSet(initial, emit) :
-    initial instanceof Map ?
-      new StatefulMap(initial, emit) :
-      null;
-
-  if(!managed)
-    throw new Error("Argument must be either Set or Map.");
+  const managed = initial instanceof Map
+    ? new StatefulMap(initial, emit)
+    : new StatefulSet(initial, emit);
 
   const context = new WeakMap<Subscriber, typeof managed>();
   const observers = new Set<(key: K) => void>();
