@@ -68,13 +68,13 @@ export class Subscriber <T extends Stateful = any> {
 
     this.commit = () => {
       this.active = true;
-      this.dependant.forEach(x => x.commit?.());
+      this.dependant.forEach(x => x.commit());
 
       return this.release;
     }
 
     this.release = () => {
-      this.dependant.forEach(x => x.release?.());
+      this.dependant.forEach(x => x.release());
       release();
     }
 
