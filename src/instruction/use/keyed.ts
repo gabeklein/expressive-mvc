@@ -108,6 +108,11 @@ class StatefulSet<T> {
 
   watch(_key: T | typeof ANY){}
 
+  has(key: T){
+    this.watch(key);
+    return this.source.has(key);
+  };
+
   add(key: T){
     this.source.add(key);
     this.emit(key);
@@ -124,19 +129,14 @@ class StatefulSet<T> {
     this.source.clear();
   }
 
-  has(key: T){
-    this.watch(key);
-    return this.source.has(key);
-  };
+  keys(){
+    this.watch(ANY);
+    return this.source.keys();
+  }
 
   values(){
     this.watch(ANY);
     return this.source.values();
-  }
-
-  keys(){
-    this.watch(ANY);
-    return this.source.keys();
   }
 
   entries(){
@@ -144,15 +144,15 @@ class StatefulSet<T> {
     return this.source.entries();
   };
 
-  [Symbol.iterator](){
-    this.watch(ANY);
-    return this.source[Symbol.iterator]();
-  };
-
   get size(){
     this.watch(ANY);
     return this.source.size;
   }
+
+  [Symbol.iterator](){
+    this.watch(ANY);
+    return this.source[Symbol.iterator]();
+  };
 }
 
 class StatefulMap<K, V> {
@@ -162,6 +162,16 @@ class StatefulMap<K, V> {
   ){}
 
   watch(_key: K | typeof ANY){}
+
+  has(key: K){
+    this.watch(key);
+    return this.source.has(key);
+  };
+
+  get(key: K){
+    this.watch(key);
+    return this.source.get(key);
+  };
 
   set(key: K, value: V){
     this.source.set(key, value);
@@ -179,24 +189,14 @@ class StatefulMap<K, V> {
     this.source.clear();
   }
 
-  get(key: K){
-    this.watch(key);
-    return this.source.get(key);
-  };
-
-  has(key: K){
-    this.watch(key);
-    return this.source.has(key);
-  };
+  keys(){
+    this.watch(ANY);
+    return this.source.keys();
+  }
 
   values(){
     this.watch(ANY);
     return this.source.values();
-  }
-
-  keys(){
-    this.watch(ANY);
-    return this.source.keys();
   }
 
   entries(){
@@ -204,13 +204,13 @@ class StatefulMap<K, V> {
     return this.source.entries();
   };
 
-  [Symbol.iterator](){
-    this.watch(ANY);
-    return this.source[Symbol.iterator]();
-  };
-
   get size(){
     this.watch(ANY);
     return this.source.size;
   }
+
+  [Symbol.iterator](){
+    this.watch(ANY);
+    return this.source[Symbol.iterator]();
+  };
 }
