@@ -45,6 +45,9 @@ export function managedMap<K, V>(
 
     local.dependant.add({
       commit(){
+        if(using.size === 0)
+          using.add(ANY);
+
         observers.add(onEvent);
       },
       release(){

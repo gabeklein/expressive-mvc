@@ -197,8 +197,8 @@ describe("size", () => {
 
 it("will not memory-leak expired subscriber", async () => {
   const test = Test.create();
-  const mock1 = jest.fn(($: Test) => void [ ...$.values ]);
-  const mock2 = jest.fn(($: Test) => void [ ...$.values ]);
+  const mock1 = jest.fn(($: Test) => void $.values);
+  const mock2 = jest.fn(($: Test) => void $.values);
 
   const release1 = test.effect(mock1);
   const release2 = test.effect(mock2);

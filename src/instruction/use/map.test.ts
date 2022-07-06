@@ -190,8 +190,8 @@ it("will update size on full replacement", async () => {
 
 it("will not memory-leak expired subscriber", async () => {
   const test = Test.create();
-  const mock1 = jest.fn(($: Test) => void [ ...$.map ]);
-  const mock2 = jest.fn(($: Test) => void [ ...$.map ]);
+  const mock1 = jest.fn(($: Test) => void $.map);
+  const mock2 = jest.fn(($: Test) => void $.map);
 
   const release1 = test.effect(mock1);
   const release2 = test.effect(mock2);
