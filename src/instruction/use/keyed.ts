@@ -5,31 +5,46 @@ import { Instruction } from '../apply';
 
 const ANY = Symbol("any");
 
-export function managedSet<K>(
+function keyed<T extends Set<any> | Map<any, any>>(
   control: Controller,
   property: any,
-  initial: Set<K>
-): Instruction.Descriptor<Set<K>> {
-  const managed = new ManagedSet(initial, emit);
-  const context = new WeakMap<Subscriber, ManagedSet<K>>();
-  const observers = new Set<(key: K | typeof ANY) => void>();
+  initial: T
+): Instruction.Descriptor<T> {
+  type K = typeof ANY | (
+    T extends Set<infer U> ? U :
+    T extends Map<infer U, any> ? U :
+    never
+  );
+
+  const managed =
+    initial instanceof Set ?
+      new StatefulSet(initial, emit) :
+    initial instanceof Map ?
+      new StatefulMap(initial, emit) :
+      null;
+
+  if(!managed)
+    throw new Error("Argument must be either Set or Map.");
+
+  const context = new WeakMap<Subscriber, typeof managed>();
+  const observers = new Set<(key: K) => void>();
   const frozen = new Set<Subscriber>();
 
   function reset(){
     frozen.clear();
   }
 
-  function emit(key: any){
+  function emit(key: K){
     control.waiting.add(reset);
     control.update(property);
     observers.forEach(notify => notify(key));
   }
 
   function init(local: Subscriber){
-    const proxy = create(managed) as ManagedSet<K>;
-    const using = new Set();
+    const proxy = create(managed);
+    const using = new Set<K>();
 
-    function onEvent(key: K | typeof ANY){
+    function onEvent(key: K){
       if(frozen.has(local))
         return;
 
@@ -57,7 +72,7 @@ export function managedSet<K>(
 
     local.add(property, false);
     context.set(local, proxy);
-    proxy.watch = (key) => {
+    proxy.watch = (key: K) => {
       if(!local.active)
         using.add(key);
     }
@@ -67,7 +82,7 @@ export function managedSet<K>(
 
   return {
     value: initial,
-    get(local): any {
+    get(local){
       return local ?
         context.get(local) || init(local) :
         managed;
@@ -83,7 +98,9 @@ export function managedSet<K>(
   }
 }
 
-class ManagedSet<T> {
+export { keyed };
+
+class StatefulSet<T> {
   constructor(
     public source: Set<T>,
     private emit: (key: T | typeof ANY) => void
@@ -108,6 +125,66 @@ class ManagedSet<T> {
   }
 
   has(key: T){
+    this.watch(key);
+    return this.source.has(key);
+  };
+
+  values(){
+    this.watch(ANY);
+    return this.source.values();
+  }
+
+  keys(){
+    this.watch(ANY);
+    return this.source.keys();
+  }
+
+  entries(){
+    this.watch(ANY);
+    return this.source.entries();
+  };
+
+  [Symbol.iterator](){
+    this.watch(ANY);
+    return this.source[Symbol.iterator]();
+  };
+
+  get size(){
+    this.watch(ANY);
+    return this.source.size;
+  }
+}
+
+class StatefulMap<K, V> {
+  constructor(
+    public source: Map<K, V>,
+    private emit: (key: K | typeof ANY) => void
+  ){}
+
+  watch(_key: K | typeof ANY){}
+
+  set(key: K, value: V){
+    this.source.set(key, value);
+    this.emit(key);
+    return this;
+  };
+
+  delete(key: K){
+    this.emit(key);
+    return this.source.delete(key);
+  };
+
+  clear(){
+    this.emit(ANY);
+    this.source.clear();
+  }
+
+  get(key: K){
+    this.watch(key);
+    return this.source.get(key);
+  };
+
+  has(key: K){
     this.watch(key);
     return this.source.has(key);
   };
