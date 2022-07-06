@@ -30,11 +30,14 @@ describe("Map", () => {
 for(const T of [Map, Set])
   describe(T, () => {
     class Test extends Model {
-      values = use(T === Map
-        ? new Map() : new Set()
-      );
+      values = use(() => {
+        return T === Map
+          ? new Map() : new Set()
+      });
 
-      size = from(this, $ => $.values.size);
+      size = from(this, $ => {
+        return $.values.size;
+      });
 
       insert = (key: any) => {
         if("set" in this.values)
@@ -63,11 +66,9 @@ for(const T of [Map, Set])
     
     it("will not update for unwatched", async () => {
       const test = Test.create();
-      const mock = jest.fn();
+      const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect($ => {
-        mock($.values.has("foo"));
-      })
+      test.effect(mock);
     
       expect(mock).toBeCalledTimes(1);
   
@@ -79,9 +80,7 @@ for(const T of [Map, Set])
     
     it("will update on delete", async () => {
       const test = Test.create();
-      const mock = jest.fn((state: Test) => {
-        state.values.has("foo");
-      });
+      const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
       test.effect(mock);
     
@@ -96,11 +95,9 @@ for(const T of [Map, Set])
     
     it("will update on clear", async () => {
       const test = Test.create();
-      const mock = jest.fn();
+      const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect($ => {
-        mock($.values.has("foo"));
-      })
+      test.effect(mock)
     
       test.values.clear();
       await test.update(true);
@@ -132,21 +129,17 @@ for(const T of [Map, Set])
     
     it("will update any key where not accessed", () => {
       const test = Test.create();
-      const mock = jest.fn();
+      const mock = jest.fn(($: Test) => void $.values);
     
-      test.effect($ => {
-        mock($.values);
-      })
+      test.effect(mock);
     })
     
     it("will update any key on replacement", async () => {
       const test = Test.create();
-      const mock = jest.fn();
+      const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect($ => {
-        mock($.values.has("foo"));
-      })
-    
+      test.effect(mock);
+
       test.values = new Set();
       await test.update(true);
     
