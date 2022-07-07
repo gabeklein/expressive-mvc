@@ -1,6 +1,6 @@
 import { Controller } from '../../controller';
 import { Subscriber } from '../../subscriber';
-import { create } from '../../util';
+import { assign, create } from '../../util';
 import { Instruction } from '../apply';
 
 const ANY = Symbol("any");
@@ -92,42 +92,41 @@ function keyed<T extends Set<any> | Map<any, any>>(
 export { keyed };
 
 class Stateful<K, V = K> {
+  add?(key: K): this;
+  get?(key: K): V | undefined;
+  set?(key: K, value: V): this;
+
   constructor(
     public source: Set<K> | Map<K, V>,
     private emit: (key: K | typeof ANY) => void
-  ){}
+  ){
+    if(source instanceof Set)
+      assign(this, <any>{
+        add(key: K){
+          source.add(key);
+          emit(key);
+          return this;
+        }
+      })
+    else
+      assign(this, <any>{
+        get(key: K){
+          this.watch(key);
+          return source.get(key);
+        },
+        set(key: K, value: V){
+          source.set(key, value);
+          emit(key);
+          return this;
+        }
+      })
+  }
 
   watch(_key: K | typeof ANY){}
 
   has(key: K){
     this.watch(key);
     return this.source.has(key);
-  };
-
-  get(key: K){
-    if(this.source instanceof Set)
-      throw new Error("source is not a Map");
-
-    this.watch(key);
-    return this.source.get(key);
-  };
-
-  add(key: K){
-    if(this.source instanceof Map)
-      throw new Error("source is not a Set");
-    
-    this.source.add(key);
-    this.emit(key);
-    return this;
-  };
-
-  set(key: K, value: V){
-    if(this.source instanceof Set)
-      throw new Error("source is not a Map");
-
-    this.source.set(key, value);
-    this.emit(key);
-    return this;
   };
 
   delete(key: K){

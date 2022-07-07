@@ -34,12 +34,10 @@ for(const T of [Map, Set])
       size = get(this, $ => $.values.size);
 
       insert = (key: any) => {
-        const { values } = this;
-
-        if(T === Map)
-          (values as Map<any, any>).set(key, key);
+        if("set" in this.values)
+          this.values.set(key, key);
         else
-          (values as Set<any>).add(key);
+          this.values.add(key);
       }
     }
     
