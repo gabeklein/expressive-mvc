@@ -52,6 +52,13 @@ function keyed<T extends Set<any> | Map<any, any>>(
       }
     }
 
+    context.set(local, proxy);
+    proxy.watch = (key: K) => {
+      if(!local.active)
+        using.add(key);
+    }
+
+    local.add(property, false);
     local.dependant.add({
       commit(){
         if(using.size === 0)
@@ -63,13 +70,6 @@ function keyed<T extends Set<any> | Map<any, any>>(
         observers.delete(onEvent);
       }
     })
-
-    local.add(property, false);
-    context.set(local, proxy);
-    proxy.watch = (key: K) => {
-      if(!local.active)
-        using.add(key);
-    }
 
     return proxy;
   }
