@@ -1,5 +1,5 @@
 import { Model } from '../..';
-import { from } from '../from';
+import { get } from '../get';
 import { use } from './use';
 
 describe("Map", () => {
@@ -31,7 +31,7 @@ for(const T of [Map, Set])
   describe(T, () => {
     class Test extends Model {
       values = use(T === Map ? new Map() : new Set());
-      size = from(this, $ => $.values.size);
+      size = get(this, $ => $.values.size);
 
       insert = (key: any) => {
         const { values } = this;
@@ -263,7 +263,7 @@ for(const T of [Map, Set])
     it("will update computed for used keys only", async () => {
       class Test extends Model {
         values = use(new Set());
-        size = from(this, $ => $.values.has("bar"));
+        size = get(this, $ => $.values.has("bar"));
       }
     
       const test = Test.create();

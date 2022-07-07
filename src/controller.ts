@@ -1,4 +1,4 @@
-import { flush } from './instruction/from';
+import { flush } from './instruction/get';
 import { LOCAL, Model, Stateful } from './model';
 import { PENDING } from './stateful';
 import { Subscriber } from './subscriber';

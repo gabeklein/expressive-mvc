@@ -1,11 +1,11 @@
-import { from, Model } from '../src';
+import { get, Model } from '../src';
 import { Oops } from '../src/model';
 
 class Subject extends Model {
   seconds = 0;
   hours = 0;
 
-  minutes = from(this, state => {
+  minutes = get(this, state => {
     return Math.floor(state.seconds / 60)
   })
 }

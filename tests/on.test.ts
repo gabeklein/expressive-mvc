@@ -1,11 +1,11 @@
-import { from, Model } from '../src';
+import { get, Model } from '../src';
 
 describe("on method", () => {
   class Subject extends Model {
     seconds = 0;
     hours = 0;
 
-    minutes = from(this, state => {
+    minutes = get(this, state => {
       return Math.floor(state.seconds / 60)
     })
   }
@@ -197,7 +197,7 @@ describe("before ready", () => {
     value1 = 1;
     value2 = 2;
 
-    value3 = from(this, state => {
+    value3 = get(this, state => {
       return state.value2 + 1;
     });
   }

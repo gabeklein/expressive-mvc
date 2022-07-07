@@ -1,7 +1,7 @@
 export { act } from './instruction/act';
 export { array } from './instruction/use/array';
 export { apply } from './instruction/apply';
-export { from } from './instruction/from';
+export { get, get as from } from './instruction/get';
 export { ref } from './instruction/ref';
 export { put } from './instruction/put';
 export { set } from './instruction/set';

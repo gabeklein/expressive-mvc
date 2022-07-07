@@ -1,10 +1,10 @@
-import { from, Model } from "../src";
+import { get, Model } from "../src";
 
 describe("assertion", () => {
   class Control extends Model {
     foo = 1;
     bar = 2;
-    baz = from(this, state => {
+    baz = get(this, state => {
       return state.bar + 1;
     });
   }

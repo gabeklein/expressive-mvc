@@ -1,4 +1,4 @@
-import { from, Model, set } from '../src';
+import { get, Model, set } from '../src';
 import { Oops } from '../src/util';
 
 describe("explicit", () => {
@@ -6,7 +6,7 @@ describe("explicit", () => {
     value1 = 1;
     value2 = 2;
     value3 = 3;
-    value4 = from(this, $ => $.value3 + 1);
+    value4 = get(this, $ => $.value3 + 1);
   }
 
   it('will watch values', async () => {
@@ -153,7 +153,7 @@ describe("implicit", () => {
     value1 = 1;
     value2 = 2;
     value3 = 3;
-    value4 = from(this, $ => $.value3 + 1);
+    value4 = get(this, $ => $.value3 + 1);
   }
 
   it('will watch values via arrow function', async () => {

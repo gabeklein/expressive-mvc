@@ -27,7 +27,7 @@ const INFO = new WeakMap<Function, GetterInfo>();
 const KEYS = new WeakMap<Controller, Callback[]>();
 const ORDER = new WeakMap<Controller, Callback[]>();
 
-declare namespace from {
+declare namespace get {
   type Function<T, O=any> = (this: O, on: O) => T;
   type Factory<T, O=any> = (key: string) => Function<T, O>;
   type Getter = (controller: Controller, key: string) => any;
@@ -40,8 +40,8 @@ declare namespace from {
  * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value. Will update automatically as input values change.
  * @param suspend - Value will throw suspense when evaulating to undefined.
  */
-function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend: true): Exclude<R, undefined>;
-function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolean): R;
+function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend: true): Exclude<R, undefined>;
+function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolean): R;
 
 /**
  * Implement a computed value; output is returned by function from provided factory.
@@ -49,12 +49,12 @@ function from <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boole
  * @param compute - Factory function to generate a getter to subscribe dependancies.
  * @param suspend - Value will throw suspense when evaulating to undefined.
  */
-function from <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
-function from <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
+function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
+function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
 
-function from<R, T>(
-  source: from.Factory<T> | Stateful,
-  arg1?: from.Function<T> | boolean,
+function get<R, T>(
+  source: get.Factory<T> | Stateful,
+  arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
   return apply(
@@ -194,4 +194,4 @@ export function flush(control: Controller){
   KEYS.delete(control);
 }
 
-export { from }
+export { get }

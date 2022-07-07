@@ -1,8 +1,10 @@
-import { from, Global, Model, tap, use } from '..';
+import { Global, Model } from '..';
 import { mockAsync, mockSuspense } from '../../tests/adapter';
+import { tap } from '../react/tap';
 import { Oops as Suspense } from '../suspense';
-import { Oops as Compute } from './from';
+import { get, Oops as Compute } from './get';
 import { put } from './put';
+import { use } from './use/use';
 
 describe("computed", () => {
   class Child extends Model {
@@ -13,11 +15,11 @@ describe("computed", () => {
     child = use(Child);
     seconds = 0;
 
-    minutes = from(this, state => {
+    minutes = get(this, state => {
       return Math.floor(state.seconds / 60);
     })
 
-    nested = from(this, state => {
+    nested = get(this, state => {
       return state.child.value;
     })
   }
@@ -64,7 +66,7 @@ describe("computed", () => {
     const mockFactory = jest.fn(() => "foobar");
 
     class Test extends Model {
-      value = from(() => mockFactory);
+      value = get(() => mockFactory);
 
       constructor(){
         super();
@@ -82,7 +84,7 @@ describe("computed", () => {
     const mockFactory = jest.fn(() => "foobar");
 
     class Test extends Model {
-      value = from(() => mockFactory);
+      value = get(() => mockFactory);
 
       constructor(){
         super();
@@ -109,7 +111,7 @@ describe("computed", () => {
       a = 1;
       b = 1;
 
-      c = from(this, state => {
+      c = get(this, state => {
         exec();
         return state.a + state.b + state.x.value;
       })
@@ -141,25 +143,25 @@ describe("computed", () => {
     class Ordered extends Model {
       X = 1;
 
-      A = from(this, state => {
+      A = get(this, state => {
         const value = state.X
         didCompute.push("A")
         return value;
       })
 
-      B = from(this, state => {
+      B = get(this, state => {
         const value = state.A + 1
         didCompute.push("B")
         return value;
       })
 
-      C = from(this, state => {
+      C = get(this, state => {
         const value = state.X + state.B + 1
         didCompute.push("C")
         return value;
       })
 
-      D = from(this, state => {
+      D = get(this, state => {
         const value = state.A + state.C + 1
         didCompute.push("D")
         return value;
@@ -190,7 +192,7 @@ describe("computed", () => {
     class Hello extends Model {
       friend = "World";
 
-      greeting = from(() => this.generateGreeting);
+      greeting = get(() => this.generateGreeting);
 
       generateGreeting(){
         return `Hello ${this.friend}!`;
@@ -228,7 +230,7 @@ describe("failures", () => {
   });
 
   class Subject extends Model {
-    never = from(this, () => {
+    never = get(this, () => {
       throw new Error();
     })
   }
@@ -247,7 +249,7 @@ describe("failures", () => {
     class Test extends Model {
       shouldFail = false;
 
-      value = from(this, state => {
+      value = get(this, state => {
         if(state.shouldFail)
           throw new Error();
         else
@@ -276,7 +278,7 @@ describe("failures", () => {
 
     class Test extends Model {
       peer = tap(Peer);
-      value = from(this.peer, () => {});
+      value = get(this.peer, () => {});
     }
 
     const expected = Compute.PeerNotAllowed("Test", "value");
@@ -291,7 +293,7 @@ describe("circular", () => {
       multiplier = 0;
       previous: any;
 
-      value = from(this, state => {
+      value = get(this, state => {
         const { value, multiplier } = state;
 
         // use set to bypass subscriber
@@ -328,7 +330,7 @@ describe("circular", () => {
 describe("factory", () => {
   class Test extends Model {
     foo = 1;
-    bar = from(() => this.getBar);
+    bar = get(() => this.getBar);
 
     getBar(){
       return 1 + this.foo;
@@ -360,7 +362,7 @@ describe("factory", () => {
 
   it("will provide property key to factory", () => {
     class Test extends Model {
-      fooBar = from((key) => () => key);
+      fooBar = get((key) => () => key);
     }
 
     const test = Test.create();
@@ -374,7 +376,7 @@ describe("factory", () => {
     }
 
     class Test extends Model {
-      value = from(factory);
+      value = get(factory);
     }
 
     const expected = Compute.BadSource("Test", "value", factory);
@@ -388,7 +390,7 @@ describe("suspense", () => {
     random = 0;
     source?: string = undefined;
 
-    value = from(this, x => {
+    value = get(this, x => {
       void x.random;
       return x.source;
     }, true);
@@ -416,7 +418,7 @@ describe("suspense", () => {
   it("will suspend in method mode", async () => {
     class Test extends Model {
       source?: string = undefined;
-      value = from(() => this.getValue, true);
+      value = get(() => this.getValue, true);
 
       getValue(){
         return this.source;
