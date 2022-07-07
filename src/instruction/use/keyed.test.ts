@@ -40,10 +40,12 @@ for(const T of [Map, Set])
       });
 
       insert = (key: any) => {
-        if("set" in this.values)
-          this.values.set(key, key);
+        const { values } = this;
+
+        if(T === Map)
+          (values as Map<any, any>).set(key, key);
         else
-          this.values.add(key);
+          (values as Set<any>).add(key);
       }
     }
     

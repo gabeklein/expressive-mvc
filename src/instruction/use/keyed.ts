@@ -16,10 +16,7 @@ function keyed<T extends Set<any> | Map<any, any>>(
     never
   );
 
-  const managed = initial instanceof Map
-    ? new StatefulMap(initial, emit)
-    : new StatefulSet(initial, emit);
-
+  const managed = new Stateful(initial, emit);
   const context = new WeakMap<Subscriber, typeof managed>();
   const observers = new Set<(key: K) => void>();
   const frozen = new Set<Subscriber>();
@@ -94,64 +91,9 @@ function keyed<T extends Set<any> | Map<any, any>>(
 
 export { keyed };
 
-class StatefulSet<T> {
+class Stateful<K, V = K> {
   constructor(
-    public source: Set<T>,
-    private emit: (key: T | typeof ANY) => void
-  ){}
-
-  watch(_key: T | typeof ANY){}
-
-  has(key: T){
-    this.watch(key);
-    return this.source.has(key);
-  };
-
-  add(key: T){
-    this.source.add(key);
-    this.emit(key);
-    return this;
-  };
-
-  delete(key: T){
-    this.emit(key);
-    return this.source.delete(key);
-  };
-
-  clear(){
-    this.emit(ANY);
-    this.source.clear();
-  }
-
-  keys(){
-    this.watch(ANY);
-    return this.source.keys();
-  }
-
-  values(){
-    this.watch(ANY);
-    return this.source.values();
-  }
-
-  entries(){
-    this.watch(ANY);
-    return this.source.entries();
-  };
-
-  get size(){
-    this.watch(ANY);
-    return this.source.size;
-  }
-
-  [Symbol.iterator](){
-    this.watch(ANY);
-    return this.source[Symbol.iterator]();
-  };
-}
-
-class StatefulMap<K, V> {
-  constructor(
-    public source: Map<K, V>,
+    public source: Set<K> | Map<K, V>,
     private emit: (key: K | typeof ANY) => void
   ){}
 
@@ -163,11 +105,26 @@ class StatefulMap<K, V> {
   };
 
   get(key: K){
+    if(this.source instanceof Set)
+      throw new Error("source is not a Map");
+
     this.watch(key);
     return this.source.get(key);
   };
 
+  add(key: K){
+    if(this.source instanceof Map)
+      throw new Error("source is not a Set");
+    
+    this.source.add(key);
+    this.emit(key);
+    return this;
+  };
+
   set(key: K, value: V){
+    if(this.source instanceof Set)
+      throw new Error("source is not a Map");
+
     this.source.set(key, value);
     this.emit(key);
     return this;
