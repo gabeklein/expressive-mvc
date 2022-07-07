@@ -30,14 +30,8 @@ describe("Map", () => {
 for(const T of [Map, Set])
   describe(T, () => {
     class Test extends Model {
-      values = use(() => {
-        return T === Map
-          ? new Map() : new Set()
-      });
-
-      size = from(this, $ => {
-        return $.values.size;
-      });
+      values = use(T === Map ? new Map() : new Set());
+      size = from(this, $ => $.values.size);
 
       insert = (key: any) => {
         const { values } = this;
