@@ -11,6 +11,9 @@ export const Oops = issues({
     `Instruction \`use\` cannot accept argument type of ${type}.`,
 })
 
+function use <K = any> (initial: SetConstructor): Set<K>;
+function use <K = any, V = any> (initial: MapConstructor): Map<K, V>;
+
 function use (initial: Set<unknown>): Set<any>;
 function use (initial: Map<unknown, unknown>): Map<any, any>;
 
@@ -42,8 +45,8 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
   */
 function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
 
-function use<T extends typeof Model>(
-  input?: T | (() => InstanceOf<T>) | InstanceOf<T>,
+function use<T extends Class>(
+  input?: any,
   argument?: (i: InstanceOf<T> | undefined) => void){
 
   return apply(
@@ -51,9 +54,7 @@ function use<T extends typeof Model>(
       const { state, subject } = this;
 
       if(typeof input === "function")
-        input = Model.isTypeof(input)
-          ? new input() as InstanceOf<T>
-          : input();
+        input = "prototype" in input ? new input() : input();
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);

@@ -4,7 +4,7 @@ import { use } from './use';
 
 describe("Map", () => {
   class Test extends Model {
-    map = use(new Map());
+    map = use(Map);
   }
 
   it("will update on set", async () => {
@@ -260,7 +260,7 @@ for(const T of [Map, Set])
     
     it("will update computed for used keys only", async () => {
       class Test extends Model {
-        values = use(new Set());
+        values = use(Set);
         size = get(this, $ => $.values.has("bar"));
       }
     
