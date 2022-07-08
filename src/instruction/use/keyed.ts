@@ -50,10 +50,7 @@ function keyed<T extends Set<any> | Map<any, any>>(
     }
 
     context.set(local, proxy);
-    proxy.watch = (key: K) => {
-      if(!local.active)
-        using.add(key);
-    }
+    proxy.watch = (key: K) => using.add(key);
 
     local.add(property, false);
     local.dependant.add({
