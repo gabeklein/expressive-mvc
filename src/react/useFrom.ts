@@ -39,7 +39,6 @@ function useFrom(
         retry();
         retry = undefined;
       }
-
       else
         refresh();
     };

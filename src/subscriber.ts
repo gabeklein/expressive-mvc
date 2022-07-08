@@ -52,18 +52,18 @@ export class Subscriber <T extends Stateful = any> {
       }
       else if(handler === true)
         notify = this.onUpdate(key, parent);
-  
-      const getWhy: Callback = () => {
-        const update = getUpdate(parent.subject);
-        const applicable = update.filter(k => using.has(k));
 
-        UPDATE.set(proxy, applicable);
+      if(!notify)
+        return;
+
+      const notate = () => {
+        UPDATE.set(proxy, 
+          getUpdate(parent.subject).filter(k => using.has(k))
+        );
       }
 
-      if(notify){
-        parent.waiting.add(getWhy);
-        parent.waiting.add(notify);
-      }
+      parent.waiting.add(notate);
+      parent.waiting.add(notify);
     });
 
     this.commit = () => {
