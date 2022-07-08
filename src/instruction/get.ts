@@ -58,7 +58,7 @@ function get<R, T>(
   arg2?: boolean): R {
 
   return apply(
-    function from(key){
+    function get(key){
       const { subject, state } = this;
       const required = arg2 === true || arg1 === true;
 
