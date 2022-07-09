@@ -2,8 +2,7 @@ import { issues } from '../issues';
 import { Model } from '../model';
 import { InstanceOf } from '../types';
 import { apply } from './apply';
-
-export const Parent = new WeakMap<{}, {}>();
+import { Parent } from './use/use';
 
 export const Oops = issues({
   Required: (expects, child) => 
@@ -21,10 +20,10 @@ export const Oops = issues({
  * @param Expects - Type of controller compatible with this class. 
  * @param required - Throw if controller is created independantly.
  */
-function parent <T extends typeof Model> (Expects: T, required: false): InstanceOf<T> | undefined;
-function parent <T extends typeof Model> (Expects: T, required?: true): InstanceOf<T>;
+function has <T extends typeof Model> (Expects: T, required: false): InstanceOf<T> | undefined;
+function has <T extends typeof Model> (Expects: T, required?: true): InstanceOf<T>;
 
-function parent<T extends typeof Model>(
+function has<T extends typeof Model>(
    Expects: T, required?: boolean){
 
    return apply(
@@ -45,4 +44,4 @@ function parent<T extends typeof Model>(
    );
  }
 
- export { parent }
+ export { has }

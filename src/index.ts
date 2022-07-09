@@ -6,7 +6,7 @@ export { ref } from './instruction/ref';
 export { put } from './instruction/put';
 export { set } from './instruction/set';
 export { use } from './instruction/use/use';
-export { parent } from './instruction/parent';
+export { has, has as parent } from './instruction/has';
 
 export { MVC as Model, MVC as default } from './react/mvc';
 export { CONTROL, LOCAL, STATE, WHY, Stateful } from './model';

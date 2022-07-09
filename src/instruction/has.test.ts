@@ -1,12 +1,13 @@
-import { Model, parent, use } from '..';
-import { Oops } from './parent';
+import { Model } from '..';
+import { has, Oops } from './has';
+import { use } from './use/use';
 
 it("creates parent-child relationship", () => {
   class Foo extends Model {
     child = use(Bar);
   }
   class Bar extends Model {
-    parent = parent(Foo);
+    parent = has(Foo);
   }
 
   const foo = Foo.create();
@@ -19,7 +20,7 @@ it("creates parent-child relationship", () => {
 it("throws when required parent is absent :(", () => {
   class Detatched extends Model {}
   class NonStandalone extends Model {
-    expects = parent(Detatched);
+    expects = has(Detatched);
   }
 
   const attempt = () => 
@@ -35,7 +36,7 @@ it("throws when required parent is absent :(", () => {
 it("retuns undefined if set not-required", () => {
   class MaybeParent extends Model {}
   class StandAlone extends Model {
-    maybe = parent(MaybeParent, false);
+    maybe = has(MaybeParent, false);
   }
 
   const instance = StandAlone.create();
@@ -49,7 +50,7 @@ it("throws if parent is of incorrect type", () => {
     child = use(Adopted as any) as Adopted;
   }
   class Adopted extends Model {
-    expects = parent(Expected);
+    expects = has(Expected);
   }
 
   const attempt = () => Unexpected.create();

@@ -3,8 +3,9 @@ import { Model } from '../../model';
 import { ensure } from '../../stateful';
 import { Class, InstanceOf } from '../../types';
 import { apply } from '../apply';
-import { Parent } from '../parent';
 import { keyed } from './keyed';
+
+export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   BadArgument: (type) =>
