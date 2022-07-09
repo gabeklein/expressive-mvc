@@ -87,10 +87,10 @@ function put(
   return apply(
     function set(key){
       const { subject, state } = this;
-      const required = argument === true || argument === undefined;
+      const required =
+        argument === true ||
+        argument === undefined;
 
-      let set;
-      let get: (() => void) | undefined;
       let pending: Promise<any> | undefined;
       let error: any;
 
@@ -118,6 +118,15 @@ function put(
         return output;
       }
 
+      if(required)
+        try {
+          init();
+        }
+        catch(err){
+          Oops.Failed(subject, key).warn();
+          throw err;
+        }
+
       const suspend = () => {
         if(required === false)
           return undefined;
@@ -133,16 +142,7 @@ function put(
         throw pending;
       }
 
-      if(required)
-        try {
-          init();
-        }
-        catch(err){
-          Oops.Failed(subject, key).warn();
-          throw err;
-        }
-
-      get = () => {
+      const get = () => {
         if(pending)
           return suspend();
 
@@ -152,20 +152,19 @@ function put(
         if(state.has(key))
           return state.get(key);
 
-        let output = init();
+        const output = init();
 
         return pending
           ? suspend()
           : output;
       }
 
-      if(typeof argument == "function")
-        set = createValueEffect(argument);
-      else
-        set = (value: any) => {
+      const set = typeof argument == "function"
+        ? createValueEffect(argument)
+        : (value: any) => {
           if(value === undefined && required)
             throw Oops.NonOptional(subject, key);
-        }
+        };
 
       return {
         set,
