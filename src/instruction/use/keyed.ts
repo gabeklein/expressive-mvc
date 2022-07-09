@@ -5,7 +5,9 @@ import { Instruction } from '../apply';
 
 const ANY = Symbol("any");
 
-function keyed<T extends Set<any> | Map<any, any>>(
+type Keyed<K = unknown> = Set<K> | Map<K, unknown>;
+
+function keyed<T extends Keyed>(
   control: Controller,
   property: any,
   initial: T
@@ -15,19 +17,14 @@ function keyed<T extends Set<any> | Map<any, any>>(
     T extends Map<infer U, any> ? U :
     never
   );
+
+  const frozen = new Set<Subscriber>();
   const context = new Map<Subscriber, T>();
   const users = new Map<Subscriber, Set<K>>();
   const watched = new WeakMap<T, Set<K>>();
   const update = new Set<(key: K) => void>();
-  const frozen = new Set<Subscriber>();
 
-  let managed!: T;
-
-  manage(initial);
-
-  function reset(){
-    frozen.clear();
-  }
+  let managed: T = createProxy(initial, emit, watch);
 
   function watch(on: any, key: K){
     const include = watched.get(on);
@@ -37,73 +34,9 @@ function keyed<T extends Set<any> | Map<any, any>>(
   }
 
   function emit(key: K){
-    control.waiting.add(reset);
     control.update(property);
+    control.waiting.add(() => frozen.clear());
     update.forEach(notify => notify(key));
-  }
-
-  function manage(current: T){
-    managed = create(current);
-    context.clear();
-
-    assign(managed,
-      <T>{
-        delete(key: K){
-          emit(key);
-          return current.delete(key);
-        },
-        clear(){
-          emit(ANY);
-          current.clear();
-        },
-        has(key: K){
-          watch(this, key);
-          return current.has(key);
-        },
-        keys(){
-          watch(this, ANY);
-          return current.keys();
-        },
-        values(){
-          watch(this, ANY);
-          return current.values();
-        },
-        entries(){
-          watch(this, ANY);
-          return current.entries();
-        },
-        [Symbol.iterator](){
-          watch(this, ANY);
-          return current[Symbol.iterator]();
-        },
-      },
-      current instanceof Set
-        ? <T>{
-          add(key: K){
-            current.add(key);
-            emit(key);
-            return this;
-          }
-        }
-        : <T>{
-          get(key: K){
-            watch(this, ANY);
-            return current.get(key);
-          },
-          set(key: K, value: any){
-            current.set(key, value);
-            emit(key);
-            return this;
-          }
-        }
-    )
-
-    defineProperty(managed, "size", {
-      get(){
-        watch(this, ANY);
-        return current.size;
-      }
-    })
   }
 
   function subscribe(local: Subscriber){
@@ -157,13 +90,84 @@ function keyed<T extends Set<any> | Map<any, any>>(
     },
     set(next){
       control.state.set(property, next);
-      manage(next);
+      managed = createProxy(next, emit, watch);
+      context.clear();
       emit(ANY);
     },
     destroy(){
       update.clear();
+      context.clear();
     }
   }
+}
+
+function createProxy<T extends Keyed<any>>(
+  from: T,
+  emit: (key: any) => void,
+  watch: (self: any, key: any) => void){
+
+  const proxy = create(from);
+
+  assign(proxy,
+    {
+      delete(key: any){
+        emit(key);
+        return from.delete(key);
+      },
+      clear(){
+        emit(ANY);
+        from.clear();
+      },
+      has(key: any){
+        watch(this, key);
+        return from.has(key);
+      },
+      keys(){
+        watch(this, ANY);
+        return from.keys();
+      },
+      values(){
+        watch(this, ANY);
+        return from.values();
+      },
+      entries(){
+        watch(this, ANY);
+        return from.entries();
+      },
+      [Symbol.iterator](){
+        watch(this, ANY);
+        return from[Symbol.iterator]();
+      },
+    },
+    from instanceof Set
+      ? {
+        add(key: any){
+          from.add(key);
+          emit(key);
+          return this;
+        }
+      }
+      : {
+        get(key: any){
+          watch(this, ANY);
+          return from.get(key);
+        },
+        set(key: any, value: any){
+          from.set(key, value);
+          emit(key);
+          return this;
+        }
+      }
+    )
+
+    defineProperty(proxy, "size", {
+      get(){
+        watch(this, ANY);
+        return from.size;
+      }
+    })
+  
+  return proxy as T;
 }
 
 export { keyed };
