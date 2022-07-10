@@ -18,13 +18,14 @@ function keyed<T extends Keyed>(
     never
   );
 
+  const init = createProxy(emit, watch);
   const frozen = new Set<Subscriber>();
   const context = new Map<Subscriber, T>();
   const users = new Map<Subscriber, Set<K>>();
   const watched = new WeakMap<T, Set<K>>();
   const update = new Set<(key: K) => void>();
 
-  let managed: T = createProxy(initial, emit, watch);
+  let managed: T = init(initial);
 
   function watch(on: any, key: K){
     const include = watched.get(on);
@@ -90,7 +91,7 @@ function keyed<T extends Keyed>(
     },
     set(next){
       control.state.set(property, next);
-      managed = createProxy(next, emit, watch);
+      managed = init(next);
       context.clear();
       emit(ANY);
     },
@@ -101,73 +102,74 @@ function keyed<T extends Keyed>(
   }
 }
 
-function createProxy<T extends Keyed<any>>(
-  from: T,
+function createProxy(
   emit: (key: any) => void,
   watch: (self: any, key: any) => void){
 
-  const proxy = create(from);
+  return <T extends Keyed<any>>(from: T) => {
+    const proxy = create(from);
 
-  assign(proxy,
-    {
-      delete(key: any){
-        emit(key);
-        return from.delete(key);
-      },
-      clear(){
-        emit(ANY);
-        from.clear();
-      },
-      has(key: any){
-        watch(this, key);
-        return from.has(key);
-      },
-      keys(){
-        watch(this, ANY);
-        return from.keys();
-      },
-      values(){
-        watch(this, ANY);
-        return from.values();
-      },
-      entries(){
-        watch(this, ANY);
-        return from.entries();
-      },
-      [Symbol.iterator](){
-        watch(this, ANY);
-        return from[Symbol.iterator]();
-      },
-    },
-    from instanceof Set
-      ? {
-        add(key: any){
-          from.add(key);
+    assign(proxy,
+      {
+        delete(key: any){
           emit(key);
-          return this;
-        }
-      }
-      : {
-        get(key: any){
-          watch(this, ANY);
-          return from.get(key);
+          return from.delete(key);
         },
-        set(key: any, value: any){
-          from.set(key, value);
-          emit(key);
-          return this;
+        clear(){
+          emit(ANY);
+          from.clear();
+        },
+        has(key: any){
+          watch(this, key);
+          return from.has(key);
+        },
+        keys(){
+          watch(this, ANY);
+          return from.keys();
+        },
+        values(){
+          watch(this, ANY);
+          return from.values();
+        },
+        entries(){
+          watch(this, ANY);
+          return from.entries();
+        },
+        [Symbol.iterator](){
+          watch(this, ANY);
+          return from[Symbol.iterator]();
+        },
+      },
+      from instanceof Set
+        ? {
+          add(key: any){
+            from.add(key);
+            emit(key);
+            return this;
+          }
         }
-      }
-    )
+        : {
+          get(key: any){
+            watch(this, ANY);
+            return from.get(key);
+          },
+          set(key: any, value: any){
+            from.set(key, value);
+            emit(key);
+            return this;
+          }
+        }
+      )
 
-    defineProperty(proxy, "size", {
-      get(){
-        watch(this, ANY);
-        return from.size;
-      }
-    })
-  
-  return proxy as T;
+      defineProperty(proxy, "size", {
+        get(){
+          watch(this, ANY);
+          return from.size;
+        }
+      })
+    
+    return proxy as T;
+  }
 }
 
 export { keyed };
