@@ -4,7 +4,7 @@ import { tap } from '../react/tap';
 import { Oops as Suspense } from '../suspense';
 import { get, Oops as Compute } from './get';
 import { put } from './put';
-import { use } from './use/use';
+import { use } from './use';
 
 describe("computed", () => {
   class Child extends Model {

@@ -2,7 +2,7 @@ import { issues } from '../issues';
 import { Model } from '../model';
 import { InstanceOf } from '../types';
 import { apply } from './apply';
-import { Parent } from './use/use';
+import { Parent } from './use';
 
 export const Oops = issues({
   Required: (expects, child) => 

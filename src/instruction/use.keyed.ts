@@ -1,7 +1,7 @@
-import { Controller } from '../../controller';
-import { Subscriber } from '../../subscriber';
-import { assign, create, defineProperty } from '../../util';
-import { Instruction } from '../apply';
+import { Controller } from '../controller';
+import { Subscriber } from '../subscriber';
+import { assign, create, defineProperty } from '../util';
+import { Instruction } from './apply';
 
 const ANY = Symbol("any");
 

@@ -1,9 +1,9 @@
-import { issues } from '../../issues';
-import { Model } from '../../model';
-import { ensure } from '../../stateful';
-import { Class, InstanceOf } from '../../types';
-import { apply } from '../apply';
-import { keyed } from './keyed';
+import { issues } from '../issues';
+import { Model } from '../model';
+import { ensure } from '../stateful';
+import { Class, InstanceOf } from '../types';
+import { apply } from './apply';
+import { keyed } from './use.keyed';
 
 export const Parent = new WeakMap<{}, {}>();
 

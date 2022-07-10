@@ -1,6 +1,6 @@
 import { Model } from '..';
 import { has, Oops } from './has';
-import { use } from './use/use';
+import { use } from './use';
 
 it("creates parent-child relationship", () => {
   class Foo extends Model {

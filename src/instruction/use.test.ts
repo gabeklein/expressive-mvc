@@ -1,5 +1,5 @@
-import { Model, use } from '../..';
-import { subscribeTo } from '../../../tests/adapter';
+import { Model, use } from '..';
+import { subscribeTo } from '../../tests/adapter';
 import { Oops } from './use';
 
 class Child extends Model {

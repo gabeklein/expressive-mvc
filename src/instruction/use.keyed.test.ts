@@ -1,5 +1,5 @@
-import { Model } from '../..';
-import { get } from '../get';
+import { Model } from '..';
+import { get } from './get';
 import { use } from './use';
 
 describe("Map", () => {

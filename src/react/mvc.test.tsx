@@ -1,6 +1,6 @@
 import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
 import { set } from '../instruction/set';
-import { use } from '../instruction/use/use';
+import { use } from '../instruction/use';
 import { Global, Oops } from './global';
 import { MVC } from './mvc';
 
