@@ -3,6 +3,7 @@ import { CONTROL, LOCAL, Stateful } from '../model';
 import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
+import { Callback } from '../types';
 import { defineProperty } from '../util';
 
 const PENDING = new Map<symbol, Instruction.Runner<any>>();
@@ -82,16 +83,17 @@ function apply<T = any>(
       return false;
     }
 
+    let {
+      get: onGet,
+      set: onSet,
+      suspense
+    } = output as Instruction.Descriptor<any>;
+
+    if("value" in output)
+      state.set(key, output.value);
+
     if("recursive" in output && output.recursive)
-      output = {
-        ...output,
-        get: getRecursive(key, this)
-      }
-
-    const desc = output as Instruction.Descriptor<any>;
-
-    if("value" in desc)
-      state.set(key, desc.value);
+      onGet = getRecursive(key, this);
 
     if("destroy" in output){
       const { destroy } = output;
@@ -103,32 +105,26 @@ function apply<T = any>(
         })
     }
 
-    const {
-      get: onGet,
-      set: onSet,
-      enumerable,
-      suspense
-    } = desc;
+    defineProperty(subject, key, {
+      enumerable: output.enumerable,
+      set: onSet !== false
+        ? this.ref(key, onSet)
+        : undefined,
 
-    const set = onSet !== false
-      ? this.ref(key, onSet)
-      : undefined;
-
-    function get(this: Stateful){
-      if(!state.has(key) && suspense)
-        throw suspend(control, key);
-
-      const local = this[LOCAL];
-
-      if(local)
-        local.add(key);
-
-      return onGet
-        ? onGet(local)
-        : state.get(key);
-    }
-
-    defineProperty(subject, key, { enumerable, get, set });
+      get(this: Stateful){
+        if(!state.has(key) && suspense)
+          throw suspend(control, key);
+  
+        const local = this[LOCAL];
+  
+        if(local)
+          local.add(key);
+  
+        return onGet
+          ? onGet(local)
+          : state.get(key);
+      }
+    });
   }
 
   PENDING.set(placeholder, setup);
@@ -138,40 +134,42 @@ function apply<T = any>(
 
 function getRecursive(key: string, from: Controller){
   const context = new WeakMap<Subscriber, Stateful | undefined>();
-  const { state } = from;
 
   return (local: Subscriber | undefined) => {
     if(!local)
-      return state.get(key);
+      return from.state.get(key);
 
     if(!context.has(local)){
-      let child: Subscriber | undefined;
+      let reset: Callback | undefined;
 
       const init = () => {
-        if(child){
-          child.release();
-          local.dependant.delete(child);
-          context.set(local, undefined);
-          child = undefined;
-        }
-  
-        const value = state.get(key);
+        if(reset)
+          reset();
+
+        const value = from.state.get(key);
   
         if(value && CONTROL in value){
-          child = ensure(value).subscribe(local.onUpdate);
+          const child = ensure(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();
   
           local.dependant.add(child);
           context.set(local, child.proxy);
+
+          reset = () => {
+            child.release();
+            local.dependant.delete(child);
+            context.set(local, undefined);
+            reset = undefined;
+          }
         }
 
         return true;
       }
   
-      init();
       local.add(key, init);
+      init();
     }
 
     return context.get(local);
