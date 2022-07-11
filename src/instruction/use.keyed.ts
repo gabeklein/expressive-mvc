@@ -107,10 +107,11 @@ function createProxy(
   watch: (self: any, key: any) => void){
 
   return <T extends Keyed<any>>(from: T) => {
-    const proxy = create(from);
+    const proxy = create(from) as T;
 
     assign(proxy,
       {
+        from,
         delete(key: any){
           emit(key);
           return from.delete(key);
@@ -134,6 +135,23 @@ function createProxy(
         entries(){
           watch(this, ANY);
           return from.entries();
+        },
+        forEach(
+          callbackfn: (a: any, b: any, c: any) => any,
+          thisArg: any){
+
+          const acc = [] as any[];
+
+          from.forEach((a, b, c) => {
+            const result = callbackfn.call(thisArg, a, b, c);
+
+            if(result !== undefined)
+              acc.push(result);
+          });
+
+          watch(this, ANY);
+
+          return acc;
         },
         [Symbol.iterator](){
           watch(this, ANY);
@@ -168,7 +186,7 @@ function createProxy(
         }
       })
     
-    return proxy as T;
+    return proxy;
   }
 }
 

@@ -40,6 +40,28 @@ for(const T of [Map, Set])
           this.values.add(key);
       }
     }
+
+    it("contains reference to original", () => {
+      const test = Test.create();
+
+      expect(test.values.from).toBeInstanceOf(T);
+    })
+
+    it("will augment forEach to return filtered map", () => {
+      const { is: test, values } = Test.create();
+      
+      for(const x of [1, 2, 3, 4, 5])
+        test.insert(x);
+
+      const numbers = values.forEach((x: number) => x);
+      const even = values.forEach((x: number) => {
+        if(x % 2 == 0)
+          return x;
+      });
+
+      expect(numbers).toMatchObject([1, 2, 3, 4, 5]);
+      expect(even).toMatchObject([2, 4]);
+    })
     
     it("will update on add", async () => {
       const test = Test.create();

@@ -12,14 +12,33 @@ export const Oops = issues({
     `Instruction \`use\` cannot accept argument type of ${type}.`,
 })
 
-function use <K = any> (initial: SetConstructor): Set<K>;
-function use <K = any, V = any> (initial: MapConstructor): Map<K, V>;
+type MapFunction<T, R> =
+  T extends Map<infer K, infer V> ?
+    (value: V, key: K, map: T) => R | void :
+  T extends Set<infer K> ?
+    (value: K, key: K, set: T) => R | void :
+  never;
 
-function use (initial: Set<unknown>): Set<any>;
-function use (initial: Map<unknown, unknown>): Map<any, any>;
+type Managed<T> = T & {
+  from?: T;
 
-function use (from: () => Set<unknown>): Set<any>;
-function use (from: () => Map<unknown, unknown>): Map<any, any>;
+  forEach<R>(
+    mapFunction: MapFunction<T, R>,
+    thisArg?: any
+  ): Exclude<R, undefined>[] | void;
+}
+
+function use <K = any> (initial: SetConstructor): Managed<Set<K>>;
+function use <K = any, V = any> (initial: MapConstructor): Managed<Map<K, V>>;
+
+function use (initial: Set<unknown>): Managed<Set<any>>;
+function use (initial: Map<unknown, unknown>): Managed<Map<any, any>>;
+
+function use (from: () => Set<unknown>): Managed<Set<any>>;
+function use (from: () => Map<unknown, unknown>): Managed<Map<any, any>>;
+
+function use <T extends Set<any> | Map<any, any>> (initial: T): Managed<T>;
+function use <T extends Set<any> | Map<any, any>> (from: () => T): Managed<T>;
 
 /**
  * Create a placeholder for specified Model type.
