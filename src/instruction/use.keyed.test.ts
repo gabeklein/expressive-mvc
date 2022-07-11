@@ -134,7 +134,21 @@ for(const T of [Map, Set])
     
       test.effect(mock);
 
-      test.values = new Set();
+      test.values = T === Map ? new Map() : new Set();
+
+      await test.update(true);
+    
+      expect(mock).toBeCalledTimes(2);
+    })
+  
+    it("will update size on replacement", async () => {
+      const test = Test.create();
+      const mock = jest.fn(($: Test) => void $.values.size);
+
+      test.effect(mock);
+    
+      test.values = T === Map ? new Map() : new Set();
+  
       await test.update(true);
     
       expect(mock).toBeCalledTimes(2);
@@ -225,22 +239,6 @@ for(const T of [Map, Set])
       await test.update(true);
     
       expect(mock).toBeCalledWith(1);
-    })
-  
-    it("will update size on replacement", async () => {
-      const test = Test.create();
-      const mock = jest.fn();
-    
-      test.effect($ => {
-        mock($.values.size);
-      })
-    
-      expect(mock).toBeCalledWith(0);
-    
-      test.values = new Set(["foo", "bar"])
-      await test.update(true);
-    
-      expect(mock).toBeCalledWith(2);
     })
     
     it("will update computed for used keys", async () => {
