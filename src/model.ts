@@ -3,7 +3,7 @@ import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
-import { createEffect, define, defineProperty, getOwnPropertyNames } from './util';
+import { createEffect, defineProperty, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
 
@@ -131,9 +131,12 @@ class Model {
   static [WHY]: readonly string[];
 
   constructor(){
-    define(this, CONTROL, new Controller(this));
-    define(this, "is", this);
-
+    defineProperty(this, CONTROL, {
+      value: new Controller(this)
+    });
+    defineProperty(this, "is", {
+      value: this
+    });
     defineProperty(this, "set", { 
       configurable: true,
       get: () => {
@@ -144,7 +147,9 @@ class Model {
         }
 
         for(const key of controller.state.keys())
-          define(value, key, controller.ref(key));
+          defineProperty(value, key, {
+            value: controller.ref(key)
+          });
 
         defineProperty(this, "set", { value });
 

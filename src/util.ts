@@ -32,12 +32,6 @@ export {
   values
 }
 
-export function define(
-  target: {}, key: string | symbol, value: any){
-
-  defineProperty(target, key, { value })
-}
-
 export function createEffect(
   callback: Model.Effect<any>){
 

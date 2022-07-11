@@ -1,6 +1,6 @@
 import { getUpdate, Controller, UPDATE } from './controller';
 import { LOCAL, Stateful } from './model';
-import { create, define, defineProperty } from './util';
+import { create, defineProperty } from './util';
 
 import type { Callback } from './types';
 
@@ -25,7 +25,7 @@ export class Subscriber <T extends Stateful = any> {
     const proxy = create(parent.subject);
     const using = new Map<any, boolean | (() => true | void)>();
 
-    define(proxy, LOCAL, this);
+    defineProperty(proxy, LOCAL, { value: this });
 
     defineProperty(this, "proxy", {
       configurable: true,
