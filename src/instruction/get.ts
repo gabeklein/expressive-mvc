@@ -94,8 +94,6 @@ function get<R, T>(
       if(!order)
         ORDER.set(this, order = []);
 
-      state.set(key, undefined);
-
       const compute = (initial: boolean) => {
         try {
           return setter!.call(sub.proxy, sub.proxy);
@@ -106,7 +104,7 @@ function get<R, T>(
         }
       }
 
-      const refreshValue = () => {
+      const refresh = () => {
         let value;
 
         try {
@@ -124,11 +122,9 @@ function get<R, T>(
         }
       }
 
-      const dependancyDidUpdate = (
-        _key: string | null, source: Controller) => {
-
+      const update = (_key: any, source: Controller) => {
         if(source !== this){
-          refreshValue();
+          refresh();
           return;
         }
 
@@ -137,12 +133,11 @@ function get<R, T>(
         if(!pending)
           KEYS.set(this, pending = []);
 
-        pending.push(refreshValue);
+        pending.push(refresh);
       }
 
       const create = () => {
-        const control = getSource();
-        sub = control.subscribe(dependancyDidUpdate);
+        sub = getSource().subscribe(update);
 
         try {
           const value = compute(true);
@@ -154,11 +149,12 @@ function get<R, T>(
         }
         finally {
           sub.commit();
-          order.push(refreshValue);
+          order.push(refresh);
         }
       }
 
-      INFO.set(refreshValue, info);
+      state.set(key, undefined);
+      INFO.set(refresh, info);
 
       return () => {
         const value = sub ? state.get(key) : create();
