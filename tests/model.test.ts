@@ -25,7 +25,7 @@ it('will send arguments to constructor', () => {
   expect(state.value).toBe(3);
 })
 
-it('will assign get as a circular reference', async () => {
+it('will assign is as a circular reference', async () => {
   const state = Subject.create();
 
   expect(state.is.value).toBe(1);

@@ -173,7 +173,7 @@ describe("import", () => {
     let instance!: Test;
 
     const TestComponent = (props: any) => {
-      ({ get: instance } = useModel(Test, props));
+      ({ is: instance } = useModel(Test, props));
       return null;
     }
 

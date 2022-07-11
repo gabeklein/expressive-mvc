@@ -114,15 +114,6 @@ interface Model extends Stateful {
    * Circular reference to `this` controller.
    * 
    * Useful to obtain full reference where one has already destructured.
-   * 
-   * @deprecated will be removed in favor of `is`
-   */
-  get: this;
-
-  /**
-   * Circular reference to `this` controller.
-   * 
-   * Useful to obtain full reference where one has already destructured.
    */
   is: this;
 
@@ -141,7 +132,6 @@ class Model {
 
   constructor(){
     define(this, CONTROL, new Controller(this));
-    define(this, "get", this);
     define(this, "is", this);
     defineLazy(this, "set", () => {
       const controller = ensure(this);

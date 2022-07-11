@@ -68,13 +68,13 @@ it("will throw immediately if already in-progress", () => {
 })
 
 it("will throw and reset if action fails", async () => {
-  const { nope, get } = Test.create();
+  const { nope, is: test } = Test.create();
 
   expect(nope.active).toBe(false);
 
   const result = nope();
 
-  await get.update(true);
+  await test.update(true);
   expect(nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
