@@ -1,10 +1,10 @@
+import { PENDING } from './instruction/apply';
 import { flush } from './instruction/get';
-import { LOCAL, Model, Stateful } from './model';
-import { PENDING } from './stateful';
+import { CONTROL, LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
+import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
-import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 const UPDATE = new WeakMap<{}, readonly string[]>();
 
@@ -138,4 +138,53 @@ class Controller<T extends Stateful = any> {
   }
 }
 
-export { Controller, getUpdate, UPDATE }
+type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
+
+function ensure<T extends Stateful>(subject: T): Controller<T>;
+function ensure<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
+function ensure<T extends {}>(subject: T): Controller<T & Stateful>;
+
+function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
+  let control = subject[CONTROL]!;
+
+  if(!control)
+    defineProperty(subject, CONTROL, {
+      value: control =
+        new Controller(subject as unknown as Stateful)
+    });
+
+  if(!control.state){
+    const { waiting } = control;
+
+    if(cb){
+      let done: Callback | void;
+
+      waiting.add(() => {
+        done = cb(control);
+      });
+
+      return () => done && done();
+    }
+
+    control.state = new Map();
+
+    for(const key in subject)
+      control.add(key);
+
+    const callback = Array.from(waiting);
+
+    waiting.clear();
+    
+    for(const cb of callback)
+      cb();
+  }
+
+  return cb ? cb(control) : control;
+}
+
+export {
+  ensure,
+  Controller,
+  getUpdate,
+  UPDATE
+}

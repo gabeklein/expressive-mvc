@@ -1,9 +1,8 @@
 /* istanbul ignore file */
 import React from 'react';
 
-import { Controller } from '../controller';
+import { Controller, ensure } from '../controller';
 import { CONTROL, Model } from '../model';
-import { ensure } from '../stateful';
 import { Callback, Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';

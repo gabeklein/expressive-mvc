@@ -1,9 +1,9 @@
 import React from 'react';
 
+import { ensure } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Collection, Lookup } from '../register';
-import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { Class } from '../types';
 import { entries } from '../util';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
+import { ensure } from '../controller';
 import { Model, Stateful } from '../model';
-import { ensure } from '../stateful';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { use } from './use';

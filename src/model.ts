@@ -1,6 +1,5 @@
-import { Controller, getUpdate, UPDATE } from './controller';
+import { Controller, ensure, getUpdate, UPDATE } from './controller';
 import { issues } from './issues';
-import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 import { createEffect, defineProperty, getOwnPropertyNames } from './util';
@@ -25,7 +24,7 @@ export const STATE = Symbol("STATE");
 
 export interface Stateful {
   /** Controller for this instance. */
-  [CONTROL]: Controller;
+  [CONTROL]?: Controller;
 
   /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
   [LOCAL]?: Subscriber;
@@ -127,7 +126,6 @@ interface Model extends Stateful {
 }
 
 class Model {
-  static [CONTROL]: Controller;
   static [WHY]: readonly string[];
 
   constructor(){

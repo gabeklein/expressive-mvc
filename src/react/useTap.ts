@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 
+import { ensure } from '../controller';
 import { Model, Stateful } from '../model';
-import { ensure } from '../stateful';
 import { suspend } from '../suspense';
 import { use } from './use';
 import { useFrom } from './useFrom';

@@ -1,11 +1,11 @@
 import React from 'react';
 
+import { ensure } from '../controller';
 import { Stateful } from '../model';
 import { defineProperty } from '../util';
 import { use } from './use';
 
 import type { Callback } from '../types';
-import { ensure } from '../stateful';
 
 function useFrom <T extends Stateful, R> (
   source: (() => T) | T,

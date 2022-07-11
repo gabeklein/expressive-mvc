@@ -1,7 +1,6 @@
-import { Controller } from '../controller';
+import { Controller, ensure } from '../controller';
 import { issues } from '../issues';
 import { Stateful } from '../model';
-import { ensure } from '../stateful';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
