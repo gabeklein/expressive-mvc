@@ -38,21 +38,6 @@ export function define(
   defineProperty(target, key, { value })
 }
 
-export function defineLazy<T>(
-  object: T, 
-  property: string | symbol, 
-  init: (this: T) => any){
-
-  defineProperty(object, property, { 
-    configurable: true,
-    get(){
-      const value = init!.call(this);
-      defineProperty(this, property, { value });
-      return value;
-    }
-  });
-}
-
 export function createEffect(
   callback: Model.Effect<any>){
 

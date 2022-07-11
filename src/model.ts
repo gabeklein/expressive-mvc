@@ -3,7 +3,7 @@ import { issues } from './issues';
 import { ensure } from './stateful';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
-import { createEffect, define, defineLazy, getOwnPropertyNames } from './util';
+import { createEffect, define, defineProperty, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
 
@@ -133,17 +133,23 @@ class Model {
   constructor(){
     define(this, CONTROL, new Controller(this));
     define(this, "is", this);
-    defineLazy(this, "set", () => {
-      const controller = ensure(this);
-      const assign = (key: any, value: any) => {
-        controller.state.set(key, value);
-        controller.update(key);
+
+    defineProperty(this, "set", { 
+      configurable: true,
+      get: () => {
+        const controller = ensure(this);
+        const value = (key: any, value: any) => {
+          controller.state.set(key, value);
+          controller.update(key);
+        }
+
+        for(const key of controller.state.keys())
+          define(value, key, controller.ref(key));
+
+        defineProperty(this, "set", { value });
+
+        return value;
       }
-
-      for(const key of controller.state.keys())
-        define(assign, key, controller.ref(key));
-
-      return assign;
     });
   }
 
