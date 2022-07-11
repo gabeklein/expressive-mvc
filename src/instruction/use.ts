@@ -3,7 +3,7 @@ import { issues } from '../issues';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { apply } from './apply';
-import { keyed } from './use.keyed';
+import { keyed, Managed } from './use.keyed';
 
 export const Parent = new WeakMap<{}, {}>();
 
@@ -11,22 +11,6 @@ export const Oops = issues({
   BadArgument: (type) =>
     `Instruction \`use\` cannot accept argument type of ${type}.`,
 })
-
-type MapFunction<T, R> =
-  T extends Map<infer K, infer V> ?
-    (value: V, key: K, map: T) => R | void :
-  T extends Set<infer K> ?
-    (value: K, key: K, set: T) => R | void :
-  never;
-
-type Managed<T> = T & {
-  from?: T;
-
-  forEach<R>(
-    mapFunction: MapFunction<T, R>,
-    thisArg?: any
-  ): Exclude<R, undefined>[] | void;
-}
 
 function use <K = any> (initial: SetConstructor): Managed<Set<K>>;
 function use <K = any, V = any> (initial: MapConstructor): Managed<Map<K, V>>;

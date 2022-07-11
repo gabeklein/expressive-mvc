@@ -3,6 +3,22 @@ import { Subscriber } from '../subscriber';
 import { assign, create, defineProperty } from '../util';
 import { Instruction } from './apply';
 
+type MapFunction<T, R> =
+  T extends Map<infer K, infer V> ?
+    (value: V, key: K, map: T) => R | void :
+  T extends Set<infer K> ?
+    (value: K, key: K, set: T) => R | void :
+  never;
+
+type Managed<T> = Exclude<T, "forEach"> & {
+  from?: T;
+
+  forEach<R>(
+    mapFunction: MapFunction<T, R>,
+    thisArg?: any
+  ): Exclude<R, undefined>[] | void;
+}
+
 const ANY = Symbol("any");
 
 type Keyed<K = unknown> = Set<K> | Map<K, unknown>;
@@ -190,4 +206,4 @@ function createProxy(
   }
 }
 
-export { keyed };
+export { keyed, Managed };
