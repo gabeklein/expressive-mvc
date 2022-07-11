@@ -1,5 +1,5 @@
-export { act } from './instruction/act';
 export { apply } from './instruction/apply';
+export { act } from './instruction/act';
 export { get } from './instruction/get';
 export { ref } from './instruction/ref';
 export { put } from './instruction/put';
