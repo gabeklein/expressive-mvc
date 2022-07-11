@@ -1,4 +1,4 @@
-import { Controller, ensure, getUpdate, UPDATE } from './controller';
+import { CONTROL, Controller, ensure, getUpdate, UPDATE } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -17,7 +17,6 @@ export const Oops = issues({
     `Then called with undefined; update promise will never catch nor supports chaining.`
 });
 
-export const CONTROL = Symbol("CONTROL");
 export const WHY = Symbol("UPDATE");
 export const LOCAL = Symbol("LOCAL");
 export const STATE = Symbol("STATE");

@@ -1,5 +1,6 @@
 import { Model } from '../src';
-import { CONTROL, LOCAL, STATE, WHY } from '../src/model';
+import { CONTROL } from '../src/controller';
+import { LOCAL, STATE, WHY } from '../src/model';
 
 describe("isTypeof", () => {
   class Test extends Model {}

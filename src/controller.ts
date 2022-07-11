@@ -1,12 +1,13 @@
 import { PENDING } from './instruction/apply';
 import { flush } from './instruction/get';
-import { CONTROL, LOCAL, Model, Stateful } from './model';
+import { LOCAL, Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
 
 const UPDATE = new WeakMap<{}, readonly string[]>();
+const CONTROL = Symbol("CONTROL");
 
 function getUpdate<T extends {}>(subject: T){
   return UPDATE.get(subject) as readonly Model.Field<T>[];
@@ -186,5 +187,6 @@ export {
   ensure,
   Controller,
   getUpdate,
-  UPDATE
+  UPDATE,
+  CONTROL
 }

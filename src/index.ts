@@ -8,7 +8,8 @@ export { use } from './instruction/use';
 export { has } from './instruction/has';
 
 export { MVC as Model, MVC as default } from './react/mvc';
-export { CONTROL, LOCAL, STATE, WHY, Stateful } from './model';
+export { LOCAL, STATE, WHY, Stateful } from './model';
+export { CONTROL } from './controller';
 export { Consumer } from './react/consumer';
 export { Provider } from './react/provider';
 export { Global } from './react/global';
