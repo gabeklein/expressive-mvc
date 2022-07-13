@@ -1,6 +1,5 @@
 import { issues } from '../issues';
 import { mayRetry } from '../suspense';
-import { createValueEffect } from '../util';
 import { apply } from './apply';
 
 export const Oops = issues({
@@ -42,9 +41,6 @@ function put <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | 
 function put <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
 function put <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
 
-function put <T> (value: set.Factory<Promise<T>>, onUpdate: set.Callback<T>): T;
-function put <T, S> (value: set.Factory<Promise<T>, S>, onUpdate: set.Callback<T, S>): T;
-
  /**
   * Set property with a factory function.
   * 
@@ -63,33 +59,25 @@ function put <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
 function put <T>(factory: set.Factory<T>, required?: boolean): T;
 function put <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
 
-function put <T> (value: set.Factory<T>, onUpdate: set.Callback<T>): T;
-function put <T, S> (value: set.Factory<T, S>, onUpdate: set.Callback<T, S>): T;
-
 /**
  * Assign a property with result of a promise.
  */
 function put <T> (factory: Promise<T>, required: false): T | undefined;
 function put <T> (factory: Promise<T>, required?: boolean): T;
-function put <T> (value: Promise<T>, onUpdate: set.Callback<T>): T;
 
 /**
  * Assign a property.
  */
 function put <T> (factory: T, required: false): T | undefined;
 function put <T> (factory: T, required?: boolean): T;
-function put <T> (value: T, onUpdate: set.Callback<T>): T;
 
 function put(
   factory?: any,
-  argument?: set.Callback<any> | boolean): any {  
+  required = true): any {  
 
   return apply(
     function set(key){
       const { subject, state } = this;
-      const required =
-        argument === true ||
-        argument === undefined;
 
       let pending: Promise<any> | undefined;
       let error: any;
@@ -118,15 +106,6 @@ function put(
         return output;
       }
 
-      if(required)
-        try {
-          init();
-        }
-        catch(err){
-          Oops.Failed(subject, key).warn();
-          throw err;
-        }
-
       const suspend = () => {
         if(required === false)
           return undefined;
@@ -142,33 +121,36 @@ function put(
         throw pending;
       }
 
-      const get = () => {
-        if(pending)
-          return suspend();
-
-        if(error)
-          throw error;
-
-        if(state.has(key))
-          return state.get(key);
-
-        const output = init();
-
-        return pending
-          ? suspend()
-          : output;
-      }
-
-      const set = typeof argument == "function"
-        ? createValueEffect(argument)
-        : (value: any) => {
-          if(value === undefined && required)
-            throw Oops.NonOptional(subject, key);
-        };
+      if(required)
+        try {
+          init();
+        }
+        catch(err){
+          Oops.Failed(subject, key).warn();
+          throw err;
+        }
 
       return {
-        set,
-        get
+        set(value: any){
+          if(value === undefined && required)
+            throw Oops.NonOptional(subject, key);
+        },
+        get(){
+          if(pending)
+            return suspend();
+  
+          if(error)
+            throw error;
+  
+          if(state.has(key))
+            return state.get(key);
+  
+          const output = init();
+  
+          return pending
+            ? suspend()
+            : output;
+        }
       }
     }
   )
