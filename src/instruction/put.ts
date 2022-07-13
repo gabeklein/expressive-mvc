@@ -134,7 +134,7 @@ function put(
         const issue =
           Oops.NotReady(subject, key);
 
-        Object.assign(pending, {
+        Object.assign(pending!, {
           message: issue.message,
           stack: issue.stack
         });
