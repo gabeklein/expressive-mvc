@@ -1,4 +1,4 @@
-import { getUpdate, Controller, UPDATE } from './controller';
+import { getUpdate, Controller, UPDATE, LISTEN } from './controller';
 import { LOCAL, Stateful } from './model';
 import { create, defineProperty } from './util';
 
@@ -25,8 +25,19 @@ export class Subscriber <T extends Stateful = any> {
     const proxy = create(parent.subject);
     const using = new Map<any, boolean | (() => true | void)>();
 
-    defineProperty(proxy, LOCAL, { value: this });
+    const listen = this.add = (
+      key: any,
+      value?: boolean | Callback) => {
+  
+      if(value !== undefined)
+        using.set(key, value);
+      else if(!using.has(key))
+        using.set(key, true);
+    }
 
+    LISTEN.set(proxy, listen);
+    
+    defineProperty(proxy, LOCAL, { value: this });
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
@@ -76,13 +87,6 @@ export class Subscriber <T extends Stateful = any> {
     this.release = () => {
       this.dependant.forEach(x => x.release());
       release();
-    }
-
-    this.add = (key, value) => {
-      if(value !== undefined)
-        using.set(key, value);
-      else if(!using.has(key))
-        using.set(key, true);
     }
   }
 }

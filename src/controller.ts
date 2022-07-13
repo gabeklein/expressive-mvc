@@ -1,12 +1,15 @@
 import { PENDING } from './instruction/apply';
 import { flush } from './instruction/get';
-import { LOCAL, Model, Stateful } from './model';
+import { Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
 
+type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
+
 const UPDATE = new WeakMap<{}, readonly string[]>();
+const LISTEN = new WeakMap<{}, ListenToKey>();
 const CONTROL = Symbol("CONTROL");
 
 function getUpdate<T extends {}>(subject: T){
@@ -53,10 +56,10 @@ class Controller<T extends Stateful = any> {
       enumerable: false,
       set: this.ref(key as any),
       get(){
-        const local = this[LOCAL] as Subscriber;
+        const listen = LISTEN.get(this);
 
-        if(local)
-          local.add(key);
+        if(listen)
+          listen(key);
 
         return state.get(key);
       }
@@ -188,5 +191,6 @@ export {
   Controller,
   getUpdate,
   UPDATE,
+  LISTEN,
   CONTROL
 }

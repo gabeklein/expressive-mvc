@@ -1,4 +1,4 @@
-import { Controller, CONTROL, ensure } from '../controller';
+import { Controller, CONTROL, ensure, LISTEN } from '../controller';
 import { LOCAL, Stateful } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
@@ -114,10 +114,11 @@ function apply<T = any>(
         if(!state.has(key) && suspense)
           throw suspend(control, key);
   
+        const listen = LISTEN.get(this);
         const local = this[LOCAL];
   
-        if(local)
-          local.add(key);
+        if(listen)
+          listen(key);
   
         return onGet
           ? onGet(local)
