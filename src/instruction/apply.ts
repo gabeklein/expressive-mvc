@@ -132,7 +132,7 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-function getRecursive(key: string, from: Controller){
+export function getRecursive(key: string, from: Controller){
   const context = new WeakMap<Subscriber, Stateful | undefined>();
 
   return (local: Subscriber | undefined) => {

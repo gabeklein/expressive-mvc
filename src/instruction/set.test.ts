@@ -23,7 +23,7 @@ describe("empty", () => {
     instance.foobar = "foo!";
 
     // expect refresh caused by update
-    await promise.await();
+    await promise.pending();
 
     test.assertDidRender(true);
   })

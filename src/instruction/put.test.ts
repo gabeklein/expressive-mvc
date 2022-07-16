@@ -137,7 +137,7 @@ describe("memo", () => {
 describe("async", () => {
   it('will auto-suspend if assessed value is async', async () => {
     class Test extends Model {
-      value = put(promise.await);
+      value = put(promise.pending);
     }
 
     const test = mockSuspense();
@@ -153,7 +153,7 @@ describe("async", () => {
     test.assertDidSuspend(true);
 
     promise.resolve();
-    await didRender.await();
+    await didRender.pending();
 
     test.assertDidRender(true);
   })
@@ -162,7 +162,7 @@ describe("async", () => {
     const promise = mockAsync<string>();
 
     class Test extends Model {
-      value = put(promise.await());
+      value = put(promise.pending());
     }
 
     const test = mockSuspense();
@@ -177,7 +177,7 @@ describe("async", () => {
     test.assertDidSuspend(true);
 
     promise.resolve("hello");
-    await didRender.await();
+    await didRender.pending();
 
     test.assertDidRender(true);
   })
@@ -186,7 +186,7 @@ describe("async", () => {
     const promise = mockAsync();
 
     class Test extends Model {
-      value = put(promise.await);
+      value = put(promise.pending);
     }
 
     const instance = Test.create();
@@ -201,7 +201,7 @@ describe("async", () => {
 
     class Test extends Model {
       value = put(async () => {
-        await promise.await();
+        await promise.pending();
         throw "oh no";
       })
     }
@@ -226,7 +226,7 @@ describe("async", () => {
 
     promise.resolve();
 
-    const error = await didThrow.await();
+    const error = await didThrow.pending();
 
     expect(error).toBe("oh no");
   })
@@ -250,8 +250,8 @@ describe("nested suspense", () => {
   const name = mockAsync<string>();
 
   class Mock extends Model {
-    greet = put(greet.await);
-    name = put(name.await);
+    greet = put(greet.pending);
+    name = put(name.pending);
   }
 
   it("will suspend a factory", async () => {

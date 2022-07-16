@@ -410,7 +410,7 @@ describe("suspense", () => {
 
     instance.source = "foobar!";
 
-    await promise.await();
+    await promise.pending();
 
     test.assertDidRender(true);
   })
@@ -438,7 +438,7 @@ describe("suspense", () => {
 
     instance.source = "foobar!";
 
-    await promise.await();
+    await promise.pending();
 
     test.assertDidRender(true);
   })
@@ -505,7 +505,7 @@ describe("suspense", () => {
     instance.source = "foobar!";
 
     // we do expect a render this time
-    await promise.await();
+    await promise.pending();
 
     test.assertDidRender(true);
   })
@@ -515,7 +515,7 @@ describe("suspense", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      value = put(promise.await, false);
+      value = put(promise.pending, false);
     }
 
     const test = Test.create();

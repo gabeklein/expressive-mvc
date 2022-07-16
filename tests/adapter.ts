@@ -52,7 +52,7 @@ export function mockAsync<T = void>(){
   }
 
   return {
-    await: event,
+    pending: event,
     resolve
   }
 }
@@ -87,7 +87,7 @@ export function mockSuspense(){
 
   return {
     waitForNextRender(){
-      return promise.await();
+      return promise.pending();
     },
     renderHook(fn: () => void){
       renderHook = fn;

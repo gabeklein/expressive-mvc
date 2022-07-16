@@ -246,7 +246,7 @@ describe("tap method async", () => {
     const control = Test.create();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return control.tap(async () => promise.await());
+      return control.tap(async () => promise.pending());
     });
 
     expect(result.current).toBeUndefined();
@@ -264,7 +264,7 @@ describe("tap method async", () => {
     const { result, waitForNextUpdate } = renderHook(() => {
       return control.tap(async $ => {
         void $.foo;
-        return promise.await();
+        return promise.pending();
       });
     });
 
@@ -296,7 +296,7 @@ describe("tap method suspense", () => {
     test.assertDidSuspend(true);
 
     instance.value = "foo!";
-    await promise.await();
+    await promise.pending();
 
     test.assertDidRender(true);
   })
@@ -325,7 +325,7 @@ describe("tap method suspense", () => {
     expect(didCompute).toBeCalledTimes(1);
 
     instance.value = "foobar";
-    await promise.await();
+    await promise.pending();
 
     // 1st - render prior to bailing
     // 2nd - successful render
@@ -344,7 +344,7 @@ describe("tap method suspense", () => {
 
     test.renderHook(() => {
       instance.tap(async () => {
-        await promise.await();
+        await promise.pending();
       }, true);
     })
 
