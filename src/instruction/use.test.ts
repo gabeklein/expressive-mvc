@@ -141,6 +141,34 @@ it('will create from factory', async () => {
   expect(state.child.parent).toBe(state);
 })
 
+it('will cancel create on thrown error', () => {
+  class Parent extends Model {
+    child = use(() => {
+      throw new Error("foobar");
+    });
+  }
+
+  const test = () => void Parent.create();
+
+  expect(test).toThrowError();
+})
+
+it('will throw rejection on access', async () => {
+  class Parent extends Model {
+    child = use(async () => {
+      throw new Error("foobar");
+    });
+  }
+
+  const parent = Parent.create();
+
+  await parent.update();
+
+  const test = () => void parent.child;
+
+  expect(test).toThrowError();
+})
+
 it('will create from async factory', async () => {
   class Parent extends Model {
     child = use(async () => new Child());
