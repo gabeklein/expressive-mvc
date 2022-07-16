@@ -58,7 +58,8 @@ function use<T extends Class>(
       const { state, subject } = this;
 
       if(typeof input === "function")
-        input = "prototype" in input ? new input() : input();
+        input = "prototype" in input && /^[A-Z]/.test(input.name)
+          ? new input() : input;
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);
