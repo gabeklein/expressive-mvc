@@ -1,6 +1,7 @@
-import { Model, use } from '..';
+import { Model } from '..';
 import { subscribeTo } from '../../tests/adapter';
-import { Oops } from './use';
+import { Oops, use } from './use';
+import { set } from './set';
 
 class Child extends Model {
   value = "foo"
@@ -139,6 +140,73 @@ it('will create from factory', async () => {
   expect(state.child).toBeInstanceOf(Child);
   expect(state.child.parent).toBe(state);
 })
+
+it('will create from async factory', async () => {
+  class Parent extends Model {
+    child = use(async () => new Child());
+  }
+
+  const parent = Parent.create();
+  await parent.update();
+
+  expect(parent.child).toBeInstanceOf(Child);
+  
+  parent.child.value = "foobar";
+  await parent.child.update(true);
+});
+
+it('will suspend if required', async () => {
+  class Parent extends Model {
+    child = use(async () => new Child());
+  }
+
+  const parent = Parent.create();
+  const mock = jest.fn((it: Parent) => {
+    void it.child;
+  });
+
+  parent.effect(mock);
+
+  await parent.update();
+  expect(parent.child).toBeInstanceOf(Child);
+  
+  parent.child.value = "foobar";
+
+  await parent.child.update(true);
+});
+
+it('will return undefined if not required', async () => {
+  class Parent extends Model {
+    child = use(async () => new Child(), false);
+  }
+
+  const parent = Parent.create();
+
+  expect(parent.child).toBeUndefined();
+
+  await parent.update();
+  expect(parent.child).toBeInstanceOf(Child);
+});
+
+it('will wait for dependancies on suspense', async () => {
+  const createChild = jest.fn((it: Parent) => {
+    void it.value;
+
+    return new Child();
+  });
+
+  class Parent extends Model {
+    value = set<string>();
+    child = use(createChild);
+  }
+
+  const parent = Parent.create();
+
+  parent.value = "foo";
+
+  await parent.update();
+  expect(createChild).toBeCalledTimes(2);
+});
 
 it('will accept undefined from factory', async () => {
   class Parent extends Model {

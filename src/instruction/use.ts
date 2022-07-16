@@ -1,8 +1,10 @@
 import { ensure } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
+import { Subscriber } from '../subscriber';
+import { mayRetry } from '../suspense';
 import { Class, InstanceOf } from '../types';
-import { apply } from './apply';
+import { apply, getRecursive } from './apply';
 import { keyed, Managed } from './use.keyed';
 
 export const Parent = new WeakMap<{}, {}>();
@@ -10,6 +12,9 @@ export const Parent = new WeakMap<{}, {}>();
 export const Oops = issues({
   BadArgument: (type) =>
     `Instruction \`use\` cannot accept argument type of ${type}.`,
+
+  NotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`
 })
 
 function use <K = any> (initial: SetConstructor): Managed<Set<K>>;
@@ -28,6 +33,8 @@ function use <T extends Set<any> | Map<any, any>> (from: () => T): Managed<T>;
  * Create a placeholder for specified Model type.
  */
 function use <T extends Model> (): T | undefined;
+function use <T extends Model> (from: () => T, required: false): T | undefined;
+function use <T extends Model> (from: () => T, required: boolean): T;
 
  /**
   * Create a new child instance of model.
@@ -37,6 +44,9 @@ function use <T extends Class> (Type: T, callback?: (i: InstanceOf<T>) => void):
  /**
   * Create a managed child from factory function.
   */
+function use <T extends {}> (from: () => Promise<T>, required: false): T | undefined;
+function use <T extends {}> (from: () => Promise<T>, required: boolean): T;
+function use <T extends {}> (from: () => Promise<T>, callback?: (i: T) => void): T;
 function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
 
  /**
@@ -51,11 +61,17 @@ function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
 
 function use<T extends Class>(
   input?: any,
-  argument?: (i: InstanceOf<T> | undefined) => void){
+  argument?: boolean | ((i: InstanceOf<T> | undefined) => void)){
 
   return apply(
-    function use(key): any {
+    function use(key){
       const { state, subject } = this;
+      const required = argument !== false;
+
+      let pending: Promise<any> | undefined;
+      let error: any;
+      let get: (local: Subscriber | undefined) => any =
+        (_local: Subscriber | undefined) => state.get(key);
 
       if(typeof input === "function")
         input = "prototype" in input && /^[A-Z]/.test(input.name)
@@ -67,10 +83,11 @@ function use<T extends Class>(
       if(input instanceof Map || input instanceof Set)
         return keyed(this, key, input);
 
-      function onUpdate(next: {} | undefined){
+      const onUpdate = (next: {} | undefined) => {
         state.set(key, next);
 
         if(next){
+          get = getRecursive(key, this);
           Parent.set(next, subject);
           ensure(next);
         }
@@ -81,12 +98,64 @@ function use<T extends Class>(
         return true;
       }
 
-      if(input)
-        onUpdate(input);
+      const suspend = () => {
+        if(required === false)
+          return;
+
+        const issue =
+          Oops.NotReady(subject, key);
+
+        Object.assign(pending!, {
+          message: issue.message,
+          stack: issue.stack
+        });
+
+        throw pending;
+      }
+
+      const initialize = () => {
+        const output = typeof input == "function" ?
+          mayRetry(() => input.call(subject, subject)) :
+          input;
+
+        if(output instanceof Promise){
+          pending = output
+            .catch(err => error = err)
+            .then(val => {
+              onUpdate(val);
+              return val;
+            })
+            .finally(() => {
+              pending = undefined;
+              this.update(key);
+            })
+
+          return;
+        }
+
+        onUpdate(output);
+      }
+
+      if(input !== undefined && required)
+        initialize();
 
       return {
         set: onUpdate,
-        recursive: true
+        get(local){
+          if(pending)
+            return suspend();
+  
+          if(error)
+            throw error;
+
+          if(!state.has(key))
+            initialize();
+  
+          if(pending)
+            return suspend();
+  
+          return get(local);
+        }
       };
     }
   )
