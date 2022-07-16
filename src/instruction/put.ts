@@ -108,7 +108,7 @@ function put(
 
       const suspend = () => {
         if(required === false)
-          return undefined;
+          return;
 
         const issue =
           Oops.NotReady(subject, key);
