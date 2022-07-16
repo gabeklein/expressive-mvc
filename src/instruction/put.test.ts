@@ -1,6 +1,6 @@
-import { Model, put } from '..';
+import { Model } from '..';
 import { ensure, mockAsync, mockSuspense, mockTimeout } from '../../tests/adapter';
-import { Oops as Assign } from './put';
+import { Oops as Assign, put } from './put';
 
 describe("required", () => {
   it("will compute pending value immediately", () => {
