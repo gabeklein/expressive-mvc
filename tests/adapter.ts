@@ -110,20 +110,3 @@ export function mockSuspense(){
     }
   }
 }
-
-export function mockTimeout(ms = 0){
-  return new Promise(res => setTimeout(res, ms));
-}
-
-export async function ensure<T>(suspense: () => T){
-  try {
-    suspense();
-    throw new Error("Expected suspense.");
-  }
-  catch(err){
-    if(err instanceof Promise)
-      return err as Promise<T>;
-    else
-      throw err;
-  }
-}

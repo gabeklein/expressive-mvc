@@ -1,5 +1,5 @@
 import { Model } from '..';
-import { ensure, mockAsync, mockSuspense, mockTimeout } from '../../tests/adapter';
+import { mockAsync, mockSuspense } from '../../tests/adapter';
 import { Oops as Assign, put } from './put';
 
 describe("required", () => {
@@ -255,49 +255,49 @@ describe("nested suspense", () => {
   }
 
   it("will suspend a factory", async () => {
-    const didEvaluate = jest.fn();
+    const didEvaluate = jest.fn(
+      (_key: string, $: Test) => $.greet + " " + $.name
+    );
 
     class Test extends Mock {
-      value = put(() => {
-        didEvaluate();
-        return this.greet + " " + this.name;
-      });
+      value = put(didEvaluate);
     }
 
     const test = Test.create();
-    const pending = ensure(() => test.value);
+
+    test.effect($ => void $.value);
 
     greet.resolve("Hello");
-    await mockTimeout();
+    await test.update();
+
     name.resolve("World");
+    await test.update();
 
-    const value = await pending;
-
-    expect(value).toBe("Hello World");
     expect(didEvaluate).toBeCalledTimes(3);
+    expect(didEvaluate).toHaveReturnedWith("Hello World");
   })
 
   it("will suspend async factory", async () => {
-    const didEvaluate = jest.fn();
+    const didEvaluate = jest.fn(
+      async (_key: string, $: Test) => $.greet + " " + $.name
+    );
 
     class Test extends Mock {
-      value = put(async () => {
-        didEvaluate();
-        return this.greet + " " + this.name;
-      });
+      value = put(didEvaluate);
     }
 
     const test = Test.create();
-    const pending = ensure(() => test.value);
+
+    test.effect($ => void $.value);
 
     greet.resolve("Hello");
-    await mockTimeout();
+    await test.update();
+
     name.resolve("World");
+    await test.update();
 
-    const value = await pending;
-
-    expect(value).toBe("Hello World");
     expect(didEvaluate).toBeCalledTimes(3);
+    expect(test.value).toBe("Hello World");
   })
 
   it("will not suspend if already resolved", async () => {
@@ -305,15 +305,13 @@ describe("nested suspense", () => {
       greet = put(async () => "Hello");
       name = put(async () => "World");
 
-      value = put(() => {
-        return this.greet + " " + this.name;
-      });
+      value = put(() => this.greet + " " + this.name);
     }
 
     const test = Test.create();
 
     await test.once("value");
 
-    expect(test.value).toBe("Hello World");
+    expect(test.value).toBe("Hello World");    
   })
 })
