@@ -136,11 +136,11 @@ function put(
             throw Oops.NonOptional(subject, key);
         },
         get(){
-          if(pending)
-            return suspend();
-  
           if(error)
             throw error;
+
+          if(pending)
+            return suspend();
   
           if(state.has(key))
             return state.get(key);
