@@ -74,7 +74,7 @@ function use<T extends Class>(
         (_local: Subscriber | undefined) => state.get(key);
 
       if(typeof input === "function")
-        input = "prototype" in input && /^[A-Z]/.test(input.name)
+        input = /^[A-Z]/.test(input.name)
           ? new input() : input;
 
       else if(input && typeof input !== "object")

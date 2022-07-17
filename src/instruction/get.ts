@@ -71,7 +71,7 @@ function get<R, T>(
         getSource = () => ensure(arg0);
 
       // A class is not supported.
-      else if(arg0.prototype || /^[A-Z]/.test(arg0.name))
+      else if(/^[A-Z]/.test(arg0.name))
         throw Oops.BadSource(subject, key, arg0);
 
       else {
