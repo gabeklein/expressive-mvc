@@ -54,26 +54,26 @@ function get<R, T>(
   return apply(
     function get(key){
       const { subject, state } = this;
-      const required = arg2 === true || arg1 === true;
-
-      let getSource = () => this;
-
-      if(typeof arg1 == "boolean")
-        arg1 = undefined;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
+      const required = arg2 === true || arg1 === true;
+
+      if(typeof arg1 == "boolean")
+        arg1 = undefined;
+
+      let getSource = () => this;
+
       // replace source controller in-case it is different
       if(typeof arg0 == "object")
         getSource = () => ensure(arg0);
 
-      // Regular function is too ambiguous so not allowed.
+      // A class is not supported.
       else if(arg0.prototype || /^[A-Z]/.test(arg0.name))
         throw Oops.BadSource(subject, key, arg0);
 
-      // specifically an arrow function (getter factory)
       else {
         const result = arg0.call(subject, key);
 
