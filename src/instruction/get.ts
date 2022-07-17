@@ -52,7 +52,7 @@ function get <R, T> (compute: (property: string) => (this: T, state: T) => R, su
 function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
 
 function get<R, T>(
-  source: get.Factory<T> | Stateful,
+  arg0: get.Factory<T> | Stateful,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
@@ -61,30 +61,32 @@ function get<R, T>(
       const { subject, state } = this;
       const required = arg2 === true || arg1 === true;
 
-      let getSource: () => Controller;
+      let getSource = () => this;
 
       if(typeof arg1 == "boolean")
         arg1 = undefined;
 
       // Easy mistake, using a peer, will always be unresolved.
-      if(typeof source == "symbol")
+      if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
       // replace source controller in-case it is different
-      if(typeof source == "object")
-        getSource = () => ensure(source);
-
-      // specifically an arrow function (getter factory)
-      else if(!source.prototype){
-        arg1 = source.call(subject, key);
-        getSource = () => this;
-      }
+      if(typeof arg0 == "object")
+        getSource = () => ensure(arg0);
 
       // Regular function is too ambiguous so not allowed.
-      else
-        throw Oops.BadSource(subject, key, source);
+      else if(arg0.prototype || /^[A-Z]/.test(arg0.name))
+        throw Oops.BadSource(subject, key, arg0);
 
-      const setter = arg1;
+      // specifically an arrow function (getter factory)
+      else {
+        const result = arg0.call(subject, key);
+
+        if(typeof result == "function")
+          arg1 = result;  
+      }
+
+      const setter = arg1!;
       const info: GetterInfo = { key, parent: this };
 
       let sub: Subscriber;
@@ -95,7 +97,7 @@ function get<R, T>(
 
       const compute = (initial: boolean) => {
         try {
-          return setter!.call(sub.proxy, sub.proxy);
+          return setter.call(sub.proxy, sub.proxy);
         }
         catch(err){
           Oops.Failed(subject, key, initial).warn();
