@@ -17,12 +17,7 @@ export const Oops = issues({
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
-type GetterInfo = {
-  key: string;
-  parent: Controller;
-}
-
-const INFO = new WeakMap<Function, GetterInfo>();
+const INFO = new WeakMap<Function, string>();
 const KEYS = new WeakMap<Controller, Callback[]>();
 const ORDER = new WeakMap<Controller, Callback[]>();
 
@@ -87,7 +82,6 @@ function get<R, T>(
       }
 
       const setter = arg1!;
-      const info: GetterInfo = { key, parent: this };
 
       let sub: Subscriber;
       let order = ORDER.get(this)!;
@@ -155,7 +149,7 @@ function get<R, T>(
       }
 
       state.set(key, undefined);
-      INFO.set(refresh, info);
+      INFO.set(refresh, key);
 
       return () => {
         const value = sub ? state.get(key) : create();
@@ -182,7 +176,7 @@ export function flush(control: Controller){
       .sort((a, b) => list.indexOf(b) - list.indexOf(a))
       .pop()!
 
-    const { key } = INFO.get(compute)!;
+    const key = INFO.get(compute)!;
 
     if(!control.frame.has(key))
       compute();
