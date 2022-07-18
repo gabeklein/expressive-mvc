@@ -1,10 +1,10 @@
-import { Controller, ensure } from '../controller';
+import { ensure } from '../controller';
 import { issues } from '../issues';
 import { Stateful } from '../model';
-import { Subscriber } from '../subscriber';
-import { mayRetry, suspend } from '../suspense';
-import { Callback } from '../types';
+import { mayRetry } from '../suspense';
 import { apply } from './apply';
+import { computeMode } from './get.compute';
+import { factoryMode } from './get.factory';
 
 export const Oops = issues({
   BadSource: (model, property, got) =>
@@ -13,29 +13,22 @@ export const Oops = issues({
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
-  Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
-
-  FactoryFailed: (model, key) =>
+  ComputeFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`,
 
   NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
 
-  ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`
+  FactoryFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`,
+
+  Failed: (parent, property, initial) =>
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
-const INFO = new WeakMap<Function, string>();
-const KEYS = new WeakMap<Controller, Callback[]>();
-const ORDER = new WeakMap<Controller, Callback[]>();
-
 declare namespace get {
-  type Function<T, O=any> = (this: O, on: O) => T;
-  type Factory<T, O=any> = (key: string) => Function<T, O>;
-  type Getter = (controller: Controller, key: string) => any;
-
-  type Factory2<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
+  type Function<T, S = any> = (this: S, on: S) => T;
+  type Factory<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
 }
 
 /**
@@ -54,57 +47,56 @@ function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolea
  * @param compute - Factory function to generate a getter to subscribe dependancies.
  * @param suspend - Value will throw suspense when evaulating to undefined.
  */
-function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
-function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
+function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
+function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend?: boolean): R;
 
 /**
-  * Set property with an async function.
-  * 
-  * Property cannot be accessed until factory resolves, yeilding a result.
-  * If accessed while processing, React Suspense will be thrown.
-  * 
-  * - `required: true` (default) -
-  *      Run factory immediately upon creation of model instance.
-  * - `required: false` -
-  *      Run factory only if/when accessed.
-  *      Value will always throw suspense at least once - use with caution.
-  * 
-  * @param factory - Callback run to derrive property value.
-  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
-  */
-function get <T> (factory: get.Factory2<Promise<T>>, required: false): T | undefined;
-function get <T, S> (factory: get.Factory2<Promise<T>, S>, required: false): T | undefined;
+ * Set property with an async function.
+ *
+ * Property cannot be accessed until factory resolves, yeilding a result.
+ * If accessed while processing, React Suspense will be thrown.
+ *
+ * - `required: true` (default) -
+ *      Run factory immediately upon creation of model instance.
+ * - `required: false` -
+ *      Run factory only if/when accessed.
+ *      Value will always throw suspense at least once - use with caution.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+ */
+function get <T> (factory: get.Factory<Promise<T>>, required: false): T | undefined;
+function get <T, S> (factory: get.Factory<Promise<T>, S>, required: false): T | undefined;
 
-function get <T> (factory: get.Factory2<Promise<T>>, required?: boolean): T;
-function get <T, S> (factory: get.Factory2<Promise<T>, S>, required?: boolean): T;
+function get <T> (factory: get.Factory<Promise<T>>, required?: boolean): T;
+function get <T, S> (factory: get.Factory<Promise<T>, S>, required?: boolean): T;
 
 /**
-  * Set property with a factory function.
-  * 
-  * - `required: true` (default) -
-  *      Run factory immediately upon creation of model instance.
-  * - `required: false` -
-  *      Run factory only if/when accessed.
-  *      Value will always throw suspense at least once - use with caution.
-  * 
-  * @param factory - Callback run to derrive property value.
-  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
-  */
-function get <T>(factory: get.Factory2<T>, required: false): T | undefined;
-function get <T, S>(factory: get.Factory2<T, S>, required: false): T | undefined;
+ * Set property with a factory function.
+ *
+ * - `required: true` (default) -
+ *      Run factory immediately upon creation of model instance.
+ * - `required: false` -
+ *      Run factory only if/when accessed.
+ *      Value will always throw suspense at least once - use with caution.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+ */
+function get <T>(factory: get.Factory<T>, required: false): T | undefined;
+function get <T, S>(factory: get.Factory<T, S>, required: false): T | undefined;
 
-function get <T>(factory: get.Factory2<T>, required?: boolean): T;
-function get <T, S>(factory: get.Factory2<T, S>, required?: boolean): T;
+function get <T>(factory: get.Factory<T>, required?: boolean): T;
+function get <T, S>(factory: get.Factory<T, S>, required?: boolean): T;
 
 /**
  * Assign a property with result of a promise.
  */
- function get <T> (factory: Promise<T>, required: false): T | undefined;
- function get <T> (factory: Promise<T>, required?: boolean): T;
+function get <T> (factory: Promise<T>, required: false): T | undefined;
+function get <T> (factory: Promise<T>, required?: boolean): T;
  
-
 function get<R, T>(
-  arg0: get.Factory<T> | get.Factory2<any> | Promise<T> | Stateful,
+  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R> | Stateful,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
@@ -171,169 +163,6 @@ function get<R, T>(
       }
     }
   )
-}
-
-function factoryMode<T>(
-  self: Controller,
-  output: Promise<T> | T,
-  key: string,
-  required: boolean
-){
-  const { subject, state } = self;
-
-  let pending: Promise<any> | undefined;
-  let error: any;
-
-  if(output instanceof Promise){
-    state.set(key, undefined);
-
-    pending = output
-      .catch(err => error = err)
-      .then(val => {
-        state.set(key, val);
-        return val;
-      })
-      .finally(() => {
-        pending = undefined;
-        self.update(key);
-      })
-  }
-
-  state.set(key, output);
-
-  const suspend = () => {
-    if(required === false)
-      return undefined;
-
-    const issue =
-      Oops.NotReady(subject, key);
-
-    Object.assign(pending!, {
-      message: issue.message,
-      stack: issue.stack
-    });
-
-    throw pending;
-  }
-  
-  return (): T | undefined => {
-    if(error)
-      throw error;
-
-    if(pending)
-      return suspend();
-
-    if(state.has(key))
-      return state.get(key);
-  }
-}
-
-function computeMode(
-  self: Controller,
-  source: Controller,
-  setter: get.Function<any, any>,
-  key: string,
-  required: boolean
-){
-  const { subject, state } = self;
-
-  let sub: Subscriber;
-  let order = ORDER.get(self)!;
-
-  if(!order)
-    ORDER.set(self, order = []);
-
-  const compute = (initial: boolean) => {
-    try {
-      return setter.call(sub.proxy, sub.proxy);
-    }
-    catch(err){
-      Oops.Failed(subject, key, initial).warn();
-      throw err;
-    }
-  }
-
-  const refresh = () => {
-    let value;
-
-    try {
-      value = compute(false);
-    }
-    catch(e){
-      console.error(e);
-    }
-    finally {
-      if(state.get(key) !== value){
-        state.set(key, value);
-        self.update(key);
-        return value;
-      }
-    }
-  }
-
-  const update = (_key: any, source: Controller) => {
-    if(source !== self){
-      refresh();
-      return;
-    }
-
-    let pending = KEYS.get(self);
-
-    if(!pending)
-      KEYS.set(self, pending = []);
-
-    pending.push(refresh);
-  }
-
-  const create = () => {
-    sub = source.subscribe(update);
-
-    try {
-      const value = compute(true);
-      state.set(key, value);
-      return value;
-    }
-    catch(e){
-      throw e;
-    }
-    finally {
-      sub.commit();
-      order.push(refresh);
-    }
-  }
-
-  INFO.set(refresh, key);
-
-  return () => {
-    const value = sub ? state.get(key) : create();
-
-    if(value === undefined && required)
-      throw suspend(self, key);
-
-    return value;
-  }
-}
-
-export function flush(control: Controller){
-  const pending = KEYS.get(control);
-
-  if(!pending)
-    return;
-
-  const list = ORDER.get(control)!;
-
-  while(pending.length){
-    const compute = pending
-      .sort((a, b) => list.indexOf(b) - list.indexOf(a))
-      .pop()!
-
-    const key = INFO.get(compute)!;
-
-    if(!control.frame.has(key))
-      compute();
-  }
-
-  KEYS.delete(control);
 }
 
 export { get }

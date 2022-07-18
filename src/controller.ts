@@ -1,5 +1,5 @@
 import { PENDING } from './instruction/apply';
-import { flush } from './instruction/get';
+import { flush } from './instruction/get.compute';
 import { Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
