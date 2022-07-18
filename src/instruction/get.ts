@@ -2,7 +2,7 @@ import { Controller, ensure } from '../controller';
 import { issues } from '../issues';
 import { Stateful } from '../model';
 import { Subscriber } from '../subscriber';
-import { suspend } from '../suspense';
+import { mayRetry, suspend } from '../suspense';
 import { Callback } from '../types';
 import { apply } from './apply';
 
@@ -14,7 +14,16 @@ export const Oops = issues({
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
   Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
+
+  FactoryFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`,
+
+  NotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`,
+
+  ComputeFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`
 });
 
 const INFO = new WeakMap<Function, string>();
@@ -25,6 +34,8 @@ declare namespace get {
   type Function<T, O=any> = (this: O, on: O) => T;
   type Factory<T, O=any> = (key: string) => Function<T, O>;
   type Getter = (controller: Controller, key: string) => any;
+
+  type Factory2<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
 }
 
 /**
@@ -46,121 +57,261 @@ function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolea
 function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
 function get <R, T> (compute: (property: string) => (this: T, state: T) => R, suspend?: boolean): R;
 
+/**
+  * Set property with an async function.
+  * 
+  * Property cannot be accessed until factory resolves, yeilding a result.
+  * If accessed while processing, React Suspense will be thrown.
+  * 
+  * - `required: true` (default) -
+  *      Run factory immediately upon creation of model instance.
+  * - `required: false` -
+  *      Run factory only if/when accessed.
+  *      Value will always throw suspense at least once - use with caution.
+  * 
+  * @param factory - Callback run to derrive property value.
+  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+  */
+function get <T> (factory: get.Factory2<Promise<T>>, required: false): T | undefined;
+function get <T, S> (factory: get.Factory2<Promise<T>, S>, required: false): T | undefined;
+
+function get <T> (factory: get.Factory2<Promise<T>>, required?: boolean): T;
+function get <T, S> (factory: get.Factory2<Promise<T>, S>, required?: boolean): T;
+
+/**
+  * Set property with a factory function.
+  * 
+  * - `required: true` (default) -
+  *      Run factory immediately upon creation of model instance.
+  * - `required: false` -
+  *      Run factory only if/when accessed.
+  *      Value will always throw suspense at least once - use with caution.
+  * 
+  * @param factory - Callback run to derrive property value.
+  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+  */
+function get <T>(factory: get.Factory2<T>, required: false): T | undefined;
+function get <T, S>(factory: get.Factory2<T, S>, required: false): T | undefined;
+
+function get <T>(factory: get.Factory2<T>, required?: boolean): T;
+function get <T, S>(factory: get.Factory2<T, S>, required?: boolean): T;
+
+/**
+ * Assign a property with result of a promise.
+ */
+ function get <T> (factory: Promise<T>, required: false): T | undefined;
+ function get <T> (factory: Promise<T>, required?: boolean): T;
+ 
+
 function get<R, T>(
-  arg0: get.Factory<T> | Stateful,
+  arg0: get.Factory<T> | get.Factory2<any> | Promise<T> | Stateful,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
   return apply(
     function get(key){
-      const { subject, state } = this;
+      const { subject } = this;
+      const computeRequired = arg1 === true || arg2 === true;
+      const factoryRequired = arg1 !== false && arg2 !== false;
+
+      let getter: () => any;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      const required = arg2 === true || arg1 === true;
-
-      if(typeof arg1 == "boolean")
-        arg1 = undefined;
-
-      let getSource = () => this;
-
-      // replace source controller in-case it is different
-      if(typeof arg0 == "object")
-        getSource = () => ensure(arg0);
-
-      // A class is not supported.
-      else if(/^[A-Z]/.test(arg0.name))
+      if(typeof arg0 == "function" && /^[A-Z]/.test(arg0.name))
         throw Oops.BadSource(subject, key, arg0);
 
-      else {
-        const result = arg0.call(subject, key);
+      this.state.set(key, undefined);
 
-        if(typeof result == "function")
-          arg1 = result;  
-      }
-
-      const setter = arg1!;
-
-      let sub: Subscriber;
-      let order = ORDER.get(this)!;
-
-      if(!order)
-        ORDER.set(this, order = []);
-
-      const compute = (initial: boolean) => {
-        try {
-          return setter.call(sub.proxy, sub.proxy);
-        }
-        catch(err){
-          Oops.Failed(subject, key, initial).warn();
-          throw err;
-        }
-      }
-
-      const refresh = () => {
-        let value;
-
-        try {
-          value = compute(false);
-        }
-        catch(e){
-          console.error(e);
-        }
-        finally {
-          if(state.get(key) !== value){
-            state.set(key, value);
-            this.update(key);
-            return value;
+      const init = (): any => {
+        let source = this;
+        let setter: get.Function<T, any>;
+ 
+        if(typeof arg0 == "function"){
+          const result = mayRetry(() => arg0.call(subject, key, subject));
+  
+          if(typeof result == "function")
+            setter = result;
+          else {
+            getter = factoryMode(this, result, key, factoryRequired);
+            return;
           }
         }
-      }
-
-      const update = (_key: any, source: Controller) => {
-        if(source !== this){
-          refresh();
+        else if(arg0 instanceof Promise){
+          getter = factoryMode(this, arg0, key, factoryRequired);
           return;
         }
+        else if(typeof arg1 == "function"){
+          // replace source controller in-case it is different
+          source = ensure(arg0);
+          setter = arg1;
+        }
+        else
+          throw new Error(`Factory argument cannot be ${arg1}`);
 
-        let pending = KEYS.get(this);
-
-        if(!pending)
-          KEYS.set(this, pending = []);
-
-        pending.push(refresh);
+        getter = computeMode(this, source, setter, key, computeRequired);
       }
 
-      const create = () => {
-        sub = getSource().subscribe(update);
-
+      if(typeof arg0 == "function" && factoryRequired)
         try {
-          const value = compute(true);
-          state.set(key, value);
-          return value;
+          init();
         }
-        catch(e){
-          throw e;
+        catch(err){
+          Oops.ComputeFailed(subject, key).warn();
+          throw err;
         }
-        finally {
-          sub.commit();
-          order.push(refresh);
-        }
-      }
-
-      state.set(key, undefined);
-      INFO.set(refresh, key);
 
       return () => {
-        const value = sub ? state.get(key) : create();
+        if(!getter)
+          init();
 
-        if(value === undefined && required)
-          throw suspend(this, key);
-
-        return value;
+        return getter();
       }
     }
   )
+}
+
+function factoryMode<T>(
+  self: Controller,
+  output: Promise<T> | T,
+  key: string,
+  required: boolean
+){
+  const { subject, state } = self;
+
+  let pending: Promise<any> | undefined;
+  let error: any;
+
+  if(output instanceof Promise){
+    state.set(key, undefined);
+
+    pending = output
+      .catch(err => error = err)
+      .then(val => {
+        state.set(key, val);
+        return val;
+      })
+      .finally(() => {
+        pending = undefined;
+        self.update(key);
+      })
+  }
+
+  state.set(key, output);
+
+  const suspend = () => {
+    if(required === false)
+      return undefined;
+
+    const issue =
+      Oops.NotReady(subject, key);
+
+    Object.assign(pending!, {
+      message: issue.message,
+      stack: issue.stack
+    });
+
+    throw pending;
+  }
+  
+  return (): T | undefined => {
+    if(error)
+      throw error;
+
+    if(pending)
+      return suspend();
+
+    if(state.has(key))
+      return state.get(key);
+  }
+}
+
+function computeMode(
+  self: Controller,
+  source: Controller,
+  setter: get.Function<any, any>,
+  key: string,
+  required: boolean
+){
+  const { subject, state } = self;
+
+  let sub: Subscriber;
+  let order = ORDER.get(self)!;
+
+  if(!order)
+    ORDER.set(self, order = []);
+
+  const compute = (initial: boolean) => {
+    try {
+      return setter.call(sub.proxy, sub.proxy);
+    }
+    catch(err){
+      Oops.Failed(subject, key, initial).warn();
+      throw err;
+    }
+  }
+
+  const refresh = () => {
+    let value;
+
+    try {
+      value = compute(false);
+    }
+    catch(e){
+      console.error(e);
+    }
+    finally {
+      if(state.get(key) !== value){
+        state.set(key, value);
+        self.update(key);
+        return value;
+      }
+    }
+  }
+
+  const update = (_key: any, source: Controller) => {
+    if(source !== self){
+      refresh();
+      return;
+    }
+
+    let pending = KEYS.get(self);
+
+    if(!pending)
+      KEYS.set(self, pending = []);
+
+    pending.push(refresh);
+  }
+
+  const create = () => {
+    sub = source.subscribe(update);
+
+    try {
+      const value = compute(true);
+      state.set(key, value);
+      return value;
+    }
+    catch(e){
+      throw e;
+    }
+    finally {
+      sub.commit();
+      order.push(refresh);
+    }
+  }
+
+  INFO.set(refresh, key);
+
+  return () => {
+    const value = sub ? state.get(key) : create();
+
+    if(value === undefined && required)
+      throw suspend(self, key);
+
+    return value;
+  }
 }
 
 export function flush(control: Controller){
