@@ -367,19 +367,19 @@ describe("method", () => {
     expect(test.fooBar).toBe("fooBar");
   })
 
-  it("will throw if factory resembles a class", () => {
-    function Factory(){
-      return () => "foobar";
-    }
+  // it("will throw if factory resembles a class", () => {
+  //   function Factory(){
+  //     return () => "foobar";
+  //   }
 
-    class Test extends Model {
-      value = get(Factory);
-    }
+  //   class Test extends Model {
+  //     value = get(Factory);
+  //   }
 
-    const expected = Compute.BadSource("Test", "value", Factory);
+  //   const expected = Compute.BadSource("Test", "value", Factory);
 
-    expect(() => Test.create()).toThrow(expected);
-  })
+  //   expect(() => Test.create()).toThrow(expected);
+  // })
 })
 
 describe("suspense", () => {

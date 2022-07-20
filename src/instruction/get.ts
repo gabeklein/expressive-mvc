@@ -7,8 +7,8 @@ import { computeMode } from './get.compute';
 import { factoryMode } from './get.factory';
 
 export const Oops = issues({
-  BadSource: (model, property, got) =>
-    `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
+  // BadSource: (model, property, got) =>
+  //   `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
 
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
@@ -112,8 +112,8 @@ function get<R, T>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      if(typeof arg0 == "function" && /^[A-Z]/.test(arg0.name))
-        throw Oops.BadSource(subject, key, arg0);
+      // if(typeof arg0 == "function" && /^[A-Z]/.test(arg0.name))
+      //   throw Oops.BadSource(subject, key, arg0);
 
       this.state.set(key, undefined);
 
