@@ -1,5 +1,5 @@
 import { Global, Model } from '..';
-import { mockAsync, mockSuspense } from '../../tests/adapter';
+import { mockAsync, mockConsole, mockSuspense } from '../../tests/adapter';
 import { tap } from '../react/tap';
 import { Oops as Suspense } from '../suspense';
 import { get, Oops as Compute } from './get';
@@ -208,23 +208,7 @@ it("will create a computed from method", async () => {
 })
 
 describe("failures", () => {
-  const warn = jest
-    .spyOn(global.console, "warn")
-    .mockImplementation(() => {});
-
-  const error = jest
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  afterEach(() => {
-    warn.mockReset();
-    error.mockReset();
-  });
-
-  afterAll(() => {
-    warn.mockReset();
-    error.mockRestore();
-  });
+  const { warn, error } = mockConsole();
 
   class Subject extends Model {
     never = get(this, () => {

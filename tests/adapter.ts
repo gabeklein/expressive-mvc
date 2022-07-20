@@ -110,3 +110,28 @@ export function mockSuspense(){
     }
   }
 }
+
+export function mockConsole(){
+  const warn = jest
+    .spyOn(global.console, "warn")
+    .mockImplementation(() => {});
+
+  const error = jest
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  afterEach(() => {
+    warn.mockReset();
+    error.mockReset();
+  });
+
+  afterAll(() => {
+    warn.mockReset();
+    error.mockRestore();
+  });
+
+  return {
+    error,
+    warn
+  }
+}

@@ -1,6 +1,8 @@
 import { Model } from '..';
-import { mockAsync, mockSuspense } from '../../tests/adapter';
+import { mockAsync, mockConsole, mockSuspense } from '../../tests/adapter';
 import { get, Oops as Compute } from './get';
+
+const { warn } = mockConsole();
 
 it("will compute immediately by default", () => {
   const factory = jest.fn(async () => "Hello World");
@@ -165,8 +167,6 @@ it('will refresh and throw if async rejects', async () => {
 })
 
 it("will warn and rethrow error from factory", () => {
-  const warn = console.warn = jest.fn();
-
   class Test extends Model {
     memoized = get(() => {
       throw new Error("Foobar")

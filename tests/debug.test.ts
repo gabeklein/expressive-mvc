@@ -1,6 +1,7 @@
 import { Model } from '../src';
 import { CONTROL } from '../src/controller';
 import { LOCAL, STATE, WHY } from '../src/model';
+import { mockConsole } from './adapter';
 
 describe("isTypeof", () => {
   class Test extends Model {}
@@ -129,12 +130,7 @@ describe("toString", () => {
 })
 
 describe("errors", () => {
-  const warn = jest
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  afterEach(() => warn.mockReset());
-  afterAll(() => warn.mockRestore())
+  const { error } = mockConsole();
 
   it("will log update errors in the console", async () => {
     class Test extends Model {
@@ -152,6 +148,6 @@ describe("errors", () => {
 
     await test.update();
 
-    expect(warn).toBeCalledWith(expected);
+    expect(error).toBeCalledWith(expected);
   });
 })
