@@ -73,9 +73,11 @@ function use<T extends Class>(
       let get: (local: Subscriber | undefined) => any =
         (_local: Subscriber | undefined) => state.get(key);
 
-      if(typeof input === "function")
-        input = /^[A-Z]/.test(input.name)
-          ? new input() : input;
+      if(typeof input === "function"){
+        if("prototype" in input &&
+        input === input.prototype.constructor)
+          input = new input();
+      }
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);

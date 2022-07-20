@@ -217,23 +217,23 @@ it('will return undefined if not required', async () => {
 });
 
 it('will wait for dependancies on suspense', async () => {
-  const createChild = jest.fn((it: Parent) => {
-    void it.value;
-
-    return new Child();
-  });
-
   class Parent extends Model {
     value = set<string>();
-    child = use(createChild);
+    child = use(() => {
+      tryCreateChild();
+      void this.value;
+  
+      return new Child();
+    });
   }
 
+  const tryCreateChild = jest.fn();
   const parent = Parent.create();
 
   parent.value = "foo";
 
   await parent.update();
-  expect(createChild).toBeCalledTimes(2);
+  expect(tryCreateChild).toBeCalledTimes(2);
 });
 
 it('will accept undefined from factory', async () => {
