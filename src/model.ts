@@ -64,14 +64,6 @@ declare namespace Model {
       T[K] extends Function ? K :
       never;
   }[keyof T];
-
-  export type Refs<T extends Model> = {
-    <K extends Field<T>>(key: K, value: T[K]): void;
-  } & { 
-    // TODO: Type sensitivity
-    [P in Field<T>]: (next: any) => void;
-  };
-
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
    * 
@@ -114,14 +106,6 @@ interface Model extends Stateful {
    * Useful to obtain full reference where one has already destructured.
    */
   is: this;
-
-  /**
-  * Setter utility
-  * 
-  * Can be used to set (and force-update) values.
-  * Shortcut to update values, contains refs for all controlled values.
-  */
-  set: Model.Refs<this>;
 }
 
 class Model {
@@ -133,25 +117,6 @@ class Model {
     });
     defineProperty(this, "is", {
       value: this
-    });
-    defineProperty(this, "set", { 
-      configurable: true,
-      get: () => {
-        const controller = ensure(this);
-        const value = (key: any, value: any) => {
-          controller.state.set(key, value);
-          controller.update(key);
-        }
-
-        for(const key of controller.state.keys())
-          defineProperty(value, key, {
-            value: controller.ref(key)
-          });
-
-        defineProperty(this, "set", { value });
-
-        return value;
-      }
     });
   }
 

@@ -1,3 +1,4 @@
+import { Controller, ensure } from '../controller';
 import { Model } from '../model';
 import { createValueEffect, defineProperty } from '../util';
 import { apply } from './apply';
@@ -16,6 +17,16 @@ declare namespace ref {
 }
 
 /**
+ * Creates an object with references to all managed values.
+ * Each property will set value in state when invoked.
+ *
+ * *Properties are simultaneously a ref-function and ref-object, use as needed.*
+ *
+ * @param target - Source model from which to reference values.
+ */
+function ref <T extends Model> (target: T): ref.Proxy<T>;
+
+/**
  * Creates a ref-compatible property.
  * Will persist value, and updates to this are made part of controller event-stream.
  *
@@ -26,24 +37,41 @@ declare namespace ref {
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
 function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 
-function ref<T>(callback?: ref.Callback<T>){
+function ref<T>(arg?: ref.Callback<T> | Model){
   return apply(
     function ref(key){
-      const value = this.ref(key,
-        callback && createValueEffect(callback)  
-      );
-    
-      defineProperty(value, "current", {
-        set: value,
-        get: () => this.state.get(key)
-      })
+      let value: ref.Object | ref.Proxy<any> = {};
 
-      return {
-        value,
-        explicit: true
-      };
+      if(typeof arg == "object"){
+        const source = ensure(arg) as Controller<any>;
+
+        for(const key of source.state.keys())
+          defineProperty(value, key, {
+            value: createRef(this, key)
+          });
+      }
+      else 
+        value = createRef(this, key, arg);
+
+      return { value, explicit: true };
     }
   )
 }
 
 export { ref }
+
+function createRef(
+  src: Controller,
+  key: string,
+  cb?: ref.Callback<any>){
+
+  const refObjectFunction =
+    src.ref(key, cb && createValueEffect(cb));
+
+  defineProperty(refObjectFunction, "current", {
+    set: refObjectFunction,
+    get: () => src.state.get(key)
+  })
+
+  return refObjectFunction as ref.Object;
+}

@@ -36,17 +36,6 @@ it('will assign is as a circular reference', async () => {
   expect(state.is.value).toBe(2)
 })
 
-it('will assign set as a utility', async () => {
-  const state = Subject.create();
-
-  expect(state.value).toBe(1);
-
-  state.set("value", 2);
-  await state.update(true);
-
-  expect(state.value).toBe(2)
-})
-
 it("will ignore getters and setters", () => {
   class Test extends Model {
     foo = "foo";
