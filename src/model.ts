@@ -371,10 +371,9 @@ class Model {
    * @param args - arguments sent to constructor
    */
   static create<T extends Class>(
-    this: T, ...args: any[]): InstanceOf<T> {
+    this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
-    const instance = 
-      new (this as any)(...args);
+    const instance =  new this(...args);
 
     ensure(instance);
 

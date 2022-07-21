@@ -12,11 +12,11 @@ export const Oops = issues({
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
-const Active = new WeakMap<typeof Global, Global>();
+const Active = new WeakMap<Class, Global>();
 
 export class Global extends MVC {
   static create<T extends Class>(
-    this: T, ...args: any[]){
+    this: T, ...args: ConstructorParameters<T>){
 
     if(Active.has(this))
       throw Oops.AlreadyExists(this.name);
@@ -37,7 +37,7 @@ export class Global extends MVC {
   static set<T extends typeof Global>(
     this: T, updates: Partial<InstanceOf<T>>){
 
-    const instance = Active.get(this) || this.create();
+    const instance = Active.get(this) || (this as any).create();
     instance.import(updates);
     return instance.update(false);
   }
