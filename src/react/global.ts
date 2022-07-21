@@ -1,3 +1,4 @@
+import { ensure } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
@@ -17,14 +18,13 @@ export class Global extends MVC {
   static create<T extends Class>(
     this: T, ...args: any[]){
 
-    const Type: typeof Global = this as any;
-
-    if(Active.has(Type))
+    if(Active.has(this))
       throw Oops.AlreadyExists(this.name);
 
-    const instance = super.create(...args);
+    const instance = new this(...args);
 
-    Active.set(Type, instance);
+    ensure(instance);
+    Active.set(this, instance);
 
     return instance as InstanceOf<T>;
   }
