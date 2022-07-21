@@ -64,10 +64,6 @@ function apply<T = any>(
 
   function setup(this: Controller, key: string){
     const { subject, state } = this;
-    const control = this;
-
-    PENDING.delete(placeholder);
-    delete subject[key];
 
     let output = fn.call(this, key, this);
 
@@ -103,6 +99,8 @@ function apply<T = any>(
             destroy();
         })
     }
+
+    const control = this;
 
     defineProperty(subject, key, {
       enumerable: output.enumerable,

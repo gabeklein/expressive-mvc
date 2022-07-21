@@ -44,8 +44,11 @@ class Controller<T extends Stateful = any> {
     if(typeof value == "symbol"){
       const instruction = PENDING.get(value);
 
-      if(instruction)
+      if(instruction){
+        delete subject[key];
+        PENDING.delete(value);
         instruction.call(this, key, this);
+      }
 
       return;
     }
