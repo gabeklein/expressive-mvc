@@ -146,7 +146,7 @@ function get<R, T>(
         getter = computeMode(this, source, setter, key, computeRequired);
       }
 
-      if(typeof arg0 == "function" && factoryRequired)
+      if(typeof arg0 == "function" && computeRequired)
         try {
           init();
         }

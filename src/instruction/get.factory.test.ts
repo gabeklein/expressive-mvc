@@ -4,14 +4,18 @@ import { get, Oops as Compute } from './get';
 
 const { warn } = mockConsole();
 
-it("will compute immediately by default", () => {
-  const factory = jest.fn(async () => "Hello World");
+it("will compute when accessed", () => {
+  const factory = jest.fn(() => "Hello World");
 
   class Test extends Model {
     value = get(factory);
   }
 
-  Test.create();
+  const test = Test.create();
+
+  expect(factory).not.toBeCalled();
+
+  void test.value;
 
   expect(factory).toBeCalled();
 })
@@ -168,9 +172,11 @@ it('will refresh and throw if async rejects', async () => {
 
 it("will warn and rethrow error from factory", () => {
   class Test extends Model {
-    memoized = get(() => {
-      throw new Error("Foobar")
-    })
+    memoized = get(this.failToGetSomething, true);
+
+    failToGetSomething(){
+      throw new Error("Foobar") 
+    }
   }
 
   const failed = Compute.FactoryFailed(Test.name, "memoized");
