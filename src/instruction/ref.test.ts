@@ -143,3 +143,46 @@ describe("proxy", () => {
     expect(test.bar).toBe("foo");
   })
 })
+
+describe("mapped", () => {
+  const generateRef = jest.fn((key: any) => key as string);
+
+  class Test extends Model {
+    foo = "foo";
+    bar = "bar";
+    
+    fields = ref(this, generateRef);
+  }
+
+  afterEach(() => {
+    generateRef.mockClear();
+  })
+
+  it("will run function for accessed keys", () => {
+    const { fields } = Test.create();
+
+    expect(fields.foo).toBe("foo");
+    expect(fields.bar).toBe("bar");
+
+    expect(generateRef).toBeCalledWith("foo");
+    expect(generateRef).toBeCalledWith("bar");
+  })
+
+  it("will run function only for accessed property", () => {
+    const { fields } = Test.create();
+
+    expect(fields.foo).toBe("foo");
+
+    expect(generateRef).toBeCalledWith("foo");
+    expect(generateRef).not.toBeCalledWith("bar");
+  })
+
+  it("will run function only once per property", () => {
+    const { fields } = Test.create();
+
+    expect(fields.foo).toBe("foo");
+    expect(fields.foo).toBe("foo");
+
+    expect(generateRef).toBeCalledTimes(1);
+  })
+})

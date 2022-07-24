@@ -13,18 +13,35 @@ declare namespace ref {
   }
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> = { [P in Model.Field<T>]: Model.Ref<T[P]> };
+  type Proxy<T extends Model> = {
+    [P in Model.Field<T>]-?: Model.Ref<T[P]>
+  };
+
+  type CustomProxy<T extends Model, R> = {
+    [P in Model.Field<T>]-?: R;
+  }
 }
 
 /**
  * Creates an object with references to all managed values.
- * Each property will set value in state when invoked.
+ * Each property is a function to set value in state when invoked.
  *
  * *Properties are simultaneously a ref-function and ref-object, use as needed.*
  *
  * @param target - Source model from which to reference values.
  */
 function ref <T extends Model> (target: T): ref.Proxy<T>;
+
+/**
+ * Creates an object with values based on managed values.
+ * Each property will invoke mapper function on first access supply
+ * the its return value going forward.
+ *
+ * @param target - Source model from which to reference values.
+ * @param mapper - Function producing the placeholder value for any given property.
+ */
+function ref <O extends Model, R>
+  (target: O, mapper: (key: Model.Field<O>) => R): ref.CustomProxy<O, R>;
 
 /**
  * Creates a ref-compatible property.
@@ -37,21 +54,30 @@ function ref <T extends Model> (target: T): ref.Proxy<T>;
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
 function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 
-function ref<T>(arg?: ref.Callback<T> | Model){
+function ref<T>(
+  arg?: ref.Callback<T> | Model,
+  mapper?: (key: string) => any){
+
   return apply(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
 
-      if(typeof arg == "object"){
-        const source = ensure(arg) as Controller<any>;
-
-        for(const key of source.state.keys())
-          defineProperty(value, key, {
-            value: createRef(this, key)
-          });
-      }
-      else 
+      if(typeof arg != "object")
         value = createRef(this, key, arg);
+      else
+        ensure(arg).state.forEach((_val, key) => {
+          defineProperty(value, key,
+            mapper ? {
+              configurable: true,
+              get(){
+                const out = mapper(key);
+                defineProperty(value, key, { value: out });
+                return out;
+              }
+            } : {
+              value: createRef(this, key)
+            })
+        })
 
       return { value, explicit: true };
     }
