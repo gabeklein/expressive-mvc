@@ -1,7 +1,6 @@
 import React from 'react';
 
 import { render } from '../../tests/adapter';
-import { Model } from '../model';
 import { Consumer } from './consumer';
 import { MVC } from './mvc';
 import { Provider } from './provider';
@@ -30,7 +29,7 @@ it("will handle complex arrangement", () => {
 })
 
 it("will render with instance for child-function", async () => {
-  class Test extends Model {
+  class Test extends MVC {
     value = "foobar";
   }
 
