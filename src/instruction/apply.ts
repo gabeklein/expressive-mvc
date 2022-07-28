@@ -104,6 +104,7 @@ function apply<T = any>(
 
     defineProperty(subject, key, {
       enumerable: output.enumerable,
+
       set: onSet !== false
         ? this.ref(key, onSet)
         : undefined,
