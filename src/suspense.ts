@@ -1,44 +1,10 @@
-import { apply, Controller, manage } from './controller';
-import { from } from './instructions';
+import { Controller } from './controller';
 import { issues } from './issues';
-import { Model } from './model';
 
 export const Oops = issues({
-  ValueNotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
+  NotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`,
 })
-
-type ComputeFunction<T, O = any> = (this: O, on: O) => T;
-
-export function pending<T = void>(
-  source: (() => Promise<T>) | Model | typeof Model,
-  compute?: ComputeFunction<T>){
-
-  return (
-    source === undefined ?
-      suspendForValue() :
-    typeof source == "function" && !source.prototype ?
-      suspendForAsync(source as any) :
-      suspendForComputed(source as any, compute)
-  )
-}
-
-/**
- * Get value, suspend instead if undefined.
- * 
- * Throws suspense promise also interpretable as an error.
- * React could handle it but other contexts probably not.
- */
-export function pendingValue<T = any>(
-  via: Controller, key: string): T {
-
-  const value = via.state[key];
-
-  if(value === undefined)
-    throw suspend(via, key);
-
-  return value;
-}
 
 type Suspense<T = any> = Promise<T> & Error;
 
@@ -46,13 +12,13 @@ export function suspend(
   source: Controller, key: string): Suspense {
 
   const error =
-    Oops.ValueNotReady(source.subject, key);
+    Oops.NotReady(source.subject, key);
 
   const promise = new Promise<void>(resolve => {
     const release = source.addListener(forKey => {
       if(forKey == key)
         return () => {
-          if(source.state[key] !== undefined){
+          if(source.state.get(key) !== undefined){
             release();
             resolve();
           }
@@ -68,63 +34,26 @@ export function suspend(
   });
 }
 
-function suspendForComputed<T>(
-  source: Model | typeof Model,
-  compute?: ComputeFunction<T>){
-
-  function getter(
-    this: Model, _value: any, key: string){
-
-    return pendingValue(manage(this), key);
+export function mayRetry(fn: () => any): any {
+  const retry = (err: unknown) => {
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
   }
 
-  return from(source, compute, getter);
-}
+  const compute = (): any => {
+    try {
+      const output = fn();
 
-function suspendForValue<T = void>(){
-  return apply<T>(
-    function pending(key){
-      this.state[key] = undefined;
-
-      return {
-        set: this.setter(key),
-        get: () => pendingValue(this, key)
-      }
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
     }
-  )
-}
-
-function suspendForAsync<T = void>(
-  source: (key: string) => Promise<T>){
-
-  return apply(
-    function suspense(key){
-      const subject = this.subject as Model
-      let waiting = true;
-      let value: any;
-      let error: any;
-  
-      return () => {
-        if(error)
-          throw error;
-
-        if(!waiting)
-          return value;
-
-        const issue =
-          Oops.ValueNotReady(subject, key);
-
-        let suspend = source
-          .call(subject, key)
-          .catch(err => error = err)
-          .then(out => value = out)
-          .finally(() => waiting = false);
-  
-        throw Object.assign(suspend, {
-          message: issue.message,
-          stack: issue.stack
-        });
-      }
+    catch(err){
+      return retry(err);
     }
-  )
+  }
+
+  return compute();
 }

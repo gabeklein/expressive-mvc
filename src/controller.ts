@@ -1,172 +1,91 @@
-import * as Computed from './compute';
-import { lifecycleEvents } from './lifecycle';
+import { PENDING } from './instruction/apply';
+import { flush } from './instruction/get.compute';
+import { Model, Stateful } from './model';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor, getOwnPropertyNames, selectRecursive } from './util';
+import { defineProperty, getOwnPropertyDescriptor } from './util';
 
-export const CONTROL = Symbol("control");
-export const UPDATE = Symbol("update");
-export const LOCAL = Symbol("local");
-export const STATE = Symbol("state");
+import type { Callback } from './types';
 
-export interface Stateful {
-  [CONTROL]: Controller;
-  [UPDATE]?: readonly string[];
-  [LOCAL]?: Subscriber;
-  [STATE]?: any;
+type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
-  didCreate?(): void;
-};
+const UPDATE = new WeakMap<{}, readonly string[]>();
+const LISTEN = new WeakMap<{}, ListenToKey>();
+const CONTROL = Symbol("CONTROL");
 
-export function manage(src: Stateful){
-  return src[CONTROL];
+function getUpdate<T extends {}>(subject: T){
+  return UPDATE.get(subject) as readonly Model.Field<T>[];
 }
-
-export const Pending = new Map<symbol, Instruction<any>>();
-
-export function apply<T = any>(
-  fn: Instruction<any>, label?: string){
-
-  const name = label || fn.name || "pending";
-  const placeholder = Symbol(`${name} instruction`);
-
-  function setup(this: Controller, key: string){
-    let output = fn.call(this, key, this);
-
-    if(typeof output == "function"){
-      const getter = output;
-
-      output = {
-        ...getOwnPropertyDescriptor(this.subject, key),
-        get(this: Stateful){
-          return getter(this[LOCAL])
-        }
-      }
-    }
-
-    if(output)
-      defineProperty(this.subject, key, output);
-  }
-
-  Pending.set(placeholder, setup);
-
-  return placeholder as unknown as T;
-}
-
-export type HandleValue = (this: Stateful, value: any) => boolean | void;
-
-export type Getter<T> = (sub?: Subscriber) => T
-
-export type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
-  void | Getter<T> | PropertyDescriptor;
 
 declare namespace Controller {
-  type Listen = (key: string, source: Controller) =>
-    RequestCallback | void;
+  // TODO: implement value type
+  type OnValue<T = any> = (this: T, value: any) => boolean | void;
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
-class Controller {
-  public state = {} as BunchOf<any>;
+class Controller<T extends Stateful = any> {
+  public state!: Map<any, any>;
   public frame = new Set<string>();
-  public waiting = new Set<RequestCallback>();
-  public handled = [] as readonly string[];
+  public waiting = new Set<Callback>();
+  public followers = new Set<Controller.OnEvent>();
 
-  protected followers = new Set<Controller.Listen>();
+  constructor(public subject: T){}
 
-  constructor(public subject: Stateful){}
-
-  static setup(onto: Stateful){
-    const control = new this(onto);
-
-    defineProperty(onto, CONTROL, { 
-      configurable: true,
-      get(){
-        defineProperty(onto, CONTROL, {
-          value: control
-        });
-        defineProperty(onto, STATE, {
-          get: () => ({ ...control.state }),
-          configurable: true
-        })
-        defineProperty(onto, UPDATE, {
-          get: () => [ ...control.handled ],
-          configurable: true
-        })
-  
-        control.start();
-  
-        if(onto.didCreate)
-          onto.didCreate();
-
-        return control;
-      }
-    })
-
-    return control;
+  subscribe(callback: Controller.OnEvent<T>){
+    return new Subscriber<T>(this, callback);
   }
 
-  public get pending(){
-    return this.frame.size > 0;
-  }
+  add(key: keyof T & string){
+    const { subject, state } = this;
+    const { value } = getOwnPropertyDescriptor(subject, key)!;
 
-  public start(){
-    const { subject } = this;
-    
-    for(const key in subject){
-      const desc = getOwnPropertyDescriptor(subject, key);
+    if(typeof value == "function")
+      return;
 
-      if(desc && "value" in desc){
-        const { value } = desc;
-        const instruction = Pending.get(value);
+    if(typeof value == "symbol"){
+      const instruction = PENDING.get(value);
 
-        if(instruction){
-          Pending.delete(value);
-          delete (subject as any)[key];
-          instruction.call(this, key, this);
-        }
-        else if(typeof value !== "function" || /^[A-Z]/.test(key))
-          this.manage(key, value);
+      if(instruction){
+        delete subject[key];
+        PENDING.delete(value);
+        instruction.call(this, key, this);
       }
+
+      return;
     }
 
-    this.emit();
+    state.set(key, value);
 
-    return this;
-  }
-
-  public select(using?: Query){
-    const keys = getOwnPropertyNames(this.state);
-
-    return using
-      ? selectRecursive(using, keys.concat(lifecycleEvents))
-      : keys;
-  }
-
-  public manage(
-    key: string,
-    initial: any,
-    effect?: HandleValue){
-
-    const { state, subject } = this;
-
-    state[key] = initial;
     defineProperty(subject, key, {
-      enumerable: true,
-      configurable: true,
-      get: () => state[key],
-      set: this.setter(key, effect)
+      enumerable: false,
+      set: this.ref(key as any),
+      get(){
+        const listen = LISTEN.get(this);
+
+        if(listen)
+          listen(key);
+
+        return state.get(key);
+      }
     });
   }
 
-  public setter(
-    key: string,
-    handler?: HandleValue){
+  addListener(listener: Controller.OnEvent<T>){
+    this.followers.add(listener);
+    return () => {
+      this.followers.delete(listener)
+    }
+  }
 
-    const { state, subject } = this;
-
+  ref(
+    key: Model.Field<T>,
+    handler?: Controller.OnValue<T>){
+  
+    const { subject, state } = this;
+  
     return (value: any) => {
-      if(state[key] == value)
+      if(state.get(key) == value)
         return;
-
+  
       if(handler)
         switch(handler.call(subject, value)){
           case true:
@@ -174,72 +93,107 @@ class Controller {
           case false:
             return;
         }
-
-      this.update(key, value);
+  
+      state.set(key, value);
+      this.update(key);
     }
   }
 
-  public addListener(listener: Controller.Listen){
-    this.followers.add(listener);
-    return () => {
-      this.followers.delete(listener)
-    }
-  }
-
-  public update(key: string, value?: any){
-    if(1 in arguments)
-      this.state[key] = value;
-
-    if(this.frame.has(key))
+  update(key: Model.Field<T>){
+    const { followers, frame, subject, waiting } = this;
+  
+    if(frame.has(key))
       return;
+  
+    else if(!frame.size)
+      setTimeout(() => {
+        flush(this);
+      
+        UPDATE.set(subject, Array.from(frame));
 
-    if(!this.frame.size)
-      setTimeout(() => this.emit(), 0);
-
-    this.frame.add(key);
-
-    for(const subscription of this.followers){
-      const notify = subscription(key, this);
-
-      if(notify)
-        this.waiting.add(notify);
+        setTimeout(() => {
+          UPDATE.delete(subject);
+        }, 0);
+      
+        frame.clear();
+      
+        for(const notify of waiting)
+          try {
+            waiting.delete(notify);
+            notify();
+          }
+          catch(err){
+            console.error(err);
+          }
+      }, 0);
+  
+    frame.add(key);
+  
+    for(const callback of followers){
+      const event = callback(key, this);
+  
+      if(typeof event == "function")
+        waiting.add(event);
     }
   }
 
-  public emit(){
-    Computed.flush(this);
+  clear(){
+    const listeners = [ ...this.followers ];
 
-    const handle = new Set(this.waiting);
-    const handled = this.handled =
-      Object.freeze([ ...this.frame ]);
-
-    this.waiting.clear();
-    this.frame.clear();
-
-    handle.forEach(callback => {
-      try { callback(handled) }
-      catch(e){ }
-    })
+    this.followers.clear();
+    listeners.forEach(x => x(null, this));
   }
 }
 
-export { Controller }
+type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
 
-export function keys(
-  from: Controller,
-  using?: string | string[] | Set<string> | Query){
+function ensure<T extends Stateful>(subject: T): Controller<T>;
+function ensure<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
+function ensure<T extends {}>(subject: T): Controller<T & Stateful>;
 
-  if(typeof using == "string")
-    return [ using ];
+function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
+  let control = subject[CONTROL]!;
 
-  if(typeof using == "object"){
-    using = Array.from(using);
+  if(!control)
+    defineProperty(subject, CONTROL, {
+      value: control =
+        new Controller(subject as unknown as Stateful)
+    });
+
+  if(!control.state){
+    const { waiting } = control;
+
+    if(cb){
+      let done: Callback | void;
+
+      waiting.add(() => {
+        done = cb(control);
+      });
+
+      return () => done && done();
+    }
+
+    control.state = new Map();
+
+    for(const key in subject)
+      control.add(key);
+
+    const callback = Array.from(waiting);
+
+    waiting.clear();
     
-    if(using.length === 0)
-      using = undefined;
-    else
-      return using;
+    for(const cb of callback)
+      cb();
   }
 
-  return from.select(using);
+  return cb ? cb(control) : control;
+}
+
+export {
+  ensure,
+  Controller,
+  getUpdate,
+  UPDATE,
+  LISTEN,
+  CONTROL
 }

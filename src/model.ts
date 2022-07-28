@@ -1,187 +1,325 @@
-import * as Computed from './compute';
-import { useFromContext } from './context';
-import { CONTROL, Controller, keys, LOCAL, manage, STATE, Stateful, UPDATE } from './controller';
-import { use, useComputed, useLazy, useModel, useWatcher } from './hooks';
+import { CONTROL, Controller, ensure, getUpdate, UPDATE } from './controller';
 import { issues } from './issues';
-import { lifecycle } from './lifecycle';
-import { usePeerContext } from './peer';
 import { Subscriber } from './subscriber';
-import { createEffect, define, defineLazy, select } from './util';
+import { mayRetry } from './suspense';
+import { createEffect, defineProperty, getOwnPropertyNames } from './util';
+
+import type { Callback, Class, InstanceOf } from './types';
 
 export const Oops = issues({
-  StrictUpdate: (expected) => 
-    `Strict update() did ${expected ? "not " : ""}find pending updates.`,
+  Timeout: (keys, timeout) => 
+    `No update for [${keys}] within ${timeout}.`,
+
+  StrictUpdate: () => 
+    `Strict update() did not find pending updates.`,
 
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
-})
+});
 
-const useElementLifecycle = lifecycle("element");
-const useComponentLifecycle = lifecycle("component");
+export const WHY = Symbol("UPDATE");
+export const LOCAL = Symbol("LOCAL");
+export const STATE = Symbol("STATE");
 
-export interface Model extends Stateful {
-  get: this;
-  set: this;
+export interface Stateful {
+  /** Controller for this instance. */
+  [CONTROL]?: Controller;
 
-  didCreate?: Callback;
-  willDestroy?: Callback;
+  /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
+  [LOCAL]?: Subscriber;
+
+  /** Current state of this instance. */
+  [STATE]?: Model.Values<this>;
+
+  /**
+   * Last update causing a refresh to subscribers.
+   * 
+   * If accessed directly, will contain all keys from last push.
+   * If within a subscribed function, will contain only keys which explicitly caused a refresh.
+   */
+  [WHY]?: readonly Model.Event<this>[];
+};
+
+declare namespace Model {
+  /** Including but not limited to T. */
+  type Extends<T> = T | (string & Record<never, never>);
+
+  export { Controller };
+  export { Subscriber };
+
+  export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
+
+  export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
+
+  /** Exotic value, actual value is contained. */
+  export interface Ref<T = any> {
+    (next: T): void;
+    current: T | null;
+  }
+
+  /** Properties of T, of which are methods. */
+  export type Methods<T> = {
+    [K in keyof T]:
+      T[K] extends Ref ? never :
+      T[K] extends Function ? K :
+      never;
+  }[keyof T];
+  /**
+   * Subset of `keyof T` which are not methods or defined by base Model U.
+   * 
+   * **Note**: This excludes all keys which are not of type `string` (only those are managed).
+   **/
+  // TODO: Should exclude methods
+  export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U>;
+
+  /**
+   * Including but not limited to `keyof T` which are not methods or defined by base Model.
+   **/
+  export type Event<T, U extends Model = Model> = Extends<Field<T, U>>;
+
+  /** Object containing managed entries found in T. */
+  export type Entries<T, U extends Model = Model> = Pick<T, Field<T, U>>;
+
+  /** Object comperable to data found in T. */
+  export type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
+
+  /** Actual value stored in state. */
+  export type Value<R> = R extends Ref<infer T> ? T : R;
+
+  /** Actual value belonging to a managed property. */
+  export type ValueOf<T extends {}, K> = K extends keyof T ? Value<T[K]> : undefined;
+
+  /**
+   * Values from current state of given controller.
+   * 
+   * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
+   */
+  export type Values<T, K extends Field<T, Model> = Field<T, Model>> = {
+    [P in K]: Value<T[P]>;
+  }
 }
 
-export class Model {
-  static CONTROL = CONTROL;
-  static STATE = STATE;
-  static LOCAL = LOCAL;
-  static WHY = UPDATE;
+interface Model extends Stateful {
+  /**
+   * Circular reference to `this` controller.
+   * 
+   * Useful to obtain full reference where one has already destructured.
+   */
+  is: this;
+}
 
-  static [CONTROL]: Controller;
-  static [UPDATE]: readonly string[];
+class Model {
+  static [WHY]: readonly string[];
 
   constructor(){
-    const control = Controller.setup(this);
-
-    define(this, "get", this);
-    define(this, "set", this);
-
-    defer(control, "on");
-    defer(control, "effect");
-
-    control.waiting.add(() => {
-      delete (this as any).on;
-      delete (this as any).effect;
-    })
-  }
-
-  tap(path?: string | Select, expect?: boolean){
-    if(typeof path == "function")
-      return useComputed(this, path, expect);
-
-    const proxy = useWatcher(this, path, expect);
-    this.update("willRender", true);
-    return proxy;
-  }
-
-  tag(id?: Key | KeyFactory<this>){
-    const hook = use(refresh => {
-      return new Subscriber(this, () => refresh);
+    defineProperty(this, CONTROL, {
+      value: new Controller(this)
     });
-  
-    useElementLifecycle(hook, id || 0);
-    
-    return hook.proxy;
-  }
-
-  use(callback?: (instance: Model) => void){
-    const hook = use(refresh => {
-      if(callback)
-        callback(this);
-
-      return new Subscriber(this, () => refresh);
+    defineProperty(this, "is", {
+      value: this
     });
-  
-    useComponentLifecycle(hook);
-    
-    return hook.proxy;
   }
 
-  on(
-    subset: string | string[] | Set<string> | Query,
-    handler: Function,
+  get [STATE]() {
+    return this.export();
+  }
+
+  get [WHY](){
+    return UPDATE.get(this);
+  }
+
+  on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
+  on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
+
+  on <P extends Model.Event<this>> (
+    select: P | P[] | ((key: any) => Callback | void),
+    handler?: Function,
     squash?: boolean,
     once?: boolean){
 
-    const control = manage(this);
-    const request = keys(control, subset);
+    return ensure(this, control => {
+      if(typeof select == "function")
+        return control.addListener(select);
 
-    const callback: RequestCallback = squash
-      ? handler.bind(this)
-      : frame => frame
-        .filter(k => request.includes(k))
-        .forEach(k => handler.call(this, control.state[k], k))
+      const keys = 
+        typeof select == "string" ? [ select ] :
+        select.length ? select : [ ...control.state.keys() ];
 
-    const trigger: RequestCallback = once
-      ? frame => { remove(); callback(frame) }
-      : callback;
+      for(const key of keys)
+        try { void (this as any)[key] }
+        catch(e){}
 
-    Computed.ensure(control, request);
+      const callback = squash
+        ? () => {
+          handler!.call(this, getUpdate(this))
+        }
+        : () => {
+          getUpdate(this)
+            .filter(k => keys.includes(k as any))
+            .forEach(k => {
+              handler!.call(this, control.state.get(k), k)
+            })
+        }
 
-    const remove = control.addListener(key => {
-      if(request.includes(key))
-        return trigger;
+      const onEvent = once
+        ? () => {
+          remove();
+          callback();
+        }
+        : callback;
+
+      const remove = control.addListener(key => {
+        if(keys.includes(key as any))
+          return onEvent;
+      });
+
+      return remove;
     });
-
-    return remove;
   }
 
-  once(
-    select: string | string[] | Set<string> | Query,
-    callback?: UpdateCallback<any, any>,
+  once <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
+  once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
+  once <P extends Model.Event<this>> (key: P | P[], timeout?: number): Promise<void>;
+
+  once <P extends Model.Event<this>> (
+    select: P | P[],
+    argument?: Model.OnUpdate<any, any> | number,
     squash?: boolean){
 
-    if(callback)
-      return this.on(select, callback, squash, true);
-    else 
-      return new Promise<void>(resolve => {
-        this.on(select, resolve, true, true);
-      });
+    if(typeof argument == "function")
+      return this.on(select, argument, squash, true);
+
+    if(typeof select == "string")
+      select = [ select ];
+
+    return new Promise<void>((resolve, reject) => {
+      const invoke = (key?: string | null) => {
+        if(!key){
+          clear();
+          reject(
+            Oops.Timeout(select,
+              typeof argument == "number"
+                ? `${argument}ms`
+                : `lifetime of ${this}`
+            )
+          );
+        }
+        else if((select as string[]).includes(key)){
+          clear();
+          return resolve;
+        }
+      }
+
+      const clear = ensure(this, x => {
+        for(const key of select)
+          try { void (this as any)[key] }
+          catch(e){}
+
+        return x.addListener(invoke);
+      })
+
+      if(typeof argument == "number")
+        setTimeout(invoke, argument);
+    });
   }
 
-  effect(
-    callback: EffectCallback<any>,
-    select?: string[] | Query){
+  effect(callback: Model.Effect<this>): Callback;
+  effect(callback: Model.Effect<this>, select: []): Callback;
+  effect(callback: Model.Effect<this>, select: Model.Event<this>[]): Callback;
 
-    const control = manage(this);
-    let target = this;
-
+  effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
-    const invoke = () => effect.call(target, target);
 
-    if(select){
+    return ensure(this, control => {
+      let busy = false;
+      let inject = this.is;
+
+      const invoke = () => {
+        if(busy)
+          return;
+
+        const output = mayRetry(() => {
+          effect.call(inject, inject);
+        })
+
+        if(output instanceof Promise){
+          output.finally(() => busy = false);
+          busy = true;
+        }
+      }
+
+      if(!select){
+        const sub = control.subscribe(() => invoke);
+
+        inject = sub.proxy;
+        invoke();
+
+        return sub.commit();
+      }
+
       invoke();
-      return this.on(select, invoke, true);
-    }
-    else {
-      const sub = new Subscriber(control, () => invoke);
-      target = sub.proxy;
-      invoke();
-      return sub.commit();
-    }
+
+      return control.addListener(key => {
+        if(key === null){
+          if(!select.length)
+            invoke();
+        }
+        else if(select.includes(key))
+          return invoke;
+      });
+    })
   }
 
-  import(
-    from: BunchOf<any>,
-    subset?: Set<string> | string[] | Query){
+  // TODO: account for exotic properties
+  import <O extends Model.Compat<this>> (source: O, select?: (keyof O)[]){
+    const { subject } = ensure(this);
 
-    for(const key of keys(manage(this), subset))
-      if(key in from)
-        (this as any)[key] = from[key];
+    if(!select)
+      select = getOwnPropertyNames(subject) as (keyof O)[];
+
+    for(const key of select)
+      if(key in source)
+        (this as any)[key] = source[key];
   }
 
-  export(subset?: Set<string> | string[] | Query){
-    const control = manage(this);
-    const output: BunchOf<any> = {};
+  export(): Model.Values<this>;
+  export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
-    for(const key of keys(control, subset))
-      output[key] = (control.state as any)[key];
+  export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
+    const { state } = ensure(this);
+    const output = {} as Model.Values<this, P>;
+    const keys = subset || state.keys();
+
+    for(const key of keys)
+      (output as any)[key] = state.get(key);
 
     return output;
   }
 
-  update(strict?: boolean): Promise<string[] | false>;
-  update(select?: Select): PromiseLike<string[]>;
-  update(key: string | Select, callMethod: boolean): PromiseLike<readonly string[]>;
-  update(key: string | Select, tag?: any): PromiseLike<readonly string[]>;
-  update(arg?: string | boolean | Select, tag?: any){
-    const control = manage(this);
+  update(): PromiseLike<readonly Model.Event<this>[] | false>;
+  update(strict: true): Promise<readonly Model.Event<this>[]>;
+  update(strict: false): Promise<false>;
+  update(strict: boolean): Promise<readonly Model.Event<this>[] | false>;
+  update(keys: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
+  update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
+  update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
-    if(typeof arg == "function")
-      arg = select(this, arg);
+  update(arg?: any, tag?: any): any {
+    const target = ensure(this);
+    const { frame, waiting } = target;
 
-    if(typeof arg == "boolean"){
-      if(!control.pending === arg)
-        return Promise.reject(Oops.StrictUpdate(arg))
-    }
-    else if(arg){
-      control.update(arg);
+    if(typeof arg == "string"){
+      target.update(arg as Model.Field<this>);
 
       if(1 in arguments && arg in this){
         const method = (this as any)[arg];
@@ -192,98 +330,62 @@ export class Model {
           else if(tag)
             method.call(this);
       }
+
+      arg = undefined;
     }
 
-    return <PromiseLike<readonly string[] | false>> {
-      then(callback){
-        if(callback)
-          if(control.pending)
-            control.waiting.add(callback);
-          else
-            callback(false);
-        else
+    if(!frame.size && arg === true)
+      return Promise.reject(Oops.StrictUpdate());
+
+    return <PromiseLike<readonly Model.Event<this>[] | false>> {
+      then: (callback) => {
+        if(!callback)
           throw Oops.NoChaining();
+
+        if(frame.size || arg !== false)
+          waiting.add(() => {
+            callback(getUpdate(this));
+          });
+        else
+          callback(false);
       }
     }
   }
 
+  /** 
+   * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
+   */
   destroy(){
-    this.update("willDestroy", true);
+    ensure(this).clear();
   }
 
   toString(){
     return this.constructor.name;
   }
 
+  /**
+   * Creates a new instance of this controller.
+   * 
+   * Beyond `new this(...)`, method will activate managed-state.
+   * 
+   * @param args - arguments sent to constructor
+   */
   static create<T extends Class>(
-    this: T, ...args: any[]){
+    this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
-    const instance: InstanceOf<T> = 
-      new (this as any)(...args);
+    const instance =  new this(...args);
 
-    manage(instance);
+    ensure(instance);
 
     return instance;
   }
 
-  static new(callback?: (instance: Model) => void){
-    const instance = useLazy(this, callback);
-    instance.update("willRender", true);
-    return instance
-  }
-
-  static find<T extends Class>(this: T, strict: true): InstanceOf<T>;
-  static find<T extends Class>(this: T, strict?: boolean): InstanceOf<T> | undefined;
-  static find<T extends Class>(this: T, strict?: boolean){
-    return useFromContext(this, strict);
-  }
-
-  static get(key?: boolean | string | Select){
-    const instance: any = this.find(!!key);
-  
-    return (
-      typeof key == "function" ?
-        key(instance) :
-      typeof key == "string" ?
-        instance[key] :
-        instance
-    )
-  }
-
-  static tap(key?: string | Select, expect?: boolean): any {
-    return this.find(true).tap(key, expect);
-  }
-
-  static tag(id?: Key | ((target: Model) => Key | undefined)){
-    return this.find(true).tag(id);
-  }
-
-  static use(callback?: (instance: Model) => void){
-    const instance = useModel(this, callback);
-    useComponentLifecycle(instance[LOCAL]);
-    usePeerContext(instance.get);
-    return instance;
-  }
-
-  static uses(props: BunchOf<any>, only?: string[]){
-    return this.use(instance => {
-      instance.import(props, only);
-    })
-  }
-
-  static using(props: BunchOf<any>, only?: string[]){
-    const instance = this.use();
-    instance.import(props, only);
-    return instance;
-  }
-
-  static meta(path: string | Select): any {
-    return typeof path == "function"
-      ? useComputed(this, path)
-      : useWatcher(this, path)
-  }
-
-  static isTypeof<T extends typeof Model>(
+  /**
+   * Static equivalent of `x instanceof this`.
+   * 
+   * Will determine if provided class is a subtype of this one. 
+   */
+  static isTypeof<T extends new () => Model>(
     this: T, maybe: any): maybe is T {
 
     return (
@@ -293,19 +395,4 @@ export class Model {
   }
 }
 
-defineLazy(Model, CONTROL, function(){
-  return new Controller(this).start();
-})
-
-function defer(on: Controller, method: string){
-  const { subject, waiting } = on as any;
-  const real = subject[method];
-
-  subject[method] = (...args: any[]) => {
-    let done: any;
-    waiting.add(() => {
-      done = real.apply(subject, args);
-    });
-    return () => done();
-  }
-}
+export { Model }

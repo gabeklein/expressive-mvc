@@ -1,27 +1,12 @@
-import * as Public from '../';
+import { createElement, Suspense } from 'react';
+import { create as render } from 'react-test-renderer';
+
 import * as Source from '../src';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
-export const Model = Source.Model as unknown as typeof Public.Model;
-export const Singleton = Source.Singleton as unknown as typeof Public.Singleton;
-export const Provider = Source.Provider as unknown as typeof Public.Provider;
-export const Consumer = Source.Consumer as unknown as typeof Public.Consumer;
-
-export const apply = Source.apply as typeof Public.apply;
-export const tap = Source.tap as typeof Public.tap;
-export const on = Source.on as typeof Public.on;
-export const ref = Source.ref as typeof Public.ref;
-export const use = Source.use as typeof Public.use;
-export const memo = Source.memo as typeof Public.memo;
-export const act = Source.act as typeof Public.act;
-export const lazy = Source.lazy as typeof Public.lazy;
-export const from = Source.from as typeof Public.from;
-export const parent = Source.parent as typeof Public.parent;
-export const pending = Source.pending as typeof Public.pending;
-
-export function subscribeTo<T extends Public.Model>(
+export function subscribeTo<T extends Source.Model>(
   target: T,
   accessor: (self: T) => void){
 
@@ -34,7 +19,7 @@ export function subscribeTo<T extends Public.Model>(
 
   // ignore initial scan-phase
   didTrigger.mockReset();
-  
+
   return async (isExpected = true) => {
     await new Promise(res => setTimeout(res, 0));
 
@@ -44,5 +29,109 @@ export function subscribeTo<T extends Public.Model>(
     }
     else
       expect(didTrigger).not.toHaveBeenCalled();
+  }
+}
+
+export function mockAsync<T = void>(){
+  const pending =
+    new Set<[Function, Function]>();
+
+  const event = () => (
+    new Promise<T>((res, rej) => {
+      pending.add([res, rej]);
+    })
+  );
+
+  const resolve = (value: T) => {
+    const done = event();
+
+    pending.forEach(x => x[0](value));
+    pending.clear();
+
+    return done;
+  }
+
+  return {
+    pending: event,
+    resolve
+  }
+}
+
+export function mockSuspense(){
+  const promise = mockAsync();
+
+  let renderHook!: () => void;
+  let didRender = false;
+  let didSuspend = false;
+
+  const reset = () => {
+    didSuspend = didRender = false;
+  }
+
+  const Waiting = () => {
+    didSuspend = true;
+    return null;
+  }
+
+  const Component = () => {
+    try {
+      didRender = true;
+      renderHook();
+    }
+    finally {
+      promise.resolve();
+    }
+
+    return null;
+  }
+
+  return {
+    waitForNextRender(){
+      return promise.pending();
+    },
+    renderHook(fn: () => void){
+      renderHook = fn;
+
+      render(
+        createElement(Suspense, {
+          fallback: createElement(Waiting),
+          children: createElement(Component)
+        })
+      )
+    },
+    assertDidRender(yes: boolean){
+      expect(didRender).toBe(yes);
+      expect(didSuspend).toBe(false);
+      reset();
+    },
+    assertDidSuspend(yes: boolean){
+      expect(didSuspend).toBe(yes);
+      reset();
+    }
+  }
+}
+
+export function mockConsole(){
+  const warn = jest
+    .spyOn(global.console, "warn")
+    .mockImplementation(() => {});
+
+  const error = jest
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  afterEach(() => {
+    warn.mockReset();
+    error.mockReset();
+  });
+
+  afterAll(() => {
+    warn.mockReset();
+    error.mockRestore();
+  });
+
+  return {
+    error,
+    warn
   }
 }

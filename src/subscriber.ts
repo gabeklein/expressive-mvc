@@ -1,116 +1,92 @@
-import { Model } from './model';
-import { Controller, LOCAL, manage, Stateful, UPDATE } from './controller';
-import { create, define, defineProperty, getOwnPropertyDescriptor, setAlias } from './util';
+import { getUpdate, Controller, UPDATE, LISTEN } from './controller';
+import { LOCAL, Stateful } from './model';
+import { create, defineProperty } from './util';
+
+import type { Callback } from './types';
 
 type Listener = {
   commit(): void;
   release(): void;
 }
 
-export class Subscriber {
-  public proxy: any;
-  public source: any;
+export class Subscriber <T extends Stateful = any> {
+  public proxy!: T;
+  public commit: () => Callback;
+  public release!: Callback;
+
   public active = false;
-  public handle = {} as BunchOf<Callback | true>;
   public dependant = new Set<Listener>();
-  public parent: Controller;
-  public notify?: RequestCallback;
+  public add: (key: any, value?: boolean | Callback) => void;
 
   constructor(
-    parent: Controller | Stateful,
-    public onUpdate: Controller.Listen){
+    parent: Controller<T>,
+    public onUpdate: Controller.OnEvent){
 
-    if(!(parent instanceof Controller))
-      parent = manage(parent);
+    const proxy = create(parent.subject);
+    const using = new Map<any, boolean | (() => true | void)>();
 
-    const subject = this.source =
-      parent.subject as Model | Stateful;
+    const listen = this.add = (
+      key: any,
+      value?: boolean | Callback) => {
+  
+      if(value !== undefined)
+        using.set(key, value);
+      else if(!using.has(key))
+        using.set(key, true);
+    }
 
-    const proxy = this.proxy =
-      create(subject) as Model | Stateful;
-      
-    this.parent = parent;
+    LISTEN.set(proxy, listen);
+    
+    defineProperty(proxy, LOCAL, { value: this });
+    defineProperty(this, "proxy", {
+      configurable: true,
+      get(){
+        if(UPDATE.has(proxy))
+          setTimeout(() => UPDATE.delete(proxy), 0);
 
-    define(this.proxy, LOCAL, this);
-    defineProperty(this.proxy, UPDATE, {
-      get: () => (
-        this.parent.handled.filter(
-          key => key in this.handle
-        )
-      )
+        return proxy;
+      }
+    })
+
+    const release = parent.addListener(key => {
+      if(!this.active)
+        return;
+
+      const handler = using.get(key);
+      let notify: void | Callback;
+
+      if(typeof handler == "function"){
+        const callback = handler();
+
+        if(callback === true)
+          notify = this.onUpdate(key, parent);
+      }
+      else if(handler === true)
+        notify = this.onUpdate(key, parent);
+
+      if(!notify)
+        return;
+
+      const notate = () => {
+        UPDATE.set(proxy, 
+          getUpdate(parent.subject).filter(k => using.has(k))
+        );
+      }
+
+      parent.waiting.add(notate);
+      parent.waiting.add(notify);
     });
 
-    if("update" in subject){
-      define(proxy, "update", (...args: any[]) => {
-        if(!args.length){
-          const refresh =
-            this.onUpdate("", parent as Controller);
-  
-          if(refresh)
-            refresh([]);
-        }
+    this.commit = () => {
+      this.active = true;
+      this.dependant.forEach(x => x.commit());
 
-        return subject.update(...args);
-      })
+      return this.release;
     }
 
-    for(const key in parent.state)
-      this.spy(key);
-  }
-
-  public listen = (key: string, from: Controller) => {
-    const handler = this.handle[key];
-
-    if(!handler)
-      return;
-
-    if(typeof handler == "function")
-      handler();
-
-    const notify = this.onUpdate(key, from);
-
-    if(notify)
-      from.waiting.add(notify);
-  }
-
-  public spy(key: string){
-    const { proxy, source } = this;
-
-    const { set } =
-      getOwnPropertyDescriptor(source, key)!;
-
-    const intercept = () => {
-      this.follow(key);
-      delete proxy[key];
-      return proxy[key];
-    }
-
-    setAlias(intercept, `tap ${key}`);
-    defineProperty(proxy, key, {
-      get: intercept,
-      set,
-      configurable: true,
-      enumerable: true
-    })
-  }
-
-  public follow(key: string, callback?: Callback){
-    this.handle[key] = callback || true;
-  }
-
-  public commit(){
-    const onDone =
-      this.parent.addListener(this.listen);
-
-    this.active = true;
-
-    this.dependant.forEach(x => x.commit());
-
-    return this.release = () => {
+    this.release = () => {
       this.dependant.forEach(x => x.release());
-      onDone();
+      release();
     }
   }
-
-  public release!: Callback;
 }

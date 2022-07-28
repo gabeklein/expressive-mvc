@@ -17,10 +17,9 @@
   ],
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
-  "types": "types/index.d.ts",
+  "types": "lib/index.d.ts",
   "files": [
-    "lib",
-    "types"
+    "lib"
   ],
   "scripts": {
     "build": "rollup --config",
@@ -28,26 +27,27 @@
     "test": "jest --collectCoverage",
     "prebuild": "rm -rf lib/",
     "preversion": "npm run test && npm run build",
-    "publish:beta": "npm version prerelease --preid=beta",
-    "postversion": "npm publish"
+    "postversion": "git push & npm publish"
   },
   "peerDependencies": {
-    "react": ">=17.0.2"
+    "react": ">=16.8.0 <19.0.0"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^21.0.1",
-    "@testing-library/react-hooks": "^7.0.0",
-    "@types/jest": "^26.0.23",
+    "@rollup/plugin-commonjs": "^22.0.0",
+    "@testing-library/react-hooks": "^8.0.0",
+    "@types/jest": "^27.4.1",
     "@types/node": "^15.12.4",
     "@types/react": "^17.0.11",
-    "jest": "^27.0.4",
+    "@types/react-test-renderer": "^18.0.0",
+    "jest": "^27.5.1",
     "react": ">=17.0.2",
     "react-test-renderer": "^17.0.2",
     "rollup": "^2.61.1",
+    "rollup-plugin-dts": "^4.2.1",
     "rollup-plugin-typescript2": "^0.31.1",
     "ts-jest": "^27.0.3",
     "tslib": "^2.3.0",
-    "typescript": "typescript@>=3.8 <5.0"
+    "typescript": "4.6.3"
   },
-  "version": "1.0.0-beta.32"
+  "version": "0.7.1"
 }

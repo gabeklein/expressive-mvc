@@ -13,9 +13,6 @@
     },
     "include": [
         "src",
-        "types"
-    ],
-    "exclude": [
         "tests"
     ]
 }

@@ -1,4 +1,5 @@
-import { Model, on, subscribeTo } from './adapter';
+import { Model, set } from '../src';
+import { subscribeTo } from './adapter';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -33,7 +34,7 @@ describe("subscriber", () => {
      * we did not access value2 in above accessor,
      * subscriber assumes we don't care about updates
      * to this property, so it'l drop relevant events
-     **/ 
+     */ 
     state.value2 = 3;
     await update(false);
   });
@@ -42,7 +43,7 @@ describe("subscriber", () => {
     const state = Subject.create();
     const update = subscribeTo(state, it => {
       void it.value;
-      void it.get.value2;
+      void it.is.value2;
     })
 
     state.value = 2;
@@ -55,19 +56,19 @@ describe("subscriber", () => {
   it('will not obstruct set-behavior', () => {
     class Test extends Model {
       didSet = jest.fn();
-      value = on("foo", this.didSet);
+      value = set("foo", this.didSet);
     }
 
-    const state = Test.create();
+    const test = Test.create();
 
-    expect(state.value).toBe("foo");
+    expect(test.value).toBe("foo");
 
-    subscribeTo(state, it => {
+    subscribeTo(test, it => {
       it.value = "bar";
     })
 
-    expect(state.value).toBe("bar");
-    expect(state.didSet).toBeCalledWith("bar");
+    expect(test.value).toBe("bar");
+    expect(test.didSet).toBeCalledWith("bar", test);
   })
 
   it('will refresh on `update()`', async () => {

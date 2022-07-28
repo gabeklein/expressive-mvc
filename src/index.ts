@@ -1,11 +1,20 @@
-export { child } from './attach';
-export { parent, use } from './compose';
-export { lazy, memo, on } from './assign';
-export { act, from, ref } from './instructions';
-export { apply } from './controller';
-export { tap } from './peer';
-export { pending } from './suspense';
+export { apply } from './instruction/apply';
+export { act } from './instruction/act';
+export { get } from './instruction/get';
+export { ref } from './instruction/ref';
+export { set } from './instruction/set';
+export { use } from './instruction/use';
+export { has } from './instruction/has';
 
-export { Model, Model as default } from './model';
-export { Consumer, Provider } from './context';
-export { Singleton } from './singleton';
+export { MVC as Model, MVC as default } from './react/mvc';
+export { LOCAL, STATE, WHY, Stateful } from './model';
+export { CONTROL } from './controller';
+export { Consumer } from './react/consumer';
+export { Provider } from './react/provider';
+export { Global } from './react/global';
+export { tap } from './react/tap';
+
+export { useFrom } from './react/useFrom';
+export { useLocal } from './react/useLocal';
+export { useModel } from './react/useModel';
+export { useTap } from './react/useTap';

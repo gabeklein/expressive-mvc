@@ -1,74 +1,65 @@
-// import { Oops } from '../src/stateful';
-import { from, Model } from './adapter';
+import { Model } from '../src';
+import { CONTROL } from '../src/controller';
+import { LOCAL, STATE, WHY } from '../src/model';
+import { mockConsole } from './adapter';
 
-describe("update method", () => {
-  class Control extends Model {
-    foo = 1;
-    bar = 2;
-    baz = from(this, state => {
-      return state.bar + 1;
-    });
-  }
+describe("isTypeof", () => {
+  class Test extends Model {}
 
-  it("provides promise resolving next update", async () => {
-    const control = Control.create();
-    
-    control.foo = 2;
-    await control.update();
-    
-    control.bar = 3;
-    await control.update();
+  it("will assert if Model extends another", () => {
+    class Test2 extends Test {}
+
+    expect(Test.isTypeof(Test2)).toBe(true);
   })
 
-  it("resolves keys next update involved", async () => {
-    const control = Control.create();
+  it("will be falsy if not super", () => {
+    class NotATest extends Model {}
 
-    control.foo = 2;
-
-    const updated = await control.update();
-    expect(updated).toMatchObject(["foo"]);
-  })
-
-  it('resolves immediately when no updates pending', async () => {
-    const control = Control.create();
-    const update = await control.update();
-
-    expect(update).toBe(false);
-  })
-
-  it('rejects if no update pending in strict mode', async () => {
-    const control = Control.create();
-    const update = control.update(true);
-
-    await expect(update).rejects.toThrowError();
-  })
-
-  it('rejects if update not expected in strict mode', async () => {
-    const control = Control.create();
-
-    control.foo = 2;
-
-    const update = control.update(false);
-
-    await expect(update).rejects.toThrowError();
-  })
-
-  it("includes getters in batch which trigger them", async () => {
-    const control = Control.create();
-
-    // we must evaluate baz because it can't be
-    // subscribed to without this happening atleast once. 
-    expect(control.baz).toBe(3);
-
-    control.bar = 3;
-
-    const update = await control.update();
-
-    expect(update).toMatchObject(["bar", "baz"]);
+    expect(Model.isTypeof(NotATest)).toBe(true);
+    expect(Test.isTypeof(NotATest)).toBe(false);
   })
 })
 
-describe("update property", () => {
+describe("Symbols", () => {
+  class FooBar extends Model {
+    foo = "foo";
+    bar = "bar";
+  }
+
+  it("will be defined", () => {
+    expect(CONTROL).toBeDefined()
+    expect(STATE).toBeDefined()
+    expect(LOCAL).toBeDefined()
+  })
+
+  it("will expose instance controller", () => {
+    const instance = FooBar.create();
+    const controller = instance[CONTROL];
+
+    expect(controller).toBeDefined();
+  })
+
+  it("will expose instance state", () => {
+    const instance = FooBar.create();
+    const exported = instance.export();
+    const state = instance[STATE];
+
+    expect(state).toMatchObject(exported);
+  })
+
+  it("will expose subscriber within listener", () => {
+    const instance = FooBar.create();
+
+    expect(instance[LOCAL]).toBeUndefined();
+
+    instance.effect(local => {
+      expect(local[CONTROL]).toBe(instance[CONTROL]);
+      expect(local[LOCAL]).toBeDefined();
+    })
+  })
+})
+
+describe("WHY", () => {
   class Test extends Model {
     value1 = 1;
     value2 = 2;
@@ -82,7 +73,7 @@ describe("update property", () => {
     test.value2 = 3;
 
     const update = await test.update();
-    const updated = test[Model.WHY];
+    const updated = test[WHY];
 
     expect(update).toStrictEqual(updated);
 
@@ -100,10 +91,10 @@ describe("update property", () => {
       void state.value1;
       void state.value3;
 
-      update = state[Model.WHY];
+      update = state[WHY];
     })
 
-    expect(update).toMatchObject([]);
+    expect(update).toBeUndefined();
 
     test.value1 = 2;
     test.value2 = 3;
@@ -111,7 +102,7 @@ describe("update property", () => {
     fullUpdate = await test.update();
 
     // sanity check
-    expect(update).not.toMatchObject(fullUpdate);
+    expect(update).not.toStrictEqual(fullUpdate);
     expect(fullUpdate).toContain("value2");
 
     expect(update).toContain("value1");
@@ -123,65 +114,40 @@ describe("update property", () => {
 
     // sanity check
     expect(fullUpdate).not.toContain("value1");
-    
+
     expect(update).toContain("value3");
     expect(fullUpdate).toContain("value3");
   })
 })
 
-describe("isTypeof method", () => {
-  class Test extends Model {}
-  class Test2 extends Test {}
-  
-  it("will assert if Model extends another", () => {
-    expect(Test.isTypeof(Test2)).toBeTruthy();
-  })
-})
-
-describe("Model", () => {
-  class FooBar extends Model {
-    foo = "foo";
-    bar = "bar";
-  }
-
-  it("will expose symbols", () => {
-    expect(Model.CONTROL).toBeDefined()
-    expect(Model.STATE).toBeDefined()
-    expect(Model.LOCAL).toBeDefined()
-  })
-
-  it("will expose instance controller", () => {
-    const instance = FooBar.create();
-    const controller = instance[Model.CONTROL];
-
-    expect(controller).toBeDefined();
-  })
-
-  it("will expose instance state", () => {
-    const instance = FooBar.create();
-    const exported = instance.export();
-    const state = instance[Model.STATE];
-
-    expect(state).toMatchObject(exported);
-  })
-
-  it("will expose subscriber within listener", () => {
-    const instance = FooBar.create();
-
-    expect(instance[Model.LOCAL]).toBeUndefined();
-
-    instance.effect(local => {
-      expect(local[Model.CONTROL]).toBe(instance[Model.CONTROL]);
-      expect(local[Model.LOCAL]).toBeDefined();
-    })
-  })
-})
-
 describe("toString", () => {
   class Test extends Model {};
-  
+
   it("Model will cast to string as class name", () => {
     const test = Test.create();
     expect(String(test)).toBe("Test");
   })
+})
+
+describe("errors", () => {
+  const { error } = mockConsole();
+
+  it("will log update errors in the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const expected = new Error("Goodbye cruel world!")
+    const test = Test.create();
+
+    test.on("value", () => {
+      throw expected;
+    });
+
+    test.value = 2;
+
+    await test.update();
+
+    expect(error).toBeCalledWith(expected);
+  });
 })

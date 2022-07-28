@@ -3,7 +3,8 @@
   "testEnvironment": "node",
   "coveragePathIgnorePatterns": [
     "/node_modules/",
-    "/src/index.ts"
+    "/src/index.ts",
+    "tests/adapter.ts"
   ],
   "coverageThreshold": {
     "global": {

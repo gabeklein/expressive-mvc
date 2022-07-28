@@ -3,15 +3,17 @@ import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols
 
 export type Collection =
   | Array<Model | typeof Model>
-  | BunchOf<Model | typeof Model>;
+  | { [anything: string]: Model | typeof Model };
 
 export class Lookup {
   private table = new Map<typeof Model, symbol>();
 
   public get local(){
-    return getOwnPropertySymbols(this).map(
-      (symbol): Model => (this as any)[symbol]
-    ) 
+    return [
+      ...new Set(getOwnPropertySymbols(this).map(
+        symbol => (this as any)[symbol] as Model
+      ))
+    ]
   }
 
   private key(T: typeof Model){
@@ -28,7 +30,7 @@ export class Lookup {
   public get(T: typeof Model){
     return (this as any)[this.key(T)];
   }
-  
+
   public push(I: Model | typeof Model | Collection){
     const next = create(this) as this;
 
@@ -55,9 +57,15 @@ export class Lookup {
     }
 
     do {
-      defineProperty(this, this.key(T), {
-        value: I, writable
+      const key = this.key(T);
+      const conflict = this.hasOwnProperty(key);
+
+      defineProperty(this, key, {
+        value: conflict ? null : I,
+        configurable: true,
+        writable
       });
+
       T = getPrototypeOf(T);
     }
     while(T !== Model);
@@ -69,7 +77,7 @@ export class Lookup {
     for(const key of getOwnPropertySymbols(this)){
       const entry = getOwnPropertyDescriptor(this, key)!;
 
-      if(entry.writable)
+      if(entry.writable && entry.value)
         entry.value.destroy();
     }
   }
