@@ -30,7 +30,7 @@
     "postversion": "git push & npm publish"
   },
   "peerDependencies": {
-    "react": ">=17.0.2"
+    "react": ">=16.8.0 <19.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.0",
