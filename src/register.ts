@@ -1,5 +1,5 @@
 import { Model } from './model';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './util';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './util';
 
 export type Collection =
   | Array<Model | typeof Model>
@@ -31,30 +31,14 @@ export class Lookup {
     return (this as any)[this.key(T)];
   }
 
-  public push(I: Model | typeof Model | Collection){
-    const next = create(this) as this;
-
-    if(I instanceof Model || typeof I == "function")
-      next.register(I);
-    else
-      for(const i of values(I))
-        next.register(i);
-
-    return next;
+  public push(){
+    return create(this) as this;
   }
 
-  public register(I: Model | typeof Model){
-    let writable = true;
-    let T: typeof Model;
-
-    if(I instanceof Model){
-      T = I.constructor as any;
-      writable = false;
-    }
-    else {
-      T = I;
-      I = I.create();
-    }
+  public inject(
+    T: typeof Model,
+    I: Model,
+    writable?: boolean){
 
     do {
       const key = this.key(T);
@@ -69,8 +53,6 @@ export class Lookup {
       T = getPrototypeOf(T);
     }
     while(T !== Model);
-
-    return I;
   }
 
   public pop(){

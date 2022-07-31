@@ -3,10 +3,10 @@ import React from 'react';
 import { ensure } from '../controller';
 import { issues } from '../issues';
 import { Model } from '../model';
-import { Collection, Lookup } from '../register';
+import { Lookup } from '../register';
 import { Subscriber } from '../subscriber';
 import { Class } from '../types';
-import { entries } from '../util';
+import { entries, values } from '../util';
 import { getPending } from './tap';
 import { use } from './use';
 import { LookupContext, useLookup } from './useLocal';
@@ -50,10 +50,40 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   if("of" in props)
     throw Oops.PropDeprecated();
 
-  const context = useNewContext(props.for);
+  const from = useLookup();
+
+  const context = React.useMemo(() => {
+    const I = props.for;
+
+    if(!I)
+      throw Oops.NoType();
+
+    const layer = from.push();
+
+    function register(I: Model | typeof Model){
+      if(I instanceof Model)
+        layer.inject(I.constructor as any, I, false);
+      else
+        layer.inject(I, I.create(), true);
+    }
+
+    if(I instanceof Model || typeof I == "function")
+      register(I);
+    else
+      values(I).forEach(register);
+
+    for(const instance of layer.local)
+      if(instance)
+        for(const apply of getPending(instance))
+          apply(layer)
+
+    return layer;
+  }, []);
+
   const render = props.children;
 
   useAppliedProps(context, props);
+
   React.useLayoutEffect(() => () => context.pop(), []);
 
   return React.createElement(LookupContext.Provider, { value: context },
@@ -64,26 +94,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 }
 
 export { Provider };
-
-function useNewContext(
-  inject?: Model | typeof Model | Collection){
-
-  const from = useLookup();
-
-  return React.useMemo(() => {
-    if(!inject)
-      throw Oops.NoType();
-
-    const context = from.push(inject);
-
-    for(const instance of context.local)
-      if(instance)
-        for(const apply of getPending(instance))
-          apply(context)
-
-    return context;
-  }, []);
-}
 
 function useAppliedProps(within: Lookup, props: {}){
   const update = React.useMemo(() => {
