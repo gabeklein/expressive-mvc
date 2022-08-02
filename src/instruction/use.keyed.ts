@@ -129,12 +129,15 @@ function createProxy(
       {
         from,
         delete(key: any){
+          // TODO: this commit's fix needs tests.
+          // Was not cause by coverage.
+          const out = from.delete(key);
           emit(key);
-          return from.delete(key);
+          return out;
         },
         clear(){
-          emit(ANY);
           from.clear();
+          emit(ANY);
         },
         has(key: any){
           watch(this, key);
