@@ -10,6 +10,9 @@ import { useLocal } from './useLocal';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
+namespace MVC {
+  export type Type<T extends MVC = MVC> = typeof MVC & (new () => T);
+}
 
 class MVC extends Model {
   static [CONTROL]: Controller;
@@ -56,7 +59,7 @@ class MVC extends Model {
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
+  static get <I extends MVC, K extends Model.Field<I>> (this: MVC.Type<I>, key: K): I[K];
 
   /**
    * **React Hook** - Fetch instance.
@@ -64,7 +67,7 @@ class MVC extends Model {
    * Effect callback will run once if found, throw if not found.
    * Returned function is called on unmount.
    */
-  static get <T extends Class, I extends InstanceOf<T>> (this: T, effect: (found: I) => Callback | void): I;
+  static get <I extends MVC> (this: MVC.Type<I>, effect: (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
     return useLocal(this, arg);
@@ -73,13 +76,13 @@ class MVC extends Model {
   /** 
    * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
    */
-  static tap <T extends Class> (this: T): InstanceOf<T>;
-  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect?: boolean): I[K];
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
+  static tap <T extends MVC> (this: MVC.Type<T>): T;
+  static tap <I extends MVC, K extends Model.Field<I>> (this: MVC.Type<I>, key: K, expect: true): Exclude<I[K], undefined>;
+  static tap <I extends MVC, K extends Model.Field<I>> (this: MVC.Type<I>, key: K, expect?: boolean): I[K];
+  static tap <T, I extends MVC> (this: MVC.Type<I>, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
+  static tap <T, I extends MVC> (this: MVC.Type<I>, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
+  static tap <T, I extends MVC> (this: MVC.Type<I>, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
+  static tap <T, I extends MVC> (this: MVC.Type<I>, from: (this: I, state: I) => T, expect?: boolean): T;
 
   static tap (key?: string | Function, expect?: boolean): any {
     return useTap(this, key as any, expect);
@@ -92,12 +95,12 @@ class MVC extends Model {
    * 
    * @param callback - Run after creation of instance.
    */
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, callback?: (instance: I) => void): I;
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, apply: Model.Compat<I>): I;
+  static new <I extends MVC> (this: MVC.Type<I>, callback?: (instance: I) => void): I;
+  static new <I extends MVC> (this: MVC.Type<I>, apply: Model.Compat<I>): I;
 
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, arg?: ((instance: I) => void) | Model.Compat<I>){
+  static new <I extends MVC> (this: MVC.Type<I>, arg?: ((instance: I) => void) | Model.Compat<I>){
     const instance = React.useMemo(() => {
-      const instance: I = new this();
+      const instance = new this() as I;
 
       ensure(instance);
 
@@ -105,10 +108,10 @@ class MVC extends Model {
         arg(instance);
 
       else if(arg)
-        getOwnPropertyNames(instance).forEach(key => {
+        getOwnPropertyNames(instance).forEach(((key: Model.Field<I>) => {
           if(key in arg)
-            instance[key] = arg[key];
-        })
+            instance[key] = arg[key]!;
+        }) as any)
 
       return instance;
     }, []);
@@ -118,19 +121,19 @@ class MVC extends Model {
     return instance;
   }
 
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
+  static use <I extends MVC> (
+    this: MVC.Type<I>,
     watch: Model.Field<I>[],
     callback?: (instance: I) => void
   ): I;
 
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
+  static use <I extends MVC> (
+    this: MVC.Type<I>,
     callback?: (instance: I) => void
   ): I;
 
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
+  static use <I extends MVC> (
+    this: MVC.Type<I>,
     apply: Model.Compat<I>,
     keys?: Model.Event<I>[]
   ): I;
@@ -144,8 +147,8 @@ class MVC extends Model {
   /**
    * @deprecated consider doing this manually - not worth minor efficiency gain over using.
   */
-  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Model.Compat<I>> (
-    this: T, apply: D, keys?: (keyof D)[]){
+  static uses <I extends MVC, D extends Model.Compat<I>> (
+    this: MVC.Type<I>, apply: D, keys?: (keyof D)[]){
 
     return this.use(instance => {
       instance.import(apply, keys);
@@ -155,8 +158,8 @@ class MVC extends Model {
   /**
    * @deprecated is now replaced by overload of `use` method.
   */
-  static using <T extends typeof MVC, I extends InstanceOf<T>> (
-    this: T,
+  static using <I extends MVC> (
+    this: MVC.Type<I>,
     apply: Model.Compat<I>,
     keys?: Model.Event<I>[]){
 

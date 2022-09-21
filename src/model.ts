@@ -41,6 +41,8 @@ export interface Stateful {
 };
 
 declare namespace Model {
+  export type Type<T extends Model = Model> = typeof Model & (new () => T);
+
   /** Including but not limited to T. */
   type Extends<T> = T | (string & Record<never, never>);
 
@@ -373,7 +375,7 @@ class Model {
   static create<T extends Class>(
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
-    const instance =  new this(...args);
+    const instance = new this(...args);
 
     ensure(instance);
 
