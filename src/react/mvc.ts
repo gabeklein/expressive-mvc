@@ -145,28 +145,6 @@ class MVC extends Model {
     return instance;
   }
 
-  /**
-   * @deprecated consider doing this manually - not worth minor efficiency gain over using.
-  */
-  static uses <I extends MVC, D extends Model.Compat<I>> (
-    this: MVC.Type<I>, apply: D, keys?: (keyof D)[]){
-
-    return this.use(instance => {
-      instance.import(apply, keys);
-    })
-  }
-
-  /**
-   * @deprecated is now replaced by overload of `use` method.
-  */
-  static using <I extends MVC> (
-    this: MVC.Type<I>,
-    apply: Model.Compat<I>,
-    keys?: Model.Event<I>[]){
-
-    return this.use(apply, keys);
-  }
-
   static meta <T extends Class>(this: T): T;
   static meta <T extends Class, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
   static meta <T extends Class, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
