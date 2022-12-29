@@ -2,7 +2,7 @@ import React, { useLayoutEffect } from 'react';
 
 import { issues } from '../issues';
 import { Model } from '../model';
-import { Lookup } from '../register';
+import { Lookup } from './context';
 
 import type { Callback, InstanceOf } from '../types';
 

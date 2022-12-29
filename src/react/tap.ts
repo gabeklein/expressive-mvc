@@ -1,8 +1,8 @@
 import { apply } from '../instruction/apply';
 import { issues } from '../issues';
 import { Model, Stateful } from '../model';
-import { Lookup } from '../register';
 import { Class, InstanceOf } from '../types';
+import { Lookup } from './context';
 import { Global } from './global';
 import { useLookup } from './useLocal';
 
