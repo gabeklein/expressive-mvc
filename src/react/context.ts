@@ -1,10 +1,6 @@
 import { Model } from '../model';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../util';
 
-export type Collection =
-  | Array<Model | typeof Model>
-  | { [anything: string]: Model | typeof Model };
-
 export class Lookup {
   private table = new Map<typeof Model, symbol>();
 
