@@ -67,7 +67,7 @@ class MVC extends Model {
    * Effect callback will run once if found, throw if not found.
    * Returned function is called on unmount.
    */
-  static get <I extends MVC> (this: MVC.Type<I>, effect: (found: I) => Callback | void): I;
+  static get <I extends MVC> (this: MVC.Type<I>, effect:  (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
     return useLocal(this, arg);
@@ -108,10 +108,11 @@ class MVC extends Model {
         arg(instance);
 
       else if(arg)
-        getOwnPropertyNames(instance).forEach(((key: Model.Field<I>) => {
-          if(key in arg)
-            instance[key] = arg[key]!;
-        }) as any)
+        getOwnPropertyNames(instance)
+          .forEach(((key: Model.Field<I>) => {
+            if(key in arg)
+              instance[key] = arg[key]!;
+          }) as any)
 
       return instance;
     }, []);

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React from 'react';
 
 import { issues } from '../issues';
 import { Model } from '../model';
@@ -32,7 +32,7 @@ function useLocal<T extends typeof Model>(
       return (instance as any)[arg];
 
     case "function":
-      useLayoutEffect(() => arg(instance), []);
+      React.useLayoutEffect(() => arg(instance), []);
 
     default:
       return instance;

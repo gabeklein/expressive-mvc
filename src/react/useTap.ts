@@ -53,10 +53,9 @@ function useTap <T extends Stateful> (
     if("get" in source)
       return () => source.get!();
 
-    if("prototype" in source)
-      return () => useLocal(source as any);
-    else
-      return source;
+    return "prototype" in source ?
+      () => useLocal(source as typeof Model)
+      : source;
   }, [])() as T;
 
   if(typeof path == "function")
