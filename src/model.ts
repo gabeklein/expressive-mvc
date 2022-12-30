@@ -80,10 +80,10 @@ declare namespace Model {
   export type Event<T, U extends Model = Model> = Extends<Field<T, U>>;
 
   /** Object containing managed entries found in T. */
-  export type Entries<T, U extends Model = Model> = Pick<T, Field<T, U>>;
+  export type Entries<T, U extends Model = Model> = { [K in Field<T, U>]: T[K] };
 
   /** Object comperable to data found in T. */
-  export type Compat<T, U extends Model = Model> = Partial<Entries<T, U>>;
+  export type Compat<T, U extends Model = Model> = { [K in Field<T, U>]?: T[K] };
 
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
