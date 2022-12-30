@@ -44,7 +44,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const render = props.children;
 
   useAppliedProps(context, props);
-
   React.useLayoutEffect(() => () => context.pop(), []);
 
   return React.createElement(LookupContext.Provider, { value: context },
@@ -88,20 +87,21 @@ function useNewContext(
   }, []);
 }
 
-function useAppliedProps(within: Lookup, props: {}){
-  const update = React.useMemo(() => {
-    const targets = within.local;
+function useAppliedProps(context: Lookup, props: {}){
+  const apply = React.useMemo(() => {
+    return (props: {}) => {
+      entries(props).forEach(([key, value]) => {
+        if(key == "for" || key == "children")
+          return;
 
-    return function integrate(props: {}){
-      for(const [key, value] of entries(props))
-        if(!["for", "children"].includes(key))
-          for(const into of targets)
-            if(into && key in into)
-              (into as any)[key] = value;
+        for(const into of context.local)
+          if(into && key in into)
+            (into as any)[key] = value;
+      })
     };
   }, []);
 
-  update(props);
+  apply(props);
 }
 
 interface RenderFunctionProps {
