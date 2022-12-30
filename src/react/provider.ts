@@ -24,7 +24,7 @@ declare namespace Provider {
   type NormalProps<E, I = Existent<E>> =
     & {
       for: E;
-      children: React.ReactNode | ((instance: I) => React.ReactNode);
+      children?: React.ReactNode | ((instance: I) => React.ReactNode);
     }
     & Model.Compat<I>;
 
