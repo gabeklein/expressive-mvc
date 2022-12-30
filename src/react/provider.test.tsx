@@ -205,7 +205,7 @@ it("will provide a mix of state and models", () => {
   )
 })
 
-it("will throw if lackiing `for` prop", () => {
+it("will throw if missing `for` prop", () => {
   // @ts-ignore
   const test = () => render(<Provider />);
 
