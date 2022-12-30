@@ -52,11 +52,16 @@ export class Lookup {
   }
 
   public pop(){
+    const items = new Set<Model>();
+
     for(const key of getOwnPropertySymbols(this)){
       const entry = getOwnPropertyDescriptor(this, key)!;
 
       if(entry.writable && entry.value)
-        entry.value.destroy();
+        items.add(entry.value)
     }
+
+    for(const model of items)
+      model.destroy();
   }
 }

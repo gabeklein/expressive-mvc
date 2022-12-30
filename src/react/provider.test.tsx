@@ -21,19 +21,20 @@ it("will create instance of given model", () => {
 })
 
 it("will destroy instance of given model", async () => {
-  const didUnmount = jest.fn();
+  const willDestroy = jest.fn();
+  class Test extends MVC {
+    destroy(){
+      willDestroy();
+      super.destroy();
+    }
+  };
 
-  const result = render(
-    <Provider for={Foo}>
-      <Consumer for={Foo} has={i => {
-        i.effect(() => didUnmount, []);
-      }} />
-    </Provider>
+  const element = render(
+    <Provider for={Test} />
   );
 
-  result.unmount();
-
-  expect(didUnmount).toHaveBeenCalled()
+  element.unmount();
+  expect(willDestroy).toBeCalledTimes(1);
 });
 
 it("will accept render function when model given", () => {
