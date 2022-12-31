@@ -77,39 +77,38 @@ function useModel <T extends Model | Stateful> (
 
     return instance;
   }
-  else {
-    const local = use(refresh => (
-      ensure(instance).subscribe(() => refresh)
-    ));
+  
+  const local = use(refresh => (
+    ensure(instance).subscribe(() => refresh)
+  ));
 
-    if(typeof arg == "object"){
-      local.active = false;
+  if(typeof arg == "object"){
+    local.active = false;
 
-      if(typeof arg2 !== "object")
-        arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
+    if(typeof arg2 !== "object")
+      arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
 
-      for(const key of arg2)
-        if(key in arg)
-          (instance as any)[key] = arg[key];
-
-      React.useLayoutEffect(() => {
-        local.active = true;
-      });
-    }
+    for(const key of arg2)
+      if(key in arg)
+        (instance as any)[key] = arg[key];
 
     React.useLayoutEffect(() => {
-      local.commit();
-
-      return () => {
-        local.release();
-
-        if(Model.isTypeof(source))
-          (instance as Model).destroy();
-      };
-    }, []);
-
-    return local.proxy;
+      local.active = true;
+    });
   }
+
+  React.useLayoutEffect(() => {
+    local.commit();
+
+    return () => {
+      local.release();
+
+      if(Model.isTypeof(source))
+        (instance as Model).destroy();
+    };
+  }, []);
+
+  return local.proxy;
 }
 
 export { useModel }
