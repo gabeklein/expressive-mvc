@@ -34,7 +34,7 @@ class Controller<T extends Stateful = any> {
     return new Subscriber<T>(this, callback);
   }
 
-  add(key: keyof T & string){
+  watch(key: keyof T & string){
     const { subject, state } = this;
     const { value } = getOwnPropertyDescriptor(subject, key)!;
 
@@ -154,11 +154,10 @@ function ensure<T extends {}>(subject: T): Controller<T & Stateful>;
 function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
   let control = subject[CONTROL]!;
 
-  if(!control)
-    defineProperty(subject, CONTROL, {
-      value: control =
-        new Controller(subject as unknown as Stateful)
-    });
+  if(!control){
+    control = new Controller(subject as unknown as Stateful)
+    defineProperty(subject, CONTROL, { value: control });
+  }
 
   if(!control.state){
     const { waiting } = control;
@@ -176,7 +175,7 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     control.state = new Map();
 
     for(const key in subject)
-      control.add(key);
+      control.watch(key);
 
     const callback = Array.from(waiting);
 
