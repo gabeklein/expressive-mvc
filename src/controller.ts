@@ -16,6 +16,11 @@ function getUpdate<T extends {}>(subject: T){
   return UPDATE.get(subject) as readonly Model.Field<T>[];
 }
 
+function setUpdate(subject: Stateful, keys: Set<string>){
+  UPDATE.set(subject, Array.from(keys));
+  setTimeout(() => UPDATE.delete(subject), 0);
+}
+
 declare namespace Controller {
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
@@ -100,21 +105,15 @@ class Controller<T extends Stateful = any> {
   }
 
   update(key: Model.Field<T>){
-    const { followers, frame, subject, waiting } = this;
+    const { followers, frame, waiting } = this;
   
     if(frame.has(key))
       return;
   
     else if(!frame.size)
       setTimeout(() => {
-        flush(this);
-      
-        UPDATE.set(subject, Array.from(frame));
-
-        setTimeout(() => {
-          UPDATE.delete(subject);
-        }, 0);
-      
+        flush(this);      
+        setUpdate(this.subject, frame)
         frame.clear();
       
         for(const notify of waiting)

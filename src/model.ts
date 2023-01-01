@@ -1,4 +1,4 @@
-import { CONTROL, Controller, ensure, getUpdate, UPDATE } from './controller';
+import { CONTROL, Controller, ensure, getUpdate } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -127,7 +127,7 @@ class Model {
   }
 
   get [WHY](){
-    return UPDATE.get(this);
+    return getUpdate(this);
   }
 
   on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
