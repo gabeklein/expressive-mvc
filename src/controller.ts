@@ -176,11 +176,9 @@ function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
     for(const key in subject)
       control.watch(key);
 
-    const callback = Array.from(waiting);
+    control.waiting = new Set();
 
-    waiting.clear();
-    
-    for(const cb of callback)
+    for(const cb of waiting)
       cb();
   }
 
