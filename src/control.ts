@@ -142,7 +142,7 @@ class Control<T extends {} = any> {
 
   static get<T extends {}>(from: T){
     if(from && "is" in from)
-      from = from.is as T;
+      from = (from as any).is as T;
   
     return REGISTER.get(from) as Control<T> | undefined;
   }
