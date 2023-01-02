@@ -25,3 +25,26 @@ export interface Stateful {
    */
   [WHY]?: readonly Model.Event<this>[];
 };
+
+const Debug = { CONTROL, LOCAL, STATE, WHY } as const;
+
+type Debug<T extends {}> = T & {
+  /** Controller for this instance. */
+  [CONTROL]?: Controller<T>;
+
+  /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
+  [LOCAL]?: Subscriber<T>;
+
+  /** Current state of this instance. */
+  [STATE]?: Model.Values<T>;
+
+  /**
+   * Last update causing a refresh to subscribers.
+   * 
+   * If accessed directly, will contain all keys from last push.
+   * If within a subscribed function, will contain only keys which explicitly caused a refresh.
+   */
+  [WHY]?: readonly Model.Event<T>[];
+}
+
+export { Debug };

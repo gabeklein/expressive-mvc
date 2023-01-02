@@ -1,5 +1,4 @@
 import { Controller, ensure, getUpdate } from './controller';
-import { Stateful } from './debug';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -80,7 +79,7 @@ declare namespace Model {
   }
 }
 
-interface Model extends Stateful {
+interface Model {
   /**
    * Circular reference to `this` controller.
    * 

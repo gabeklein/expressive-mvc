@@ -1,5 +1,5 @@
 import { Controller, ensure, LISTEN } from '../controller';
-import { CONTROL, LOCAL, Stateful } from '../debug';
+import { CONTROL, Debug, LOCAL } from '../debug';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
@@ -109,7 +109,7 @@ function apply<T = any>(
         ? this.ref(key, onSet)
         : undefined,
 
-      get(this: Stateful){
+      get(this: Debug<any>){
         if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
@@ -132,7 +132,7 @@ function apply<T = any>(
 }
 
 export function getRecursive(key: string, from: Controller){
-  const context = new WeakMap<Subscriber, Stateful | undefined>();
+  const context = new WeakMap<Subscriber, {} | undefined>();
 
   return (local: Subscriber | undefined) => {
     if(!local)

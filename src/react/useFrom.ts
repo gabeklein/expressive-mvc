@@ -1,26 +1,25 @@
 import React from 'react';
 
 import { ensure } from '../controller';
-import { Stateful } from '../debug';
 import { defineProperty } from '../util';
 import { use } from './use';
 
 import type { Callback } from '../types';
 
-function useFrom <T extends Stateful, R> (
+function useFrom <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect: true
 ): Exclude<R, undefined>;
 
-function useFrom <T extends Stateful, R> (
+function useFrom <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect?: boolean
 ): R;
 
 function useFrom(
-  target: Stateful,
+  target: {},
   compute: Function,
   suspend?: boolean) {
 

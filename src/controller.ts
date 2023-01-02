@@ -5,7 +5,7 @@ import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
-import { CONTROL, STATE, Stateful, WHY } from './debug';
+import { CONTROL, Debug, STATE, WHY } from './debug';
 
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
@@ -16,7 +16,7 @@ function getUpdate<T extends {}>(subject: T){
   return UPDATE.get(subject) as readonly Model.Event<T>[];
 }
 
-function setUpdate(subject: Stateful, keys: Set<string>){
+function setUpdate(subject: any, keys: Set<string>){
   UPDATE.set(subject, Array.from(keys));
   setTimeout(() => UPDATE.delete(subject), 0);
 }
@@ -27,7 +27,7 @@ declare namespace Controller {
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
 }
 
-class Controller<T extends Stateful = any> {
+class Controller<T extends {} = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
@@ -162,19 +162,17 @@ class Controller<T extends Stateful = any> {
   }
 }
 
-type EnsureCallback<T extends Stateful> = (control: Controller<T>) => Callback | void;
+type EnsureCallback<T extends {}> = (control: Controller<T>) => Callback | void;
 
-function ensure<T extends Stateful>(subject: T): Controller<T>;
-function ensure<T extends Stateful>(subject: T, cb: EnsureCallback<T>): Callback;
-function ensure<T extends {}>(subject: T): Controller<T & Stateful>;
+function ensure<T extends {}>(subject: T): Controller<T>;
+function ensure<T extends {}>(subject: T, cb: EnsureCallback<T>): Callback;
+function ensure<T extends {}>(subject: T): Controller<T>;
 
-function ensure<T extends Stateful>(subject: T, cb?: EnsureCallback<T>){
-  let control = subject[CONTROL]!;
+function ensure<T extends {}>(subject: T, cb?: EnsureCallback<T>){
+  let control = (subject as Debug<any>)[CONTROL]!;
 
-  if(!control){
-    control = new Controller(subject as unknown as Stateful)
-    defineProperty(subject, CONTROL, { value: control });
-  }
+  if(!control)
+    control = new Controller(subject)
 
   if(!control.state){
     const { waiting } = control;

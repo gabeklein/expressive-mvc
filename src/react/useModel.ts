@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 import { ensure } from '../controller';
-import { Stateful } from '../debug';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
@@ -24,24 +23,24 @@ function useModel <T extends Class, I extends InstanceOf<T>> (
   keys?: Model.Event<I>[]
 ): I;
 
-function useModel <T extends Stateful> (
+function useModel <T extends Model> (
   source: (() => T) | T,
   watch?: Model.Field<T>[],
   callback?: (instance: T) => void
 ): T;
 
-function useModel <T extends Stateful> (
+function useModel <T extends Model> (
   source: (() => T) | T,
   callback?: (instance: T) => void
 ): T;
 
-function useModel <T extends Stateful> (
+function useModel <T extends Model> (
   source: (() => T) | T,
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
-function useModel <T extends Model | Stateful> (
+function useModel <T extends Model> (
   source: any,
   arg?: ((instance: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((instance: T) => void) | Model.Field<T>[]){

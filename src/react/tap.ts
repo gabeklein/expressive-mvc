@@ -1,4 +1,3 @@
-import { Stateful } from '../debug';
 import { apply } from '../instruction/apply';
 import { issues } from '../issues';
 import { Model } from '../model';
@@ -19,7 +18,7 @@ export type Peer = typeof Model | typeof Global;
 export type ApplyPeer = (context: Lookup) => void;
 export type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
 
-const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
+const PendingContext = new WeakMap<{}, ApplyPeer[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 /**
@@ -109,7 +108,7 @@ function usePeerContext(subject: Model){
   ContextWasUsed.set(subject, !!pending);
 }
 
-function getPending(subject: Stateful){
+function getPending(subject: {}){
   let pending = PendingContext.get(subject);
 
   if(!pending)

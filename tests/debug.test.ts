@@ -1,5 +1,5 @@
 import { Model } from '../src';
-import { CONTROL, LOCAL, STATE, WHY } from '../src/debug';
+import { Debug } from '../src/debug';
 import { mockConsole } from './adapter';
 
 describe("isTypeof", () => {
@@ -26,34 +26,34 @@ describe("Symbols", () => {
   }
 
   it("will be defined", () => {
-    expect(CONTROL).toBeDefined()
-    expect(STATE).toBeDefined()
-    expect(LOCAL).toBeDefined()
+    expect(Debug.CONTROL).toBeDefined()
+    expect(Debug.STATE).toBeDefined()
+    expect(Debug.LOCAL).toBeDefined()
   })
 
   it("will expose instance controller", () => {
-    const instance = FooBar.create();
-    const controller = instance[CONTROL];
+    const instance = FooBar.create() as Debug<FooBar>;
+    const control = instance[Debug.CONTROL];
 
-    expect(controller).toBeDefined();
+    expect(control).toBeDefined();
   })
 
   it("will expose instance state", () => {
-    const instance = FooBar.create();
+    const instance = FooBar.create() as Debug<FooBar>;
     const exported = instance.export();
-    const state = instance[STATE];
+    const state = instance[Debug.STATE];
 
     expect(state).toMatchObject(exported);
   })
 
   it("will expose subscriber within listener", () => {
-    const instance = FooBar.create();
+    const instance = FooBar.create() as Debug<FooBar>;
 
-    expect(instance[LOCAL]).toBeUndefined();
+    expect(instance[Debug.LOCAL]).toBeUndefined();
 
     instance.effect(local => {
-      expect(local[CONTROL]).toBe(instance[CONTROL]);
-      expect(local[LOCAL]).toBeDefined();
+      expect(local[Debug.CONTROL]).toBe(instance[Debug.CONTROL]);
+      expect(local[Debug.LOCAL]).toBeDefined();
     })
   })
 })
@@ -66,13 +66,13 @@ describe("WHY", () => {
   }
 
   it("will reveal last update", async () => {
-    const test = Test.create();
+    const test = Test.create() as Debug<Test>;
 
     test.value1 = 2;
     test.value2 = 3;
 
     const update = await test.update();
-    const updated = test[WHY];
+    const updated = test[Debug.WHY];
 
     expect(update).toStrictEqual(updated);
 
@@ -81,7 +81,7 @@ describe("WHY", () => {
   })
 
   it("will reveal cause for update", async () => {
-    const test = Test.create();
+    const test = Test.create() as Debug<Test>;
 
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
@@ -90,7 +90,7 @@ describe("WHY", () => {
       void state.value1;
       void state.value3;
 
-      update = state[WHY];
+      update = state[Debug.WHY];
     })
 
     expect(update).toBeUndefined();
