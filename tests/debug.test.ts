@@ -1,6 +1,5 @@
 import { Model } from '../src';
-import { CONTROL } from '../src/controller';
-import { LOCAL, STATE, WHY } from '../src/model';
+import { CONTROL, LOCAL, STATE, WHY } from '../src/debug';
 import { mockConsole } from './adapter';
 
 describe("isTypeof", () => {

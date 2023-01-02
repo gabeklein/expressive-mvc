@@ -1,16 +1,16 @@
 import { PENDING } from './instruction/apply';
 import { flush } from './instruction/get.compute';
-import { Model, Stateful } from './model';
+import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
+import { CONTROL, Stateful } from './debug';
 
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
 const UPDATE = new WeakMap<{}, readonly string[]>();
 const LISTEN = new WeakMap<{}, ListenToKey>();
-const CONTROL = Symbol("CONTROL");
 
 function getUpdate<T extends {}>(subject: T){
   return UPDATE.get(subject) as readonly Model.Event<T>[];
@@ -33,7 +33,11 @@ class Controller<T extends Stateful = any> {
   public waiting = new Set<Callback>();
   public followers = new Set<Controller.OnEvent>();
 
-  constructor(public subject: T){}
+  constructor(public subject: T){
+    Object.defineProperties(subject, {
+      
+    })
+  }
 
   subscribe(callback: Controller.OnEvent<T>){
     return new Subscriber<T>(this, callback);
@@ -190,6 +194,5 @@ export {
   Controller,
   getUpdate,
   UPDATE,
-  LISTEN,
-  CONTROL
+  LISTEN
 }

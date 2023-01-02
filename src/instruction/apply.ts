@@ -1,5 +1,5 @@
-import { Controller, CONTROL, ensure, LISTEN } from '../controller';
-import { LOCAL, Stateful } from '../model';
+import { Controller, ensure, LISTEN } from '../controller';
+import { CONTROL, LOCAL, Stateful } from '../debug';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';

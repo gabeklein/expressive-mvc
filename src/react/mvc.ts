@@ -1,7 +1,8 @@
 /* istanbul ignore file */
 import React from 'react';
 
-import { CONTROL, Controller, ensure } from '../controller';
+import { Controller, ensure } from '../controller';
+import { CONTROL } from '../debug';
 import { Model } from '../model';
 import { Callback, Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';

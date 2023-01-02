@@ -1,6 +1,6 @@
 import { ensure } from '../controller';
 import { issues } from '../issues';
-import { Stateful } from '../model';
+import { Stateful } from '../debug';
 import { mayRetry } from '../suspense';
 import { apply } from './apply';
 import { computeMode } from './get.compute';

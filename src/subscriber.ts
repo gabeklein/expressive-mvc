@@ -1,5 +1,5 @@
-import { getUpdate, Controller, UPDATE, LISTEN } from './controller';
-import { LOCAL, Stateful } from './model';
+import { Controller, getUpdate, LISTEN, UPDATE } from './controller';
+import { LOCAL, Stateful } from './debug';
 import { create, defineProperty } from './util';
 
 import type { Callback } from './types';

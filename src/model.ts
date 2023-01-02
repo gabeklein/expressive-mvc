@@ -1,10 +1,11 @@
-import { CONTROL, Controller, ensure, getUpdate } from './controller';
+import { Controller, ensure, getUpdate } from './controller';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 import { createEffect, defineProperty, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
+import { CONTROL, STATE, Stateful, WHY } from './debug';
 
 export const Oops = issues({
   Timeout: (keys, timeout) => 
@@ -17,28 +18,6 @@ export const Oops = issues({
     `Then called with undefined; update promise will never catch nor supports chaining.`
 });
 
-export const WHY = Symbol("UPDATE");
-export const LOCAL = Symbol("LOCAL");
-export const STATE = Symbol("STATE");
-
-export interface Stateful {
-  /** Controller for this instance. */
-  [CONTROL]?: Controller;
-
-  /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
-  [LOCAL]?: Subscriber;
-
-  /** Current state of this instance. */
-  [STATE]?: Model.Values<this>;
-
-  /**
-   * Last update causing a refresh to subscribers.
-   * 
-   * If accessed directly, will contain all keys from last push.
-   * If within a subscribed function, will contain only keys which explicitly caused a refresh.
-   */
-  [WHY]?: readonly Model.Event<this>[];
-};
 
 declare namespace Model {
   export type Type<T extends Model = Model> = typeof Model & (new () => T);

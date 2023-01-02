@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { ensure } from '../controller';
-import { Stateful } from '../model';
+import { Stateful } from '../debug';
 import { defineProperty } from '../util';
 import { use } from './use';
 

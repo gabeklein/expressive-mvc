@@ -1,6 +1,7 @@
+import { Stateful } from '../debug';
 import { apply } from '../instruction/apply';
 import { issues } from '../issues';
-import { Model, Stateful } from '../model';
+import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { Lookup } from './context';
 import { Global } from './global';
