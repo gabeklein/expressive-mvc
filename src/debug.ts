@@ -52,7 +52,12 @@ export function addUpdate(proxy: any, using: Map<string, any>){
   UPDATE.set(proxy, parent.filter(k => using.has(k)));
 }
 
-const Debug = { CONTROL, LOCAL, STATE, WHY } as const;
+const Debug = {
+  CONTROL,
+  LOCAL,
+  STATE,
+  WHY
+} as const;
 
 type Debug<T extends {}> = T & {
   /** Controller for this instance. */
