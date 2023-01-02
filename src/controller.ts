@@ -5,7 +5,7 @@ import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
-import { CONTROL, Stateful } from './debug';
+import { CONTROL, STATE, Stateful, WHY } from './debug';
 
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
@@ -35,7 +35,21 @@ class Controller<T extends Stateful = any> {
 
   constructor(public subject: T){
     Object.defineProperties(subject, {
-      
+      [CONTROL]: {
+        value: this
+      },
+      [STATE]: {
+        get: () => {
+          const output: any = {};
+          this.state.forEach((value, key) => output[key] = value);
+          return output;
+        }
+      },
+      [WHY]: {
+        get(this: T){
+          return getUpdate(this);
+        }
+      }
     })
   }
 

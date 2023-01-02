@@ -1,11 +1,11 @@
 import { Controller, ensure, getUpdate } from './controller';
+import { Stateful } from './debug';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 import { createEffect, defineProperty, getOwnPropertyNames } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
-import { CONTROL, STATE, Stateful, WHY } from './debug';
 
 export const Oops = issues({
   Timeout: (keys, timeout) => 
@@ -90,23 +90,9 @@ interface Model extends Stateful {
 }
 
 class Model {
-  static [WHY]: readonly string[];
-
   constructor(){
-    defineProperty(this, CONTROL, {
-      value: new Controller(this)
-    });
-    defineProperty(this, "is", {
-      value: this
-    });
-  }
-
-  get [STATE]() {
-    return this.export();
-  }
-
-  get [WHY](){
-    return getUpdate(this);
+    new Controller(this);
+    defineProperty(this, "is", { value: this });
   }
 
   on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
