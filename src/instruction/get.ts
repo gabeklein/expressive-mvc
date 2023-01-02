@@ -1,6 +1,5 @@
 import { Control } from '../control';
 import { issues } from '../issues';
-import { Stateful } from '../debug';
 import { mayRetry } from '../suspense';
 import { add } from './add';
 import { computeMode } from './get.compute';
@@ -96,7 +95,7 @@ function get <T> (factory: Promise<T>, required: false): T | undefined;
 function get <T> (factory: Promise<T>, required?: boolean): T;
  
 function get<R, T>(
-  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R> | Stateful,
+  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R>,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 

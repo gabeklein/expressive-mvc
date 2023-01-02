@@ -7,7 +7,7 @@ export { use } from './instruction/use';
 export { has } from './instruction/has';
 
 export { MVC, MVC as Model, MVC as default } from './react/mvc';
-export { CONTROL, LOCAL, STATE, WHY, Stateful } from './debug';
+export { CONTROL, LOCAL, STATE, WHY } from './debug';
 export { Consumer } from './react/consumer';
 export { Provider } from './react/provider';
 export { Global } from './react/global';
