@@ -1,15 +1,15 @@
 import React from 'react';
 
-import { Consumer, Global, Model, Provider, get, tap } from '..';
+import { Consumer, Global, Provider, get, tap, MVC } from '..';
 import { render, subscribeTo } from '../../tests/adapter';
 import { Oops } from './tap';
 
 describe("tap instruction", () => {
-  class Foo extends Model {
+  class Foo extends MVC {
     bar = tap(Bar);
   }
 
-  class Bar extends Model {
+  class Bar extends MVC {
     value = "bar";
   }
 
@@ -30,7 +30,7 @@ describe("tap instruction", () => {
   })
 
   it("will subscribe peer from context", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
 
@@ -65,7 +65,7 @@ describe("tap instruction", () => {
   })
 
   it("will throw if strict tap is undefined", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
 
@@ -82,8 +82,8 @@ describe("tap instruction", () => {
 })
 
 describe("callback", () => {
-  class Foo extends Model {}
-  class Bar extends Model {
+  class Foo extends MVC {}
+  class Bar extends MVC {
     didTap = jest.fn();
     foo = tap(Foo, this.didTap);
   }
@@ -111,7 +111,7 @@ describe("callback", () => {
   })
 
   it("will force undefined if returns false", () => {
-    class Bar extends Model {
+    class Bar extends MVC {
       foo = tap(Foo, () => false);
     }
 
@@ -129,7 +129,7 @@ describe("callback", () => {
   it("will not run before first effect", () => {
     const didInit = jest.fn();
 
-    class Bar extends Model {
+    class Bar extends MVC {
       constructor(){
         super();
         this.effect(didInit, []);
@@ -156,7 +156,7 @@ describe("callback", () => {
 
 describe("singleton", () => {
   it("will attach to model", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       global = tap(TestGlobal);
     }
 
@@ -188,7 +188,7 @@ describe("singleton", () => {
   })
 
   it("will throw if tries to attach Model", () => {
-    class Normal extends Model {}
+    class Normal extends MVC {}
     class TestGlobal extends Global {
       notPossible = tap(Normal);
     }
@@ -201,20 +201,20 @@ describe("singleton", () => {
 })
 
 describe("context", () => {
-  class Foo extends Model {
+  class Foo extends MVC {
     bar = tap(Bar, true);
   };
 
-  class Bar extends Model {
+  class Bar extends MVC {
     value = 1;
   };
 
   it("will assign multiple peers", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       value = 2;
     };
 
-    class Multi extends Model {
+    class Multi extends MVC {
       bar = tap(Bar);
       foo = tap(Foo);
     };
@@ -246,10 +246,10 @@ describe("context", () => {
   })
 
   it("will access peers sharing same provider", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
-    class Bar extends Model {
+    class Bar extends MVC {
       foo = tap(Foo, true);
     }
 
@@ -288,7 +288,7 @@ describe("context", () => {
 
 describe("suspense", () => {
   it("will whatever", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
 
       value = get(() => {
@@ -299,7 +299,7 @@ describe("suspense", () => {
       }, false);
     };
 
-    class Bar extends Model {
+    class Bar extends MVC {
       value = "foobar";
     };
 

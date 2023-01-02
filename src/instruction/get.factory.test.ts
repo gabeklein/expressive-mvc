@@ -1,5 +1,5 @@
 import { Model } from '..';
-import { mockAsync, mockConsole, mockSuspense } from '../../tests/adapter';
+import { mockAsync, mockConsole } from '../../tests/adapter';
 import { get, Oops as Compute } from './get';
 
 const { warn } = mockConsole();
@@ -59,53 +59,6 @@ it("will emit when factory resolves", async () => {
   expect(test.value).toBe("foobar");
 })
 
-it('will suspend if value is async', async () => {
-  class Test extends Model {
-    value = get(promise.pending);
-  }
-
-  const test = mockSuspense();
-  const promise = mockAsync();
-  const didRender = mockAsync();
-  const instance = Test.create();
-
-  test.renderHook(() => {
-    void instance.tap().value;
-    didRender.resolve();
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve();
-  await didRender.pending();
-
-  test.assertDidRender(true);
-})
-
-it('will suspend if value is promise', async () => {
-  const promise = mockAsync<string>();
-
-  class Test extends Model {
-    value = get(promise.pending());
-  }
-
-  const test = mockSuspense();
-  const didRender = mockAsync();
-  const instance = Test.create();
-
-  test.renderHook(() => {
-    void instance.tap().value;
-    didRender.resolve();
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve("hello");
-  await didRender.pending();
-
-  test.assertDidRender(true);
-})
-
 it("will not suspend where already resolved", async () => {
   class Test extends Model {
     greet = get(async () => "Hello");
@@ -135,41 +88,6 @@ it("will throw suspense-promise resembling an error", () => {
   promise.resolve();
 })
 
-it('will refresh and throw if async rejects', async () => {
-  const promise = mockAsync();
-
-  class Test extends Model {
-    value = get(async () => {
-      await promise.pending();
-      throw "oh no";
-    })
-  }
-
-  const test = mockSuspense();
-  const instance = Test.create();
-  const didThrow = mockAsync();
-
-  test.renderHook(() => {
-    try {
-      void instance.tap().value;
-    }
-    catch(err: any){
-      if(err instanceof Promise)
-        throw err;
-      else
-        didThrow.resolve(err);
-    }
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve();
-
-  const error = await didThrow.pending();
-
-  expect(error).toBe("oh no");
-})
-
 it("will warn and rethrow error from factory", () => {
   class Test extends Model {
     memoized = get(this.failToGetSomething, true);
@@ -190,7 +108,9 @@ it("will suspend another factory", async () => {
   const name = mockAsync<string>();
 
   const didEvaluate = jest.fn(
-    (_key: string, $: Test) => $.greet + " " + $.name
+    (_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    }
   );
 
   class Test extends Model {
@@ -219,13 +139,14 @@ it("will suspend another factory (async)", async () => {
   const name = mockAsync<string>();
 
   const didEvaluate = jest.fn(
-    async (_key: string, $: Test) => $.greet + " " + $.name
+    async (_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    }
   );
 
   class Test extends Model {
     greet = get(greet.pending);
     name = get(name.pending);
-
     value = get(didEvaluate);
   }
 

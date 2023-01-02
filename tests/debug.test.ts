@@ -1,6 +1,6 @@
 import { Model } from '../src';
-import { CONTROL, getUpdate } from '../src/controller';
-import { LOCAL, STATE } from '../src/model';
+import { CONTROL } from '../src/controller';
+import { LOCAL, STATE, WHY } from '../src/model';
 import { mockConsole } from './adapter';
 
 describe("isTypeof", () => {
@@ -73,7 +73,7 @@ describe("WHY", () => {
     test.value2 = 3;
 
     const update = await test.update();
-    const updated = getUpdate(test);
+    const updated = test[WHY];
 
     expect(update).toStrictEqual(updated);
 
@@ -91,7 +91,7 @@ describe("WHY", () => {
       void state.value1;
       void state.value3;
 
-      update = getUpdate(state);
+      update = state[WHY];
     })
 
     expect(update).toBeUndefined();

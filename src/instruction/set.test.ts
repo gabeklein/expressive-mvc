@@ -1,48 +1,43 @@
 import { Model } from '..';
-import { mockAsync, mockSuspense } from '../../tests/adapter';
+import { mockAsync } from '../../tests/adapter';
 import { Oops as Util } from '../util';
 import { set } from './set';
 
-describe("empty", () => {
-  it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
+describe("placeholder", () => {
+  class Test extends Model {
+    foobar = set<string>();
+  }
 
-    const test = mockSuspense();
-    const promise = mockAsync();
+  it('will suspend if value is accessed before assign', async () => {
     const instance = Test.create();
+    const promise = mockAsync<string>();
+    const mockEffect = jest.fn((state: Test) => {
+      promise.resolve(state.foobar);
+    });
 
-    test.renderHook(() => {
-      instance.tap("foobar");
-      promise.resolve();
-    })
+    instance.effect(mockEffect);
 
-    test.assertDidSuspend(true);
+    expect(mockEffect).toBeCalledTimes(1);
 
     instance.foobar = "foo!";
 
-    // expect refresh caused by update
-    await promise.pending();
+    const result = await promise.pending();
 
-    test.assertDidRender(true);
+    expect(mockEffect).toBeCalledTimes(2);
+    expect(result).toBe("foo!");
   })
-
+  
   it('will not suspend if value is defined', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
-
-    const test = mockSuspense();
     const instance = Test.create();
 
-    instance.foobar = "foo!";
+    instance.foobar = "bar!";
 
-    test.renderHook(() => {
-      instance.tap("foobar");
-    })
+    const mockEffect = jest.fn((state: Test) => {
+      expect(state.foobar).toBe("bar!");
+    });
 
-    test.assertDidRender(true);
+    instance.effect(mockEffect);
+    expect(mockEffect).toBeCalledTimes(1);
   })
 })
 
