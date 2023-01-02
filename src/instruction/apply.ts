@@ -33,7 +33,7 @@ declare namespace Instruction {
     writable?: boolean;
     get?: Getter<T>;
     set?: Setter<T> | false;
-    suspense?: boolean;
+    suspend?: boolean;
     destroy?: () => void;
   }
 
@@ -46,7 +46,7 @@ declare namespace Instruction {
     enumerable?: boolean;
     value?: T;
     set?: Setter<T> | false;
-    suspense?: boolean;
+    suspend?: boolean;
   }
 }
 
@@ -81,7 +81,7 @@ function apply<T = any>(
     let {
       get: onGet,
       set: onSet,
-      suspense
+      suspend: shouldSuspend
     } = output as Instruction.Descriptor<any>;
 
     if("value" in output)
@@ -110,7 +110,7 @@ function apply<T = any>(
         : undefined,
 
       get(this: Stateful){
-        if(!state.has(key) && suspense)
+        if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
         const listen = LISTEN.get(this);

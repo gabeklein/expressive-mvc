@@ -38,7 +38,7 @@ function set(
         this.state.set(key, value);
 
       return {
-        suspense: true,
+        suspend: true,
         set: typeof argument == "function"
           ? createValueEffect(argument)
           : undefined

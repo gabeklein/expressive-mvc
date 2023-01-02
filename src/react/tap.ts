@@ -80,7 +80,7 @@ function tap<T extends Peer>(
 
       return {
         recursive: true,
-        suspense: true
+        suspend: true
       }
     }
   )
