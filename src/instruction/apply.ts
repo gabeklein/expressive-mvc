@@ -1,4 +1,4 @@
-import { Controller, LISTEN } from '../controller';
+import { Control, LISTEN } from '../control';
 import { Debug, LOCAL } from '../debug';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
@@ -11,7 +11,7 @@ const PENDING = new Map<symbol, Instruction.Runner<any>>();
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
  */
-type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
   | Instruction.Getter<T> 
   | Instruction.ExplicitDescriptor
   | Instruction.Descriptor<T>
@@ -23,7 +23,7 @@ declare namespace Instruction {
   type Getter<T> = (within?: Subscriber) => T;
   type Setter<T> = (value: T) => boolean | void;
 
-  type Runner<T> = (this: Controller, key: string, on: Controller) =>
+  type Runner<T> = (this: Control, key: string, on: Control) =>
     Instruction.Descriptor<T> | boolean | undefined;
 
   interface Descriptor<T> {
@@ -62,7 +62,7 @@ function apply<T = any>(
   const name = label || fn.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
-  function setup(this: Controller, key: string){
+  function setup(this: Control, key: string){
     const { subject, state } = this;
 
     let output = fn.call(this, key, this);
@@ -131,7 +131,7 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export function getRecursive(key: string, from: Controller){
+export function getRecursive(key: string, from: Control){
   const context = new WeakMap<Subscriber, {} | undefined>();
 
   return (local: Subscriber | undefined) => {
@@ -147,8 +147,8 @@ export function getRecursive(key: string, from: Controller){
 
         const value = from.state.get(key);
   
-        if(Controller.get(value)){
-          const child = Controller.has(value).subscribe(local.onUpdate);
+        if(Control.get(value)){
+          const child = Control.has(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();

@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import React from 'react';
 
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { CONTROL } from '../debug';
 import { Model } from '../model';
 import { Callback, Class, InstanceOf } from '../types';
@@ -16,7 +16,7 @@ namespace MVC {
 }
 
 class MVC extends Model {
-  static [CONTROL]: Controller;
+  static [CONTROL]: Control;
 
   /** Attaches this controller to a component. */
   tap(): this;
@@ -103,7 +103,7 @@ class MVC extends Model {
     const instance = React.useMemo(() => {
       const instance = new this() as I;
 
-      Controller.has(instance);
+      Control.has(instance);
 
       if(typeof arg == "function")
         arg(instance);

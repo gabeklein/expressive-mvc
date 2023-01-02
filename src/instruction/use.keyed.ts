@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 import { assign, create, defineProperty } from '../util';
 import { Instruction } from './apply';
@@ -24,7 +24,7 @@ const ANY = Symbol("any");
 type Keyed<K = unknown> = Set<K> | Map<K, unknown>;
 
 function keyed<T extends Keyed>(
-  control: Controller,
+  control: Control,
   property: any,
   initial: T
 ): Instruction.Descriptor<T> {

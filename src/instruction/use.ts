@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
@@ -91,7 +91,7 @@ function use<T extends Class>(
         if(next){
           get = getRecursive(key, this);
           Parent.set(next, subject);
-          Controller.has(next);
+          Control.has(next);
         }
 
         if(typeof argument == "function")

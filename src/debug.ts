@@ -1,5 +1,5 @@
 import { Model } from "./model";
-import { Controller } from "./controller";
+import { Control } from "./control";
 import { Subscriber } from "./subscriber";
 import { getPrototypeOf } from "./util";
 
@@ -10,7 +10,7 @@ export const CONTROL = Symbol("CONTROL");
 
 export const UPDATE = new WeakMap<{}, readonly string[]>();
 
-export function apply(control: Controller){
+export function apply(control: Control){
   Object.defineProperties(control.subject, {
     [Debug.CONTROL]: {
       value: control
@@ -54,7 +54,7 @@ export function addUpdate(proxy: any, using: Map<string, any>){
 
 export interface Stateful {
   /** Controller for this instance. */
-  [CONTROL]?: Controller;
+  [CONTROL]?: Control;
 
   /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
   [LOCAL]?: Subscriber;
@@ -75,7 +75,7 @@ const Debug = { CONTROL, LOCAL, STATE, WHY } as const;
 
 type Debug<T extends {}> = T & {
   /** Controller for this instance. */
-  [CONTROL]?: Controller<T>;
+  [CONTROL]?: Control<T>;
 
   /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
   [LOCAL]?: Subscriber<T>;

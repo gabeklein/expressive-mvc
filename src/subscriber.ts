@@ -1,4 +1,4 @@
-import { Controller, LISTEN } from './controller';
+import { Control, LISTEN } from './control';
 import { addUpdate, hasUpdate, LOCAL } from './debug';
 import { create, defineProperty } from './util';
 
@@ -19,8 +19,8 @@ export class Subscriber <T extends {} = any> {
   public add: (key: any, value?: boolean | Callback) => void;
 
   constructor(
-    parent: Controller<T>,
-    public onUpdate: Controller.OnEvent){
+    parent: Control<T>,
+    public onUpdate: Control.OnEvent){
 
     const proxy = create(parent.subject);
     const using = new Map<any, boolean | (() => true | void)>();

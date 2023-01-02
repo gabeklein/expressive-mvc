@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Control } from './control';
 import { issues } from './issues';
 
 export const Oops = issues({
@@ -9,7 +9,7 @@ export const Oops = issues({
 type Suspense<T = any> = Promise<T> & Error;
 
 export function suspend(
-  source: Controller, key: string): Suspense {
+  source: Control, key: string): Suspense {
 
   const error =
     Oops.NotReady(source.subject, key);

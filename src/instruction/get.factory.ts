@@ -1,8 +1,8 @@
-import { Controller } from "../controller";
+import { Control } from "../control";
 import { Oops } from "./get";
 
 export function factoryMode<T>(
-  self: Controller,
+  self: Control,
   output: Promise<T> | T,
   key: string,
   required: boolean

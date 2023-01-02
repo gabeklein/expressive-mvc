@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { issues } from '../issues';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
@@ -12,12 +12,12 @@ export const Oops = issues({
 });
 
 const INFO = new WeakMap<Function, string>();
-const KEYS = new WeakMap<Controller, Callback[]>();
-const ORDER = new WeakMap<Controller, Callback[]>();
+const KEYS = new WeakMap<Control, Callback[]>();
+const ORDER = new WeakMap<Control, Callback[]>();
 
 export function computeMode(
-  self: Controller,
-  source: Controller,
+  self: Control,
+  source: Control,
   setter: get.Function<any, any>,
   key: string,
   required: boolean
@@ -58,7 +58,7 @@ export function computeMode(
     }
   }
 
-  const update = (_key: any, source: Controller) => {
+  const update = (_key: any, source: Control) => {
     if(source !== self){
       refresh();
       return;
@@ -101,7 +101,7 @@ export function computeMode(
   }
 }
 
-export function flush(control: Controller){
+export function flush(control: Control){
   const pending = KEYS.get(control);
 
   if(!pending)

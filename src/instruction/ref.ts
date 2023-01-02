@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { Model } from '../model';
 import { createValueEffect, defineProperty } from '../util';
 import { apply } from './apply';
@@ -65,7 +65,7 @@ function ref<T>(
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        Controller.has(arg).state.forEach((_val, key) => {
+        Control.has(arg).state.forEach((_val, key) => {
           defineProperty(value, key,
             mapper ? {
               configurable: true,
@@ -87,7 +87,7 @@ function ref<T>(
 export { ref }
 
 function createRef(
-  src: Controller,
+  src: Control,
   key: string,
   cb?: ref.Callback<any>){
 

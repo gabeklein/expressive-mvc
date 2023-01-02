@@ -10,29 +10,29 @@ import type { Callback } from './types';
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
 const LISTEN = new WeakMap<{}, ListenToKey>();
-const REGISTER = new WeakMap<{}, Controller>();
+const REGISTER = new WeakMap<{}, Control>();
 
-declare namespace Controller {
+declare namespace Control {
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
 
-  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
 
-  type DidCreate<T extends {}> = (control: Controller<T>) => Callback | void;
+  type DidCreate<T extends {}> = (control: Control<T>) => Callback | void;
 }
 
-class Controller<T extends {} = any> {
+class Control<T extends {} = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
-  public followers = new Set<Controller.OnEvent>();
+  public followers = new Set<Control.OnEvent>();
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
     apply(this);
   }
 
-  subscribe(callback: Controller.OnEvent<T>){
+  subscribe(callback: Control.OnEvent<T>){
     return new Subscriber<T>(this, callback);
   }
 
@@ -71,7 +71,7 @@ class Controller<T extends {} = any> {
     });
   }
 
-  addListener(listener: Controller.OnEvent<T>){
+  addListener(listener: Control.OnEvent<T>){
     this.followers.add(listener);
     return () => {
       this.followers.delete(listener)
@@ -80,7 +80,7 @@ class Controller<T extends {} = any> {
 
   ref(
     key: Model.Field<T>,
-    handler?: Controller.OnValue<T>){
+    handler?: Control.OnValue<T>){
   
     const { subject, state } = this;
   
@@ -144,12 +144,12 @@ class Controller<T extends {} = any> {
     if(from && "is" in from)
       from = from.is as T;
   
-    return REGISTER.get(from) as Controller<T> | undefined;
+    return REGISTER.get(from) as Control<T> | undefined;
   }
 
-  static has<T extends {}>(subject: T): Controller<T>;
-  static has<T extends {}>(subject: T, cb: Controller.DidCreate<T>): Callback;
-  static has<T extends {}>(subject: T, cb?: Controller.DidCreate<T>){
+  static has<T extends {}>(subject: T): Control<T>;
+  static has<T extends {}>(subject: T, cb: Control.DidCreate<T>): Callback;
+  static has<T extends {}>(subject: T, cb?: Control.DidCreate<T>){
     const control = this.get(subject) || new this(subject);
 
     if(!control.state){
@@ -181,6 +181,6 @@ class Controller<T extends {} = any> {
 }
 
 export {
-  Controller,
+  Control,
   LISTEN
 }

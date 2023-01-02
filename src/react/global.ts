@@ -1,4 +1,4 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
@@ -23,7 +23,7 @@ export class Global extends MVC {
 
     const instance = new this(...args);
 
-    Controller.has(instance);
+    Control.has(instance);
     Active.set(this, instance);
 
     return instance as InstanceOf<T>;

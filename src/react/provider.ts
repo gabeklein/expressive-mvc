@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Controller } from '../controller';
+import { Control } from '../control';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
@@ -114,7 +114,7 @@ function RenderFunction(props: RenderFunctionProps): any {
     const targets = props.context.local;
 
     if(targets.length == 1)
-      return Controller.has(targets[0]).subscribe(() => refresh);
+      return Control.has(targets[0]).subscribe(() => refresh);
 
     return {} as Subscriber;
   });

@@ -1,5 +1,5 @@
 import { apply, Model } from '..';
-import { Controller } from '../Controller';
+import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 
 describe("instruction", () => {
@@ -94,7 +94,7 @@ describe("getter", () => {
     const instance = Test.create();
 
     expect(mockApply).toBeCalledWith(
-      "property", expect.any(Controller)
+      "property", expect.any(Control)
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");

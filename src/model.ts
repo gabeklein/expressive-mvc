@@ -1,4 +1,4 @@
-import { Controller } from './controller';
+import { Control } from './control';
 import { getUpdate } from './debug';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
@@ -24,8 +24,8 @@ declare namespace Model {
   /** Including but not limited to T. */
   type Extends<T> = T | (string & Record<never, never>);
 
-  export { Controller };
-  export { Subscriber };
+  export { Control };
+  export { Subscriber as Subscribe };
 
   export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
 
@@ -90,7 +90,7 @@ interface Model {
 
 class Model {
   constructor(){
-    new Controller(this);
+    new Control(this);
     defineProperty(this, "is", { value: this });
   }
 
@@ -108,7 +108,7 @@ class Model {
     squash?: boolean,
     once?: boolean){
 
-    return Controller.has(this, control => {
+    return Control.has(this, control => {
       if(typeof select == "function")
         return control.addListener(select);
 
@@ -186,7 +186,7 @@ class Model {
         }
       }
 
-      const clear = Controller.has(this, x => {
+      const clear = Control.has(this, x => {
         for(const key of select)
           try { void (this as any)[key] }
           catch(e){}
@@ -206,7 +206,7 @@ class Model {
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
 
-    return Controller.has(this, control => {
+    return Control.has(this, control => {
       let busy = false;
       let inject = this.is;
 
@@ -248,7 +248,7 @@ class Model {
 
   // TODO: account for exotic properties
   import <O extends Model.Compat<this>> (source: O, select?: (keyof O)[]){
-    const { subject } = Controller.has(this);
+    const { subject } = Control.has(this);
 
     if(!select)
       select = getOwnPropertyNames(subject) as (keyof O)[];
@@ -262,7 +262,7 @@ class Model {
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
   export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
-    const { state } = Controller.has(this);
+    const { state } = Control.has(this);
     const output = {} as Model.Values<this, P>;
     const keys = subset || state.keys();
 
@@ -281,7 +281,7 @@ class Model {
   update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
   update(arg?: any, tag?: any): any {
-    const target = Controller.has(this);
+    const target = Control.has(this);
     const { frame, waiting } = target;
 
     if(typeof arg == "string"){
@@ -322,7 +322,7 @@ class Model {
    * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
    */
   destroy(){
-    Controller.has(this).clear();
+    Control.has(this).clear();
   }
 
   toString(){
@@ -341,7 +341,7 @@ class Model {
 
     const instance = new this(...args);
 
-    Controller.has(instance);
+    Control.has(instance);
 
     return instance;
   }
