@@ -13,7 +13,7 @@ const LISTEN = new WeakMap<{}, ListenToKey>();
 const CONTROL = Symbol("CONTROL");
 
 function getUpdate<T extends {}>(subject: T){
-  return UPDATE.get(subject) as readonly Model.Field<T>[];
+  return UPDATE.get(subject) as readonly Model.Event<T>[];
 }
 
 function setUpdate(subject: Stateful, keys: Set<string>){
