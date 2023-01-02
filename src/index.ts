@@ -1,4 +1,4 @@
-export { apply } from './instruction/apply';
+export { add } from './instruction/add';
 export { act } from './instruction/act';
 export { get } from './instruction/get';
 export { ref } from './instruction/ref';

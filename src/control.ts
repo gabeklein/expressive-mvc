@@ -1,5 +1,5 @@
 import { apply, setUpdate } from './debug';
-import { PENDING } from './instruction/apply';
+import { PENDING } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
 import { Subscriber } from './subscriber';

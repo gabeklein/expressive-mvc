@@ -1,5 +1,5 @@
 import { createValueEffect } from '../util';
-import { apply } from './apply';
+import { add } from './add';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, argument: T) =>
@@ -32,7 +32,7 @@ function set(
     value = undefined;
   }
 
-  return apply(
+  return add(
     function set(key){
       if(value !== undefined)
         this.state.set(key, value);

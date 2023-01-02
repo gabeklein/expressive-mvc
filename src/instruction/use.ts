@@ -4,7 +4,7 @@ import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
 import { Class, InstanceOf } from '../types';
-import { apply, getRecursive } from './apply';
+import { add, getRecursive } from './add';
 import { keyed, Managed } from './use.keyed';
 
 export const Parent = new WeakMap<{}, {}>();
@@ -63,7 +63,7 @@ function use<T extends Class>(
   input?: any,
   argument?: boolean | ((i: InstanceOf<T> | undefined) => void)){
 
-  return apply(
+  return add(
     function use(key){
       const { state, subject } = this;
       const required = argument !== false;

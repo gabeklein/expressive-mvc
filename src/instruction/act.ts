@@ -1,7 +1,7 @@
 import { issues } from '../issues';
 import { mayRetry } from '../suspense';
 import { defineProperty } from '../util';
-import { apply } from './apply';
+import { add } from './add';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
 
@@ -24,7 +24,7 @@ function act (action: Async): typeof action & { active: boolean };
 function act <S> (action: Async<S>): typeof action & { active: boolean };
 
 function act<T extends Async>(task: T){
-  return apply<T>(
+  return add<T>(
     function act(key){
       let pending = false;
 

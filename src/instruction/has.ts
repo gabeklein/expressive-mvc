@@ -1,7 +1,7 @@
 import { issues } from '../issues';
 import { Model } from '../model';
 import { InstanceOf } from '../types';
-import { apply } from './apply';
+import { add } from './add';
 import { Parent } from './use';
 
 export const Oops = issues({
@@ -26,7 +26,7 @@ function has <T extends typeof Model> (Expects: T, required?: true): InstanceOf<
 function has<T extends typeof Model>(
    Expects: T, required?: boolean){
 
-   return apply(
+   return add(
      function parent(){
        const child = this.subject;
        const value = Parent.get(child) as InstanceOf<T>;

@@ -1,4 +1,4 @@
-import { apply, Model } from '..';
+import { add, Model } from '..';
 import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 
@@ -7,7 +7,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = apply((key) => {
+    property = add((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -15,8 +15,8 @@ describe("instruction", () => {
       }
     })
 
-    keyedInstruction = apply(function foo(){});
-    namedInstruction = apply(() => {}, "foo");
+    keyedInstruction = add(function foo(){});
+    namedInstruction = add(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -64,7 +64,7 @@ describe("instruction", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      property = apply(() => {
+      property = add(() => {
         mock();
 
         return {
@@ -88,7 +88,7 @@ describe("getter", () => {
     const mockApply = jest.fn((_key) => mockAccess);
 
     class Test extends Model {
-      property = apply(mockApply);
+      property = add(mockApply);
     }
 
     const instance = Test.create();
@@ -105,7 +105,7 @@ describe("getter", () => {
     const didGetValue = jest.fn();
 
     class Test extends Model {
-      property = apply(() => didGetValue)
+      property = add(() => didGetValue)
     }
 
     const state = Test.create();
@@ -126,7 +126,7 @@ describe("custom", () => {
     });
 
     class Test extends Model {
-      property = apply(() => {
+      property = add(() => {
         return {
           value: "foobar",
           set: didSetValue
@@ -153,7 +153,7 @@ describe("custom", () => {
     let shouldUpdate = true;
 
     class Test extends Model {
-      property = apply((key, control) => {
+      property = add((key, control) => {
         return {
           value: 0,
           set: (value: any) => {

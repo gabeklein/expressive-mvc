@@ -2,7 +2,7 @@ import { Control } from '../control';
 import { issues } from '../issues';
 import { Stateful } from '../debug';
 import { mayRetry } from '../suspense';
-import { apply } from './apply';
+import { add } from './add';
 import { computeMode } from './get.compute';
 import { factoryMode } from './get.factory';
 
@@ -100,7 +100,7 @@ function get<R, T>(
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
-  return apply(
+  return add(
     function get(key){
       const { subject } = this;
       const computeRequired = arg1 === true || arg2 === true;

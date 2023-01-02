@@ -1,4 +1,4 @@
-import { apply } from '../instruction/apply';
+import { add } from '../instruction/add';
 import { issues } from '../issues';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
@@ -50,7 +50,7 @@ function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T> | un
 function tap<T extends Peer>(
   type: T, argument?: boolean | PeerCallback<T>){
 
-  return apply(
+  return add(
     function tap(key){
       if("set" in type)
         return {

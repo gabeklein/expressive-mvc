@@ -1,7 +1,7 @@
 import { Control } from '../control';
 import { Model } from '../model';
 import { createValueEffect, defineProperty } from '../util';
-import { apply } from './apply';
+import { add } from './add';
 
 declare namespace ref {
   type Callback<T, S = any> = (this: S, argument: T) =>
@@ -58,7 +58,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return apply(
+  return add(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
 

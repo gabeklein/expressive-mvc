@@ -1,7 +1,7 @@
 import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 import { assign, create, defineProperty } from '../util';
-import { Instruction } from './apply';
+import { Instruction } from './add';
 
 type MapFunction<T, R> =
   T extends Map<infer K, infer V> ?

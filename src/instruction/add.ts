@@ -54,9 +54,9 @@ declare namespace Instruction {
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  */
-function apply <T = any> (instruction: Instruction<T>, name?: string): T;
+function add <T = any> (instruction: Instruction<T>, name?: string): T;
 
-function apply<T = any>(
+function add<T = any>(
   fn: Instruction<any>, label?: string){
 
   const name = label || fn.name || "pending";
@@ -175,4 +175,4 @@ export function getRecursive(key: string, from: Control){
   }
 }
 
-export { apply, Instruction, PENDING }
+export { add, Instruction, PENDING }
