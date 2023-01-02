@@ -79,16 +79,14 @@ declare namespace Model {
   }
 }
 
-interface Model {
+class Model {
   /**
    * Circular reference to `this` controller.
    * 
    * Useful to obtain full reference where one has already destructured.
    */
-  is: this;
-}
+  is!: this;
 
-class Model {
   constructor(){
     new Control(this);
     defineProperty(this, "is", { value: this });
