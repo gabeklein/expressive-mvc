@@ -1,4 +1,5 @@
-import { Controller, ensure, getUpdate } from './controller';
+import { Controller, ensure } from './controller';
+import { getUpdate } from './debug';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -16,7 +17,6 @@ export const Oops = issues({
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
 });
-
 
 declare namespace Model {
   export type Type<T extends Model = Model> = typeof Model & (new () => T);

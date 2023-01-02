@@ -1,3 +1,4 @@
+import { apply, setUpdate } from './debug';
 import { PENDING } from './instruction/apply';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
@@ -5,22 +6,11 @@ import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
-import { CONTROL, STATE, WHY } from './debug';
 
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
-const UPDATE = new WeakMap<{}, readonly string[]>();
 const LISTEN = new WeakMap<{}, ListenToKey>();
 const REGISTER = new WeakMap<{}, Controller>();
-
-function getUpdate<T extends {}>(subject: T){
-  return UPDATE.get(subject) as readonly Model.Event<T>[];
-}
-
-function setUpdate(subject: any, keys: Set<string>){
-  UPDATE.set(subject, Array.from(keys));
-  setTimeout(() => UPDATE.delete(subject), 0);
-}
 
 declare namespace Controller {
   // TODO: implement value type
@@ -43,23 +33,7 @@ class Controller<T extends {} = any> {
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
-    Object.defineProperties(subject, {
-      [CONTROL]: {
-        value: this
-      },
-      [STATE]: {
-        get: () => {
-          const output: any = {};
-          this.state.forEach((value, key) => output[key] = value);
-          return output;
-        }
-      },
-      [WHY]: {
-        get(this: T){
-          return getUpdate(this);
-        }
-      }
-    })
+    apply(this);
   }
 
   subscribe(callback: Controller.OnEvent<T>){
@@ -213,7 +187,5 @@ function ensure<T extends {}>(subject: T, cb?: EnsureCallback<T>){
 export {
   ensure,
   Controller,
-  getUpdate,
-  UPDATE,
   LISTEN
 }

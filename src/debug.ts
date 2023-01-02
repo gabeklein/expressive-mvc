@@ -1,11 +1,56 @@
 import { Model } from "./model";
 import { Controller } from "./controller";
 import { Subscriber } from "./subscriber";
+import { getPrototypeOf } from "./util";
 
 export const WHY = Symbol("UPDATE");
 export const LOCAL = Symbol("LOCAL");
 export const STATE = Symbol("STATE");
 export const CONTROL = Symbol("CONTROL");
+
+export const UPDATE = new WeakMap<{}, readonly string[]>();
+
+export function apply(control: Controller){
+  Object.defineProperties(control.subject, {
+    [Debug.CONTROL]: {
+      value: control
+    },
+    [Debug.STATE]: {
+      get: () => {
+        const output: any = {};
+        control.state.forEach((value, key) => output[key] = value);
+        return output;
+      }
+    },
+    [Debug.WHY]: {
+      get(this: any){
+        return getUpdate(this);
+      }
+    }
+  })
+}
+
+export function getUpdate<T extends {}>(subject: T){
+  return UPDATE.get(subject) as readonly Model.Event<T>[];
+}
+
+export function setUpdate(subject: any, keys: Set<string>){
+  UPDATE.set(subject, Array.from(keys));
+  setTimeout(() => UPDATE.delete(subject), 0);
+}
+
+/** Ensure a local update is dropped after use. */
+export function hasUpdate(proxy: any){
+  if(UPDATE.has(proxy))
+    setTimeout(() => UPDATE.delete(proxy), 0);
+}
+
+/** Set local update for a subscribed context. */
+export function addUpdate(proxy: any, using: Map<string, any>){
+  const parent = UPDATE.get(getPrototypeOf(proxy))!;
+
+  UPDATE.set(proxy, parent.filter(k => using.has(k)));
+}
 
 export interface Stateful {
   /** Controller for this instance. */

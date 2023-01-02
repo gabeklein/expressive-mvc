@@ -1,5 +1,5 @@
-import { Controller, getUpdate, LISTEN, UPDATE } from './controller';
-import { LOCAL, Stateful } from './debug';
+import { Controller, LISTEN } from './controller';
+import { addUpdate, hasUpdate, LOCAL } from './debug';
 import { create, defineProperty } from './util';
 
 import type { Callback } from './types';
@@ -9,7 +9,7 @@ type Listener = {
   release(): void;
 }
 
-export class Subscriber <T extends Stateful = any> {
+export class Subscriber <T extends {} = any> {
   public proxy!: T;
   public commit: () => Callback;
   public release!: Callback;
@@ -41,9 +41,7 @@ export class Subscriber <T extends Stateful = any> {
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
-        if(UPDATE.has(proxy))
-          setTimeout(() => UPDATE.delete(proxy), 0);
-
+        hasUpdate(proxy);
         return proxy;
       }
     })
@@ -67,13 +65,7 @@ export class Subscriber <T extends Stateful = any> {
       if(!notify)
         return;
 
-      const notate = () => {
-        UPDATE.set(proxy, 
-          getUpdate(parent.subject).filter(k => using.has(k))
-        );
-      }
-
-      parent.waiting.add(notate);
+      parent.waiting.add(() => addUpdate(proxy, using));
       parent.waiting.add(notify);
     });
 
