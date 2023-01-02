@@ -5,12 +5,13 @@ import { Subscriber } from './subscriber';
 import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
-import { CONTROL, Debug, STATE, WHY } from './debug';
+import { CONTROL, STATE, WHY } from './debug';
 
 type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
 
 const UPDATE = new WeakMap<{}, readonly string[]>();
 const LISTEN = new WeakMap<{}, ListenToKey>();
+const REGISTER = new WeakMap<{}, Controller>();
 
 function getUpdate<T extends {}>(subject: T){
   return UPDATE.get(subject) as readonly Model.Event<T>[];
@@ -33,7 +34,15 @@ class Controller<T extends {} = any> {
   public waiting = new Set<Callback>();
   public followers = new Set<Controller.OnEvent>();
 
+  static get<T extends {}>(from: T){
+    if("is" in from)
+      from = from.is as T;
+  
+    return REGISTER.get(from) as Controller<T> | undefined;
+  }
+
   constructor(public subject: T){
+    REGISTER.set(subject, this);
     Object.defineProperties(subject, {
       [CONTROL]: {
         value: this
@@ -169,10 +178,10 @@ function ensure<T extends {}>(subject: T, cb: EnsureCallback<T>): Callback;
 function ensure<T extends {}>(subject: T): Controller<T>;
 
 function ensure<T extends {}>(subject: T, cb?: EnsureCallback<T>){
-  let control = (subject as Debug<any>)[CONTROL]!;
+  let control = Controller.get(subject)!;
 
   if(!control)
-    control = new Controller(subject)
+    control = new Controller(subject);
 
   if(!control.state){
     const { waiting } = control;
