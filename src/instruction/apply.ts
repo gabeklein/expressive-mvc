@@ -1,5 +1,5 @@
-import { Controller, ensure, LISTEN } from '../controller';
-import { CONTROL, Debug, LOCAL } from '../debug';
+import { Controller, LISTEN } from '../controller';
+import { Debug, LOCAL } from '../debug';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
@@ -147,8 +147,8 @@ export function getRecursive(key: string, from: Controller){
 
         const value = from.state.get(key);
   
-        if(value && CONTROL in value){
-          const child = ensure(value).subscribe(local.onUpdate);
+        if(Controller.get(value)){
+          const child = Controller.has(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { ensure } from '../controller';
+import { Controller } from '../controller';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
@@ -54,7 +54,7 @@ function useModel <T extends Model> (
           source() : 
         source;
 
-    ensure(instance);
+    Controller.has(instance);
 
     if(typeof cb == "function")
       cb(instance);
@@ -79,7 +79,7 @@ function useModel <T extends Model> (
   }
   
   const local = use(refresh => (
-    ensure(instance).subscribe(() => refresh)
+    Controller.has(instance).subscribe(() => refresh)
   ));
 
   if(typeof arg == "object"){

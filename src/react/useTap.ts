@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-import { ensure } from '../controller';
+import { Controller } from '../controller';
 import { Model } from '../model';
 import { suspend } from '../suspense';
 import { use } from './use';
@@ -69,7 +69,7 @@ function useTap <T extends Model> (
     return useFrom(instance, path, expect);
 
   const local = use(refresh => (
-    ensure(instance).subscribe(() => refresh)
+    Controller.has(instance).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(local.commit, []);
@@ -78,7 +78,7 @@ function useTap <T extends Model> (
     const value = local.proxy[path];
 
     if(value === undefined && expect)
-      throw suspend(ensure(instance), path);
+      throw suspend(Controller.has(instance), path);
 
     return value;
   }

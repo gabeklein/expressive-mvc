@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { ensure } from '../controller';
+import { Controller } from '../controller';
 import { defineProperty } from '../util';
 import { use } from './use';
 
@@ -24,7 +24,7 @@ function useFrom(
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = ensure(target).subscribe(() => update);
+    const sub = Controller.has(target).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);

@@ -1,4 +1,4 @@
-import { Controller, ensure } from '../controller';
+import { Controller } from '../controller';
 import { Model } from '../model';
 import { createValueEffect, defineProperty } from '../util';
 import { apply } from './apply';
@@ -65,7 +65,7 @@ function ref<T>(
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        ensure(arg).state.forEach((_val, key) => {
+        Controller.has(arg).state.forEach((_val, key) => {
           defineProperty(value, key,
             mapper ? {
               configurable: true,

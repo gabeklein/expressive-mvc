@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import React from 'react';
 
-import { Controller, ensure } from '../controller';
+import { Controller } from '../controller';
 import { CONTROL } from '../debug';
 import { Model } from '../model';
 import { Callback, Class, InstanceOf } from '../types';
@@ -103,7 +103,7 @@ class MVC extends Model {
     const instance = React.useMemo(() => {
       const instance = new this() as I;
 
-      ensure(instance);
+      Controller.has(instance);
 
       if(typeof arg == "function")
         arg(instance);

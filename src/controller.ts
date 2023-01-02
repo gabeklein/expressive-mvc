@@ -15,7 +15,10 @@ const REGISTER = new WeakMap<{}, Controller>();
 declare namespace Controller {
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
+
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Controller) => Callback | void;
+
+  type DidCreate<T extends {}> = (control: Controller<T>) => Callback | void;
 }
 
 class Controller<T extends {} = any> {
@@ -23,13 +26,6 @@ class Controller<T extends {} = any> {
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
   public followers = new Set<Controller.OnEvent>();
-
-  static get<T extends {}>(from: T){
-    if("is" in from)
-      from = from.is as T;
-  
-    return REGISTER.get(from) as Controller<T> | undefined;
-  }
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
@@ -143,49 +139,48 @@ class Controller<T extends {} = any> {
     this.followers.clear();
     listeners.forEach(x => x(null, this));
   }
-}
 
-type EnsureCallback<T extends {}> = (control: Controller<T>) => Callback | void;
-
-function ensure<T extends {}>(subject: T): Controller<T>;
-function ensure<T extends {}>(subject: T, cb: EnsureCallback<T>): Callback;
-function ensure<T extends {}>(subject: T): Controller<T>;
-
-function ensure<T extends {}>(subject: T, cb?: EnsureCallback<T>){
-  let control = Controller.get(subject)!;
-
-  if(!control)
-    control = new Controller(subject);
-
-  if(!control.state){
-    const { waiting } = control;
-
-    if(cb){
-      let done: Callback | void;
-
-      waiting.add(() => {
-        done = cb(control);
-      });
-
-      return () => done && done();
-    }
-
-    control.state = new Map();
-
-    for(const key in subject)
-      control.watch(key);
-
-    control.waiting = new Set();
-
-    for(const cb of waiting)
-      cb();
+  static get<T extends {}>(from: T){
+    if(from && "is" in from)
+      from = from.is as T;
+  
+    return REGISTER.get(from) as Controller<T> | undefined;
   }
 
-  return cb ? cb(control) : control;
+  static has<T extends {}>(subject: T): Controller<T>;
+  static has<T extends {}>(subject: T, cb: Controller.DidCreate<T>): Callback;
+  static has<T extends {}>(subject: T, cb?: Controller.DidCreate<T>){
+    const control = this.get(subject) || new this(subject);
+
+    if(!control.state){
+      const { waiting } = control;
+  
+      if(cb){
+        let done: Callback | void;
+  
+        waiting.add(() => {
+          done = cb(control);
+        });
+  
+        return () => done && done();
+      }
+  
+      control.state = new Map();
+  
+      for(const key in subject)
+        control.watch(key);
+  
+      control.waiting = new Set();
+  
+      for(const cb of waiting)
+        cb();
+    }
+  
+    return cb ? cb(control) : control;
+  }
 }
 
 export {
-  ensure,
   Controller,
   LISTEN
 }
