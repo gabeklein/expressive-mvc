@@ -366,10 +366,6 @@ class Model {
     Control.for(this).clear();
   }
 
-  toString(){
-    return this.constructor.name;
-  }
-
   /**
    * Creates a new instance of this controller.
    * 
@@ -401,5 +397,9 @@ class Model {
     )
   }
 }
+
+defineProperty(Model.prototype, "toString", {
+  value(){ return this.constructor.name }
+})
 
 export { Model }
