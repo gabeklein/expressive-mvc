@@ -1,5 +1,4 @@
 import { Control, LISTEN } from '../control';
-import { Debug, LOCAL } from '../debug';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
@@ -109,12 +108,12 @@ function add<T = any>(
         ? this.ref(key, onSet)
         : undefined,
 
-      get(this: Debug<any>){
+      get(this: any){
         if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
         const listen = LISTEN.get(this);
-        const local = this[LOCAL];
+        const local = Subscriber.get(this);
   
         if(listen)
           listen(key);

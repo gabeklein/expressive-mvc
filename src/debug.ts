@@ -1,56 +1,38 @@
-import { Model } from "./model";
-import { Control } from "./control";
-import { Subscriber } from "./subscriber";
-import { getPrototypeOf } from "./util";
+import { Control, getUpdate } from './control';
+import { Model } from './model';
+import { Subscriber } from './subscriber';
 
 export const WHY = Symbol("UPDATE");
 export const LOCAL = Symbol("LOCAL");
 export const STATE = Symbol("STATE");
 export const CONTROL = Symbol("CONTROL");
 
-export const UPDATE = new WeakMap<{}, readonly string[]>();
-
-export function apply(control: Control){
-  Object.defineProperties(control.subject, {
-    [Debug.CONTROL]: {
-      value: control
-    },
-    [Debug.STATE]: {
-      get: () => {
-        const output: any = {};
-        control.state.forEach((value, key) => output[key] = value);
-        return output;
-      }
-    },
-    [Debug.WHY]: {
-      get(this: any){
-        return getUpdate(this);
-      }
+Object.defineProperties(Model.prototype, {
+  [CONTROL]: {
+    get(this: Model){
+      return Control.get(this);
     }
-  })
-}
+  },
+  [LOCAL]: {
+    get(this: Model){
+      return Subscriber.get(this);
+    }
+  },
+  [STATE]: {
+    get(this: Model){
+      const { state } = Control.get(this)!;
+      const output: any = {};
 
-export function getUpdate<T extends {}>(subject: T){
-  return UPDATE.get(subject) as readonly Model.Event<T>[];
-}
-
-export function setUpdate(subject: any, keys: Set<string>){
-  UPDATE.set(subject, Array.from(keys));
-  setTimeout(() => UPDATE.delete(subject), 0);
-}
-
-/** Ensure a local update is dropped after use. */
-export function hasUpdate(proxy: any){
-  if(UPDATE.has(proxy))
-    setTimeout(() => UPDATE.delete(proxy), 0);
-}
-
-/** Set local update for a subscribed context. */
-export function addUpdate(proxy: any, using: Map<string, any>){
-  const parent = UPDATE.get(getPrototypeOf(proxy))!;
-
-  UPDATE.set(proxy, parent.filter(k => using.has(k)));
-}
+      state.forEach((value, key) => output[key] = value);
+      return output;
+    }
+  },
+  [WHY]: {
+    get(this: Model){
+      return getUpdate(this);
+    }
+  }
+})
 
 const Debug = {
   CONTROL,

@@ -1,5 +1,4 @@
-import { Control } from './control';
-import { getUpdate } from './debug';
+import { Control, getUpdate } from './control';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -25,7 +24,7 @@ declare namespace Model {
   type Extends<T> = T | (string & Record<never, never>);
 
   export { Control };
-  export { Subscriber as Subscribe };
+  export { Subscriber };
 
   export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
 

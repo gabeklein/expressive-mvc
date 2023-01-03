@@ -1,8 +1,9 @@
-import { Control, LISTEN } from './control';
-import { addUpdate, hasUpdate, LOCAL } from './debug';
+import { addUpdate, Control, hasUpdate, LISTEN } from './control';
 import { create, defineProperty } from './util';
 
 import type { Callback } from './types';
+
+const REGISTER = new WeakMap<{}, Subscriber>();
 
 type Listener = {
   commit(): void;
@@ -17,6 +18,10 @@ export class Subscriber <T extends {} = any> {
   public active = false;
   public dependant = new Set<Listener>();
   public add: (key: any, value?: boolean | Callback) => void;
+
+  static get<T extends {}>(from: T){
+    return REGISTER.get(from) as Subscriber<T> | undefined;
+  }
 
   constructor(
     parent: Control<T>,
@@ -36,8 +41,8 @@ export class Subscriber <T extends {} = any> {
     }
 
     LISTEN.set(proxy, listen);
+    REGISTER.set(proxy, this);
     
-    defineProperty(proxy, LOCAL, { value: this });
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
