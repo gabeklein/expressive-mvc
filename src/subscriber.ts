@@ -1,4 +1,4 @@
-import { addUpdate, Control, hasUpdate, LISTEN } from './control';
+import { addUpdate, Control, hasUpdate } from './control';
 import { create, defineProperty } from './util';
 
 import type { Callback } from './types';
@@ -30,17 +30,6 @@ export class Subscriber <T extends {} = any> {
     const proxy = create(parent.subject);
     const using = new Map<any, boolean | (() => true | void)>();
 
-    const listen = this.add = (
-      key: any,
-      value?: boolean | Callback) => {
-  
-      if(value !== undefined)
-        using.set(key, value);
-      else if(!using.has(key))
-        using.set(key, true);
-    }
-
-    LISTEN.set(proxy, listen);
     REGISTER.set(proxy, this);
     
     defineProperty(this, "proxy", {
@@ -73,6 +62,16 @@ export class Subscriber <T extends {} = any> {
       parent.waiting.add(() => addUpdate(proxy, using));
       parent.waiting.add(notify);
     });
+
+    this.add = (
+      key: any,
+      value?: boolean | Callback) => {
+  
+      if(value !== undefined)
+        using.set(key, value);
+      else if(!using.has(key))
+        using.set(key, true);
+    }
 
     this.commit = () => {
       this.active = true;

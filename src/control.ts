@@ -6,9 +6,6 @@ import { defineProperty, getOwnPropertyDescriptor, getPrototypeOf } from './util
 
 import type { Callback } from './types';
 
-type ListenToKey = <T = any>(key: T, callback?: boolean | Callback) => void;
-
-const LISTEN = new WeakMap<{}, ListenToKey>();
 const REGISTER = new WeakMap<{}, Control>();
 const UPDATE = new WeakMap<{}, readonly string[]>();
 
@@ -82,10 +79,10 @@ class Control<T extends {} = any> {
       enumerable: false,
       set: this.ref(key as any),
       get(){
-        const listen = LISTEN.get(this);
+        const sub = Subscriber.get(this);
 
-        if(listen)
-          listen(key);
+        if(sub)
+          sub.add(key);
 
         return state.get(key);
       }
@@ -202,6 +199,5 @@ class Control<T extends {} = any> {
 }
 
 export {
-  Control,
-  LISTEN
+  Control
 }

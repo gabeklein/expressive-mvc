@@ -1,4 +1,4 @@
-import { Control, LISTEN } from '../control';
+import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
@@ -112,11 +112,10 @@ function add<T = any>(
         if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
-        const listen = LISTEN.get(this);
         const local = Subscriber.get(this);
   
-        if(listen)
-          listen(key);
+        if(local)
+          local.add(key);
   
         return onGet
           ? onGet(local)
