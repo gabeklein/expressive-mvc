@@ -18,7 +18,7 @@ declare namespace Control {
 
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
 
-  type DidCreate<T extends {}> = (control: Control<T>) => Callback | void;
+  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
 }
 
 class Control<T extends {} = any> {
@@ -148,8 +148,8 @@ class Control<T extends {} = any> {
   }
 
   static for<T extends {}>(subject: T): Control<T>;
-  static for<T extends {}>(subject: T, cb: Control.DidCreate<T>): Callback;
-  static for<T extends {}>(subject: T, cb?: Control.DidCreate<T>){
+  static for<T extends {}>(subject: T, cb: Control.OnReady<T>): Callback;
+  static for<T extends {}>(subject: T, cb?: Control.OnReady<T>){
     const control = this.get(subject) || new this(subject);
 
     if(!control.state){
