@@ -287,18 +287,6 @@ class Model {
     })
   }
 
-  // TODO: account for exotic properties
-  import <O extends Model.Compat<this>> (source: O, select?: (keyof O)[]){
-    const { subject } = Control.for(this);
-
-    if(!select)
-      select = getOwnPropertyNames(subject) as (keyof O)[];
-
-    for(const key of select)
-      if(key in source)
-        (this as any)[key] = source[key];
-  }
-
   export(): Model.Values<this>;
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
@@ -314,42 +302,59 @@ class Model {
   }
 
   update(): PromiseLike<readonly Model.Event<this>[] | false>;
+
   update(strict: true): Promise<readonly Model.Event<this>[]>;
   update(strict: false): Promise<false>;
   update(strict: boolean): Promise<readonly Model.Event<this>[] | false>;
-  update(keys: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
-  update(keys: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
-  update<T>(keys: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
-  update(arg?: any, tag?: any): any {
-    const target = Control.for(this);
-    const { frame, waiting } = target;
+  update(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
+  update(key: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
+  update<T>(key: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
 
-    if(typeof arg == "string"){
-      target.update(arg as Model.Field<this>);
+  update<T extends Model.Compat<this>> (source: T, select: (keyof T)[]): PromiseLike<(keyof T)[]>;
+  update<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
 
-      if(1 in arguments && arg in this){
-        const method = (this as any)[arg];
+  update(
+    arg1?: boolean | Model.Event<this> | Model.Compat<this>,
+    arg2?: boolean | any[]): any {
+
+    const control = Control.for(this);
+    const { frame, waiting } = control;
+
+    if(arg1 === true && !frame.size)
+      return Promise.reject(Oops.StrictUpdate());
+
+    if(typeof arg1 == "object"){
+      if(arg2 === true)
+        for(const key in arg1)
+          (this as any)[key] = (arg1 as any)[key];
+
+      else for(const key of arg2 || control.state.keys())
+        if(key in arg1)
+          (this as any)[key] = (arg1 as any)[key];
+    }
+    else if(typeof arg1 == "string"){
+      control.update(arg1 as Model.Field<this>);
+
+      if(1 in arguments && arg1 in this){
+        const method = (this as any)[arg1];
 
         if(typeof method == "function")
-          if(typeof tag != "boolean")
-            method.call(this, tag);
-          else if(tag)
+          if(typeof arg2 != "boolean")
+            method.call(this, arg2);
+          else if(arg2)
             method.call(this);
       }
 
-      arg = undefined;
+      arg1 = undefined;
     }
-
-    if(!frame.size && arg === true)
-      return Promise.reject(Oops.StrictUpdate());
 
     return <PromiseLike<readonly Model.Event<this>[] | false>> {
       then: (callback) => {
         if(!callback)
           throw Oops.NoChaining();
 
-        if(frame.size || arg !== false)
+        if(frame.size || arg1 !== false)
           waiting.add(() => {
             callback(getUpdate(this));
           });

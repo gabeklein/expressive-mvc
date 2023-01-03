@@ -148,3 +148,9 @@ describe("dispatch", () => {
     expect(updates).toMatchObject(["methodString", "foo"])
   })
 })
+
+describe("import", () => {
+  it.todo("will assign values");
+  it.todo("will assign specific values");
+  it.todo("will assign all values from source");
+})
