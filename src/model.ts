@@ -146,10 +146,10 @@ class Model {
     });
   }
 
-  once <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false, once?: boolean): Callback;
-  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  once (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true): Callback;
+  once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true): Callback;
+  once (keys: [], listener: unknown, squash: boolean): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
