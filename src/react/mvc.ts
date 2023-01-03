@@ -2,7 +2,6 @@
 import React from 'react';
 
 import { Control } from '../control';
-import { CONTROL } from '../debug';
 import { Model } from '../model';
 import { Callback, Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
@@ -16,8 +15,6 @@ namespace MVC {
 }
 
 class MVC extends Model {
-  static [CONTROL]: Control;
-
   /** Attaches this controller to a component. */
   tap(): this;
   tap <K extends Model.Field<this>> (key: K, expect: true): Exclude<this[K], undefined>;
