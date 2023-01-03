@@ -1,5 +1,6 @@
 import { Control } from './control';
 import { issues } from './issues';
+import { assign } from './util';
 
 export const Oops = issues({
   NotReady: (model, key) =>
@@ -26,7 +27,7 @@ export function suspend(
     });
   });
 
-  return Object.assign(promise, {
+  return assign(promise, {
     toString: () => String(error),
     name: "Suspense",
     message: error.message,

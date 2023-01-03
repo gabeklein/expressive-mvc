@@ -1,4 +1,5 @@
 import { Control } from "../control";
+import { assign } from "../util";
 import { Oops } from "./get";
 
 export function factoryMode<T>(
@@ -36,7 +37,7 @@ export function factoryMode<T>(
     const issue =
       Oops.NotReady(subject, key);
 
-    Object.assign(pending!, {
+    assign(pending!, {
       message: issue.message,
       stack: issue.stack
     });

@@ -4,6 +4,7 @@ import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
 import { Class, InstanceOf } from '../types';
+import { assign } from '../util';
 import { add, getRecursive } from './add';
 import { keyed, Managed } from './use.keyed';
 
@@ -107,7 +108,7 @@ function use<T extends Class>(
         const issue =
           Oops.NotReady(subject, key);
 
-        Object.assign(pending!, {
+        assign(pending!, {
           message: issue.message,
           stack: issue.stack
         });
