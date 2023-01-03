@@ -23,7 +23,7 @@ export class Global extends MVC {
 
     const instance = new this(...args);
 
-    Control.has(instance);
+    Control.for(instance);
     Active.set(this, instance);
 
     return instance as InstanceOf<T>;

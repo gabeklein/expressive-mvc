@@ -69,7 +69,7 @@ function useTap <T extends Model> (
     return useFrom(instance, path, expect);
 
   const local = use(refresh => (
-    Control.has(instance).subscribe(() => refresh)
+    Control.for(instance).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(local.commit, []);
@@ -78,7 +78,7 @@ function useTap <T extends Model> (
     const value = local.proxy[path];
 
     if(value === undefined && expect)
-      throw suspend(Control.has(instance), path);
+      throw suspend(Control.for(instance), path);
 
     return value;
   }

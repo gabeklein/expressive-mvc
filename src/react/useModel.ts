@@ -54,7 +54,7 @@ function useModel <T extends Model> (
           source() : 
         source;
 
-    Control.has(instance);
+    Control.for(instance);
 
     if(typeof cb == "function")
       cb(instance);
@@ -79,7 +79,7 @@ function useModel <T extends Model> (
   }
   
   const local = use(refresh => (
-    Control.has(instance).subscribe(() => refresh)
+    Control.for(instance).subscribe(() => refresh)
   ));
 
   if(typeof arg == "object"){

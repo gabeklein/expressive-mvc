@@ -148,7 +148,7 @@ export function getRecursive(key: string, from: Control){
         const value = from.state.get(key);
   
         if(Control.get(value)){
-          const child = Control.has(value).subscribe(local.onUpdate);
+          const child = Control.for(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();

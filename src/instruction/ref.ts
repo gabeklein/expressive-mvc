@@ -65,7 +65,7 @@ function ref<T>(
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        Control.has(arg).state.forEach((_val, key) => {
+        Control.for(arg).state.forEach((_val, key) => {
           defineProperty(value, key,
             mapper ? {
               configurable: true,

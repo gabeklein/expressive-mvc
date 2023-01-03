@@ -103,7 +103,7 @@ class MVC extends Model {
     const instance = React.useMemo(() => {
       const instance = new this() as I;
 
-      Control.has(instance);
+      Control.for(instance);
 
       if(typeof arg == "function")
         arg(instance);

@@ -91,7 +91,7 @@ function use<T extends Class>(
         if(next){
           get = getRecursive(key, this);
           Parent.set(next, subject);
-          Control.has(next);
+          Control.for(next);
         }
 
         if(typeof argument == "function")

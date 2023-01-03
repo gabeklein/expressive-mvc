@@ -24,7 +24,7 @@ function useFrom(
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = Control.has(target).subscribe(() => update);
+    const sub = Control.for(target).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);

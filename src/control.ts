@@ -147,9 +147,9 @@ class Control<T extends {} = any> {
     return REGISTER.get(from) as Control<T> | undefined;
   }
 
-  static has<T extends {}>(subject: T): Control<T>;
-  static has<T extends {}>(subject: T, cb: Control.DidCreate<T>): Callback;
-  static has<T extends {}>(subject: T, cb?: Control.DidCreate<T>){
+  static for<T extends {}>(subject: T): Control<T>;
+  static for<T extends {}>(subject: T, cb: Control.DidCreate<T>): Callback;
+  static for<T extends {}>(subject: T, cb?: Control.DidCreate<T>){
     const control = this.get(subject) || new this(subject);
 
     if(!control.state){

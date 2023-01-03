@@ -114,7 +114,7 @@ function RenderFunction(props: RenderFunctionProps): any {
     const targets = props.context.local;
 
     if(targets.length == 1)
-      return Control.has(targets[0]).subscribe(() => refresh);
+      return Control.for(targets[0]).subscribe(() => refresh);
 
     return {} as Subscriber;
   });

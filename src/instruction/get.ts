@@ -136,7 +136,7 @@ function get<R, T>(
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
-          source = Control.has(arg0);
+          source = Control.for(arg0);
           setter = arg1;
         }
         else
