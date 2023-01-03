@@ -1,16 +1,16 @@
 import { get, Model } from '../src';
 import { Oops } from '../src/model';
 
-describe("on method", () => {
-  class Subject extends Model {
-    seconds = 0;
-    hours = 0;
+class Subject extends Model {
+  seconds = 0;
+  hours = 0;
 
-    minutes = get(this, state => {
-      return Math.floor(state.seconds / 60)
-    })
-  }
+  minutes = get(this, state => {
+    return Math.floor(state.seconds / 60)
+  })
+}
 
+describe("on single", () => {
   it('will watch for specified value', async () => {
     const state = Subject.create();
     const callback = jest.fn();
@@ -47,27 +47,26 @@ describe("on method", () => {
     expect(callback).toBeCalledWith(1, "minutes");
   })
 
-  it('will watch for multiple values', async () => {
+  it('will ignore subsequent events in once mode', async () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.on(["seconds", "minutes"], callback);
+    state.on("seconds", callback, true);
 
     state.seconds = 30;
     await state.update();
 
-    // sanity check
     expect(callback).toBeCalledWith(30, "seconds");
-    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
 
-    state.seconds = 61;
+    state.seconds = 45;
     await state.update();
 
-    expect(callback).toBeCalledWith(61, "seconds");
-    expect(callback).toBeCalledWith(1, "minutes");
+    expect(callback).not.toBeCalledWith(45, "seconds");
   })
+})
 
-  it('will watch for any value', async () => {
+describe("on multiple", () => {
+  it('will watch all if empty', async () => {
     const state = Subject.create();
     const callback = jest.fn();
 
@@ -76,17 +75,16 @@ describe("on method", () => {
     state.seconds = 30;
     await state.update();
 
-    expect(callback).toBeCalledWith(30, "seconds");
-    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
+    expect(callback).toBeCalledWith(["seconds"]);
+    expect(callback).not.toBeCalledWith(["minutes"]);
 
     state.seconds = 61;
     await state.update();
 
-    expect(callback).toBeCalledWith(61, "seconds");
-    expect(callback).toBeCalledWith(1, "minutes");
+    expect(callback).toBeCalledWith(["seconds", "minutes"]);
   })
 
-  it('will watch for any (synthetic) value', async () => {
+  it('will watch for synthetic if empty', async () => {
     const state = Subject.create();
     const callback = jest.fn();
 
@@ -94,13 +92,11 @@ describe("on method", () => {
 
     await state.update("seconds");
 
-    expect(callback).toBeCalledWith(0, "seconds");
-    expect(callback).not.toBeCalledWith(expect.anything, "minutes");
+    expect(callback).toBeCalledWith(["seconds"]);
 
     await state.update("minutes");
 
-    expect(callback).toBeCalledWith(0, "minutes");
-    expect(callback).not.toBeCalledWith(expect.anything, "seconds");
+    expect(callback).toBeCalledWith(["minutes"]);
   })
 
   it('will watch multiple keys', async () => {
@@ -113,43 +109,29 @@ describe("on method", () => {
     await state.update();
 
     expect(callback).toBeCalledTimes(1);
-    expect(callback).toBeCalledWith(30, "seconds");
+    expect(callback).toBeCalledWith(["seconds"]);
 
     state.hours = 2;
     await state.update();
 
-    expect(callback).toBeCalledWith(2, "hours");
+    expect(callback).toBeCalledWith(["hours"]);
   })
 
-  it('will call for all simultaneous', async () => {
+  it('will halt in once mode', async () => {
     const state = Subject.create();
     const callback = jest.fn();
 
-    state.on(["seconds", "minutes"], callback);
+    state.on(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
     await state.update();
 
-    expect(callback).toBeCalledWith(60, "seconds");
-    expect(callback).toBeCalledWith(1, "minutes");
-  })
-  
-  it('will halt after simultaneous', async () => {
-    const state = Subject.create();
-    const callback = jest.fn();
-  
-    state.on(["seconds", "minutes"], callback, false, true);
-  
-    state.seconds = 60;
-    await state.update();
-  
-    expect(callback).toBeCalledWith(60, "seconds");
-    expect(callback).toBeCalledWith(1, "minutes");
-  
+    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+
     state.seconds = 61;
     await state.update();
-  
-    expect(callback).not.toBeCalledWith(61, "seconds");
+
+    expect(callback).toBeCalledTimes(1);
   })
 
   it('will call once for simultaneous in squash-mode', async () => {
@@ -163,7 +145,47 @@ describe("on method", () => {
 
     expect(callback).toBeCalledWith(["seconds", "minutes"]);
   })
+})
 
+describe("on promise", () => {
+  it('will return with update value', async () => {
+    const state = Subject.create();
+    const pending = state.on("seconds");
+
+    state.seconds = 30;
+
+    await expect(pending).resolves.toBe(30);
+  })
+
+  it('will return with updated updates', async () => {
+    const state = Subject.create();
+    const pending = state.on(["seconds"]);
+
+    state.seconds = 30;
+
+    await expect(pending).resolves.toEqual(["seconds"]);
+  })
+
+  it('will reject on timeout', async () => {
+    const state = Subject.create();
+    const promise = state.on("seconds", 0);
+    const expected = Oops.Timeout(["seconds"], "0ms");
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will reject on destroy state', async () => {
+    const state = Subject.create();
+    const promise = state.on("seconds");
+    const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
+
+    state.destroy();
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+})
+
+describe("on callback", () => {
   it('will call immediately in raw event mode', async () => {
     const state = Subject.create();
     const callback = jest.fn();
@@ -201,7 +223,6 @@ describe("on method", () => {
     });
 
     void state.minutes;
-
     state.seconds = 60;
 
     await state.update();
@@ -209,61 +230,6 @@ describe("on method", () => {
     expect(onImmediate).toBeCalledWith("minutes");
     expect(onFrame).toBeCalledWith("minutes");
   })
-  
-  it('will ignore subsequent events in once mode', async () => {
-    const state = Subject.create();
-    const callback = jest.fn();
-  
-    state.on("seconds", callback, false, true);
-  
-    state.seconds = 30;
-    await state.update();
-  
-    expect(callback).toBeCalledWith(30, "seconds");
-  
-    state.seconds = 45;
-    await state.update();
-  
-    expect(callback).not.toBeCalledWith(45, "seconds");
-  })
-  
-  it('will return promise with update value', async () => {
-    const state = Subject.create();
-    const pending = state.on("seconds");
-  
-    state.seconds = 30;
-  
-    await expect(pending).resolves.toBe(30);
-  })
-
-  it('will return promise with updated updates', async () => {
-    const state = Subject.create();
-    const pending = state.on(["seconds"]);
-  
-    state.seconds = 30;
-  
-    await expect(pending).resolves.toEqual(["seconds"]);
-  })
-  
-  it('will reject promise on timeout', async () => {
-    const state = Subject.create();
-    const promise = state.on("seconds", 0);
-    const expected = Oops.Timeout(["seconds"], "0ms");
-  
-    await expect(promise).rejects.toThrow(expected);
-  })
-  
-  it('will reject promise on destroy state', async () => {
-    const state = Subject.create();
-    const promise = state.on("seconds");
-    const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
-  
-    state.destroy();
-  
-    await expect(promise).rejects.toThrow(expected);
-  })
-  
-  it.todo('will cancel a promise');
 })
 
 describe("before ready", () => {

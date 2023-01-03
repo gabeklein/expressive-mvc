@@ -30,7 +30,7 @@ describe("property", () => {
     const state = Subject.create();
     const callback = jest.fn()
   
-    state.once("ref1", callback);
+    state.on("ref1", callback, true);
     state.ref1.current = "foobar";
   
     await state.update(true);
@@ -41,7 +41,7 @@ describe("property", () => {
     const state = Subject.create();
     const callback = jest.fn()
   
-    state.once("ref1", callback);
+    state.on("ref1", callback, true);
     state.ref1("foobar");
   
     await state.update(true);
@@ -54,7 +54,7 @@ describe("property", () => {
     const callback = jest.fn();
   
     expect(state.didTrigger).not.toBeCalled();
-    state.once("ref2", callback);
+    state.on("ref2", callback, true);
     state.ref2.current = targetValue;
     expect(state.didTrigger).toBeCalledWith(targetValue);
   

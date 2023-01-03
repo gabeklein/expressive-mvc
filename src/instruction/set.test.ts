@@ -54,7 +54,7 @@ describe("callback", () => {
     const event = jest.fn();
 
     expect(callback).not.toBeCalled();
-    state.once("test", event);
+    state.on("test", event, true);
 
     state.test = 1;
     expect(callback).toBeCalledWith(2);
