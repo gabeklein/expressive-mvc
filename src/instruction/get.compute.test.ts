@@ -239,7 +239,7 @@ describe("failures", () => {
     const state = Test.create();
     const failed = Compute.Failed(Test.name, "value", false);
 
-    state.once("value");
+    state.on("value");
     state.shouldFail = true;
 
     await state.update(true);

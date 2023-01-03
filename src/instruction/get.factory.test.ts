@@ -54,7 +54,7 @@ it("will emit when factory resolves", async () => {
 
   expect(() => test.value).toThrow(expect.any(Promise));
 
-  await test.once("value");
+  await test.on("value");
 
   expect(test.value).toBe("foobar");
 })
@@ -69,7 +69,7 @@ it("will not suspend where already resolved", async () => {
 
   const test = Test.create();
 
-  await test.once("value");
+  await test.on("value");
 
   expect(() => test.value).not.toThrow();
 })

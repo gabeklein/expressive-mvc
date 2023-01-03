@@ -93,26 +93,66 @@ class Model {
   }
 
   on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
+
+  on <P extends Model.Event<this>> (key: P): Promise<Model.ValueOf<this, P>>;
+  on <P extends Model.Event<this>> (key: P, timeout: number): Promise<Model.ValueOf<this, P>>;
+
+  on <P extends Model.Event<this>> (key: P[]): Promise<P[]>;
+  on <P extends Model.Event<this>> (key: P[], timeout: number): Promise<P[]>;
+
   on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
-  on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
+
   on <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: boolean, once?: boolean): Callback;
   on <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true, once?: boolean): Callback;
   on <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean, once?: boolean): Callback;
 
+  on (keys: [], listener: unknown, squash: boolean, once?: boolean): Callback;
+
   on <P extends Model.Event<this>> (
     select: P | P[] | ((key: any) => Callback | void),
-    handler?: Function,
+    argument?: Function | true | number,
     squash?: boolean,
     once?: boolean){
 
-    return Control.for(this, control => {
-      if(typeof select == "function")
-        return control.addListener(select);
+    if(typeof select == "function")
+      return Control.for(this, x => x.addListener(select));
 
-      const keys = 
-        typeof select == "string" ? [ select ] :
-        select.length ? select : [ ...control.state.keys() ];
+    let keys = typeof select == "string" ? [ select ] : select;
+
+    if(typeof argument !== "function"){
+      return new Promise<any>((resolve, reject) => {
+        const removeListener = Control.for(this, control => {
+          for(const key of keys)
+            try { void (this as any)[key] }
+            catch(e){}
+
+          return control.addListener(key => {
+            if(!key){
+              removeListener();
+              reject(Oops.Timeout(select, `lifetime of ${this}`));
+            }
+            else if(keys.includes(key as any)){
+              removeListener();
+              return () => resolve(
+                typeof select == "string"
+                  ? control.state.get(key) : getUpdate(this)
+              )
+            }
+          });
+        })
+
+        if(typeof argument == "number")
+          setTimeout(() => {
+            removeListener();
+            reject(Oops.Timeout(select, `${argument}ms`));
+          }, argument);
+      });
+    }
+
+    return Control.for(this, control => {
+      if(!keys.length)
+        keys = [ ...control.state.keys() ];
 
       for(const key of keys)
         try { void (this as any)[key] }
@@ -120,40 +160,43 @@ class Model {
 
       const callback = squash
         ? () => {
-          handler!.call(this, getUpdate(this))
+          argument!.call(this, getUpdate(this))
         }
         : () => {
           getUpdate(this)
             .filter(k => keys.includes(k as any))
             .forEach(k => {
-              handler!.call(this, control.state.get(k), k)
+              argument!.call(this, control.state.get(k), k)
             })
         }
 
       const onEvent = once
         ? () => {
-          remove();
+          removeListener();
           callback();
         }
         : callback;
 
-      const remove = control.addListener(key => {
-        if(keys.includes(key as any))
-          return onEvent;
-      });
+      const removeListener =
+        control.addListener(key => {
+          if(keys.includes(key as any))
+            return onEvent;
+        });
 
-      return remove;
+      return removeListener;
     });
   }
 
   once <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
   once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true): Callback;
   once <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, squash: true): Callback;
-  once (keys: [], listener: unknown, squash: boolean): Callback;
+
   once <P extends Model.Event<this>> (key: P | P[], listener: Model.OnUpdate<this, P>, squash?: false): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: (keys: P[]) => void, squash: true): Callback;
   once <P extends Model.Event<this>> (key: P | P[], listener: unknown, squash: boolean): Callback;
   once <P extends Model.Event<this>> (key: P | P[], timeout?: number): Promise<void>;
+
+  once (keys: [], listener: unknown, squash: boolean): Callback;
 
   once <P extends Model.Event<this>> (
     select: P | P[],

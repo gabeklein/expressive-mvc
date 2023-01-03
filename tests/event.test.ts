@@ -133,6 +133,24 @@ describe("on method", () => {
     expect(callback).toBeCalledWith(60, "seconds");
     expect(callback).toBeCalledWith(1, "minutes");
   })
+  
+  it('will halt after simultaneous', async () => {
+    const state = Subject.create();
+    const callback = jest.fn();
+  
+    state.on(["seconds", "minutes"], callback, false, true);
+  
+    state.seconds = 60;
+    await state.update();
+  
+    expect(callback).toBeCalledWith(60, "seconds");
+    expect(callback).toBeCalledWith(1, "minutes");
+  
+    state.seconds = 61;
+    await state.update();
+  
+    expect(callback).not.toBeCalledWith(61, "seconds");
+  })
 
   it('will call once for simultaneous in squash-mode', async () => {
     const state = Subject.create();
@@ -191,23 +209,12 @@ describe("on method", () => {
     expect(onImmediate).toBeCalledWith("minutes");
     expect(onFrame).toBeCalledWith("minutes");
   })
-})
-
-describe("once method", () => {
-  class Subject extends Model {
-    seconds = 0;
-    hours = 0;
   
-    minutes = get(this, state => {
-      return Math.floor(state.seconds / 60)
-    })
-  }
-  
-  it('will ignore subsequent events', async () => {
+  it('will ignore subsequent events in once mode', async () => {
     const state = Subject.create();
     const callback = jest.fn();
   
-    state.once("seconds", callback);
+    state.on("seconds", callback, false, true);
   
     state.seconds = 30;
     await state.update();
@@ -220,18 +227,27 @@ describe("once method", () => {
     expect(callback).not.toBeCalledWith(45, "seconds");
   })
   
-  it('will return promise with update keys', async () => {
+  it('will return promise with update value', async () => {
     const state = Subject.create();
-    const pending = state.once("seconds");
+    const pending = state.on("seconds");
   
     state.seconds = 30;
   
-    await expect(pending).resolves.toBeUndefined();
+    await expect(pending).resolves.toBe(30);
+  })
+
+  it('will return promise with updated updates', async () => {
+    const state = Subject.create();
+    const pending = state.on(["seconds"]);
+  
+    state.seconds = 30;
+  
+    await expect(pending).resolves.toEqual(["seconds"]);
   })
   
   it('will reject promise on timeout', async () => {
     const state = Subject.create();
-    const promise = state.once("seconds", 0);
+    const promise = state.on("seconds", 0);
     const expected = Oops.Timeout(["seconds"], "0ms");
   
     await expect(promise).rejects.toThrow(expected);
@@ -239,7 +255,7 @@ describe("once method", () => {
   
   it('will reject promise on destroy state', async () => {
     const state = Subject.create();
-    const promise = state.once("seconds");
+    const promise = state.on("seconds");
     const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
   
     state.destroy();
@@ -247,23 +263,7 @@ describe("once method", () => {
     await expect(promise).rejects.toThrow(expected);
   })
   
-  it('will call for all simultaneous', async () => {
-    const state = Subject.create();
-    const callback = jest.fn();
-  
-    state.once(["seconds", "minutes"], callback);
-  
-    state.seconds = 60;
-    await state.update();
-  
-    expect(callback).toBeCalledWith(60, "seconds");
-    expect(callback).toBeCalledWith(1, "minutes");
-  
-    state.seconds = 61;
-    await state.update();
-  
-    expect(callback).not.toBeCalledWith(61, "seconds");
-  })
+  it.todo('will cancel a promise');
 })
 
 describe("before ready", () => {
