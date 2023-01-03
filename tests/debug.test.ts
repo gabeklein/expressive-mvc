@@ -58,7 +58,7 @@ describe("Symbols", () => {
   })
 })
 
-describe("WHY", () => {
+describe("UPDATE", () => {
   class Test extends Model {
     value1 = 1;
     value2 = 2;
@@ -72,7 +72,7 @@ describe("WHY", () => {
     test.value2 = 3;
 
     const update = await test.update();
-    const updated = test[Debug.WHY];
+    const updated = test[Debug.UPDATE];
 
     expect(update).toStrictEqual(updated);
 
@@ -90,7 +90,7 @@ describe("WHY", () => {
       void state.value1;
       void state.value3;
 
-      update = state[Debug.WHY];
+      update = state[Debug.UPDATE];
     })
 
     expect(update).toBeUndefined();
