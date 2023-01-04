@@ -1,11 +1,16 @@
-import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
+import React from 'react';
+
+import { render, renderHook } from '../../tests/adapter';
 import { use } from '../instruction/use';
+import { Model } from '../model';
 import { Global, Oops } from './global';
 import { MVC } from './mvc';
+import { Provider } from './provider';
+import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
-describe("get method", () => {
+describe("get", () => {
   class Test extends Global {
     value = 1;
   }
@@ -54,7 +59,7 @@ describe("use method", () => {
   })
 })
 
-describe("meta method", () => {
+describe("meta", () => {
   class Child extends MVC {
     value = "foo";
   }
@@ -125,238 +130,20 @@ describe("meta method", () => {
   })
 })
 
-describe("tap method", () => {
-  class Parent extends MVC {
-    value = "foo";
-    empty = undefined;
-    child = use(Child);
-  }
+describe("tap", () => {
+  it("will get model from context", () => {
+    class Test extends Model {}
 
-  class Child extends MVC {
-    value = "foo"
-    grandchild = new GrandChild();
-  }
+    const Hook = () => {
+      const value = useTap(Test);
+      expect(value).toBeInstanceOf(Test);
+      return null;
+    }
 
-  class GrandChild extends MVC {
-    value = "bar"
-  }
-
-  it('will access subvalue directly', async () => {
-    const parent = Parent.create();
-
-    const { result, waitForNextUpdate } =
-      renderHook(() => parent.tap("value"))
-
-    expect(result.current).toBe("foo");
-
-    parent.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  })
-
-  it('will access child controller', async () => {
-    const parent = Parent.create();
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return parent.tap("child").value;
-    })
-
-    expect(result.current).toBe("foo");
-
-    parent.child.value = "bar"
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-
-    parent.child = new Child();
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("foo");
-
-    parent.child.value = "bar"
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  })
-})
-
-describe("tap method computed", () => {
-  class Test extends MVC {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-  }
-
-  it('will select and subscribe to subvalue', async () => {
-    const parent = Test.create();
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return parent.tap(x => x.foo);
-    });
-
-    expect(result.current).toBe(1);
-
-    parent.foo = 2;
-    await waitForNextUpdate();
-
-    expect(result.current).toBe(2);
-  })
-
-  it('will compute output', async () => {
-    const parent = Test.create();
-    const { result, waitForNextUpdate } =
-      renderHook(() => parent.tap(x => x.foo + x.bar));
-
-    expect(result.current).toBe(3);
-
-    parent.foo = 2;
-    await waitForNextUpdate(opts);
-
-    expect(result.current).toBe(4);
-  })  
-
-  it('will ignore updates with same result', async () => {
-    const parent = Test.create();
-    const compute = jest.fn();
-    const render = jest.fn();
-
-    const { result } = renderHook(() => {
-      render();
-      return parent.tap(x => {
-        compute();
-        void x.foo;
-        return x.bar;
-      });
-    });
-
-    expect(result.current).toBe(2);
-    expect(compute).toBeCalled();
-
-    parent.foo = 2;
-    await parent.update();
-
-    // did attempt a second compute
-    expect(compute).toBeCalledTimes(2);
-
-    // compute did not trigger a new render
-    expect(render).toBeCalledTimes(1);
-    expect(result.current).toBe(2);
-  })
-})
-
-describe("tap method async", () => {
-  class Test extends MVC {
-    foo = "bar";
-  };
-
-  it('will return undefined then refresh', async () => {
-    const promise = mockAsync<string>();
-    const control = Test.create();
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return control.tap(async () => promise.pending());
-    });
-
-    expect(result.current).toBeUndefined();
-
-    promise.resolve("foobar");
-    await waitForNextUpdate();
-
-    expect(result.current).toBe("foobar");
-  });
-
-  it('will not refresh via subscription', async () => {
-    const promise = mockAsync<string>();
-    const control = Test.create();
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return control.tap(async $ => {
-        void $.foo;
-        return promise.pending();
-      });
-    });
-
-    control.foo = "foo";
-    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
-
-    promise.resolve("foobar");
-    await waitForNextUpdate();
-
-    expect(result.current).toBe("foobar");
-  });
-})
-
-describe("tap method suspense", () => {
-  class Test extends MVC {
-    value?: string = undefined;
-  }
-
-  it('will suspend if property undefined', async () => {
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("value", true);
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.value = "foo!";
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it('will suspend strict compute', async () => {
-    const instance = Test.create() as Test;
-    const promise = mockAsync();
-    const test = mockSuspense();
-
-    const didRender = jest.fn();
-    const didCompute = jest.fn();
-
-    test.renderHook(() => {
-      promise.resolve();
-      didRender();
-
-      instance.tap(state => {
-        didCompute();
-        if(state.value == "foobar")
-          return true;
-      }, true);
-    })
-
-    test.assertDidSuspend(true);
-
-    expect(didCompute).toBeCalledTimes(1);
-
-    instance.value = "foobar";
-    await promise.pending();
-
-    // 1st - render prior to bailing
-    // 2nd - successful render
-    expect(didRender).toBeCalledTimes(2);
-
-    // 1st - initial render fails
-    // 2nd - recheck success (permit render again)
-    // 3rd - hook regenerated next render 
-    expect(didCompute).toBeCalledTimes(3);
-  })
-
-  it('will suspend strict async', async () => {
-    const instance = Test.create();
-    const promise = mockAsync();
-    const test = mockSuspense();
-
-    test.renderHook(() => {
-      instance.tap(async () => {
-        await promise.pending();
-      }, true);
-    })
-
-    test.assertDidSuspend(true);
-
-    promise.resolve();
-    await test.waitForNextRender();
-
-    test.assertDidRender(true);
+    render(
+      <Provider for={Test}>
+        <Hook />
+      </Provider>
+    );
   })
 })

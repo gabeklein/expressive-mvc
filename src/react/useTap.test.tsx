@@ -1,27 +1,64 @@
-import React from 'react';
-
-import { mockAsync, mockSuspense, render } from '../../tests/adapter';
+import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
 import { get } from '../instruction/get';
 import { set } from '../instruction/set';
+import { use } from '../instruction/use';
 import { Model } from '../model';
 import { Oops as Suspense } from '../suspense';
-import { Provider } from './provider';
 import { useTap } from './useTap';
 
-it("will get base-model from context", () => {
-  class Test extends Model {}
+const opts = { timeout: 100 };
 
-  const Hook = () => {
-    const value = useTap(Test);
-    expect(value).toBeInstanceOf(Test);
-    return null;
+it('will access subvalue directly', async () => {
+  class Test extends Model {
+    value = "foo";
   }
 
-  render(
-    <Provider for={Test}>
-      <Hook />
-    </Provider>
-  );
+  const parent = Test.create();
+
+  const { result, waitForNextUpdate } =
+    renderHook(() => useTap(parent, "value"))
+
+  expect(result.current).toBe("foo");
+
+  parent.value = "bar";
+  await waitForNextUpdate(opts);
+  expect(result.current).toBe("bar");
+})
+
+it('will subscribe to child controllers', async () => {
+  class Parent extends Model {
+    value = "foo";
+    empty = undefined;
+    child = use(Child);
+  }
+
+  class Child extends Model {
+    value = "foo"
+    grandchild = new GrandChild();
+  }
+
+  class GrandChild extends Model {
+    value = "bar"
+  }
+
+  const parent = Parent.create();
+  const { result, waitForNextUpdate } = renderHook(() => {
+    return useTap(parent, "child").value;
+  })
+
+  expect(result.current).toBe("foo");
+
+  parent.child.value = "bar"
+  await waitForNextUpdate(opts);
+  expect(result.current).toBe("bar");
+
+  parent.child = new Child();
+  await waitForNextUpdate(opts);
+  expect(result.current).toBe("foo");
+
+  parent.child.value = "bar"
+  await waitForNextUpdate(opts);
+  expect(result.current).toBe("bar");
 })
 
 describe("computed values", () => {
@@ -48,7 +85,6 @@ describe("computed values", () => {
     test.assertDidSuspend(true);
 
     instance.source = "foobar!";
-
     await promise.pending();
 
     test.assertDidRender(true);
@@ -172,10 +208,211 @@ describe("computed values", () => {
   it.todo("will start suspense if value becomes undefined");
 })
 
-describe("computed factory", () => {
-  it('will suspend if value is async', async () => {
+describe("computed", () => {
+  class Test extends Model {
+    foo = 1;
+    bar = 2;
+    baz = 3;
+  }
+
+  it('will select and subscribe to subvalue', async () => {
+    const parent = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(parent, x => x.foo);
+    });
+
+    expect(result.current).toBe(1);
+
+    parent.foo = 2;
+    await waitForNextUpdate();
+
+    expect(result.current).toBe(2);
+  })
+
+  it('will compute output', async () => {
+    const parent = Test.create();
+    const { result, waitForNextUpdate } =
+      renderHook(() => useTap(parent, x => x.foo + x.bar));
+
+    expect(result.current).toBe(3);
+
+    parent.foo = 2;
+    await waitForNextUpdate(opts);
+
+    expect(result.current).toBe(4);
+  })
+
+  it('will ignore updates with same result', async () => {
+    const parent = Test.create();
+    const compute = jest.fn();
+    const render = jest.fn();
+
+    const { result } = renderHook(() => {
+      render();
+      return useTap(parent, x => {
+        compute();
+        void x.foo;
+        return x.bar;
+      });
+    });
+
+    expect(result.current).toBe(2);
+    expect(compute).toBeCalled();
+
+    parent.foo = 2;
+    await parent.update();
+
+    // did attempt a second compute
+    expect(compute).toBeCalledTimes(2);
+
+    // compute did not trigger a new render
+    expect(render).toBeCalledTimes(1);
+    expect(result.current).toBe(2);
+  })
+})
+
+describe("async", () => {
+  class Test extends Model {
+    foo = "bar";
+  };
+
+  it('will return undefined then refresh', async () => {
+    const promise = mockAsync<string>();
+    const control = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(control, () => promise.pending());
+    });
+
+    expect(result.current).toBeUndefined();
+
+    promise.resolve("foobar");
+    await waitForNextUpdate();
+
+    expect(result.current).toBe("foobar");
+  });
+
+  it('will not subscribe to values', async () => {
+    const promise = mockAsync<string>();
+    const control = Test.create();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(control, $ => {
+        void $.foo;
+        return promise.pending();
+      });
+    });
+
+    control.foo = "foo";
+    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
+
+    promise.resolve("foobar");
+    await waitForNextUpdate();
+
+    expect(result.current).toBe("foobar");
+  });
+})
+
+describe("suspense", () => {
+  class Test extends Model {
+    value?: string = undefined;
+  }
+
+  it('will suspend if value expected', async () => {
+    const instance = Test.create() as Test;
+    const promise = mockAsync();
+    const test = mockSuspense();
+
+    const didRender = jest.fn();
+    const didCompute = jest.fn();
+
+    test.renderHook(() => {
+      promise.resolve();
+      didRender();
+
+      useTap(instance, state => {
+        didCompute();
+
+        if(state.value == "foobar")
+          return true;
+      }, true);
+    })
+
+    test.assertDidSuspend(true);
+
+    expect(didCompute).toBeCalledTimes(1);
+
+    instance.value = "foobar";
+    await promise.pending();
+
+    // 1st - render prior to bailing
+    // 2nd - successful render
+    expect(didRender).toBeCalledTimes(2);
+
+    // 1st - initial render fails
+    // 2nd - recheck success (permit render again)
+    // 3rd - hook regenerated next render 
+    expect(didCompute).toBeCalledTimes(3);
+  })
+
+  it('will suspend strict async', async () => {
+    const instance = Test.create();
+    const promise = mockAsync();
+    const test = mockSuspense();
+
+    test.renderHook(() => {
+      useTap(instance, () => promise.pending(), true);
+    })
+
+    test.assertDidSuspend(true);
+
+    promise.resolve();
+    await test.waitForNextRender();
+
+    test.assertDidRender(true);
+  })
+
+  it('will refresh and throw if async rejects', async () => {
+    const promise = mockAsync();
+  
     class Test extends Model {
-      value = get(promise.pending);
+      value = get(async () => {
+        await promise.pending();
+        throw "oh no";
+      })
+    }
+  
+    const test = mockSuspense();
+    const instance = Test.create();
+    const didThrow = mockAsync();
+  
+    test.renderHook(() => {
+      try {
+        void useTap(instance).value;
+      }
+      catch(err: any){
+        if(err instanceof Promise)
+          throw err;
+        else
+          didThrow.resolve(err);
+      }
+    })
+  
+    test.assertDidSuspend(true);
+  
+    promise.resolve();
+  
+    const error = await didThrow.pending();
+  
+    expect(error).toBe("oh no");
+  })
+})
+
+describe("get instruction", () => {
+  it('will suspend if function is async', async () => {
+    class Test extends Model {
+      value = get(() => promise.pending());
     }
   
     const test = mockSuspense();
@@ -218,41 +455,6 @@ describe("computed factory", () => {
     await didRender.pending();
   
     test.assertDidRender(true);
-  })
-
-  it('will refresh and throw if async rejects', async () => {
-    const promise = mockAsync();
-  
-    class Test extends Model {
-      value = get(async () => {
-        await promise.pending();
-        throw "oh no";
-      })
-    }
-  
-    const test = mockSuspense();
-    const instance = Test.create();
-    const didThrow = mockAsync();
-  
-    test.renderHook(() => {
-      try {
-        void useTap(instance).value;
-      }
-      catch(err: any){
-        if(err instanceof Promise)
-          throw err;
-        else
-          didThrow.resolve(err);
-      }
-    })
-  
-    test.assertDidSuspend(true);
-  
-    promise.resolve();
-  
-    const error = await didThrow.pending();
-  
-    expect(error).toBe("oh no");
   })
 });
 
