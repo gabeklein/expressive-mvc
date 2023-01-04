@@ -79,13 +79,4 @@ describe("update", () => {
     expect(Test.get("foo")).toBe(2);
     expect(Test.get("bar")).toBe(1);
   })
-
-  it("will create then update instance", async () => {
-    const update = await Test.set({ foo: 1, bar: 2 });
-
-    expect(update).toBe(false);
-
-    expect(Test.get("foo")).toBe(1);
-    expect(Test.get("bar")).toBe(2);
-  })
 })

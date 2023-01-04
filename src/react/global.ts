@@ -37,9 +37,7 @@ export class Global extends MVC {
   static set<T extends typeof Global>(
     this: T, values: Partial<InstanceOf<T>>){
 
-    const instance = Active.get(this) || (this as any).create();
-    instance.update(values);
-    return instance.update(false);
+    return this.get(true).update(values);
   }
 
   /**
