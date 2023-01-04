@@ -40,25 +40,6 @@ describe("get", () => {
   })
 })
 
-describe("use method", () => {
-  it('will attach existing model', () => {
-    class Test extends MVC {
-      value = "";
-    }
-
-    const test = Test.create();
-
-    const render = renderHook(() => {
-      return test.use();
-    });
-
-    expect(render.result.current).not.toBe(test);
-    expect(render.result.current.is).toBe(test);
-
-    render.unmount();
-  })
-})
-
 describe("meta", () => {
   class Child extends MVC {
     value = "foo";

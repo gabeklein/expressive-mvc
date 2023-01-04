@@ -9,31 +9,6 @@ namespace MVC {
 }
 
 class MVC extends Model {
-  /** Attaches this controller to a component. */
-  tap(): this;
-  tap <K extends Model.Field<this>> (key: K, expect: true): Exclude<this[K], undefined>;
-  tap <K extends Model.Field<this>> (key: K, expect?: boolean): this[K];
-  tap <T> (from: (this: this, state: this) => Promise<T>, expect: true): Exclude<T, undefined>;
-  tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
-  tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
-  tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
-
-  tap(path?: string | Function, expect?: boolean){
-    return useTap(this, path as any, expect);
-  }
-
-  /**
-   * **React Hook** - Subscribe to instance of controller within a component.
-   *
-   * @param callback - Run once before subscription begins.
-   */
-  use(watch: Model.Field<this>[], callback?: (instance: this) => void): this;
-  use(callback?: (instance: this) => void): this;
-
-  use(arg?: any, callback?: (instance: this) => void) {
-    return useModel(this, arg, callback);
-  }
-
   /**
    * **React Hook** - Fetch most instance of this controller from context, if it exists.
    * 
