@@ -91,10 +91,6 @@ function useModel <T extends Model> (
     for(const key of arg2)
       if(key in arg)
         (instance as any)[key] = arg[key];
-
-    React.useLayoutEffect(() => {
-      local.active = true;
-    });
   }
 
   React.useLayoutEffect(() => {
