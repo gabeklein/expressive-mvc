@@ -70,7 +70,7 @@ function useModel <T extends Model> (
 
     React.useLayoutEffect(() => {  
       if(arg.length && instance instanceof Model)
-        instance.on(arg, () => update(x => x+1), true);
+        instance.on(arg, () => update(x => x+1));
 
       return () => {
         if(Model.isTypeof(source))
