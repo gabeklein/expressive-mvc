@@ -150,7 +150,55 @@ describe("dispatch", () => {
 })
 
 describe("import", () => {
-  it.todo("will assign values");
-  it.todo("will assign specific values");
-  it.todo("will assign all values from source");
+  class Test extends Model {
+    foo = 0;
+    bar = 1;
+    baz?: number;
+  }
+  
+  const values = {
+    foo: 1,
+    bar: 2,
+    baz: 3
+  }
+  
+  it("will assign values", async () => {
+    const test = Test.create();
+
+    expect(test.foo).toBe(0);
+    expect(test.bar).toBe(1);
+
+    const keys = await test.update(values);
+    expect(keys).toEqual(["foo", "bar"]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+  });
+
+  it("will assign specific values", async () => {
+    const test = Test.create();
+    const keys = await test.update(values, ["foo"]);
+
+    expect(keys).toEqual(["foo"]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(1);
+  });
+
+  it("will force assign values from source", async () => {
+    const test = Test.create();
+    const baz = test.on("baz");
+    const keys = await test.update(values, true);
+
+    expect(keys).toEqual(["foo", "bar", "baz"]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+
+    // sanity check
+    // we didn't set baz - only dispatched it.
+    expect(test.baz).toBeUndefined();
+
+    await expect(baz).resolves.toBe(3);
+  });
 })

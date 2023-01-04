@@ -252,19 +252,17 @@ class Model {
     arg2?: boolean | any[]): any {
 
     const control = Control.for(this);
-    const { frame, waiting } = control;
+    const { frame, state, waiting } = control;
 
     if(arg1 === true && !frame.size)
       return Promise.reject(Oops.StrictUpdate());
 
     if(typeof arg1 == "object"){
-      if(arg2 === true)
-        for(const key in arg1)
-          (this as any)[key] = (arg1 as any)[key];
-
-      else for(const key of arg2 || control.state.keys())
-        if(key in arg1)
-          (this as any)[key] = (arg1 as any)[key];
+      for(const key in arg1)
+        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
+          state.set(key, (arg1 as any)[key]);
+          control.update(key as any);
+        }
     }
     else if(typeof arg1 == "string"){
       control.update(arg1 as Model.Field<this>);
