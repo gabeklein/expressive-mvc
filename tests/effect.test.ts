@@ -127,7 +127,7 @@ describe("explicit", () => {
     const test = Test.create();
 
     test.effect(() => willDestroy, []);
-    test.destroy();
+    test.kill();
 
     expect(willDestroy).toBeCalled();
   })
@@ -142,7 +142,7 @@ describe("explicit", () => {
       test.effect(() => willDestroy, []);
 
     cancel();
-    test.destroy();
+    test.kill();
 
     expect(willDestroy).not.toBeCalled();
   })

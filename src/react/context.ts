@@ -62,6 +62,6 @@ export class Lookup {
     }
 
     for(const model of items)
-      model.destroy();
+      model.kill();
   }
 }

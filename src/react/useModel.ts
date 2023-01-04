@@ -71,7 +71,7 @@ function useModel <T extends Model> (
 
       return () => {
         if(Model.isTypeof(source))
-          (instance as Model).destroy();
+          (instance as Model).kill();
       }
     }, []);
 
@@ -104,7 +104,7 @@ function useModel <T extends Model> (
       local.release();
 
       if(Model.isTypeof(source))
-        (instance as Model).destroy();
+        (instance as Model).kill();
     };
   }, []);
 

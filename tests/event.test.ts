@@ -179,7 +179,7 @@ describe("on promise", () => {
     const promise = state.on("seconds");
     const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
 
-    state.destroy();
+    state.kill();
 
     await expect(promise).rejects.toThrow(expected);
   })

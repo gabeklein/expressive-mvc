@@ -77,11 +77,11 @@ export class Global extends MVC {
     const current = Active.get(this);
 
     if(current)
-      current.destroy();
+      current.kill();
   }
 
-  destroy(){
-    super.destroy();
+  kill(){
+    super.kill();
     Active.delete(this.constructor as any);
   }
 }
