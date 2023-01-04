@@ -115,7 +115,7 @@ class MVC extends Model {
       return instance;
     }, []);
 
-    usePeerContext(instance.is);
+    usePeerContext(instance);
 
     return instance;
   }
@@ -138,9 +138,7 @@ class MVC extends Model {
   ): I;
 
   static use <T extends typeof MVC> (this: T, a: any, b?: any){
-    const instance = useModel(this, a, b);
-    usePeerContext(instance.is);    
-    return instance;
+    return useModel(this, a, b);
   }
 
   static meta <T extends Class>(this: T): T;

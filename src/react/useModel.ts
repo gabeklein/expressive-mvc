@@ -4,6 +4,7 @@ import { Control } from '../control';
 import { Model } from '../model';
 import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
+import { usePeerContext } from './tap';
 import { use } from './use';
 
 function useModel <T extends Class, I extends InstanceOf<T>> (
@@ -61,6 +62,8 @@ function useModel <T extends Model> (
 
     return instance;
   }, []);
+
+  usePeerContext(instance);
 
   if(Array.isArray(arg)){
     const update = useState(0)[1];
