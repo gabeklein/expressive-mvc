@@ -306,7 +306,7 @@ describe("suspense", () => {
     const didRender = jest.fn();
 
     const Inner = () => {
-      const foo = Foo.new();
+      const foo = Foo.use([]);
       expect(foo.value).toBe("foobar");
       didRender();
       return null;

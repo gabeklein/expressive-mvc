@@ -1,5 +1,4 @@
 import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
-import { set } from '../instruction/set';
 import { use } from '../instruction/use';
 import { Global, Oops } from './global';
 import { MVC } from './mvc';
@@ -36,17 +35,22 @@ describe("get method", () => {
   })
 })
 
-describe("new method", () => {
-  it('will import values if where an object', () => {
+describe("use method", () => {
+  it('will attach existing model', () => {
     class Test extends MVC {
-      value = set<string>();
+      value = "";
     }
 
+    const test = Test.create();
+
     const render = renderHook(() => {
-      return Test.new({ value: "foo" });
+      return test.use();
     });
 
-    expect(render.result.current.value).toBe("foo");
+    expect(render.result.current).not.toBe(test);
+    expect(render.result.current.is).toBe(test);
+
+    render.unmount();
   })
 })
 

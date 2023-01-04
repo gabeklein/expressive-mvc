@@ -1,11 +1,5 @@
-/* istanbul ignore file */
-import React from 'react';
-
-import { Control } from '../control';
 import { Model } from '../model';
 import { Callback, Class, InstanceOf } from '../types';
-import { getOwnPropertyNames } from '../util';
-import { usePeerContext } from './tap';
 import { useLocal } from './useLocal';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
@@ -84,40 +78,6 @@ class MVC extends Model {
 
   static tap (key?: string | Function, expect?: boolean): any {
     return useTap(this, key as any, expect);
-  }
-
-  /**
-   * **React Hook** - Spawn and maintain a controller from within a component.
-   * 
-   * More efficient than `use()` if you don't need hook-based features.
-   * 
-   * @param callback - Run after creation of instance.
-   */
-  static new <I extends MVC> (this: MVC.Type<I>, callback?: (instance: I) => void): I;
-  static new <I extends MVC> (this: MVC.Type<I>, apply: Model.Compat<I>): I;
-
-  static new <I extends MVC> (this: MVC.Type<I>, arg?: ((instance: I) => void) | Model.Compat<I>){
-    const instance = React.useMemo(() => {
-      const instance = new this() as I;
-
-      Control.for(instance);
-
-      if(typeof arg == "function")
-        arg(instance);
-
-      else if(arg)
-        getOwnPropertyNames(instance)
-          .forEach(((key: Model.Field<I>) => {
-            if(key in arg)
-              instance[key] = arg[key]!;
-          }) as any)
-
-      return instance;
-    }, []);
-
-    usePeerContext(instance);
-
-    return instance;
   }
 
   static use <I extends MVC> (
