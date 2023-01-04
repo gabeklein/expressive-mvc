@@ -18,37 +18,39 @@ export const Oops = issues({
 });
 
 declare namespace Model {
-  export type Type<T extends Model = Model> = typeof Model & (new () => T);
+  export { Control };
+  export { Subscriber };
 
   /** Including but not limited to T. */
   type Extends<T> = T | (string & Record<never, never>);
 
-  export { Control };
-  export { Subscriber };
+  export type Type<T extends Model = Model> = typeof Model & (new () => T);
 
   export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
   /** Exotic value, actual value is contained. */
-  export interface Ref<T = any> {
+  export type Ref<T = any> = {
     (next: T): void;
     current: T | null;
   }
 
-  /** Properties of T, of which are methods. */
+  /** Properties of T which are methods. */
   export type Methods<T> = {
     [K in keyof T]:
       T[K] extends Ref ? never :
       T[K] extends Function ? K :
       never;
   }[keyof T];
+
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
    * 
    * **Note**: This excludes all keys which are not of type `string` (only those are managed).
+   * 
+   * TODO: Should exclude methods
    **/
-  // TODO: Should exclude methods
   export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U>;
 
   /**
@@ -73,9 +75,7 @@ declare namespace Model {
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Values<T, K extends Field<T, Model> = Field<T, Model>> = {
-    [P in K]: Value<T[P]>;
-  }
+  export type Values<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> }
 }
 
 class Model {
