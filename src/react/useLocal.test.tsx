@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React from 'react';
 
 import { render } from '../../tests/adapter';
 import { MVC } from './mvc';
@@ -44,7 +44,6 @@ describe("get", () => {
 
     const Hook = () => {
       useLocal(Test, willMount);
-      void useLayoutEffect;
       return null;
     }
 
