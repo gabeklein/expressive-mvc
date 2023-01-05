@@ -11,7 +11,7 @@ class Test extends Model {
 }
 
 it('will select and subscribe to subvalue', async () => {
-  const parent = Test.create();
+  const parent = Test.new();
 
   const { result, waitForNextUpdate } = renderHook(() => {
     return useFrom(parent, x => x.foo);
@@ -26,7 +26,7 @@ it('will select and subscribe to subvalue', async () => {
 })
 
 it('will compute output', async () => {
-  const parent = Test.create();
+  const parent = Test.new();
   const { result, waitForNextUpdate } =
     renderHook(() => useFrom(parent, x => x.foo + x.bar));
 
@@ -39,7 +39,7 @@ it('will compute output', async () => {
 })
 
 it('will ignore updates with same result', async () => {
-  const parent = Test.create();
+  const parent = Test.new();
   const compute = jest.fn();
   const render = jest.fn();
 
@@ -73,7 +73,7 @@ describe("async", () => {
 
   it('will return undefined then refresh', async () => {
     const promise = mockAsync<string>();
-    const control = Test.create();
+    const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
       return useFrom(control, () => promise.pending());
@@ -89,7 +89,7 @@ describe("async", () => {
 
   it('will not subscribe to values', async () => {
     const promise = mockAsync<string>();
-    const control = Test.create();
+    const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
       return useFrom(control, $ => {
@@ -114,7 +114,7 @@ describe("suspense", () => {
   }
 
   it('will suspend if value expected', async () => {
-    const instance = Test.create() as Test;
+    const instance = Test.new() as Test;
     const promise = mockAsync();
     const test = mockSuspense();
 
@@ -151,7 +151,7 @@ describe("suspense", () => {
   })
 
   it('will suspend strict async', async () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const promise = mockAsync();
     const test = mockSuspense();
 

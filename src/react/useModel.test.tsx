@@ -18,7 +18,7 @@ describe("hook", () => {
   })
 
   it("will use factory function", () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const render = renderHook(() => useModel(() => instance));
     const result = render.result.current;
 
@@ -68,7 +68,7 @@ describe("subscription", () => {
 
   it("will ignore causal updates", async () => {
     const didRender = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
     const TestComponent = (props: any) => {
       const { value } = useModel(() => test, props);

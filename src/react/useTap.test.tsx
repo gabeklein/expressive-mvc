@@ -13,7 +13,7 @@ it('will access subvalue directly', async () => {
     value = "foo";
   }
 
-  const parent = Test.create();
+  const parent = Test.new();
 
   const { result, waitForNextUpdate } =
     renderHook(() => useTap(parent, "value"))
@@ -41,7 +41,7 @@ it('will subscribe to child controllers', async () => {
     value = "bar"
   }
 
-  const parent = Parent.create();
+  const parent = Parent.new();
   const { result, waitForNextUpdate } = renderHook(() => {
     return useTap(parent, "child").value;
   })
@@ -75,7 +75,7 @@ describe("computed values", () => {
   it("will suspend if value is undefined", async () => {
     const test = mockSuspense();
     const promise = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
 
     test.renderHook(() => {
       useTap(instance, "value");
@@ -102,7 +102,7 @@ describe("computed values", () => {
 
     const test = mockSuspense();
     const promise = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
 
     test.renderHook(() => {
       useTap(instance, "value");
@@ -119,7 +119,7 @@ describe("computed values", () => {
   })
 
   it("will seem to throw error outside react", () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const expected = Suspense.NotReady(instance, "value");
     let didThrow: Error | undefined;
 
@@ -135,7 +135,7 @@ describe("computed values", () => {
 
   it("will return immediately if value is defined", async () => {
     const test = mockSuspense();
-    const instance = Test.create();
+    const instance = Test.new();
 
     instance.source = "foobar!";
 
@@ -153,7 +153,7 @@ describe("computed values", () => {
   it("will not resolve if value stays undefined", async () => {
     const test = mockSuspense();
     const promise = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
 
     test.renderHook(() => {
       useTap(instance, "value");
@@ -193,7 +193,7 @@ describe("computed values", () => {
       value = get(promise.pending, false);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     test.effect(state => mock(state.value));
 
@@ -216,7 +216,7 @@ describe("computed values", () => {
     }
   
     const test = mockSuspense();
-    const instance = Test.create();
+    const instance = Test.new();
     const didThrow = mockAsync();
   
     test.renderHook(() => {
@@ -252,7 +252,7 @@ describe("get instruction", () => {
     const test = mockSuspense();
     const promise = mockAsync();
     const didRender = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
   
     test.renderHook(() => {
       void useTap(instance).value;
@@ -276,7 +276,7 @@ describe("get instruction", () => {
   
     const test = mockSuspense();
     const didRender = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
   
     test.renderHook(() => {
       void useTap(instance).value;
@@ -300,7 +300,7 @@ describe("set instruction", () => {
 
     const test = mockSuspense();
     const promise = mockAsync();
-    const instance = Test.create();
+    const instance = Test.new();
 
     test.renderHook(() => {
       useTap(instance, "foobar");
@@ -323,7 +323,7 @@ describe("set instruction", () => {
     }
 
     const test = mockSuspense();
-    const instance = Test.create();
+    const instance = Test.new();
 
     instance.foobar = "foo!";
 

@@ -13,7 +13,7 @@ class Bar extends MVC {}
 class Baz extends Bar {}
 
 it("will handle complex arrangement", () => {
-  const instance = Foo.create();
+  const instance = Foo.new();
 
   render(
     <Provider for={instance}>
@@ -33,7 +33,7 @@ it("will render with instance for child-function", async () => {
     value = "foobar";
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
   const didRender = jest.fn();
 
   function onRender(instance: Test){
@@ -54,7 +54,7 @@ it("will render with instance for child-function", async () => {
 })
 
 it("will throw if expected-prop missing", () => {
-  const instance = Foo.create();
+  const instance = Foo.new();
   const attempt = () => render(
     <Provider for={instance}>
       { /* @ts-ignore */}

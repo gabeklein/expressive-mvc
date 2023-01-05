@@ -19,7 +19,7 @@ class Test extends Model {
 }
 
 it("will pass arguments to wrapped function", async () => {
-  const control = Test.create();
+  const control = Test.new();
   const input = Symbol("unique");
   const output = control.test(input);
 
@@ -27,7 +27,7 @@ it("will pass arguments to wrapped function", async () => {
 })
 
 it("will set active to true for run-duration", async () => {
-  const { test } = Test.create();
+  const { test } = Test.new();
 
   expect(test.active).toBe(false);
 
@@ -41,7 +41,7 @@ it("will set active to true for run-duration", async () => {
 
 it("will emit method key before/after activity", async () => {
   let update: readonly string[];
-  const { test, is } = Test.create();
+  const { test, is } = Test.new();
 
   expect(test.active).toBe(false);
 
@@ -60,7 +60,7 @@ it("will emit method key before/after activity", async () => {
 })
 
 it("will throw immediately if already in-progress", () => {
-  const { test } = Test.create();
+  const { test } = Test.new();
   const expected = Oops.DuplicatePending("test");
 
   test();
@@ -68,7 +68,7 @@ it("will throw immediately if already in-progress", () => {
 })
 
 it("will throw and reset if action fails", async () => {
-  const { nope, is: test } = Test.create();
+  const { nope, is: test } = Test.new();
 
   expect(nope.active).toBe(false);
 
@@ -82,7 +82,7 @@ it("will throw and reset if action fails", async () => {
 })
 
 it("will complain if property is redefined", () => {
-  const state = Test.create();
+  const state = Test.new();
   const assign = () => state.test = 0 as any;
 
   expect(assign).toThrowError();
@@ -99,7 +99,7 @@ it("will internally retry on suspense", async () => {
   }
 
   const didInvoke = jest.fn();
-  const test = Test.create();
+  const test = Test.new();
   const value = test.getValue();
 
   expect(didInvoke).toBeCalled();

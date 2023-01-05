@@ -65,7 +65,7 @@ it("will pass undefined to render function if multiple", () => {
 
 it("will refresh render function as a subscriber", async () => {
   const didRender = jest.fn();
-  const test = Foo.create();
+  const test = Foo.new();
 
   render(
     <Provider for={test}>
@@ -172,7 +172,7 @@ it("will not destroy given instance on unmount", () => {
 
   class Test extends Model {}
 
-  const instance = Test.create();
+  const instance = Test.new();
 
   const rendered = render(
     <Provider for={{ instance }}>
@@ -196,7 +196,7 @@ it("will create all models in given array", () => {
 })
 
 it("will provide a mix of state and models", () => {
-  const foo = Foo.create();
+  const foo = Foo.new();
 
   render(
     <Provider for={{ foo, Bar }}>

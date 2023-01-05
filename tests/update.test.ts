@@ -10,7 +10,7 @@ describe("assertion", () => {
   }
 
   it("provides promise resolving on next update", async () => {
-    const control = Control.create();
+    const control = Control.new();
 
     control.foo = 2;
     await control.update();
@@ -20,7 +20,7 @@ describe("assertion", () => {
   })
 
   it("resolves to keys next update", async () => {
-    const control = Control.create();
+    const control = Control.new();
 
     control.foo = 2;
 
@@ -29,21 +29,21 @@ describe("assertion", () => {
   })
 
   it('resolves immediately when no updates pending', async () => {
-    const control = Control.create();
+    const control = Control.new();
     const update = await control.update(false);
 
     expect(update).toBe(false);
   })
 
   it('rejects if no update pending in strict mode', async () => {
-    const control = Control.create();
+    const control = Control.new();
     const update = control.update(true);
 
     await expect(update).rejects.toThrowError();
   })
 
   it("includes getters in batch which trigger them", async () => {
-    const control = Control.create();
+    const control = Control.new();
 
     // we must evaluate baz because it can't be
     // subscribed to without this happening atleast once. 
@@ -69,7 +69,7 @@ describe("dispatch", () => {
   }
 
   it("will send synthetic event", async () => {
-    const test = Test.create();
+    const test = Test.new();
     test.update("foo");
 
     const update = await test.update(true);
@@ -77,7 +77,7 @@ describe("dispatch", () => {
   })
 
   it("will squash updates which exist", async () => {
-    const test = Test.create();
+    const test = Test.new();
 
     test.foo = "bar";
     test.update("foo");
@@ -87,7 +87,7 @@ describe("dispatch", () => {
   })
 
   it("will send arbitrary event", async () => {
-    const test = Test.create();
+    const test = Test.new();
     test.update("foobar");
 
     const update = await test.update(true);
@@ -95,14 +95,14 @@ describe("dispatch", () => {
   })
 
   it("will resolve after event is handled", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const update = await test.update("foo");
 
     expect(update).toContain("foo");
   })
 
   it("will resolve with keys already in frame", async () => {
-    const test = Test.create();
+    const test = Test.new();
     test.bar = "foo";
 
     const update = await test.update("foo");
@@ -110,19 +110,19 @@ describe("dispatch", () => {
   })
 
   it("will call function of same name", async () => {
-    const test = Test.create();
+    const test = Test.new();
     await test.update("method", true);
     expect(test.method).toBeCalled();
   })
 
   it("will not call function if false", async () => {
-    const test = Test.create();
+    const test = Test.new();
     await test.update("method", false);
     expect(test.method).not.toBeCalled();
   })
 
   it("will call function with argument", async () => {
-    const test = Test.create();
+    const test = Test.new();
     await test.update("methodString", "foobar");
     expect(test.methodString).toBeCalledWith("foobar");
   })
@@ -130,7 +130,7 @@ describe("dispatch", () => {
   it.todo("will set value to argument if not a function");
 
   it("will throw if callback is undefined", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const attempt = () => {
       // @ts-ignore
       test.update("foo").then();
@@ -140,7 +140,7 @@ describe("dispatch", () => {
   })
 
   it("will include caused-by-method updates", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const updates = await test.update("methodString", "foobar");
 
     expect(test.methodString).toBeCalledWith("foobar");
@@ -163,7 +163,7 @@ describe("import", () => {
   }
   
   it("will assign values", async () => {
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.foo).toBe(0);
     expect(test.bar).toBe(1);
@@ -176,7 +176,7 @@ describe("import", () => {
   });
 
   it("will assign specific values", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const keys = await test.update(values, ["foo"]);
 
     expect(keys).toEqual(["foo"]);
@@ -186,7 +186,7 @@ describe("import", () => {
   });
 
   it("will force assign values from source", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const baz = test.on("baz");
     const keys = await test.update(values, true);
 

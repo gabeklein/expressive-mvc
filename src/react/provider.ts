@@ -72,7 +72,7 @@ function useNewContext(
       if(I instanceof Model)
         layer.inject(I.constructor as any, I, false);
       else
-        layer.inject(I, I.create(), true);
+        layer.inject(I, I.new(), true);
     }
 
     if(include instanceof Model || typeof include == "function")

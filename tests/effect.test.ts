@@ -10,7 +10,7 @@ describe("explicit", () => {
   }
 
   it('will watch values', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(mock, [
@@ -36,7 +36,7 @@ describe("explicit", () => {
   })
 
   it('will squash simultaneous updates', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(mock, ["value1", "value2"]);
@@ -51,7 +51,7 @@ describe("explicit", () => {
   })
 
   it('will squash simultaneous compute update', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(mock, ["value3", "value4"]);
@@ -73,7 +73,7 @@ describe("explicit", () => {
       }
     }
 
-    const state = Test.create();
+    const state = Test.new();
     const mock = jest.fn();
 
     state.effect(state.testEffect, ["value1"]);
@@ -95,7 +95,7 @@ describe("explicit", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     state.value1++;
     await state.update();
@@ -113,7 +113,7 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const didCreate = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
     test.effect(didCreate, []);
 
@@ -124,7 +124,7 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const willDestroy = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
     test.effect(() => willDestroy, []);
     test.kill();
@@ -136,7 +136,7 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const willDestroy = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
     const cancel =
       test.effect(() => willDestroy, []);
@@ -157,7 +157,7 @@ describe("implicit", () => {
   }
 
   it('will watch values via arrow function', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(self => {
@@ -189,7 +189,7 @@ describe("implicit", () => {
   })
 
   it('will watch values from method', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     function testEffect(this: TestValues){
@@ -216,7 +216,7 @@ describe("implicit", () => {
   })
 
   it('will squash simultaneous updates', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(self => {
@@ -235,7 +235,7 @@ describe("implicit", () => {
   })
 
   it('will squash simultaneous compute', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     state.effect(self => {
@@ -267,7 +267,7 @@ describe("implicit", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     // runs immediately to aquire subscription
     expect(mock).toBeCalled();
@@ -284,7 +284,7 @@ describe("implicit", () => {
   })
 
   it("will throw if effect returns non-function", () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const expected = Oops.BadCallback();
     const attempt = () => {
       // @ts-ignore
@@ -295,7 +295,7 @@ describe("implicit", () => {
   })
 
   it("will not throw if effect returns promise", () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const attempt = () => {
       state.effect(async () => {});
     }
@@ -311,7 +311,7 @@ describe("suspense", () => {
   }
 
   it("will retry", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
@@ -330,7 +330,7 @@ describe("suspense", () => {
   })
 
   it("will still subscribe", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
@@ -352,7 +352,7 @@ describe("suspense", () => {
   })
 
   it("will not update while pending", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 

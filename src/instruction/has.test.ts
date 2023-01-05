@@ -10,7 +10,7 @@ it("creates parent-child relationship", () => {
     parent = has(Foo);
   }
 
-  const foo = Foo.create();
+  const foo = Foo.new();
   const bar = foo.child;
 
   expect(bar).toBeInstanceOf(Bar);
@@ -24,7 +24,7 @@ it("throws when required parent is absent :(", () => {
   }
 
   const attempt = () => 
-    NonStandalone.create();
+    NonStandalone.new();
 
   const error = Oops.Required(
     Detatched.name, NonStandalone.name
@@ -39,7 +39,7 @@ it("retuns undefined if set not-required", () => {
     maybe = has(MaybeParent, false);
   }
 
-  const instance = StandAlone.create();
+  const instance = StandAlone.new();
 
   expect(instance.maybe).toBeUndefined();
 })
@@ -53,7 +53,7 @@ it("throws if parent is of incorrect type", () => {
     expects = has(Expected);
   }
 
-  const attempt = () => Unexpected.create();
+  const attempt = () => Unexpected.new();
   const error = Oops.Unexpected(
     Expected.name, Adopted.name, Unexpected.name
   )

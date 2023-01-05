@@ -8,7 +8,7 @@ describe("Map", () => {
   }
 
   it("will update on set", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const mock = jest.fn();
 
     test.map.set("foo", "foo");
@@ -42,13 +42,13 @@ for(const T of [Map, Set])
     }
 
     it("contains reference to original", () => {
-      const test = Test.create();
+      const test = Test.new();
 
       expect(test.values.from).toBeInstanceOf(T);
     })
 
     it("will augment forEach to return filtered map", () => {
-      const { is: test, values } = Test.create();
+      const { is: test, values } = Test.new();
       
       for(const x of [1, 2, 3, 4, 5])
         test.insert(x);
@@ -64,7 +64,7 @@ for(const T of [Map, Set])
     })
     
     it("will update on add", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn();
     
       test.effect(($) => {
@@ -81,7 +81,7 @@ for(const T of [Map, Set])
     })
     
     it("will not update for unwatched", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
       test.effect(mock);
@@ -95,7 +95,7 @@ for(const T of [Map, Set])
     })
     
     it("will update on delete", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
       test.effect(mock);
@@ -110,7 +110,7 @@ for(const T of [Map, Set])
     })
     
     it("will update on clear", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
       test.effect(mock)
@@ -122,7 +122,7 @@ for(const T of [Map, Set])
     })
     
     it("will update any key where iterated", async () => {
-      const test = Test.create();
+      const test = Test.new();
     
       const mockIterator = jest.fn(({ values }: Test) => void [...values]);
       const mockValues = jest.fn(({ values }: Test) => void values.values());
@@ -144,14 +144,14 @@ for(const T of [Map, Set])
     })
     
     it("will update any key where not accessed", () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values);
     
       test.effect(mock);
     })
     
     it("will update any key on replacement", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
       test.effect(mock);
@@ -164,7 +164,7 @@ for(const T of [Map, Set])
     })
   
     it("will update size on replacement", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.size);
 
       test.effect(mock);
@@ -177,7 +177,7 @@ for(const T of [Map, Set])
     })
     
     it("will squash multiple updates", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn((state: Test) => {
         state.values.has("foo");
         state.values.has("bar");
@@ -193,7 +193,7 @@ for(const T of [Map, Set])
     })
     
     it("will spread multiple updates", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock1 = jest.fn(($: Test) => void $.values.has(1));
       const mock2 = jest.fn(($: Test) => void $.values.has(2));
       const mock3 = jest.fn(($: Test) => void $.values.has(3));
@@ -214,14 +214,14 @@ for(const T of [Map, Set])
     })
     
     it("will allow normal methods outside proxy", () => {
-      const test = Test.create();
+      const test = Test.new();
     
       test.insert("foo");
       expect(test.values.has("foo")).toBe(true);
     })
     
     it("will not update a stopped subscriber", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock1 = jest.fn(($: Test) => void $.values);
       const mock2 = jest.fn(($: Test) => void $.values);
     
@@ -248,7 +248,7 @@ for(const T of [Map, Set])
     })
 
     it("will update size for any change", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn();
     
       test.effect($ => {
@@ -264,7 +264,7 @@ for(const T of [Map, Set])
     })
     
     it("will update computed for used keys", async () => {
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn();
     
       test.effect($ => mock($.size));
@@ -284,7 +284,7 @@ for(const T of [Map, Set])
         size = get(this, $ => $.values.has("bar"));
       }
     
-      const test = Test.create();
+      const test = Test.new();
       const mock = jest.fn();
     
       test.effect($ => mock($.size));

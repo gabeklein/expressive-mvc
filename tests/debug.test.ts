@@ -32,14 +32,14 @@ describe("Symbols", () => {
   })
 
   it("will expose instance controller", () => {
-    const instance = FooBar.create() as Debug<FooBar>;
+    const instance = FooBar.new() as Debug<FooBar>;
     const control = instance[Debug.CONTROL];
 
     expect(control).toBeDefined();
   })
 
   it("will expose instance state", () => {
-    const instance = FooBar.create() as Debug<FooBar>;
+    const instance = FooBar.new() as Debug<FooBar>;
     const exported = instance.export();
     const state = instance[Debug.STATE];
 
@@ -47,7 +47,7 @@ describe("Symbols", () => {
   })
 
   it("will expose subscriber within listener", () => {
-    const instance = FooBar.create() as Debug<FooBar>;
+    const instance = FooBar.new() as Debug<FooBar>;
 
     expect(instance[Debug.LOCAL]).toBeUndefined();
 
@@ -66,7 +66,7 @@ describe("UPDATE", () => {
   }
 
   it("will reveal last update", async () => {
-    const test = Test.create() as Debug<Test>;
+    const test = Test.new() as Debug<Test>;
 
     test.value1 = 2;
     test.value2 = 3;
@@ -81,7 +81,7 @@ describe("UPDATE", () => {
   })
 
   it("will reveal cause for update", async () => {
-    const test = Test.create() as Debug<Test>;
+    const test = Test.new() as Debug<Test>;
 
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
@@ -123,7 +123,7 @@ describe("toString", () => {
   class Test extends Model {};
 
   it("Model will cast to string as class name", () => {
-    const test = Test.create();
+    const test = Test.new();
     expect(String(test)).toBe("Test");
   })
 })
@@ -137,7 +137,7 @@ describe("errors", () => {
     };
 
     const expected = new Error("Goodbye cruel world!")
-    const test = Test.create();
+    const test = Test.new();
 
     test.on("value", () => {
       throw expected;

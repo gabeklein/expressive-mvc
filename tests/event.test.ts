@@ -12,7 +12,7 @@ class Subject extends Model {
 
 describe("on single", () => {
   it('will watch for specified value', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on("seconds", callback);
@@ -24,7 +24,7 @@ describe("on single", () => {
   })
 
   it('will watch for computed value', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on("minutes", callback);
@@ -36,7 +36,7 @@ describe("on single", () => {
   })
 
   it('will compute pending value early', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on("minutes", callback);
@@ -48,7 +48,7 @@ describe("on single", () => {
   })
 
   it('will ignore subsequent events in once mode', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on("seconds", callback, true);
@@ -67,7 +67,7 @@ describe("on single", () => {
 
 describe("on multiple", () => {
   it('will watch all if empty', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on([], callback);
@@ -85,7 +85,7 @@ describe("on multiple", () => {
   })
 
   it('will watch for synthetic if empty', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on([], callback);
@@ -100,7 +100,7 @@ describe("on multiple", () => {
   })
 
   it('will watch multiple keys', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on(["seconds", "hours"], callback);
@@ -118,7 +118,7 @@ describe("on multiple", () => {
   })
 
   it('will halt in once mode', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on(["seconds", "minutes"], callback, true);
@@ -135,7 +135,7 @@ describe("on multiple", () => {
   })
 
   it('will call once for simultaneous in squash-mode', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on(["seconds", "minutes"], callback, true);
@@ -149,7 +149,7 @@ describe("on multiple", () => {
 
 describe("on promise", () => {
   it('will return with update value', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const pending = state.on("seconds");
 
     state.seconds = 30;
@@ -158,7 +158,7 @@ describe("on promise", () => {
   })
 
   it('will return with updated updates', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const pending = state.on(["seconds"]);
 
     state.seconds = 30;
@@ -167,7 +167,7 @@ describe("on promise", () => {
   })
 
   it('will reject on timeout', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const promise = state.on("seconds", 0);
     const expected = Oops.Timeout(["seconds"], "0ms");
 
@@ -175,7 +175,7 @@ describe("on promise", () => {
   })
 
   it('will reject on destroy state', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const promise = state.on("seconds");
     const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
 
@@ -187,7 +187,7 @@ describe("on promise", () => {
 
 describe("on callback", () => {
   it('will call immediately in raw event mode', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on(key => callback(key));
@@ -198,7 +198,7 @@ describe("on callback", () => {
   })
 
   it('will call request for raw event', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn();
 
     state.on(key => () => callback(key));
@@ -213,7 +213,7 @@ describe("on callback", () => {
   })
 
   it('will call for computed as raw event', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const onImmediate = jest.fn();
     const onFrame = jest.fn();
 
@@ -251,7 +251,7 @@ describe("before ready", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     state.value1++;
     await state.update();
@@ -268,7 +268,7 @@ describe("before ready", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     state.value2++;
     await state.update();
@@ -282,7 +282,7 @@ describe("before ready", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     state.value1++;
     await state.update(true);

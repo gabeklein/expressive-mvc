@@ -21,7 +21,7 @@ class Subject extends Model {
 }
 
 it('will reevaluate when inputs change', async () => {
-  const state = Subject.create();
+  const state = Subject.new();
 
   state.seconds = 30;
 
@@ -41,7 +41,7 @@ it('will reevaluate when inputs change', async () => {
 })
 
 it('will trigger when nested inputs change', async () => {
-  const state = Subject.create();
+  const state = Subject.new();
 
   expect(state.nested).toBe("foo");
 
@@ -70,7 +70,7 @@ it('will compute immediately if needed', () => {
     }
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(mockFactory).toBeCalled();
   expect(test.value).toBe("foobar");
@@ -88,7 +88,7 @@ it("will compute immediately if exported", () => {
     }
   }
 
-  const test = Test.create();
+  const test = Test.new();
   const values = test.export();
 
   expect(mockFactory).toBeCalled();
@@ -116,7 +116,7 @@ it('will be squashed with regular updates', async () => {
     x = use(Inner);
   }
 
-  const state = Test.create();
+  const state = Test.new();
 
   expect(state.c).toBe(3);
   expect(exec).toBeCalledTimes(1);
@@ -164,7 +164,7 @@ it("will be evaluated in order", async () => {
     })
   }
 
-  const test = Ordered.create();
+  const test = Ordered.new();
 
   // initialize D, should cascade to dependancies
   expect(test.D).toBe(6);
@@ -195,7 +195,7 @@ it("will create a computed from method", async () => {
     }
   }
 
-  const test = Hello.create();
+  const test = Hello.new();
 
   expect(test.greeting).toBe("Hello World!");
 
@@ -215,7 +215,7 @@ describe("failures", () => {
   }
 
   it('will warn if throws', () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const attempt = () => state.never;
 
     const failed = Compute.Failed(Subject.name, "never", true);
@@ -236,7 +236,7 @@ describe("failures", () => {
       })
     }
 
-    const state = Test.create();
+    const state = Test.new();
     const failed = Compute.Failed(Test.name, "value", false);
 
     state.on("value");
@@ -260,7 +260,7 @@ describe("failures", () => {
 
     const expected = Compute.PeerNotAllowed("Test", "value");
 
-    expect(() => Test.create()).toThrow(expected);
+    expect(() => Test.new()).toThrow(expected);
   })
 })
 
@@ -280,7 +280,7 @@ describe("circular", () => {
       });
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     // shouldn't exist until getter's side-effect
     expect("previous" in test).toBe(false);
@@ -315,7 +315,7 @@ describe("method", () => {
   }
 
   it("will create computed via factory", async () => {
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.bar).toBe(2);
 
@@ -332,7 +332,7 @@ describe("method", () => {
       }
     }
 
-    const test = Extended.create();
+    const test = Extended.new();
 
     expect(test.bar).toBe(3);
   })
@@ -342,7 +342,7 @@ describe("method", () => {
       fooBar = get((key) => () => key);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.fooBar).toBe("fooBar");
   })

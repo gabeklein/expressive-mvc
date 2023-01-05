@@ -42,13 +42,13 @@ describe("instruction", () => {
   })
 
   it("will run instruction on create", () => {
-    const { didRunInstruction: ran } = Test.create();
+    const { didRunInstruction: ran } = Test.new();
 
     expect(ran).toBeCalledWith("property");
   })
 
   it("will run instruction getter upon access", async () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const ran = instance.didRunGetter;
 
     instance.effect(x => void x.property);
@@ -73,7 +73,7 @@ describe("instruction", () => {
       })
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(mock).toBeCalledTimes(1);
 
@@ -91,7 +91,7 @@ describe("getter", () => {
       property = add(mockApply);
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(mockApply).toBeCalledWith(
       "property", expect.any(Control)
@@ -108,7 +108,7 @@ describe("getter", () => {
       property = add(() => didGetValue)
     }
 
-    const state = Test.create();
+    const state = Test.new();
 
     state.effect(own => {
       void own.property;
@@ -134,7 +134,7 @@ describe("custom", () => {
       })
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.property).toBe("foobar");
 
@@ -164,7 +164,7 @@ describe("custom", () => {
       })
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(instance.property).toBe(0);
 

@@ -11,7 +11,7 @@ it("will compute when accessed", () => {
     value = get(factory);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(factory).not.toBeCalled();
 
@@ -27,7 +27,7 @@ it("will compute lazily", () => {
     value = get(factory, false);
   }
 
-  Test.create();
+  Test.new();
 
   expect(factory).not.toBeCalled();
 })
@@ -42,7 +42,7 @@ it('will bind factory function to self', async () => {
     }
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
 })
 
 it("will emit when factory resolves", async () => {
@@ -50,7 +50,7 @@ it("will emit when factory resolves", async () => {
     value = get(async () => "foobar");
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(() => test.value).toThrow(expect.any(Promise));
 
@@ -67,7 +67,7 @@ it("will not suspend where already resolved", async () => {
     value = get(() => this.greet + " " + this.name);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   await test.on("value");
 
@@ -81,7 +81,7 @@ it("will throw suspense-promise resembling an error", () => {
     value = get(promise.pending);
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
   const exprected = Compute.NotReady(instance, "value");
 
   expect(() => instance.value).toThrowError(exprected);
@@ -99,7 +99,7 @@ it("will warn and rethrow error from factory", () => {
 
   const failed = Compute.FactoryFailed(Test.name, "memoized");
 
-  expect(() => Test.create()).toThrowError("Foobar");
+  expect(() => Test.new()).toThrowError("Foobar");
   expect(warn).toBeCalledWith(failed.message);
 })
 
@@ -120,7 +120,7 @@ it("will suspend another factory", async () => {
     value = get(didEvaluate);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   test.effect($ => void $.value);
 
@@ -150,7 +150,7 @@ it("will suspend another factory (async)", async () => {
     value = get(didEvaluate);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   test.effect($ => void $.value);
 
@@ -170,7 +170,7 @@ it("will throw if missing factory", () => {
     value = get(this);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(() => test.value).toThrowError(
     "Factory argument cannot be undefined"

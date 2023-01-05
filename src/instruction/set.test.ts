@@ -9,7 +9,7 @@ describe("placeholder", () => {
   }
 
   it('will suspend if value is accessed before assign', async () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const promise = mockAsync<string>();
     const mockEffect = jest.fn((state: Test) => {
       promise.resolve(state.foobar);
@@ -28,7 +28,7 @@ describe("placeholder", () => {
   })
   
   it('will not suspend if value is defined', async () => {
-    const instance = Test.create();
+    const instance = Test.new();
 
     instance.foobar = "bar!";
 
@@ -49,7 +49,7 @@ describe("callback", () => {
       });
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn()
     const event = jest.fn();
 
@@ -73,7 +73,7 @@ describe("callback", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     state.test = 1;
 
@@ -93,7 +93,7 @@ describe("callback", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";
@@ -107,7 +107,7 @@ describe("callback", () => {
       property = set<any>(undefined, async () => {});
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(() => state.property = "bar").not.toThrow();
   })
@@ -119,7 +119,7 @@ describe("callback", () => {
     }
 
     const expected = Util.BadCallback();
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(() => state.property = "bar").toThrow(expected);
   })
@@ -135,7 +135,7 @@ describe("intercept", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";
@@ -150,7 +150,7 @@ describe("intercept", () => {
       test = set("foo", value => true);
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";

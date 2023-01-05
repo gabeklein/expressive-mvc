@@ -14,7 +14,7 @@ describe("tap instruction", () => {
   }
 
   it("will attach peer from context", () => {
-    const bar = Bar.create();
+    const bar = Bar.new();
 
     const Test = () => {
       const { bar } = Foo.use();
@@ -34,7 +34,7 @@ describe("tap instruction", () => {
       bar = tap(Bar, true);
     }
 
-    const bar = Bar.create();
+    const bar = Bar.new();
     let foo!: Foo;
 
     const Child = () => {

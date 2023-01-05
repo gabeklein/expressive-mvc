@@ -13,7 +13,7 @@ class Parent extends Model {
 }
 
 it('will track recursively', async () => {
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
     void it.child.value;
@@ -34,13 +34,13 @@ it('will track recursively', async () => {
 })
 
 it('will accept instance', async () => {
-  const child = Child.create();
+  const child = Child.new();
 
   class Parent extends Model {
     child = use(child);
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.child.value;
   })
@@ -64,7 +64,7 @@ it('will run callback', () => {
     child = use(Child, callback);
   }
 
-  Parent.create();
+  Parent.new();
 
   expect(callback).toBeCalled();
 })
@@ -74,7 +74,7 @@ it('will accept simple object', async () => {
     child = use({ value: "foo" });
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.child.value;
   })
@@ -99,7 +99,7 @@ it('will accept simple object as new value', async () => {
     child = use({ value: "foo" });
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
   // TODO: remove subscribeTo helper
   const update = subscribeTo(state, it => {
     void it.child.value;
@@ -129,13 +129,13 @@ it('will create from factory', async () => {
 
   class Parent extends Model {
     child = use(() => {
-      const child = Child.create();
+      const child = Child.new();
       child.parent = this;
       return child;
     });
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
 
   expect(state.child).toBeInstanceOf(Child);
   expect(state.child.parent).toBe(state);
@@ -148,7 +148,7 @@ it('will cancel create on thrown error', () => {
     });
   }
 
-  const test = () => void Parent.create();
+  const test = () => void Parent.new();
 
   expect(test).toThrowError();
 })
@@ -160,7 +160,7 @@ it('will throw rejection on access', async () => {
     });
   }
 
-  const parent = Parent.create();
+  const parent = Parent.new();
 
   await parent.update();
 
@@ -174,7 +174,7 @@ it('will create from async factory', async () => {
     child = use(async () => new Child());
   }
 
-  const parent = Parent.create();
+  const parent = Parent.new();
   await parent.update();
 
   expect(parent.child).toBeInstanceOf(Child);
@@ -188,7 +188,7 @@ it('will suspend if required', async () => {
     child = use(async () => new Child());
   }
 
-  const parent = Parent.create();
+  const parent = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.child;
   });
@@ -208,7 +208,7 @@ it('will return undefined if not required', async () => {
     child = use(async () => new Child(), false);
   }
 
-  const parent = Parent.create();
+  const parent = Parent.new();
 
   expect(parent.child).toBeUndefined();
 
@@ -228,7 +228,7 @@ it('will wait for dependancies on suspense', async () => {
   }
 
   const tryCreateChild = jest.fn();
-  const parent = Parent.create();
+  const parent = Parent.new();
 
   parent.value = "foo";
 
@@ -241,13 +241,13 @@ it('will accept undefined from factory', async () => {
     child = use(() => undefined);
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
 
   expect(state.child).toBeUndefined();
 })
 
 it('will update on new value', async () => {
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
     void it.child.value;
@@ -282,7 +282,7 @@ it('will reset if value is undefined', async () => {
     child = use<Child>();
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
 
@@ -324,7 +324,7 @@ it('will still subscribe if initially undefined', async () => {
     child = use<Child>();
   }
 
-  const state = Parent.create();
+  const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
 
@@ -358,7 +358,7 @@ it('will throw if bad argument type', () => {
   }
 
   const expected = Oops.BadArgument("number");
-  const attempt = () => Parent.create();
+  const attempt = () => Parent.new();
 
   expect(attempt).toThrowError(expected)
 })
