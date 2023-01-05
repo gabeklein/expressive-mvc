@@ -49,7 +49,7 @@ function useModel <T extends Model> (
     const callback = arg2 || arg;
     const instance =
       Model.isTypeof(source) ?
-        new source() as T :
+        source.new() :
         source();
 
     Control.for(instance);
