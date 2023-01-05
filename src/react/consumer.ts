@@ -2,7 +2,7 @@ import React from 'react';
 
 import { issues } from '../issues';
 import { Class } from '../types';
-import { useLocal } from './useLocal';
+import { useContext } from './useContext';
 import { useTap } from './useTap';
 
 export const Oops = issues({
@@ -64,7 +64,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(useLocal(type, !!has));
+    callback(useContext(type, !!has));
   else
     throw Oops.BadProps()
 

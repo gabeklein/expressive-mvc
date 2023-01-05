@@ -9,7 +9,7 @@ import { entries, values } from '../util';
 import { Lookup } from './context';
 import { getPending } from './tap';
 import { use } from './use';
-import { LookupContext, useLookup } from './useLocal';
+import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
   NoType: () =>

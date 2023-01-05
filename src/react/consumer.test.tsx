@@ -4,7 +4,7 @@ import { render } from '../../tests/adapter';
 import { Consumer } from './consumer';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './useLocal';
+import { Oops } from './useContext';
 
 class Foo extends MVC {
   value?: string = undefined;

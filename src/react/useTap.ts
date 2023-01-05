@@ -4,8 +4,8 @@ import { Control } from '../control';
 import { Model } from '../model';
 import { suspend } from '../suspense';
 import { use } from './use';
+import { useContext } from './useContext';
 import { useFrom } from './useFrom';
-import { useLocal } from './useLocal';
 
 declare namespace useTap {
   type SourceType<T extends Model> = {
@@ -61,7 +61,7 @@ function useTap <T extends Model> (
       return () => source.get!();
 
     return "prototype" in source ?
-      () => useLocal(source as Model.Type<T>)
+      () => useContext(source as Model.Type<T>)
       : source;
   }, [])() as T;
 

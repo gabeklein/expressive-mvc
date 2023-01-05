@@ -4,7 +4,7 @@ import { Model } from '../model';
 import { InstanceOf } from '../types';
 import { Lookup } from './context';
 import { Global } from './global';
-import { useLookup } from './useLocal';
+import { useLookup } from './useContext';
 
 export const Oops = issues({
   NotAllowed: (parent, child) =>

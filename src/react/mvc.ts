@@ -1,6 +1,6 @@
 import { Model } from '../model';
 import { Callback, Class } from '../types';
-import { useLocal } from './useLocal';
+import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
@@ -33,7 +33,7 @@ class MVC extends Model {
   static get <I extends MVC> (this: Model.Type<I>, effect: (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
-    return useLocal(this, arg);
+    return useContext(this, arg);
   }
 
   /** 
