@@ -18,7 +18,7 @@ describe("get", () => {
   beforeEach(() => Test.reset());
 
   it("will get instance", () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const { result } = renderHook(() => Test.get());
 
     expect(result.current).toBe(instance);
@@ -26,7 +26,7 @@ describe("get", () => {
   })
 
   it("will get instance value", () => {
-    Test.create();
+    Test.new();
     const { result } = renderHook(() => Test.get("value"));
 
     expect(result.current).toBe(1);

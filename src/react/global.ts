@@ -6,7 +6,7 @@ import { MVC } from './mvc';
 
 export const Oops = issues({
   DoesNotExist: (name) =>
-    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() instead.`,
+    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
 
   AlreadyExists: (name) =>
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
@@ -15,7 +15,7 @@ export const Oops = issues({
 const Active = new WeakMap<Class, Global>();
 
 export class Global extends MVC {
-  static create<T extends Class>(
+  static new<T extends Class>(
     this: T, ...args: ConstructorParameters<T>){
 
     if(Active.has(this))

@@ -358,7 +358,7 @@ describe("method", () => {
 
   //   const expected = Compute.BadSource("Test", "value", Factory);
 
-  //   expect(() => Test.create()).toThrow(expected);
+  //   expect(() => Test.new()).toThrow(expected);
   // })
 })
 
@@ -372,13 +372,13 @@ describe("external", () => {
   afterEach(() => Peer.reset());
 
   it('will accept source other than \'this\'', async () => {
-    const peer = Peer.create();
+    const peer = Peer.new();
 
     class Test extends Model {
       value = from(peer, state => state.value + 1);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.value).toBe(2);
 
@@ -413,13 +413,13 @@ describe("external", () => {
   })
 
   it('will accept Global as source', () => {
-    Peer.create();
+    Peer.new();
 
     class Test extends Model {
       value = from(Peer, state => state.value + 1);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.value).toBe(2);
   })

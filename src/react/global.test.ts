@@ -17,7 +17,7 @@ describe("init", () => {
   })
 
   it("will get an existing instance", () => {
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(Test.get()).toBe(instance);
   })
@@ -29,7 +29,7 @@ describe("init", () => {
   })
 
   it("will return undefined if not initialized", () => {
-    Test.create();
+    Test.new();
     expect(Test.get()).toBeDefined();
 
     Test.reset();
@@ -44,17 +44,17 @@ describe("init", () => {
   })
 
   it("will access values from found global", () => {
-    Test.create();
+    Test.new();
     const rendered = renderHook(() => Test.get("value"));
 
     expect(rendered.result.current).toBe(1);
   })
 
   it("will complain already exists", () => {
-    Test.create();
+    Test.new();
     const expected = Oops.AlreadyExists(Test.name);
 
-    expect(() => Test.create()).toThrowError(expected);
+    expect(() => Test.new()).toThrowError(expected);
   })
 })
 
@@ -67,7 +67,7 @@ describe("update", () => {
   afterEach(() => Test.reset());
 
   it("will update values on singleton instance", async () => {
-    Test.create();
+    Test.new();
 
     expect(Test.get("foo")).toBe(1);
     expect(Test.get("bar")).toBe(2);

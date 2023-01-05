@@ -164,7 +164,7 @@ describe("singleton", () => {
       value = "bar";
     }
 
-    TestGlobal.create();
+    TestGlobal.new();
 
     const Test = () => {
       const { global } = Foo.use();
@@ -181,8 +181,8 @@ describe("singleton", () => {
       peer = tap(Peer);
     }
 
-    const peer = Peer.create();
-    const global = Test.create();    
+    const peer = Peer.new();
+    const global = Test.new();    
 
     expect(global.peer).toBe(peer);
   })
@@ -193,7 +193,7 @@ describe("singleton", () => {
       notPossible = tap(Normal);
     }
 
-    const attempt = () => TestGlobal.create();
+    const attempt = () => TestGlobal.new();
     const issue = Oops.NotAllowed(TestGlobal.name, Normal.name);
 
     expect(attempt).toThrowError(issue);
