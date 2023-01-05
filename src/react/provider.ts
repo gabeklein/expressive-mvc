@@ -17,8 +17,10 @@ export const Oops = issues({
 })
 
 declare namespace Provider {
-  type Item = Model | typeof Model;
+  type Item = Model | Model.Type;
+
   type Multiple<T extends Item = Item> = T[] | { [key: string]: T };
+
   type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
   type NormalProps<E, I = Existent<E>> =

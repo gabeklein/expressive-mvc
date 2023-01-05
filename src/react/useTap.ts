@@ -61,7 +61,7 @@ function useTap <T extends Model> (
       return () => source.get!();
 
     return "prototype" in source ?
-      () => useLocal(source as typeof Model)
+      () => useLocal(source as Model.Type<T>)
       : source;
   }, [])() as T;
 

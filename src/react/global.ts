@@ -35,7 +35,7 @@ export class Global extends MVC {
    * If instance does not already exist, one will be created. 
    */
   static set<T extends typeof Global>(
-    this: T, values: Partial<InstanceOf<T>>){
+    this: T, values: Model.Compat<InstanceOf<T>, Global>){
 
     return this.get(true).update(values);
   }
@@ -45,19 +45,19 @@ export class Global extends MVC {
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends Class> (this: T, required: false): InstanceOf<T> | undefined;
+  static get <T extends Global> (this: Model.Type<T>, required: false): T | undefined;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends Class> (this: T, required?: boolean): InstanceOf<T>;
+  static get <T extends Global> (this: Model.Type<T>, required?: boolean): T;
 
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends Class, K extends Model.Field<InstanceOf<T>>> (this: T, key: K): InstanceOf<T>[K];
+  static get <T extends Global, K extends Model.Field<T, Global>> (this: Model.Type<T>, key: K): T[K];
 
   static get(arg?: boolean | string){
     const instance = Active.get(this);

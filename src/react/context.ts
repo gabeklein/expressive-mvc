@@ -2,7 +2,7 @@ import { Model } from '../model';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../util';
 
 export class Lookup {
-  private table = new Map<typeof Model, symbol>();
+  private table = new Map<Model.Type, symbol>();
 
   public get local(){
     return [
@@ -12,7 +12,7 @@ export class Lookup {
     ]
   }
 
-  private key(T: typeof Model){
+  private key(T: Model.Type){
     let key = this.table.get(T);
 
     if(!key){
@@ -23,7 +23,7 @@ export class Lookup {
     return key;
   }
 
-  public get(T: typeof Model){
+  public get(T: Model.Type){
     return (this as any)[this.key(T)];
   }
 
@@ -32,7 +32,7 @@ export class Lookup {
   }
 
   public inject(
-    T: typeof Model,
+    T: Model.Type,
     I: Model,
     writable?: boolean){
 

@@ -4,7 +4,7 @@ import { issues } from '../issues';
 import { Model } from '../model';
 import { Lookup } from './context';
 
-import type { Callback, InstanceOf } from '../types';
+import { Callback } from '../types';
 
 export const LookupContext = React.createContext(new Lookup());
 export const useLookup = () => React.useContext(LookupContext);
@@ -14,13 +14,14 @@ export const Oops = issues({
     `Couldn't find ${name} in context; did you forget to use a Provider?`
 })
 
-function useLocal <T extends typeof Model> (Type: T, required: false): InstanceOf<T> | undefined;
-function useLocal <T extends typeof Model> (Type: T, arg?: boolean): InstanceOf<T>;
-function useLocal <T extends typeof Model, I extends InstanceOf<T>> (Type: T, effect: (found: I) => Callback | void): I;
-function useLocal <T extends typeof Model, I extends InstanceOf<T>, K extends Model.Field<I>> (Type: T, key: K): I[K];
+function useLocal <T extends Model> (Type: Model.Type<T>, required: false):T | undefined;
+function useLocal <T extends Model> (Type: Model.Type<T>, arg?: boolean):T;
+function useLocal <T extends Model> (Type: Model.Type<T>, effect: (found: T) => Callback | void): T;
+function useLocal <T extends Model, K extends Model.Field<T>> (Type: Model.Type<T>, key: K): T[K];
 
-function useLocal<T extends typeof Model>(
-  Type: T, arg?: boolean | string | ((found: InstanceOf<T>) => Callback | void)) {
+function useLocal<T extends Model>(
+  Type: Model.Type<T>,
+  arg?: boolean | string | ((found: T) => Callback | void)) {
 
   const instance = useLookup().get(Type);
 

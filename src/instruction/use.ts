@@ -3,7 +3,6 @@ import { issues } from '../issues';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
-import { Class, InstanceOf } from '../types';
 import { assign } from '../util';
 import { add, getRecursive } from './add';
 import { keyed, Managed } from './use.keyed';
@@ -40,7 +39,7 @@ function use <T extends Model> (from: () => T, required: boolean): T;
  /**
   * Create a new child instance of model.
   */
-function use <T extends Class> (Type: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T>;
+function use <T extends Model> (Type: Model.Type<T>, callback?: (i: T) => void): T;
 
  /**
   * Create a managed child from factory function.
@@ -60,9 +59,9 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
   */
 function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
 
-function use<T extends Class>(
+function use(
   input?: any,
-  argument?: boolean | ((i: InstanceOf<T> | undefined) => void)){
+  argument?: boolean | ((i: {} | undefined) => void)){
 
   return add(
     function use(key){
@@ -96,7 +95,7 @@ function use<T extends Class>(
         }
 
         if(typeof argument == "function")
-          argument(next as InstanceOf<T>);
+          argument(next);
 
         return true;
       }
