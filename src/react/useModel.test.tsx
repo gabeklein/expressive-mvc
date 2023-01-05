@@ -10,14 +10,6 @@ describe("hook", () => {
     value = "foo";
   };
 
-  it("will use a given instance", () => {
-    const instance = Test.create();
-    const render = renderHook(() => useModel(instance));
-    const result = render.result.current;
-
-    expect(result).toStrictEqual(instance);
-  })
-
   it("will create instance given a class", () => {
     const render = renderHook(() => useModel(Test));
     const result = render.result.current;
@@ -79,7 +71,7 @@ describe("subscription", () => {
     const test = Test.create();
 
     const TestComponent = (props: any) => {
-      const { value } = useModel(test, props);
+      const { value } = useModel(() => test, props);
       didRender(value);
       return null;
     }

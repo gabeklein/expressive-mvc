@@ -2,63 +2,60 @@ import React, { useState } from 'react';
 
 import { Control } from '../control';
 import { Model } from '../model';
-import { Class, InstanceOf } from '../types';
 import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
 import { use } from './use';
 
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  watch: Model.Field<I>[],
-  callback?: (instance: I) => void
-): I;
-
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  callback?: (instance: I) => void
-): I;
-
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  apply: Model.Compat<I>,
-  keys?: Model.Event<I>[]
-): I;
-
 function useModel <T extends Model> (
-  source: (() => T) | T,
-  watch?: Model.Field<T>[],
+  source: Model.Type<T>,
+  watch: Model.Field<T>[],
   callback?: (instance: T) => void
 ): T;
 
 function useModel <T extends Model> (
-  source: (() => T) | T,
+  source: Model.Type<T>,
   callback?: (instance: T) => void
 ): T;
 
 function useModel <T extends Model> (
-  source: (() => T) | T,
+  source: Model.Type<T>,
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
 function useModel <T extends Model> (
-  source: any,
-  arg?: ((instance: T) => void) | Model.Event<T>[] | Model.Compat<T>,
-  arg2?: ((instance: T) => void) | Model.Field<T>[]){
+  source: () => T,
+  watch?: Model.Field<T>[],
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Model> (
+  source: () => T,
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Model> (
+  source: () => T,
+  apply: Model.Compat<T>,
+  keys?: Model.Event<T>[]
+): T;
+
+function useModel <T extends Model> (
+  source: (() => T) | Model.Type<T>,
+  arg?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
+  arg2?: ((i: T) => void) | Model.Field<T>[]){
 
   const instance = React.useMemo(() => {
-    const cb = arg2 || arg;
-    const instance: T =
-      typeof source == "function" ?
-        source.prototype instanceof Model ?
-          new source() :
-          source() : 
-        source;
+    const callback = arg2 || arg;
+    const instance =
+      Model.isTypeof(source) ?
+        new source() as T :
+        source();
 
     Control.for(instance);
 
-    if(typeof cb == "function")
-      cb(instance);
+    if(typeof callback == "function")
+      callback(instance);
 
     return instance;
   }, []);
