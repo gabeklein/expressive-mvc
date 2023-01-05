@@ -2,9 +2,9 @@ import React from 'react';
 
 import { render } from '../../tests/adapter';
 import { Consumer } from './consumer';
+import { Oops } from './context';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './useContext';
 
 class Foo extends MVC {
   value?: string = undefined;

@@ -3,9 +3,9 @@ import React, { useMemo } from 'react';
 import { Control } from '../control';
 import { Model } from '../model';
 import { suspend } from '../suspense';
+import { useContext } from './context';
 import { MVC } from './mvc';
 import { use } from './use';
-import { useContext } from './useContext';
 import { useFrom } from './useFrom';
 
 declare namespace useTap {

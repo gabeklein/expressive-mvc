@@ -6,10 +6,9 @@ import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { Class } from '../types';
 import { entries, values } from '../util';
-import { Lookup } from './context';
+import { Lookup, LookupContext, useLookup } from './context';
 import { getPending } from './tap';
 import { use } from './use';
-import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
   NoType: () =>
