@@ -115,7 +115,7 @@ class Model {
     const single = typeof select == "string";
     let keys = single ? [ select ] : select;
 
-    if(typeof argument !== "function"){
+    if(typeof argument !== "function")
       return new Promise<any>((resolve, reject) => {
         const removeListener = Control.for(this, control => {
           for(const key of keys)
@@ -142,7 +142,6 @@ class Model {
             reject(Oops.Timeout(select, `${argument}ms`));
           }, argument);
       });
-    }
 
     return Control.for(this, control => {
       if(!keys.length)
@@ -324,7 +323,7 @@ class Model {
    * 
    * Will determine if provided class is a subtype of this one. 
    */
-  static isTypeof<T extends new () => Model>(
+  static isTypeof<T extends Model.Type>(
     this: T, maybe: any): maybe is T {
 
     return (
