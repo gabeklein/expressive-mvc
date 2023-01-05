@@ -51,22 +51,9 @@ class MVC extends Model {
     return useTap(this, key as any, expect);
   }
 
-  static use <I extends MVC> (
-    this: Model.Type<I>,
-    watch: Model.Field<I>[],
-    callback?: (instance: I) => void
-  ): I;
-
-  static use <I extends MVC> (
-    this: Model.Type<I>,
-    callback?: (instance: I) => void
-  ): I;
-
-  static use <I extends MVC> (
-    this: Model.Type<I>,
-    apply: Model.Compat<I>,
-    keys?: Model.Event<I>[]
-  ): I;
+  static use <I extends MVC> (this: Model.Type<I>, watch: Model.Field<I>[], callback?: (instance: I) => void): I;
+  static use <I extends MVC> (this: Model.Type<I>, callback?: (instance: I) => void): I;
+  static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
   static use <T extends typeof MVC> (this: T, a: any, b?: any){
     return useModel(this, a, b);
