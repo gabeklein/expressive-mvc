@@ -51,6 +51,10 @@ describe("init", () => {
   })
 
   it("will complain already exists", () => {
+    class Test extends Global {
+      static keepAlive = false;
+    }
+
     Test.new();
     const expected = Oops.AlreadyExists(Test.name);
 

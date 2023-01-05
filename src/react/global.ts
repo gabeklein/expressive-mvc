@@ -15,16 +15,36 @@ export const Oops = issues({
 const Active = new WeakMap<Class, Global>();
 
 export class Global extends MVC {
+  constructor(){
+    super();
+    Active.set(this.constructor as Class, this);
+  }
+
+  kill(force?: boolean){
+    const type = this.constructor as typeof Global;
+    
+    if(type.keepAlive && !force)
+      return false;
+
+    super.kill();
+    Active.delete(type);
+    return true;
+  }
+
+  static keepAlive = true;
+
   static new<T extends Class>(
     this: T, ...args: ConstructorParameters<T>){
 
     if(Active.has(this))
-      throw Oops.AlreadyExists(this.name);
+      if((this as any).keepAlive)
+        return Active.get(this) as InstanceOf<T>;
+      else
+        throw Oops.AlreadyExists(this.name);
 
     const instance = new this(...args);
 
     Control.for(instance);
-    Active.set(this, instance);
 
     return instance as InstanceOf<T>;
   }
@@ -77,11 +97,6 @@ export class Global extends MVC {
     const current = Active.get(this);
 
     if(current)
-      current.kill();
-  }
-
-  kill(){
-    super.kill();
-    Active.delete(this.constructor as any);
+      current.kill(true);
   }
 }

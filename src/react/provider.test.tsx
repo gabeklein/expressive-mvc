@@ -4,6 +4,7 @@ import { act } from 'react-test-renderer';
 import { render } from '../../tests/adapter';
 import { Model } from '../model';
 import { Consumer } from './consumer';
+import { Global } from './global';
 import { MVC } from './mvc';
 import { Oops, Provider } from './provider';
 
@@ -211,4 +212,25 @@ it("will throw if missing `for` prop", () => {
   const test = () => render(<Provider />);
 
   expect(test).toThrow(Oops.NoType());
+})
+
+describe("global", () => {
+  it("will create but not destroy instance", () => {
+    class Test extends Global {}
+
+    expect(Test.get(false)).toBeUndefined();
+
+    const element = render(<Provider for={Test} />);
+    const test = Test.get();
+
+    expect(test).toBeInstanceOf(Test);
+
+    element.unmount();
+
+    expect(Test.get()).toBe(test);
+
+    render(<Provider for={Test} />).unmount();
+    
+    Test.reset();
+  })
 })
