@@ -334,7 +334,9 @@ class Model {
 }
 
 defineProperty(Model.prototype, "toString", {
-  value(){ return this.constructor.name }
+  value(){
+    return this.constructor.name;
+  }
 })
 
 export { Model }
