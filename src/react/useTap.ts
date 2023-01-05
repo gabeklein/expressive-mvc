@@ -73,17 +73,16 @@ function useTap <T extends Model> (
   ));
 
   React.useLayoutEffect(local.commit, []);
-  
-  if(typeof arg1 !== "undefined"){
-    const value = local.proxy[arg1];
 
-    if(value === undefined && arg2)
-      throw suspend(Control.for(instance), arg1);
+  if(arg1 === undefined)
+    return local.proxy;
 
-    return value;
-  }
+  const value = local.proxy[arg1];
 
-  return local.proxy;
+  if(value === undefined && arg2)
+    throw suspend(local.parent, arg1);
+
+  return value;
 }
 
 export { useTap }

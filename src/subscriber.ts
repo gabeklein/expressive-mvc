@@ -24,7 +24,7 @@ export class Subscriber <T extends {} = any> {
   }
 
   constructor(
-    parent: Control<T>,
+    public parent: Control<T>,
     public onUpdate: Control.OnEvent){
 
     const proxy = create(parent.subject);
