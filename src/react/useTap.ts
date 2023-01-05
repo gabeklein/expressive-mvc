@@ -3,19 +3,14 @@ import React, { useMemo } from 'react';
 import { Control } from '../control';
 import { Model } from '../model';
 import { suspend } from '../suspense';
+import { MVC } from './mvc';
 import { use } from './use';
 import { useContext } from './useContext';
 import { useFrom } from './useFrom';
 
 declare namespace useTap {
-  type SourceType<T extends Model> = {
-    new(): T;
-    get?(): T
-  }
-
   type Source<T extends Model> =
     | T
-    | SourceType<T>
     | Model.Type<T>
     | (() => T | Model.Type<T>);
 }
@@ -57,12 +52,13 @@ function useTap <T extends Model> (
     if(typeof source == "object")
       return () => source;
 
-    if("get" in source)
-      return () => source.get!();
+    if(MVC.isTypeof(source))
+      return () => source.get(true);
 
-    return "prototype" in source ?
-      () => useContext(source as Model.Type<T>)
-      : source;
+    if(Model.isTypeof(source))
+      return () => useContext(source);
+
+    return source;
   }, [])() as T;
 
   if(typeof arg1 == "function")
