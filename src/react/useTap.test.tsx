@@ -8,57 +8,81 @@ import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
-it('will access subvalue directly', async () => {
-  class Test extends Model {
-    value = "foo";
-  }
-
-  const parent = Test.new();
-
-  const { result, waitForNextUpdate } =
-    renderHook(() => useTap(parent, "value"))
-
-  expect(result.current).toBe("foo");
-
-  parent.value = "bar";
-  await waitForNextUpdate(opts);
-  expect(result.current).toBe("bar");
-})
-
-it('will subscribe to child controllers', async () => {
-  class Parent extends Model {
-    value = "foo";
-    empty = undefined;
-    child = use(Child);
-  }
-
-  class Child extends Model {
-    value = "foo"
-    grandchild = new GrandChild();
-  }
-
-  class GrandChild extends Model {
-    value = "bar"
-  }
-
-  const parent = Parent.new();
-  const { result, waitForNextUpdate } = renderHook(() => {
-    return useTap(parent, "child").value;
+describe("subvalue", () => {
+  it('will access subvalue directly', async () => {
+    class Test extends Model {
+      value = "foo";
+    }
+  
+    const parent = Test.new();
+  
+    const { result, waitForNextUpdate } =
+      renderHook(() => useTap(parent, "value"))
+  
+    expect(result.current).toBe("foo");
+  
+    parent.value = "bar";
+    await waitForNextUpdate(opts);
+    expect(result.current).toBe("bar");
+  });
+  
+  it('will suspend if subvalue is undefined', async () => {
+    class Test extends Model {
+      value?: string = undefined;
+    }
+  
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.new();
+  
+    test.renderHook(() => {
+      useTap(instance, "value", true);
+      promise.resolve();
+    })
+  
+    test.assertDidSuspend(true);
+  
+    instance.value = "foobar!";
+    await promise.pending();
+  
+    test.assertDidRender(true);
   })
-
-  expect(result.current).toBe("foo");
-
-  parent.child.value = "bar"
-  await waitForNextUpdate(opts);
-  expect(result.current).toBe("bar");
-
-  parent.child = new Child();
-  await waitForNextUpdate(opts);
-  expect(result.current).toBe("foo");
-
-  parent.child.value = "bar"
-  await waitForNextUpdate(opts);
-  expect(result.current).toBe("bar");
+  
+  it('will subscribe to child controllers', async () => {
+    class Parent extends Model {
+      value = "foo";
+      empty = undefined;
+      child = use(Child);
+    }
+  
+    class Child extends Model {
+      value = "foo"
+      grandchild = new GrandChild();
+    }
+  
+    class GrandChild extends Model {
+      value = "bar"
+    }
+  
+    const parent = Parent.new();
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(parent, "child").value;
+    })
+  
+    expect(result.current).toBe("foo");
+  
+    parent.child.value = "bar"
+    await waitForNextUpdate(opts);
+    expect(result.current).toBe("bar");
+  
+    parent.child = new Child();
+    await waitForNextUpdate(opts);
+    expect(result.current).toBe("foo");
+  
+    parent.child.value = "bar"
+    await waitForNextUpdate(opts);
+    expect(result.current).toBe("bar");
+  })
 })
 
 describe("computed values", () => {
@@ -78,7 +102,7 @@ describe("computed values", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      useTap(instance, "value");
+      useTap(instance).value;
       promise.resolve();
     })
 
@@ -196,7 +220,6 @@ describe("computed values", () => {
     const test = Test.new();
 
     test.effect(state => mock(state.value));
-
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
