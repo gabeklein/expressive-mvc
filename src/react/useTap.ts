@@ -50,8 +50,8 @@ function useTap <T extends Model, R> (
 
 function useTap <T extends Model> (
   source: useTap.Source<T>,
-  path?: Model.Field<T> | ((this: T, from: T) => any),
-  expect?: boolean) {
+  arg1?: Model.Field<T> | ((this: T, from: T) => any),
+  arg2?: boolean) {
 
   const instance = useMemo(() => {
     if(typeof source == "object")
@@ -65,8 +65,8 @@ function useTap <T extends Model> (
       : source;
   }, [])() as T;
 
-  if(typeof path == "function")
-    return useFrom(instance, path, expect);
+  if(typeof arg1 == "function")
+    return useFrom(instance, arg1, arg2);
 
   const local = use(refresh => (
     Control.for(instance).subscribe(() => refresh)
@@ -74,11 +74,11 @@ function useTap <T extends Model> (
 
   React.useLayoutEffect(local.commit, []);
   
-  if(typeof path !== "undefined"){
-    const value = local.proxy[path];
+  if(typeof arg1 !== "undefined"){
+    const value = local.proxy[arg1];
 
-    if(value === undefined && expect)
-      throw suspend(Control.for(instance), path);
+    if(value === undefined && arg2)
+      throw suspend(Control.for(instance), arg1);
 
     return value;
   }
