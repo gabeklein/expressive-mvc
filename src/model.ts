@@ -91,8 +91,6 @@ class Model {
     defineProperty(this, "is", { value: this });
   }
 
-  on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
-
   on <P extends Model.Event<this>> (key: P): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, listener?: Model.OnUpdate<this, P>, once?: boolean): Callback;
@@ -103,13 +101,19 @@ class Model {
   on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
   on <P extends Model.Event<this>> (keys: P[], listener?: (keys: P[]) => void, once?: boolean): Callback;
 
+  on(effect: Model.Effect<this>): Callback;
+  on(effect: Model.Effect<this>, watch?: []): Callback;
+  on(effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
+
   on <P extends Model.Event<this>> (
-    select: P | P[] | ((key: any) => Callback | void),
-    argument?: Function | true | number,
+    select: P | P[] | Model.Effect<this>,
+    argument?: Function | true | number | Model.Event<this>[],
     once?: boolean){
 
     if(typeof select == "function")
-      return Control.for(this, x => x.addListener(select));
+      return this.effect(select, 
+        Array.isArray(argument) ? argument : undefined  
+      )
 
     const single = typeof select == "string";
     let keys = single ? [ select ] : select;
@@ -171,10 +175,10 @@ class Model {
     });
   }
 
+  /** @deprecated use Model.on instead. */
   effect(callback: Model.Effect<this>): Callback;
   effect(callback: Model.Effect<this>, select?: []): Callback;
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]): Callback;
-
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
 

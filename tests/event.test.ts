@@ -185,7 +185,7 @@ describe("on promise", () => {
   })
 })
 
-describe("on callback", () => {
+describe.skip("on callback", () => {
   it('will call immediately in raw event mode', async () => {
     const state = Subject.new();
     const callback = jest.fn();

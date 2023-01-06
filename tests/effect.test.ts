@@ -15,7 +15,7 @@ describe("explicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, [
+    state.on(mock, [
       "value1",
       "value2",
       "value3",
@@ -41,7 +41,7 @@ describe("explicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, ["value1", "value2"]);
+    state.on(mock, ["value1", "value2"]);
 
     state.value1 = 2;
     state.value2 = 3;
@@ -56,7 +56,7 @@ describe("explicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, ["value3", "value4"]);
+    state.on(mock, ["value3", "value4"]);
 
     state.value3 = 4;
 
@@ -78,7 +78,7 @@ describe("explicit", () => {
     const state = Test.new();
     const mock = jest.fn();
 
-    state.effect(state.testEffect, ["value1"]);
+    state.on(state.testEffect, ["value1"]);
 
     expect(mock).not.toBeCalled();
 
@@ -92,7 +92,7 @@ describe("explicit", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        this.effect(mock, ["value1", "value3"]);
+        this.on(mock, ["value1", "value3"]);
       }
     }
 
@@ -117,7 +117,7 @@ describe("explicit", () => {
     const didCreate = jest.fn();
     const test = Test.new();
 
-    test.effect(didCreate, []);
+    test.on(didCreate, []);
 
     expect(didCreate).toBeCalled();
   })
@@ -128,7 +128,7 @@ describe("explicit", () => {
     const willDestroy = jest.fn();
     const test = Test.new();
 
-    test.effect(() => willDestroy, []);
+    test.on(() => willDestroy, []);
     test.kill();
 
     expect(willDestroy).toBeCalled();
@@ -139,9 +139,7 @@ describe("explicit", () => {
 
     const willDestroy = jest.fn();
     const test = Test.new();
-
-    const cancel =
-      test.effect(() => willDestroy, []);
+    const cancel = test.on(() => willDestroy, []);
 
     cancel();
     test.kill();
@@ -162,7 +160,7 @@ describe("implicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
       void value1, value2, value3;
@@ -202,7 +200,7 @@ describe("implicit", () => {
 
     }
 
-    state.effect(testEffect);
+    state.on(testEffect);
 
     state.value1 = 2;
     await state.update();
@@ -221,7 +219,7 @@ describe("implicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       void self.value1
       void self.value2;
       mock();
@@ -240,7 +238,7 @@ describe("implicit", () => {
     const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       void self.value3;
       void self.value4;
       mock();
@@ -258,7 +256,7 @@ describe("implicit", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        this.effect(this.test);
+        this.on(this.test);
       }
 
       test(){
@@ -285,21 +283,21 @@ describe("implicit", () => {
     expect(mock).toBeCalledTimes(3);
   })
 
-  it("will throw if effect returns non-function", () => {
+  it("will throw if.on returns non-function", () => {
     const state = TestValues.new();
     const expected = Oops.BadCallback();
     const attempt = () => {
       // @ts-ignore
-      state.effect(() => "foobar");
+      state.on(() => "foobar");
     }
 
     expect(attempt).toThrowError(expected);
   })
 
-  it("will not throw if effect returns promise", () => {
+  it("will not throw if.on returns promise", () => {
     const state = TestValues.new();
     const attempt = () => {
-      state.effect(async () => {});
+      state.on(async () => {});
     }
 
     expect(attempt).not.toThrowError();
@@ -317,7 +315,7 @@ describe("suspense", () => {
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     });
@@ -336,7 +334,7 @@ describe("suspense", () => {
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     });
@@ -358,7 +356,7 @@ describe("suspense", () => {
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     }, ["value", "other"]);
