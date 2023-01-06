@@ -13,19 +13,19 @@ export const Oops = issues({
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.
  *
- * When an act-method is invoked, its `active` property to true for duration of call.
+ * When a run-method is invoked, its `active` property to true for duration of call.
  * This is emitted as an update to property, both when called and after returns (or throws).
  *
  * **Note:** Subsequent calls will immediately throw if one is still pending.
  *
  * @param action - Action to fire when resulting property is invoked.
  */
-function act (action: Async): typeof action & { active: boolean };
-function act <S> (action: Async<S>): typeof action & { active: boolean };
+function run (action: Async): typeof action & { active: boolean };
+function run <S> (action: Async<S>): typeof action & { active: boolean };
 
-function act<T extends Async>(task: T){
+function run<T extends Async>(task: T){
   return add<T>(
-    function act(key){
+    function run(key){
       let pending = false;
 
       const invoke = async (...args: any[]) => {
@@ -62,4 +62,4 @@ function act<T extends Async>(task: T){
   )
 }
 
-export { act }
+export { run }

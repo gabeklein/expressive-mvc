@@ -1,10 +1,10 @@
-import { act, Model } from '..';
-import { Oops } from './act';
+import { run, Model } from '..';
+import { Oops } from './run';
 import { set } from './set';
 
 class Test extends Model {
-  test = act(this.wait);
-  nope = act(this.fail);
+  test = run(this.wait);
+  nope = run(this.fail);
 
   async wait<T>(input?: T){
     return new Promise<T | undefined>(res => {
@@ -92,7 +92,7 @@ it("will internally retry on suspense", async () => {
   class Test extends Model {
     value = set<string>();
 
-    getValue = act(async () => {
+    getValue = run(async () => {
       didInvoke();
       return this.value;
     })
