@@ -58,6 +58,27 @@ describe("Symbols", () => {
   })
 })
 
+describe("LOCAL", () => {
+  class Test extends Model {
+    value1 = 1;
+    value2 = 2;
+    value3 = 3;
+  }
+
+  it("will reveal what values are in use", async () => {
+    const test = Test.new() as Debug<Test>;
+
+    test.effect((local: Debug<Test>) => {
+      void local.value1;
+      void local.value3;
+
+      const { using } = local[Debug.LOCAL]!;
+
+      expect(using).toEqual(["value1", "value3"]);
+    });
+  })
+})
+
 describe("UPDATE", () => {
   class Test extends Model {
     value1 = 1;

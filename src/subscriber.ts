@@ -43,7 +43,7 @@ export class Subscriber <T extends {} = any> {
   }
 
   get using(){
-    return Array.from(this.watch.keys());
+    return Array.from(this.watch.keys()) as Model.Values<T>;
   }
 
   add(key: any, value?: boolean | Callback){
