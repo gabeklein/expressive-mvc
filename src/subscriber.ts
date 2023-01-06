@@ -1,4 +1,4 @@
-import { addUpdate, Control, hasUpdate } from './control';
+import { Control } from './control';
 import { create, defineProperty } from './util';
 
 import type { Callback } from './types';
@@ -14,6 +14,7 @@ export class Subscriber <T extends {} = any> {
   public proxy!: T;
   public commit: () => Callback;
   public release!: Callback;
+  public latest?: string[];
 
   public active = false;
   public dependant = new Set<Listener>();
@@ -29,13 +30,14 @@ export class Subscriber <T extends {} = any> {
 
     const proxy = create(parent.subject);
     const using = new Map<any, boolean | (() => true | void)>();
+    const reset = () => this.latest = undefined;
 
     REGISTER.set(proxy, this);
     
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
-        hasUpdate(proxy);
+        setTimeout(reset, 0);
         return proxy;
       }
     })
@@ -59,7 +61,9 @@ export class Subscriber <T extends {} = any> {
       if(!notify)
         return;
 
-      parent.waiting.add(() => addUpdate(proxy, using));
+      parent.waiting.add(() => {
+        this.latest = parent.latest!.filter(k => using.has(k));
+      });
       parent.waiting.add(notify);
     });
 

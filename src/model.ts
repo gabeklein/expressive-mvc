@@ -1,4 +1,4 @@
-import { Control, getUpdate } from './control';
+import { Control } from './control';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
@@ -130,7 +130,7 @@ class Model {
             else if(keys.includes(key as any)){
               removeListener();
               return () => resolve(
-                single ? control.state.get(key) : getUpdate(this)
+                single ? control.state.get(key) : control.latest!
               )
             }
           });
@@ -153,7 +153,7 @@ class Model {
 
       const callback = single
         ? () => { argument.call(this, control.state.get(select), select) }
-        : () => { argument.call(this, getUpdate(this)) }
+        : () => { argument.call(this, control.latest!) }
 
       const onEvent = once
         ? () => {
@@ -286,7 +286,7 @@ class Model {
 
         if(frame.size || arg1 !== false)
           waiting.add(() => {
-            callback(getUpdate(this));
+            callback(control.latest!);
           });
         else
           callback(false);

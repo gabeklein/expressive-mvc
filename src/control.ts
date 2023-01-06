@@ -2,34 +2,11 @@ import { PENDING } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor, getPrototypeOf } from './util';
+import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
 
 const REGISTER = new WeakMap<{}, Control>();
-const UPDATE = new WeakMap<{}, readonly string[]>();
-
-export function getUpdate<T extends {}>(subject: T){
-  return UPDATE.get(subject) as readonly Model.Event<T>[];
-}
-
-export function setUpdate(subject: any, keys: Set<string>){
-  UPDATE.set(subject, Array.from(keys));
-  setTimeout(() => UPDATE.delete(subject), 0);
-}
-
-/** Ensure a local update is dropped after use. */
-export function hasUpdate(proxy: any){
-  if(UPDATE.has(proxy))
-    setTimeout(() => UPDATE.delete(proxy), 0);
-}
-
-/** Set local update for a subscribed context. */
-export function addUpdate(proxy: any, using: Map<string, any>){
-  const parent = UPDATE.get(getPrototypeOf(proxy))!;
-
-  UPDATE.set(proxy, parent.filter(k => using.has(k)));
-}
 
 declare namespace Control {
   // TODO: implement value type
@@ -43,6 +20,7 @@ class Control<T extends {} = any> {
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
   public followers = new Set<Control.OnEvent>();
+  public latest?: Model.Event<T>[];
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
@@ -125,8 +103,10 @@ class Control<T extends {} = any> {
   
     else if(!frame.size)
       setTimeout(() => {
-        flush(this);      
-        setUpdate(this.subject, frame)
+        flush(this);  
+        this.latest = Array.from(frame);
+        setTimeout(() => this.latest = undefined, 0);
+
         frame.clear();
       
         for(const notify of waiting)

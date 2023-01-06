@@ -1,11 +1,11 @@
-import { Control, getUpdate } from './control';
+import { Control } from './control';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 
-export const LOCAL = Symbol("LOCAL");
-export const STATE = Symbol("STATE");
-export const UPDATE = Symbol("UPDATE");
-export const CONTROL = Symbol("CONTROL");
+const LOCAL = Symbol("LOCAL");
+const STATE = Symbol("STATE");
+const UPDATE = Symbol("UPDATE");
+const CONTROL = Symbol("CONTROL");
 
 Object.defineProperties(Model.prototype, {
   [CONTROL]: {
@@ -24,12 +24,16 @@ Object.defineProperties(Model.prototype, {
       const output: any = {};
 
       state.forEach((value, key) => output[key] = value);
+
       return output;
     }
   },
   [UPDATE]: {
     get(this: Model){
-      return getUpdate(this);
+      const source = Subscriber.get(this) || Control.get(this);
+
+      if(source)
+        return source.latest;
     }
   }
 })
