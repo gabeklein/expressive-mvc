@@ -106,19 +106,56 @@ class Model {
   on(effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
   on <P extends Model.Event<this>> (
-    select: P | P[] | Model.Effect<this>,
-    argument?: Function | true | number | P[],
-    once?: boolean){
+    arg1: P | P[] | Model.Effect<this>,
+    arg2?: Function | true | number | P[],
+    arg3?: boolean){
 
-    if(typeof select == "function")
-      return this.effect(select, 
-        Array.isArray(argument) ? argument : undefined  
-      )
+    if(typeof arg1 == "function")
+      return Control.for(this, control => {
+        const effect = createEffect(arg1);
 
-    const single = typeof select == "string";
-    let keys = single ? [ select ] : select;
+        let busy = false;
+        let inject = this.is;
 
-    if(typeof argument !== "function")
+        const invoke = () => {
+          if(busy)
+            return;
+
+          const output = mayRetry(() => {
+            effect.call(inject, inject);
+          })
+
+          if(output instanceof Promise){
+            output.finally(() => busy = false);
+            busy = true;
+          }
+        }
+
+        if(Array.isArray(arg2)){
+          invoke();
+
+          return control.addListener(key => {
+            if(key === null){
+              if(!arg2.length)
+                invoke();
+            }
+            else if(arg2.includes(key as P))
+              return invoke;
+          });
+        }
+
+        const sub = control.subscribe(() => invoke);
+
+        inject = sub.proxy;
+        invoke();
+
+        return sub.commit();
+      });
+
+    const single = typeof arg1 == "string";
+    let keys = single ? [ arg1 ] : arg1;
+
+    if(typeof arg2 !== "function")
       return new Promise<any>((resolve, reject) => {
         const removeListener = Control.for(this, control => {
           for(const key of keys)
@@ -128,7 +165,7 @@ class Model {
           return control.addListener(key => {
             if(!key){
               removeListener();
-              reject(Oops.Timeout(select, `lifetime of ${this}`));
+              reject(Oops.Timeout(arg1, `lifetime of ${this}`));
             }
             else if(keys.includes(key as any)){
               removeListener();
@@ -139,11 +176,11 @@ class Model {
           });
         })
 
-        if(typeof argument == "number")
+        if(typeof arg2 == "number")
           setTimeout(() => {
             removeListener();
-            reject(Oops.Timeout(select, `${argument}ms`));
-          }, argument);
+            reject(Oops.Timeout(arg1, `${arg2}ms`));
+          }, arg2);
       });
 
     return Control.for(this, control => {
@@ -155,10 +192,10 @@ class Model {
         catch(e){}
 
       const callback = single
-        ? () => { argument.call(this, control.state.get(select), select) }
-        : () => { argument.call(this, control.latest!) }
+        ? () => { arg2.call(this, control.state.get(arg1), arg1) }
+        : () => { arg2.call(this, control.latest!) }
 
-      const onEvent = once
+      const onEvent = arg3
         ? () => {
           removeListener();
           callback();
@@ -179,47 +216,11 @@ class Model {
   effect(callback: Model.Effect<this>): Callback;
   effect(callback: Model.Effect<this>, select?: []): Callback;
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]): Callback;
+
+  /* istanbul ignore next */
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
-    const effect = createEffect(callback);
-
-    return Control.for(this, control => {
-      let busy = false;
-      let inject = this.is;
-
-      const invoke = () => {
-        if(busy)
-          return;
-
-        const output = mayRetry(() => {
-          effect.call(inject, inject);
-        })
-
-        if(output instanceof Promise){
-          output.finally(() => busy = false);
-          busy = true;
-        }
-      }
-
-      if(!select){
-        const sub = control.subscribe(() => invoke);
-
-        inject = sub.proxy;
-        invoke();
-
-        return sub.commit();
-      }
-
-      invoke();
-
-      return control.addListener(key => {
-        if(key === null){
-          if(!select.length)
-            invoke();
-        }
-        else if(select.includes(key))
-          return invoke;
-      });
-    })
+    /* istanbul ignore next */
+    return this.on(callback, select);
   }
 
   export(): Model.Values<this>;
