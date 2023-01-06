@@ -6,17 +6,11 @@ import { computeMode } from './get.compute';
 import { factoryMode } from './get.factory';
 
 export const Oops = issues({
-  // BadSource: (model, property, got) =>
-  //   `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
-
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
   ComputeFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`,
 
   FactoryFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`,

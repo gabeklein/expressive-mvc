@@ -1,4 +1,4 @@
-import { PENDING } from './instruction/add';
+import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
@@ -7,6 +7,7 @@ import { defineProperty, getOwnPropertyDescriptor } from './util';
 import type { Callback } from './types';
 
 const REGISTER = new WeakMap<{}, Control>();
+const PENDING = new Map<symbol, Instruction.Runner<any>>();
 
 declare namespace Control {
   // TODO: implement value type
@@ -177,5 +178,6 @@ class Control<T extends {} = any> {
 }
 
 export {
-  Control
+  Control,
+  PENDING
 }

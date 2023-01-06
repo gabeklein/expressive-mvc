@@ -1,6 +1,11 @@
 import { Control } from "../control";
+import { issues } from "../issues";
 import { assign } from "../util";
-import { Oops } from "./get";
+
+export const Oops = issues({
+  NotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`,
+});
 
 export function factoryMode<T>(
   self: Control,

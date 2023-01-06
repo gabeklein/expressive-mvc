@@ -44,7 +44,7 @@ function useTap <T extends Model, R> (
 ): R;
 
 function useTap <T extends Model> (
-  source: useTap.Source<T>,
+  source: typeof Model | typeof MVC | (() => any),
   arg1?: Model.Field<T> | ((this: T, from: T) => any),
   arg2?: boolean) {
 
@@ -52,11 +52,10 @@ function useTap <T extends Model> (
     if(typeof source == "object")
       return () => source;
 
-    if(MVC.isTypeof(source))
-      return () => source.get(true);
-
     if(Model.isTypeof(source))
-      return () => useContext(source);
+      return "get" in source
+        ? () => source.get(true)
+        : () => useContext(source);
 
     return source;
   }, [])() as T;
