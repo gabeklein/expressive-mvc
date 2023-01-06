@@ -242,7 +242,7 @@ describe("before ready", () => {
     });
   }
 
-  it('on method', async () => {
+  it('will watch value', async () => {
     class Test extends TestValues {
       constructor(){
         super();
@@ -259,7 +259,7 @@ describe("before ready", () => {
     expect(mock).toBeCalled();
   })
 
-  it('on method with getter', async () => {
+  it('will watch computed value', async () => {
     class Test extends TestValues {
       constructor(){
         super();
@@ -276,26 +276,27 @@ describe("before ready", () => {
     expect(mock).toBeCalled();
   })
 
-  it('on method using cancel', async () => {
-    class Test extends TestValues {
-      cancel = this.on("value1", mock);
+  it('will return callback to remove listener', async () => {
+    class Test extends Model {
+      value = 1;
     }
 
     const mock = jest.fn();
-    const state = Test.new();
+    const test = Test.new();
+    const done = test.on("value", mock);
 
-    state.value1++;
-    await state.update(true);
+    test.value++;
+    await test.update(true);
     expect(mock).toBeCalledTimes(1);
 
-    state.value1++;
-    await state.update(true);
+    test.value++;
+    await test.update(true);
     expect(mock).toBeCalledTimes(2);
 
-    state.cancel();
+    done();
 
-    state.value1++;
-    await state.update(true);
+    test.value++;
+    await test.update(true);
     expect(mock).toBeCalledTimes(2);
   })
 });
