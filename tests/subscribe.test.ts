@@ -1,4 +1,5 @@
-import { Model, set } from '../src';
+import { set } from '../src/instruction/set';
+import { Model } from '../src/model';
 import { subscribeTo } from './adapter';
 
 describe("subscriber", () => {

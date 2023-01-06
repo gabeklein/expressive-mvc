@@ -1,4 +1,4 @@
-import { Model } from '../src';
+import { Model } from '../src/model';
 import { Debug } from '../src/debug';
 import { mockConsole } from './adapter';
 

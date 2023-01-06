@@ -1,5 +1,5 @@
-import { get, Model } from '../src';
-import { Oops } from '../src/model';
+import { get } from '../src/instruction/get';
+import { Model, Oops } from '../src/model';
 
 class Subject extends Model {
   seconds = 0;

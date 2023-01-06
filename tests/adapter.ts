@@ -1,12 +1,12 @@
 import { createElement, Suspense } from 'react';
 import { create as render } from 'react-test-renderer';
 
-import * as Source from '../src';
+import { Model } from '../src/model';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";
 
-export function subscribeTo<T extends Source.Model>(
+export function subscribeTo<T extends Model>(
   target: T,
   accessor: (self: T) => void){
 

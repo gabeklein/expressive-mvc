@@ -1,4 +1,5 @@
-import { get, Model } from "../src";
+import { get } from '../src/instruction/get';
+import { Model } from '../src/model';
 
 describe("assertion", () => {
   class Control extends Model {

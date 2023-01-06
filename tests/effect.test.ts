@@ -1,4 +1,6 @@
-import { get, Model, set } from '../src';
+import { set } from '../src/instruction/set';
+import { get } from '../src/instruction/get';
+import { Model } from '../src/model';
 import { Oops } from '../src/util';
 
 describe("explicit", () => {
