@@ -53,18 +53,17 @@ declare namespace Instruction {
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  */
-function add <T = any> (instruction: Instruction<T>, name?: string): T;
-
 function add<T = any>(
-  fn: Instruction<any>, label?: string){
+  instruction: Instruction<any>,
+  label?: string){
 
-  const name = label || fn.name || "pending";
+  const name = label || instruction.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
   function setup(this: Control, key: string){
     const { subject, state } = this;
 
-    let output = fn.call(this, key, this);
+    let output = instruction.call(this, key, this);
 
     if(typeof output == "function")
       output = { get: output };

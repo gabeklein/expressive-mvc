@@ -34,9 +34,7 @@ export function addUpdate(proxy: any, using: Map<string, any>){
 declare namespace Control {
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
-
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
-
   type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
 }
 
