@@ -294,7 +294,7 @@ class Model {
   }
 
   /** 
-   * Mark this instance for garbage-collection and send `willDestroy` event to all listeners.
+   * Clean up side effects and mark this instance for garbage-collection.
    */
   kill(){
     Control.for(this).clear();
