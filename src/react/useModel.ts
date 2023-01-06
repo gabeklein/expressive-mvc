@@ -6,35 +6,18 @@ import { usePeerContext } from './tap';
 import { use } from './use';
 
 function useModel <T extends Model> (
-  source: Model.Type<T>,
+  source: Model.Type<T> | (() => T),
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Model> (
+  source: Model.Type<T> | (() => T),
   watch: Model.Field<T>[],
   callback?: (instance: T) => void
 ): T;
 
 function useModel <T extends Model> (
-  source: Model.Type<T>,
-  callback?: (instance: T) => void
-): T;
-
-function useModel <T extends Model> (
-  source: Model.Type<T>,
-  apply: Model.Compat<T>,
-  keys?: Model.Event<T>[]
-): T;
-
-function useModel <T extends Model> (
-  source: () => T,
-  watch?: Model.Field<T>[],
-  callback?: (instance: T) => void
-): T;
-
-function useModel <T extends Model> (
-  source: () => T,
-  callback?: (instance: T) => void
-): T;
-
-function useModel <T extends Model> (
-  source: () => T,
+  source: Model.Type<T> | (() => T),
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
