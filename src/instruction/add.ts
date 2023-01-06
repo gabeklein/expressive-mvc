@@ -170,4 +170,4 @@ export function getRecursive(key: string, from: Control){
   }
 }
 
-export { add, Instruction, PENDING }
+export { add, Instruction }

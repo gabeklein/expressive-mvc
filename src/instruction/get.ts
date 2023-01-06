@@ -12,9 +12,6 @@ export const Oops = issues({
   ComputeFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`,
 
-  FactoryFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
-
   Failed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });

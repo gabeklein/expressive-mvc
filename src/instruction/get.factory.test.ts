@@ -1,6 +1,7 @@
 import { Model } from '..';
 import { mockAsync, mockConsole } from '../../tests/adapter';
-import { get, Oops as Compute } from './get';
+import { get, Oops } from './get';
+import { Oops as Compute } from './get.factory';
 
 const { warn } = mockConsole();
 
@@ -97,7 +98,7 @@ it("will warn and rethrow error from factory", () => {
     }
   }
 
-  const failed = Compute.FactoryFailed(Test.name, "memoized");
+  const failed = Oops.ComputeFailed(Test.name, "memoized");
 
   expect(() => Test.new()).toThrowError("Foobar");
   expect(warn).toBeCalledWith(failed.message);

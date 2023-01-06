@@ -4,7 +4,7 @@ import { assign } from "../util";
 
 export const Oops = issues({
   NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`,
+    `Value ${model}.${key} value is not yet available.`
 });
 
 export function factoryMode<T>(
