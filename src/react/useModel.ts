@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 import { Control } from '../control';
 import { Model } from '../model';
-import { getOwnPropertyNames } from '../util';
 import { usePeerContext } from './tap';
 import { use } from './use';
 
@@ -82,20 +81,8 @@ function useModel <T extends Model> (
     Control.for(instance).subscribe(() => refresh)
   ));
 
-  if(typeof arg == "object"){
-    local.active = false;
-
-    if(typeof arg2 !== "object")
-      arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
-
-    for(const key of arg2)
-      if(key in arg)
-        (instance as any)[key] = arg[key];
-
-    local.parent.waiting.add(() => {
-      local.active = true;
-    })
-  }
+  if(typeof arg == "object")
+    local.assign(arg, arg2);
 
   React.useLayoutEffect(() => {
     local.commit();
