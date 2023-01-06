@@ -2,10 +2,10 @@ import { Control } from './control';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 
-const LOCAL = Symbol("LOCAL");
-const STATE = Symbol("STATE");
-const UPDATE = Symbol("UPDATE");
-const CONTROL = Symbol("CONTROL");
+const LOCAL = "$debug local";
+const STATE = "$debug state";
+const UPDATE = "$debug update";
+const CONTROL = "$debug controller";
 
 Object.defineProperties(Model.prototype, {
   [CONTROL]: {
@@ -32,8 +32,7 @@ Object.defineProperties(Model.prototype, {
     get(this: Model){
       const source = Subscriber.get(this) || Control.get(this);
 
-      if(source)
-        return source.latest;
+      return source && source.latest;
     }
   }
 })
