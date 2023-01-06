@@ -107,7 +107,7 @@ class Model {
 
   on <P extends Model.Event<this>> (
     select: P | P[] | Model.Effect<this>,
-    argument?: Function | true | number | Model.Event<this>[],
+    argument?: Function | true | number | P[],
     once?: boolean){
 
     if(typeof select == "function")
