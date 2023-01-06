@@ -26,7 +26,7 @@ export class Global extends MVC {
     if(type.keepAlive && !force)
       return false;
 
-    super.kill();
+    Control.for(this).clear();
     Active.delete(type);
     return true;
   }
