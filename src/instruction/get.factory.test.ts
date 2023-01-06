@@ -123,7 +123,7 @@ it("will suspend another factory", async () => {
 
   const test = Test.new();
 
-  test.effect($ => void $.value);
+  test.on($ => void $.value);
 
   greet.resolve("Hello");
   await test.update();
@@ -153,7 +153,7 @@ it("will suspend another factory (async)", async () => {
 
   const test = Test.new();
 
-  test.effect($ => void $.value);
+  test.on($ => void $.value);
 
   greet.resolve("Hello");
   await test.update();

@@ -15,7 +15,7 @@ describe("placeholder", () => {
       promise.resolve(state.foobar);
     });
 
-    instance.effect(mockEffect);
+    instance.on(mockEffect);
 
     expect(mockEffect).toBeCalledTimes(1);
 
@@ -36,7 +36,7 @@ describe("placeholder", () => {
       expect(state.foobar).toBe("bar!");
     });
 
-    instance.effect(mockEffect);
+    instance.on(mockEffect);
     expect(mockEffect).toBeCalledTimes(1);
   })
 })

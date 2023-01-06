@@ -127,7 +127,7 @@ describe("specific", () => {
     class Test extends Model {
       constructor(){
         super();
-        this.effect(() => didDestroy, []);
+        this.on(() => didDestroy, []);
       }
     }
 

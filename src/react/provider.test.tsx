@@ -138,7 +138,7 @@ it("will destroy created model on unmount", () => {
     <Provider for={{ Test }}>
       <Consumer for={Test} has={i => {
         expect(i).toBeInstanceOf(Test)
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
     </Provider>
   );
@@ -156,10 +156,10 @@ it("will destroy multiple created on unmount", () => {
   const rendered = render(
     <Provider for={{ Foo, Bar }}>
       <Consumer for={Foo} has={i => {
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
       <Consumer for={Bar} has={i => {
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
     </Provider>
   );
@@ -178,7 +178,7 @@ it("will not destroy given instance on unmount", () => {
   const rendered = render(
     <Provider for={{ instance }}>
       <Consumer for={Test} has={i => {
-        i.effect(() => didUnmount, []);
+        i.on(() => didUnmount, []);
       }} />
     </Provider>
   );

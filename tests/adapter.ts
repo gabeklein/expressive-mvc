@@ -12,8 +12,8 @@ export function subscribeTo<T extends Model>(
 
   const didTrigger = jest.fn();
 
-  target.effect(self => {
-    accessor(self);
+  target.on(state => {
+    accessor(state);
     didTrigger();
   });
 

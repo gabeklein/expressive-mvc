@@ -132,7 +132,7 @@ describe("callback", () => {
     class Bar extends MVC {
       constructor(){
         super();
-        this.effect(didInit, []);
+        this.on(didInit, []);
       }
 
       foo = tap(Foo, () => {

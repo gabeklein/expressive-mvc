@@ -13,7 +13,7 @@ describe("Map", () => {
 
     test.map.set("foo", "foo");
   
-    test.effect($ => {
+    test.on($ => {
       mock($.map.get("foo"));
     });
 
@@ -67,7 +67,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn();
     
-      test.effect(($) => {
+      test.on(($) => {
         mock($.values.has("foo"));
       })
     
@@ -84,7 +84,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect(mock);
+      test.on(mock);
     
       expect(mock).toBeCalledTimes(1);
   
@@ -98,7 +98,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect(mock);
+      test.on(mock);
     
       test.insert("foo");
       await test.update(true);
@@ -113,7 +113,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect(mock)
+      test.on(mock)
     
       test.values.clear();
       await test.update(true);
@@ -129,10 +129,10 @@ for(const T of [Map, Set])
       const mockKeys = jest.fn(({ values }: Test) => void values.keys());
       const mockEntries = jest.fn(({ values }: Test) => void values.entries());
     
-      test.effect(mockIterator);
-      test.effect(mockEntries);
-      test.effect(mockValues);
-      test.effect(mockKeys);
+      test.on(mockIterator);
+      test.on(mockEntries);
+      test.on(mockValues);
+      test.on(mockKeys);
     
       test.insert("foo");
       await test.update(true);
@@ -147,14 +147,14 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values);
     
-      test.effect(mock);
+      test.on(mock);
     })
     
     it("will update any key on replacement", async () => {
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.has("foo"));
     
-      test.effect(mock);
+      test.on(mock);
 
       test.values = T === Map ? new Map() : new Set();
 
@@ -167,7 +167,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn(($: Test) => void $.values.size);
 
-      test.effect(mock);
+      test.on(mock);
     
       test.values = T === Map ? new Map() : new Set();
   
@@ -183,7 +183,7 @@ for(const T of [Map, Set])
         state.values.has("bar");
       });
     
-      test.effect(mock);
+      test.on(mock);
     
       test.insert("foo");
       test.insert("bar");
@@ -198,9 +198,9 @@ for(const T of [Map, Set])
       const mock2 = jest.fn(($: Test) => void $.values.has(2));
       const mock3 = jest.fn(($: Test) => void $.values.has(3));
     
-      test.effect(mock1);
-      test.effect(mock2);
-      test.effect(mock3);
+      test.on(mock1);
+      test.on(mock2);
+      test.on(mock3);
     
       test.insert(1);
       test.insert(2);
@@ -225,8 +225,8 @@ for(const T of [Map, Set])
       const mock1 = jest.fn(($: Test) => void $.values);
       const mock2 = jest.fn(($: Test) => void $.values);
     
-      const release1 = test.effect(mock1);
-      const release2 = test.effect(mock2);
+      const release1 = test.on(mock1);
+      const release2 = test.on(mock2);
     
       expect(mock1).toBeCalledTimes(1);
       expect(mock2).toBeCalledTimes(1);
@@ -251,7 +251,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn();
     
-      test.effect($ => {
+      test.on($ => {
         mock($.values.size);
       })
     
@@ -267,7 +267,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn();
     
-      test.effect($ => mock($.size));
+      test.on($ => mock($.size));
     
       expect(mock).toBeCalledWith(0);
     
@@ -287,7 +287,7 @@ for(const T of [Map, Set])
       const test = Test.new();
       const mock = jest.fn();
     
-      test.effect($ => mock($.size));
+      test.on($ => mock($.size));
     
       expect(mock).toBeCalledWith(false);
     

@@ -51,7 +51,7 @@ describe("Symbols", () => {
 
     expect(instance[Debug.LOCAL]).toBeUndefined();
 
-    instance.effect(local => {
+    instance.on(local => {
       expect(local[Debug.CONTROL]).toBe(instance[Debug.CONTROL]);
       expect(local[Debug.LOCAL]).toBeDefined();
     })
@@ -68,7 +68,7 @@ describe("LOCAL", () => {
   it("will reveal what values are in use", async () => {
     const test = Test.new() as Debug<Test>;
 
-    test.effect((local: Debug<Test>) => {
+    test.on((local: Debug<Test>) => {
       void local.value1;
       void local.value3;
 
@@ -107,7 +107,7 @@ describe("UPDATE", () => {
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
 
-    test.effect(state => {
+    test.on(state => {
       void state.value1;
       void state.value3;
 

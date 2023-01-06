@@ -22,7 +22,7 @@ it('will track recursively', async () => {
   expect(state.value).toBe("foo");
   expect(state.child.value).toBe("foo");
 
-  state.effect(mock);
+  state.on(mock);
 
   state.value = "bar";
   await state.update(true);
@@ -45,7 +45,7 @@ it('will accept instance', async () => {
     void it.child.value;
   })
 
-  state.effect(mock);
+  state.on(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -79,7 +79,7 @@ it('will accept simple object', async () => {
     void it.child.value;
   })
 
-  state.effect(mock);
+  state.on(mock);
 
   // TODO: remove subscribeTo helper
   const update = subscribeTo(state, it => {
@@ -193,7 +193,7 @@ it('will suspend if required', async () => {
     void it.child;
   });
 
-  parent.effect(mock);
+  parent.on(mock);
 
   await parent.update();
   expect(parent.child).toBeInstanceOf(Child);
@@ -253,7 +253,7 @@ it('will update on new value', async () => {
     void it.child.value;
   })
 
-  state.effect(mock);
+  state.on(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -290,7 +290,7 @@ it('will reset if value is undefined', async () => {
       void it.child.value;
   })
 
-  state.effect(mock);
+  state.on(mock);
 
   state.child = new Child();
   await state.update(true);
@@ -332,7 +332,7 @@ it('will still subscribe if initially undefined', async () => {
       void it.child.value;
   })
 
-  state.effect(mock);
+  state.on(mock);
   expect(state.child).toBeUndefined();
 
   // Will refresh on repalcement.

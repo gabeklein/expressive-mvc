@@ -51,7 +51,7 @@ describe("instruction", () => {
     const instance = Test.new();
     const ran = instance.didRunGetter;
 
-    instance.effect(x => void x.property);
+    instance.on(x => void x.property);
 
     expect(ran).toBeCalledWith("property");
 
@@ -110,7 +110,7 @@ describe("getter", () => {
 
     const state = Test.new();
 
-    state.effect(own => {
+    state.on(own => {
       void own.property;
     });
 

@@ -219,7 +219,7 @@ describe("computed values", () => {
 
     const test = Test.new();
 
-    test.effect(state => mock(state.value));
+    test.on(state => mock(state.value));
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
