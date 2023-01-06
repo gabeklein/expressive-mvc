@@ -94,15 +94,14 @@ class Model {
   on <P = Model.Event<this>> (event: (key: P) => Callback | void): Callback;
 
   on <P extends Model.Event<this>> (key: P): Promise<Model.ValueOf<this, P>>;
-  on <P extends Model.Event<this>> (key: P, timeout: number): Promise<Model.ValueOf<this, P>>;
-  on <P extends Model.Event<this>> (key: P, listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
+  on <P extends Model.Event<this>> (key: P, listener?: Model.OnUpdate<this, P>, once?: boolean): Callback;
 
-  on <P extends Model.Event<this>> (key: P[]): Promise<P[]>;
-  on <P extends Model.Event<this>> (key: P[], timeout: number): Promise<P[]>;
-  on <P extends Model.Event<this>> (key: P[], listener: (keys: P[]) => void, once?: boolean): Callback;
+  on (keys: [], listener: (keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
-  on <P = Model.Event<this>> (keys: [], listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
-  on <P = Model.Event<this>> (keys: [], listener: (keys: P[]) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys: P[]): Promise<P[]>;
+  on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
+  on <P extends Model.Event<this>> (keys: P[], listener?: (keys: P[]) => void, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (
     select: P | P[] | ((key: any) => Callback | void),
@@ -173,8 +172,8 @@ class Model {
   }
 
   effect(callback: Model.Effect<this>): Callback;
-  effect(callback: Model.Effect<this>, select: []): Callback;
-  effect(callback: Model.Effect<this>, select: Model.Event<this>[]): Callback;
+  effect(callback: Model.Effect<this>, select?: []): Callback;
+  effect(callback: Model.Effect<this>, select?: Model.Event<this>[]): Callback;
 
   effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
     const effect = createEffect(callback);
