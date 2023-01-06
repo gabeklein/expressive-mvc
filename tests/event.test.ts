@@ -279,11 +279,13 @@ describe("before ready", () => {
   it('will return callback to remove listener', async () => {
     class Test extends Model {
       value = 1;
+
+      // assigned during constructor phase.
+      done = this.on("value", mock);
     }
 
     const mock = jest.fn();
     const test = Test.new();
-    const done = test.on("value", mock);
 
     test.value++;
     await test.update(true);
@@ -293,7 +295,7 @@ describe("before ready", () => {
     await test.update(true);
     expect(mock).toBeCalledTimes(2);
 
-    done();
+    test.done();
 
     test.value++;
     await test.update(true);

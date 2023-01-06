@@ -153,13 +153,16 @@ class Control<T extends {} = any> {
       const { waiting } = control;
   
       if(cb){
-        let done: Callback | void;
+        let callback: Callback | void;
   
         waiting.add(() => {
-          done = cb(control);
+          callback = cb(control);
         });
   
-        return () => done && done();
+        return () => {
+          if(callback)
+            callback();
+        }
       }
   
       control.state = new Map();
