@@ -212,17 +212,6 @@ class Model {
     });
   }
 
-  /** @deprecated use Model.on instead. */
-  effect(callback: Model.Effect<this>): Callback;
-  effect(callback: Model.Effect<this>, select?: []): Callback;
-  effect(callback: Model.Effect<this>, select?: Model.Event<this>[]): Callback;
-
-  /* istanbul ignore next */
-  effect(callback: Model.Effect<this>, select?: Model.Event<this>[]){
-    /* istanbul ignore next */
-    return this.on(callback, select);
-  }
-
   export(): Model.Values<this>;
   export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
 
