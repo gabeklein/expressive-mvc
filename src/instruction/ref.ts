@@ -1,6 +1,7 @@
 import { Control } from '../control';
+import { createValueEffect } from '../effect';
 import { Model } from '../model';
-import { createValueEffect, defineProperty } from '../util';
+import { defineProperty } from '../util';
 import { add } from './add';
 
 declare namespace ref {

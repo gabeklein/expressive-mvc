@@ -1,7 +1,7 @@
-import { set } from '../src/instruction/set';
+import { Oops } from '../src/effect';
 import { get } from '../src/instruction/get';
+import { set } from '../src/instruction/set';
 import { Model } from '../src/model';
-import { Oops } from '../src/util';
 
 describe("explicit", () => {
   class TestValues extends Model {

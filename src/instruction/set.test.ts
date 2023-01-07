@@ -1,6 +1,6 @@
 import { Model } from '..';
 import { mockAsync } from '../../tests/adapter';
-import { Oops as Util } from '../util';
+import { Oops } from '../effect';
 import { set } from './set';
 
 describe("placeholder", () => {
@@ -118,7 +118,7 @@ describe("callback", () => {
       property = set<any>(undefined, () => 3);
     }
 
-    const expected = Util.BadCallback();
+    const expected = Oops.BadCallback();
     const state = Subject.new();
 
     expect(() => state.property = "bar").toThrow(expected);

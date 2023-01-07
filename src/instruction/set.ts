@@ -1,4 +1,4 @@
-import { createValueEffect } from '../util';
+import { createValueEffect } from '../effect';
 import { add } from './add';
 
 declare namespace set {

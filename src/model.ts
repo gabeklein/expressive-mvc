@@ -1,11 +1,10 @@
 import { Control } from './control';
+import { createEffect } from './effect';
 import { issues } from './issues';
 import { Subscriber } from './subscriber';
-import { mayRetry } from './suspense';
-import { createEffect, defineProperty } from './util';
+import { defineProperty } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
-
 export const Oops = issues({
   Timeout: (keys, timeout) => 
     `No update for [${keys}] within ${timeout}.`,
@@ -91,13 +90,11 @@ class Model {
     defineProperty(this, "is", { value: this });
   }
 
-  on <P extends Model.Event<this>> (key: P): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, listener?: Model.OnUpdate<this, P>, once?: boolean): Callback;
 
   on (keys: [], listener: (keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
-  on <P extends Model.Event<this>> (keys: P[]): Promise<P[]>;
   on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
   on <P extends Model.Event<this>> (keys: P[], listener?: (keys: P[]) => void, once?: boolean): Callback;
 
@@ -111,46 +108,7 @@ class Model {
     arg3?: boolean){
 
     if(typeof arg1 == "function")
-      return Control.for(this, control => {
-        const effect = createEffect(arg1);
-
-        let busy = false;
-        let inject = this.is;
-
-        const invoke = () => {
-          if(busy)
-            return;
-
-          const output = mayRetry(() => {
-            effect.call(inject, inject);
-          })
-
-          if(output instanceof Promise){
-            output.finally(() => busy = false);
-            busy = true;
-          }
-        }
-
-        if(Array.isArray(arg2)){
-          invoke();
-
-          return control.addListener(key => {
-            if(key === null){
-              if(!arg2.length)
-                invoke();
-            }
-            else if(arg2.includes(key as P))
-              return invoke;
-          });
-        }
-
-        const sub = control.subscribe(() => invoke);
-
-        inject = sub.proxy;
-        invoke();
-
-        return sub.commit();
-      });
+      return createEffect(this.is, arg1, arg2 as P[]);
 
     const single = typeof arg1 == "string";
     let keys = single ? [ arg1 ] : arg1;
