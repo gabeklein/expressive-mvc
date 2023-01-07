@@ -42,8 +42,8 @@ export class Subscriber <T extends {} = any> {
     })
   }
 
-  get using(): Model.Values<T> {
-    return Array.from(this.watch.keys()) as any;
+  get using(): Model.Values<T>[] {
+    return Array.from(this.watch.keys());
   }
 
   assign(apply: Model.Compat<T>, keys?: any){
