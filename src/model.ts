@@ -155,60 +155,60 @@ class Model {
     const single = typeof arg1 == "string";
     let keys = single ? [ arg1 ] : arg1;
 
-    if(typeof arg2 !== "function")
-      return new Promise<any>((resolve, reject) => {
-        const removeListener = Control.for(this, control => {
-          for(const key of keys)
-            try { void (this as any)[key] }
-            catch(e){}
+    if(typeof arg2 == "function")
+      return Control.for(this, control => {
+        if(!keys.length)
+          keys = [ ...control.state.keys() ];
 
-          return control.addListener(key => {
-            if(!key){
-              removeListener();
-              reject(Oops.Timeout(arg1, `lifetime of ${this}`));
-            }
-            else if(keys.includes(key as any)){
-              removeListener();
-              return () => resolve(
-                single ? control.state.get(key) : control.latest!
-              )
-            }
-          });
-        })
+        for(const key of keys)
+          try { void (this as any)[key] }
+          catch(e){}
 
-        if(typeof arg2 == "number")
-          setTimeout(() => {
+        const callback = single
+          ? () => { arg2.call(this, control.state.get(arg1), arg1) }
+          : () => { arg2.call(this, control.latest!) }
+
+        const onEvent = arg3
+          ? () => {
             removeListener();
-            reject(Oops.Timeout(arg1, `${arg2}ms`));
-          }, arg2);
+            callback();
+          }
+          : callback;
+
+        const removeListener =
+          control.addListener(key => {
+            if(keys.includes(key as P))
+              return onEvent;
+          });
+
+        return removeListener;
       });
 
-    return Control.for(this, control => {
-      if(!keys.length)
-        keys = [ ...control.state.keys() ];
+    return new Promise<any>((resolve, reject) => {
+      const removeListener = Control.for(this, control => {
+        for(const key of keys)
+          try { void (this as any)[key] }
+          catch(e){}
 
-      for(const key of keys)
-        try { void (this as any)[key] }
-        catch(e){}
-
-      const callback = single
-        ? () => { arg2.call(this, control.state.get(arg1), arg1) }
-        : () => { arg2.call(this, control.latest!) }
-
-      const onEvent = arg3
-        ? () => {
-          removeListener();
-          callback();
-        }
-        : callback;
-
-      const removeListener =
-        control.addListener(key => {
-          if(keys.includes(key as P))
-            return onEvent;
+        return control.addListener(key => {
+          if(!key){
+            removeListener();
+            reject(Oops.Timeout(arg1, `lifetime of ${this}`));
+          }
+          else if(keys.includes(key as any)){
+            removeListener();
+            return () => resolve(
+              single ? control.state.get(key) : control.latest!
+            )
+          }
         });
+      })
 
-      return removeListener;
+      if(typeof arg2 == "number")
+        setTimeout(() => {
+          removeListener();
+          reject(Oops.Timeout(arg1, `${arg2}ms`));
+        }, arg2);
     });
   }
 
