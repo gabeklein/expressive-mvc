@@ -1,9 +1,9 @@
 import { Control } from '../control';
 import { issues } from '../issues';
 import { Model } from '../model';
+import { assign } from '../object';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
-import { assign } from '../util';
 import { add, getRecursive } from './add';
 import { keyed, Managed } from './use.keyed';
 

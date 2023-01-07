@@ -1,6 +1,7 @@
 const {
   assign,
   create,
+  defineProperties,
   defineProperty,
   entries,
   getPrototypeOf,
@@ -13,6 +14,7 @@ const {
 export {
   assign,
   create,
+  defineProperties,
   defineProperty,
   entries,
   getPrototypeOf,

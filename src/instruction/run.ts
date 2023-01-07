@@ -1,6 +1,6 @@
 import { issues } from '../issues';
+import { defineProperty } from '../object';
 import { mayRetry } from '../suspense';
-import { defineProperty } from '../util';
 import { add } from './add';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;

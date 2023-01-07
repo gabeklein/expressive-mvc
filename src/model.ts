@@ -1,8 +1,8 @@
 import { Control } from './control';
 import { createEffect } from './effect';
 import { issues } from './issues';
+import { defineProperty } from './object';
 import { Subscriber } from './subscriber';
-import { defineProperty } from './util';
 
 import type { Callback, Class, InstanceOf } from './types';
 export const Oops = issues({

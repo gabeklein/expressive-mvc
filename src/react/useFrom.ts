@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Control } from '../control';
-import { defineProperty } from '../util';
+import { defineProperty } from '../object';
 import { use } from './use';
 
 import type { Callback } from '../types';

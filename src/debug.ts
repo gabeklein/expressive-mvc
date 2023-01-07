@@ -1,5 +1,6 @@
 import { Control } from './control';
 import { Model } from './model';
+import { defineProperties } from './object';
 import { Subscriber } from './subscriber';
 
 const LOCAL = "$debug local";
@@ -7,7 +8,7 @@ const STATE = "$debug state";
 const UPDATE = "$debug update";
 const CONTROL = "$debug controller";
 
-Object.defineProperties(Model.prototype, {
+defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
       return Control.get(this);

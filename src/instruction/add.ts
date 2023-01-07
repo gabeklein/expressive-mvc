@@ -1,8 +1,8 @@
 import { Control, PENDING } from '../control';
+import { defineProperty } from '../object';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { Callback } from '../types';
-import { defineProperty } from '../util';
 
 /**
  * Property initializer, will run upon instance creation.

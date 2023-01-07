@@ -1,6 +1,6 @@
 import { Control } from './control';
 import { Model } from './model';
-import { create, defineProperty, getOwnPropertyNames } from './util';
+import { create, defineProperty, getOwnPropertyNames } from './object';
 
 import type { Callback } from './types';
 

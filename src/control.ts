@@ -1,8 +1,8 @@
 import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
+import { defineProperty, getOwnPropertyDescriptor } from './object';
 import { Subscriber } from './subscriber';
-import { defineProperty, getOwnPropertyDescriptor } from './util';
 
 import type { Callback } from './types';
 

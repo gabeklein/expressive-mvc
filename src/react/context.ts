@@ -2,8 +2,8 @@ import React from 'react';
 
 import { issues } from '../issues';
 import { Model } from '../model';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../object';
 import { Callback } from '../types';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../util';
 
 const Oops = issues({
   NotFound: (name) =>

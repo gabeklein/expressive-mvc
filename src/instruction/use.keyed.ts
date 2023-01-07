@@ -1,6 +1,6 @@
 import { Control } from '../control';
+import { assign, create, defineProperty } from '../object';
 import { Subscriber } from '../subscriber';
-import { assign, create, defineProperty } from '../util';
 import { Instruction } from './add';
 
 type MapFunction<T, R> =
