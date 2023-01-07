@@ -13,7 +13,7 @@ export { Provider } from './react/provider';
 export { Global } from './react/global';
 export { tap } from './react/tap';
 
-export { useFrom } from './react/useFrom';
+export { useValue } from './react/useValue';
 export { useContext } from './react/context';
 export { useModel } from './react/useModel';
 export { useTap } from './react/useTap';

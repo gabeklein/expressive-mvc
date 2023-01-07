@@ -1,6 +1,6 @@
 import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
 import { Model } from '../model';
-import { useFrom } from './useFrom';
+import { useValue } from './useValue';
 
 const opts = { timeout: 100 };
 
@@ -14,7 +14,7 @@ it('will select and subscribe to subvalue', async () => {
   const parent = Test.new();
 
   const { result, waitForNextUpdate } = renderHook(() => {
-    return useFrom(parent, x => x.foo);
+    return useValue(parent, x => x.foo);
   });
 
   expect(result.current).toBe(1);
@@ -28,7 +28,7 @@ it('will select and subscribe to subvalue', async () => {
 it('will compute output', async () => {
   const parent = Test.new();
   const { result, waitForNextUpdate } =
-    renderHook(() => useFrom(parent, x => x.foo + x.bar));
+    renderHook(() => useValue(parent, x => x.foo + x.bar));
 
   expect(result.current).toBe(3);
 
@@ -45,7 +45,7 @@ it('will ignore updates with same result', async () => {
 
   const { result } = renderHook(() => {
     render();
-    return useFrom(parent, x => {
+    return useValue(parent, x => {
       compute();
       void x.foo;
       return x.bar;
@@ -76,7 +76,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useFrom(control, () => promise.pending());
+      return useValue(control, () => promise.pending());
     });
 
     expect(result.current).toBeUndefined();
@@ -92,7 +92,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useFrom(control, $ => {
+      return useValue(control, $ => {
         void $.foo;
         return promise.pending();
       });
@@ -125,7 +125,7 @@ describe("suspense", () => {
       promise.resolve();
       didRender();
 
-      useFrom(instance, state => {
+      useValue(instance, state => {
         didCompute();
 
         if(state.value == "foobar")
@@ -156,7 +156,7 @@ describe("suspense", () => {
     const test = mockSuspense();
 
     test.renderHook(() => {
-      useFrom(instance, () => promise.pending(), true);
+      useValue(instance, () => promise.pending(), true);
     })
 
     test.assertDidSuspend(true);

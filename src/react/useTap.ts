@@ -6,7 +6,7 @@ import { suspend } from '../suspense';
 import { useContext } from './context';
 import { MVC } from './mvc';
 import { use } from './use';
-import { useFrom } from './useFrom';
+import { useValue } from './useValue';
 
 declare namespace useTap {
   type Source<T extends Model> =
@@ -61,7 +61,7 @@ function useTap <T extends Model> (
   }, [])() as T;
 
   if(typeof arg1 == "function")
-    return useFrom(instance, arg1, arg2);
+    return useValue(instance, arg1, arg2);
 
   const local = use(refresh => (
     Control.for(instance).subscribe(() => refresh)

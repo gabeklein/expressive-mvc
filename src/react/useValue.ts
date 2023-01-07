@@ -6,25 +6,25 @@ import { use } from './use';
 
 import type { Callback } from '../types';
 
-function useFrom <T extends {}, R> (
+function useValue <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect: true
 ): Exclude<R, undefined>;
 
-function useFrom <T extends {}, R> (
+function useValue <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect?: boolean
 ): R;
 
-function useFrom(
-  target: {},
+function useValue(
+  source: {},
   compute: Function,
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = Control.for(target).subscribe(() => update);
+    const sub = Control.for(source).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);
@@ -73,4 +73,4 @@ function useFrom(
   return local.proxy;
 }
 
-export { useFrom }
+export { useValue }
