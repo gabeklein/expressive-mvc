@@ -143,7 +143,12 @@ class Model {
       });
 
     return new Promise<any>((resolve, reject) => {
+      let timedOut: boolean;
+
       const removeListener = Control.for(this, control => {
+        if(timedOut)
+          return;
+
         for(const key of keys)
           try { void (this as any)[key] }
           catch(e){}
@@ -153,7 +158,7 @@ class Model {
             removeListener();
             reject(Oops.Timeout(arg1, `lifetime of ${this}`));
           }
-          else if(keys.includes(key as any)){
+          else if(keys.includes(key as P)){
             removeListener();
             return () => resolve(
               single ? control.state.get(key) : control.latest!
@@ -164,6 +169,7 @@ class Model {
 
       if(typeof arg2 == "number")
         setTimeout(() => {
+          timedOut = true;
           removeListener();
           reject(Oops.Timeout(arg1, `${arg2}ms`));
         }, arg2);
