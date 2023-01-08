@@ -143,12 +143,8 @@ class Model {
       });
 
     return new Promise<any>((resolve, reject) => {
-      let timedOut: boolean;
 
       const removeListener = Control.for(this, control => {
-        if(timedOut)
-          return;
-
         for(const key of keys)
           try { void (this as any)[key] }
           catch(e){}
@@ -169,7 +165,6 @@ class Model {
 
       if(typeof arg2 == "number")
         setTimeout(() => {
-          timedOut = true;
           removeListener();
           reject(Oops.Timeout(arg1, `${arg2}ms`));
         }, arg2);
