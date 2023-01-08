@@ -66,7 +66,7 @@ describe("on single", () => {
 })
 
 describe("on multiple", () => {
-  it('will watch all if empty', async () => {
+  it('will watch none if empty', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
@@ -75,30 +75,13 @@ describe("on multiple", () => {
     state.seconds = 30;
     await state.update();
 
-    expect(callback).toBeCalledWith(["seconds"]);
-    expect(callback).not.toBeCalledWith(["minutes"]);
+    expect(callback).not.toBeCalled();
 
     state.seconds = 61;
     await state.update();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).not.toBeCalled();
   })
-
-  it('will watch for synthetic if empty', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on([], callback);
-
-    await state.update("seconds");
-
-    expect(callback).toBeCalledWith(["seconds"]);
-
-    await state.update("minutes");
-
-    expect(callback).toBeCalledWith(["minutes"]);
-  })
-
   it('will watch multiple keys', async () => {
     const state = Subject.new();
     const callback = jest.fn();
@@ -182,6 +165,23 @@ describe("on promise", () => {
     state.kill();
 
     await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will resolve immediately if empty', async () => {
+    const state = Subject.new();
+    const update = await state.on([]);
+
+    expect(update).toEqual([]);
+  })
+
+  it('will reject if empty and update in progress', () => {
+    const state = Subject.new();
+
+    state.seconds = 61;
+
+    const promise = state.on([]);
+
+    expect(promise).rejects.toThrow(Oops.StrictNoUpdate());
   })
 })
 

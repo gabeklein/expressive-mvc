@@ -12,6 +12,9 @@ export const Oops = issues({
   StrictUpdate: () => 
     `Strict update() did not find pending updates.`,
 
+  StrictNoUpdate: () =>
+    `Update is not expected but one is in progress!`,
+
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
 });
@@ -90,10 +93,10 @@ class Model {
     defineProperty(this, "is", { value: this });
   }
 
+  on (expect: []): Promise<[]>;
+
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
-
-  on (keys: [], listener: (keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
   on <P extends Model.Event<this>> (keys: P[], listener: (keys: P[]) => void, once?: boolean): Callback;
@@ -118,7 +121,7 @@ class Model {
     if(typeof arg2 == "function")
       return Control.for(this, control => {
         if(!keys.length)
-          keys = [ ...control.state.keys() ];
+          return;
 
         for(const key of keys)
           try { void (this as any)[key] }
@@ -145,8 +148,12 @@ class Model {
       });
 
     return new Promise<any>((resolve, reject) => {
-
       const removeListener = Control.for(this, control => {
+        if(!keys.length)
+          return control.frame.size
+            ? reject(Oops.StrictNoUpdate())
+            : resolve([]);
+
         for(const key of keys)
           try { void (this as any)[key] }
           catch(e){}
