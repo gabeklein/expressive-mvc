@@ -11,7 +11,11 @@ type Listener = {
   release(): void;
 }
 
-export class Subscriber <T extends {} = any> {
+declare namespace Subscriber {
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
+}
+
+class Subscriber <T extends {} = any> {
   static get<T extends {}>(from: T){
     return REGISTER.get(from) as Subscriber<T> | undefined;
   }
@@ -26,7 +30,7 @@ export class Subscriber <T extends {} = any> {
 
   constructor(
     public parent: Control<T>,
-    public onUpdate: Control.OnEvent){
+    public onUpdate: Subscriber.OnEvent){
 
     const proxy = create(parent.subject);
     const reset = () => this.latest = undefined;
@@ -87,7 +91,7 @@ export class Subscriber <T extends {} = any> {
     const { parent, watch } = this;
 
     const handler = watch.get(key);
-    let notify: void | Callback;
+    let notify: void | Control.OnBatch;
 
     if(typeof handler == "function"){
       const callback = handler();
@@ -101,9 +105,11 @@ export class Subscriber <T extends {} = any> {
     if(!notify)
       return;
 
-    parent.waiting.add(() => {
-      this.latest = parent.latest!.filter(k => watch.has(k));
+    parent.waiting.add(update => {
+      this.latest = update.filter(k => watch.has(k));
     });
     parent.waiting.add(notify);
   }
 }
+
+export { Subscriber }

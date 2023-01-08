@@ -12,14 +12,15 @@ const PENDING = new Map<symbol, Instruction.Runner<any>>();
 declare namespace Control {
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
-  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => OnBatch<T> | void;
+  type OnBatch<T = any> = (keys: Model.Event<T>[]) => void;
   type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
 }
 
 class Control<T extends {} = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
-  public waiting = new Set<Callback>();
+  public waiting = new Set<Control.OnBatch<T>>();
   public followers = new Set<Control.OnEvent>();
   public latest?: Model.Event<T>[];
 
@@ -27,7 +28,7 @@ class Control<T extends {} = any> {
     REGISTER.set(subject, this);
   }
 
-  subscribe(callback: Control.OnEvent<T>){
+  subscribe(callback: Subscriber.OnEvent<T>){
     return new Subscriber<T>(this, callback);
   }
 
@@ -105,7 +106,7 @@ class Control<T extends {} = any> {
     else if(!frame.size)
       setTimeout(() => {
         flush(this);  
-        this.latest = Array.from(frame);
+        const keys = this.latest = Array.from(frame);
         setTimeout(() => this.latest = undefined, 0);
 
         frame.clear();
@@ -113,7 +114,7 @@ class Control<T extends {} = any> {
         for(const notify of waiting)
           try {
             waiting.delete(notify);
-            notify();
+            notify(keys);
           }
           catch(err){
             console.error(err);
@@ -173,7 +174,7 @@ class Control<T extends {} = any> {
       control.waiting = new Set();
   
       for(const cb of waiting)
-        cb();
+        cb([]);
     }
   
     return cb ? cb(control) : control;
