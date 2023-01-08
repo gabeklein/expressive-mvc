@@ -10,18 +10,30 @@ const REGISTER = new WeakMap<{}, Control>();
 const PENDING = new Map<symbol, Instruction.Runner<any>>();
 
 declare namespace Control {
+  /**
+   * Callback for Controller.for() static method.
+   * Returned callback is forwarded.
+   */
+  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
+
+  /**
+   * Called immediately when any key is changed or emitted.
+   * Returned callback is notified when update is complete.
+   */
+  type OnSync<T = any> = (key: Model.Event<T> | null, source: Control) => OnAsync<T> | void;
+
+  /** Called at the end of an event frame with all keys affected. */
+  type OnAsync<T = any> = (keys: Model.Event<T>[]) => void;
+
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
-  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => OnBatch<T> | void;
-  type OnBatch<T = any> = (keys: Model.Event<T>[]) => void;
-  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
 }
 
 class Control<T extends {} = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
-  public waiting = new Set<Control.OnBatch<T>>();
-  public followers = new Set<Control.OnEvent>();
+  public waiting = new Set<Control.OnAsync<T>>();
+  public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
 
   constructor(public subject: T){
@@ -67,7 +79,7 @@ class Control<T extends {} = any> {
     });
   }
 
-  addListener(listener: Control.OnEvent<T>){
+  addListener(listener: Control.OnSync<T>){
     this.followers.add(listener);
     return () => {
       this.followers.delete(listener)

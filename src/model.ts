@@ -110,6 +110,8 @@ class Model {
     if(typeof arg1 == "function")
       return createEffect(this.is, arg1, arg2 as P[]);
 
+    
+
     const single = typeof arg1 == "string";
     let keys = single ? [ arg1 ] : arg1;
 

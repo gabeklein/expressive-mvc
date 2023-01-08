@@ -91,7 +91,7 @@ class Subscriber <T extends {} = any> {
     const { parent, watch } = this;
 
     const handler = watch.get(key);
-    let notify: void | Control.OnBatch;
+    let notify: void | Control.OnAsync;
 
     if(typeof handler == "function"){
       const callback = handler();
