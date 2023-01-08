@@ -158,9 +158,8 @@ class Model {
           }
           else if(keys.includes(key as P)){
             removeListener();
-            return () => resolve(
-              single ? control.state.get(key) : control.latest!
-            )
+            return keys =>
+              resolve(single ? control.state.get(key) : keys)
           }
         });
       })
@@ -239,9 +238,7 @@ class Model {
           throw Oops.NoChaining();
 
         if(frame.size || arg1 !== false)
-          waiting.add(() => {
-            callback(control.latest!);
-          });
+          waiting.add(callback);
         else
           callback(false);
       }
