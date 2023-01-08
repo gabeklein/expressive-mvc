@@ -73,9 +73,9 @@ class Control<T extends {} = any> {
     }
   }
 
-  ref(
-    key: Model.Field<T>,
-    handler?: Control.OnValue<T>){
+  ref<K extends Model.Field<T>>(
+    key: K,
+    handler?: (this: T, value: T[K]) => boolean | void){
   
     const { subject, state } = this;
   
