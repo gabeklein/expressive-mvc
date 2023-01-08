@@ -91,16 +91,16 @@ class Model {
   }
 
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
-  on <P extends Model.Event<this>> (key: P, listener?: Model.OnUpdate<this, P>, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P, listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
 
   on (keys: [], listener: (keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
-  on <P extends Model.Event<this>> (keys: P[], listener?: (keys: P[]) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys: P[], listener: (keys: P[]) => void, once?: boolean): Callback;
 
-  on(effect: Model.Effect<this>): Callback;
-  on(effect: Model.Effect<this>, watch?: []): Callback;
-  on(effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
+  on (effect: Model.Effect<this>): Callback;
+  on (effect: Model.Effect<this>, watch?: []): Callback;
+  on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
   on <P extends Model.Event<this>> (
     arg1: P | P[] | Model.Effect<this>,
