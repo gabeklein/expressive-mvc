@@ -224,12 +224,6 @@ class Model {
     return output;
   }
 
-  update(): PromiseLike<readonly Model.Event<this>[] | false>;
-
-  update(strict: true): Promise<readonly Model.Event<this>[]>;
-  update(strict: false): Promise<false>;
-  update(strict: boolean): Promise<readonly Model.Event<this>[] | false>;
-
   update(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
   update(key: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
   update<T>(key: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
@@ -238,14 +232,11 @@ class Model {
   update<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
 
   update(
-    arg1?: boolean | Model.Event<this> | Model.Compat<this>,
+    arg1: Model.Event<this> | Model.Compat<this>,
     arg2?: boolean | any[]): any {
 
     const control = Control.for(this);
     const { frame, state, waiting } = control;
-
-    if(arg1 === true && !frame.size)
-      return Promise.reject(Oops.StrictUpdate());
 
     if(typeof arg1 == "object"){
       for(const key in arg1)
@@ -266,19 +257,15 @@ class Model {
           else if(arg2)
             method.call(this);
       }
-
-      arg1 = undefined;
     }
 
-    return <PromiseLike<readonly Model.Event<this>[] | false>> {
+    return <PromiseLike<readonly Model.Event<this>[] | null>> {
       then: (callback) => {
         if(!callback)
           throw Oops.NoChaining();
 
-        if(frame.size || arg1 !== false)
+        if(frame.size)
           waiting.add(callback);
-        else
-          callback(false);
       }
     }
   }

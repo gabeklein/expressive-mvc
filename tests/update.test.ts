@@ -38,7 +38,7 @@ describe("assertion", () => {
 
   it('rejects if no update pending in strict mode', async () => {
     const control = Control.new();
-    const update = control.update(true);
+    const update = control.on(true);
 
     await expect(update).rejects.toThrowError();
   })

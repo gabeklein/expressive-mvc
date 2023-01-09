@@ -173,7 +173,7 @@ describe("import", () => {
 
     expect(instance).toBeInstanceOf(Test);
 
-    const update = instance.update();
+    const update = instance.on();
 
     rendered.update(
       <TestComponent foo="foo" bar="bar" />
