@@ -66,23 +66,6 @@ describe("on single", () => {
 })
 
 describe("on multiple", () => {
-  it('will watch none if empty', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on([], callback);
-
-    state.seconds = 30;
-    await state.update();
-
-    expect(callback).not.toBeCalled();
-
-    state.seconds = 61;
-    await state.update();
-
-    expect(callback).not.toBeCalled();
-  })
-
   it('will watch multiple keys', async () => {
     const state = Subject.new();
     const callback = jest.fn();
@@ -118,21 +101,44 @@ describe("on multiple", () => {
     expect(callback).toBeCalledTimes(1);
   })
 
-  it('will call once for simultaneous in squash-mode', async () => {
+  it('will callback on death if empty', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on(["seconds", "minutes"], callback, true);
+    state.on([], callback);
 
-    state.seconds = 60;
+    state.seconds = 30;
     await state.update();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).not.toBeCalled();
+
+    state.kill();
+
+    expect(callback).toBeCalledWith([]);
+  })
+});
+
+describe("on null", () => {
+  it('will resolve immediately', async () => {
+    const state = Subject.new();
+    const update = await state.on(null);
+
+    expect(update).toEqual(null);
+  })
+
+  it('will reject immediately if update', async () => {
+    const state = Subject.new();
+    const expected = Oops.StrictNoUpdate();
+
+    state.seconds = 61;
+    
+    const update = state.on(null);
+    await expect(update).rejects.toThrow(expected);
   })
 })
 
 describe("on promise", () => {
-  it('will return with update value', async () => {
+  it('will resolve with update value', async () => {
     const state = Subject.new();
     const pending = state.on("seconds");
 
@@ -141,13 +147,44 @@ describe("on promise", () => {
     await expect(pending).resolves.toBe(30);
   })
 
-  it('will return with updated keys', async () => {
+  it('will resolve with updated keys', async () => {
     const state = Subject.new();
     const pending = state.on(["seconds"]);
 
     state.seconds = 30;
 
     await expect(pending).resolves.toEqual(["seconds"]);
+  })
+
+  it('will resolve any updated', async () => {
+    const state = Subject.new();
+
+    state.seconds = 61;
+
+    const update = await state.on();
+
+    // should this also expect minutes?
+    expect(update).toEqual(["seconds"]);
+  })
+
+  it('will resolve any updated expected', async () => {
+    const state = Subject.new();
+
+    state.seconds = 61;
+
+    const update = await state.on(true);
+
+    // should this also expect minutes?
+    expect(update).toEqual(["seconds"]);
+  })
+
+  it('will resolve on destroy', async () => {
+    const state = Subject.new();
+    const update = state.on([]);
+
+    state.kill();
+
+    await expect(update).resolves.toEqual([]);
   })
 
   it('will reject on required update', async () => {
@@ -157,7 +194,9 @@ describe("on promise", () => {
 
     await expect(promise).rejects.toThrow(expected);
   })
+})
 
+describe("timeout", () => {
   it('will reject on required key', async () => {
     const state = Subject.new();
     const promise = state.on("seconds", 0);
@@ -166,7 +205,7 @@ describe("on promise", () => {
     await expect(promise).rejects.toThrow(expected);
   })
 
-  it('will reject on timeout', async () => {
+  it('will reject', async () => {
     const state = Subject.new();
     const promise = state.on("seconds", 1);
     const expected = Oops.Timeout("seconds", "1ms");
@@ -174,7 +213,7 @@ describe("on promise", () => {
     await expect(promise).rejects.toThrow(expected);
   })
 
-  it('will reject multiple keys on timeout', async () => {
+  it('will reject multiple keys', async () => {
     const state = Subject.new();
     const promise = state.on(["seconds", "minutes"], 1);
     const expected = Oops.Timeout("seconds, minutes", "1ms");
@@ -182,7 +221,7 @@ describe("on promise", () => {
     await expect(promise).rejects.toThrow(expected);
   })
 
-  it('will reject no keys on timeout', async () => {
+  it('will reject undefined', async () => {
     const state = Subject.new();
     const promise = state.on(undefined, 1);
     const expected = Oops.Timeout("any", "1ms");
@@ -198,34 +237,6 @@ describe("on promise", () => {
     state.kill();
 
     await expect(promise).rejects.toThrow(expected);
-  })
-
-  it('will resolve any updated expected', async () => {
-    const state = Subject.new();
-
-    state.seconds = 61;
-
-    const update = await state.on(true);
-
-    // should this also expect minutes?
-    expect(update).toEqual(["seconds"]);
-  })
-
-  it('will resolve immediately if empty', async () => {
-    const state = Subject.new();
-    const update = await state.on([]);
-
-    expect(update).toEqual([]);
-  })
-
-  it('will reject if empty and update in progress', () => {
-    const state = Subject.new();
-
-    state.seconds = 61;
-
-    const promise = state.on([]);
-
-    expect(promise).rejects.toThrow(Oops.StrictNoUpdate());
   })
 })
 
