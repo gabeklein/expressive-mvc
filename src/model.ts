@@ -211,9 +211,9 @@ class Model {
   }
 
   export(): Model.Values<this>;
-  export <P extends Model.Field<this>> (select: P[]): Model.Values<this, P>;
+  export <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
 
-  export <P extends Model.Field<this>> (subset?: Set<P> | P[]){
+  export <P extends Model.Field<this>> (subset?: Iterable<P>){
     const { state } = Control.for(this);
     const output = {} as Model.Values<this, P>;
     const keys = subset || state.keys();
@@ -236,12 +236,11 @@ class Model {
     arg2?: boolean | any[]): any {
 
     const control = Control.for(this);
-    const { frame, state, waiting } = control;
 
     if(typeof arg1 == "object"){
       for(const key in arg1)
-        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
-          state.set(key, (arg1 as any)[key]);
+        if(arg2 === true || (arg2 ? arg2.includes(key) : control.state.has(key))){
+          control.state.set(key, (arg1 as any)[key]);
           control.update(key as any);
         }
     }
@@ -264,8 +263,7 @@ class Model {
         if(!callback)
           throw Oops.NoChaining();
 
-        if(frame.size)
-          waiting.add(callback);
+        control.waiting.add(callback);
       }
     }
   }
