@@ -77,7 +77,7 @@ describe("instruction", () => {
 
     expect(mock).toBeCalledTimes(1);
 
-    instance.kill();
+    instance.destroy();
     expect(mock).toBeCalledTimes(2);
   })
 })
