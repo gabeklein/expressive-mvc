@@ -5,12 +5,16 @@ import { defineProperty } from './object';
 import { Subscriber } from './subscriber';
 
 import type { Callback, Class, InstanceOf } from './types';
+
 export const Oops = issues({
   Timeout: (keys, timeout) => 
-    `No update for [${keys}] within ${timeout}.`,
+    `No update seen for [${keys}] within ${timeout}.`,
+
+  KeysExpected: (key) =>
+    `Key "${key}" was expected in current update.`,
 
   StrictUpdate: () => 
-    `Strict update() did not find pending updates.`,
+    `Expected update but none in progress.`,
 
   StrictNoUpdate: () =>
     `Update is not expected but one is in progress!`,
@@ -93,8 +97,6 @@ class Model {
     defineProperty(this, "is", { value: this });
   }
 
-  on (expect: []): Promise<[]>;
-
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
   on <P extends Model.Event<this>> (key: P, listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
 
@@ -105,39 +107,44 @@ class Model {
   on (effect: Model.Effect<this>, watch?: []): Callback;
   on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
+  on (expect?: undefined, timeout?: number): Promise<Model.Event<this>>;
+  on (currentUpdate: boolean): Promise<Model.Event<this>>;
+  on (expect: []): Promise<[]>;
+
   on <P extends Model.Event<this>> (
-    arg1: P | P[] | Model.Effect<this>,
-    arg2?: Function | true | number | P[],
+    arg1?: boolean | P | P[] | Model.Effect<this>,
+    arg2?: number | P[] | Function,
     arg3?: boolean){
 
     if(typeof arg1 == "function")
       return createEffect(this.is, arg1, arg2 as P[]);
 
-    
-
     const single = typeof arg1 == "string";
-    let keys = single ? [ arg1 ] : arg1;
+    const keys =
+      typeof arg1 == "string" ? [ arg1 ] :
+      typeof arg1 == "object" ? arg1 : 
+      undefined;
 
     if(typeof arg2 == "function")
       return Control.for(this, control => {
-        if(!keys.length)
+        if(!keys || !keys.length)
           return;
 
         for(const key of keys)
           try { void (this as any)[key] }
           catch(e){}
 
-        const callback = single
-          ? () => { arg2.call(this, control.state.get(arg1), arg1) }
-          : () => { arg2.call(this, control.latest!) }
+        const invoke = single
+          ? () => arg2.call(this, control.state.get(arg1), arg1)
+          : () => arg2.call(this, control.latest!);
 
         const onEvent = arg3
           ? () => {
             removeListener();
-            callback();
+            invoke();
           }
-          : callback;
-
+          : invoke;
+    
         const removeListener =
           control.addListener(key => {
             if(keys.includes(key as P))
@@ -148,22 +155,43 @@ class Model {
       });
 
     return new Promise<any>((resolve, reject) => {
-      const removeListener = Control.for(this, control => {
-        if(!keys.length)
-          return control.frame.size
-            ? reject(Oops.StrictNoUpdate())
-            : resolve([]);
+      const timeout = (message: string) => {
+        const k = typeof keys === "object"
+          ? keys.join(", ")
+          : "any";
 
-        for(const key of keys)
-          try { void (this as any)[key] }
-          catch(e){}
+        removeListener();
+        reject(Oops.Timeout(k, message));
+      }
+
+      const removeListener = Control.for(this, control => {
+        const pending = control.frame;
+
+        if(keys){
+          if(!keys.length)
+            return pending.size
+              ? reject(Oops.StrictNoUpdate())
+              : resolve([]);
+
+          if(arg2 === 0 && single && !pending.has(keys[0])){
+            reject(Oops.KeysExpected(keys[0]));
+            return;
+          }
+          else for(const key of keys)
+            try { void (this as any)[key] }
+            catch(e){}
+        }
+        else if(!pending.size && arg1 === true){
+          reject(Oops.StrictUpdate());
+          return
+        }
+        else
+          control.waiting.add(resolve);
 
         return control.addListener(key => {
-          if(!key){
-            removeListener();
-            reject(Oops.Timeout(arg1, `lifetime of ${this}`));
-          }
-          else if(keys.includes(key as P)){
+          if(!key)
+            timeout(`lifetime of ${this}`);
+          else if(!keys || keys.includes(key as P)){
             removeListener();
             return keys =>
               resolve(single ? control.state.get(key) : keys)
@@ -171,11 +199,8 @@ class Model {
         });
       })
 
-      if(typeof arg2 == "number")
-        setTimeout(() => {
-          removeListener();
-          reject(Oops.Timeout(arg1, `${arg2}ms`));
-        }, arg2);
+      if(arg2 && typeof arg2 == "number")
+        setTimeout(() => timeout(`${arg2}ms`), arg2);
     });
   }
 

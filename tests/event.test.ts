@@ -141,7 +141,7 @@ describe("on promise", () => {
     await expect(pending).resolves.toBe(30);
   })
 
-  it('will return with updated updates', async () => {
+  it('will return with updated keys', async () => {
     const state = Subject.new();
     const pending = state.on(["seconds"]);
 
@@ -150,10 +150,42 @@ describe("on promise", () => {
     await expect(pending).resolves.toEqual(["seconds"]);
   })
 
-  it('will reject on timeout', async () => {
+  it('will reject on required update', async () => {
+    const state = Subject.new();
+    const promise = state.on(true);
+    const expected = Oops.StrictUpdate();
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will reject on required key', async () => {
     const state = Subject.new();
     const promise = state.on("seconds", 0);
-    const expected = Oops.Timeout(["seconds"], "0ms");
+    const expected = Oops.KeysExpected("seconds");
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will reject on timeout', async () => {
+    const state = Subject.new();
+    const promise = state.on("seconds", 1);
+    const expected = Oops.Timeout("seconds", "1ms");
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will reject multiple keys on timeout', async () => {
+    const state = Subject.new();
+    const promise = state.on(["seconds", "minutes"], 1);
+    const expected = Oops.Timeout("seconds, minutes", "1ms");
+
+    await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will reject no keys on timeout', async () => {
+    const state = Subject.new();
+    const promise = state.on(undefined, 1);
+    const expected = Oops.Timeout("any", "1ms");
 
     await expect(promise).rejects.toThrow(expected);
   })
@@ -166,6 +198,17 @@ describe("on promise", () => {
     state.kill();
 
     await expect(promise).rejects.toThrow(expected);
+  })
+
+  it('will resolve any updated expected', async () => {
+    const state = Subject.new();
+
+    state.seconds = 61;
+
+    const update = await state.on(true);
+
+    // should this also expect minutes?
+    expect(update).toEqual(["seconds"]);
   })
 
   it('will resolve immediately if empty', async () => {
