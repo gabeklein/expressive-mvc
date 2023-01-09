@@ -82,6 +82,7 @@ describe("on multiple", () => {
 
     expect(callback).not.toBeCalled();
   })
+
   it('will watch multiple keys', async () => {
     const state = Subject.new();
     const callback = jest.fn();
@@ -182,53 +183,6 @@ describe("on promise", () => {
     const promise = state.on([]);
 
     expect(promise).rejects.toThrow(Oops.StrictNoUpdate());
-  })
-})
-
-describe.skip("on callback", () => {
-  it('will call immediately in raw event mode', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on(key => callback(key));
-
-    state.seconds = 30;
-
-    expect(callback).toBeCalledWith("seconds");
-  })
-
-  it('will call request for raw event', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on(key => () => callback(key));
-
-    state.seconds = 30;
-
-    expect(callback).not.toBeCalledWith("seconds")
-
-    await state.update();
-
-    expect(callback).toBeCalledWith("seconds")
-  })
-
-  it('will call for computed as raw event', async () => {
-    const state = Subject.new();
-    const onImmediate = jest.fn();
-    const onFrame = jest.fn();
-
-    state.on(key => {
-      onImmediate(key);
-      return () => onFrame(key);
-    });
-
-    void state.minutes;
-    state.seconds = 60;
-
-    await state.update();
-
-    expect(onImmediate).toBeCalledWith("minutes");
-    expect(onFrame).toBeCalledWith("minutes");
   })
 })
 
