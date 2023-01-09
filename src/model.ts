@@ -107,7 +107,7 @@ class Model {
   on (effect: Model.Effect<this>, watch?: []): Callback;
   on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
-  on (key?: undefined, timeout?: number): Promise<Model.Event<this>>;
+  on (key?: undefined, timeout?: number): Promise<Model.Event<this>[]>;
   on (current?: boolean): Promise<Model.Event<this>[] | null>;
   on (current: true): Promise<Model.Event<this>[]>;
   on (current: null): Promise<null>;
