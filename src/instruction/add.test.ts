@@ -141,12 +141,12 @@ describe("custom", () => {
     test.property = "test";
     expect(didSetValue).toBeCalledWith("test");
     expect(test.property).toBe("test");
-    await test.update(true);
+    await test.on(true);
 
     test.property = "ignore";
     expect(didSetValue).toBeCalledWith("ignore");
     expect(test.property).toBe("test");
-    await test.update(false);
+    await test.on(null);
   })
 
   it("will delegate value if returns boolean", async () => {
@@ -170,11 +170,11 @@ describe("custom", () => {
 
     instance.property = 10;
     expect(instance.property).toBe(20);
-    await instance.update(true);
+    await instance.on(true);
 
     shouldUpdate = false;
     instance.property = 0;
     expect(instance.property).toBe(10);
-    await instance.update(false);
+    await instance.on(null);
   })
 })

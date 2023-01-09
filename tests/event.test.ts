@@ -18,7 +18,7 @@ describe("on single", () => {
     state.on("seconds", callback);
 
     state.seconds = 30;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(30, "seconds");
   })
@@ -30,7 +30,7 @@ describe("on single", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(1, "minutes");
   })
@@ -42,7 +42,7 @@ describe("on single", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(1, "minutes");
   })
@@ -54,12 +54,12 @@ describe("on single", () => {
     state.on("seconds", callback, true);
 
     state.seconds = 30;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(30, "seconds");
 
     state.seconds = 45;
-    await state.update();
+    await state.on();
 
     expect(callback).not.toBeCalledWith(45, "seconds");
   })
@@ -73,13 +73,13 @@ describe("on multiple", () => {
     state.on(["seconds", "hours"], callback);
 
     state.seconds = 30;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledTimes(1);
     expect(callback).toBeCalledWith(["seconds"]);
 
     state.hours = 2;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(["hours"]);
   })
@@ -91,12 +91,12 @@ describe("on multiple", () => {
     state.on(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledWith(["seconds", "minutes"]);
 
     state.seconds = 61;
-    await state.update();
+    await state.on();
 
     expect(callback).toBeCalledTimes(1);
   })
@@ -108,7 +108,7 @@ describe("on multiple", () => {
     state.on([], callback);
 
     state.seconds = 30;
-    await state.update();
+    await state.on();
 
     expect(callback).not.toBeCalled();
 
@@ -262,7 +262,7 @@ describe("before ready", () => {
     const state = Test.new();
 
     state.value1++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
   })
@@ -279,7 +279,7 @@ describe("before ready", () => {
     const state = Test.new();
 
     state.value2++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
   })
@@ -296,17 +296,17 @@ describe("before ready", () => {
     const test = Test.new();
 
     test.value++;
-    await test.update(true);
+    await test.on(true);
     expect(mock).toBeCalledTimes(1);
 
     test.value++;
-    await test.update(true);
+    await test.on(true);
     expect(mock).toBeCalledTimes(2);
 
     test.done();
 
     test.value++;
-    await test.update(true);
+    await test.on(true);
     expect(mock).toBeCalledTimes(2);
   })
 });

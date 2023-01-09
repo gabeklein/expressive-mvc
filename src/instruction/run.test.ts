@@ -46,13 +46,13 @@ it("will emit method key before/after activity", async () => {
   expect(test.active).toBe(false);
 
   const result = test("foobar");
-  update = await is.update(true);
+  update = await is.on(true);
 
   expect(test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
-  update = await is.update(true);
+  update = await is.on(true);
 
   expect(test.active).toBe(false);
   expect(update).toContain("test");
@@ -74,7 +74,7 @@ it("will throw and reset if action fails", async () => {
 
   const result = nope();
 
-  await test.update(true);
+  await test.on(true);
   expect(nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
@@ -103,12 +103,12 @@ it("will internally retry on suspense", async () => {
   const value = test.getValue();
 
   expect(didInvoke).toBeCalled();
-  await test.update(true);
+  await test.on(true);
 
   test.value = "foobar";
 
   await expect(value).resolves.toBe("foobar");
-  await test.update(true);
+  await test.on(true);
 
   expect(didInvoke).toBeCalledTimes(2);
 })

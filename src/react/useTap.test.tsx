@@ -189,7 +189,7 @@ describe("computed values", () => {
     instance.random = 1;
 
     // update to value is expected
-    const pending = await instance.update(true);
+    const pending = await instance.on(true);
     expect(pending).toContain("random");
 
     // value will still be undefined
@@ -223,7 +223,7 @@ describe("computed values", () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.update();
+    await test.on();
 
     expect(mock).toBeCalledWith("foobar");
   })

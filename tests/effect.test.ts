@@ -25,13 +25,13 @@ describe("explicit", () => {
     state.value1 = 2;
 
     // wait for update event, thus queue flushed
-    await state.update()
+    await state.on()
 
     state.value2 = 3;
     state.value3 = 4;
 
     // wait for update event to flush queue
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(3)
@@ -46,7 +46,7 @@ describe("explicit", () => {
     state.value1 = 2;
     state.value2 = 3;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -60,7 +60,7 @@ describe("explicit", () => {
 
     state.value3 = 4;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -83,7 +83,7 @@ describe("explicit", () => {
     expect(mock).not.toBeCalled();
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
   })
@@ -100,12 +100,12 @@ describe("explicit", () => {
     const state = Test.new();
 
     state.value1++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
 
     state.value3++;
-    await state.update();
+    await state.on();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
@@ -168,14 +168,14 @@ describe("implicit", () => {
     });
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     state.value2 = 3;
-    await state.update();
+    await state.on();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.update();
+    await state.on();
 
     /**
      * must invoke once to detect subscription
@@ -203,14 +203,14 @@ describe("implicit", () => {
     state.on(testEffect);
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     state.value2 = 3;
-    await state.update();
+    await state.on();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(4);
   })
@@ -228,7 +228,7 @@ describe("implicit", () => {
     state.value1 = 2;
     state.value2 = 3;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -246,7 +246,7 @@ describe("implicit", () => {
 
     state.value3 = 4;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -273,12 +273,12 @@ describe("implicit", () => {
     expect(mock).toBeCalled();
 
     state.value1++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(2);
 
     state.value3++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(3);
   })
@@ -325,7 +325,7 @@ describe("suspense", () => {
 
     test.value = "foobar";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foobar");
   })
 
@@ -341,12 +341,12 @@ describe("suspense", () => {
 
     test.value = "foo";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foo");
 
     test.value = "bar";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("bar");
     expect(didTry).toBeCalledTimes(3);
   })
@@ -365,12 +365,12 @@ describe("suspense", () => {
 
     test.other = "bar";
 
-    await test.update();
+    await test.on();
     expect(didTry).toBeCalledTimes(1);
 
     test.value = "foo";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foo");
     expect(didTry).toBeCalledTimes(2);
   })

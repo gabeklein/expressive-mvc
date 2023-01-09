@@ -14,10 +14,10 @@ describe("assertion", () => {
     const control = Control.new();
 
     control.foo = 2;
-    await control.update();
+    await control.on();
 
     control.bar = 3;
-    await control.update();
+    await control.on();
   })
 
   it("resolves to keys next update", async () => {
@@ -25,15 +25,15 @@ describe("assertion", () => {
 
     control.foo = 2;
 
-    const updated = await control.update();
+    const updated = await control.on();
     expect(updated).toMatchObject(["foo"]);
   })
 
   it('resolves immediately when no updates pending', async () => {
     const control = Control.new();
-    const update = await control.update(false);
+    const update = await control.on(null);
 
-    expect(update).toBe(false);
+    expect(update).toBe(null);
   })
 
   it('rejects if no update pending in strict mode', async () => {
@@ -52,7 +52,7 @@ describe("assertion", () => {
 
     control.bar = 3;
 
-    const update = await control.update();
+    const update = await control.on();
 
     expect(update).toMatchObject(["bar", "baz"]);
   })
@@ -73,7 +73,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.update("foo");
 
-    const update = await test.update(true);
+    const update = await test.on(true);
     expect(update).toContain("foo");
   })
 
@@ -83,7 +83,7 @@ describe("dispatch", () => {
     test.foo = "bar";
     test.update("foo");
 
-    const update = await test.update(true);
+    const update = await test.on(true);
     expect(update).toContain("foo");
   })
 
@@ -91,7 +91,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.update("foobar");
 
-    const update = await test.update(true);
+    const update = await test.on(true);
     expect(update).toContain("foobar");
   })
 

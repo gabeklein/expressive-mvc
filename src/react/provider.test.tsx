@@ -81,7 +81,7 @@ it("will refresh render function as a subscriber", async () => {
 
   await act(async () => {
     test.value = "foobar";
-    await test.update(true);
+    await test.on(true);
   })
 
   expect(didRender).toBeCalledWith("foobar");

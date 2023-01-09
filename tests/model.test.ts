@@ -31,7 +31,7 @@ it('will assign is as a circular reference', async () => {
   expect(state.is.value).toBe(1);
 
   state.value = 2;
-  await state.update(true);
+  await state.on(true);
 
   expect(state.is.value).toBe(2)
 })
@@ -57,7 +57,7 @@ it('will update when a value changes', async () => {
   expect(state.value).toBe(1);
 
   state.value = 2
-  await state.update(true);
+  await state.on(true);
 
   expect(state.value).toBe(2);
 })
@@ -68,7 +68,7 @@ it('will not update if value is same', async () => {
   expect(state.value).toBe(1);
 
   state.value = 1
-  await state.update(false);
+  await state.on(null);
 })
 
 it('accepts update from within a method', async () => {
@@ -83,7 +83,7 @@ it('accepts update from within a method', async () => {
   const state = Subject.new();
 
   state.setValue(3);
-  await state.update(true);
+  await state.on(true);
 
   expect(state.value).toBe(3)
 })

@@ -25,16 +25,16 @@ it('will reevaluate when inputs change', async () => {
 
   state.seconds = 30;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(state.seconds).toEqual(30);
   expect(state.minutes).toEqual(0);
 
-  await state.update(false);
+  await state.on(null);
 
   state.seconds = 60;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(state.seconds).toEqual(60);
   expect(state.minutes).toEqual(1);
@@ -46,12 +46,12 @@ it('will trigger when nested inputs change', async () => {
   expect(state.nested).toBe("foo");
 
   state.child.value = "bar";
-  await state.update(true);
+  await state.on(true);
 
   expect(state.nested).toBe("bar");
 
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
 
   // sanity check
   expect(state.child.value).toBe("foo");
@@ -127,7 +127,7 @@ it('will be squashed with regular updates', async () => {
   state.b++;
   state.x.value++;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(exec).toBeCalledTimes(2);
   expect(emit).toBeCalledTimes(1);
@@ -177,7 +177,7 @@ it("will be evaluated in order", async () => {
 
   // change value of X, will trigger A & C;
   test.X = 2;
-  const updated = await test.update(true);
+  const updated = await test.on(true);
 
   // should evaluate by prioritiy
   expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -200,7 +200,7 @@ it("will create a computed from method", async () => {
   expect(test.greeting).toBe("Hello World!");
 
   test.friend = "Foo";
-  await test.update(true);
+  await test.on(true);
 
   expect(test.greeting).toBe("Hello Foo!");
 })
@@ -242,7 +242,7 @@ describe("failures", () => {
     state.on("value");
     state.shouldFail = true;
 
-    await state.update(true);
+    await state.on(true);
 
     expect(warn).toBeCalledWith(failed.message);
     expect(error).toBeCalled();
@@ -296,7 +296,7 @@ describe("circular", () => {
 
     // change upstream value to trigger re-compute
     test.multiplier = 1;
-    await test.update(true);
+    await test.on(true);
 
     // getter should see current value while producing new one
     expect(test.previous).toBe(initial);
@@ -321,7 +321,7 @@ describe("method", () => {
 
     test.foo++;
 
-    await test.update(true);
+    await test.on(true);
     expect(test.bar).toBe(3);
   })
 
@@ -384,7 +384,7 @@ describe("external", () => {
 
     peer.value = 2;
 
-    await test.update(true);
+    await test.on(true);
 
     expect(test.value).toBe(3);
   });

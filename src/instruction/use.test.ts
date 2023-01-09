@@ -25,7 +25,7 @@ it('will track recursively', async () => {
   state.on(mock);
 
   state.value = "bar";
-  await state.update(true);
+  await state.on(true);
   expect(mock).toHaveBeenCalledTimes(2)
 
   state.child.value = "bar";
@@ -162,7 +162,7 @@ it('will throw rejection on access', async () => {
 
   const parent = Parent.new();
 
-  await parent.update();
+  await parent.on();
 
   const test = () => void parent.child;
 
@@ -175,7 +175,7 @@ it('will create from async factory', async () => {
   }
 
   const parent = Parent.new();
-  await parent.update();
+  await parent.on();
 
   expect(parent.child).toBeInstanceOf(Child);
   
@@ -195,7 +195,7 @@ it('will suspend if required', async () => {
 
   parent.on(mock);
 
-  await parent.update();
+  await parent.on();
   expect(parent.child).toBeInstanceOf(Child);
   
   parent.child.value = "foobar";
@@ -212,7 +212,7 @@ it('will return undefined if not required', async () => {
 
   expect(parent.child).toBeUndefined();
 
-  await parent.update();
+  await parent.on();
   expect(parent.child).toBeInstanceOf(Child);
 });
 
@@ -232,7 +232,7 @@ it('will wait for dependancies on suspense', async () => {
 
   parent.value = "foo";
 
-  await parent.update();
+  await parent.on();
   expect(tryCreateChild).toBeCalledTimes(2);
 });
 
@@ -265,7 +265,7 @@ it('will update on new value', async () => {
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
   expect(state.child.value).toBe("foo");
   expect(mock).toBeCalledTimes(3);
 
@@ -293,7 +293,7 @@ it('will reset if value is undefined', async () => {
   state.on(mock);
 
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
   expect(mock).toBeCalledTimes(2)
 
   // Will refresh on sub-value change.
@@ -303,13 +303,13 @@ it('will reset if value is undefined', async () => {
 
   // Will refresh on undefined.
   state.child = undefined;
-  await state.update(true);
+  await state.on(true);
   expect(state.child).toBeUndefined();
   expect(mock).toBeCalledTimes(4);
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
   expect(mock).toBeCalledTimes(5);
 
   // New subscription still works.
@@ -337,7 +337,7 @@ it('will still subscribe if initially undefined', async () => {
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
   expect(mock).toBeCalledTimes(2)
 
   // New subscription does work.
@@ -347,7 +347,7 @@ it('will still subscribe if initially undefined', async () => {
 
   // Will refresh on deletion.
   state.child = undefined;
-  await state.update(true);
+  await state.on(true);
   expect(mock).toBeCalledTimes(4)
 })
 

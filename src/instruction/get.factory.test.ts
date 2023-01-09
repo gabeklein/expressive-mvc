@@ -126,10 +126,10 @@ it("will suspend another factory", async () => {
   test.on($ => void $.value);
 
   greet.resolve("Hello");
-  await test.update();
+  await test.on();
 
   name.resolve("World");
-  await test.update();
+  await test.on();
 
   expect(didEvaluate).toBeCalledTimes(3);
   expect(didEvaluate).toHaveReturnedWith("Hello World");
@@ -156,10 +156,10 @@ it("will suspend another factory (async)", async () => {
   test.on($ => void $.value);
 
   greet.resolve("Hello");
-  await test.update();
+  await test.on();
 
   name.resolve("World");
-  await test.update();
+  await test.on();
 
   expect(didEvaluate).toBeCalledTimes(3);
   expect(test.value).toBe("Hello World");

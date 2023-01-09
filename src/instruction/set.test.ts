@@ -59,7 +59,7 @@ describe("callback", () => {
     state.test = 1;
     expect(callback).toBeCalledWith(2);
 
-    await state.update(true)
+    await state.on(true)
     expect(event).toBeCalledWith(1, "test");
   })
 
@@ -77,11 +77,11 @@ describe("callback", () => {
 
     state.test = 1;
 
-    await state.update(true);
+    await state.on(true);
     expect(callback).not.toBeCalled();
     state.test = 2;
 
-    await state.update(true);
+    await state.on(true);
     expect(callback).toBeCalledWith(true);
   })
 
@@ -98,7 +98,7 @@ describe("callback", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update();
+    await state.on();
     expect(callback).toBeCalledWith("bar");
   })
 
@@ -140,7 +140,7 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update(false);
+    await state.on(null);
     expect(callback).toBeCalledWith("bar");
     expect(state.test).toBe("foo");
   })
@@ -155,7 +155,7 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update(true);
+    await state.on(true);
     expect(state.test).toBe("foo");
   })
 })

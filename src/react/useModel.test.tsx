@@ -85,7 +85,7 @@ describe("subscription", () => {
     expect(didRender).toBeCalledTimes(2);
     expect(didRender).toBeCalledWith("bar");
 
-    await test.update();
+    await test.on();
 
     expect(didRender).toBeCalledTimes(2);
   })

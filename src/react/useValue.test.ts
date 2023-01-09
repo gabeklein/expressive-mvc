@@ -56,7 +56,7 @@ it('will ignore updates with same result', async () => {
   expect(compute).toBeCalled();
 
   parent.foo = 2;
-  await parent.update();
+  await parent.on();
 
   // did attempt a second compute
   expect(compute).toBeCalledTimes(2);
