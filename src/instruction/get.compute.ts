@@ -11,9 +11,9 @@ export const Oops = issues({
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
-const INFO = new WeakMap<Function, string>();
+const INFO = new WeakMap<Callback, string>();
 const KEYS = new WeakMap<Control, Set<Callback>>();
-const ORDER = new WeakMap<Control, Callback[]>();
+const ORDER = new WeakMap<Control, Map<Callback, number>>();
 
 export function computeMode(
   self: Control,
@@ -29,7 +29,7 @@ export function computeMode(
   let pending = KEYS.get(self)!
 
   if(!order)
-    ORDER.set(self, order = []);
+    ORDER.set(self, order = new Map());
 
   if(!pending)
     KEYS.set(self, pending = new Set());
@@ -80,7 +80,7 @@ export function computeMode(
     }
     finally {
       sub.commit();
-      order.push(refresh);
+      order.set(refresh, order.size);
     }
   }
 
@@ -107,11 +107,14 @@ export function flush(control: Control){
   if(!pending || !pending.size)
     return;
 
-  const list = ORDER.get(control)!;
+  const priority = ORDER.get(control)!;
 
   while(pending.size){
-    const [ compute ] = Array.from(pending)
-      .sort((a, b) => list.indexOf(a) - list.indexOf(b));
+    let compute!: Callback;
+
+    for(const item of pending)
+      if(!compute || priority.get(item)! < priority.get(compute)!)
+        compute = item;
 
     pending.delete(compute);
 
