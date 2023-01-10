@@ -12,7 +12,7 @@ export const Oops = issues({
 });
 
 const INFO = new WeakMap<Function, string>();
-const KEYS = new WeakMap<Control, Callback[]>();
+const KEYS = new WeakMap<Control, Set<Callback>>();
 const ORDER = new WeakMap<Control, Callback[]>();
 
 export function computeMode(
@@ -26,9 +26,13 @@ export function computeMode(
 
   let sub: Subscriber;
   let order = ORDER.get(self)!;
+  let pending = KEYS.get(self)!
 
   if(!order)
     ORDER.set(self, order = []);
+
+  if(!pending)
+    KEYS.set(self, pending = new Set());
 
   const compute = (initial: boolean) => {
     try {
@@ -58,22 +62,13 @@ export function computeMode(
     }
   }
 
-  const update = (_key: any, source: Control) => {
-    if(source !== self){
-      refresh();
-      return;
-    }
-
-    let pending = KEYS.get(self);
-
-    if(!pending)
-      KEYS.set(self, pending = []);
-
-    pending.push(refresh);
-  }
-
   const create = () => {
-    sub = source.subscribe(update);
+    sub = source.subscribe((_, source) => {
+      if(source !== self)
+        refresh();
+      else
+        pending.add(refresh);
+    });
 
     try {
       const value = compute(true);
@@ -104,15 +99,16 @@ export function computeMode(
 export function flush(control: Control){
   const pending = KEYS.get(control);
 
-  if(!pending)
+  if(!pending || !pending.size)
     return;
 
   const list = ORDER.get(control)!;
 
-  while(pending.length){
-    const compute = pending
-      .sort((a, b) => list.indexOf(b) - list.indexOf(a))
-      .pop()!
+  while(pending.size){
+    const [ compute ] = Array.from(pending)
+      .sort((a, b) => list.indexOf(a) - list.indexOf(b));
+
+    pending.delete(compute);
 
     const key = INFO.get(compute)!;
 
@@ -120,5 +116,5 @@ export function flush(control: Control){
       compute();
   }
 
-  KEYS.delete(control);
+  pending.clear();
 }
