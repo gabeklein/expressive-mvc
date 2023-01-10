@@ -87,6 +87,11 @@ export function computeMode(
   INFO.set(refresh, key);
 
   return () => {
+    if(pending.has(refresh)){
+      pending.delete(refresh)
+      refresh();
+    }
+
     const value = sub ? state.get(key) : create();
 
     if(value === undefined && required)

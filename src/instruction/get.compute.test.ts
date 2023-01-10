@@ -1,4 +1,4 @@
-import { Model } from '..';
+import { Model } from '../model';
 import { mockConsole } from '../../tests/adapter';
 import { get, Oops as Compute } from './get';
 import { use } from './use';
@@ -19,6 +19,46 @@ class Subject extends Model {
     return state.child.value;
   })
 }
+
+it("will compute early if value is accessed", async () => {
+  class Test extends Model {
+    number = 0;
+    plusOne = get(this, state => {
+      const value = state.number + 1;
+      didCompute(value);
+      return value;
+    });
+  }
+
+  const didCompute = jest.fn();
+  const test = Test.new();
+
+  expect(test.plusOne).toBe(1);
+
+  test.number++;
+
+  // not accessed; compute will wait for frame
+  expect(didCompute).not.toBeCalledWith(2)
+
+  // does compute eventually
+  await test.on(true);
+  expect(didCompute).toBeCalledWith(2)
+  expect(test.plusOne).toBe(2);
+
+  test.number++;
+
+  // sanity check
+  expect(didCompute).not.toBeCalledWith(3);
+
+  // accessing value now will force compute
+  expect(test.plusOne).toBe(3);
+  expect(didCompute).toBeCalledWith(3);
+
+  // update should still occur
+  await test.on(true);
+})
+
+it.todo("will add pending compute to frame immediately");
 
 it('will reevaluate when inputs change', async () => {
   const state = Subject.new();
