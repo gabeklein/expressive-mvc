@@ -32,8 +32,6 @@ declare namespace Model {
 
   export type Type<T extends Model = Model> = typeof Model & (new () => T);
 
-  export type OnUpdate<T, P> = (this: T, value: ValueOf<keyof T, P>, changed: P) => void;
-
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
   /** Exotic value, actual value is contained. */
@@ -98,7 +96,8 @@ class Model {
   }
 
   on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
-  on <P extends Model.Event<this>> (key: P, listener: Model.OnUpdate<this, P>, once?: boolean): Callback;
+  on <P extends Model.Field<this>> (key: P, listener: (this: this, value: this[P], key: P) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (key: P, listener: (this: this, value: undefined, key: P) => void, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
   on <P extends Model.Event<this>> (keys: P[], listener: (keys: P[]) => void, once?: boolean): Callback;
