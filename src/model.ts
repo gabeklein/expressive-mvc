@@ -1,5 +1,6 @@
 import { Control } from './control';
 import { createEffect } from './effect';
+import { addEventListener } from './event';
 import { issues } from './issues';
 import { defineProperty } from './object';
 import { Subscriber } from './subscriber';
@@ -7,18 +8,6 @@ import { Subscriber } from './subscriber';
 import type { Callback, Class, InstanceOf } from './types';
 
 export const Oops = issues({
-  Timeout: (keys, timeout) => 
-    `No update seen for [${keys}] within ${timeout}.`,
-
-  KeysExpected: (key) =>
-    `Key "${key}" was expected in current update.`,
-
-  StrictUpdate: () => 
-    `Expected update but none in progress.`,
-
-  StrictNoUpdate: () =>
-    `Update is not expected but one is in progress!`,
-
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`
 });
@@ -119,94 +108,7 @@ class Model {
     if(typeof arg1 == "function")
       return createEffect(this.is, arg1, arg2 as P[]);
 
-    const single = typeof arg1 == "string";
-    const keys =
-      typeof arg1 == "string" ? [ arg1 ] :
-      typeof arg1 == "object" ? arg1 : 
-      undefined;
-
-    if(typeof arg2 == "function" && keys)
-      return Control.for(this, control => {
-        for(const key of keys)
-          try { void (this as any)[key] }
-          catch(e){}
-
-        const invoke: Control.OnAsync = single
-          ? () => arg2.call(this, control.state.get(arg1), arg1)
-          : (frame) => arg2.call(this, frame);
-    
-        const removeListener =
-          control.addListener(key => {
-            if(!key && !keys.length)
-              invoke([]);
-              
-            if(keys.includes(key as P)){
-              if(arg3)
-                removeListener();
-
-              return invoke;
-            }
-          });
-
-        return removeListener;
-      });
-
-    return new Promise<any>((resolve, reject) => {
-      const timeout = (message: string) => {
-        const k = keys ? keys.join(", ") : "any";
-
-        removeListener();
-        reject(Oops.Timeout(k, message));
-      }
-
-      const removeListener = Control.for(this, control => {
-        const pending = control.frame;
-
-        if(keys === null){
-          if(pending.size)
-            reject(Oops.StrictNoUpdate())
-          else
-            resolve(null);
-
-          return;
-        }
-
-        if(keys){
-          if(keys.length){
-            if(arg2 === 0 && single && !pending.has(keys[0])){
-              reject(Oops.KeysExpected(keys[0]));
-              return;
-            }
-            else for(const key of keys)
-              try { void (this as any)[key] }
-              catch(e){}
-          }
-        }
-        else if(!pending.size && arg1 === true || arg2 === 0){
-          reject(Oops.StrictUpdate());
-          return;
-        }
-        else
-          control.waiting.add(resolve);
-
-        return control.addListener(key => {
-          if(!key){
-            if(keys && !keys.length)
-              resolve([]);
-            else
-              timeout(`lifetime of ${this}`);
-          }
-          else if(!keys || keys.includes(key as P)){
-            removeListener();
-            return keys =>
-              resolve(single ? control.state.get(key) : keys)
-          }
-        });
-      })
-
-      if(arg2 && typeof arg2 == "number")
-        setTimeout(() => timeout(`${arg2}ms`), arg2);
-    });
+    return addEventListener(this.is, arg1, arg2, arg3);
   }
 
   export(): Model.Values<this>;
