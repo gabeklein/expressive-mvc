@@ -70,6 +70,8 @@ export function computeMode(
         pending.add(refresh);
     });
 
+    sub.watch.set(key, false);
+
     try {
       const value = compute(true);
       state.set(key, value);
