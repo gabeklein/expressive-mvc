@@ -342,6 +342,43 @@ describe("circular", () => {
     expect(test.previous).toBe(initial);
     expect(test.value).not.toBe(initial);
   })
+
+  it("will not trigger itself", async () => {
+    class Test extends Model {
+      input = 1;
+      value = get(() => this.computeValue);
+  
+      computeValue(){
+        const { input, value } = this;
+  
+        didGetOldValue(value);
+  
+        return input + 1;
+      }
+    }
+  
+    const didGetOldValue = jest.fn();
+    const didGetNewValue = jest.fn();
+  
+    const test = Test.new();
+  
+    test.on(state => {
+      didGetNewValue(state.value);
+    })
+  
+    expect(test.value).toBe(2);
+    expect(didGetNewValue).toBeCalledWith(2);
+    expect(didGetOldValue).toBeCalledWith(undefined);
+  
+    test.input = 2;
+  
+    expect(test.value).toBe(3);
+    expect(didGetOldValue).toBeCalledWith(2);
+  
+    await test.on(true);
+    expect(didGetNewValue).toBeCalledWith(3);
+    expect(didGetOldValue).toBeCalledTimes(2);
+  })
 })
 
 describe("method", () => {
