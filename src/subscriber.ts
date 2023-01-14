@@ -46,7 +46,7 @@ class Subscriber <T extends {} = any> {
     })
   }
 
-  get using(): Model.Values<T>[] {
+  get using(): Model.Field<T>[] {
     return Array.from(this.watch.keys());
   }
 
