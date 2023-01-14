@@ -117,13 +117,14 @@ class Model {
   export(): Model.Export<this>;
   export <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
 
-  export <P extends Model.Field<this>> (subset?: Iterable<P>){
-    const { state } = Control.for(this);
-    const output = {} as Model.Values<this, P>;
-    const keys = subset || state.keys();
+  export <P extends Model.Field<this>> (
+    subset?: Iterable<P>): Model.Values<this, P> {
 
-    for(const key of keys)
-      (output as any)[key] = state.get(key);
+    const { state } = Control.for(this);
+    const output = {} as any;
+
+    for(const key of subset || state.keys())
+      output[key] = state.get(key);
 
     return output;
   }
@@ -141,13 +142,14 @@ class Model {
 
     const control = Control.for(this);
 
-    if(typeof arg1 == "object"){
-      for(const key in arg1)
+    if(typeof arg1 == "object")
+      for(const key in arg1){
         if(arg2 === true || (arg2 ? arg2.includes(key) : control.state.has(key))){
           control.state.set(key, (arg1 as any)[key]);
           control.update(key as any);
         }
-    }
+      }
+
     else if(typeof arg1 == "string"){
       control.update(arg1 as Model.Field<this>);
 
@@ -190,9 +192,7 @@ class Model {
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
-
     Control.for(instance);
-
     return instance;
   }
 
