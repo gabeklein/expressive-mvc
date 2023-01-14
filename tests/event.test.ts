@@ -11,6 +11,63 @@ class Subject extends Model {
   })
 }
 
+describe("assert", () => {
+  class Control extends Model {
+    foo = 1;
+    bar = 2;
+    baz = get(this, state => {
+      return state.bar + 1;
+    });
+  }
+
+  it("will provide promise resolving on next update", async () => {
+    const control = Control.new();
+
+    control.foo = 2;
+    await control.on();
+
+    control.bar = 3;
+    await control.on();
+  })
+
+  it("will resolve to keys next update", async () => {
+    const control = Control.new();
+
+    control.foo = 2;
+
+    const updated = await control.on();
+    expect(updated).toMatchObject(["foo"]);
+  })
+
+  it('will resolve immediately when no updates pending', async () => {
+    const control = Control.new();
+    const update = await control.on(null);
+
+    expect(update).toBe(null);
+  })
+
+  it('will reject if no update pending in strict mode', async () => {
+    const control = Control.new();
+    const update = control.on(true);
+
+    await expect(update).rejects.toThrowError();
+  })
+
+  it("will include getters in batch which trigger them", async () => {
+    const control = Control.new();
+
+    // we must evaluate baz because it can't be
+    // subscribed to without this happening atleast once. 
+    expect(control.baz).toBe(3);
+
+    control.bar = 3;
+
+    const update = await control.on();
+
+    expect(update).toMatchObject(["bar", "baz"]);
+  })
+})
+
 describe("on single", () => {
   it('will watch for specified value', async () => {
     const state = Subject.new();
