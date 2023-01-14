@@ -1,4 +1,5 @@
 import { Control } from './control';
+import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener } from './event';
 import { issues } from './issues';
@@ -44,7 +45,7 @@ declare namespace Model {
    * 
    * TODO: Should exclude methods
    **/
-  export type Field<T, U extends Model = Model> = Exclude<keyof T & string, keyof U>;
+  export type Field<T, U extends Model = Model> = Exclude<keyof T, keyof U | keyof Debug<{}>> & string;
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
