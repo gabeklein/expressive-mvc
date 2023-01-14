@@ -20,9 +20,9 @@ declare namespace Provider {
 
   type Multiple<T extends Item = Item> = T[] | { [key: string]: T };
 
-  type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
+  type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
-  type NormalProps<E, I = Existent<E>> = {
+  type NormalProps<E, I = Instance<E>> = {
     for: E;
     children?: React.ReactNode | ((instance: I) => React.ReactNode);
     and?: Model.Compat<I>;
@@ -32,15 +32,15 @@ declare namespace Provider {
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
     children?: React.ReactNode | (() => React.ReactNode);
-    and?: Model.Compat<Existent<T>>;
+    and?: Model.Compat<Instance<T>>;
   }
 
   type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const { children: render, for: model, and: assign } = props;
-  const context = useNewContext(model, assign);
+  const context = useNewContext(props.for, props.and);
+  const render = props.children;
 
   React.useLayoutEffect(() => () => context.pop(), []);
 
