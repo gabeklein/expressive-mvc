@@ -24,11 +24,11 @@ function useModel <T extends Model> (
 
 function useModel <T extends Model> (
   source: (() => T) | Model.Type<T>,
-  arg?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
+  arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Field<T>[]){
 
   const instance = React.useMemo(() => {
-    const callback = arg2 || arg;
+    const callback = arg2 || arg1;
     const instance =
       Model.isTypeof(source) ?
         source.new() :
@@ -44,12 +44,12 @@ function useModel <T extends Model> (
 
   usePeerContext(instance);
 
-  if(Array.isArray(arg)){
+  if(Array.isArray(arg1)){
     const update = useState(0)[1];
 
     React.useLayoutEffect(() => {  
-      if(arg.length && instance instanceof Model)
-        instance.on(arg, () => update(x => x+1));
+      if(arg1.length && instance instanceof Model)
+        instance.on(arg1, () => update(x => x+1));
 
       return () => {
         if(Model.isTypeof(source))
@@ -64,8 +64,8 @@ function useModel <T extends Model> (
     Control.for(instance).subscribe(() => refresh)
   ));
 
-  if(typeof arg == "object")
-    local.assign(arg, arg2);
+  if(typeof arg1 == "object")
+    local.assign(arg1, arg2);
 
   React.useLayoutEffect(() => {
     local.commit();
