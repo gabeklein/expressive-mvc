@@ -91,8 +91,8 @@ it("will eagerly select extended class", () => {
 
 it("will select closest instance of same type", () => {
   render(
-    <Provider for={Foo} value="outer">
-      <Provider for={Foo} value="inner">
+    <Provider for={Foo} and={{ value: "outer" }}>
+      <Provider for={Foo} and={{ value: "inner" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
       </Provider>
     </Provider>

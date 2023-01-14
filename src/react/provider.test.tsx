@@ -89,7 +89,7 @@ it("will refresh render function as a subscriber", async () => {
 
 it("will assign props to instance", () => {
   render(
-    <Provider for={Foo} value="foobar">
+    <Provider for={Foo} and={{ value: "foobar" }}>
       <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
     </Provider>
   );
@@ -101,7 +101,7 @@ it("will assign props to muliple controllers", () => {
   }
 
   render(
-    <Provider for={{ Foo, Bar }} value="foobar">
+    <Provider for={{ Foo, Bar }} and={{ value: "foobar" }}>
       <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
     </Provider>
@@ -110,8 +110,8 @@ it("will assign props to muliple controllers", () => {
 
 it("will not assign foreign props to controller", () => {
   render(
-    // @ts-ignore - type-checking warns against this
-    <Provider for={Foo} nonValue="foobar">
+    /// @ts-ignore - type-checking warns against this
+    <Provider for={Foo} and={{ nonValue: "foobar" }}>
       <Consumer for={Foo} has={i => {
         // @ts-ignore
         expect(i.nonValue).toBeUndefined();

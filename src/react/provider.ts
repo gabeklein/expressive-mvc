@@ -22,27 +22,25 @@ declare namespace Provider {
 
   type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
-  type NormalProps<E, I = Existent<E>> =
-    & {
-      for: E;
-      children?: React.ReactNode | ((instance: I) => React.ReactNode);
-    }
-    & Model.Compat<I>;
+  type NormalProps<E, I = Existent<E>> = {
+    for: E;
+    children?: React.ReactNode | ((instance: I) => React.ReactNode);
+    and?: Model.Compat<I>;
+  }
 
   // FIX: This fails to exclude properties with same key but different type.
-  type MultipleProps<T extends Item> =
-    & {
-      for: Multiple<T>;
-      children?: React.ReactNode | (() => React.ReactNode);
-    }
-    & Model.Compat<Existent<T>>;
+  type MultipleProps<T extends Item> = {
+    for: Multiple<T>;
+    children?: React.ReactNode | (() => React.ReactNode);
+    and?: Model.Compat<Existent<T>>;
+  }
 
   type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const { children: render, for: model, ...rest } = props;
-  const context = useNewContext(model, rest);
+  const { children: render, for: model, and: assign } = props;
+  const context = useNewContext(model, assign);
 
   React.useLayoutEffect(() => () => context.pop(), []);
 
@@ -56,8 +54,8 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 export { Provider };
 
 function useNewContext<T extends Model>(
-  include:Provider.Item | Provider.Multiple,
-  assign: Model.Compat<T>){
+  include: Provider.Item | Provider.Multiple,
+  assign: Model.Compat<T> | undefined){
 
   const ambient = useLookup();
 
