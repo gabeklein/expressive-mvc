@@ -1,5 +1,5 @@
 import { Control } from '../control';
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
 import { mayRetry } from '../suspense';
 import { add } from './add';
 import { computeMode } from './get.compute';

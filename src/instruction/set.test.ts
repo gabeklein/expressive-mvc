@@ -1,6 +1,6 @@
 import { Model } from '..';
-import { mockAsync } from '../testing';
 import { Oops } from '../effect';
+import { mockAsync } from '../helper/testing';
 import { set } from './set';
 
 describe("placeholder", () => {

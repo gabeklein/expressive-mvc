@@ -2,11 +2,11 @@ import { Control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener } from './event';
-import { issues } from './issues';
-import { defineProperty } from './object';
+import { issues } from './helper/issues';
+import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, InstanceOf } from './types';
+import type { Callback, Class, InstanceOf } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>

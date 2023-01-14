@@ -1,5 +1,5 @@
-import { issues } from '../issues';
-import { defineProperty } from '../object';
+import { issues } from '../helper/issues';
+import { defineProperty } from '../helper/object';
 import { mayRetry } from '../suspense';
 import { add } from './add';
 

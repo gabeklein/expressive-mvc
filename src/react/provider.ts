@@ -1,11 +1,11 @@
 import React from 'react';
 
 import { Control } from '../control';
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
+import { entries, values } from '../helper/object';
+import { Class } from '../helper/types';
 import { Model } from '../model';
-import { entries, values } from '../object';
 import { Subscriber } from '../subscriber';
-import { Class } from '../types';
 import { Lookup, LookupContext, useLookup } from './context';
 import { getPending } from './tap';
 import { use } from './use';

@@ -1,6 +1,6 @@
 import { Debug } from './debug';
 import { Model } from './model';
-import { mockConsole } from './testing';
+import { mockConsole } from './helper/testing';
 
 describe("isTypeof", () => {
   class Test extends Model {}

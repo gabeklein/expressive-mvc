@@ -1,4 +1,4 @@
-import { mockAsync, mockSuspense, renderHook } from '../testing';
+import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { get } from '../instruction/get';
 import { set } from '../instruction/set';
 import { use } from '../instruction/use';

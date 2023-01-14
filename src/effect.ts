@@ -1,8 +1,8 @@
-import { Model } from "./model";
-import { Control } from "./control";
-import { mayRetry } from "./suspense";
-import { Callback } from "./types";
-import { issues } from "./issues";
+import { Control } from './control';
+import { issues } from './helper/issues';
+import { Callback } from './helper/types';
+import { Model } from './model';
+import { mayRetry } from './suspense';
 
 export const Oops = issues({
   BadCallback: () =>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
-import { render } from '../testing';
+import { render } from '../helper/testing';
 import { Model } from '../model';
 import { Consumer } from './consumer';
 import { Global } from './global';

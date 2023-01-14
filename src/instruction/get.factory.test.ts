@@ -1,5 +1,5 @@
 import { Model } from '..';
-import { mockAsync, mockConsole } from '../testing';
+import { mockAsync, mockConsole } from '../helper/testing';
 import { get, Oops } from './get';
 import { Oops as Compute } from './get.factory';
 

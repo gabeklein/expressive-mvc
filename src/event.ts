@@ -1,6 +1,6 @@
-import { Control } from "./control";
-import { issues } from "./issues";
-import { Model } from "./model";
+import { Control } from './control';
+import { issues } from './helper/issues';
+import { Model } from './model';
 
 export const Oops = issues({
   Timeout: (keys, timeout) => 

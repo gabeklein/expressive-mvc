@@ -1,8 +1,8 @@
 import { Control } from '../control';
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
+import { Callback } from '../helper/types';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
-import { Callback } from '../types';
 
 import type { get } from './get';
 

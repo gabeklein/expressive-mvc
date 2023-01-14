@@ -1,10 +1,10 @@
+import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
-import { defineProperty, getOwnPropertyDescriptor } from './object';
 import { Subscriber } from './subscriber';
 
-import type { Callback } from './types';
+import type { Callback } from './helper/types';
 
 const REGISTER = new WeakMap<{}, Control>();
 const PENDING = new Map<symbol, Instruction.Runner<any>>();

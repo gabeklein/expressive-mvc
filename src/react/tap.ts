@@ -1,7 +1,7 @@
+import { issues } from '../helper/issues';
+import { InstanceOf } from '../helper/types';
 import { add } from '../instruction/add';
-import { issues } from '../issues';
 import { Model } from '../model';
-import { InstanceOf } from '../types';
 import { Lookup, useLookup } from './context';
 import { Global } from './global';
 

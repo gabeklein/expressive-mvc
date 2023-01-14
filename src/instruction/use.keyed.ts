@@ -1,5 +1,5 @@
 import { Control } from '../control';
-import { assign, create, defineProperty } from '../object';
+import { assign, create, defineProperty } from '../helper/object';
 import { Subscriber } from '../subscriber';
 import { Instruction } from './add';
 

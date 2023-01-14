@@ -1,5 +1,5 @@
+import { Callback, Class } from '../helper/types';
 import { Model } from '../model';
-import { Callback, Class } from '../types';
 import { useContext } from './context';
 import { useModel } from './useModel';
 import { useTap } from './useTap';

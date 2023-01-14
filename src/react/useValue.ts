@@ -1,10 +1,10 @@
 import React from 'react';
 
 import { Control } from '../control';
-import { defineProperty } from '../object';
+import { defineProperty } from '../helper/object';
 import { use } from './use';
 
-import type { Callback } from '../types';
+import type { Callback } from '../helper/types';
 
 function useValue <T extends {}, R> (
   source: (() => T) | T,

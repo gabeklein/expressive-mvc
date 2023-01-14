@@ -1,7 +1,7 @@
 import { Model } from '..';
-import { subscribeTo } from '../testing';
-import { Oops, use } from './use';
+import { subscribeTo } from '../helper/testing';
 import { set } from './set';
+import { Oops, use } from './use';
 
 class Child extends Model {
   value = "foo"

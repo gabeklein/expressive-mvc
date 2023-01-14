@@ -1,7 +1,7 @@
 import React from 'react';
 
-import { issues } from '../issues';
-import { Class } from '../types';
+import { issues } from '../helper/issues';
+import { Class } from '../helper/types';
 import { useContext } from './context';
 import { useTap } from './useTap';
 

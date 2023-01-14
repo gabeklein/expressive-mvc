@@ -1,7 +1,7 @@
 import { createElement, Suspense } from 'react';
 import { create as render } from 'react-test-renderer';
 
-import { Model } from './model';
+import { Model } from '../model';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create as render } from "react-test-renderer";

@@ -1,7 +1,7 @@
 import { Control } from '../control';
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
+import { assign } from '../helper/object';
 import { Model } from '../model';
-import { assign } from '../object';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
 import { add, getRecursive } from './add';

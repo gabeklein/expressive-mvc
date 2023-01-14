@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { mockConsole } from '../testing';
+import { mockConsole } from '../helper/testing';
 import { get, Oops as Compute } from './get';
 import { use } from './use';
 

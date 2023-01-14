@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { render, renderHook } from '../testing';
+import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
 import { Model } from '../model';
 import { Global, Oops } from './global';

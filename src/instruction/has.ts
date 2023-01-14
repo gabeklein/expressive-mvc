@@ -1,4 +1,4 @@
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { add } from './add';
 import { Parent } from './use';

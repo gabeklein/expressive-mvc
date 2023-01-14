@@ -1,6 +1,6 @@
 import { Control } from './control';
+import { defineProperties } from './helper/object';
 import { Model } from './model';
-import { defineProperties } from './object';
 import { Subscriber } from './subscriber';
 
 const LOCAL = "$debug local";

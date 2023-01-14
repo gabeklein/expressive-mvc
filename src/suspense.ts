@@ -1,6 +1,6 @@
 import { Control } from './control';
-import { issues } from './issues';
-import { assign } from './object';
+import { issues } from './helper/issues';
+import { assign } from './helper/object';
 
 export const Oops = issues({
   NotReady: (model, key) =>

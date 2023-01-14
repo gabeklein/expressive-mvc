@@ -1,7 +1,7 @@
 import { Control } from '../control';
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
+import { Class, InstanceOf } from '../helper/types';
 import { Model } from '../model';
-import { Class, InstanceOf } from '../types';
 import { MVC } from './mvc';
 
 export const Oops = issues({

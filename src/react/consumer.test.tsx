@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { render } from '../testing';
+import { render } from '../helper/testing';
 import { Consumer } from './consumer';
 import { Oops } from './context';
 import { MVC } from './mvc';
