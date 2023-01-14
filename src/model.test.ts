@@ -1,4 +1,4 @@
-import { Model } from '../src/model';
+import { Model } from './model';
 
 class Subject extends Model {
   value: number;

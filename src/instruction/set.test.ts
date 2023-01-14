@@ -1,5 +1,5 @@
 import { Model } from '..';
-import { mockAsync } from '../../tests/adapter';
+import { mockAsync } from '../testing';
 import { Oops } from '../effect';
 import { set } from './set';
 

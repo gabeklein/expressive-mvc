@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Consumer, Global, Provider, get, tap, MVC } from '..';
-import { render, subscribeTo } from '../../tests/adapter';
+import { render, subscribeTo } from '../testing';
 import { Oops } from './tap';
 
 describe("tap instruction", () => {

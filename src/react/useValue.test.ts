@@ -1,4 +1,4 @@
-import { mockAsync, mockSuspense, renderHook } from '../../tests/adapter';
+import { mockAsync, mockSuspense, renderHook } from '../testing';
 import { Model } from '../model';
 import { useValue } from './useValue';
 

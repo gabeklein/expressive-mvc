@@ -1,5 +1,5 @@
 import { Model } from '..';
-import { subscribeTo } from '../../tests/adapter';
+import { subscribeTo } from '../testing';
 import { Oops, use } from './use';
 import { set } from './set';
 

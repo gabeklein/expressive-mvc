@@ -1,6 +1,6 @@
-import { set } from '../src/instruction/set';
-import { Model } from '../src/model';
-import { subscribeTo } from './adapter';
+import { set } from './instruction/set';
+import { Model } from './model';
+import { subscribeTo } from './testing';
 
 describe("subscriber", () => {
   class Subject extends Model {

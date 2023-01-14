@@ -1,6 +1,6 @@
-import { Oops } from '../src/event';
-import { get } from '../src/instruction/get';
-import { Model } from '../src/model';
+import { Oops } from './event';
+import { get } from './instruction/get';
+import { Model } from './model';
 
 class Subject extends Model {
   seconds = 0;
