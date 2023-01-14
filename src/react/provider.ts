@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Control } from '../control';
 import { issues } from '../helper/issues';
-import { entries, values } from '../helper/object';
+import { values } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
@@ -41,10 +41,9 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const context = useNewContext(props.for);
-  const render = props.children;
+  const { children: render, for: model, ...rest } = props;
+  const context = useNewContext(model, rest);
 
-  useAppliedProps(context, props);
   React.useLayoutEffect(() => () => context.pop(), []);
 
   return React.createElement(LookupContext.Provider, { value: context },
@@ -56,22 +55,23 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
 export { Provider };
 
-function useNewContext(
-  include: Provider.Item | Provider.Multiple){
+function useNewContext<T extends Model>(
+  include:Provider.Item | Provider.Multiple,
+  assign: Model.Compat<T>){
 
   const ambient = useLookup();
 
-  return React.useMemo(() => {
+  const context = React.useMemo(() => {
     if(!include)
       throw Oops.NoType();
 
-    const layer = ambient.push();
+    const local = ambient.push();
 
     function register(I: Model | typeof Model){
       if(I instanceof Model)
-        layer.inject(I.constructor as any, I, false);
+        local.inject(I.constructor as any, I, false);
       else
-        layer.inject(I, I.new(), true);
+        local.inject(I, I.new(), true);
     }
 
     if(include instanceof Model || typeof include == "function")
@@ -79,30 +79,23 @@ function useNewContext(
     else
       values(include).forEach(register);
 
-    for(const instance of layer.local)
+    for(const instance of local.local)
       if(instance)
         for(const apply of getPending(instance))
-          apply(layer)
+          apply(local)
 
-    return layer;
-  }, []);
-}
-
-function useAppliedProps(context: Lookup, props: {}){
-  const apply = React.useMemo(() => {
-    return (props: {}) => {
-      entries(props).forEach(([key, value]) => {
-        if(key == "for" || key == "children")
-          return;
-
-        for(const into of context.local)
-          if(into && key in into)
-            (into as any)[key] = value;
-      })
-    };
+    return local;
   }, []);
 
-  apply(props);
+  if(assign){
+    type K = Model.Field<T>;
+    for(const key in assign)
+      for(const into of context.local as T[])
+        if(into && key in into)
+          into[key as K] = assign[key as K]!;
+  }
+
+  return context;
 }
 
 interface RenderFunctionProps {
