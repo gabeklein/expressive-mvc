@@ -53,7 +53,7 @@ type Debug<T extends {}> = T & {
   [LOCAL]?: Subscriber<T>;
 
   /** Current state of this instance. */
-  [STATE]?: Model.Values<T>;
+  [STATE]?: Model.Export<T>;
 
   /**
    * Last update causing a refresh to subscribers.

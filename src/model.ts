@@ -45,18 +45,18 @@ declare namespace Model {
    * 
    * TODO: Should exclude methods
    **/
-  export type Field<T, U extends Model = Model> = Exclude<keyof T, keyof U | keyof Debug<{}>> & string;
+  export type Field<T, E extends Model = Model> = Exclude<keyof T, keyof E | keyof Debug<{}>> & string;
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
    **/
-  export type Event<T, U extends Model = Model> = Extends<Field<T, U>>;
+  export type Event<T, E extends Model = Model> = Extends<Field<T, E>>;
 
   /** Object containing managed entries found in T. */
-  export type Entries<T, U extends Model = Model> = { [K in Field<T, U>]: T[K] };
+  export type Entries<T, E extends Model = Model> = { [K in Field<T, E>]: T[K] };
 
   /** Object comperable to data found in T. */
-  export type Compat<T, U extends Model = Model> = { [K in Field<T, U>]?: T[K] };
+  export type Compat<T, E extends Model = Model> = { [K in Field<T, E>]?: T[K] };
 
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
@@ -69,7 +69,9 @@ declare namespace Model {
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Values<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> }
+  export type Values<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> };
+
+  export type Export<T, E extends Model = Model> = { [P in Field<T, E>]: Value<T[P]> };
 }
 
 class Model {
@@ -112,7 +114,7 @@ class Model {
     return addEventListener(this.is, arg1, arg2, arg3);
   }
 
-  export(): Model.Values<this>;
+  export(): Model.Export<this>;
   export <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
 
   export <P extends Model.Field<this>> (subset?: Iterable<P>){
