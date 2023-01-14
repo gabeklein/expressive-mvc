@@ -40,12 +40,16 @@ class MVC extends Model {
    * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
    */
   static tap <T extends MVC> (this: Model.Type<T>): T;
-  static tap <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K, expect: true): Exclude<I[K], undefined>;
-  static tap <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K, expect?: boolean): I[K];
-  static tap <T, I extends MVC> (this: Model.Type<I>, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static tap <T, I extends MVC> (this: Model.Type<I>, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
-  static tap <T, I extends MVC> (this: Model.Type<I>, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
-  static tap <T, I extends MVC> (this: Model.Type<I>, from: (this: I, state: I) => T, expect?: boolean): T;
+
+  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
+  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect?: boolean): T[K];
+
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => () => R): R;
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
+
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): R | undefined;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => R, expect?: boolean): R;
 
   static tap (key?: string | Function, expect?: boolean): any {
     return useTap(this, key as any, expect);

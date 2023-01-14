@@ -42,6 +42,22 @@ function useValue(
         refresh();
     };
 
+    if(value === null){
+      sub.watch.clear();
+      return {
+        proxy: null,
+        release: () => {}
+      }
+    }
+
+    if(typeof value == "function"){
+      const get = value;
+
+      sub.watch.clear();
+      compute = () => get();
+      value = get();
+    }
+
     if(value instanceof Promise) {
       value.then(set);
       value = undefined;

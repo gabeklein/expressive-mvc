@@ -15,40 +15,24 @@ declare namespace useTap {
     | (() => T | Model.Type<T>);
 }
 
-function useTap <T extends Model> (
-  source: useTap.Source<T>
-  ): T;
+function useTap <T extends Model> (source: useTap.Source<T>): T;
 
-function useTap <T extends Model, K extends Model.Field<T>> (
-  source: useTap.Source<T>,
-  path: K,
-  expect: true
-): Exclude<T[K], undefined>;
+function useTap <T extends Model, K extends Model.Field<T>> (source: useTap.Source<T>, path: K, expect: true): Exclude<T[K], undefined>;
+function useTap <T extends Model, K extends Model.Field<T>> (source: useTap.Source<T>, path: K, expect?: boolean): T[K];
 
-function useTap <T extends Model, K extends Model.Field<T>> (
-  source: useTap.Source<T>,
-  path: K,
-  expect?: boolean
-): T[K];
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => () => R): R;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
 
-function useTap <T extends Model, R> (
-  source: useTap.Source<T>,
-  compute: (this: T, from: T) => R,
-  expect: true
-): Exclude<R, undefined>;
-
-function useTap <T extends Model, R> (
-  source: useTap.Source<T>,
-  compute: (this: T, from: T) => R,
-  expect?: boolean
-): R;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): R | undefined;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): R;
 
 function useTap <T extends Model> (
   source: typeof Model | typeof MVC | (() => any),
   arg1?: Model.Field<T> | ((this: T, from: T) => any),
   arg2?: boolean) {
 
-  const instance = useMemo(() => {
+  const instance: T = useMemo(() => {
     if(typeof source == "object")
       return () => source;
 
@@ -58,7 +42,7 @@ function useTap <T extends Model> (
         : () => useContext(source);
 
     return source;
-  }, [])() as T;
+  }, [])();
 
   if(typeof arg1 == "function")
     return useValue(instance, arg1, arg2);
