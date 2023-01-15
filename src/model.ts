@@ -130,8 +130,7 @@ class Model {
   }
 
   update(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
-  update(key: Model.Event<this>, callMethod: boolean): PromiseLike<readonly Model.Event<this>[]>;
-  update<T>(key: Model.Event<this>, argument: T): PromiseLike<readonly Model.Event<this>[]>;
+  update<K extends Model.Event<this>>(key: Model.Event<this>, value: Model.ValueOf<this, K>): PromiseLike<readonly Model.Event<this>[]>;
 
   update<T extends Model.Compat<this>> (source: T, select: (keyof T)[]): PromiseLike<(keyof T)[]>;
   update<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
@@ -153,14 +152,16 @@ class Model {
     else if(typeof arg1 == "string"){
       control.update(arg1 as Model.Field<this>);
 
-      if(1 in arguments && arg1 in this){
-        const method = (this as any)[arg1];
+      if(1 in arguments){
+        if(control.state.has(arg1))
+          control.state.set(arg1, arg2);
 
-        if(typeof method == "function")
-          if(typeof arg2 != "boolean")
+        else if(arg1 in this){
+          const method = (this as any)[arg1];
+
+          if(typeof method == "function")
             method.call(this, arg2);
-          else if(arg2)
-            method.call(this);
+        }
       }
     }
 

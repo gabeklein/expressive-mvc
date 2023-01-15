@@ -1,3 +1,4 @@
+import { ref } from './instruction/ref';
 import { Model } from './model';
 
 describe("Model", () => {
@@ -142,18 +143,6 @@ describe("dispatch", () => {
     expect(update).toMatchObject(["bar", "foo"]);
   })
 
-  it("will call function of same name", async () => {
-    const test = Test.new();
-    await test.update("method", true);
-    expect(test.method).toBeCalled();
-  })
-
-  it("will not call function if false", async () => {
-    const test = Test.new();
-    await test.update("method", false);
-    expect(test.method).not.toBeCalled();
-  })
-
   it("will call function with argument", async () => {
     const test = Test.new();
     await test.update("methodString", "foobar");
@@ -179,6 +168,17 @@ describe("dispatch", () => {
     expect(test.methodString).toBeCalledWith("foobar");
     expect(test.foo).toBe("foobar");
     expect(updates).toMatchObject(["methodString", "foo"])
+  })
+
+  it("will assign to exotic value", async () => {
+    class Test extends Model {
+      foo = ref<string>();
+    }
+
+    const test = Test.new();
+
+    await test.update("foo", "bar");
+    expect(test.foo.current).toBe("bar");
   })
 })
 
