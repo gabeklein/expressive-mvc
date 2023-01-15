@@ -63,6 +63,8 @@ function ref<T>(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
 
+      this.state.set(key, undefined);
+
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
