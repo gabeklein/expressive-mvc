@@ -1,9 +1,10 @@
 import React from 'react';
 import { act } from 'react-test-renderer';
 
-import { render } from '../../tests/adapter';
+import { render } from '../helper/testing';
 import { Model } from '../model';
 import { Consumer } from './consumer';
+import { Global } from './global';
 import { MVC } from './mvc';
 import { Oops, Provider } from './provider';
 
@@ -21,19 +22,20 @@ it("will create instance of given model", () => {
 })
 
 it("will destroy instance of given model", async () => {
-  const didUnmount = jest.fn();
+  const willDestroy = jest.fn();
+  class Test extends MVC {
+    destroy(){
+      willDestroy();
+      super.destroy();
+    }
+  };
 
-  const result = render(
-    <Provider for={Foo}>
-      <Consumer for={Foo} has={i => {
-        i.effect(() => didUnmount, []);
-      }} />
-    </Provider>
+  const element = render(
+    <Provider for={Test} />
   );
 
-  result.unmount();
-
-  expect(didUnmount).toHaveBeenCalled()
+  element.unmount();
+  expect(willDestroy).toBeCalledTimes(1);
 });
 
 it("will accept render function when model given", () => {
@@ -64,7 +66,7 @@ it("will pass undefined to render function if multiple", () => {
 
 it("will refresh render function as a subscriber", async () => {
   const didRender = jest.fn();
-  const test = Foo.create();
+  const test = Foo.new();
 
   render(
     <Provider for={test}>
@@ -79,7 +81,7 @@ it("will refresh render function as a subscriber", async () => {
 
   await act(async () => {
     test.value = "foobar";
-    await test.update(true);
+    await test.on(true);
   })
 
   expect(didRender).toBeCalledWith("foobar");
@@ -87,7 +89,7 @@ it("will refresh render function as a subscriber", async () => {
 
 it("will assign props to instance", () => {
   render(
-    <Provider for={Foo} value="foobar">
+    <Provider for={Foo} and={{ value: "foobar" }}>
       <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
     </Provider>
   );
@@ -99,7 +101,7 @@ it("will assign props to muliple controllers", () => {
   }
 
   render(
-    <Provider for={{ Foo, Bar }} value="foobar">
+    <Provider for={{ Foo, Bar }} and={{ value: "foobar" }}>
       <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
     </Provider>
@@ -108,8 +110,8 @@ it("will assign props to muliple controllers", () => {
 
 it("will not assign foreign props to controller", () => {
   render(
-    // @ts-ignore - type-checking warns against this
-    <Provider for={Foo} nonValue="foobar">
+    /// @ts-ignore - type-checking warns against this
+    <Provider for={Foo} and={{ nonValue: "foobar" }}>
       <Consumer for={Foo} has={i => {
         // @ts-ignore
         expect(i.nonValue).toBeUndefined();
@@ -136,7 +138,7 @@ it("will destroy created model on unmount", () => {
     <Provider for={{ Test }}>
       <Consumer for={Test} has={i => {
         expect(i).toBeInstanceOf(Test)
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
     </Provider>
   );
@@ -154,10 +156,10 @@ it("will destroy multiple created on unmount", () => {
   const rendered = render(
     <Provider for={{ Foo, Bar }}>
       <Consumer for={Foo} has={i => {
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
       <Consumer for={Bar} has={i => {
-        i.effect(() => willDestroy, []);
+        i.on(() => willDestroy, []);
       }} />
     </Provider>
   );
@@ -171,12 +173,12 @@ it("will not destroy given instance on unmount", () => {
 
   class Test extends Model {}
 
-  const instance = Test.create();
+  const instance = Test.new();
 
   const rendered = render(
     <Provider for={{ instance }}>
       <Consumer for={Test} has={i => {
-        i.effect(() => didUnmount, []);
+        i.on(() => didUnmount, []);
       }} />
     </Provider>
   );
@@ -195,7 +197,7 @@ it("will create all models in given array", () => {
 })
 
 it("will provide a mix of state and models", () => {
-  const foo = Foo.create();
+  const foo = Foo.new();
 
   render(
     <Provider for={{ foo, Bar }}>
@@ -205,16 +207,30 @@ it("will provide a mix of state and models", () => {
   )
 })
 
-it("will throw if lackiing `for` prop", () => {
+it("will throw if missing `for` prop", () => {
   // @ts-ignore
   const test = () => render(<Provider />);
 
   expect(test).toThrow(Oops.NoType());
 })
 
-it("will throw on deprecated `of` prop", () => {
-  // @ts-ignore
-  const test = () => render(<Provider of={Foo} />);
+describe("global", () => {
+  it("will create but not destroy instance", () => {
+    class Test extends Global {}
 
-  expect(test).toThrow(Oops.PropDeprecated());
+    expect(Test.get(false)).toBeUndefined();
+
+    const element = render(<Provider for={Test} />);
+    const test = Test.get();
+
+    expect(test).toBeInstanceOf(Test);
+
+    element.unmount();
+
+    expect(Test.get()).toBe(test);
+
+    render(<Provider for={Test} />).unmount();
+    
+    Test.reset();
+  })
 })

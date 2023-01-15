@@ -1,10 +1,10 @@
-import { act, Model } from '..';
-import { Oops } from './act';
+import { run, Model } from '..';
+import { Oops } from './run';
 import { set } from './set';
 
 class Test extends Model {
-  test = act(this.wait);
-  nope = act(this.fail);
+  test = run(this.wait);
+  nope = run(this.fail);
 
   async wait<T>(input?: T){
     return new Promise<T | undefined>(res => {
@@ -19,7 +19,7 @@ class Test extends Model {
 }
 
 it("will pass arguments to wrapped function", async () => {
-  const control = Test.create();
+  const control = Test.new();
   const input = Symbol("unique");
   const output = control.test(input);
 
@@ -27,7 +27,7 @@ it("will pass arguments to wrapped function", async () => {
 })
 
 it("will set active to true for run-duration", async () => {
-  const { test } = Test.create();
+  const { test } = Test.new();
 
   expect(test.active).toBe(false);
 
@@ -41,18 +41,18 @@ it("will set active to true for run-duration", async () => {
 
 it("will emit method key before/after activity", async () => {
   let update: readonly string[];
-  const { test, is } = Test.create();
+  const { test, is } = Test.new();
 
   expect(test.active).toBe(false);
 
   const result = test("foobar");
-  update = await is.update(true);
+  update = await is.on(true);
 
   expect(test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
-  update = await is.update(true);
+  update = await is.on(true);
 
   expect(test.active).toBe(false);
   expect(update).toContain("test");
@@ -60,7 +60,7 @@ it("will emit method key before/after activity", async () => {
 })
 
 it("will throw immediately if already in-progress", () => {
-  const { test } = Test.create();
+  const { test } = Test.new();
   const expected = Oops.DuplicatePending("test");
 
   test();
@@ -68,13 +68,13 @@ it("will throw immediately if already in-progress", () => {
 })
 
 it("will throw and reset if action fails", async () => {
-  const { nope, is: test } = Test.create();
+  const { nope, is: test } = Test.new();
 
   expect(nope.active).toBe(false);
 
   const result = nope();
 
-  await test.update(true);
+  await test.on(true);
   expect(nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
@@ -82,7 +82,7 @@ it("will throw and reset if action fails", async () => {
 })
 
 it("will complain if property is redefined", () => {
-  const state = Test.create();
+  const state = Test.new();
   const assign = () => state.test = 0 as any;
 
   expect(assign).toThrowError();
@@ -92,23 +92,23 @@ it("will internally retry on suspense", async () => {
   class Test extends Model {
     value = set<string>();
 
-    getValue = act(async () => {
+    getValue = run(async () => {
       didInvoke();
       return this.value;
     })
   }
 
   const didInvoke = jest.fn();
-  const test = Test.create();
+  const test = Test.new();
   const value = test.getValue();
 
   expect(didInvoke).toBeCalled();
-  await test.update(true);
+  await test.on(true);
 
   test.value = "foobar";
 
   await expect(value).resolves.toBe("foobar");
-  await test.update(true);
+  await test.on(true);
 
   expect(didInvoke).toBeCalledTimes(2);
 })

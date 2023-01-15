@@ -1,8 +1,14 @@
-import { Controller } from "../controller";
-import { Oops } from "./get";
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { assign } from '../helper/object';
+
+export const Oops = issues({
+  NotReady: (model, key) =>
+    `Value ${model}.${key} value is not yet available.`
+});
 
 export function factoryMode<T>(
-  self: Controller,
+  self: Control,
   output: Promise<T> | T,
   key: string,
   required: boolean
@@ -36,7 +42,7 @@ export function factoryMode<T>(
     const issue =
       Oops.NotReady(subject, key);
 
-    Object.assign(pending!, {
+    assign(pending!, {
       message: issue.message,
       stack: issue.stack
     });

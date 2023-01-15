@@ -1,7 +1,8 @@
-import { Controller, ensure } from '../controller';
+import { Control } from '../control';
+import { createValueEffect } from '../effect';
+import { defineProperty } from '../helper/object';
 import { Model } from '../model';
-import { createValueEffect, defineProperty } from '../util';
-import { apply } from './apply';
+import { add } from './add';
 
 declare namespace ref {
   type Callback<T, S = any> = (this: S, argument: T) =>
@@ -58,14 +59,16 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return apply(
+  return add(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
+
+      this.state.set(key, undefined);
 
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        ensure(arg).state.forEach((_val, key) => {
+        Control.for(arg).state.forEach((_val, key) => {
           defineProperty(value, key,
             mapper ? {
               configurable: true,
@@ -87,7 +90,7 @@ function ref<T>(
 export { ref }
 
 function createRef(
-  src: Controller,
+  src: Control,
   key: string,
   cb?: ref.Callback<any>){
 

@@ -1,8 +1,8 @@
-import { Controller } from '../controller';
-import { issues } from '../issues';
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { Callback } from '../helper/types';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
-import { Callback } from '../types';
 
 import type { get } from './get';
 
@@ -11,13 +11,13 @@ export const Oops = issues({
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
-const INFO = new WeakMap<Function, string>();
-const KEYS = new WeakMap<Controller, Callback[]>();
-const ORDER = new WeakMap<Controller, Callback[]>();
+const INFO = new WeakMap<Callback, string>();
+const KEYS = new WeakMap<Control, Set<Callback>>();
+const ORDER = new WeakMap<Control, Map<Callback, number>>();
 
 export function computeMode(
-  self: Controller,
-  source: Controller,
+  self: Control,
+  source: Control,
   setter: get.Function<any, any>,
   key: string,
   required: boolean
@@ -26,9 +26,13 @@ export function computeMode(
 
   let sub: Subscriber;
   let order = ORDER.get(self)!;
+  let pending = KEYS.get(self)!
 
   if(!order)
-    ORDER.set(self, order = []);
+    ORDER.set(self, order = new Map());
+
+  if(!pending)
+    KEYS.set(self, pending = new Set());
 
   const compute = (initial: boolean) => {
     try {
@@ -58,22 +62,15 @@ export function computeMode(
     }
   }
 
-  const update = (_key: any, source: Controller) => {
-    if(source !== self){
-      refresh();
-      return;
-    }
-
-    let pending = KEYS.get(self);
-
-    if(!pending)
-      KEYS.set(self, pending = []);
-
-    pending.push(refresh);
-  }
-
   const create = () => {
-    sub = source.subscribe(update);
+    sub = source.subscribe((_, source) => {
+      if(source !== self)
+        refresh();
+      else
+        pending.add(refresh);
+    });
+
+    sub.watch.set(key, false);
 
     try {
       const value = compute(true);
@@ -85,13 +82,18 @@ export function computeMode(
     }
     finally {
       sub.commit();
-      order.push(refresh);
+      order.set(refresh, order.size);
     }
   }
 
   INFO.set(refresh, key);
 
   return () => {
+    if(pending.has(refresh)){
+      pending.delete(refresh)
+      refresh();
+    }
+
     const value = sub ? state.get(key) : create();
 
     if(value === undefined && required)
@@ -101,18 +103,22 @@ export function computeMode(
   }
 }
 
-export function flush(control: Controller){
+export function flush(control: Control){
   const pending = KEYS.get(control);
 
-  if(!pending)
+  if(!pending || !pending.size)
     return;
 
-  const list = ORDER.get(control)!;
+  const priority = ORDER.get(control)!;
 
-  while(pending.length){
-    const compute = pending
-      .sort((a, b) => list.indexOf(b) - list.indexOf(a))
-      .pop()!
+  while(pending.size){
+    let compute!: Callback;
+
+    for(const item of pending)
+      if(!compute || priority.get(item)! < priority.get(compute)!)
+        compute = item;
+
+    pending.delete(compute);
 
     const key = INFO.get(compute)!;
 
@@ -120,5 +126,5 @@ export function flush(control: Controller){
       compute();
   }
 
-  KEYS.delete(control);
+  pending.clear();
 }

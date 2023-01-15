@@ -1,7 +1,7 @@
-import { Controller } from '../controller';
+import { Control } from '../control';
+import { assign, create, defineProperty } from '../helper/object';
 import { Subscriber } from '../subscriber';
-import { assign, create, defineProperty } from '../util';
-import { Instruction } from './apply';
+import { Instruction } from './add';
 
 type MapFunction<T, R> =
   T extends Map<infer K, infer V> ?
@@ -24,7 +24,7 @@ const ANY = Symbol("any");
 type Keyed<K = unknown> = Set<K> | Map<K, unknown>;
 
 function keyed<T extends Keyed>(
-  control: Controller,
+  control: Control,
   property: any,
   initial: T
 ): Instruction.Descriptor<T> {
@@ -129,12 +129,15 @@ function createProxy(
       {
         from,
         delete(key: any){
+          // TODO: this commit's fix needs tests.
+          // Was not cause by coverage.
+          const out = from.delete(key);
           emit(key);
-          return from.delete(key);
+          return out;
         },
         clear(){
-          emit(ANY);
           from.clear();
+          emit(ANY);
         },
         has(key: any){
           watch(this, key);

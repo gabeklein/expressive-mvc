@@ -1,5 +1,6 @@
-import { Model, set } from '../src';
-import { subscribeTo } from './adapter';
+import { set } from './instruction/set';
+import { Model } from './model';
+import { subscribeTo } from './helper/testing';
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -8,7 +9,7 @@ describe("subscriber", () => {
   }
 
   it('will detect change to properties accessed', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const update = subscribeTo(state, it => {
       void it.value;
       void it.value2;
@@ -22,7 +23,7 @@ describe("subscriber", () => {
   })
 
   it('will ignore change to property not accessed', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const update = subscribeTo(state, it => {
       void it.value;
     })
@@ -40,7 +41,7 @@ describe("subscriber", () => {
   });
 
   it('will ignore properties accessed through get', async () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const update = subscribeTo(state, it => {
       void it.value;
       void it.is.value2;
@@ -59,7 +60,7 @@ describe("subscriber", () => {
       value = set("foo", this.didSet);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.value).toBe("foo");
 

@@ -1,7 +1,6 @@
-import { Model } from '../src';
-import { CONTROL } from '../src/controller';
-import { LOCAL, STATE, WHY } from '../src/model';
-import { mockConsole } from './adapter';
+import { Debug } from './debug';
+import { Model } from './model';
+import { mockConsole } from './helper/testing';
 
 describe("isTypeof", () => {
   class Test extends Model {}
@@ -27,39 +26,60 @@ describe("Symbols", () => {
   }
 
   it("will be defined", () => {
-    expect(CONTROL).toBeDefined()
-    expect(STATE).toBeDefined()
-    expect(LOCAL).toBeDefined()
+    expect(Debug.CONTROL).toBeDefined()
+    expect(Debug.STATE).toBeDefined()
+    expect(Debug.LOCAL).toBeDefined()
   })
 
   it("will expose instance controller", () => {
-    const instance = FooBar.create();
-    const controller = instance[CONTROL];
+    const instance = FooBar.new() as Debug<FooBar>;
+    const control = instance[Debug.CONTROL];
 
-    expect(controller).toBeDefined();
+    expect(control).toBeDefined();
   })
 
   it("will expose instance state", () => {
-    const instance = FooBar.create();
+    const instance = FooBar.new() as Debug<FooBar>;
     const exported = instance.export();
-    const state = instance[STATE];
+    const state = instance[Debug.STATE];
 
     expect(state).toMatchObject(exported);
   })
 
   it("will expose subscriber within listener", () => {
-    const instance = FooBar.create();
+    const instance = FooBar.new() as Debug<FooBar>;
 
-    expect(instance[LOCAL]).toBeUndefined();
+    expect(instance[Debug.LOCAL]).toBeUndefined();
 
-    instance.effect(local => {
-      expect(local[CONTROL]).toBe(instance[CONTROL]);
-      expect(local[LOCAL]).toBeDefined();
+    instance.on(local => {
+      expect(local[Debug.CONTROL]).toBe(instance[Debug.CONTROL]);
+      expect(local[Debug.LOCAL]).toBeDefined();
     })
   })
 })
 
-describe("WHY", () => {
+describe("LOCAL", () => {
+  class Test extends Model {
+    value1 = 1;
+    value2 = 2;
+    value3 = 3;
+  }
+
+  it("will reveal what values are in use", async () => {
+    const test = Test.new() as Debug<Test>;
+
+    test.on((local: Debug<Test>) => {
+      void local.value1;
+      void local.value3;
+
+      const { using } = local[Debug.LOCAL]!;
+
+      expect(using).toEqual(["value1", "value3"]);
+    });
+  })
+})
+
+describe("UPDATE", () => {
   class Test extends Model {
     value1 = 1;
     value2 = 2;
@@ -67,13 +87,13 @@ describe("WHY", () => {
   }
 
   it("will reveal last update", async () => {
-    const test = Test.create();
+    const test = Test.new() as Debug<Test>;
 
     test.value1 = 2;
     test.value2 = 3;
 
-    const update = await test.update();
-    const updated = test[WHY];
+    const update = await test.on();
+    const updated = test[Debug.UPDATE];
 
     expect(update).toStrictEqual(updated);
 
@@ -82,16 +102,16 @@ describe("WHY", () => {
   })
 
   it("will reveal cause for update", async () => {
-    const test = Test.create();
+    const test = Test.new() as Debug<Test>;
 
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
 
-    test.effect(state => {
+    test.on(state => {
       void state.value1;
       void state.value3;
 
-      update = state[WHY];
+      update = state[Debug.UPDATE];
     })
 
     expect(update).toBeUndefined();
@@ -99,7 +119,7 @@ describe("WHY", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    fullUpdate = await test.update();
+    fullUpdate = await test.on();
 
     // sanity check
     expect(update).not.toStrictEqual(fullUpdate);
@@ -110,7 +130,7 @@ describe("WHY", () => {
 
     test.value3 = 4;
 
-    fullUpdate = await test.update();
+    fullUpdate = await test.on();
 
     // sanity check
     expect(fullUpdate).not.toContain("value1");
@@ -124,7 +144,7 @@ describe("toString", () => {
   class Test extends Model {};
 
   it("Model will cast to string as class name", () => {
-    const test = Test.create();
+    const test = Test.new();
     expect(String(test)).toBe("Test");
   })
 })
@@ -138,7 +158,7 @@ describe("errors", () => {
     };
 
     const expected = new Error("Goodbye cruel world!")
-    const test = Test.create();
+    const test = Test.new();
 
     test.on("value", () => {
       throw expected;
@@ -146,7 +166,7 @@ describe("errors", () => {
 
     test.value = 2;
 
-    await test.update();
+    await test.on();
 
     expect(error).toBeCalledWith(expected);
   });

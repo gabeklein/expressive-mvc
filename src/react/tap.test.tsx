@@ -1,20 +1,20 @@
 import React from 'react';
 
-import { Consumer, Global, Model, Provider, get, tap } from '..';
-import { render, subscribeTo } from '../../tests/adapter';
+import { Consumer, get, Global, MVC, Provider, tap } from '..';
+import { render, subscribeTo } from '../helper/testing';
 import { Oops } from './tap';
 
 describe("tap instruction", () => {
-  class Foo extends Model {
+  class Foo extends MVC {
     bar = tap(Bar);
   }
 
-  class Bar extends Model {
+  class Bar extends MVC {
     value = "bar";
   }
 
   it("will attach peer from context", () => {
-    const bar = Bar.create();
+    const bar = Bar.new();
 
     const Test = () => {
       const { bar } = Foo.use();
@@ -30,11 +30,11 @@ describe("tap instruction", () => {
   })
 
   it("will subscribe peer from context", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
 
-    const bar = Bar.create();
+    const bar = Bar.new();
     let foo!: Foo;
 
     const Child = () => {
@@ -65,7 +65,7 @@ describe("tap instruction", () => {
   })
 
   it("will throw if strict tap is undefined", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
 
@@ -82,8 +82,8 @@ describe("tap instruction", () => {
 })
 
 describe("callback", () => {
-  class Foo extends Model {}
-  class Bar extends Model {
+  class Foo extends MVC {}
+  class Bar extends MVC {
     didTap = jest.fn();
     foo = tap(Foo, this.didTap);
   }
@@ -111,7 +111,7 @@ describe("callback", () => {
   })
 
   it("will force undefined if returns false", () => {
-    class Bar extends Model {
+    class Bar extends MVC {
       foo = tap(Foo, () => false);
     }
 
@@ -129,10 +129,10 @@ describe("callback", () => {
   it("will not run before first effect", () => {
     const didInit = jest.fn();
 
-    class Bar extends Model {
+    class Bar extends MVC {
       constructor(){
         super();
-        this.effect(didInit, []);
+        this.on(didInit, []);
       }
 
       foo = tap(Foo, () => {
@@ -156,7 +156,7 @@ describe("callback", () => {
 
 describe("singleton", () => {
   it("will attach to model", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       global = tap(TestGlobal);
     }
 
@@ -164,7 +164,7 @@ describe("singleton", () => {
       value = "bar";
     }
 
-    TestGlobal.create();
+    TestGlobal.new();
 
     const Test = () => {
       const { global } = Foo.use();
@@ -181,19 +181,19 @@ describe("singleton", () => {
       peer = tap(Peer);
     }
 
-    const peer = Peer.create();
-    const global = Test.create();    
+    const peer = Peer.new();
+    const global = Test.new();    
 
     expect(global.peer).toBe(peer);
   })
 
   it("will throw if tries to attach Model", () => {
-    class Normal extends Model {}
+    class Normal extends MVC {}
     class TestGlobal extends Global {
       notPossible = tap(Normal);
     }
 
-    const attempt = () => TestGlobal.create();
+    const attempt = () => TestGlobal.new();
     const issue = Oops.NotAllowed(TestGlobal.name, Normal.name);
 
     expect(attempt).toThrowError(issue);
@@ -201,20 +201,20 @@ describe("singleton", () => {
 })
 
 describe("context", () => {
-  class Foo extends Model {
+  class Foo extends MVC {
     bar = tap(Bar, true);
   };
 
-  class Bar extends Model {
+  class Bar extends MVC {
     value = 1;
   };
 
   it("will assign multiple peers", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       value = 2;
     };
 
-    class Multi extends Model {
+    class Multi extends MVC {
       bar = tap(Bar);
       foo = tap(Foo);
     };
@@ -246,10 +246,10 @@ describe("context", () => {
   })
 
   it("will access peers sharing same provider", () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
     }
-    class Bar extends Model {
+    class Bar extends MVC {
       foo = tap(Foo, true);
     }
 
@@ -288,7 +288,7 @@ describe("context", () => {
 
 describe("suspense", () => {
   it("will whatever", async () => {
-    class Foo extends Model {
+    class Foo extends MVC {
       bar = tap(Bar, true);
 
       value = get(() => {
@@ -299,14 +299,14 @@ describe("suspense", () => {
       }, false);
     };
 
-    class Bar extends Model {
+    class Bar extends MVC {
       value = "foobar";
     };
 
     const didRender = jest.fn();
 
     const Inner = () => {
-      const foo = Foo.new();
+      const foo = Foo.use([]);
       expect(foo.value).toBe("foobar");
       didRender();
       return null;

@@ -1,6 +1,7 @@
 import { Model } from '..';
-import { mockAsync, mockConsole, mockSuspense } from '../../tests/adapter';
-import { get, Oops as Compute } from './get';
+import { mockAsync, mockConsole } from '../helper/testing';
+import { get, Oops } from './get';
+import { Oops as Compute } from './get.factory';
 
 const { warn } = mockConsole();
 
@@ -11,7 +12,7 @@ it("will compute when accessed", () => {
     value = get(factory);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(factory).not.toBeCalled();
 
@@ -27,7 +28,7 @@ it("will compute lazily", () => {
     value = get(factory, false);
   }
 
-  Test.create();
+  Test.new();
 
   expect(factory).not.toBeCalled();
 })
@@ -42,7 +43,7 @@ it('will bind factory function to self', async () => {
     }
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
 })
 
 it("will emit when factory resolves", async () => {
@@ -50,60 +51,13 @@ it("will emit when factory resolves", async () => {
     value = get(async () => "foobar");
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(() => test.value).toThrow(expect.any(Promise));
 
-  await test.once("value");
+  await test.on("value");
 
   expect(test.value).toBe("foobar");
-})
-
-it('will suspend if value is async', async () => {
-  class Test extends Model {
-    value = get(promise.pending);
-  }
-
-  const test = mockSuspense();
-  const promise = mockAsync();
-  const didRender = mockAsync();
-  const instance = Test.create();
-
-  test.renderHook(() => {
-    void instance.tap().value;
-    didRender.resolve();
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve();
-  await didRender.pending();
-
-  test.assertDidRender(true);
-})
-
-it('will suspend if value is promise', async () => {
-  const promise = mockAsync<string>();
-
-  class Test extends Model {
-    value = get(promise.pending());
-  }
-
-  const test = mockSuspense();
-  const didRender = mockAsync();
-  const instance = Test.create();
-
-  test.renderHook(() => {
-    void instance.tap().value;
-    didRender.resolve();
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve("hello");
-  await didRender.pending();
-
-  test.assertDidRender(true);
 })
 
 it("will not suspend where already resolved", async () => {
@@ -114,9 +68,9 @@ it("will not suspend where already resolved", async () => {
     value = get(() => this.greet + " " + this.name);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
-  await test.once("value");
+  await test.on("value");
 
   expect(() => test.value).not.toThrow();
 })
@@ -128,46 +82,11 @@ it("will throw suspense-promise resembling an error", () => {
     value = get(promise.pending);
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
   const exprected = Compute.NotReady(instance, "value");
 
   expect(() => instance.value).toThrowError(exprected);
   promise.resolve();
-})
-
-it('will refresh and throw if async rejects', async () => {
-  const promise = mockAsync();
-
-  class Test extends Model {
-    value = get(async () => {
-      await promise.pending();
-      throw "oh no";
-    })
-  }
-
-  const test = mockSuspense();
-  const instance = Test.create();
-  const didThrow = mockAsync();
-
-  test.renderHook(() => {
-    try {
-      void instance.tap().value;
-    }
-    catch(err: any){
-      if(err instanceof Promise)
-        throw err;
-      else
-        didThrow.resolve(err);
-    }
-  })
-
-  test.assertDidSuspend(true);
-
-  promise.resolve();
-
-  const error = await didThrow.pending();
-
-  expect(error).toBe("oh no");
 })
 
 it("will warn and rethrow error from factory", () => {
@@ -179,9 +98,9 @@ it("will warn and rethrow error from factory", () => {
     }
   }
 
-  const failed = Compute.FactoryFailed(Test.name, "memoized");
+  const failed = Oops.ComputeFailed(Test.name, "memoized");
 
-  expect(() => Test.create()).toThrowError("Foobar");
+  expect(() => Test.new()).toThrowError("Foobar");
   expect(warn).toBeCalledWith(failed.message);
 })
 
@@ -190,7 +109,9 @@ it("will suspend another factory", async () => {
   const name = mockAsync<string>();
 
   const didEvaluate = jest.fn(
-    (_key: string, $: Test) => $.greet + " " + $.name
+    (_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    }
   );
 
   class Test extends Model {
@@ -200,15 +121,15 @@ it("will suspend another factory", async () => {
     value = get(didEvaluate);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
-  test.effect($ => void $.value);
+  test.on($ => void $.value);
 
   greet.resolve("Hello");
-  await test.update();
+  await test.on();
 
   name.resolve("World");
-  await test.update();
+  await test.on();
 
   expect(didEvaluate).toBeCalledTimes(3);
   expect(didEvaluate).toHaveReturnedWith("Hello World");
@@ -219,25 +140,26 @@ it("will suspend another factory (async)", async () => {
   const name = mockAsync<string>();
 
   const didEvaluate = jest.fn(
-    async (_key: string, $: Test) => $.greet + " " + $.name
+    async (_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    }
   );
 
   class Test extends Model {
     greet = get(greet.pending);
     name = get(name.pending);
-
     value = get(didEvaluate);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
-  test.effect($ => void $.value);
+  test.on($ => void $.value);
 
   greet.resolve("Hello");
-  await test.update();
+  await test.on();
 
   name.resolve("World");
-  await test.update();
+  await test.on();
 
   expect(didEvaluate).toBeCalledTimes(3);
   expect(test.value).toBe("Hello World");
@@ -249,7 +171,7 @@ it("will throw if missing factory", () => {
     value = get(this);
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(() => test.value).toThrowError(
     "Factory argument cannot be undefined"

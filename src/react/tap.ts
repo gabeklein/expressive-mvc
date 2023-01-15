@@ -1,10 +1,9 @@
-import { apply } from '../instruction/apply';
-import { issues } from '../issues';
-import { Model, Stateful } from '../model';
-import { Lookup } from '../register';
-import { Class, InstanceOf } from '../types';
+import { issues } from '../helper/issues';
+import { InstanceOf } from '../helper/types';
+import { add } from '../instruction/add';
+import { Model } from '../model';
+import { Lookup, useLookup } from './context';
 import { Global } from './global';
-import { useLookup } from './useLocal';
 
 export const Oops = issues({
   NotAllowed: (parent, child) =>
@@ -15,10 +14,8 @@ export const Oops = issues({
 })
 
 export type Peer = typeof Model | typeof Global;
-export type ApplyPeer = (context: Lookup) => void;
-export type PeerCallback<T extends Peer> = (instance: InstanceOf<T> | undefined) => void | boolean;
 
-const PendingContext = new WeakMap<Stateful, ApplyPeer[]>();
+const PendingContext = new WeakMap<{}, ((context: Lookup) => void)[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
 
 /**
@@ -32,8 +29,8 @@ const ContextWasUsed = new WeakMap<Model, boolean>();
  *  - If argument is inadequate, but required, your implemention should simply throw.
  *  - If inadequate and not required, conditionally return false.
  */
-function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) => void | true): InstanceOf<T>;
-function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) => void | boolean): InstanceOf<T> | undefined;
+function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) => void | true): T;
+function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) => void | boolean): T | undefined;
 
 /**
  * Find and attach most applicable instance of Model via context.
@@ -44,13 +41,14 @@ function tap <T extends Class> (Type: T, callback?: (instance?: InstanceOf<T>) =
  * @param Type - Type of controller to attach to property. 
  * @param required - Throw if instance of Type cannot be found.
  */
-function tap <T extends Class> (Type: T, required: true): InstanceOf<T>;
-function tap <T extends Class> (Type: T, required?: boolean): InstanceOf<T> | undefined;
+function tap <T extends Model> (Type: Model.Type<T>, required: true): T;
+function tap <T extends Model> (Type: Model.Type<T>, required?: boolean): T | undefined;
 
 function tap<T extends Peer>(
-  type: T, argument?: boolean | PeerCallback<T>){
+  type: T,
+  argument?: boolean | ((instance: InstanceOf<T> | undefined) => void | boolean)){
 
-  return apply(
+  return add(
     function tap(key){
       if("set" in type)
         return {
@@ -80,7 +78,7 @@ function tap<T extends Peer>(
 
       return {
         recursive: true,
-        suspense: true
+        suspend: true
       }
     }
   )
@@ -108,7 +106,7 @@ function usePeerContext(subject: Model){
   ContextWasUsed.set(subject, !!pending);
 }
 
-function getPending(subject: Stateful){
+function getPending(subject: {}){
   let pending = PendingContext.get(subject);
 
   if(!pending)

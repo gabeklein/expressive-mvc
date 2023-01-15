@@ -1,7 +1,6 @@
-import { issues } from '../issues';
+import { issues } from '../helper/issues';
 import { Model } from '../model';
-import { InstanceOf } from '../types';
-import { apply } from './apply';
+import { add } from './add';
 import { Parent } from './use';
 
 export const Oops = issues({
@@ -17,26 +16,26 @@ export const Oops = issues({
  * When parent assigns an instance via `use()` directive, it
  * will be made available to child upon this request.
  *
- * @param Expects - Type of controller compatible with this class. 
+ * @param Type - Type of controller compatible with this class. 
  * @param required - Throw if controller is created independantly.
  */
-function has <T extends typeof Model> (Expects: T, required: false): InstanceOf<T> | undefined;
-function has <T extends typeof Model> (Expects: T, required?: true): InstanceOf<T>;
+function has <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;
+function has <T extends Model> (Type: Model.Type<T>, required?: true): T;
 
-function has<T extends typeof Model>(
-   Expects: T, required?: boolean){
+function has<T extends Model>(
+  Type: Model.Type<T>, required?: boolean){
 
-   return apply(
+   return add(
      function parent(){
        const child = this.subject;
-       const value = Parent.get(child) as InstanceOf<T>;
-       const expected = Expects.name;
+       const value = Parent.get(child) as T;
+       const expected = Type.name;
 
        if(!value){
          if(required !== false)
            throw Oops.Required(expected, child);
        }
-       else if(!(value instanceof Expects))
+       else if(!(value instanceof Type))
          throw Oops.Unexpected(expected, child, value);
 
        return { value };

@@ -1,59 +1,47 @@
 import React from 'react';
 
-import { ensure } from '../controller';
-import { issues } from '../issues';
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { values } from '../helper/object';
+import { Class } from '../helper/types';
 import { Model } from '../model';
-import { Collection, Lookup } from '../register';
 import { Subscriber } from '../subscriber';
-import { Class } from '../types';
-import { entries } from '../util';
+import { Lookup, LookupContext, useLookup } from './context';
 import { getPending } from './tap';
 import { use } from './use';
-import { LookupContext, useLookup } from './useLocal';
 
 export const Oops = issues({
   NoType: () =>
-    "Provider 'of' prop must be Model, typeof Model or a collection of them.",
-
-  PropDeprecated: () =>
-    "Provider `of` prop is deprecated, use `for` instead."
+    "Provider 'for' prop must be Model, typeof Model or a collection of them."
 })
 
 declare namespace Provider {
-  type Item = Model | typeof Model;
-  type Collection<T extends Item> = T[] | { [key: string]: T };
-  type Existent<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
+  type Item = Model | Model.Type;
 
-  type NormalProps<E, I = Existent<E>> =
-      & {
-        /** @deprecated use for instead. */
-        of?: never;
-        for: E;
-        children: React.ReactNode | ((instance: I) => React.ReactNode);
-      }
-      & Model.Compat<I>;
+  type Multiple<T extends Item = Item> = T[] | { [key: string]: T };
+
+  type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
+
+  type NormalProps<E, I = Instance<E>> = {
+    for: E;
+    children?: React.ReactNode | ((instance: I) => React.ReactNode);
+    and?: Model.Compat<I>;
+  }
 
   // FIX: This fails to exclude properties with same key but different type.
-  type MultipleProps<T extends Item> =
-      & {
-        /** @deprecated use for instead. */
-        of?: never;
-        for: Collection<T>;
-        children?: React.ReactNode | (() => React.ReactNode);
-      }
-      & Model.Compat<Existent<T>>;
+  type MultipleProps<T extends Item> = {
+    for: Multiple<T>;
+    children?: React.ReactNode | (() => React.ReactNode);
+    and?: Model.Compat<Instance<T>>;
+  }
 
   type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  if("of" in props)
-    throw Oops.PropDeprecated();
-
-  const context = useNewContext(props.for);
+  const context = useNewContext(props.for, props.and);
   const render = props.children;
 
-  useAppliedProps(context, props);
   React.useLayoutEffect(() => () => context.pop(), []);
 
   return React.createElement(LookupContext.Provider, { value: context },
@@ -65,40 +53,47 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
 export { Provider };
 
-function useNewContext(
-  inject?: Model | typeof Model | Collection){
+function useNewContext<T extends Model>(
+  include: Provider.Item | Provider.Multiple,
+  assign: Model.Compat<T> | undefined){
 
-  const from = useLookup();
+  const ambient = useLookup();
 
-  return React.useMemo(() => {
-    if(!inject)
+  const context = React.useMemo(() => {
+    if(!include)
       throw Oops.NoType();
 
-    const context = from.push(inject);
+    const local = ambient.push();
 
-    for(const instance of context.local)
+    function register(I: Model | typeof Model){
+      if(I instanceof Model)
+        local.inject(I.constructor as any, I, false);
+      else
+        local.inject(I, I.new(), true);
+    }
+
+    if(include instanceof Model || typeof include == "function")
+      register(include);
+    else
+      values(include).forEach(register);
+
+    for(const instance of local.local)
       if(instance)
         for(const apply of getPending(instance))
-          apply(context)
+          apply(local)
 
-    return context;
-  }, []);
-}
-
-function useAppliedProps(within: Lookup, props: {}){
-  const update = React.useMemo(() => {
-    const targets = within.local;
-
-    return function integrate(props: {}){
-      for(const [key, value] of entries(props))
-        if(!["of", "for", "children"].includes(key))
-          for(const into of targets)
-            if(into && key in into)
-              (into as any)[key] = value;
-    };
+    return local;
   }, []);
 
-  update(props);
+  if(assign){
+    type K = Model.Field<T>;
+    for(const key in assign)
+      for(const into of context.local as T[])
+        if(into && key in into)
+          into[key as K] = assign[key as K]!;
+  }
+
+  return context;
 }
 
 interface RenderFunctionProps {
@@ -111,7 +106,7 @@ function RenderFunction(props: RenderFunctionProps): any {
     const targets = props.context.local;
 
     if(targets.length == 1)
-      return ensure(targets[0]).subscribe(() => refresh);
+      return Control.for(targets[0]).subscribe(() => refresh);
 
     return {} as Subscriber;
   });

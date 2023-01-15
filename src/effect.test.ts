@@ -1,5 +1,7 @@
-import { get, Model, set } from '../src';
-import { Oops } from '../src/util';
+import { Oops } from './effect';
+import { get } from './instruction/get';
+import { set } from './instruction/set';
+import { Model } from './model';
 
 describe("explicit", () => {
   class TestValues extends Model {
@@ -10,10 +12,10 @@ describe("explicit", () => {
   }
 
   it('will watch values', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, [
+    state.on(mock, [
       "value1",
       "value2",
       "value3",
@@ -23,42 +25,42 @@ describe("explicit", () => {
     state.value1 = 2;
 
     // wait for update event, thus queue flushed
-    await state.update()
+    await state.on()
 
     state.value2 = 3;
     state.value3 = 4;
 
     // wait for update event to flush queue
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(3)
   })
 
   it('will squash simultaneous updates', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, ["value1", "value2"]);
+    state.on(mock, ["value1", "value2"]);
 
     state.value1 = 2;
     state.value2 = 3;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
 
   it('will squash simultaneous compute update', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(mock, ["value3", "value4"]);
+    state.on(mock, ["value3", "value4"]);
 
     state.value3 = 4;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -73,15 +75,15 @@ describe("explicit", () => {
       }
     }
 
-    const state = Test.create();
+    const state = Test.new();
     const mock = jest.fn();
 
-    state.effect(state.testEffect, ["value1"]);
+    state.on(state.testEffect, ["value1"]);
 
     expect(mock).not.toBeCalled();
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
   })
@@ -90,20 +92,20 @@ describe("explicit", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        this.effect(mock, ["value1", "value3"]);
+        this.on(mock, ["value1", "value3"]);
       }
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     state.value1++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalled();
 
     state.value3++;
-    await state.update();
+    await state.on();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
@@ -113,9 +115,9 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const didCreate = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
-    test.effect(didCreate, []);
+    test.on(didCreate, []);
 
     expect(didCreate).toBeCalled();
   })
@@ -124,9 +126,9 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const willDestroy = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
-    test.effect(() => willDestroy, []);
+    test.on(() => willDestroy, []);
     test.destroy();
 
     expect(willDestroy).toBeCalled();
@@ -136,10 +138,8 @@ describe("explicit", () => {
     class Test extends Model {}
 
     const willDestroy = jest.fn();
-    const test = Test.create();
-
-    const cancel =
-      test.effect(() => willDestroy, []);
+    const test = Test.new();
+    const cancel = test.on(() => willDestroy, []);
 
     cancel();
     test.destroy();
@@ -157,10 +157,10 @@ describe("implicit", () => {
   }
 
   it('will watch values via arrow function', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       // destructure values to indicate access.
       const { value1, value2, value3 } = self;
       void value1, value2, value3;
@@ -168,14 +168,14 @@ describe("implicit", () => {
     });
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     state.value2 = 3;
-    await state.update();
+    await state.on();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.update();
+    await state.on();
 
     /**
      * must invoke once to detect subscription
@@ -189,7 +189,7 @@ describe("implicit", () => {
   })
 
   it('will watch values from method', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
     function testEffect(this: TestValues){
@@ -200,26 +200,26 @@ describe("implicit", () => {
 
     }
 
-    state.effect(testEffect);
+    state.on(testEffect);
 
     state.value1 = 2;
-    await state.update();
+    await state.on();
 
     state.value2 = 3;
-    await state.update();
+    await state.on();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(4);
   })
 
   it('will squash simultaneous updates', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       void self.value1
       void self.value2;
       mock();
@@ -228,17 +228,17 @@ describe("implicit", () => {
     state.value1 = 2;
     state.value2 = 3;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
   })
 
   it('will squash simultaneous compute', async () => {
-    const state = TestValues.create();
+    const state = TestValues.new();
     const mock = jest.fn();
 
-    state.effect(self => {
+    state.on(self => {
       void self.value3;
       void self.value4;
       mock();
@@ -246,7 +246,7 @@ describe("implicit", () => {
 
     state.value3 = 4;
 
-    await state.update()
+    await state.on()
 
     // expect two syncronous groups of updates.
     expect(mock).toBeCalledTimes(2)
@@ -256,7 +256,7 @@ describe("implicit", () => {
     class Test extends TestValues {
       constructor(){
         super();
-        this.effect(this.test);
+        this.on(this.test);
       }
 
       test(){
@@ -267,37 +267,37 @@ describe("implicit", () => {
     }
 
     const mock = jest.fn();
-    const state = Test.create();
+    const state = Test.new();
 
     // runs immediately to aquire subscription
     expect(mock).toBeCalled();
 
     state.value1++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(2);
 
     state.value3++;
-    await state.update();
+    await state.on();
 
     expect(mock).toBeCalledTimes(3);
   })
 
-  it("will throw if effect returns non-function", () => {
-    const state = TestValues.create();
+  it("will throw if.on returns non-function", () => {
+    const state = TestValues.new();
     const expected = Oops.BadCallback();
     const attempt = () => {
       // @ts-ignore
-      state.effect(() => "foobar");
+      state.on(() => "foobar");
     }
 
     expect(attempt).toThrowError(expected);
   })
 
-  it("will not throw if effect returns promise", () => {
-    const state = TestValues.create();
+  it("will not throw if.on returns promise", () => {
+    const state = TestValues.new();
     const attempt = () => {
-      state.effect(async () => {});
+      state.on(async () => {});
     }
 
     expect(attempt).not.toThrowError();
@@ -311,11 +311,11 @@ describe("suspense", () => {
   }
 
   it("will retry", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     });
@@ -325,38 +325,38 @@ describe("suspense", () => {
 
     test.value = "foobar";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foobar");
   })
 
   it("will still subscribe", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     });
 
     test.value = "foo";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foo");
 
     test.value = "bar";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("bar");
     expect(didTry).toBeCalledTimes(3);
   })
 
   it("will not update while pending", async () => {
-    const test = Test.create();
+    const test = Test.new();
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.effect($ => {
+    test.on($ => {
       didTry();
       didInvoke($.value);
     }, ["value", "other"]);
@@ -365,12 +365,12 @@ describe("suspense", () => {
 
     test.other = "bar";
 
-    await test.update();
+    await test.on();
     expect(didTry).toBeCalledTimes(1);
 
     test.value = "foo";
 
-    await test.update();
+    await test.on();
     expect(didInvoke).toBeCalledWith("foo");
     expect(didTry).toBeCalledTimes(2);
   })

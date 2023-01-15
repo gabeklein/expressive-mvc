@@ -1,17 +1,14 @@
-import { Controller, CONTROL, ensure, LISTEN } from '../controller';
-import { LOCAL, Stateful } from '../model';
+import { Control, PENDING } from '../control';
+import { defineProperty } from '../helper/object';
+import { Callback } from '../helper/types';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
-import { Callback } from '../types';
-import { defineProperty } from '../util';
-
-const PENDING = new Map<symbol, Instruction.Runner<any>>();
 
 /**
  * Property initializer, will run upon instance creation.
  * Optional returned callback will run when once upon first access.
  */
-type Instruction<T> = (this: Controller, key: string, thisArg: Controller) =>
+type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
   | Instruction.Getter<T> 
   | Instruction.ExplicitDescriptor
   | Instruction.Descriptor<T>
@@ -23,7 +20,7 @@ declare namespace Instruction {
   type Getter<T> = (within?: Subscriber) => T;
   type Setter<T> = (value: T) => boolean | void;
 
-  type Runner<T> = (this: Controller, key: string, on: Controller) =>
+  type Runner<T> = (this: Control, key: string, on: Control) =>
     Instruction.Descriptor<T> | boolean | undefined;
 
   interface Descriptor<T> {
@@ -33,7 +30,7 @@ declare namespace Instruction {
     writable?: boolean;
     get?: Getter<T>;
     set?: Setter<T> | false;
-    suspense?: boolean;
+    suspend?: boolean;
     destroy?: () => void;
   }
 
@@ -46,7 +43,7 @@ declare namespace Instruction {
     enumerable?: boolean;
     value?: T;
     set?: Setter<T> | false;
-    suspense?: boolean;
+    suspend?: boolean;
   }
 }
 
@@ -54,18 +51,17 @@ declare namespace Instruction {
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  */
-function apply <T = any> (instruction: Instruction<T>, name?: string): T;
+function add<T = any>(
+  instruction: Instruction<any>,
+  label?: string){
 
-function apply<T = any>(
-  fn: Instruction<any>, label?: string){
-
-  const name = label || fn.name || "pending";
+  const name = label || instruction.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
-  function setup(this: Controller, key: string){
+  function setup(this: Control, key: string){
     const { subject, state } = this;
 
-    let output = fn.call(this, key, this);
+    let output = instruction.call(this, key, this);
 
     if(typeof output == "function")
       output = { get: output };
@@ -81,7 +77,7 @@ function apply<T = any>(
     let {
       get: onGet,
       set: onSet,
-      suspense
+      suspend: shouldSuspend
     } = output as Instruction.Descriptor<any>;
 
     if("value" in output)
@@ -109,15 +105,14 @@ function apply<T = any>(
         ? this.ref(key, onSet)
         : undefined,
 
-      get(this: Stateful){
-        if(!state.has(key) && suspense)
+      get(this: any){
+        if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
-        const listen = LISTEN.get(this);
-        const local = this[LOCAL];
+        const local = Subscriber.get(this);
   
-        if(listen)
-          listen(key);
+        if(local)
+          local.add(key);
   
         return onGet
           ? onGet(local)
@@ -131,8 +126,8 @@ function apply<T = any>(
   return placeholder as unknown as T;
 }
 
-export function getRecursive(key: string, from: Controller){
-  const context = new WeakMap<Subscriber, Stateful | undefined>();
+export function getRecursive(key: string, from: Control){
+  const context = new WeakMap<Subscriber, {} | undefined>();
 
   return (local: Subscriber | undefined) => {
     if(!local)
@@ -147,8 +142,8 @@ export function getRecursive(key: string, from: Controller){
 
         const value = from.state.get(key);
   
-        if(value && CONTROL in value){
-          const child = ensure(value).subscribe(local.onUpdate);
+        if(Control.get(value)){
+          const child = Control.for(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();
@@ -175,4 +170,4 @@ export function getRecursive(key: string, from: Controller){
   }
 }
 
-export { apply, Instruction, PENDING }
+export { add, Instruction }

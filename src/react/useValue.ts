@@ -1,31 +1,30 @@
 import React from 'react';
 
-import { ensure } from '../controller';
-import { Stateful } from '../model';
-import { defineProperty } from '../util';
+import { Control } from '../control';
+import { defineProperty } from '../helper/object';
 import { use } from './use';
 
-import type { Callback } from '../types';
+import type { Callback } from '../helper/types';
 
-function useFrom <T extends Stateful, R> (
+function useValue <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect: true
 ): Exclude<R, undefined>;
 
-function useFrom <T extends Stateful, R> (
+function useValue <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect?: boolean
 ): R;
 
-function useFrom(
-  target: Stateful,
+function useValue(
+  source: {},
   compute: Function,
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = ensure(target).subscribe(() => update);
+    const sub = Control.for(source).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);
@@ -42,6 +41,22 @@ function useFrom(
       else
         refresh();
     };
+
+    if(value === null){
+      sub.watch.clear();
+      return {
+        proxy: null,
+        release: () => {}
+      }
+    }
+
+    if(typeof value == "function"){
+      const get = value;
+
+      sub.watch.clear();
+      compute = () => get();
+      value = get();
+    }
 
     if(value instanceof Promise) {
       value.then(set);
@@ -74,4 +89,4 @@ function useFrom(
   return local.proxy;
 }
 
-export { useFrom }
+export { useValue }

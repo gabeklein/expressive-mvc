@@ -1,7 +1,5 @@
-import { Global, Model } from '..';
-import { mockAsync, mockConsole, mockSuspense } from '../../tests/adapter';
-import { tap } from '../react/tap';
-import { Oops as Suspense } from '../suspense';
+import { Model } from '../model';
+import { mockConsole } from '../helper/testing';
 import { get, Oops as Compute } from './get';
 import { use } from './use';
 
@@ -22,38 +20,40 @@ class Subject extends Model {
   })
 }
 
+it.todo("will add pending compute to frame immediately");
+
 it('will reevaluate when inputs change', async () => {
-  const state = Subject.create();
+  const state = Subject.new();
 
   state.seconds = 30;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(state.seconds).toEqual(30);
   expect(state.minutes).toEqual(0);
 
-  await state.update(false);
+  await state.on(null);
 
   state.seconds = 60;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(state.seconds).toEqual(60);
   expect(state.minutes).toEqual(1);
 })
 
 it('will trigger when nested inputs change', async () => {
-  const state = Subject.create();
+  const state = Subject.new();
 
   expect(state.nested).toBe("foo");
 
   state.child.value = "bar";
-  await state.update(true);
+  await state.on(true);
 
   expect(state.nested).toBe("bar");
 
   state.child = new Child();
-  await state.update(true);
+  await state.on(true);
 
   // sanity check
   expect(state.child.value).toBe("foo");
@@ -72,7 +72,7 @@ it('will compute immediately if needed', () => {
     }
   }
 
-  const test = Test.create();
+  const test = Test.new();
 
   expect(mockFactory).toBeCalled();
   expect(test.value).toBe("foobar");
@@ -90,11 +90,49 @@ it("will compute immediately if exported", () => {
     }
   }
 
-  const test = Test.create();
+  const test = Test.new();
   const values = test.export();
 
   expect(mockFactory).toBeCalled();
   expect(values.value).toBe("foobar");
+})
+
+it("will compute early if value is accessed", async () => {
+  class Test extends Model {
+    number = 0;
+    plusOne = get(this, state => {
+      const value = state.number + 1;
+      didCompute(value);
+      return value;
+    });
+  }
+
+  const didCompute = jest.fn();
+  const test = Test.new();
+
+  expect(test.plusOne).toBe(1);
+
+  test.number++;
+
+  // not accessed; compute will wait for frame
+  expect(didCompute).not.toBeCalledWith(2)
+
+  // does compute eventually
+  await test.on(true);
+  expect(didCompute).toBeCalledWith(2)
+  expect(test.plusOne).toBe(2);
+
+  test.number++;
+
+  // sanity check
+  expect(didCompute).not.toBeCalledWith(3);
+
+  // accessing value now will force compute
+  expect(test.plusOne).toBe(3);
+  expect(didCompute).toBeCalledWith(3);
+
+  // update should still occur
+  await test.on(true);
 })
 
 it('will be squashed with regular updates', async () => {
@@ -118,7 +156,7 @@ it('will be squashed with regular updates', async () => {
     x = use(Inner);
   }
 
-  const state = Test.create();
+  const state = Test.new();
 
   expect(state.c).toBe(3);
   expect(exec).toBeCalledTimes(1);
@@ -129,7 +167,7 @@ it('will be squashed with regular updates', async () => {
   state.b++;
   state.x.value++;
 
-  await state.update(true);
+  await state.on(true);
 
   expect(exec).toBeCalledTimes(2);
   expect(emit).toBeCalledTimes(1);
@@ -166,7 +204,7 @@ it("will be evaluated in order", async () => {
     })
   }
 
-  const test = Ordered.create();
+  const test = Ordered.new();
 
   // initialize D, should cascade to dependancies
   expect(test.D).toBe(6);
@@ -179,7 +217,7 @@ it("will be evaluated in order", async () => {
 
   // change value of X, will trigger A & C;
   test.X = 2;
-  const updated = await test.update(true);
+  const updated = await test.on(true);
 
   // should evaluate by prioritiy
   expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -197,12 +235,12 @@ it("will create a computed from method", async () => {
     }
   }
 
-  const test = Hello.create();
+  const test = Hello.new();
 
   expect(test.greeting).toBe("Hello World!");
 
   test.friend = "Foo";
-  await test.update(true);
+  await test.on(true);
 
   expect(test.greeting).toBe("Hello Foo!");
 })
@@ -217,7 +255,7 @@ describe("failures", () => {
   }
 
   it('will warn if throws', () => {
-    const state = Subject.create();
+    const state = Subject.new();
     const attempt = () => state.never;
 
     const failed = Compute.Failed(Subject.name, "never", true);
@@ -238,33 +276,31 @@ describe("failures", () => {
       })
     }
 
-    const state = Test.create();
+    const state = Test.new();
     const failed = Compute.Failed(Test.name, "value", false);
 
-    state.once("value");
+    state.on("value");
     state.shouldFail = true;
 
-    await state.update(true);
+    await state.on(true);
 
     expect(warn).toBeCalledWith(failed.message);
     expect(error).toBeCalled();
   })
 
   it('will throw if source is another instruction', () => {
-    class Peer extends Global {
+    class Peer extends Model {
       value = 1;
     }
 
-    Peer.create();
-
     class Test extends Model {
-      peer = tap(Peer);
+      peer = use(Peer);
       value = get(this.peer, () => {});
     }
 
     const expected = Compute.PeerNotAllowed("Test", "value");
 
-    expect(() => Test.create()).toThrow(expected);
+    expect(() => Test.new()).toThrow(expected);
   })
 })
 
@@ -284,7 +320,7 @@ describe("circular", () => {
       });
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     // shouldn't exist until getter's side-effect
     expect("previous" in test).toBe(false);
@@ -300,11 +336,48 @@ describe("circular", () => {
 
     // change upstream value to trigger re-compute
     test.multiplier = 1;
-    await test.update(true);
+    await test.on(true);
 
     // getter should see current value while producing new one
     expect(test.previous).toBe(initial);
     expect(test.value).not.toBe(initial);
+  })
+
+  it("will not trigger itself", async () => {
+    class Test extends Model {
+      input = 1;
+      value = get(() => this.computeValue);
+  
+      computeValue(){
+        const { input, value } = this;
+  
+        didGetOldValue(value);
+  
+        return input + 1;
+      }
+    }
+  
+    const didGetOldValue = jest.fn();
+    const didGetNewValue = jest.fn();
+  
+    const test = Test.new();
+  
+    test.on(state => {
+      didGetNewValue(state.value);
+    })
+  
+    expect(test.value).toBe(2);
+    expect(didGetNewValue).toBeCalledWith(2);
+    expect(didGetOldValue).toBeCalledWith(undefined);
+  
+    test.input = 2;
+  
+    expect(test.value).toBe(3);
+    expect(didGetOldValue).toBeCalledWith(2);
+  
+    await test.on(true);
+    expect(didGetNewValue).toBeCalledWith(3);
+    expect(didGetOldValue).toBeCalledTimes(2);
   })
 })
 
@@ -319,13 +392,13 @@ describe("method", () => {
   }
 
   it("will create computed via factory", async () => {
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.bar).toBe(2);
 
     test.foo++;
 
-    await test.update(true);
+    await test.on(true);
     expect(test.bar).toBe(3);
   })
 
@@ -336,7 +409,7 @@ describe("method", () => {
       }
     }
 
-    const test = Extended.create();
+    const test = Extended.new();
 
     expect(test.bar).toBe(3);
   })
@@ -346,7 +419,7 @@ describe("method", () => {
       fooBar = get((key) => () => key);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.fooBar).toBe("fooBar");
   })
@@ -362,161 +435,10 @@ describe("method", () => {
 
   //   const expected = Compute.BadSource("Test", "value", Factory);
 
-  //   expect(() => Test.create()).toThrow(expected);
+  //   expect(() => Test.new()).toThrow(expected);
   // })
 })
 
-describe("suspense", () => {
-  class Test extends Model {
-    random = 0;
-    source?: string = undefined;
-
-    value = get(this, x => {
-      void x.random;
-      return x.source;
-    }, true);
-  }
-
-  it("will suspend if value is undefined", async () => {
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("value");
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.source = "foobar!";
-
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it("will suspend in method mode", async () => {
-    class Test extends Model {
-      source?: string = undefined;
-      value = get(() => this.getValue, true);
-
-      getValue(){
-        return this.source;
-      }
-    }
-
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("value");
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.source = "foobar!";
-
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it("will seem to throw error outside react", () => {
-    const instance = Test.create();
-    const expected = Suspense.NotReady(instance, "value");
-    let didThrow: Error | undefined;
-
-    try {
-      void instance.value;
-    }
-    catch(err: any){
-      didThrow = err;
-    }
-
-    expect(String(didThrow)).toBe(String(expected));
-  })
-
-  it("will return immediately if value is defined", async () => {
-    const test = mockSuspense();
-    const instance = Test.create();
-
-    instance.source = "foobar!";
-
-    let value: string | undefined;
-
-    test.renderHook(() => {
-      value = instance.tap("value");
-    })
-
-    test.assertDidRender(true);
-
-    expect(value).toBe("foobar!");
-  })
-
-  it("will not resolve if value stays undefined", async () => {
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
-
-    test.renderHook(() => {
-      instance.tap("value");
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.random = 1;
-
-    // update to value is expected
-    const pending = await instance.update(true);
-    expect(pending).toContain("random");
-
-    // value will still be undefined
-    expect(instance.export().value).toBe(undefined);
-
-    // give react a moment to render (if it were)
-    await new Promise(res => setTimeout(res, 100));
-
-    // expect no action - value still is undefined
-    test.assertDidRender(false);
-
-    instance.source = "foobar!";
-
-    // we do expect a render this time
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it("will return undefined if not required", async () => {
-    const promise = mockAsync<string>();
-    const mock = jest.fn();
-
-    class Test extends Model {
-      value = get(promise.pending, false);
-    }
-
-    const test = Test.create();
-
-    test.effect(state => mock(state.value));
-
-    expect(mock).toBeCalledWith(undefined);
-
-    promise.resolve("foobar");
-    await test.update();
-
-    expect(mock).toBeCalledWith("foobar");
-  })
-
-  it.todo("will start suspense if value becomes undefined");
-})
-
-describe("factory", () => {
-  
-})
 
 /* Feature is temporarily removed - evaluating usefulness.
 describe("external", () => {
@@ -527,19 +449,19 @@ describe("external", () => {
   afterEach(() => Peer.reset());
 
   it('will accept source other than \'this\'', async () => {
-    const peer = Peer.create();
+    const peer = Peer.new();
 
     class Test extends Model {
       value = from(peer, state => state.value + 1);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.value).toBe(2);
 
     peer.value = 2;
 
-    await test.update(true);
+    await test.on(true);
 
     expect(test.value).toBe(3);
   });
@@ -568,13 +490,13 @@ describe("external", () => {
   })
 
   it('will accept Global as source', () => {
-    Peer.create();
+    Peer.new();
 
     class Test extends Model {
       value = from(Peer, state => state.value + 1);
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.value).toBe(2);
   })

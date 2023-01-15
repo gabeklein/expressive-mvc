@@ -1,5 +1,5 @@
-import { apply, Model } from '..';
-import { Controller } from '../Controller';
+import { add, Model } from '..';
+import { Control } from '../control';
 import { Subscriber } from '../subscriber';
 
 describe("instruction", () => {
@@ -7,7 +7,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = apply((key) => {
+    property = add((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -15,8 +15,8 @@ describe("instruction", () => {
       }
     })
 
-    keyedInstruction = apply(function foo(){});
-    namedInstruction = apply(() => {}, "foo");
+    keyedInstruction = add(function foo(){});
+    namedInstruction = add(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -42,16 +42,16 @@ describe("instruction", () => {
   })
 
   it("will run instruction on create", () => {
-    const { didRunInstruction: ran } = Test.create();
+    const { didRunInstruction: ran } = Test.new();
 
     expect(ran).toBeCalledWith("property");
   })
 
   it("will run instruction getter upon access", async () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const ran = instance.didRunGetter;
 
-    instance.effect(x => void x.property);
+    instance.on(x => void x.property);
 
     expect(ran).toBeCalledWith("property");
 
@@ -64,7 +64,7 @@ describe("instruction", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      property = apply(() => {
+      property = add(() => {
         mock();
 
         return {
@@ -73,7 +73,7 @@ describe("instruction", () => {
       })
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(mock).toBeCalledTimes(1);
 
@@ -88,13 +88,13 @@ describe("getter", () => {
     const mockApply = jest.fn((_key) => mockAccess);
 
     class Test extends Model {
-      property = apply(mockApply);
+      property = add(mockApply);
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(mockApply).toBeCalledWith(
-      "property", expect.any(Controller)
+      "property", expect.any(Control)
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
@@ -105,12 +105,12 @@ describe("getter", () => {
     const didGetValue = jest.fn();
 
     class Test extends Model {
-      property = apply(() => didGetValue)
+      property = add(() => didGetValue)
     }
 
-    const state = Test.create();
+    const state = Test.new();
 
-    state.effect(own => {
+    state.on(own => {
       void own.property;
     });
 
@@ -126,7 +126,7 @@ describe("custom", () => {
     });
 
     class Test extends Model {
-      property = apply(() => {
+      property = add(() => {
         return {
           value: "foobar",
           set: didSetValue
@@ -134,26 +134,26 @@ describe("custom", () => {
       })
     }
 
-    const test = Test.create();
+    const test = Test.new();
 
     expect(test.property).toBe("foobar");
 
     test.property = "test";
     expect(didSetValue).toBeCalledWith("test");
     expect(test.property).toBe("test");
-    await test.update(true);
+    await test.on(true);
 
     test.property = "ignore";
     expect(didSetValue).toBeCalledWith("ignore");
     expect(test.property).toBe("test");
-    await test.update(false);
+    await test.on(null);
   })
 
   it("will delegate value if returns boolean", async () => {
     let shouldUpdate = true;
 
     class Test extends Model {
-      property = apply((key, control) => {
+      property = add((key, control) => {
         return {
           value: 0,
           set: (value: any) => {
@@ -164,17 +164,17 @@ describe("custom", () => {
       })
     }
 
-    const instance = Test.create();
+    const instance = Test.new();
 
     expect(instance.property).toBe(0);
 
     instance.property = 10;
     expect(instance.property).toBe(20);
-    await instance.update(true);
+    await instance.on(true);
 
     shouldUpdate = false;
     instance.property = 0;
     expect(instance.property).toBe(10);
-    await instance.update(false);
+    await instance.on(null);
   })
 })

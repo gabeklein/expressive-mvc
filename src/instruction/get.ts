@@ -1,25 +1,16 @@
-import { ensure } from '../controller';
-import { issues } from '../issues';
-import { Stateful } from '../model';
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { Model } from '../model';
 import { mayRetry } from '../suspense';
-import { apply } from './apply';
+import { add } from './add';
 import { computeMode } from './get.compute';
 import { factoryMode } from './get.factory';
 
 export const Oops = issues({
-  // BadSource: (model, property, got) =>
-  //   `Bad from-instruction provided to ${model}.${property}. Expects an arrow-function or a Model as source. Got ${got}.`,
-
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
   ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`,
-
-  FactoryFailed: (model, key) =>
     `Generating initial value for ${model}.${key} failed.`,
 
   Failed: (parent, property, initial) =>
@@ -96,11 +87,11 @@ function get <T> (factory: Promise<T>, required: false): T | undefined;
 function get <T> (factory: Promise<T>, required?: boolean): T;
  
 function get<R, T>(
-  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R> | Stateful,
+  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R> | Model,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
-  return apply(
+  return add(
     function get(key){
       const { subject } = this;
       const computeRequired = arg1 === true || arg2 === true;
@@ -137,7 +128,7 @@ function get<R, T>(
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
-          source = ensure(arg0);
+          source = Control.for(arg0);
           setter = arg1;
         }
         else

@@ -1,73 +1,55 @@
 import React, { useState } from 'react';
 
-import { ensure } from '../controller';
-import { Model, Stateful } from '../model';
-import { Class, InstanceOf } from '../types';
-import { getOwnPropertyNames } from '../util';
+import { Control } from '../control';
+import { Model } from '../model';
+import { usePeerContext } from './tap';
 import { use } from './use';
 
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  watch: Model.Field<I>[],
-  callback?: (instance: I) => void
-): I;
-
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  callback?: (instance: I) => void
-): I;
-
-function useModel <T extends Class, I extends InstanceOf<T>> (
-  source: T,
-  apply: Model.Compat<I>,
-  keys?: Model.Event<I>[]
-): I;
-
-function useModel <T extends Stateful> (
-  source: (() => T) | T,
-  watch?: Model.Field<T>[],
+function useModel <T extends Model> (
+  source: Model.Type<T> | (() => T),
   callback?: (instance: T) => void
 ): T;
 
-function useModel <T extends Stateful> (
-  source: (() => T) | T,
+function useModel <T extends Model> (
+  source: Model.Type<T> | (() => T),
+  watch: Model.Field<T>[],
   callback?: (instance: T) => void
 ): T;
 
-function useModel <T extends Stateful> (
-  source: (() => T) | T,
+function useModel <T extends Model> (
+  source: Model.Type<T> | (() => T),
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
-function useModel <T extends Model | Stateful> (
-  source: any,
-  arg?: ((instance: T) => void) | Model.Event<T>[] | Model.Compat<T>,
-  arg2?: ((instance: T) => void) | Model.Field<T>[]){
+function useModel <T extends Model> (
+  source: (() => T) | Model.Type<T>,
+  arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
+  arg2?: ((i: T) => void) | Model.Field<T>[]){
 
   const instance = React.useMemo(() => {
-    const cb = arg2 || arg;
-    const instance: T =
-      typeof source == "function" ?
-        source.prototype instanceof Model ?
-          new source() :
-          source() : 
-        source;
+    const callback = arg2 || arg1;
+    const instance =
+      Model.isTypeof(source) ?
+        source.new() :
+        source();
 
-    ensure(instance);
+    Control.for(instance);
 
-    if(typeof cb == "function")
-      cb(instance);
+    if(typeof callback == "function")
+      callback(instance);
 
     return instance;
   }, []);
 
-  if(Array.isArray(arg)){
+  usePeerContext(instance);
+
+  if(Array.isArray(arg1)){
     const update = useState(0)[1];
 
     React.useLayoutEffect(() => {  
-      if(arg.length && instance instanceof Model)
-        instance.on(arg, () => update(x => x+1), true);
+      if(arg1.length && instance instanceof Model)
+        instance.on(arg1, () => update(x => x+1));
 
       return () => {
         if(Model.isTypeof(source))
@@ -77,39 +59,26 @@ function useModel <T extends Model | Stateful> (
 
     return instance;
   }
-  else {
-    const local = use(refresh => (
-      ensure(instance).subscribe(() => refresh)
-    ));
+  
+  const local = use(refresh => (
+    Control.for(instance).subscribe(() => refresh)
+  ));
 
-    if(typeof arg == "object"){
-      local.active = false;
+  if(typeof arg1 == "object")
+    local.assign(arg1, arg2);
 
-      if(typeof arg2 !== "object")
-        arg2 = getOwnPropertyNames(instance) as Model.Field<T>[];
+  React.useLayoutEffect(() => {
+    local.commit();
 
-      for(const key of arg2)
-        if(key in arg)
-          (instance as any)[key] = arg[key];
+    return () => {
+      local.release();
 
-      React.useLayoutEffect(() => {
-        local.active = true;
-      });
-    }
+      if(Model.isTypeof(source))
+        (instance as Model).destroy();
+    };
+  }, []);
 
-    React.useLayoutEffect(() => {
-      local.commit();
-
-      return () => {
-        local.release();
-
-        if(Model.isTypeof(source))
-          (instance as Model).destroy();
-      };
-    }, []);
-
-    return local.proxy;
-  }
+  return local.proxy;
 }
 
 export { useModel }

@@ -1,62 +1,28 @@
-/* istanbul ignore file */
-import React from 'react';
-
-import { CONTROL, Controller, ensure } from '../controller';
+import { Callback, Class } from '../helper/types';
 import { Model } from '../model';
-import { Callback, Class, InstanceOf } from '../types';
-import { getOwnPropertyNames } from '../util';
-import { usePeerContext } from './tap';
-import { useLocal } from './useLocal';
+import { useContext } from './context';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
-
 class MVC extends Model {
-  static [CONTROL]: Controller;
-
-  /** Attaches this controller to a component. */
-  tap(): this;
-  tap <K extends Model.Field<this>> (key: K, expect: true): Exclude<this[K], undefined>;
-  tap <K extends Model.Field<this>> (key: K, expect?: boolean): this[K];
-  tap <T> (from: (this: this, state: this) => Promise<T>, expect: true): Exclude<T, undefined>;
-  tap <T> (from: (this: this, state: this) => Promise<T>, expect?: boolean): T | undefined;
-  tap <T> (from: (this: this, state: this) => T, expect: true): Exclude<T, undefined>;
-  tap <T> (from: (this: this, state: this) => T, expect?: boolean): T;
-
-  tap(path?: string | Function, expect?: boolean){
-    return useTap(this, path as any, expect);
-  }
-
-  /**
-   * **React Hook** - Subscribe to instance of controller within a component.
-   *
-   * @param callback - Run once before subscription begins.
-   */
-  use(watch: Model.Field<this>[], callback?: (instance: this) => void): this;
-  use(callback?: (instance: this) => void): this;
-
-  use(arg?: any, callback?: (instance: this) => void) {
-    return useModel(this, arg, callback);
-  }
-
   /**
    * **React Hook** - Fetch most instance of this controller from context, if it exists.
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends Class> (this: T, required?: boolean): InstanceOf<T>;
+  static get <T extends MVC> (this: Model.Type<T>, required?: boolean): T;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends Class> (this: T, required: false): InstanceOf<T> | undefined;
+  static get <T extends MVC> (this: Model.Type<T>, required: false): T | undefined;
 
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K): I[K];
+  static get <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K): I[K];
 
   /**
    * **React Hook** - Fetch instance.
@@ -64,103 +30,37 @@ class MVC extends Model {
    * Effect callback will run once if found, throw if not found.
    * Returned function is called on unmount.
    */
-  static get <T extends Class, I extends InstanceOf<T>> (this: T, effect: (found: I) => Callback | void): I;
+  static get <I extends MVC> (this: Model.Type<I>, effect: (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
-    return useLocal(this, arg);
+    return useContext(this, arg);
   }
 
   /** 
    * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
    */
-  static tap <T extends Class> (this: T): InstanceOf<T>;
-  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect: true): Exclude<I[K], undefined>;
-  static tap <T extends Class, I extends InstanceOf<T>, K extends Model.Field<I>> (this: T, key: K, expect?: boolean): I[K];
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => Promise<T>, expect?: boolean): T;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect: true): Exclude<T, undefined>;
-  static tap <T, M extends Class, I extends InstanceOf<M>> (this: M, from: (this: I, state: I) => T, expect?: boolean): T;
+  static tap <T extends MVC> (this: Model.Type<T>): T;
+
+  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
+  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect?: boolean): T[K];
+
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => () => R): R;
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
+
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): R | undefined;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => R, expect?: boolean): R;
 
   static tap (key?: string | Function, expect?: boolean): any {
     return useTap(this, key as any, expect);
   }
 
-  /**
-   * **React Hook** - Spawn and maintain a controller from within a component.
-   * 
-   * More efficient than `use()` if you don't need hook-based features.
-   * 
-   * @param callback - Run after creation of instance.
-   */
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, callback?: (instance: I) => void): I;
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, apply: Model.Compat<I>): I;
-
-  static new <T extends Class, I extends InstanceOf<T>> (this: T, arg?: ((instance: I) => void) | Model.Compat<I>){
-    const instance = React.useMemo(() => {
-      const instance: I = new this();
-
-      ensure(instance);
-
-      if(typeof arg == "function")
-        arg(instance);
-
-      else if(arg)
-        getOwnPropertyNames(instance).forEach(key => {
-          if(key in arg)
-            instance[key] = arg[key];
-        })
-
-      return instance;
-    }, []);
-
-    usePeerContext(instance.is);
-
-    return instance;
-  }
-
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
-    watch: Model.Field<I>[],
-    callback?: (instance: I) => void
-  ): I;
-
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
-    callback?: (instance: I) => void
-  ): I;
-
-  static use <T extends Class, I extends InstanceOf<T>> (
-    this: T,
-    apply: Model.Compat<I>,
-    keys?: Model.Event<I>[]
-  ): I;
+  static use <I extends MVC> (this: Model.Type<I>, watch: Model.Field<I>[], callback?: (instance: I) => void): I;
+  static use <I extends MVC> (this: Model.Type<I>, callback?: (instance: I) => void): I;
+  static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
   static use <T extends typeof MVC> (this: T, a: any, b?: any){
-    const instance = useModel(this, a, b);
-    usePeerContext(instance.is);    
-    return instance;
-  }
-
-  /**
-   * @deprecated consider doing this manually - not worth minor efficiency gain over using.
-  */
-  static uses <T extends typeof MVC, I extends InstanceOf<T>, D extends Model.Compat<I>> (
-    this: T, apply: D, keys?: (keyof D)[]){
-
-    return this.use(instance => {
-      instance.import(apply, keys);
-    })
-  }
-
-  /**
-   * @deprecated is now replaced by overload of `use` method.
-  */
-  static using <T extends typeof MVC, I extends InstanceOf<T>> (
-    this: T,
-    apply: Model.Compat<I>,
-    keys?: Model.Event<I>[]){
-
-    return this.use(apply, keys);
+    return useModel(this, a, b);
   }
 
   static meta <T extends Class>(this: T): T;

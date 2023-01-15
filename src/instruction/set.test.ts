@@ -1,48 +1,43 @@
 import { Model } from '..';
-import { mockAsync, mockSuspense } from '../../tests/adapter';
-import { Oops as Util } from '../util';
+import { Oops } from '../effect';
+import { mockAsync } from '../helper/testing';
 import { set } from './set';
 
-describe("empty", () => {
-  it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
+describe("placeholder", () => {
+  class Test extends Model {
+    foobar = set<string>();
+  }
 
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.create();
+  it('will suspend if value is accessed before assign', async () => {
+    const instance = Test.new();
+    const promise = mockAsync<string>();
+    const mockEffect = jest.fn((state: Test) => {
+      promise.resolve(state.foobar);
+    });
 
-    test.renderHook(() => {
-      instance.tap("foobar");
-      promise.resolve();
-    })
+    instance.on(mockEffect);
 
-    test.assertDidSuspend(true);
+    expect(mockEffect).toBeCalledTimes(1);
 
     instance.foobar = "foo!";
 
-    // expect refresh caused by update
-    await promise.pending();
+    const result = await promise.pending();
 
-    test.assertDidRender(true);
+    expect(mockEffect).toBeCalledTimes(2);
+    expect(result).toBe("foo!");
   })
-
+  
   it('will not suspend if value is defined', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
+    const instance = Test.new();
 
-    const test = mockSuspense();
-    const instance = Test.create();
+    instance.foobar = "bar!";
 
-    instance.foobar = "foo!";
+    const mockEffect = jest.fn((state: Test) => {
+      expect(state.foobar).toBe("bar!");
+    });
 
-    test.renderHook(() => {
-      instance.tap("foobar");
-    })
-
-    test.assertDidRender(true);
+    instance.on(mockEffect);
+    expect(mockEffect).toBeCalledTimes(1);
   })
 })
 
@@ -54,17 +49,17 @@ describe("callback", () => {
       });
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
     const callback = jest.fn()
     const event = jest.fn();
 
     expect(callback).not.toBeCalled();
-    state.once("test", event);
+    state.on("test", event, true);
 
     state.test = 1;
     expect(callback).toBeCalledWith(2);
 
-    await state.update(true)
+    await state.on(true)
     expect(event).toBeCalledWith(1, "test");
   })
 
@@ -78,15 +73,15 @@ describe("callback", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     state.test = 1;
 
-    await state.update(true);
+    await state.on(true);
     expect(callback).not.toBeCalled();
     state.test = 2;
 
-    await state.update(true);
+    await state.on(true);
     expect(callback).toBeCalledWith(true);
   })
 
@@ -98,12 +93,12 @@ describe("callback", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update();
+    await state.on();
     expect(callback).toBeCalledWith("bar");
   })
 
@@ -112,7 +107,7 @@ describe("callback", () => {
       property = set<any>(undefined, async () => {});
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(() => state.property = "bar").not.toThrow();
   })
@@ -123,8 +118,8 @@ describe("callback", () => {
       property = set<any>(undefined, () => 3);
     }
 
-    const expected = Util.BadCallback();
-    const state = Subject.create();
+    const expected = Oops.BadCallback();
+    const state = Subject.new();
 
     expect(() => state.property = "bar").toThrow(expected);
   })
@@ -140,12 +135,12 @@ describe("intercept", () => {
     }
 
     const callback = jest.fn()
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update(false);
+    await state.on(null);
     expect(callback).toBeCalledWith("bar");
     expect(state.test).toBe("foo");
   })
@@ -155,12 +150,12 @@ describe("intercept", () => {
       test = set("foo", value => true);
     }
 
-    const state = Subject.create();
+    const state = Subject.new();
 
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.update(true);
+    await state.on(true);
     expect(state.test).toBe("foo");
   })
 })

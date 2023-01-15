@@ -1,5 +1,6 @@
-import { Controller } from './controller';
-import { issues } from './issues';
+import { Control } from './control';
+import { issues } from './helper/issues';
+import { assign } from './helper/object';
 
 export const Oops = issues({
   NotReady: (model, key) =>
@@ -9,7 +10,7 @@ export const Oops = issues({
 type Suspense<T = any> = Promise<T> & Error;
 
 export function suspend(
-  source: Controller, key: string): Suspense {
+  source: Control, key: string): Suspense {
 
   const error =
     Oops.NotReady(source.subject, key);
@@ -26,7 +27,7 @@ export function suspend(
     });
   });
 
-  return Object.assign(promise, {
+  return assign(promise, {
     toString: () => String(error),
     name: "Suspense",
     message: error.message,

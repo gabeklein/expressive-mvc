@@ -1,9 +1,9 @@
-import React, { useLayoutEffect } from 'react';
+import React from 'react';
 
-import { render } from '../../tests/adapter';
+import { render } from '../helper/testing';
+import { Oops, useContext } from './context';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops, useLocal } from './useLocal';
 
 describe("get", () => {
   class Test extends MVC {
@@ -12,7 +12,7 @@ describe("get", () => {
 
   it("will get instance of model", () => {
     const Hook = () => {
-      const value = useLocal(Test, "value");
+      const value = useContext(Test, "value");
       expect(value).toBe("foo")
       return null;
     }
@@ -26,7 +26,7 @@ describe("get", () => {
 
   it("will fail if not found", () => {
     const Hook = () => {
-      useLocal(Test);
+      useContext(Test);
       return null;
     }
 
@@ -43,8 +43,7 @@ describe("get", () => {
     const willUnmount = jest.fn();
 
     const Hook = () => {
-      useLocal(Test, willMount);
-      void useLayoutEffect;
+      useContext(Test, willMount);
       return null;
     }
 

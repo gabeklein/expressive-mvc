@@ -1,10 +1,10 @@
-import { ensure } from '../controller';
-import { issues } from '../issues';
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { assign } from '../helper/object';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
-import { Class, InstanceOf } from '../types';
-import { apply, getRecursive } from './apply';
+import { add, getRecursive } from './add';
 import { keyed, Managed } from './use.keyed';
 
 export const Parent = new WeakMap<{}, {}>();
@@ -39,7 +39,7 @@ function use <T extends Model> (from: () => T, required: boolean): T;
  /**
   * Create a new child instance of model.
   */
-function use <T extends Class> (Type: T, callback?: (i: InstanceOf<T>) => void): InstanceOf<T>;
+function use <T extends Model> (Type: Model.Type<T>, callback?: (i: T) => void): T;
 
  /**
   * Create a managed child from factory function.
@@ -59,11 +59,11 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
   */
 function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
 
-function use<T extends Class>(
+function use(
   input?: any,
-  argument?: boolean | ((i: InstanceOf<T> | undefined) => void)){
+  argument?: boolean | ((i: {} | undefined) => void)){
 
-  return apply(
+  return add(
     function use(key){
       const { state, subject } = this;
       const required = argument !== false;
@@ -91,11 +91,11 @@ function use<T extends Class>(
         if(next){
           get = getRecursive(key, this);
           Parent.set(next, subject);
-          ensure(next);
+          Control.for(next);
         }
 
         if(typeof argument == "function")
-          argument(next as InstanceOf<T>);
+          argument(next);
 
         return true;
       }
@@ -107,7 +107,7 @@ function use<T extends Class>(
         const issue =
           Oops.NotReady(subject, key);
 
-        Object.assign(pending!, {
+        assign(pending!, {
           message: issue.message,
           stack: issue.stack
         });

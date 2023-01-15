@@ -1,12 +1,12 @@
-import { ensure } from '../controller';
-import { issues } from '../issues';
+import { Control } from '../control';
+import { issues } from '../helper/issues';
+import { Class, InstanceOf } from '../helper/types';
 import { Model } from '../model';
-import { Class, InstanceOf } from '../types';
 import { MVC } from './mvc';
 
 export const Oops = issues({
   DoesNotExist: (name) =>
-    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.create() before attempting to access, or consider using ${name}.use() instead.`,
+    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
 
   AlreadyExists: (name) =>
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
@@ -15,16 +15,36 @@ export const Oops = issues({
 const Active = new WeakMap<Class, Global>();
 
 export class Global extends MVC {
-  static create<T extends Class>(
+  constructor(){
+    super();
+    Active.set(this.constructor as Class, this);
+  }
+
+  destroy(force?: boolean){
+    const type = this.constructor as typeof Global;
+    
+    if(type.keepAlive && !force)
+      return false;
+
+    Control.for(this).clear();
+    Active.delete(type);
+    return true;
+  }
+
+  static keepAlive = true;
+
+  static new<T extends Class>(
     this: T, ...args: ConstructorParameters<T>){
 
     if(Active.has(this))
-      throw Oops.AlreadyExists(this.name);
+      if((this as any).keepAlive)
+        return Active.get(this) as InstanceOf<T>;
+      else
+        throw Oops.AlreadyExists(this.name);
 
     const instance = new this(...args);
 
-    ensure(instance);
-    Active.set(this, instance);
+    Control.for(instance);
 
     return instance as InstanceOf<T>;
   }
@@ -35,11 +55,9 @@ export class Global extends MVC {
    * If instance does not already exist, one will be created. 
    */
   static set<T extends typeof Global>(
-    this: T, updates: Partial<InstanceOf<T>>){
+    this: T, values: Model.Compat<InstanceOf<T>, Global>){
 
-    const instance = Active.get(this) || (this as any).create();
-    instance.import(updates);
-    return instance.update(false);
+    return this.get(true).update(values);
   }
 
   /**
@@ -47,19 +65,19 @@ export class Global extends MVC {
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends Class> (this: T, required: false): InstanceOf<T> | undefined;
+  static get <T extends Global> (this: Model.Type<T>, required: false): T | undefined;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends Class> (this: T, required?: boolean): InstanceOf<T>;
+  static get <T extends Global> (this: Model.Type<T>, required?: boolean): T;
 
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <T extends Class, K extends Model.Field<InstanceOf<T>>> (this: T, key: K): InstanceOf<T>[K];
+  static get <T extends Global, K extends Model.Field<T, Global>> (this: Model.Type<T>, key: K): T[K];
 
   static get(arg?: boolean | string){
     const instance = Active.get(this);
@@ -79,11 +97,6 @@ export class Global extends MVC {
     const current = Active.get(this);
 
     if(current)
-      current.destroy();
-  }
-
-  destroy(){
-    super.destroy();
-    Active.delete(this.constructor as any);
+      current.destroy(true);
   }
 }

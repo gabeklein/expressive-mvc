@@ -1,83 +1,67 @@
 import React, { useMemo } from 'react';
 
-import { ensure } from '../controller';
-import { Model, Stateful } from '../model';
+import { Control } from '../control';
+import { Model } from '../model';
 import { suspend } from '../suspense';
+import { useContext } from './context';
+import { MVC } from './mvc';
 import { use } from './use';
-import { useFrom } from './useFrom';
-import { useLocal } from './useLocal';
+import { useValue } from './useValue';
 
-namespace useTap {
-  export interface Tappable {
-    new (): Stateful;
-    new (...args: any[]): Stateful;
-    get?: () => Stateful;
-  }
+declare namespace useTap {
+  type Source<T extends Model> =
+    | T
+    | Model.Type<T>
+    | (() => T | Model.Type<T>);
 }
 
-function useTap <T extends Stateful> (source: T | (() => T)): T;
+function useTap <T extends Model> (source: useTap.Source<T>): T;
 
-function useTap <T extends Stateful, K extends Model.Field<T>> (
-  source: T | (() => T) | useTap.Tappable,
-  path: K,
-  expect: true
-): Exclude<T[K], undefined>;
+function useTap <T extends Model, K extends Model.Field<T>> (source: useTap.Source<T>, path: K, expect: true): Exclude<T[K], undefined>;
+function useTap <T extends Model, K extends Model.Field<T>> (source: useTap.Source<T>, path: K, expect?: boolean): T[K];
 
-function useTap <T extends Stateful, K extends Model.Field<T>> (
-  source: T | (() => T) | useTap.Tappable,
-  path: K,
-  expect?: boolean
-): T[K];
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => () => R): R;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
 
-function useTap <T extends Stateful, R> (
-  source: T | (() => T) | useTap.Tappable,
-  compute: (this: T, from: T) => R,
-  expect: true
-): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): R | undefined;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): R;
 
-function useTap <T extends Stateful, R> (
-  source: T | (() => T) | useTap.Tappable,
-  compute: (this: T, from: T) => R,
-  expect?: boolean
-): R;
+function useTap <T extends Model> (
+  source: typeof Model | typeof MVC | (() => any),
+  arg1?: Model.Field<T> | ((this: T, from: T) => any),
+  arg2?: boolean) {
 
-function useTap <T extends Stateful> (
-  source: T | (() => T) | useTap.Tappable,
-  path?: Model.Field<T> | ((this: T, from: T) => any),
-  expect?: boolean) {
-
-  const instance = useMemo(() => {
+  const instance: T = useMemo(() => {
     if(typeof source == "object")
       return () => source;
 
-    if("get" in source)
-      return () => source.get!();
+    if(Model.isTypeof(source))
+      return "get" in source
+        ? () => source.get(true)
+        : () => useContext(source);
 
-    if("prototype" in source)
-      return () => useLocal(source as any);
-    else
-      return source;
-  }, [])() as T;
+    return source;
+  }, [])();
 
-  if(typeof path == "function")
-    return useFrom(instance, path, expect);
+  if(typeof arg1 == "function")
+    return useValue(instance, arg1, arg2);
 
   const local = use(refresh => (
-    ensure(instance).subscribe(() => refresh)
+    Control.for(instance).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(local.commit, []);
-  
-  if(typeof path !== "undefined"){
-    const value = local.proxy[path];
 
-    if(value === undefined && expect)
-      throw suspend(ensure(instance), path);
+  if(arg1 === undefined)
+    return local.proxy;
 
-    return value;
-  }
+  const value = local.proxy[arg1];
 
-  return local.proxy;
+  if(value === undefined && arg2)
+    throw suspend(local.parent, arg1);
+
+  return value;
 }
 
 export { useTap }

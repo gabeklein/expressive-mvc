@@ -1,10 +1,10 @@
 import React from 'react';
 
-import { render } from '../../tests/adapter';
+import { render } from '../helper/testing';
 import { Consumer } from './consumer';
+import { Oops } from './context';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './useLocal';
 
 class Foo extends MVC {
   value?: string = undefined;
@@ -13,7 +13,7 @@ class Bar extends MVC {}
 class Baz extends Bar {}
 
 it("will handle complex arrangement", () => {
-  const instance = Foo.create();
+  const instance = Foo.new();
 
   render(
     <Provider for={instance}>
@@ -33,7 +33,7 @@ it("will render with instance for child-function", async () => {
     value = "foobar";
   }
 
-  const instance = Test.create();
+  const instance = Test.new();
   const didRender = jest.fn();
 
   function onRender(instance: Test){
@@ -54,7 +54,7 @@ it("will render with instance for child-function", async () => {
 })
 
 it("will throw if expected-prop missing", () => {
-  const instance = Foo.create();
+  const instance = Foo.new();
   const attempt = () => render(
     <Provider for={instance}>
       { /* @ts-ignore */}
@@ -91,8 +91,8 @@ it("will eagerly select extended class", () => {
 
 it("will select closest instance of same type", () => {
   render(
-    <Provider for={Foo} value="outer">
-      <Provider for={Foo} value="inner">
+    <Provider for={Foo} and={{ value: "outer" }}>
+      <Provider for={Foo} and={{ value: "inner" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
       </Provider>
     </Provider>

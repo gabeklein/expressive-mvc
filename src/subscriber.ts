@@ -1,92 +1,115 @@
-import { getUpdate, Controller, UPDATE, LISTEN } from './controller';
-import { LOCAL, Stateful } from './model';
-import { create, defineProperty } from './util';
+import { Control } from './control';
+import { create, defineProperty, getOwnPropertyNames } from './helper/object';
+import { Model } from './model';
 
-import type { Callback } from './types';
+import type { Callback } from './helper/types';
+
+const REGISTER = new WeakMap<{}, Subscriber>();
 
 type Listener = {
   commit(): void;
   release(): void;
 }
 
-export class Subscriber <T extends Stateful = any> {
+declare namespace Subscriber {
+  type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
+}
+
+class Subscriber <T extends {} = any> {
+  static get<T extends {}>(from: T){
+    return REGISTER.get(from) as Subscriber<T> | undefined;
+  }
+
   public proxy!: T;
-  public commit: () => Callback;
   public release!: Callback;
+  public latest?: Model.Event<T>[];
 
   public active = false;
   public dependant = new Set<Listener>();
-  public add: (key: any, value?: boolean | Callback) => void;
+  public watch = new Map<any, boolean | (() => true | void)>();
 
   constructor(
-    parent: Controller<T>,
-    public onUpdate: Controller.OnEvent){
+    public parent: Control<T>,
+    public onUpdate: Subscriber.OnEvent){
 
     const proxy = create(parent.subject);
-    const using = new Map<any, boolean | (() => true | void)>();
+    const reset = () => this.latest = undefined;
 
-    const listen = this.add = (
-      key: any,
-      value?: boolean | Callback) => {
-  
-      if(value !== undefined)
-        using.set(key, value);
-      else if(!using.has(key))
-        using.set(key, true);
-    }
-
-    LISTEN.set(proxy, listen);
+    REGISTER.set(proxy, this);
     
-    defineProperty(proxy, LOCAL, { value: this });
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
-        if(UPDATE.has(proxy))
-          setTimeout(() => UPDATE.delete(proxy), 0);
-
+        setTimeout(reset, 0);
         return proxy;
       }
     })
+  }
 
-    const release = parent.addListener(key => {
-      if(!this.active)
-        return;
+  get using(): Model.Field<T>[] {
+    return Array.from(this.watch.keys());
+  }
 
-      const handler = using.get(key);
-      let notify: void | Callback;
+  assign(apply: Model.Compat<T>, keys?: any){
+    const { waiting, subject } = this.parent;
 
-      if(typeof handler == "function"){
-        const callback = handler();
+    this.active = false;
 
-        if(callback === true)
-          notify = this.onUpdate(key, parent);
-      }
-      else if(handler === true)
-        notify = this.onUpdate(key, parent);
+    if(typeof keys !== "object")
+      keys = getOwnPropertyNames(subject) as Model.Field<T>[];
 
-      if(!notify)
-        return;
+    for(const key of keys)
+      if(key in apply)
+        (subject as any)[key] = (apply as any)[key];
 
-      const notate = () => {
-        UPDATE.set(proxy, 
-          getUpdate(parent.subject).filter(k => using.has(k))
-        );
-      }
+    waiting.add(() => this.active = true);
+  }
 
-      parent.waiting.add(notate);
-      parent.waiting.add(notify);
-    });
+  add(key: any, value?: boolean | Callback){
+    if(value !== undefined)
+      this.watch.set(key, value);
+    else if(!this.watch.has(key))
+      this.watch.set(key, true);
+  }
 
-    this.commit = () => {
-      this.active = true;
-      this.dependant.forEach(x => x.commit());
+  commit = () => {
+    const release = this.parent.addListener(this.event);
 
-      return this.release;
-    }
+    this.active = true;
+    this.dependant.forEach(x => x.commit());
 
-    this.release = () => {
+    return this.release = () => {
       this.dependant.forEach(x => x.release());
       release();
+    };
+  }
+
+  private event = (key: Model.Event<T> | null) => {
+    if(!this.active)
+      return;
+
+    const { parent, watch } = this;
+
+    const handler = watch.get(key);
+    let notify: void | Control.OnAsync;
+
+    if(typeof handler == "function"){
+      const callback = handler();
+
+      if(callback === true)
+        notify = this.onUpdate(key, parent);
     }
+    else if(handler === true)
+      notify = this.onUpdate(key, parent);
+
+    if(!notify)
+      return;
+
+    parent.waiting.add(update => {
+      this.latest = update.filter(k => watch.has(k));
+    });
+    parent.waiting.add(notify);
   }
 }
+
+export { Subscriber }

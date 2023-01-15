@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Model, useModel } from '..';
-import { render, renderHook } from '../../tests/adapter';
+import { render, renderHook } from '../helper/testing';
 
 const opts = { timeout: 100 };
 
@@ -9,14 +9,6 @@ describe("hook", () => {
   class Test extends Model {
     value = "foo";
   };
-
-  it("will use a given instance", () => {
-    const instance = Test.create();
-    const render = renderHook(() => useModel(instance));
-    const result = render.result.current;
-
-    expect(result).toStrictEqual(instance);
-  })
 
   it("will create instance given a class", () => {
     const render = renderHook(() => useModel(Test));
@@ -26,7 +18,7 @@ describe("hook", () => {
   })
 
   it("will use factory function", () => {
-    const instance = Test.create();
+    const instance = Test.new();
     const render = renderHook(() => useModel(() => instance));
     const result = render.result.current;
 
@@ -76,10 +68,10 @@ describe("subscription", () => {
 
   it("will ignore causal updates", async () => {
     const didRender = jest.fn();
-    const test = Test.create();
+    const test = Test.new();
 
     const TestComponent = (props: any) => {
-      const { value } = useModel(test, props);
+      const { value } = useModel(() => test, props);
       didRender(value);
       return null;
     }
@@ -93,7 +85,7 @@ describe("subscription", () => {
     expect(didRender).toBeCalledTimes(2);
     expect(didRender).toBeCalledWith("bar");
 
-    await test.update();
+    await test.on();
 
     expect(didRender).toBeCalledTimes(2);
   })
@@ -135,7 +127,7 @@ describe("specific", () => {
     class Test extends Model {
       constructor(){
         super();
-        this.effect(() => didDestroy, []);
+        this.on(() => didDestroy, []);
       }
     }
 
@@ -181,7 +173,7 @@ describe("import", () => {
 
     expect(instance).toBeInstanceOf(Test);
 
-    const update = instance.update();
+    const update = instance.on();
 
     rendered.update(
       <TestComponent foo="foo" bar="bar" />
@@ -229,4 +221,7 @@ describe("import", () => {
 
     expect(foobar).not.toBe(mockExternal.foobar);
   })
+
+  it.todo("will not refresh from updates caused");
+  it.todo("will still subscribe to updates");
 })
