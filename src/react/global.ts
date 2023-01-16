@@ -57,7 +57,7 @@ export class Global extends MVC {
   static set<T extends typeof Global>(
     this: T, values: Model.Compat<InstanceOf<T>, Global>){
 
-    return this.get(true).update(values);
+    return this.get(true).set(values);
   }
 
   /**

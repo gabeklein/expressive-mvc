@@ -87,7 +87,7 @@ describe("property", () => {
     test.ref2(values.ref2);
     test.ref3(values.ref3);
   
-    const state = test.export();
+    const state = test.get();
   
     expect(state).toMatchObject(values);
   })

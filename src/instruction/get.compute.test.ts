@@ -91,7 +91,7 @@ it("will compute immediately if exported", () => {
   }
 
   const test = Test.new();
-  const values = test.export();
+  const values = test.get();
 
   expect(mockFactory).toBeCalled();
   expect(values.value).toBe("foobar");

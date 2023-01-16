@@ -50,7 +50,7 @@ describe("Model", () => {
     const test = Test.new();
   
     expect(test.bar).toBe("bar");
-    expect(test.export()).not.toContain("bar");
+    expect(test.get()).not.toContain("bar");
   })
   
   it('will update when a value changes', async () => {
@@ -104,7 +104,7 @@ describe("dispatch", () => {
 
   it("will send synthetic event", async () => {
     const test = Test.new();
-    test.update("foo");
+    test.set("foo");
 
     const update = await test.on(true);
     expect(update).toContain("foo");
@@ -114,7 +114,7 @@ describe("dispatch", () => {
     const test = Test.new();
 
     test.foo = "bar";
-    test.update("foo");
+    test.set("foo");
 
     const update = await test.on(true);
     expect(update).toContain("foo");
@@ -122,7 +122,7 @@ describe("dispatch", () => {
 
   it("will send arbitrary event", async () => {
     const test = Test.new();
-    test.update("foobar");
+    test.set("foobar");
 
     const update = await test.on(true);
     expect(update).toContain("foobar");
@@ -130,7 +130,7 @@ describe("dispatch", () => {
 
   it("will resolve after event is handled", async () => {
     const test = Test.new();
-    const update = await test.update("foo");
+    const update = await test.set("foo");
 
     expect(update).toContain("foo");
   })
@@ -139,13 +139,13 @@ describe("dispatch", () => {
     const test = Test.new();
     test.bar = "foo";
 
-    const update = await test.update("foo");
+    const update = await test.set("foo");
     expect(update).toMatchObject(["bar", "foo"]);
   })
 
   it("will call function with argument", async () => {
     const test = Test.new();
-    await test.update("methodString", "foobar");
+    await test.set("methodString", "foobar");
     expect(test.methodString).toBeCalledWith("foobar");
   })
 
@@ -155,7 +155,7 @@ describe("dispatch", () => {
     const test = Test.new();
     const attempt = () => {
       // @ts-ignore
-      test.update("foo").then();
+      test.set("foo").then();
     }
 
     expect(attempt).toThrowError();
@@ -163,7 +163,7 @@ describe("dispatch", () => {
 
   it("will include caused-by-method updates", async () => {
     const test = Test.new();
-    const updates = await test.update("methodString", "foobar");
+    const updates = await test.set("methodString", "foobar");
 
     expect(test.methodString).toBeCalledWith("foobar");
     expect(test.foo).toBe("foobar");
@@ -177,7 +177,7 @@ describe("dispatch", () => {
 
     const test = Test.new();
 
-    await test.update("foo", "bar");
+    await test.set("foo", "bar");
     expect(test.foo.current).toBe("bar");
   })
 })
@@ -201,7 +201,7 @@ describe("import", () => {
     expect(test.foo).toBe(0);
     expect(test.bar).toBe(1);
 
-    const keys = await test.update(values);
+    const keys = await test.set(values);
     expect(keys).toEqual(["foo", "bar"]);
 
     expect(test.foo).toBe(1);
@@ -210,7 +210,7 @@ describe("import", () => {
 
   it("will assign specific values", async () => {
     const test = Test.new();
-    const keys = await test.update(values, ["foo"]);
+    const keys = await test.set(values, ["foo"]);
 
     expect(keys).toEqual(["foo"]);
 
@@ -221,7 +221,7 @@ describe("import", () => {
   it("will force assign values from source", async () => {
     const test = Test.new();
     const baz = test.on("baz");
-    const keys = await test.update(values, true);
+    const keys = await test.set(values, true);
 
     expect(keys).toEqual(["foo", "bar", "baz"]);
 

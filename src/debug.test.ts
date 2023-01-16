@@ -40,7 +40,7 @@ describe("Symbols", () => {
 
   it("will expose instance state", () => {
     const instance = FooBar.new() as Debug<FooBar>;
-    const exported = instance.export();
+    const exported = instance.get();
     const state = instance[Debug.STATE];
 
     expect(state).toMatchObject(exported);

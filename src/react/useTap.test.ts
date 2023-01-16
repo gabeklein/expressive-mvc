@@ -294,7 +294,7 @@ describe("computed values", () => {
     expect(pending).toContain("random");
 
     // value will still be undefined
-    expect(instance.export().value).toBe(undefined);
+    expect(instance.get().value).toBe(undefined);
 
     // give react a moment to render (if it were)
     await new Promise(res => setTimeout(res, 100));

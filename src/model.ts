@@ -114,10 +114,10 @@ class Model {
     return addEventListener(this.is, arg1, arg2, arg3);
   }
 
-  export(): Model.Export<this>;
-  export <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
+  get(): Model.Export<this>;
+  get <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
 
-  export <P extends Model.Field<this>> (
+  get <P extends Model.Field<this>> (
     subset?: Iterable<P>): Model.Values<this, P> {
 
     const { state } = Control.for(this);
@@ -129,13 +129,13 @@ class Model {
     return output;
   }
 
-  update(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
-  update<K extends Model.Event<this>>(key: Model.Event<this>, value: Model.ValueOf<this, K>): PromiseLike<readonly Model.Event<this>[]>;
+  set(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
+  set<K extends Model.Event<this>>(key: Model.Event<this>, value: Model.ValueOf<this, K>): PromiseLike<readonly Model.Event<this>[]>;
 
-  update<T extends Model.Compat<this>> (source: T, select: (keyof T)[]): PromiseLike<(keyof T)[]>;
-  update<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
+  set<T extends Model.Compat<this>> (source: T, select: (keyof T)[]): PromiseLike<(keyof T)[]>;
+  set<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
 
-  update(
+  set(
     arg1: Model.Event<this> | Model.Compat<this>,
     arg2?: boolean | any[]): any {
 

@@ -156,7 +156,7 @@ describe("import", () => {
       return useModel(Test, mockExternal);
     });
 
-    const state = render.result.current.export();
+    const state = render.result.current.get();
 
     expect(state).toMatchObject(mockExternal);
   })
