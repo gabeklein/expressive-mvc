@@ -3,7 +3,7 @@ import { InstanceOf } from '../helper/types';
 import { add } from '../instruction/add';
 import { Model } from '../model';
 import { Lookup, useLookup } from './context';
-import { Global } from './global';
+import { MVC } from './mvc';
 
 export const Oops = issues({
   NotAllowed: (parent, child) =>
@@ -12,8 +12,6 @@ export const Oops = issues({
   AmbientRequired: (requested, requester, key) =>
     `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
 })
-
-export type Peer = typeof Model | typeof Global;
 
 const PendingContext = new WeakMap<{}, ((context: Lookup) => void)[]>();
 const ContextWasUsed = new WeakMap<Model, boolean>();
@@ -44,13 +42,13 @@ function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) =
 function tap <T extends Model> (Type: Model.Type<T>, required: true): T;
 function tap <T extends Model> (Type: Model.Type<T>, required?: boolean): T | undefined;
 
-function tap<T extends Peer>(
+function tap<T extends typeof MVC>(
   type: T,
   argument?: boolean | ((instance: InstanceOf<T> | undefined) => void | boolean)){
 
   return add(
     function tap(key){
-      if("set" in type)
+      if(type.global)
         return {
           recursive: true,
           value: type.get()
@@ -58,7 +56,7 @@ function tap<T extends Peer>(
 
       const { subject } = this;
 
-      if("set" in subject.constructor)
+      if(subject.constructor.global)
         throw Oops.NotAllowed(subject, type.name);
 
       getPending(subject).push(context => {
