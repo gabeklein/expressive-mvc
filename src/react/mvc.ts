@@ -1,10 +1,48 @@
-import { Callback, Class } from '../helper/types';
+import { issues } from '../helper/issues';
+import { Callback, Class, InstanceOf } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
+export const Global = new WeakMap<Class, MVC>();
+
+export const Oops = issues({
+  DoesNotExist: (name) =>
+    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
+
+  AlreadyExists: (name) =>
+    `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
+})
+
 class MVC extends Model {
+  static global?: boolean;
+  static keepAlive?: boolean;
+
+  /**
+   * Creates a new instance of this controller.
+   * 
+   * Beyond `new this(...)`, method will activate managed-state.
+   * 
+   * @param args - arguments sent to constructor
+   */
+  static new<T extends Class>(this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
+
+  static new(...args: []){
+    if(Global.get(this))
+      if(this.keepAlive)
+        return Global.get(this);
+      else
+        throw Oops.AlreadyExists(this.name);
+
+    const instance = super.new(...args);
+
+    if(this.global)
+      Global.set(this, instance);
+
+    return instance;
+  }
+
   /**
    * **React Hook** - Fetch most instance of this controller from context, if it exists.
    * 

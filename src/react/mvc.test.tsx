@@ -3,8 +3,8 @@ import React from 'react';
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
 import { Model } from '../model';
-import { Global, Oops } from './global';
-import { MVC } from './mvc';
+import { Global } from './global';
+import { MVC, Oops } from './mvc';
 import { Provider } from './provider';
 import { useTap } from './useTap';
 

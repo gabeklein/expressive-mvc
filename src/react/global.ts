@@ -1,24 +1,11 @@
 import { Control } from '../control';
-import { issues } from '../helper/issues';
-import { Class, InstanceOf } from '../helper/types';
+import { InstanceOf } from '../helper/types';
 import { Model } from '../model';
-import { MVC } from './mvc';
-
-export const Oops = issues({
-  DoesNotExist: (name) =>
-    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
-
-  AlreadyExists: (name) =>
-    `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
-})
-
-const Active = new WeakMap<Class, Global>();
+import { MVC, Oops, Global as Active } from './mvc';
 
 export class Global extends MVC {
-  constructor(){
-    super();
-    Active.set(this.constructor as Class, this);
-  }
+  static global = true;
+  static keepAlive = true;
 
   end(force?: boolean){
     const type = this.constructor as typeof Global;
@@ -29,24 +16,6 @@ export class Global extends MVC {
     Control.for(this).clear();
     Active.delete(type);
     return true;
-  }
-
-  static keepAlive = true;
-
-  static new<T extends Class>(
-    this: T, ...args: ConstructorParameters<T>){
-
-    if(Active.has(this))
-      if((this as any).keepAlive)
-        return Active.get(this) as InstanceOf<T>;
-      else
-        throw Oops.AlreadyExists(this.name);
-
-    const instance = new this(...args);
-
-    Control.for(instance);
-
-    return instance as InstanceOf<T>;
   }
 
   /**
@@ -94,7 +63,7 @@ export class Global extends MVC {
 
   /** Destroy current instance of Global, if it exists. */
   static reset(){
-    const current = Active.get(this);
+    const current = Active.get(this) as Global;
 
     if(current)
       current.end(true);
