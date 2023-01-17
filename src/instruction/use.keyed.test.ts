@@ -77,7 +77,7 @@ for(const T of [Map, Set])
       await test.on(true);
     
       expect(mock).toBeCalledWith(true);
-      test.destroy();
+      test.end();
     })
     
     it("will not update for unwatched", async () => {

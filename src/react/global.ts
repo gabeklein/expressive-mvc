@@ -20,7 +20,7 @@ export class Global extends MVC {
     Active.set(this.constructor as Class, this);
   }
 
-  destroy(force?: boolean){
+  end(force?: boolean){
     const type = this.constructor as typeof Global;
     
     if(type.keepAlive && !force)
@@ -97,6 +97,6 @@ export class Global extends MVC {
     const current = Active.get(this);
 
     if(current)
-      current.destroy(true);
+      current.end(true);
   }
 }

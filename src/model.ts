@@ -206,7 +206,7 @@ class Model {
   /** 
    * Clean up side effects and mark this instance for garbage-collection.
    */
-  destroy(){
+  end(){
     Control.for(this).clear();
   }
 

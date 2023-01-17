@@ -24,9 +24,9 @@ it("will create instance of given model", () => {
 it("will destroy instance of given model", async () => {
   const willDestroy = jest.fn();
   class Test extends MVC {
-    destroy(){
+    end(){
       willDestroy();
-      super.destroy();
+      super.end();
     }
   };
 
