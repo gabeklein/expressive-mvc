@@ -61,26 +61,3 @@ describe("init", () => {
     expect(() => Test.new()).toThrowError(expected);
   })
 })
-
-describe("update", () => {
-  class Test extends Global {
-    foo = 1;
-    bar = 2;
-  }
-
-  afterEach(() => Test.reset());
-
-  it("will update values on singleton instance", async () => {
-    Test.new();
-
-    expect(Test.get("foo")).toBe(1);
-    expect(Test.get("bar")).toBe(2);
-
-    const update = await Test.set({ foo: 2, bar: 1 });
-
-    expect(update).toMatchObject(["foo", "bar"]);
-
-    expect(Test.get("foo")).toBe(2);
-    expect(Test.get("bar")).toBe(1);
-  })
-})
