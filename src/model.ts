@@ -1,7 +1,7 @@
 import { Control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
-import { addEventListener } from './event';
+import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
@@ -69,7 +69,7 @@ declare namespace Model {
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Values<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> };
+  export type Get<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> };
 
   export type Export<T, E extends Model = Model> = { [P in Field<T, E>]: Value<T[P]> };
 }
@@ -91,14 +91,15 @@ class Model {
   on <P extends Model.Field<this>> (key: P, listener: (this: this, value: this[P], key: P) => void, once?: boolean): Callback;
   on <P extends Model.Event<this>> (key: P, listener: (this: this, value: undefined, key: P) => void, once?: boolean): Callback;
 
-  on <P extends Model.Event<this>> (keys: P[], timeout?: number): Promise<P[]>;
-  on <P extends Model.Event<this>> (keys: P[], listener: (keys: P[]) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys: Iterable<P>, timeout?: number): Promise<P[]>;
+  on <P extends Model.Event<this>> (keys: Iterable<P>, listener: (keys: P[]) => void, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
   on (effect: Model.Effect<this>, watch?: []): Callback;
   on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
   on (key?: undefined, timeout?: number): Promise<Model.Event<this>[]>;
+
   on (current?: boolean): Promise<Model.Event<this>[] | null>;
   on (current: true): Promise<Model.Event<this>[]>;
   on (current: null): Promise<null>;
@@ -119,18 +120,45 @@ class Model {
   }
 
   get(): Model.Export<this>;
-  get <P extends Model.Field<this>> (select: Iterable<P>): Model.Values<this, P>;
 
+  get <P extends Model.Field<this>> (property: P): this[P];
+  get <P extends Model.Field<this>> (property: P, timeout: number): Promise<this[P]>;
+  get <P extends Model.Field<this>> (property: P, onChange: true): Promise<this[P]>;
+  get <P extends Model.Field<this>> (property: P, onChange: boolean): this[P] | Promise<this[P]>;
+  get <P extends Model.Field<this>> (property: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
+
+  get <P extends Model.Field<this>> (select: Iterable<P>): Model.Get<this, P>;
+  get <P extends Model.Field<this>> (select: Iterable<P>, timeout: number): Promise<Model.Get<this, P>>;
+  get <P extends Model.Field<this>> (select: Iterable<P>, onChange: true): Promise<Model.Get<this, P>>;
+  get <P extends Model.Field<this>> (select: Iterable<P>, onChange: boolean): Model.Get<this, P> | Promise<Model.Get<this, P>>;
+  get <P extends Model.Field<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, key: P[]) => void): Callback;
+  
   get <P extends Model.Field<this>> (
-    subset?: Iterable<P>): Model.Values<this, P> {
+    arg1?: Iterable<P> | P,
+    arg2?: Function | boolean | number){
 
     const { state } = Control.for(this);
-    const output = {} as any;
+    const extract = typeof arg1 == "string"
+      ? () => state.get(arg1)
+      : () => {
+        const output = {} as any;
 
-    for(const key of subset || state.keys())
-      output[key] = state.get(key);
+        for(const key of arg1 || state.keys())
+          output[key] = state.get(key);
 
-    return output;
+        return output as Model.Get<this, P>;
+      }
+
+    if(!arg1 || arg2 === undefined)
+      return extract();
+
+    if(typeof arg2 == "function")
+      return this.on(arg1, () => arg2(extract()));
+
+    const timeout =
+      typeof arg2 == "number" ? arg2 : undefined;
+      
+    return this.on(arg1, timeout).then(extract);
   }
 
   set(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;

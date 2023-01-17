@@ -235,3 +235,109 @@ describe("import", () => {
     await expect(baz).resolves.toBe(3);
   });
 })
+
+describe("get", () => {
+  class Test extends Model {
+    foo = "foo"
+    bar = "bar"
+    baz = "baz"
+  }
+  
+  it("will export all values", () => {
+    const test = Test.new();
+    const values = test.get();
+
+    expect(values).toEqual({
+      foo: "foo",
+      bar: "bar",
+      baz: "baz"
+    })
+  })
+  
+  it("will export selected values", () => {
+    const test = Test.new();
+    const values = test.get(["foo", "bar"]);
+
+    expect(values).toEqual({
+      foo: "foo",
+      bar: "bar"
+    })
+  })
+
+  it("will export single value", () => {
+    const test = Test.new();
+    const value = test.get("foo");
+
+    expect(value).toBe("foo");
+  })
+
+  it("will return promise for next update", async () => {
+    const test = Test.new();
+    const value = test.get("foo", true);
+
+    test.foo = "foobar";
+
+    await expect(value).resolves.toBe("foobar");
+  })
+
+  it("will return promise with export values", async () => {
+    const test = Test.new();
+    const values = test.get(["foo", "bar"], true);
+
+    test.foo = "foobar";
+
+    expect(values).resolves.toEqual({
+      foo: "foobar",
+      bar: "bar"
+    })
+  })
+
+  it("will reject promise on timeout", async () => {
+    const test = Test.new();
+    const value = test.get("foo", 1);
+
+    await expect(value).rejects.toThrowError();
+  })
+
+  it("will observe value", async () => {
+    const test = Test.new();
+    const didUpdate = jest.fn();
+    const cancel = test.get("foo", didUpdate);
+    
+    await test.set("foo", "foobar");
+
+    expect(didUpdate).toBeCalledWith("foobar");
+    
+    await test.set("foo", "foobarbaz");
+
+    expect(didUpdate).toBeCalledWith("foobarbaz");
+    expect(didUpdate).toBeCalledTimes(2);
+
+    cancel();
+
+    await test.set("foo", "foo");
+
+    expect(didUpdate).toBeCalledTimes(2);
+  })
+
+  it("will observe values", async () => {
+    const test = Test.new();
+    const didUpdate = jest.fn();
+    const cancel = test.get(["foo"], didUpdate);
+    
+    await test.set("foo", "foobar");
+
+    expect(didUpdate).toBeCalledWith({ foo: "foobar" });
+    
+    await test.set("foo", "foobarbaz");
+
+    expect(didUpdate).toBeCalledWith({ foo: "foobarbaz" });
+    expect(didUpdate).toBeCalledTimes(2);
+
+    cancel();
+
+    await test.set("foo", "foo");
+
+    expect(didUpdate).toBeCalledTimes(2);
+  })
+})
