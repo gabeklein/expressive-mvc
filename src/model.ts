@@ -109,7 +109,7 @@ class Model {
       return createEffect(this.is, arg1, arg2 as P[]);
 
     if(typeof arg2 != "function")
-      return awaitUpdate(this, arg1, arg2 as number);
+      return awaitUpdate(this.is, arg1, arg2 as number);
 
     if(arg1)
       return addEventListener(this.is, arg1 as P | P[], arg2, arg3);
