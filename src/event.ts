@@ -16,44 +16,53 @@ export const Oops = issues({
     `Update is not expected but one is in progress!`
 });
 
-export function addEventListener
-  <T extends Model, P extends Model.Event<T>> (
+export function addEventListener<T extends Model, P extends Model.Event<T>> (
+  source: T,
+  arg1: P | P[],
+  arg2: Function,
+  arg3?: boolean){
+
+  const single = typeof arg1 == "string";
+
+  if(typeof arg1 == "string")
+    arg1 = [arg1];
+
+  return Control.for(source, control => {
+    for(const key of arg1)
+      try { void (source as any)[key] }
+      catch(e){}
+
+    const invoke: Control.OnAsync = single
+      ? () => arg2.call(source, control.state.get(arg1), arg1)
+      : (frame) => arg2.call(source, frame);
+
+    const removeListener =
+      control.addListener(key => {
+        if(!key && !arg1.length)
+          invoke([]);
+          
+        if(arg1.includes(key as P)){
+          if(arg3)
+            removeListener();
+
+          return invoke;
+        }
+      });
+
+    return removeListener;
+  });
+}
+
+export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   source: T,
   arg1?: boolean | null | P | P[],
-  arg2?: number | P[] | Function,
-  arg3?: boolean){
+  arg2?: number){
 
   const single = typeof arg1 == "string";
   const keys =
     typeof arg1 == "string" ? [ arg1 ] :
     typeof arg1 == "object" ? arg1 : 
     undefined;
-
-  if(typeof arg2 == "function" && keys)
-    return Control.for(source, control => {
-      for(const key of keys)
-        try { void (source as any)[key] }
-        catch(e){}
-
-      const invoke: Control.OnAsync = single
-        ? () => arg2.call(source, control.state.get(arg1), arg1)
-        : (frame) => arg2.call(source, frame);
-  
-      const removeListener =
-        control.addListener(key => {
-          if(!key && !keys.length)
-            invoke([]);
-            
-          if(keys.includes(key as P)){
-            if(arg3)
-              removeListener();
-
-            return invoke;
-          }
-        });
-
-      return removeListener;
-    });
 
   return new Promise<any>((resolve, reject) => {
     const timeout = (message: string) => {

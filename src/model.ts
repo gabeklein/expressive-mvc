@@ -111,7 +111,11 @@ class Model {
     if(typeof arg1 == "function")
       return createEffect(this.is, arg1, arg2 as P[]);
 
-    return addEventListener(this.is, arg1, arg2, arg3);
+    if(typeof arg2 != "function")
+      return awaitUpdate(this, arg1, arg2 as number);
+
+    if(arg1)
+      return addEventListener(this.is, arg1 as P | P[], arg2, arg3);
   }
 
   get(): Model.Export<this>;
