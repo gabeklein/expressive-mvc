@@ -19,10 +19,8 @@ export const Oops = issues({
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
   arg1: P | P[],
-  arg2: Function,
+  arg2: (this: T, keys: Model.Event<T>[]) => void,
   arg3?: boolean){
-
-  const single = typeof arg1 == "string";
 
   if(typeof arg1 == "string")
     arg1 = [arg1];
@@ -32,20 +30,16 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
       try { void (source as any)[key] }
       catch(e){}
 
-    const invoke: Control.OnAsync = single
-      ? () => arg2.call(source, control.state.get(arg1), arg1)
-      : (frame) => arg2.call(source, frame);
-
     const removeListener =
       control.addListener(key => {
         if(!key && !arg1.length)
-          invoke([]);
+          arg2.call(source, []);
           
         if(arg1.includes(key as P)){
           if(arg3)
             removeListener();
 
-          return invoke;
+          return arg2.bind(source);
         }
       });
 

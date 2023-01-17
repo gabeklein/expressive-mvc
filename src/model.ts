@@ -87,12 +87,8 @@ class Model {
     defineProperty(this, "is", { value: this });
   }
 
-  on <P extends Model.Event<this>> (key: P, timeout?: number): Promise<Model.ValueOf<this, P>>;
-  on <P extends Model.Field<this>> (key: P, listener: (this: this, value: this[P], key: P) => void, once?: boolean): Callback;
-  on <P extends Model.Event<this>> (key: P, listener: (this: this, value: undefined, key: P) => void, once?: boolean): Callback;
-
-  on <P extends Model.Event<this>> (keys: Iterable<P>, timeout?: number): Promise<P[]>;
-  on <P extends Model.Event<this>> (keys: Iterable<P>, listener: (keys: P[]) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[]>;
+  on <P extends Model.Event<this>> (keys: P | Iterable<P>, listener: (this: this, keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
   on (effect: Model.Effect<this>, watch?: []): Callback;
@@ -106,7 +102,7 @@ class Model {
 
   on <P extends Model.Event<this>> (
     arg1?: boolean | null | P | P[] | Model.Effect<this>,
-    arg2?: number | P[] | Function,
+    arg2?: number | P[] | ((this: this, keys: Model.Event<this>[]) => void),
     arg3?: boolean){
 
     if(typeof arg1 == "function")

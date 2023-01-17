@@ -78,7 +78,7 @@ describe("on single", () => {
     state.seconds = 30;
     await state.on();
 
-    expect(callback).toBeCalledWith(30, "seconds");
+    expect(callback).toBeCalledWith(["seconds"]);
   })
 
   it('will watch for computed value', async () => {
@@ -90,7 +90,7 @@ describe("on single", () => {
     state.seconds = 60;
     await state.on();
 
-    expect(callback).toBeCalledWith(1, "minutes");
+    expect(callback).toBeCalledWith(["seconds", "minutes"]);
   })
 
   it('will compute pending value early', async () => {
@@ -102,7 +102,7 @@ describe("on single", () => {
     state.seconds = 60;
     await state.on();
 
-    expect(callback).toBeCalledWith(1, "minutes");
+    expect(callback).toBeCalledWith(["seconds", "minutes"]);
   })
 
   it('will ignore subsequent events in once mode', async () => {
@@ -114,12 +114,12 @@ describe("on single", () => {
     state.seconds = 30;
     await state.on();
 
-    expect(callback).toBeCalledWith(30, "seconds");
+    expect(callback).toBeCalledWith(["seconds"]);
 
     state.seconds = 45;
     await state.on();
 
-    expect(callback).not.toBeCalledWith(45, "seconds");
+    expect(callback).toBeCalledTimes(1);
   })
 })
 
