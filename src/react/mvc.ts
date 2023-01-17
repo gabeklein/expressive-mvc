@@ -16,6 +16,18 @@ export const Oops = issues({
 })
 
 class MVC extends Model {
+  end(force?: boolean){
+    const type = this.constructor as typeof MVC;
+    
+    if(type.keepAlive && !force)
+      return false;
+
+    super.end();
+    Global.delete(type);
+
+    return true;
+  }
+
   static global?: boolean;
   static keepAlive?: boolean;
 
@@ -35,7 +47,7 @@ class MVC extends Model {
       else
         throw Oops.AlreadyExists(this.name);
 
-    const instance = super.new(...args);
+    const instance = super.new(...args) as MVC;
 
     if(this.global)
       Global.set(this, instance);
@@ -71,7 +83,19 @@ class MVC extends Model {
   static get <I extends MVC> (this: Model.Type<I>, effect: (found: I) => Callback | void): I;
 
   static get <T extends typeof MVC> (this: T, arg: any){
-    return useContext(this, arg);
+    if(this.global){
+      const instance = Global.get(this);
+
+      if(!instance && arg !== false)
+        throw Oops.DoesNotExist(this.name);
+
+      if(typeof arg == "string")
+        return (instance as any)[arg];
+
+      return instance;
+    }
+    else
+      return useContext(this, arg);
   }
 
   /** 
