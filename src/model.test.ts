@@ -270,6 +270,21 @@ describe("get", () => {
 
     expect(value).toBe("foo");
   })
+  
+  it('will export "current" of property', async () => {
+    class Test extends Model {
+      foo = ref<string>();
+    }
+
+    const test = Test.new();
+
+    expect(test.get("foo")).toBeUndefined();
+
+    test.foo("foobar");
+    await test.on(true);
+
+    expect(test.get("foo")).toBe("foobar");
+  })
 
   it("will return promise for next update", async () => {
     const test = Test.new();
