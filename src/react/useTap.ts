@@ -38,7 +38,7 @@ function useTap <T extends Model> (
 
     if(Model.isTypeof(source))
       return "get" in source
-        ? () => source.get(true)
+        ? () => source.get()
         : () => useContext(source);
 
     return source;
