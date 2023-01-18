@@ -41,7 +41,7 @@ class MVC extends Model {
   static new<T extends Class>(this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
   static new(...args: []){
-    if(Global.get(this))
+    if(Global.has(this))
       if(this.keepAlive)
         return Global.get(this);
       else
