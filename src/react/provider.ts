@@ -63,13 +63,13 @@ function useNewContext<T extends Model>(
     if(!include)
       throw Oops.NoType();
 
-    const local = ambient.push();
+    const next = ambient.push();
 
     function register(I: Model | typeof Model){
       if(I instanceof Model)
-        local.add(I.constructor as any, I, false);
+        next.add(I.constructor as any, I, false);
       else
-        local.add(I, I.new(), true);
+        next.add(I, I.new(), true);
     }
 
     if(include instanceof Model || typeof include == "function")
@@ -77,12 +77,12 @@ function useNewContext<T extends Model>(
     else
       values(include).forEach(register);
 
-    for(const instance of local.local)
+    for(const instance of next.local)
       if(instance)
         for(const apply of getPending(instance))
-          apply(local)
+          apply(next)
 
-    return local;
+    return next;
   }, []);
 
   if(assign){

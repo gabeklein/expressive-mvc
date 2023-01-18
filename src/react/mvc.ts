@@ -38,7 +38,7 @@ class MVC extends Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new<T extends Class>(this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
+  static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
   static new(...args: []){
     if(Global.has(this))
