@@ -18,7 +18,7 @@ export const Oops = issues({
 })
 
 class MVC extends Model {
-  end(force?: boolean){
+  end(force?: boolean): boolean | void {
     const type = this.constructor as typeof MVC;
     
     if(type.keepAlive && !force)
