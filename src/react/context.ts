@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { issues } from '../helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../helper/object';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, unique } from '../helper/object';
 import { Model } from '../model';
 
 const Oops = issues({
@@ -13,11 +13,11 @@ class Lookup {
   private table = new Map<Model.Type, symbol>();
 
   public get local(){
-    return [
-      ...new Set(getOwnPropertySymbols(this).map(
-        symbol => (this as any)[symbol] as Model
-      ))
-    ]
+    return unique<Model>(
+      getOwnPropertySymbols(this).map(
+        symbol => (this as any)[symbol]
+      )
+    )
   }
 
   private key(T: Model.Type){
