@@ -8,7 +8,9 @@ describe("init", () => {
     value = 1;
   }
 
-  afterEach(() => Test.reset());
+  afterEach(() => {
+    Test.get(false)?.end(true);
+  });
 
   it("will access values from created global", () => {
     const hook = renderHook(() => Test.use());
@@ -32,7 +34,7 @@ describe("init", () => {
     Test.new();
     expect(Test.get()).toBeDefined();
 
-    Test.reset();
+    Test.get().end(true);
     expect(Test.get(false)).toBeUndefined();
   })
 

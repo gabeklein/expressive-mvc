@@ -15,7 +15,9 @@ describe("get", () => {
     value = 1;
   }
 
-  beforeEach(() => Test.reset());
+  afterEach(() => {
+    Test.get(false)?.end(true);
+  });
 
   it("will get instance", () => {
     const instance = Test.new();

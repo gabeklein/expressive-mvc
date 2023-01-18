@@ -230,7 +230,7 @@ describe("global", () => {
     expect(Test.get()).toBe(test);
 
     render(<Provider for={Test} />).unmount();
-    
-    Test.reset();
+
+    test.end(true);
   })
 })
