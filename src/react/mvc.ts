@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf } from '../helper/types';
 import { Model } from '../model';
@@ -32,9 +34,7 @@ class MVC extends Model {
   static keepAlive?: boolean;
 
   /**
-   * Creates a new instance of this controller.
-   * 
-   * Beyond `new this(...)`, method will activate managed-state.
+   * Create a new instance of this model and activate its managed state.
    * 
    * @param args - arguments sent to constructor
    */
@@ -82,20 +82,29 @@ class MVC extends Model {
    */
   static get <I extends MVC> (this: Model.Type<I>, effect: (found: I) => Callback | void): I;
 
-  static get <T extends typeof MVC> (this: T, arg: any){
+  static get(arg: any){
+    let instance: MVC | undefined;
+    const required = arg !== false;
+
     if(this.global){
-      const instance = Global.get(this);
+      instance = Global.get(this);
 
-      if(!instance && arg !== false)
+      if(!instance && required)
         throw Oops.DoesNotExist(this.name);
-
-      if(typeof arg == "string")
-        return (instance as any)[arg];
-
-      return instance;
     }
     else
-      return useContext(this, arg);
+      instance = useContext(this, required);
+
+    switch(typeof arg){
+      case "string":
+        return (instance as any)[arg];
+
+      case "function":
+        React.useLayoutEffect(() => arg(instance), []);
+
+      default:
+        return instance;
+    }
   }
 
   /** 

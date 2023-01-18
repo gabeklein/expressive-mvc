@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { render } from '../helper/testing';
-import { Oops, useContext } from './context';
+import { Oops } from './context';
 import { MVC } from './mvc';
 import { Provider } from './provider';
 
@@ -12,7 +12,7 @@ describe("get", () => {
 
   it("will get instance of model", () => {
     const Hook = () => {
-      const value = useContext(Test, "value");
+      const value = Test.get("value");
       expect(value).toBe("foo")
       return null;
     }
@@ -26,7 +26,7 @@ describe("get", () => {
 
   it("will fail if not found", () => {
     const Hook = () => {
-      useContext(Test);
+      Test.get();
       return null;
     }
 
@@ -43,7 +43,7 @@ describe("get", () => {
     const willUnmount = jest.fn();
 
     const Hook = () => {
-      useContext(Test, willMount);
+      Test.get(willMount);
       return null;
     }
 
