@@ -67,9 +67,9 @@ function useNewContext<T extends Model>(
 
     function register(I: Model | typeof Model){
       if(I instanceof Model)
-        local.inject(I.constructor as any, I, false);
+        local.add(I.constructor as any, I, false);
       else
-        local.inject(I, I.new(), true);
+        local.add(I, I.new(), true);
     }
 
     if(include instanceof Model || typeof include == "function")

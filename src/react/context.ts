@@ -35,11 +35,7 @@ class Lookup {
     return (this as any)[this.key(T)];
   }
 
-  public push(){
-    return create(this) as this;
-  }
-
-  public inject(
+  public add(
     T: Model.Type,
     I: Model,
     writable?: boolean){
@@ -57,6 +53,10 @@ class Lookup {
       T = getPrototypeOf(T);
     }
     while(T !== Model);
+  }
+
+  public push(){
+    return create(this) as this;
   }
 
   public pop(){
