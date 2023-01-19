@@ -13,8 +13,8 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
 })
 
-const PendingContext = new WeakMap<{}, ((context: Lookup) => void)[]>();
-const ContextWasUsed = new WeakMap<Model, boolean>();
+const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
+const Applied = new WeakMap<Model, boolean>();
 
 /**
  * Find and attach most applicable instance of Model via context.
@@ -83,14 +83,14 @@ function tap<T extends typeof MVC>(
 };
 
 function usePeerContext(subject: Model){
-  if(ContextWasUsed.has(subject)){
-    if(ContextWasUsed.get(subject))
+  if(Applied.has(subject)){
+    if(Applied.get(subject))
       useLookup();
 
     return;
   }
 
-  const pending = PendingContext.get(subject);
+  const pending = Pending.get(subject);
 
   if(pending){
     const local = useLookup();
@@ -98,17 +98,17 @@ function usePeerContext(subject: Model){
     for(const init of pending)
       init(local);
 
-    PendingContext.delete(subject);
+    Pending.delete(subject);
   }
 
-  ContextWasUsed.set(subject, !!pending);
+  Applied.set(subject, !!pending);
 }
 
 function getPending(subject: {}){
-  let pending = PendingContext.get(subject);
+  let pending = Pending.get(subject);
 
   if(!pending)
-    PendingContext.set(subject, pending = []);
+    Pending.set(subject, pending = []);
 
   return pending;
 }
