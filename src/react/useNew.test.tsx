@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Model, useModel } from '..';
+import { Model, useNew } from '..';
 import { render, renderHook } from '../helper/testing';
 
 const opts = { timeout: 100 };
@@ -11,7 +11,7 @@ describe("hook", () => {
   };
 
   it("will create instance given a class", () => {
-    const render = renderHook(() => useModel(Test));
+    const render = renderHook(() => useNew(Test));
     const result = render.result.current;
 
     expect(result).toBeInstanceOf(Test);
@@ -19,7 +19,7 @@ describe("hook", () => {
 
   it("will use factory function", () => {
     const instance = Test.new();
-    const render = renderHook(() => useModel(() => instance));
+    const render = renderHook(() => useNew(() => instance));
     const result = render.result.current;
 
     expect(result).toStrictEqual(instance);
@@ -28,7 +28,7 @@ describe("hook", () => {
   it("will run callback", () => {
     const callback = jest.fn();
 
-    renderHook(() => useModel(Test, callback));
+    renderHook(() => useNew(Test, callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 
@@ -42,7 +42,7 @@ describe("hook", () => {
       }
     }
 
-    const render = renderHook(() => useModel(Test));
+    const render = renderHook(() => useNew(Test));
 
     expect(didDestroy).not.toBeCalled();
     render.unmount();
@@ -57,7 +57,7 @@ describe("subscription", () => {
 
   it("will subscribe to instance of controller", async () => {
     const { result, waitForNextUpdate } =
-      renderHook(() => useModel(Test));
+      renderHook(() => useNew(Test));
 
     expect(result.current.value).toBe("foo");
     result.current.value = "bar";
@@ -71,7 +71,7 @@ describe("subscription", () => {
     const test = Test.new();
 
     const TestComponent = (props: any) => {
-      const { value } = useModel(() => test, props);
+      const { value } = useNew(() => test, props);
       didRender(value);
       return null;
     }
@@ -99,7 +99,7 @@ describe("specific", () => {
 
   it("will subscribe to only keys specified", async () => {
     const { result, waitForNextUpdate } = renderHook(() => {
-      const control = useModel(Test, ["foo"]);
+      const control = useNew(Test, ["foo"]);
 
       void control.foo;
       void control.bar;
@@ -119,7 +119,7 @@ describe("specific", () => {
 
   it("will run callback after creation", () => {
     const callback = jest.fn();
-    renderHook(() => useModel(Test, [], callback));
+    renderHook(() => useNew(Test, [], callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 
@@ -132,7 +132,7 @@ describe("specific", () => {
     }
 
     const didDestroy = jest.fn();
-    const element = renderHook(() => useModel(Test, []));
+    const element = renderHook(() => useNew(Test, []));
 
     element.unmount();
 
@@ -153,7 +153,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useModel(Test, mockExternal);
+      return useNew(Test, mockExternal);
     });
 
     const state = render.result.current.get();
@@ -165,7 +165,7 @@ describe("import", () => {
     let instance!: Test;
 
     const TestComponent = (props: any) => {
-      ({ is: instance } = useModel(Test, props));
+      ({ is: instance } = useNew(Test, props));
       return null;
     }
 
@@ -194,7 +194,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useModel(Test, mockExternal);
+      return useNew(Test, mockExternal);
     });
 
     const { foobar } = render.result.current;
@@ -214,7 +214,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useModel(Test, mockExternal);
+      return useNew(Test, mockExternal);
     });
 
     const { foobar } = render.result.current;

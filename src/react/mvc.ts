@@ -4,7 +4,7 @@ import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
-import { useModel } from './useModel';
+import { useNew } from './useNew';
 import { useTap } from './useTap';
 
 export const Global = new WeakMap<Class, MVC>();
@@ -149,7 +149,7 @@ class MVC extends Model {
   static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
   static use <T extends typeof MVC> (this: T, a: any, b?: any){
-    return useModel(this, a, b);
+    return useNew(this, a, b);
   }
 
   static meta <T extends Class>(this: T): T;
