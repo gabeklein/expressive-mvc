@@ -38,6 +38,8 @@ declare namespace Model {
       never;
   }[keyof T];
 
+  type BuiltIn = keyof Model | keyof Debug<{}>;
+
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
    * 
@@ -45,18 +47,18 @@ declare namespace Model {
    * 
    * TODO: Should exclude methods
    **/
-  export type Field<T, E extends Model = Model> = Exclude<keyof T, keyof E | keyof Debug<{}>> & string;
+  export type Key<T> = Exclude<keyof T, BuiltIn> & string;
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
    **/
-  export type Event<T, E extends Model = Model> = Extends<Field<T, E>>;
+  export type Event<T> = Extends<Key<T>>;
 
   /** Object containing managed entries found in T. */
-  export type Entries<T, E extends Model = Model> = { [K in Field<T, E>]: T[K] };
+  export type Entries<T> = { [K in Key<T>]: T[K] };
 
   /** Object comperable to data found in T. */
-  export type Compat<T, E extends Model = Model> = { [K in Field<T, E>]?: T[K] };
+  export type Compat<T> = { [K in Key<T>]?: T[K] };
 
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
@@ -69,9 +71,13 @@ declare namespace Model {
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Get<T, K extends Field<T> = Field<T>> = { [P in K]: Value<T[P]> };
+  export type Get<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  export type Export<T, E extends Model = Model> = { [P in Field<T, E>]: Value<T[P]> };
+  export type Export<T, E extends Model = Model> = { [P in Key<T>]: Value<T[P]> };
+}
+
+interface Model {
+  foobar(key: Model.Key<this>[]): void;
 }
 
 class Model {
@@ -117,19 +123,19 @@ class Model {
 
   get(): Model.Export<this>;
 
-  get <P extends Model.Field<this>> (property: P): this[P];
-  get <P extends Model.Field<this>> (property: P, timeout: number): Promise<this[P]>;
-  get <P extends Model.Field<this>> (property: P, onChange: true): Promise<this[P]>;
-  get <P extends Model.Field<this>> (property: P, onChange: boolean): this[P] | Promise<this[P]>;
-  get <P extends Model.Field<this>> (property: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
+  get <P extends Model.Key<this>> (property: P): this[P];
+  get <P extends Model.Key<this>> (property: P, timeout: number): Promise<this[P]>;
+  get <P extends Model.Key<this>> (property: P, onChange: true): Promise<this[P]>;
+  get <P extends Model.Key<this>> (property: P, onChange: boolean): this[P] | Promise<this[P]>;
+  get <P extends Model.Key<this>> (property: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
 
-  get <P extends Model.Field<this>> (select: Iterable<P>): Model.Get<this, P>;
-  get <P extends Model.Field<this>> (select: Iterable<P>, timeout: number): Promise<Model.Get<this, P>>;
-  get <P extends Model.Field<this>> (select: Iterable<P>, onChange: true): Promise<Model.Get<this, P>>;
-  get <P extends Model.Field<this>> (select: Iterable<P>, onChange: boolean): Model.Get<this, P> | Promise<Model.Get<this, P>>;
-  get <P extends Model.Field<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, key: P[]) => void): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
+  get <P extends Model.Key<this>> (select: Iterable<P>, timeout: number): Promise<Model.Get<this, P>>;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: true): Promise<Model.Get<this, P>>;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: boolean): Model.Get<this, P> | Promise<Model.Get<this, P>>;
+  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, key: P[]) => void): Callback;
   
-  get <P extends Model.Field<this>> (
+  get <P extends Model.Key<this>> (
     arg1?: Iterable<P> | P,
     arg2?: Function | boolean | number){
 
@@ -153,7 +159,7 @@ class Model {
 
     const timeout =
       typeof arg2 == "number" ? arg2 : undefined;
-      
+
     return this.on(arg1, timeout).then(extract);
   }
 
@@ -178,7 +184,7 @@ class Model {
       }
 
     else if(typeof arg1 == "string"){
-      control.update(arg1 as Model.Field<this>);
+      control.update(arg1 as Model.Key<this>);
 
       if(1 in arguments){
         if(control.state.has(arg1))

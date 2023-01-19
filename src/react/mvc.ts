@@ -84,7 +84,7 @@ class MVC extends Model {
   /**
    * **React Hook** - Fetch specific value from instance of this controller in context.
    */
-  static get <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K): I[K];
+  static get <I extends MVC, K extends Model.Key<I>> (this: Model.Type<I>, key: K): I[K];
 
   static get(
     arg1?: string | boolean | MVC.EffectCallback,
@@ -130,8 +130,8 @@ class MVC extends Model {
    */
   static tap <T extends MVC> (this: Model.Type<T>): T;
 
-  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
-  static tap <T extends MVC, K extends Model.Field<T>> (this: Model.Type<T>, key: K, expect?: boolean): T[K];
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect?: boolean): T[K];
 
   static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => () => R): R;
   static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
@@ -144,7 +144,7 @@ class MVC extends Model {
     return useTap(this, key as any, expect);
   }
 
-  static use <I extends MVC> (this: Model.Type<I>, watch: Model.Field<I>[], callback?: (instance: I) => void): I;
+  static use <I extends MVC> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
   static use <I extends MVC> (this: Model.Type<I>, callback?: (instance: I) => void): I;
   static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 

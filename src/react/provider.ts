@@ -86,7 +86,7 @@ function useNewContext<T extends Model>(
   }, []);
 
   if(assign){
-    type K = Model.Field<T>;
+    type K = Model.Key<T>;
     for(const key in assign)
       for(const into of context.local as T[])
         if(into && key in into)

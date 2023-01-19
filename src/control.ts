@@ -86,7 +86,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  ref<K extends Model.Field<T>>(
+  ref<K extends Model.Key<T>>(
     key: K,
     handler?: (this: T, value: T[K]) => boolean | void){
   
@@ -109,7 +109,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  update(key: Model.Field<T>){
+  update(key: Model.Key<T>){
     const { followers, frame, waiting } = this;
   
     if(frame.has(key))

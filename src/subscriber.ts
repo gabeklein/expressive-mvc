@@ -46,7 +46,7 @@ class Subscriber <T extends {} = any> {
     })
   }
 
-  get using(): Model.Field<T>[] {
+  get using(): Model.Key<T>[] {
     return Array.from(this.watch.keys());
   }
 
@@ -56,7 +56,7 @@ class Subscriber <T extends {} = any> {
     this.active = false;
 
     if(typeof keys !== "object")
-      keys = getOwnPropertyNames(subject) as Model.Field<T>[];
+      keys = getOwnPropertyNames(subject) as Model.Key<T>[];
 
     for(const key of keys)
       if(key in apply)
