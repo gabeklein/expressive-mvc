@@ -78,15 +78,12 @@ const LookupContext = React.createContext(new Lookup());
 const useLookup = () => React.useContext(LookupContext);
 
 function useContext <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;
-function useContext <T extends Model> (Type: Model.Type<T>, arg?: boolean): T;
+function useContext <T extends Model> (Type: Model.Type<T>, required?: boolean): T;
 
-function useContext<T extends Model>(
-  Type: Model.Type<T>,
-  arg?: boolean): T | undefined {
-
+function useContext<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined {
   const instance = useLookup().get(Type);
 
-  if(!instance && arg !== false)
+  if(!instance && required !== false)
     throw Oops.NotFound(Type.name);
   
   return instance;
