@@ -86,11 +86,10 @@ function useContext<T extends Model>(
 
   const instance = useLookup().get(Type);
 
-  if(instance)
-    return instance;
-
-  if(arg !== false)
+  if(!instance && arg !== false)
     throw Oops.NotFound(Type.name);
+  
+  return instance;
 }
 
 export { Lookup, useLookup, useContext, Oops, LookupContext }
