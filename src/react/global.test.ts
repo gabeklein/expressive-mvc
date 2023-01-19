@@ -9,7 +9,9 @@ describe("init", () => {
   }
 
   afterEach(() => {
-    Test.get(false)?.end(true);
+    Test.get(instance => {
+      instance.end(true);
+    });
   });
 
   it("will access values from created global", () => {

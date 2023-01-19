@@ -17,6 +17,10 @@ export const Oops = issues({
     `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
 })
 
+declare namespace MVC {
+  type EffectCallback<T = MVC> = (found: T) => Callback | void;
+}
+
 class MVC extends Model {
   end(force?: boolean): boolean | void {
     const type = this.constructor as typeof MVC;
@@ -60,19 +64,14 @@ class MVC extends Model {
    * 
    * @param required - Unless false, will throw where instance cannot be found.
    */
-  static get <T extends MVC> (this: Model.Type<T>, required?: boolean): T;
+  static get <T extends MVC> (this: Model.Type<T>, required?: boolean, effectCallback?: MVC.EffectCallback<T>): T;
 
   /**
    * **React Hook** - Fetch most instance of this controller from context.
    * 
    * @param required - If false, may return undefined.
    */
-  static get <T extends MVC> (this: Model.Type<T>, required: false): T | undefined;
-
-  /**
-   * **React Hook** - Fetch specific value from instance of this controller in context.
-   */
-  static get <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K): I[K];
+  static get <T extends MVC> (this: Model.Type<T>, required: false, effectCallback?: MVC.EffectCallback<T | undefined>): T | undefined;
 
   /**
    * **React Hook** - Fetch instance.
@@ -80,11 +79,19 @@ class MVC extends Model {
    * Effect callback will run once if found, throw if not found.
    * Returned function is called on unmount.
    */
-  static get <I extends MVC> (this: Model.Type<I>, effect: (found: I) => Callback | void): I;
+  static get <I extends MVC> (this: Model.Type<I>, effectCallback: MVC.EffectCallback<I>): I | undefined;
 
-  static get(arg: any){
+  /**
+   * **React Hook** - Fetch specific value from instance of this controller in context.
+   */
+  static get <I extends MVC, K extends Model.Field<I>> (this: Model.Type<I>, key: K): I[K];
+
+  static get(
+    arg1?: string | boolean | MVC.EffectCallback,
+    arg2?: MVC.EffectCallback<MVC | undefined>){
+
     let instance: MVC | undefined;
-    const required = arg !== false;
+    const required = arg1 === undefined || arg1 === true;
 
     if(this.global){
       instance = Global.get(this);
@@ -95,16 +102,27 @@ class MVC extends Model {
     else
       instance = useContext(this, required);
 
-    switch(typeof arg){
-      case "string":
-        return (instance as any)[arg];
-
-      case "function":
-        React.useLayoutEffect(() => arg(instance), []);
-
-      default:
-        return instance;
+    function callback(effect: MVC.EffectCallback<any>){
+      try {
+        React.useLayoutEffect(() => effect(instance!), []);
+      }
+      catch(err){
+        if(instance)
+          instance.on(effect, []);
+        else
+          effect(undefined);
+      }
     }
+
+    if(typeof arg1 === "string")
+      return (instance as any)[arg1];
+
+    if(typeof arg1 === "function" && instance)
+      callback(arg1);
+    else if(arg2)
+      callback(arg2);
+
+    return instance;
   }
 
   /** 

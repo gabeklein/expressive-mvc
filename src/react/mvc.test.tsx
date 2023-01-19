@@ -16,7 +16,9 @@ describe("get", () => {
   }
 
   afterEach(() => {
-    Test.get(false)?.end(true);
+    Test.get(instance => {
+      instance.end(true);
+    });
   });
 
   it("will get instance", () => {
@@ -34,11 +36,79 @@ describe("get", () => {
     expect(result.current).toBe(1);
   })
 
-  it("will complain if not-found in expect mode", () => {
-    const { result } = renderHook(() => Test.get(true));
+  it("will complain if not found", () => {
+    const { result } = renderHook(() => Test.get());
     const expected = Oops.DoesNotExist(Test.name);
 
     expect(() => result.current).toThrowError(expected);
+  })
+
+  it("will return undefined if not found", () => {
+    const { result } = renderHook(() => Test.get(false));
+
+    expect(result.current).toBeUndefined();
+  })
+
+  it("will only callback if instance exists", () => {
+    const didGet = jest.fn();
+    renderHook(() => Test.get(didGet));
+
+    expect(didGet).not.toBeCalled();
+
+    Test.new();
+    renderHook(() => Test.get(didGet));
+    expect(didGet).toBeCalledWith(expect.any(Test));
+  })
+
+  it("will callback with undefined", () => {
+    const didGet = jest.fn();
+    renderHook(() => Test.get(false, didGet));
+    expect(didGet).toBeCalledWith(undefined);
+  })
+
+  it("will callback with undefined outside component", () => {
+    const didGet = jest.fn();
+    Test.get(false, didGet)
+    expect(didGet).toBeCalledWith(undefined);
+  })
+
+  it("will get instance outside component", () => {
+    const instance = Test.new();
+    const got = Test.get();
+
+    expect(got).toBe(instance);
+    expect(got.value).toBe(1);
+  })
+
+  it("will call return-effect on unmount", () => {
+    const effect = jest.fn(() => effect2);
+    const effect2 = jest.fn();
+
+    Test.new();
+
+    const element = renderHook(() => Test.get(effect));
+
+    expect(effect).toBeCalled();
+    expect(effect2).not.toBeCalled();
+
+    element.unmount();
+
+    expect(effect2).toBeCalled();
+  })
+
+  it("will call return-effect on destroy", () => {
+    const effect = jest.fn(() => effect2);
+    const effect2 = jest.fn();
+    const test = Test.new();
+
+    Test.get(effect)
+
+    expect(effect).toBeCalled();
+    expect(effect2).not.toBeCalled();
+
+    test.end(true);
+
+    expect(effect2).toBeCalled();
   })
 })
 
