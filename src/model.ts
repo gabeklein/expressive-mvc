@@ -76,10 +76,6 @@ declare namespace Model {
   export type Export<T, E extends Model = Model> = { [P in Key<T>]: Value<T[P]> };
 }
 
-interface Model {
-  foobar(key: Model.Key<this>[]): void;
-}
-
 class Model {
   /**
    * Circular reference to `this` controller.
