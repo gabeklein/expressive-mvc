@@ -4,7 +4,7 @@ import { Control } from '../control';
 import { defineProperty } from '../helper/object';
 import { use } from './use';
 
-import type { Callback } from '../helper/types';
+import type { Callback, NoVoid } from '../helper/types';
 
 function useValue <T extends {}, R> (
   source: (() => T) | T,
@@ -16,7 +16,7 @@ function useValue <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect?: boolean
-): R;
+): NoVoid<R>;
 
 function useValue(
   source: {},
@@ -74,10 +74,13 @@ function useValue(
 
     defineProperty(sub, "proxy", {
       get() {
-        if(value === undefined && suspend)
+        if(value !== undefined)
+          return value;
+
+        if(suspend)
           throw new Promise<void>(res => retry = res);
 
-        return value;
+        return null;
       }
     });
 

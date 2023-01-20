@@ -1,4 +1,4 @@
-import { Model } from '..';
+import { Model } from '../model';
 import { Oops } from '../effect';
 import { mockAsync } from '../helper/testing';
 import { set } from './set';

@@ -71,7 +71,7 @@ describe("async", () => {
     foo = "bar";
   };
 
-  it('will return undefined then refresh', async () => {
+  it('will return null then refresh', async () => {
     const promise = mockAsync<string>();
     const control = Test.new();
 
@@ -79,7 +79,7 @@ describe("async", () => {
       return useValue(control, () => promise.pending());
     });
 
-    expect(result.current).toBeUndefined();
+    expect(result.current).toBeNull();
 
     promise.resolve("foobar");
     await waitForNextUpdate();
@@ -165,5 +165,27 @@ describe("suspense", () => {
     await test.waitForNextRender();
 
     test.assertDidRender(true);
+  })
+})
+
+describe("undefined", () => {
+  class Test extends Model {};
+
+  it("will convert to null", () => {
+    const test = Test.new();
+    const { result } = renderHook(() => {
+      return useValue(test, () => undefined);
+    });
+
+    expect(result.current).toBe(null);
+  })
+
+  it("will convert to null from factory", () => {
+    const test = Test.new();
+    const { result } = renderHook(() => {
+      return useValue(test, () => () => undefined);
+    });
+
+    expect(result.current).toBe(null);
   })
 })

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 
 import { Control } from '../control';
+import { NoVoid } from '../helper/types';
 import { Model } from '../model';
 import { suspend } from '../suspense';
 import { useContext } from './context';
@@ -18,14 +19,14 @@ declare namespace useTap {
 function useTap <T extends Model> (source: useTap.Source<T>): T;
 
 function useTap <T extends Model, K extends Model.Key<T>> (source: useTap.Source<T>, path: K, expect: true): Exclude<T[K], undefined>;
-function useTap <T extends Model, K extends Model.Key<T>> (source: useTap.Source<T>, path: K, expect?: boolean): T[K];
+function useTap <T extends Model, K extends Model.Key<T>> (source: useTap.Source<T>, path: K, expect?: boolean): NoVoid<T[K]>;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => () => R): R;
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => (() => R) | null): R | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => () => R): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => (() => R) | null): NoVoid<R> | null;
 
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): R | undefined;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): R;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model> (
   source: typeof Model | typeof MVC | (() => any),
