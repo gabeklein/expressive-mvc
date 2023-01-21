@@ -12,8 +12,7 @@ type Suspense<T = any> = Promise<T> & Error;
 export function suspend(
   source: Control, key: string): Suspense {
 
-  const error =
-    Oops.NotReady(source.subject, key);
+  const error = Oops.NotReady(source.subject, key);
 
   const promise = new Promise<void>(resolve => {
     const release = source.addListener(forKey => {

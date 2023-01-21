@@ -74,8 +74,7 @@ function use(
         (_local: Subscriber | undefined) => state.get(key);
 
       if(typeof input === "function"){
-        if("prototype" in input &&
-        input === input.prototype.constructor)
+        if("prototype" in input && input === input.prototype.constructor)
           input = new input();
       }
 
