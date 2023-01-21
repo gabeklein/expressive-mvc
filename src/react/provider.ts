@@ -78,20 +78,20 @@ function useNewContext<T extends Model>(
       values(include).forEach(register);
 
     for(const instance of next.local)
-      if(instance)
+      if(instance){
+        if(assign)
+          assignWeak(instance, assign);
+
         for(const apply of getPending(instance))
           apply(next)
+      }
 
     return next;
   }, []);
 
-  if(assign){
-    type K = Model.Key<T>;
-    for(const key in assign)
-      for(const into of context.local as T[])
-        if(into && key in into)
-          into[key as K] = assign[key as K]!;
-  }
+  if(assign)
+    for(const into of context.local as T[])
+      assignWeak(into, assign);
 
   return context;
 }
@@ -115,4 +115,10 @@ function RenderFunction(props: RenderFunctionProps): any {
     React.useLayoutEffect(hook.commit, []);
 
   return props.render(hook.proxy);
+}
+
+function assignWeak(into: any, from: any){
+  for(const K in from)
+    if(K in into)
+      into[K] = from[K];
 }
