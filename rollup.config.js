@@ -10,12 +10,12 @@ export default  [
         file: 'lib/index.js',
         format: 'cjs',
         exports: 'named',
-        sourcemap: true
+        sourcemap: false
       },
       {
         file: 'lib/index.esm.js',
         format: 'esm',
-        sourcemap: true
+        sourcemap: false
       }
     ],
     external: [ 'react' ],
