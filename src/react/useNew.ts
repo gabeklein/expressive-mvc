@@ -29,10 +29,9 @@ function useNew <T extends Model> (
 
   const instance = React.useMemo(() => {
     const callback = arg2 || arg1;
-    const instance =
-      Model.isTypeof(source) ?
-        source.new() :
-        source();
+    const instance = Model.isTypeof(source)
+      ? new source() as T
+      : source();
 
     Control.for(instance);
 
