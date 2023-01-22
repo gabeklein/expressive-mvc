@@ -84,7 +84,8 @@ function useNewContext<T extends Model>(
 
   if(assign)
     for(const into of context.local as T[])
-      assignWeak(into, assign);
+      if(into)
+        assignWeak(into, assign);
 
   return context;
 }
