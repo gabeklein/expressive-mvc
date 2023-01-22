@@ -1,4 +1,5 @@
 import React from 'react';
+import { Control } from '../control';
 
 import { issues } from '../helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, unique } from '../helper/object';
@@ -63,6 +64,11 @@ class Lookup {
       T = getPrototypeOf(T);
     }
     while(T !== Model);
+
+    Control.for(I).state.forEach(value => {
+      if(value instanceof Model)
+        this.add(value);
+    })
   }
 
   public push(){

@@ -214,6 +214,47 @@ it("will throw if missing `for` prop", () => {
   expect(test).toThrow(Oops.NoType());
 })
 
+describe("children", () => {
+  class Foo extends MVC {
+    bar = new Bar();
+  }
+
+  class Bar extends MVC {
+    value = 3;
+  }
+
+  it("will be provided to Consumer", () => {
+    const foo = Foo.new();
+  
+    render(
+      <Provider for={foo}>
+        <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
+        <Consumer for={Bar} get={i => expect(i).toBe(foo.bar)} />
+      </Provider>
+    )
+  })
+
+  it("will be provided to useTap", () => {
+    const foo = Foo.new();
+    const gotBar = jest.fn();
+
+    const BarConsumer = () => {
+      Bar.tap(gotBar);
+      return null;
+    }
+  
+    render(
+      <Provider for={foo}>
+        <BarConsumer />
+      </Provider>
+    )
+
+    expect(gotBar).toBeCalledWith(foo.bar);
+  })
+
+  it.todo("will pass parent as second argument to useTap");
+})
+
 describe("global", () => {
   it("will create but not destroy instance", () => {
     class Test extends Global {}
