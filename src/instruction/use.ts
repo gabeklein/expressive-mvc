@@ -1,13 +1,13 @@
+import { getRecursive, Parent } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
-import { add, getRecursive } from './add';
+import { add } from './add';
 import { keyed, Managed } from './use.keyed';
 
-export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   BadArgument: (type) =>

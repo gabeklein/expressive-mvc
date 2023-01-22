@@ -1,7 +1,7 @@
+import { Parent } from '../children';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { add } from './add';
-import { Parent } from './use';
 
 export const Oops = issues({
   Required: (expects, child) => 

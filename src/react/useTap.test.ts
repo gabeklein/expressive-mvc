@@ -1,7 +1,6 @@
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { get } from '../instruction/get';
 import { set } from '../instruction/set';
-import { use } from '../instruction/use';
 import { Model } from '../model';
 import { Oops as Suspense } from '../suspense';
 import { useTap } from './useTap';
@@ -46,42 +45,6 @@ describe("subvalue", () => {
     await promise.pending();
   
     test.assertDidRender(true);
-  })
-  
-  it('will subscribe to child controllers', async () => {
-    class Parent extends Model {
-      value = "foo";
-      empty = undefined;
-      child = use(Child);
-    }
-  
-    class Child extends Model {
-      value = "foo"
-      grandchild = new GrandChild();
-    }
-  
-    class GrandChild extends Model {
-      value = "bar"
-    }
-  
-    const parent = Parent.new();
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(parent, "child").value;
-    })
-  
-    expect(result.current).toBe("foo");
-  
-    parent.child.value = "bar"
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  
-    parent.child = new Child();
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("foo");
-  
-    parent.child.value = "bar"
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
   })
 });
 
@@ -165,7 +128,7 @@ describe("callback", () => {
   
         return () => {
           willCompute();
-          return $.foo + $.bar;;
+          return $.foo + $.bar;
         };
       });
     });

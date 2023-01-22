@@ -1,6 +1,6 @@
+import { getRecursive } from '../children';
 import { Control, PENDING } from '../control';
 import { defineProperty } from '../helper/object';
-import { Callback } from '../helper/types';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 
@@ -124,50 +124,6 @@ function add<T = any>(
   PENDING.set(placeholder, setup);
 
   return placeholder as unknown as T;
-}
-
-export function getRecursive(key: string, from: Control){
-  const context = new WeakMap<Subscriber, {} | undefined>();
-
-  return (local: Subscriber | undefined) => {
-    if(!local)
-      return from.state.get(key);
-
-    if(!context.has(local)){
-      let reset: Callback | undefined;
-
-      const init = () => {
-        if(reset)
-          reset();
-
-        const value = from.state.get(key);
-  
-        if(Control.get(value)){
-          const child = Control.for(value).subscribe(local.onUpdate);
-  
-          if(local.active)
-            child.commit();
-  
-          local.dependant.add(child);
-          context.set(local, child.proxy);
-
-          reset = () => {
-            child.release();
-            local.dependant.delete(child);
-            context.set(local, undefined);
-            reset = undefined;
-          }
-        }
-
-        return true;
-      }
-  
-      local.add(key, init);
-      init();
-    }
-
-    return context.get(local);
-  }
 }
 
 export { add, Instruction }
