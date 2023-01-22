@@ -153,8 +153,7 @@ class Model {
     if(typeof arg2 == "function")
       return this.on(arg1, () => arg2(extract()));
 
-    const timeout =
-      typeof arg2 == "number" ? arg2 : undefined;
+    const timeout = typeof arg2 == "number" ? arg2 : undefined;
 
     return this.on(arg1, timeout).then(extract);
   }

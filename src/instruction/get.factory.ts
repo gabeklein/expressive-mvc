@@ -39,8 +39,7 @@ export function factoryMode<T>(
     if(required === false)
       return undefined;
 
-    const issue =
-      Oops.NotReady(subject, key);
+    const issue = Oops.NotReady(subject, key);
 
     assign(pending!, {
       message: issue.message,

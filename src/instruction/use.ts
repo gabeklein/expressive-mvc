@@ -103,8 +103,7 @@ function use(
         if(required === false)
           return;
 
-        const issue =
-          Oops.NotReady(subject, key);
+        const issue = Oops.NotReady(subject, key);
 
         assign(pending!, {
           message: issue.message,
