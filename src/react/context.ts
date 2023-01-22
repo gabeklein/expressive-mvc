@@ -35,10 +35,20 @@ class Lookup {
     return (this as any)[this.key(T)];
   }
 
-  public add(
-    T: Model.Type,
-    I: Model,
-    writable?: boolean){
+  public add(input: Model.Type | Model){
+    let writable = true;
+    let T: Model.Type;
+    let I: Model;
+
+    if(typeof input == "function"){
+      T = input;
+      I = input.new();
+    }
+    else {
+      I = input;
+      T = I.constructor as Model.Type;
+      writable = false;
+    }
 
     do {
       const key = this.key(T);

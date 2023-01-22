@@ -65,17 +65,10 @@ function useNewContext<T extends Model>(
 
     const next = ambient.push();
 
-    function register(I: Model | typeof Model){
-      if(I instanceof Model)
-        next.add(I.constructor as any, I, false);
-      else
-        next.add(I, I.new(), true);
-    }
-
     if(include instanceof Model || typeof include == "function")
-      register(include);
+      next.add(include);
     else
-      values(include).forEach(register);
+      values(include).forEach(x => next.add(x));
 
     for(const instance of next.local)
       if(instance){
