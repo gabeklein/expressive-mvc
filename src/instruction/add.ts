@@ -101,9 +101,9 @@ function add<T = any>(
     defineProperty(subject, key, {
       enumerable: output.enumerable,
 
-      set: onSet !== false
-        ? this.ref(key, onSet)
-        : undefined,
+      set: onSet === false
+        ? undefined
+        : this.ref(key, onSet),
 
       get(this: any){
         if(!state.has(key) && shouldSuspend)
