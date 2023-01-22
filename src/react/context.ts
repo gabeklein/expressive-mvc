@@ -1,8 +1,16 @@
 import React from 'react';
-import { Control } from '../control';
 
+import { Parent } from '../children';
+import { Control } from '../control';
 import { issues } from '../helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, unique } from '../helper/object';
+import {
+  create,
+  defineProperty,
+  getOwnPropertyDescriptor,
+  getOwnPropertySymbols,
+  getPrototypeOf,
+  unique,
+} from '../helper/object';
 import { Model } from '../model';
 
 const Oops = issues({
@@ -66,9 +74,9 @@ class Lookup {
     while(T !== Model);
 
     Control.for(I).state.forEach(value => {
-      if(value instanceof Model)
+      if (Parent.get(value) === I)
         this.add(value);
-    })
+    });
   }
 
   public push(){
