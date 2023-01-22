@@ -1,17 +1,16 @@
 import { mockAsync } from './helper/testing';
-import { use } from './instruction/use';
 import { Model } from './model';
 
 it('will subscribe to child controllers', async () => {
   class Parent extends Model {
     value = "foo";
     empty = undefined;
-    child = use(Child);
+    child = new Child();
   }
 
   class Child extends Model {
     value = "foo"
-    grandchild = use(GrandChild);
+    grandchild = new GrandChild();
   }
 
   class GrandChild extends Model {

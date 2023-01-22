@@ -1,3 +1,4 @@
+import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
@@ -64,6 +65,11 @@ class Control<T extends {} = any> {
     }
 
     state.set(key, value);
+
+    if(value instanceof Model){
+      setRecursive(this, key, value);
+      return;
+    }
 
     defineProperty(subject, key, {
       enumerable: false,
