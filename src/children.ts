@@ -7,7 +7,7 @@ import { Subscriber } from './subscriber';
 
 export const Parent = new WeakMap<{}, {}>();
 
-const Oops = issues({
+export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
     `Property ${parent} expected Model of type ${expected} but got ${got}.`
 })

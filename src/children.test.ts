@@ -1,3 +1,4 @@
+import { Oops } from './children';
 import { mockAsync } from './helper/testing';
 import { Model } from './model';
 
@@ -55,4 +56,28 @@ it('will subscribe to child controllers', async () => {
   await promise.pending();
   expect(effect).toBeCalledWith("bar", "foo");
   effect.mockClear();
+})
+
+it('will only assign matching model', () => {
+  class Parent extends Model {
+    child = new Child();
+  }
+
+  class Child extends Model {}
+  class Unrelated extends Model {};
+
+  const parent = Parent.new();
+
+  expect(() => {
+    parent.child = new Unrelated();
+  }).toThrowError(
+    Oops.BadAssignment(`Parent.child`, `Child`, `Unrelated`)
+  );
+
+  expect(() => {
+    // @ts-ignore
+    parent.child = undefined;
+  }).toThrowError(
+    Oops.BadAssignment(`Parent.child`, `Child`, `undefined`)
+  );
 })
