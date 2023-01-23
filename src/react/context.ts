@@ -1,7 +1,5 @@
 import React from 'react';
 
-import { Parent } from '../children';
-import { Control } from '../control';
 import { issues } from '../helper/issues';
 import {
   create,
@@ -12,6 +10,7 @@ import {
   unique,
 } from '../helper/object';
 import { Model } from '../model';
+import { MVC } from './mvc';
 
 const Oops = issues({
   NotFound: (name) =>
@@ -49,9 +48,12 @@ class Lookup {
     let T: Model.Type;
     let I: Model;
 
+    if(MVC.isTypeof(input) && input.global)
+      return input.new();
+
     if(typeof input == "function"){
       T = input;
-      I = input.new();
+      I = new input();
     }
     else {
       I = input;
