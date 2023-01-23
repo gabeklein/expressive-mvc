@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { Parent } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { values } from '../helper/object';
@@ -65,27 +66,36 @@ function useNewContext<T extends Model>(
 
     const next = ambient.push();
 
+    function register(T: Model | Model.Type){
+      const i = next.add(T);
+
+      if(assign)
+        assignWeak(i, assign);
+
+      Control.for(i).state.forEach(value => {
+        if(Parent.get(value) === i)
+          next.add(value);
+      });
+    }
+
     if(include instanceof Model || typeof include == "function")
-      next.add(include);
+      register(include);
     else
-      values(include).forEach(x => next.add(x));
+      values(include).forEach(register);
 
     for(const instance of next.local)
-      if(instance){
-        if(assign)
-          assignWeak(instance, assign);
-
+      if(instance)
         for(const apply of getPending(instance))
           apply(next)
-      }
 
     return next;
   }, []);
 
   if(assign)
-    for(const into of context.local as T[])
-      if(into)
-        assignWeak(into, assign);
+    context.local.forEach(i => {
+      if(i && !Parent.has(i))
+        assignWeak(i, assign)
+    });
 
   return context;
 }

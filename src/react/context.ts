@@ -73,10 +73,7 @@ class Lookup {
     }
     while(T !== Model);
 
-    Control.for(I).state.forEach(value => {
-      if (Parent.get(value) === I)
-        this.add(value);
-    });
+    return I;
   }
 
   public push(){
