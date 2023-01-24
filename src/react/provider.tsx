@@ -6,10 +6,8 @@ import { issues } from '../helper/issues';
 import { values } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
-import { Lookup, LookupContext, useLookup } from './context';
+import { LookupContext, useLookup } from './context';
 import { getPending } from './tap';
-import { use } from './use';
 
 export const Oops = issues({
   NoType: () =>
@@ -32,7 +30,7 @@ declare namespace Provider {
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    children?: React.ReactNode | (() => React.ReactNode);
+    children?: React.ReactNode;
     and?: Model.Compat<Instance<T>>;
   }
 
@@ -41,15 +39,14 @@ declare namespace Provider {
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const context = useNewContext(props.for, props.and);
-  const render = props.children;
 
   React.useLayoutEffect(() => () => context.pop(), []);
 
-  return React.createElement(LookupContext.Provider, { value: context },
-    typeof render == "function"
-      ? React.createElement(RenderFunction, { context, render })
-      : render
-  );
+  return (
+    <LookupContext.Provider value={context}>
+      {props.children}
+    </LookupContext.Provider>
+  )
 }
 
 export { Provider };
@@ -98,27 +95,6 @@ function useNewContext<T extends Model>(
     });
 
   return context;
-}
-
-interface RenderFunctionProps {
-  context: Lookup;
-  render: Function;
-}
-
-function RenderFunction(props: RenderFunctionProps): any {
-  const hook = use(refresh => {
-    const targets = props.context.local;
-
-    if(targets.length == 1)
-      return Control.for(targets[0]).subscribe(() => refresh);
-
-    return {} as Subscriber;
-  });
-
-  if(hook.commit)
-    React.useLayoutEffect(hook.commit, []);
-
-  return props.render(hook.proxy);
 }
 
 function assignWeak(into: any, from: any){

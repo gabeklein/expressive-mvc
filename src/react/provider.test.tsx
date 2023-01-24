@@ -1,5 +1,4 @@
 import React from 'react';
-import { act } from 'react-test-renderer';
 
 import { render } from '../helper/testing';
 import { Model } from '../model';
@@ -37,55 +36,6 @@ it("will destroy instance of given model", async () => {
   element.unmount();
   expect(willDestroy).toBeCalledTimes(1);
 });
-
-it("will accept render function when model given", () => {
-  render(
-    <Provider for={Foo}>
-      {(instance) => {
-        return <Consumer for={Foo} get={i => {
-          // instance injected should be a subscribe-clone.
-          expect(instance).not.toBe(i);
-          // get actual instance via circular-get property.
-          expect(instance.is).toBe(i);
-        }} />
-      }}
-    </Provider>
-  );
-})
-
-it("will pass undefined to render function if multiple", () => {
-  render(
-    <Provider for={{ Foo, Bar }}>
-      {(instance) => {
-        expect(instance).toBeUndefined();
-        return null;
-      }}
-    </Provider>
-  );
-})
-
-it("will refresh render function as a subscriber", async () => {
-  const didRender = jest.fn();
-  const test = Foo.new();
-
-  render(
-    <Provider for={test}>
-      {({ value }) => {
-        didRender(value);
-        return null;
-      }}
-    </Provider>
-  );
-
-  expect(didRender).toBeCalledWith(undefined);
-
-  await act(async () => {
-    test.value = "foobar";
-    await test.on(true);
-  })
-
-  expect(didRender).toBeCalledWith("foobar");
-})
 
 it("will assign props to instance", () => {
   render(
