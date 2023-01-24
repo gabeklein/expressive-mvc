@@ -9,7 +9,7 @@ export const Oops = issues({
 
 export function factoryMode<T>(
   self: Control,
-  output: Promise<T> | T,
+  value: Promise<T> | T,
   key: string,
   required: boolean
 ){
@@ -18,10 +18,10 @@ export function factoryMode<T>(
   let pending: Promise<any> | undefined;
   let error: any;
 
-  if(output instanceof Promise){
+  if(value instanceof Promise){
     state.set(key, undefined);
 
-    pending = output
+    pending = value
       .catch(err => error = err)
       .then(val => {
         state.set(key, val);
@@ -32,8 +32,8 @@ export function factoryMode<T>(
         self.update(key);
       })
   }
-
-  state.set(key, output);
+  else
+    state.set(key, value);
 
   const suspend = () => {
     if(required === false)
