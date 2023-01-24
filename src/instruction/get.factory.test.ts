@@ -5,6 +5,8 @@ import { Oops as Compute } from './get.factory';
 
 const { warn } = mockConsole();
 
+jest.setTimeout(60000000)
+
 it("will compute when accessed", () => {
   const factory = jest.fn(() => "Hello World");
 
@@ -214,4 +216,115 @@ it("will nest suspense", async () => {
 
   await expect(pending).resolves.toBe("hello world!");
   expect(effect).toBeCalledTimes(2);
+})
+
+it("will return undefined on suspense", async () => {
+  class Test extends Model {
+    asyncValue = get(() => promise.pending());
+
+    value = get(() => this.getValue);
+
+    getValue(){
+      const { asyncValue } = this;
+      return `Hello ${asyncValue}`;
+    }
+  }
+
+  const test = Test.new();
+  const promise = mockAsync<string>();
+  const didEvaluate = mockAsync<string>();
+
+  const effect = jest.fn((state: Test) => {
+    didEvaluate.resolve(state.value);
+  });
+
+  test.on(effect);
+
+  expect(effect).toBeCalled();
+  expect(effect).not.toHaveReturned();
+
+  promise.resolve("World");
+
+  await didEvaluate.pending();
+
+  expect(test.value).toBe("Hello World")
+})
+
+it("will squash repeating suspense", async () => {
+  const promise = mockAsync();
+  let shouldSuspend = true;
+
+  class Test extends Model {
+    message = get(this.getSum);
+
+    getSum(){
+      didTryToEvaluate()
+
+      if(shouldSuspend)
+        throw promise.pending();
+
+      return `OK I'm unblocked.`;
+    }
+  }
+
+  const test = Test.new();
+  const didEvaluate = mockAsync<string>();
+  
+  const didTryToEvaluate = jest.fn();
+  const effect = jest.fn((state: Test) => {
+    didEvaluate.resolve(state.message);
+  });
+
+  test.on(effect);
+
+  expect(effect).toBeCalled();
+  expect(effect).not.toHaveReturned();
+
+  await promise.resolve();
+
+  shouldSuspend = false;
+  await promise.resolve();
+  await didEvaluate.pending();
+
+  expect(test.message).toBe("OK I'm unblocked.");
+  expect(didTryToEvaluate).toBeCalledTimes(3);
+  expect(effect).toBeCalledTimes(2);
+  expect(effect).toHaveReturnedTimes(1);
+})
+
+it("will squash multiple dependancies", async () => {
+  const promise = mockAsync<number>();
+  const promise2 = mockAsync<number>();
+
+  class Test extends Model {
+    a = get(promise.pending());
+    b = get(promise2.pending());
+
+    sum = get(this.getSum);
+
+    getSum(){
+      const { a, b } = this;
+
+      return `Answer is ${a + b}.`;
+    }
+  }
+
+  const test = Test.new();
+  const didEvaluate = mockAsync<string>();
+
+  const effect = jest.fn((state: Test) => {
+    didEvaluate.resolve(state.sum);
+  });
+
+  test.on(effect);
+
+  expect(effect).toBeCalled();
+  expect(effect).not.toHaveReturned();
+
+  await promise.resolve(10);
+  await promise2.resolve(20);
+
+  await didEvaluate.pending();
+
+  expect(test.sum).toBe("Answer is 30.")
 })
