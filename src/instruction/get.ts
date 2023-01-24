@@ -113,7 +113,7 @@ function get<R, T>(
         let setter: get.Function<T, any>;
  
         if(typeof arg0 == "function"){
-          const result = mayRetry(() => arg0.call(subject, key, subject));
+          let result = mayRetry(arg0.bind(subject, key, subject));
   
           if(typeof result == "function")
             setter = result;
