@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 
 import { mockAsync, render } from '../helper/testing';
 import { get } from '../instruction/get';
@@ -206,7 +206,7 @@ describe("children", () => {
   it.todo("will pass parent as second argument to useTap");
 })
 
-it("will suspend children", async () => {
+describe("suspense", () => {
   class Test extends MVC {
     value = get(promise.pending);
   }
@@ -216,10 +216,12 @@ it("will suspend children", async () => {
     return null;
   }
 
-  const TestComponent = () => {
+  const TestComponent = (
+    props: { fallback?: React.ReactNode }) => {
+
     willRender();
     return (
-      <Provider for={Test} fallback={<DidSuspend />}>
+      <Provider for={Test} fallback={props.fallback}>
         <GetValue />
       </Provider>
     )
@@ -239,20 +241,70 @@ it("will suspend children", async () => {
   const didRender = jest.fn();
   const didSuspend = jest.fn();
 
-  const element = render(<TestComponent />)
+  beforeEach(() => {
+    willRender.mockClear();
+    didSuspend.mockClear();
+    didRender.mockClear();
+  })
 
-  expect(willRender).toBeCalledTimes(1);
-  expect(didSuspend).toBeCalledTimes(1);
-  expect(didRender).not.toBeCalled();
+  it("will apply fallback", async () => {
+    const element = render(
+      <TestComponent fallback={<DidSuspend />} />
+    )
 
-  promise.resolve("hello!");
-  await didRefresh.pending();
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).not.toBeCalled();
 
-  expect(willRender).toBeCalledTimes(1);
-  expect(didSuspend).toBeCalledTimes(1);
-  expect(didRender).toBeCalledWith("hello!");
+    promise.resolve("hello!");
+    await didRefresh.pending();
 
-  element.unmount();
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).toBeCalledWith("hello!");
+
+    element.unmount();
+  });
+
+  it("will apply fallback implicitly", async () => {
+    const element = render(
+      <Suspense fallback={<DidSuspend />}>
+        <TestComponent />
+      </Suspense>
+    )
+  
+    // Provider itself suspended with default null.
+    expect(didSuspend).not.toBeCalled();
+    expect(didRender).not.toBeCalled();
+
+    promise.resolve("hello!");
+    await didRefresh.pending();
+
+    expect(didRender).toBeCalledWith("hello!");
+
+    element.unmount();
+  })
+
+  it("will not apply fallback", async () => {
+    const element = render(
+      <Suspense fallback={<DidSuspend />}>
+        <TestComponent fallback={false} />
+      </Suspense>
+    )
+
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).not.toBeCalled();
+
+    promise.resolve("hello!");
+    await didRefresh.pending();
+
+    expect(willRender).toBeCalledTimes(1);
+    expect(didSuspend).toBeCalledTimes(1);
+    expect(didRender).toBeCalledWith("hello!");
+
+    element.unmount();
+  })
 })
 
 describe("global", () => {
