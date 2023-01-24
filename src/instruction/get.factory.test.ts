@@ -177,3 +177,41 @@ it("will throw if missing factory", () => {
     "Factory argument cannot be undefined"
   );
 })
+
+it("will nest suspense", async () => {
+  class Child extends Model {
+    value = get(promise.pending);
+  }
+
+  class Test extends Model {
+    child = new Child();
+    
+    childValue = get(() => this.getChildValue);
+
+    getChildValue(){
+      return this.child.value + " world!";
+    }
+  }
+
+  const promise = mockAsync<string>();
+  const didUpdate = mockAsync<string>();
+
+  const test = Test.new();
+  const effect = jest.fn((state: Test) => {
+    // should suspend here
+    const { childValue } = state;
+
+    didUpdate.resolve(childValue);
+  })
+
+  test.on(effect);
+
+  expect(effect).toBeCalledTimes(1);
+
+  const pending = didUpdate.pending();
+
+  promise.resolve("hello");
+
+  await expect(pending).resolves.toBe("hello world!");
+  expect(effect).toBeCalledTimes(2);
+})
