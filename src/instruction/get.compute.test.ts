@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { mockConsole } from '../helper/testing';
+import { mockAsync, mockConsole } from '../helper/testing';
 import { get, Oops as Compute } from './get';
 import { use } from './use';
 
@@ -439,6 +439,37 @@ describe("method", () => {
   // })
 })
 
+it("will return undefined on suspense", async () => {
+  class Test extends Model {
+    asyncValue = get(() => promise.pending());
+
+    value = get(() => this.getValue);
+
+    getValue(){
+      const { asyncValue } = this;
+      return `Hello ${asyncValue}`;
+    }
+  }
+
+  const test = Test.new();
+  const promise = mockAsync<string>();
+  const didEvaluate = mockAsync<string>();
+
+  const effect = jest.fn((state: Test) => {
+    didEvaluate.resolve(state.value);
+  });
+
+  test.on(effect);
+
+  expect(effect).toBeCalled();
+  expect(effect).not.toHaveReturned();
+
+  promise.resolve("World");
+
+  await didEvaluate.pending();
+
+  expect(test.value).toBe("Hello World")
+})
 
 /* Feature is temporarily removed - evaluating usefulness.
 describe("external", () => {
