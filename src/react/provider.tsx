@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 
 import { Parent } from '../children';
 import { Control } from '../control';
@@ -23,6 +23,7 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
+    fallback?: React.ReactNode;
     children?: React.ReactNode | ((instance: I) => React.ReactNode);
     and?: Model.Compat<I>;
   }
@@ -30,6 +31,7 @@ declare namespace Provider {
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
+    fallback?: React.ReactNode;
     children?: React.ReactNode;
     and?: Model.Compat<Instance<T>>;
   }
@@ -44,7 +46,14 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
   return (
     <LookupContext.Provider value={context}>
-      {props.children}
+      {props.fallback === false
+        ? props.children
+        : (
+          <Suspense fallback={props.fallback || null}>
+            {props.children}
+          </Suspense>
+        )
+      }
     </LookupContext.Provider>
   )
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { render } from '../helper/testing';
+import { mockAsync, render } from '../helper/testing';
+import { get } from '../instruction/get';
 import { Model } from '../model';
 import { Consumer } from './consumer';
 import { Global } from './global';
@@ -203,6 +204,55 @@ describe("children", () => {
   })
 
   it.todo("will pass parent as second argument to useTap");
+})
+
+it("will suspend children", async () => {
+  class Test extends MVC {
+    value = get(promise.pending);
+  }
+
+  const DidSuspend = () => {
+    didSuspend();
+    return null;
+  }
+
+  const TestComponent = () => {
+    willRender();
+    return (
+      <Provider for={Test} fallback={<DidSuspend />}>
+        <GetValue />
+      </Provider>
+    )
+  }
+
+  const GetValue = () => {
+    const test = Test.tap();
+    didRender(test.value);
+    didRefresh.resolve();
+    return null;
+  }
+
+  const promise = mockAsync<string>();
+  const didRefresh = mockAsync();
+
+  const willRender = jest.fn();
+  const didRender = jest.fn();
+  const didSuspend = jest.fn();
+
+  const element = render(<TestComponent />)
+
+  expect(willRender).toBeCalledTimes(1);
+  expect(didSuspend).toBeCalledTimes(1);
+  expect(didRender).not.toBeCalled();
+
+  promise.resolve("hello!");
+  await didRefresh.pending();
+
+  expect(willRender).toBeCalledTimes(1);
+  expect(didSuspend).toBeCalledTimes(1);
+  expect(didRender).toBeCalledWith("hello!");
+
+  element.unmount();
 })
 
 describe("global", () => {
