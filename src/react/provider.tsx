@@ -90,9 +90,8 @@ function useNewContext<T extends Model>(
       values(include).forEach(register);
 
     for(const instance of next.local)
-      if(instance)
-        for(const apply of getPending(instance))
-          apply(next)
+      for(const apply of getPending(instance))
+        apply(next)
 
     return next;
   }, []);

@@ -22,9 +22,9 @@ class Lookup {
 
   public get local(){
     return unique<Model>(
-      getOwnPropertySymbols(this).map(
-        symbol => (this as any)[symbol]
-      )
+      getOwnPropertySymbols(this)
+        .map(symbol => (this as any)[symbol])
+        .filter(i => i)
     )
   }
 
