@@ -36,20 +36,20 @@ class Lookup {
       this.table.set(T, key);
     }
 
-    return key;
+    return key as keyof this;
   }
 
-  public get(T: Model.Type){
-    return (this as any)[this.key(T)];
+  public get<T extends Model>(Type: Model.Type<T>){
+    return this[this.key(Type)] as unknown as T | undefined;
   }
 
   public add(input: Model.Type | Model){
+    if(MVC.isTypeof(input) && input.global)
+      return input.new();
+
     let writable = true;
     let T: Model.Type;
     let I: Model;
-
-    if(MVC.isTypeof(input) && input.global)
-      return input.new();
 
     if(typeof input == "function"){
       T = input;
@@ -63,11 +63,10 @@ class Lookup {
 
     do {
       const key = this.key(T);
-      const conflict = this.hasOwnProperty(key);
 
       defineProperty(this, key, {
-        value: conflict ? null : I,
         configurable: true,
+        value: this.hasOwnProperty(key) ? null : I,
         writable
       });
 

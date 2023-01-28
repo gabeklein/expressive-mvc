@@ -1,5 +1,4 @@
 import { issues } from '../helper/issues';
-import { InstanceOf } from '../helper/types';
 import { add } from '../instruction/add';
 import { Model } from '../model';
 import { Lookup, useLookup } from './context';
@@ -15,6 +14,10 @@ export const Oops = issues({
 
 const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
+
+declare namespace tap {
+  type Callback<T extends Model> = (instance: T | undefined) => void | boolean;
+}
 
 /**
  * Find and attach most applicable instance of Model via context.
@@ -42,13 +45,13 @@ function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) =
 function tap <T extends Model> (Type: Model.Type<T>, required: true): T;
 function tap <T extends Model> (Type: Model.Type<T>, required?: boolean): T | undefined;
 
-function tap<T extends typeof MVC>(
-  type: T,
-  argument?: boolean | ((instance: InstanceOf<T> | undefined) => void | boolean)){
+function tap<T extends MVC>(
+  type: Model.Type<T>,
+  argument?: boolean | tap.Callback<T>){
 
   return add(
     function tap(key){
-      if(type.global)
+      if(MVC.isTypeof(type) && type.global)
         return {
           recursive: true,
           value: type.get()
@@ -60,7 +63,7 @@ function tap<T extends typeof MVC>(
         throw Oops.NotAllowed(subject, type.name);
 
       getPending(subject).push(context => {
-        let instance = context.get(type);
+        let instance = context.get<T>(type);
 
         if(typeof argument == "function"){
           if(argument(instance) === false)
