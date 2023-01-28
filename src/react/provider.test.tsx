@@ -38,39 +38,6 @@ it("will destroy instance of given model", async () => {
   expect(willDestroy).toBeCalledTimes(1);
 });
 
-it("will assign props to instance", () => {
-  render(
-    <Provider for={Foo} and={{ value: "foobar" }}>
-      <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
-    </Provider>
-  );
-})
-
-it("will assign props to muliple controllers", () => {
-  class Bar extends Model {
-    value = "";
-  }
-
-  render(
-    <Provider for={{ Foo, Bar }} and={{ value: "foobar" }}>
-      <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
-      <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
-    </Provider>
-  );
-});
-
-it("will not assign foreign props to controller", () => {
-  render(
-    /// @ts-ignore - type-checking warns against this
-    <Provider for={Foo} and={{ nonValue: "foobar" }}>
-      <Consumer for={Foo} has={i => {
-        // @ts-ignore
-        expect(i.nonValue).toBeUndefined();
-      }} />
-    </Provider>
-  );
-})
-
 it("will create all models in given object", () => {
   render(
     <Provider for={{ Foo, Bar }}>
@@ -204,6 +171,58 @@ describe("children", () => {
   })
 
   it.todo("will pass parent as second argument to useTap");
+})
+
+describe("and prop", () => {
+  it("will assign values to instance", () => {
+    render(
+      <Provider for={Foo} and={{ value: "foobar" }}>
+        <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
+      </Provider>
+    );
+  })
+
+  it("will assign every render", async () => {
+    const foo = Foo.new();
+    const element = render(
+      <Provider for={foo} and={{ value: "foo" }} />
+    );
+
+    expect(foo.value).toBe("foo");
+
+    element.update(
+      <Provider for={foo} and={{ value: "bar" }} />
+    );
+
+    await foo.on(true);
+
+    expect(foo.value).toBe("bar");
+  })
+
+  it("will assign values to muliple", () => {
+    class Bar extends Model {
+      value = "";
+    }
+
+    render(
+      <Provider for={{ Foo, Bar }} and={{ value: "foobar" }}>
+        <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
+        <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
+      </Provider>
+    );
+  });
+
+  it("will not assign foreign values", () => {
+    render(
+      /// @ts-ignore - type-checking warns against this
+      <Provider for={Foo} and={{ nonValue: "foobar" }}>
+        <Consumer for={Foo} has={i => {
+          // @ts-ignore
+          expect(i.nonValue).toBeUndefined();
+        }} />
+      </Provider>
+    );
+  })
 })
 
 describe("suspense", () => {
