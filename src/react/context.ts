@@ -7,7 +7,6 @@ import {
   getOwnPropertyDescriptor,
   getOwnPropertySymbols,
   getPrototypeOf,
-  unique,
 } from '../helper/object';
 import { Model } from '../model';
 import { MVC } from './mvc';
@@ -19,14 +18,7 @@ const Oops = issues({
 
 class Lookup {
   private table = new Map<Model.Type, symbol>();
-
-  public get local(){
-    return unique<Model>(
-      getOwnPropertySymbols(this)
-        .map(symbol => (this as any)[symbol])
-        .filter(i => i)
-    )
-  }
+  private register!: Map<string | number, Model | Model.Type>;
 
   private key(T: Model.Type){
     let key = this.table.get(T);
@@ -43,7 +35,21 @@ class Lookup {
     return this[this.key(Type)] as unknown as T | undefined;
   }
 
-  public add(input: Model.Type | Model){
+  public has<T extends Model>(
+    key: string | number,
+    input: Model.Type<T> | T){
+  
+    if(this.register.get(key) === input)
+      return typeof input == "object"
+        ? input
+        : this.get(input)!;
+
+    this.register.set(key, input);
+    
+    return this.add(input) as T;
+  }
+
+  public add(input: Model.Type | Model): Model {
     if(MVC.isTypeof(input) && input.global)
       return input.new();
 
@@ -78,7 +84,9 @@ class Lookup {
   }
 
   public push(){
-    return create(this) as this;
+    const next = create(this) as this;
+    this.register = new Map();
+    return next;
   }
 
   public pop(){

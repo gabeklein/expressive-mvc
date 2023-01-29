@@ -3,7 +3,7 @@ import React, { Suspense } from 'react';
 import { Parent } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
-import { values } from '../helper/object';
+import { assignWeak, entries, getOwnPropertySymbols } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
 import { LookupContext, useLookup } from './context';
@@ -42,8 +42,6 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const context = useNewContext(props.for, props.and);
 
-  React.useLayoutEffect(() => () => context.pop(), []);
-
   return (
     <LookupContext.Provider value={context}>
       {props.fallback === false
@@ -65,48 +63,46 @@ function useNewContext<T extends Model>(
   assign: Model.Compat<T> | undefined){
 
   const ambient = useLookup();
-
   const context = React.useMemo(() => {
     if(!include)
       throw Oops.NoType();
 
-    const next = ambient.push();
-
-    function register(T: Model | Model.Type){
-      const i = next.add(T);
-
-      if(assign)
-        assignWeak(i, assign);
-
-      Control.for(i).state.forEach(value => {
-        if(Parent.get(value) === i)
-          next.add(value);
-      });
-    }
-
-    if(include instanceof Model || typeof include == "function")
-      register(include);
-    else
-      values(include).forEach(register);
-
-    for(const instance of next.local)
-      for(const apply of getPending(instance))
-        apply(next)
-
-    return next;
+    return ambient.push();
   }, []);
 
-  if(assign)
-    context.local.forEach(i => {
-      if(i && !Parent.has(i))
-        assignWeak(i, assign)
-    });
+  function register(key: string | number, T: Model | Model.Type){
+    const instance = context.has(key, T);
+
+    if(assign)
+      assignWeak(instance, assign);
+  }
+
+  if(typeof include == "function" || include instanceof Model)
+    register(0, include);
+  else
+    entries(include).forEach(e => register(...e));
+
+  React.useMemo(() => {
+    const local = new Set(
+      getOwnPropertySymbols(context)
+        .map(symbol => (context as any)[symbol])
+        .filter(i => i)
+    );
+
+    for(const instance of local){
+      Control.for(instance).state.forEach(value => {
+        if(Parent.get(value) === instance){
+          context.add(value);
+          local.add(value);
+        }
+      });
+
+      for(const apply of getPending(instance))
+        apply(context)
+    }
+  }, []);
+
+  React.useLayoutEffect(() => () => context.pop(), []);
 
   return context;
-}
-
-function assignWeak(into: any, from: any){
-  for(const K in from)
-    if(K in into)
-      into[K] = from[K];
 }

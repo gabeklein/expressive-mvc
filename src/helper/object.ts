@@ -24,6 +24,8 @@ export {
   values
 }
 
-export function unique<T>(array: T[]){
-  return Array.from(new Set(array));
+export function assignWeak(into: any, from: any){
+  for(const K in from)
+    if(K in into)
+      into[K] = from[K];
 }
