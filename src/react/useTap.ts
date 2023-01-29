@@ -29,40 +29,42 @@ function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: 
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model> (
-  source: typeof Model | typeof MVC | (() => any),
+  source: T | typeof Model | typeof MVC,
   arg1?: Model.Key<T> | ((this: T, from: T) => any),
   arg2?: boolean) {
 
-  const instance: T = useMemo(() => {
-    if(typeof source == "object")
-      return () => source;
+  const instance: T = useMemo(() => (
+    Model.isTypeof(source) ?
+      "get" in source ?
+        () => source.get() as T:
+        () => useContext(source) as T:
+      () => source
+  ), [])();
 
-    if(Model.isTypeof(source))
-      return "get" in source
-        ? () => source.get()
-        : () => useContext(source);
+  return typeof arg1 == "function"
+    ? useValue(instance, arg1, arg2)
+    : useSub(instance, arg1, arg2);
+}
 
-    return source;
-  }, [])();
+function useSub <T extends {}, K extends Model.Key<T>> (source: T, path: K, expect: true): Exclude<T[K], undefined>;
+function useSub <T extends {}, K extends Model.Key<T>> (source: T, path?: K, expect?: boolean): NoVoid<T[K]>;
 
-  if(typeof arg1 == "function")
-    return useValue(instance, arg1, arg2);
-
+function useSub(source: any, path?: string, expect?: boolean){
   const local = use(refresh => (
-    Control.for(instance).subscribe(() => refresh)
+    Control.for(source).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(local.commit, []);
 
-  if(arg1 === undefined)
+  if(path === undefined)
     return local.proxy;
 
-  const value = local.proxy[arg1];
+  const value = local.proxy[path];
 
-  if(value === undefined && arg2)
-    throw suspend(local.parent, arg1);
+  if(value === undefined && expect)
+    throw suspend(local.parent, path);
 
   return value;
 }
 
-export { useTap }
+export { useTap, useSub }

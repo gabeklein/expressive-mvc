@@ -5,7 +5,8 @@ import { Callback, Class, InstanceOf, NoVoid } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
 import { useNew } from './useNew';
-import { useTap } from './useTap';
+import { useSub, useTap } from './useTap';
+import { useValue } from './useValue';
 
 export const Global = new WeakMap<Class, MVC>();
 
@@ -160,8 +161,10 @@ class MVC extends Model {
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
-  static meta (path?: string | Function, expect?: boolean): any {
-    return useTap(() => this, path as any, expect);
+  static meta (arg1?: any, arg2?: any): any {
+    return typeof arg1 == "function"
+      ? useValue(this, arg1, arg2)
+      : useSub(this, arg1, arg2);
   }
 }
 
