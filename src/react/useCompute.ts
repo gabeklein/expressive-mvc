@@ -6,19 +6,19 @@ import { use } from './use';
 
 import type { Callback, NoVoid } from '../helper/types';
 
-function useValue <T extends {}, R> (
+function useCompute <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect: true
 ): Exclude<R, undefined>;
 
-function useValue <T extends {}, R> (
+function useCompute <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T) => R,
   expect?: boolean
 ): NoVoid<R>;
 
-function useValue(
+function useCompute(
   source: {},
   compute: Function,
   suspend?: boolean) {
@@ -92,4 +92,4 @@ function useValue(
   return local.proxy;
 }
 
-export { useValue }
+export { useCompute }

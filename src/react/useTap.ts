@@ -7,7 +7,7 @@ import { suspend } from '../suspense';
 import { useContext } from './context';
 import { MVC } from './mvc';
 import { use } from './use';
-import { useValue } from './useValue';
+import { useCompute } from './useCompute';
 
 declare namespace useTap {
   type Source<T extends Model> =
@@ -42,14 +42,14 @@ function useTap <T extends Model> (
   ), [])();
 
   return typeof arg1 == "function"
-    ? useValue(instance, arg1, arg2)
-    : useSub(instance, arg1, arg2);
+    ? useCompute(instance, arg1, arg2)
+    : useSubscribe(instance, arg1, arg2);
 }
 
-function useSub <T extends {}, K extends Model.Key<T>> (source: T, path: K, expect: true): Exclude<T[K], undefined>;
-function useSub <T extends {}, K extends Model.Key<T>> (source: T, path?: K, expect?: boolean): NoVoid<T[K]>;
+function useSubscribe <T extends {}, K extends Model.Key<T>> (source: T, path: K, expect: true): Exclude<T[K], undefined>;
+function useSubscribe <T extends {}, K extends Model.Key<T>> (source: T, path?: K, expect?: boolean): NoVoid<T[K]>;
 
-function useSub(source: any, path?: string, expect?: boolean){
+function useSubscribe(source: any, path?: string, expect?: boolean){
   const local = use(refresh => (
     Control.for(source).subscribe(() => refresh)
   ));
@@ -67,4 +67,4 @@ function useSub(source: any, path?: string, expect?: boolean){
   return value;
 }
 
-export { useTap, useSub }
+export { useTap, useSubscribe }

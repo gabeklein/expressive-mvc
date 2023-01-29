@@ -5,8 +5,8 @@ import { Callback, Class, InstanceOf, NoVoid } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
 import { useNew } from './useNew';
-import { useSub, useTap } from './useTap';
-import { useValue } from './useValue';
+import { useSubscribe } from './useTap';
+import { useCompute } from './useCompute';
 
 export const Global = new WeakMap<Class, MVC>();
 
@@ -141,8 +141,12 @@ class MVC extends Model {
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => R, expect?: boolean): NoVoid<R>;
 
-  static tap (key?: string | Function, expect?: boolean): any {
-    return useTap(this, key as any, expect);
+  static tap (arg1?: any, arg2?: boolean): any {
+    const instance = this.get();
+
+    return typeof arg1 == "function"
+      ? useCompute(instance, arg1, arg2)
+      : useSubscribe(instance, arg1, arg2);
   }
 
   static use <I extends MVC> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
@@ -163,8 +167,8 @@ class MVC extends Model {
 
   static meta (arg1?: any, arg2?: any): any {
     return typeof arg1 == "function"
-      ? useValue(this, arg1, arg2)
-      : useSub(this, arg1, arg2);
+      ? useCompute(this, arg1, arg2)
+      : useSubscribe(this, arg1, arg2);
   }
 }
 

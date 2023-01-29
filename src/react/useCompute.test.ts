@@ -1,6 +1,6 @@
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { Model } from '../model';
-import { useValue } from './useValue';
+import { useCompute } from './useCompute';
 
 const opts = { timeout: 100 };
 
@@ -14,7 +14,7 @@ it('will select and subscribe to subvalue', async () => {
   const parent = Test.new();
 
   const { result, waitForNextUpdate } = renderHook(() => {
-    return useValue(parent, x => x.foo);
+    return useCompute(parent, x => x.foo);
   });
 
   expect(result.current).toBe(1);
@@ -28,7 +28,7 @@ it('will select and subscribe to subvalue', async () => {
 it('will compute output', async () => {
   const parent = Test.new();
   const { result, waitForNextUpdate } =
-    renderHook(() => useValue(parent, x => x.foo + x.bar));
+    renderHook(() => useCompute(parent, x => x.foo + x.bar));
 
   expect(result.current).toBe(3);
 
@@ -45,7 +45,7 @@ it('will ignore updates with same result', async () => {
 
   const { result } = renderHook(() => {
     render();
-    return useValue(parent, x => {
+    return useCompute(parent, x => {
       compute();
       void x.foo;
       return x.bar;
@@ -76,7 +76,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useValue(control, () => promise.pending());
+      return useCompute(control, () => promise.pending());
     });
 
     expect(result.current).toBeNull();
@@ -92,7 +92,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useValue(control, $ => {
+      return useCompute(control, $ => {
         void $.foo;
         return promise.pending();
       });
@@ -125,7 +125,7 @@ describe("suspense", () => {
       promise.resolve();
       didRender();
 
-      useValue(instance, state => {
+      useCompute(instance, state => {
         didCompute();
 
         if(state.value == "foobar")
@@ -156,7 +156,7 @@ describe("suspense", () => {
     const test = mockSuspense();
 
     test.renderHook(() => {
-      useValue(instance, () => promise.pending(), true);
+      useCompute(instance, () => promise.pending(), true);
     })
 
     test.assertDidSuspend(true);
@@ -174,7 +174,7 @@ describe("undefined", () => {
   it("will convert to null", () => {
     const test = Test.new();
     const { result } = renderHook(() => {
-      return useValue(test, () => undefined);
+      return useCompute(test, () => undefined);
     });
 
     expect(result.current).toBe(null);
@@ -183,7 +183,7 @@ describe("undefined", () => {
   it("will convert to null from factory", () => {
     const test = Test.new();
     const { result } = renderHook(() => {
-      return useValue(test, () => () => undefined);
+      return useCompute(test, () => () => undefined);
     });
 
     expect(result.current).toBe(null);
