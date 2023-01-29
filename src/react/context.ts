@@ -38,6 +38,9 @@ class Lookup {
   public has<T extends Model>(
     key: string | number,
     input: Model.Type<T> | T){
+
+    if(MVC.isTypeof(input) && input.global)
+      return input.new();
   
     if(this.register.get(key) === input)
       return typeof input == "object"
@@ -50,9 +53,6 @@ class Lookup {
   }
 
   public add(input: Model.Type | Model): Model {
-    if(MVC.isTypeof(input) && input.global)
-      return input.new();
-
     let writable = true;
     let T: Model.Type;
     let I: Model;
