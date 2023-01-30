@@ -33,7 +33,7 @@ defineProperties(Model.prototype, {
     get(this: Model){
       const source = subscriber(this) || controller(this);
 
-      return source && source.latest;
+      return source?.latest;
     }
   }
 })
