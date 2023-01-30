@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Control } from '../control';
+import { control } from '../control';
 import { defineProperty } from '../helper/object';
 import { use } from './use';
 
@@ -24,7 +24,7 @@ function useCompute(
   suspend?: boolean) {
 
   const local = use(refresh => {
-    const sub = Control.for(source).subscribe(() => update);
+    const sub = control(source).subscribe(() => update);
     const spy = sub.proxy;
 
     let value = compute.call(spy, spy);

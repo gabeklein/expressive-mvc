@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { Control } from '../control';
+import { control } from '../control';
 import { getOwnPropertyNames } from '../helper/object';
 import { Model } from '../model';
 import { usePeerContext } from './tap';
@@ -34,7 +34,7 @@ function useNew <T extends Model> (
       ? new source() as T
       : source();
 
-    Control.for(instance);
+    control(instance);
 
     if(typeof callback == "function")
       callback(instance);
@@ -61,7 +61,7 @@ function useNew <T extends Model> (
   }
   
   const local = use(refresh => (
-    Control.for(instance).subscribe(() => refresh)
+    control(instance).subscribe(() => refresh)
   ));
 
   if(typeof arg1 == "object"){

@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { control, Control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
@@ -135,7 +135,7 @@ class Model {
     arg1?: Iterable<P> | P,
     arg2?: Function | boolean | number){
 
-    const { state } = Control.for(this);
+    const { state } = control(this);
     const extract = typeof arg1 == "string"
       ? () => state.get(arg1)
       : () => {
@@ -168,22 +168,23 @@ class Model {
     arg1: Model.Event<this> | Model.Compat<this>,
     arg2?: boolean | any[]): any {
 
-    const control = Control.for(this);
+    const controller = control(this);
+    const { state } = controller;
 
     if(typeof arg1 == "object")
       for(const key in arg1){
-        if(arg2 === true || (arg2 ? arg2.includes(key) : control.state.has(key))){
-          control.state.set(key, (arg1 as any)[key]);
-          control.update(key as any);
+        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
+          state.set(key, (arg1 as any)[key]);
+          controller.update(key as any);
         }
       }
 
     else if(typeof arg1 == "string"){
-      control.update(arg1 as Model.Key<this>);
+      controller.update(arg1 as Model.Key<this>);
 
       if(1 in arguments){
-        if(control.state.has(arg1))
-          control.state.set(arg1, arg2);
+        if(state.has(arg1))
+          state.set(arg1, arg2);
 
         else if(arg1 in this){
           const method = (this as any)[arg1];
@@ -199,7 +200,7 @@ class Model {
         if(!callback)
           throw Oops.NoChaining();
 
-        control.waiting.add(callback);
+        controller.waiting.add(callback);
       }
     }
   }
@@ -208,7 +209,7 @@ class Model {
    * Clean up side effects and mark this instance for garbage-collection.
    */
   end(){
-    Control.for(this).clear();
+    control(this).clear();
   }
 
   /**
@@ -222,7 +223,7 @@ class Model {
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
-    Control.for(instance);
+    control(instance);
     return instance;
   }
 

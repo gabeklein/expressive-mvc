@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { control } from './control';
 import { issues } from './helper/issues';
 import { Callback } from './helper/types';
 import { Model } from './model';
@@ -14,7 +14,7 @@ export function createEffect<T extends Model>(
   callback: Model.Effect<T>,
   keys: Model.Event<T>[]){
 
-  return Control.for(model, control => {
+  return control(model, controller => {
     let unSet: Callback | Promise<any> | void;
     let busy = false;
 
@@ -48,7 +48,7 @@ export function createEffect<T extends Model>(
     if(Array.isArray(keys)){
       invoke();
 
-      return control.addListener(key => {
+      return controller.addListener(key => {
         if(key === null){
           if(!keys.length)
             invoke();
@@ -58,7 +58,7 @@ export function createEffect<T extends Model>(
       });
     }
 
-    const sub = control.subscribe(() => invoke);
+    const sub = controller.subscribe(() => invoke);
 
     model = sub.proxy;
     invoke();

@@ -12,12 +12,6 @@ const PENDING = new Map<symbol, Instruction.Runner<any>>();
 
 declare namespace Control {
   /**
-   * Callback for Controller.for() static method.
-   * Returned callback is forwarded.
-   */
-  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
-
-  /**
    * Called immediately when any key is changed or emitted.
    * Returned callback is notified when update is complete.
    */
@@ -155,51 +149,61 @@ class Control<T extends {} = any> {
     this.followers.clear();
     listeners.forEach(x => x(null, this));
   }
+}
 
-  static get<T extends {}>(from: T){
-    if(from && "is" in from)
-      from = (from as any).is as T;
-  
-    return REGISTER.get(from) as Control<T> | undefined;
-  }
+function controller<T extends {}>(from: T){
+  if(from && "is" in from)
+    from = (from as any).is as T;
 
-  static for<T extends {}>(subject: T): Control<T>;
-  static for<T extends {}>(subject: T, cb: Control.OnReady<T>): Callback;
-  static for<T extends {}>(subject: T, cb?: Control.OnReady<T>){
-    const control = this.get(subject) || new this(subject);
+  return REGISTER.get(from) as Control<T> | undefined;
+}
 
-    if(!control.state){
-      const { waiting } = control;
-  
-      if(cb){
-        let callback: Callback | void;
-  
-        waiting.add(() => {
-          callback = cb(control);
-        });
-  
-        return () => {
-          if(callback)
-            callback();
-        }
+declare namespace control {
+  /**
+   * Callback for Controller.for() static method.
+   * Returned callback is forwarded.
+   */
+  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
+}
+
+function control<T extends {}>(subject: T): Control<T>;
+function control<T extends {}>(subject: T, cb: control.OnReady<T>): Callback;
+function control<T extends {}>(subject: T, cb?: control.OnReady<T>){
+  const control = controller(subject) || new Control(subject);
+
+  if(!control.state){
+    const { waiting } = control;
+
+    if(cb){
+      let callback: Callback | void;
+
+      waiting.add(() => {
+        callback = cb(control);
+      });
+
+      return () => {
+        if(callback)
+          callback();
       }
-  
-      control.state = new Map();
-  
-      for(const key in subject)
-        control.watch(key);
-  
-      control.waiting = new Set();
-  
-      for(const cb of waiting)
-        cb([]);
     }
-  
-    return cb ? cb(control) : control;
+
+    control.state = new Map();
+
+    for(const key in subject)
+      control.watch(key);
+
+    control.waiting = new Set();
+
+    for(const cb of waiting)
+      cb([]);
   }
+
+  return cb ? cb(control) : control;
 }
 
 export {
   Control,
+  control,
+  controller,
   PENDING
 }

@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { Control, control, controller } from './control';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Callback } from './helper/types';
@@ -29,8 +29,8 @@ export function getRecursive(key: string, from: Control){
 
         const value = state.get(key);
   
-        if(Control.get(value)){
-          const child = Control.for(value).subscribe(local.onUpdate);
+        if(controller(value)){
+          const child = control(value).subscribe(local.onUpdate);
   
           if(local.active)
             child.commit();
@@ -58,9 +58,9 @@ export function getRecursive(key: string, from: Control){
 }
 
 export function setRecursive(
-  control: Control, key: string, initial: Model){
+  controller: Control, key: string, initial: Model){
 
-  const { state, subject } = control;
+  const { state, subject } = controller;
   const Type = initial.constructor;
 
   let get: (local: Subscriber | undefined) => any
@@ -71,9 +71,9 @@ export function setRecursive(
     if(!(next instanceof Type))
       throw Oops.BadAssignment(`${subject}.${key}`, Type.name, String(next));
 
-    get = getRecursive(key, control);
+    get = getRecursive(key, controller);
     Parent.set(next, subject);
-    Control.for(next);
+    control(next);
 
     return true;
   }
@@ -81,7 +81,7 @@ export function setRecursive(
   onUpdate(initial);
 
   defineProperty(subject, key, {
-    set: control.ref(key, onUpdate),
+    set: controller.ref(key, onUpdate),
     get(this: Model){
       const local = Subscriber.get(this);
 

@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Parent } from '../children';
-import { Control } from '../control';
+import { control } from '../control';
 import { issues } from '../helper/issues';
 import { assignWeak, entries, getOwnPropertySymbols } from '../helper/object';
 import { Class } from '../helper/types';
@@ -90,7 +90,7 @@ function useNewContext<T extends Model>(
     );
 
     for(const instance of local){
-      Control.for(instance).state.forEach(value => {
+      control(instance).state.forEach(value => {
         if(Parent.get(value) === instance){
           context.add(value);
           local.add(value);

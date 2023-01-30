@@ -1,4 +1,4 @@
-import { Control } from '../control';
+import { control, Control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
@@ -68,7 +68,7 @@ function ref<T>(
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        Control.for(arg).state.forEach((_val, key) => {
+        control(arg).state.forEach((_val, key) => {
           defineProperty(value, key,
             mapper ? {
               configurable: true,

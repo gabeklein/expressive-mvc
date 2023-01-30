@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { control } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 
@@ -25,13 +25,13 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
   if(typeof arg1 == "string")
     arg1 = [arg1];
 
-  return Control.for(source, control => {
+  return control(source, controller => {
     for(const key of arg1)
       try { void (source as any)[key] }
       catch(e){}
 
     const removeListener =
-      control.addListener(key => {
+      controller.addListener(key => {
         if(!key && !arg1.length)
           arg2.call(source, []);
           
@@ -66,8 +66,8 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       reject(Oops.Timeout(k, message));
     }
 
-    const removeListener = Control.for(source, control => {
-      const pending = control.frame;
+    const removeListener = control(source, controller => {
+      const pending = controller.frame;
 
       if(keys === null){
         if(pending.size)
@@ -94,9 +94,9 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         return;
       }
       else
-        control.waiting.add(resolve);
+        controller.waiting.add(resolve);
 
-      return control.addListener(key => {
+      return controller.addListener(key => {
         if(!key){
           if(keys && !keys.length)
             resolve([]);
@@ -106,7 +106,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         else if(!keys || keys.includes(key as P)){
           removeListener();
           return keys =>
-            resolve(single ? control.state.get(key) : keys)
+            resolve(single ? controller.state.get(key) : keys)
         }
       });
     })

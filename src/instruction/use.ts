@@ -1,5 +1,5 @@
 import { getRecursive, Parent } from '../children';
-import { Control } from '../control';
+import { control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
@@ -90,7 +90,7 @@ function use(
         if(next){
           get = getRecursive(key, this);
           Parent.set(next, subject);
-          Control.for(next);
+          control(next);
         }
 
         if(typeof argument == "function")

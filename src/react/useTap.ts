@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Control } from '../control';
+import { control } from '../control';
 import { NoVoid } from '../helper/types';
 import { Model } from '../model';
 import { suspend } from '../suspense';
@@ -50,7 +50,7 @@ function useSubscribe <T extends {}, K extends Model.Key<T>> (source: T, path?: 
 
 function useSubscribe(source: any, path?: string, expect?: boolean){
   const local = use(refresh => (
-    Control.for(source).subscribe(() => refresh)
+    control(source).subscribe(() => refresh)
   ));
 
   React.useLayoutEffect(() => local.commit(), []);

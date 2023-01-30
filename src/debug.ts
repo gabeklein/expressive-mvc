@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { Control, controller } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
@@ -11,7 +11,7 @@ const CONTROL = "$debug controller";
 defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
-      return Control.get(this);
+      return controller(this);
     }
   },
   [LOCAL]: {
@@ -21,7 +21,7 @@ defineProperties(Model.prototype, {
   },
   [STATE]: {
     get(this: Model){
-      const { state } = Control.get(this)!;
+      const { state } = controller(this)!;
       const output: any = {};
 
       state.forEach((value, key) => output[key] = value);
@@ -31,7 +31,7 @@ defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      const source = Subscriber.get(this) || Control.get(this);
+      const source = Subscriber.get(this) || controller(this);
 
       return source && source.latest;
     }

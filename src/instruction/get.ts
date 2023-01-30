@@ -1,4 +1,4 @@
-import { Control } from '../control';
+import { control } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { mayRetry } from '../suspense';
@@ -128,7 +128,7 @@ function get<R, T>(
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
-          source = Control.for(arg0);
+          source = control(arg0);
           setter = arg1;
         }
         else
