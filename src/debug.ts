@@ -31,9 +31,7 @@ defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      const source = subscriber(this) || controller(this);
-
-      return source?.latest;
+      return (subscriber(this) || controller(this))!.latest;
     }
   }
 })
