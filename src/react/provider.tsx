@@ -3,7 +3,7 @@ import React, { Suspense } from 'react';
 import { Parent } from '../children';
 import { control } from '../control';
 import { issues } from '../helper/issues';
-import { assignWeak, entries, getOwnPropertySymbols } from '../helper/object';
+import { assignWeak, entries } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
 import { LookupContext, useLookup } from './context';
@@ -62,6 +62,7 @@ function useNewContext<T extends Model>(
   include: Provider.Item | Provider.Multiple,
   assign: Model.Compat<T> | undefined){
 
+  const init = new Set<Model>();
   const ambient = useLookup();
   const context = React.useMemo(() => {
     if(!include)
@@ -71,7 +72,7 @@ function useNewContext<T extends Model>(
   }, []);
 
   function register(key: string | number, T: Model | Model.Type){
-    const instance = context.has(key, T);
+    const instance = context.has(key, T, i => init.add(i));
 
     if(assign)
       assignWeak(instance, assign);
@@ -82,25 +83,17 @@ function useNewContext<T extends Model>(
   else
     entries(include).forEach(e => register(...e));
 
-  React.useMemo(() => {
-    const local = new Set(
-      getOwnPropertySymbols(context)
-        .map(symbol => (context as any)[symbol])
-        .filter(i => i)
-    );
+  for(const instance of init){
+    control(instance).state.forEach(value => {
+      if(Parent.get(value) === instance){
+        context.add(value);
+        init.add(value);
+      }
+    });
 
-    for(const instance of local){
-      control(instance).state.forEach(value => {
-        if(Parent.get(value) === instance){
-          context.add(value);
-          local.add(value);
-        }
-      });
-
-      for(const apply of getPending(instance))
-        apply(context)
-    }
-  }, []);
+    for(const apply of getPending(instance))
+      apply(context)
+  }
 
   React.useLayoutEffect(() => () => context.pop(), []);
 

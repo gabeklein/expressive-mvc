@@ -37,7 +37,8 @@ class Lookup {
 
   public has<T extends Model>(
     key: string | number,
-    input: Model.Type<T> | T){
+    input: Model.Type<T> | T,
+    callback?: (i: T) => void){
 
     if(MVC.isTypeof(input) && input.global)
       return input.new();
@@ -47,9 +48,14 @@ class Lookup {
         ? input
         : this.get(input)!;
 
+    const instance = this.add(input) as T;
+
     this.register.set(key, input);
-    
-    return this.add(input) as T;
+
+    if(callback)
+      callback(instance);
+
+    return instance;
   }
 
   public add(input: Model.Type | Model): Model {
