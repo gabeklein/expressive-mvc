@@ -152,7 +152,7 @@ class Control<T extends {} = any> {
 }
 
 function controller<T extends {}>(from: T){
-  if(from && "is" in from)
+  if("is" in from)
     from = (from as any).is as T;
 
   return REGISTER.get(from) as Control<T> | undefined;

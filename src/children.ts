@@ -29,7 +29,7 @@ export function getRecursive(key: string, from: Control){
 
         const value = state.get(key);
   
-        if(controller(value)){
+        if(value && controller(value)){
           const child = control(value).subscribe(local.onUpdate);
   
           if(local.active)
