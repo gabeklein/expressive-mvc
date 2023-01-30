@@ -91,7 +91,7 @@ class Lookup {
 
   public push(){
     const next = create(this) as this;
-    this.register = new Map();
+    next.register = new Map();
     return next;
   }
 
