@@ -1,5 +1,5 @@
 import { Control } from './control';
-import { create, defineProperty, getOwnPropertyNames } from './helper/object';
+import { create, defineProperty } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from './helper/types';
@@ -50,21 +50,6 @@ class Subscriber <T extends {} = any> {
     return Array.from(this.watch.keys());
   }
 
-  assign(apply: Model.Compat<T>, keys?: any){
-    const { waiting, subject } = this.parent;
-
-    this.active = false;
-
-    if(typeof keys !== "object")
-      keys = getOwnPropertyNames(subject) as Model.Key<T>[];
-
-    for(const key of keys)
-      if(key in apply)
-        (subject as any)[key] = (apply as any)[key];
-
-    waiting.add(() => this.active = true);
-  }
-
   add(key: any, value?: boolean | Callback){
     if(value !== undefined)
       this.watch.set(key, value);
@@ -72,8 +57,11 @@ class Subscriber <T extends {} = any> {
       this.watch.set(key, true);
   }
 
-  commit = () => {
-    const release = this.parent.addListener(this.onEvent);
+  commit(){
+    const release = this.parent.addListener(key => {
+      if(this.active)
+        this.onEvent(key);
+    });
 
     this.active = true;
     this.dependant.forEach(x => x.commit());
@@ -84,28 +72,23 @@ class Subscriber <T extends {} = any> {
     };
   }
 
-  private onEvent = (key: Model.Event<T> | null) => {
-    if(!this.active)
-      return;
-
+  private onEvent(key: Model.Event<T> | null){
     const { parent, watch } = this;
     let handler = watch.get(key);
 
     if(typeof handler == "function")
       handler = handler() as true | undefined;
 
-    if(handler !== true)
-      return;
+    if(handler){
+      const notify = this.onUpdate(key, parent);
 
-    const notify = this.onUpdate(key, parent);
-
-    if(!notify)
-      return;
-
-    parent.waiting.add(update => {
-      this.latest = update.filter(k => watch.has(k));
-    });
-    parent.waiting.add(notify);
+      if(notify){
+        parent.waiting.add(update => {
+          this.latest = update.filter(k => watch.has(k));
+        });
+        parent.waiting.add(notify);
+      }
+    }
   }
 }
 

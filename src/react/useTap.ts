@@ -53,7 +53,7 @@ function useSubscribe(source: any, path?: string, expect?: boolean){
     Control.for(source).subscribe(() => refresh)
   ));
 
-  React.useLayoutEffect(local.commit, []);
+  React.useLayoutEffect(() => local.commit(), []);
 
   if(path === undefined)
     return local.proxy;
