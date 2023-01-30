@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 import { Control } from '../control';
 import { NoVoid } from '../helper/types';
@@ -33,13 +33,12 @@ function useTap <T extends Model> (
   arg1?: Model.Key<T> | ((this: T, from: T) => any),
   arg2?: boolean) {
 
-  const instance: T = useMemo(() => (
-    Model.isTypeof(source) ?
-      "get" in source ?
-        () => source.get() as T:
-        () => useContext(source) as T:
-      () => source
-  ), [])();
+  const instance: T =
+    typeof source == "object"
+      ? source
+      : "get" in source
+        ? source.get() as T
+        : useContext(source) as T;
 
   return typeof arg1 == "function"
     ? useCompute(instance, arg1, arg2)
