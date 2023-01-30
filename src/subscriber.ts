@@ -89,18 +89,15 @@ class Subscriber <T extends {} = any> {
       return;
 
     const { parent, watch } = this;
+    let handler = watch.get(key);
 
-    const handler = watch.get(key);
-    let notify: void | Control.OnAsync;
+    if(typeof handler == "function")
+      handler = handler() as true | undefined;
 
-    if(typeof handler == "function"){
-      const callback = handler();
+    if(handler !== true)
+      return;
 
-      if(callback === true)
-        notify = this.onUpdate(key, parent);
-    }
-    else if(handler === true)
-      notify = this.onUpdate(key, parent);
+    const notify = this.onUpdate(key, parent);
 
     if(!notify)
       return;
