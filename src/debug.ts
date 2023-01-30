@@ -1,7 +1,7 @@
 import { Control, controller } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
+import { Subscriber, subscriber } from './subscriber';
 
 const LOCAL = "$debug local";
 const STATE = "$debug state";
@@ -16,7 +16,7 @@ defineProperties(Model.prototype, {
   },
   [LOCAL]: {
     get(this: Model){
-      return Subscriber.get(this);
+      return subscriber(this);
     }
   },
   [STATE]: {
@@ -31,7 +31,7 @@ defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      const source = Subscriber.get(this) || controller(this);
+      const source = subscriber(this) || controller(this);
 
       return source && source.latest;
     }

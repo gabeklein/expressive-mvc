@@ -16,10 +16,6 @@ declare namespace Subscriber {
 }
 
 class Subscriber <T extends {} = any> {
-  static get<T extends {}>(from: T){
-    return REGISTER.get(from) as Subscriber<T> | undefined;
-  }
-
   public proxy!: T;
   public release!: Callback;
   public latest?: Model.Event<T>[];
@@ -92,4 +88,8 @@ class Subscriber <T extends {} = any> {
   }
 }
 
-export { Subscriber }
+function subscriber<T extends {}>(from: T){
+  return REGISTER.get(from) as Subscriber<T> | undefined;
+}
+
+export { Subscriber, subscriber }

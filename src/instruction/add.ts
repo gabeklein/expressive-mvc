@@ -1,7 +1,7 @@
 import { getRecursive } from '../children';
 import { Control, PENDING } from '../control';
 import { defineProperty } from '../helper/object';
-import { Subscriber } from '../subscriber';
+import { Subscriber, subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 
 /**
@@ -109,7 +109,7 @@ function add<T = any>(
         if(!state.has(key) && shouldSuspend)
           throw suspend(control, key);
   
-        const local = Subscriber.get(this);
+        const local = subscriber(this);
   
         if(local)
           local.add(key);

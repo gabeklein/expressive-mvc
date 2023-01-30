@@ -3,7 +3,7 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Callback } from './helper/types';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
+import { Subscriber, subscriber } from './subscriber';
 
 export const Parent = new WeakMap<{}, {}>();
 
@@ -83,7 +83,7 @@ export function setRecursive(
   defineProperty(subject, key, {
     set: controller.ref(key, onUpdate),
     get(this: Model){
-      const local = Subscriber.get(this);
+      const local = subscriber(this);
 
       if(local)
         local.add(key);

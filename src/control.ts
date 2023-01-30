@@ -3,7 +3,7 @@ import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
+import { Subscriber, subscriber } from './subscriber';
 
 import type { Callback } from './helper/types';
 
@@ -69,7 +69,7 @@ class Control<T extends {} = any> {
       enumerable: false,
       set: this.ref(key as any),
       get(){
-        const sub = Subscriber.get(this);
+        const sub = subscriber(this);
 
         if(sub)
           sub.add(key);
