@@ -73,7 +73,7 @@ class Subscriber <T extends {} = any> {
   }
 
   commit = () => {
-    const release = this.parent.addListener(this.event);
+    const release = this.parent.addListener(this.onEvent);
 
     this.active = true;
     this.dependant.forEach(x => x.commit());
@@ -84,7 +84,7 @@ class Subscriber <T extends {} = any> {
     };
   }
 
-  private event = (key: Model.Event<T> | null) => {
+  private onEvent = (key: Model.Event<T> | null) => {
     if(!this.active)
       return;
 
