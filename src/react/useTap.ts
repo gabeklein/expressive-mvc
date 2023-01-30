@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { control } from '../control';
+import { uid } from '../helper/object';
 import { NoVoid } from '../helper/types';
 import { Model } from '../model';
 import { suspend } from '../suspense';
@@ -49,11 +50,12 @@ function useSubscribe <T extends {}, K extends Model.Key<T>> (source: T, path: K
 function useSubscribe <T extends {}, K extends Model.Key<T>> (source: T, path?: K, expect?: boolean): NoVoid<T[K]>;
 
 function useSubscribe(source: any, path?: string, expect?: boolean){
+  const deps = [uid(source)];
   const local = use(refresh => (
     control(source).subscribe(() => refresh)
-  ));
+  ), deps);
 
-  React.useLayoutEffect(() => local.commit(), []);
+  React.useLayoutEffect(() => local.commit(), deps);
 
   if(path === undefined)
     return local.proxy;

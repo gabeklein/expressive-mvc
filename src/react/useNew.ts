@@ -4,7 +4,6 @@ import { control } from '../control';
 import { getOwnPropertyNames } from '../helper/object';
 import { Model } from '../model';
 import { usePeerContext } from './tap';
-import { use } from './use';
 
 function useNew <T extends Model> (
   source: Model.Type<T> | (() => T),
@@ -59,10 +58,12 @@ function useNew <T extends Model> (
 
     return instance;
   }
-  
-  const local = use(refresh => (
-    control(instance).subscribe(() => refresh)
-  ));
+
+  const state = React.useState(0);
+  const local = React.useMemo(() => {
+    const refresh = state[1].bind(null, x => x+1);
+    return control(instance).subscribe(() => refresh);
+  }, []);
 
   if(typeof arg1 == "object"){
     const { waiting, subject } = local.parent;

@@ -2,10 +2,13 @@ import React from 'react';
 
 import { Callback } from '../helper/types';
 
-export function use<T>(init: (trigger: Callback) => T){
-  const $ = React.useState((): T[] => [
-    init(() => $[1]($[0].concat()))
-  ]);
+export function use<T>(
+  init: (trigger: Callback) => T,
+  deps: (string | number)[]){
 
-  return $[0][0];
+  const state = React.useState(0);
+
+  return React.useMemo(() => {
+    return init(state[1].bind(null, x => x+1));
+  }, deps);
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { control } from '../control';
-import { defineProperty } from '../helper/object';
+import { defineProperty, uid } from '../helper/object';
 import { use } from './use';
 
 import type { Callback, NoVoid } from '../helper/types';
@@ -23,6 +23,7 @@ function useCompute(
   compute: Function,
   suspend?: boolean) {
 
+  const deps = [uid(source)];
   const local = use(refresh => {
     const sub = control(source).subscribe(() => update);
     const spy = sub.proxy;
@@ -85,9 +86,9 @@ function useCompute(
     });
 
     return sub;
-  });
+  }, deps);
 
-  React.useLayoutEffect(() => local.release, []);
+  React.useLayoutEffect(() => local.release, deps);
 
   return local.proxy;
 }
