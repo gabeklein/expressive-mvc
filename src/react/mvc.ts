@@ -22,8 +22,20 @@ declare namespace MVC {
   type EffectCallback<T = MVC> = (found: T) => Callback | void;
 
   type ForceUpdate = {
+    /** Force an update in current component. */
     (): void;
+    
+    /**
+     * Force an update and again after promise either resolves or rejects.
+     * Will return a duplicate of given Promise, which resolves after refresh.
+     */
     <T = void>(passthru?: Promise<T>): Promise<T>
+
+    /**
+     * Force a update while calling async function.
+     * A refresh will occur both before and after given function.
+     * Any actions performed before first `await` will occur before refresh!
+     */
     <T = void>(invoke?: () => Promise<T>): Promise<T>
   };
 
