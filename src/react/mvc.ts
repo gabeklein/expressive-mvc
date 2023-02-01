@@ -20,6 +20,14 @@ export const Oops = issues({
 
 declare namespace MVC {
   type EffectCallback<T = MVC> = (found: T) => Callback | void;
+
+  type ForceUpdate = {
+    (): void;
+    <T = void>(passthru?: Promise<T>): Promise<T>
+  };
+
+  type TapCallback<T extends Model, R> =
+    (this: T, model: T, update: MVC.ForceUpdate) => R;
 }
 
 class MVC extends Model {
@@ -134,12 +142,12 @@ class MVC extends Model {
   static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
   static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect?: boolean): NoVoid<T[K]>;
 
-  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => () => R): NoVoid<R>;
-  static tap <T extends MVC, R> (this: Model.Type<T>, connect: (this: T, model: T) => (() => R) | null): NoVoid<R> | null;
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: MVC.TapCallback<T, () => R>): NoVoid<R>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, connect: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
-  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): NoVoid<R> | null;
-  static tap <T extends MVC, R> (this: Model.Type<T>, compute: (this: T, model: T) => R, expect?: boolean): NoVoid<R>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+  static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
   static tap (arg1?: any, arg2?: boolean): any {
     const instance = this.get();

@@ -167,7 +167,7 @@ describe("children", () => {
       </Provider>
     )
 
-    expect(gotBar).toBeCalledWith(foo.bar);
+    expect(gotBar).toBeCalledWith(foo.bar, expect.any(Function));
   })
 
   it.todo("will pass parent as second argument to useTap");

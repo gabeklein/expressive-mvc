@@ -2,37 +2,49 @@ import React from 'react';
 
 import { control } from '../control';
 import { defineProperty, uid } from '../helper/object';
+import { MVC } from './mvc';
 import { use } from './use';
 
 import type { Callback, NoVoid } from '../helper/types';
 
 function useCompute <T extends {}, R> (
   source: (() => T) | T,
-  compute: (this: T, from: T) => R,
+  compute: (this: T, from: T, update: MVC.ForceUpdate) => R,
   expect: true
 ): Exclude<R, undefined>;
 
 function useCompute <T extends {}, R> (
   source: (() => T) | T,
-  compute: (this: T, from: T) => R,
+  compute: (this: T, from: T, update: MVC.ForceUpdate) => R,
   expect?: boolean
 ): NoVoid<R>;
 
-function useCompute(
+function useCompute <T extends {}, R> (
   source: {},
-  compute: Function,
+  compute: (this: T, from: T, update: MVC.ForceUpdate) => R | undefined,
   suspend?: boolean) {
 
   const deps = [uid(source)];
   const local = use(refresh => {
     const sub = control(source).subscribe(() => update);
-    const spy = sub.proxy;
+    const spy = sub.proxy as T;
 
-    let value = compute.call(spy, spy);
-    let update: Callback | undefined;
-    let retry: Callback | undefined;
+    let make: (() => R | undefined) | undefined =
+      () => compute.call(spy, spy, forceUpdate)
 
-    const set = (next: any) => {
+    function forceUpdate(): void;
+    function forceUpdate(passthru?: Promise<any>): Promise<any>;
+    function forceUpdate(passthru?: Promise<any>){
+      if(make)
+        reassign(make());
+      else
+        refresh();
+
+      if(passthru)
+        return passthru.finally(refresh);
+    }
+
+    function reassign(next: any){
       value = next;
 
       if(retry) {
@@ -43,12 +55,14 @@ function useCompute(
         refresh();
     };
 
+    let retry: Callback | undefined;
+    let update: Callback | undefined;
+    let value = make();
+
     if(value === null){
       sub.watch.clear();
-      return {
-        proxy: null,
-        release: () => {}
-      }
+      make = undefined;
+      return;
     }
 
     if(typeof value == "function"){
@@ -60,16 +74,16 @@ function useCompute(
     }
 
     if(value instanceof Promise) {
-      value.then(set);
+      value.then(reassign);
       value = undefined;
     }
     else {
       sub.commit();
       update = () => {
-        const next = compute.call(spy, spy);
+        const next = make!();
 
         if(value != next)
-          set(next);
+          reassign(next);
       };
     }
 
@@ -87,6 +101,9 @@ function useCompute(
 
     return sub;
   }, deps);
+
+  if(!local)
+    return null;
 
   React.useLayoutEffect(() => local.release, deps);
 

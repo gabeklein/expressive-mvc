@@ -15,6 +15,9 @@ declare namespace useTap {
     | T
     | Model.Type<T>
     | (() => T | Model.Type<T>);
+
+  type Callback<T extends Model, R> =
+    (this: T, model: T, update: MVC.ForceUpdate) => R;
 }
 
 function useTap <T extends Model> (source: useTap.Source<T>): T;
@@ -22,16 +25,16 @@ function useTap <T extends Model> (source: useTap.Source<T>): T;
 function useTap <T extends Model, K extends Model.Key<T>> (source: useTap.Source<T>, path: K, expect: true): Exclude<T[K], undefined>;
 function useTap <T extends Model, K extends Model.Key<T>> (source: useTap.Source<T>, path: K, expect?: boolean): NoVoid<T[K]>;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => () => R): NoVoid<R>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: (this: T, model: T) => (() => R) | null): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, () => R>): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R> | R, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => Promise<R>, expect?: boolean): NoVoid<R> | null;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: (this: T, model: T) => R, expect?: boolean): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model> (
   source: T | typeof Model | typeof MVC,
-  arg1?: Model.Key<T> | ((this: T, from: T) => any),
+  arg1?: Model.Key<T> | useTap.Callback<T, any>,
   arg2?: boolean) {
 
   const instance: T =
