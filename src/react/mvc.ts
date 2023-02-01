@@ -24,6 +24,7 @@ declare namespace MVC {
   type ForceUpdate = {
     (): void;
     <T = void>(passthru?: Promise<T>): Promise<T>
+    <T = void>(invoke?: () => Promise<T>): Promise<T>
   };
 
   type TapCallback<T extends Model, R> =

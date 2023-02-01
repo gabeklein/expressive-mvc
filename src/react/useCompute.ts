@@ -33,8 +33,11 @@ function useCompute <T extends {}, R> (
       () => compute.call(spy, spy, forceUpdate)
 
     function forceUpdate(): void;
-    function forceUpdate(passthru?: Promise<any>): Promise<any>;
-    function forceUpdate(passthru?: Promise<any>){
+    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
+    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)){
+      if(typeof passthru == "function")
+        passthru = passthru();
+
       if(make)
         reassign(make());
       else

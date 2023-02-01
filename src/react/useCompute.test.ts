@@ -322,4 +322,46 @@ describe("update callback", () => {
 
     unmount();
   })
+
+  it("will invoke async function", async () => {
+    const test = Model.new();
+    const didRender = jest.fn();
+    const promise = mockAsync();
+    
+    let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
+
+    const { unmount } = renderHook(() => {
+      didRender();
+      return useCompute(test, ($, update) => {
+        forceUpdate = update;
+        return null;
+      });
+    });
+
+    expect(didRender).toHaveBeenCalledTimes(1);
+
+    let pending: boolean;
+    
+    act(() => {
+      forceUpdate(async () => {
+        pending = true;
+        await promise.pending();
+        pending = false;
+      });
+
+      // refresh should not occur until after first `await`
+      expect(didRender).toHaveBeenCalledTimes(1);
+      expect(pending).toBe(true);
+    });
+
+    expect(didRender).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await promise.resolve();
+    })
+    
+    expect(didRender).toHaveBeenCalledTimes(3);
+
+    unmount();
+  })
 })
