@@ -20,7 +20,11 @@ declare namespace Model {
   /** Including but not limited to T. */
   type Extends<T> = T | (string & Record<never, never>);
 
-  export type Type<T extends Model = Model> = typeof Model & (new () => T);
+  /** Any typeof Model, using class constructor as the reference. */
+  export type Type<T extends Model = Model> = (new (...args: any[]) => T);
+
+  /** A typeof Model, specifically one which may be created without arguments. */
+  export type Constructor<T extends Model = Model> = (new () => T) & typeof Model;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
@@ -73,7 +77,7 @@ declare namespace Model {
    */
   export type Get<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  export type Export<T, E extends Model = Model> = { [P in Key<T>]: Value<T[P]> };
+  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
 }
 
 class Model {

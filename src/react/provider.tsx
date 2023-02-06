@@ -15,7 +15,7 @@ export const Oops = issues({
 })
 
 declare namespace Provider {
-  type Item = Model | Model.Type;
+  type Item = Model | Model.Constructor;
 
   type Multiple<T extends Item = Item> = T[] | { [key: string]: T };
 
@@ -71,7 +71,7 @@ function useNewContext<T extends Model>(
     return ambient.push();
   }, []);
 
-  function register(key: string | number, T: Model | Model.Type){
+  function register(key: string | number, T: Model | Model.Constructor){
     const instance = context.has(key, T, i => init.add(i));
 
     if(assign)

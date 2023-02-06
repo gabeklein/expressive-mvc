@@ -6,31 +6,31 @@ import { Model } from '../model';
 import { usePeerContext } from './tap';
 
 function useNew <T extends Model> (
-  source: Model.Type<T> | (() => T),
+  source: Model.Constructor<T> | (() => T),
   callback?: (instance: T) => void
 ): T;
 
 function useNew <T extends Model> (
-  source: Model.Type<T> | (() => T),
+  source: Model.Constructor<T> | (() => T),
   watch: Model.Key<T>[],
   callback?: (instance: T) => void
 ): T;
 
 function useNew <T extends Model> (
-  source: Model.Type<T> | (() => T),
+  source: Model.Constructor<T> | (() => T),
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
 function useNew <T extends Model> (
-  source: (() => T) | Model.Type<T>,
+  source: (() => T) | Model.Constructor<T>,
   arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Key<T>[]){
 
   const instance = React.useMemo(() => {
     const callback = arg2 || arg1;
     const instance = Model.isTypeof(source)
-      ? new source() as T
+      ? new source()
       : source();
 
     control(instance);
