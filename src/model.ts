@@ -24,7 +24,7 @@ declare namespace Model {
   export type Type<T extends Model = Model> = (new (...args: any[]) => T);
 
   /** A typeof Model, specifically one which may be created without arguments. */
-  export type Constructor<T extends Model = Model> = (new () => T) & typeof Model;
+  export type New<T extends Model = Model> = (new () => T) & typeof Model;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 

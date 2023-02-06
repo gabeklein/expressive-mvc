@@ -39,7 +39,7 @@ function use <T extends Model> (from: () => T, required: boolean): T;
  /**
   * Create a new child instance of model.
   */
-function use <T extends Model> (Type: Model.Constructor<T>, callback?: (i: T) => void): T;
+function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
 
  /**
   * Create a managed child from factory function.

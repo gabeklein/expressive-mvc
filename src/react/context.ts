@@ -37,7 +37,7 @@ class Lookup {
 
   public has<T extends Model>(
     key: string | number,
-    input: Model.Constructor<T> | T,
+    input: Model.New<T> | T,
     callback?: (i: T) => void){
 
     if(MVC.isTypeof(input) && input.global)
@@ -58,9 +58,9 @@ class Lookup {
     return instance;
   }
 
-  public add(input: Model.Constructor | Model): Model {
+  public add(input: Model.New | Model): Model {
     let writable = true;
-    let T: Model.Constructor;
+    let T: Model.New;
     let I: Model;
 
     if(typeof input == "function"){
@@ -69,7 +69,7 @@ class Lookup {
     }
     else {
       I = input;
-      T = I.constructor as Model.Constructor;
+      T = I.constructor as Model.New;
       writable = false;
     }
 
