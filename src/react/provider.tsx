@@ -25,7 +25,7 @@ declare namespace Provider {
     for: E;
     fallback?: React.ReactNode;
     children?: React.ReactNode | ((instance: I) => React.ReactNode);
-    and?: Model.Compat<I>;
+    use?: Model.Compat<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
@@ -33,14 +33,14 @@ declare namespace Provider {
     for: Multiple<T>;
     fallback?: React.ReactNode;
     children?: React.ReactNode;
-    and?: Model.Compat<Instance<T>>;
+    use?: Model.Compat<Instance<T>>;
   }
 
   type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const context = useNewContext(props.for, props.and);
+  const context = useNewContext(props.for, props.use);
 
   return (
     <LookupContext.Provider value={context}>

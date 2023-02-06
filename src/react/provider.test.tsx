@@ -176,7 +176,7 @@ describe("children", () => {
 describe("and prop", () => {
   it("will assign values to instance", () => {
     render(
-      <Provider for={Foo} and={{ value: "foobar" }}>
+      <Provider for={Foo} use={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
     );
@@ -185,13 +185,13 @@ describe("and prop", () => {
   it("will assign every render", async () => {
     const foo = Foo.new();
     const element = render(
-      <Provider for={foo} and={{ value: "foo" }} />
+      <Provider for={foo} use={{ value: "foo" }} />
     );
 
     expect(foo.value).toBe("foo");
 
     element.update(
-      <Provider for={foo} and={{ value: "bar" }} />
+      <Provider for={foo} use={{ value: "bar" }} />
     );
 
     await foo.on(true);
@@ -205,7 +205,7 @@ describe("and prop", () => {
     }
 
     render(
-      <Provider for={{ Foo, Bar }} and={{ value: "foobar" }}>
+      <Provider for={{ Foo, Bar }} use={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
         <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
@@ -215,7 +215,7 @@ describe("and prop", () => {
   it("will not assign foreign values", () => {
     render(
       /// @ts-ignore - type-checking warns against this
-      <Provider for={Foo} and={{ nonValue: "foobar" }}>
+      <Provider for={Foo} use={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
           // @ts-ignore
           expect(i.nonValue).toBeUndefined();
