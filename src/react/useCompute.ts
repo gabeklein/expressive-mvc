@@ -85,7 +85,7 @@ function useCompute <T extends {}, R> (
       update = () => {
         const next = make!();
 
-        if(value != next)
+        if(notEqual(value, next))
           reassign(next);
       };
     }
@@ -112,5 +112,15 @@ function useCompute <T extends {}, R> (
 
   return local.proxy;
 }
+
+/** Values are not equal for purposes of a refresh. */
+const notEqual = <T>(a: T, b: unknown) => (
+  b !== a && (
+    !Array.isArray(a) ||
+    !Array.isArray(b) ||
+    a.length !== b.length ||
+    a.some((x, i) => x !== b[i])
+  )
+)
 
 export { useCompute }

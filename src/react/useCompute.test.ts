@@ -68,6 +68,56 @@ it('will ignore updates with same result', async () => {
   expect(result.current).toBe(2);
 })
 
+describe("array", () => {
+  it("will not update if values are same", async () => {
+    const parent = Test.new();
+    const didCompute = jest.fn();
+    const didRender = jest.fn();
+  
+    const { result } = renderHook(() => {
+      didRender();
+      return useCompute(parent, x => {
+        didCompute(x.foo);
+        return [1, x.bar, x.baz];
+      });
+    });
+  
+    expect(result.current).toEqual([1,2,3]);
+  
+    await act(async () => {
+      parent.foo = 2;
+      await parent.on(true);
+    })
+
+    expect(didRender).toBeCalledTimes(1);
+    expect(didCompute).toBeCalledWith(2);
+  })
+
+  it("will update if any value different", async () => {
+    const parent = Test.new();
+    const didCompute = jest.fn();
+    const didRender = jest.fn();
+  
+    const { result } = renderHook(() => {
+      didRender();
+      return useCompute(parent, x => {
+        didCompute();
+        return [x.foo, x.bar, x.baz];
+      });
+    });
+  
+    expect(result.current).toEqual([1,2,3]);
+  
+    await act(async () => {
+      parent.foo = 2;
+      await parent.on(true);
+    })
+
+    expect(didRender).toBeCalledTimes(2);
+    expect(didCompute).toBeCalledTimes(2);
+  })
+})
+
 describe("async", () => {
   class Test extends Model {
     foo = "bar";
