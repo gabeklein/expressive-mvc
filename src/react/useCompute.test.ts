@@ -68,7 +68,7 @@ it('will ignore updates with same result', async () => {
   expect(result.current).toBe(2);
 })
 
-describe("array", () => {
+describe("tuple", () => {
   it("will not update if values are same", async () => {
     const parent = Test.new();
     const didCompute = jest.fn();

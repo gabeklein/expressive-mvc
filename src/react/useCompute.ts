@@ -7,6 +7,11 @@ import { use } from './use';
 
 import type { Callback, NoVoid } from '../helper/types';
 
+function useCompute <T extends {}, R extends []> (
+  source: (() => T) | T,
+  compute: (this: T, from: T, update: MVC.ForceUpdate) => R
+): R;
+
 function useCompute <T extends {}, R> (
   source: (() => T) | T,
   compute: (this: T, from: T, update: MVC.ForceUpdate) => R,

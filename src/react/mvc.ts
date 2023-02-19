@@ -152,15 +152,19 @@ class MVC extends Model {
    */
   static tap <T extends MVC> (this: Model.Type<T>): T;
 
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect?: boolean): NoVoid<T[K]>;
-
-  static tap <T extends MVC, R> (this: Model.Type<T>, connect: MVC.TapCallback<T, () => R>): NoVoid<R>;
-  static tap <T extends MVC, R> (this: Model.Type<T>, connect: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+  static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, R | (() => R)>, expect?: boolean): R;
+  static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+  static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
 
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
+
+  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, () => R>): NoVoid<R>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect?: boolean): NoVoid<T[K]>;
 
   static tap (arg1?: any, arg2?: boolean): any {
     const instance = this.get();
