@@ -112,7 +112,6 @@ describe("callback", () => {
     instance.foo = 2;
 
     await instance.on(true);
-
     expect(didRender).toBeCalledTimes(1);
   })
 
@@ -198,11 +197,9 @@ describe("computed values", () => {
     })
 
     test.assertDidSuspend(true);
-
     instance.source = "foobar!";
 
     await promise.pending();
-
     test.assertDidRender(true);
   })
 
