@@ -110,13 +110,27 @@ function add<T = any>(
           throw suspend(control, key);
   
         const local = subscriber(this);
+        const required = local && local.suspend;
   
         if(local)
           local.add(key);
   
-        return onGet
-          ? onGet(local)
-          : state.get(key);
+        try {
+          const value = onGet
+            ? onGet(local)
+            : state.get(key);
+          
+          if(value === undefined && required === true)
+            throw suspend(control, key);
+            
+          return value;
+        }
+        catch(err){
+          if(err instanceof Promise && required === false)
+            return;
+
+          throw err;
+        }
       }
     });
   }

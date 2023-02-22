@@ -7,47 +7,6 @@ import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
-describe("subvalue", () => {
-  it('will access subvalue directly', async () => {
-    class Test extends Model {
-      value = "foo";
-    }
-  
-    const parent = Test.new();
-  
-    const { result, waitForNextUpdate } =
-      renderHook(() => useTap(parent, "value"))
-  
-    expect(result.current).toBe("foo");
-  
-    parent.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  });
-  
-  it('will suspend if subvalue is undefined', async () => {
-    class Test extends Model {
-      value?: string = undefined;
-    }
-  
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.new();
-  
-    test.renderHook(() => {
-      useTap(instance, "value", true);
-      promise.resolve();
-    })
-  
-    test.assertDidSuspend(true);
-  
-    instance.value = "foobar!";
-    await promise.pending();
-  
-    test.assertDidRender(true);
-  })
-});
-
 describe("callback", () => {
   class Test extends Model {
     foo = 1;
@@ -192,7 +151,7 @@ describe("computed values", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      useTap(instance, "value");
+      useTap(instance).value;
       promise.resolve();
     })
 
@@ -227,7 +186,7 @@ describe("computed values", () => {
     let value: string | undefined;
 
     test.renderHook(() => {
-      value = useTap(instance, "value");
+      ({ value } = useTap(instance));
     })
 
     test.assertDidRender(true);
@@ -241,7 +200,7 @@ describe("computed values", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      useTap(instance, "value");
+      useTap(instance).value;
       promise.resolve();
     })
 
@@ -368,7 +327,7 @@ describe("set instruction", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      useTap(instance, "foobar");
+      useTap(instance).foobar;
       promise.resolve();
     })
 
@@ -393,9 +352,87 @@ describe("set instruction", () => {
     instance.foobar = "foo!";
 
     test.renderHook(() => {
-      useTap(instance, "foobar");
+      useTap(instance).foobar;
     })
 
     test.assertDidRender(true);
   })
 })
+
+describe("required parameter", () => {
+  it('will suspend if subvalue is undefined', async () => {
+    class Test extends Model {
+      value?: string = undefined;
+    }
+  
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const instance = Test.new();
+  
+    test.renderHook(() => {
+      useTap(instance, true).value;
+      promise.resolve();
+    })
+  
+    test.assertDidSuspend(true);
+  
+    instance.value = "foobar!";
+    await promise.pending();
+  
+    test.assertDidRender(true);
+  })
+
+  it("will return undefined if not required", async () => {
+    class Test extends Model {
+      value = get(promise.pending);
+    }
+
+    const promise = mockAsync<string>();
+    const instance = Test.new();
+    const test = mockSuspense();
+
+    let value: string | undefined;
+
+    test.renderHook(() => {
+      ({ value } = useTap(instance, false));
+    })
+
+    test.assertDidRender(true);
+    expect(value).toBe(undefined);
+  })
+
+  it("will force suspense if required is true", () => {
+    class Test extends Model {
+      value = get(() => undefined);
+    }
+
+    const instance = Test.new();
+    const test = mockSuspense();
+
+    test.renderHook(() => {
+      useTap(instance, true).value;
+    })
+
+    test.assertDidSuspend(true);
+  });
+
+  it("will cancel out suspense if required is false", () => {
+    class Test extends Model {
+      source?: string = undefined;
+      value = get(() => this.getValue, true);
+
+      getValue(){
+        return this.source;
+      }
+    }
+
+    const instance = Test.new();
+    const test = mockSuspense();
+
+    test.renderHook(() => {
+      useTap(instance, false).value;
+    })
+
+    test.assertDidRender(true);
+  });
+});

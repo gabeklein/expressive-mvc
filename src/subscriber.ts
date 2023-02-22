@@ -26,7 +26,8 @@ class Subscriber <T extends {} = any> {
 
   constructor(
     public parent: Control<T>,
-    public onUpdate: Subscriber.OnEvent){
+    public onUpdate: Subscriber.OnEvent,
+    public suspend?: boolean){
 
     const proxy = create(parent.subject);
     const reset = () => this.latest = undefined;

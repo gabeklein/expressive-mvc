@@ -4,6 +4,7 @@ import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
 import { Subscriber, subscriber } from './subscriber';
+import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
 
@@ -70,11 +71,16 @@ class Control<T extends {} = any> {
       set: this.ref(key as any),
       get(){
         const sub = subscriber(this);
+        const value = state.get(key);
 
-        if(sub)
+        if(sub){
           sub.add(key);
 
-        return state.get(key);
+          if(value === undefined && sub.suspend)
+            throw suspend(this, key);
+        }
+
+        return value;
       }
     });
   }

@@ -171,7 +171,7 @@ class MVC extends Model {
 
     return typeof arg1 == "function"
       ? useCompute(instance, arg1, arg2)
-      : useSubscribe(instance, arg1, arg2);
+      : useSubscribe(instance, arg1);
   }
 
   static use <I extends MVC> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
@@ -193,7 +193,7 @@ class MVC extends Model {
   static meta (arg1?: any, arg2?: any): any {
     return typeof arg1 == "function"
       ? useCompute(this, arg1, arg2)
-      : useSubscribe(this, arg1, arg2);
+      : useSubscribe(this, arg1);
   }
 }
 
