@@ -273,25 +273,6 @@ describe("computed values", () => {
     test.assertDidRender(true);
   })
 
-  it("will return undefined if not required", async () => {
-    const promise = mockAsync<string>();
-    const mock = jest.fn();
-
-    class Test extends Model {
-      value = get(promise.pending, false);
-    }
-
-    const test = Test.new();
-
-    test.on(state => mock(state.value));
-    expect(mock).toBeCalledWith(undefined);
-
-    promise.resolve("foobar");
-    await test.on();
-
-    expect(mock).toBeCalledWith("foobar");
-  })
-
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
   

@@ -91,6 +91,25 @@ it("will throw suspense-promise resembling an error", () => {
   promise.resolve();
 })
 
+it("will return undefined if not required", async () => {
+  const promise = mockAsync<string>();
+  const mock = jest.fn();
+
+  class Test extends Model {
+    value = get(promise.pending, false);
+  }
+
+  const test = Test.new();
+
+  test.on(state => mock(state.value));
+  expect(mock).toBeCalledWith(undefined);
+
+  promise.resolve("foobar");
+  await test.on();
+
+  expect(mock).toBeCalledWith("foobar");
+})
+
 it("will warn and rethrow error from factory", () => {
   class Test extends Model {
     memoized = get(this.failToGetSomething, true);
