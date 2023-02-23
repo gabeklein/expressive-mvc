@@ -1,12 +1,12 @@
 import React from 'react';
 
 import { issues } from '../helper/issues';
-import { Callback, Class, InstanceOf, NoVoid } from '../helper/types';
+import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
+import { useCompute } from './useCompute';
 import { useNew } from './useNew';
 import { useSubscribe } from './useTap';
-import { useCompute } from './useCompute';
 
 export const Global = new WeakMap<Class, MVC>();
 
@@ -163,8 +163,8 @@ class MVC extends Model {
   static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, () => R>): NoVoid<R>;
   static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect: true): Exclude<T[K], undefined>;
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, key: K, expect?: boolean): NoVoid<T[K]>;
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
+  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
   static tap (arg1?: any, arg2?: boolean): any {
     const instance = this.get();
@@ -183,8 +183,10 @@ class MVC extends Model {
   }
 
   static meta <T extends Class>(this: T): T;
-  static meta <T extends Class, K extends keyof T> (this: T, key: K, expect: true): Exclude<T[K], undefined>;
-  static meta <T extends Class, K extends keyof T> (this: T, key: K, expect?: boolean): T[K];
+
+  static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
+  static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
+
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;

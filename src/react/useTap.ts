@@ -2,7 +2,7 @@ import React from 'react';
 
 import { control } from '../control';
 import { uid } from '../helper/object';
-import { NoVoid } from '../helper/types';
+import { NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { useContext } from './context';
@@ -22,8 +22,8 @@ declare namespace useTap {
 
 function useTap <T extends Model> (source: useTap.Source<T>): T;
 
-function useTap <T extends Model> (source: useTap.Source<T>, expect: true): { [P in Model.Key<T>]: Exclude<T[P], undefined> };
-function useTap <T extends Model> (source: useTap.Source<T>, expect?: boolean): { [P in Model.Key<T>]: T[P] | undefined };
+function useTap <T extends Model> (source: useTap.Source<T>, expect: true): NonOptionalValues<T>;
+function useTap <T extends Model> (source: useTap.Source<T>, expect?: boolean): OptionalValues<T>;
 
 function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, () => R>): NoVoid<R>;
 function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
