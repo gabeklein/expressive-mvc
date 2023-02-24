@@ -63,7 +63,7 @@ export function computeMode(
   }
 
   const create = () => {
-    sub = source.subscribe((_, source) => {
+    sub = new Subscriber(source, (_, source) => {
       if(source !== self)
         refresh();
       else

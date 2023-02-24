@@ -27,6 +27,37 @@ describe("Map", () => {
   })
 })
 
+describe("Set", () => {
+  it("will watch in effect", async () => {
+    const didEffect = jest.fn();
+
+    class Test extends Model {
+      constructor(){
+        super();
+        this.on(this.valueEffect)
+      }
+  
+      values = use<string>(Set);
+
+      private valueEffect(){
+        const { size } = this.values;
+        const [ zero ] = this.values;
+
+        didEffect(size, zero);
+      }
+    }
+  
+    const test = Test.new();
+  
+    expect(didEffect).toBeCalledWith(0, undefined);
+  
+    test.values.add("hello");
+    await test.on(true);
+  
+    expect(didEffect).toBeCalledWith(1, "hello");
+  })
+})
+
 for(const T of [Map, Set])
   describe(T, () => {
     class Test extends Model {

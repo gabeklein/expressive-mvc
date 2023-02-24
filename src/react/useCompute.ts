@@ -6,6 +6,7 @@ import { MVC } from './mvc';
 import { use } from './use';
 
 import type { Callback, NoVoid } from '../helper/types';
+import { Subscriber } from '../subscriber';
 
 function useCompute <T extends {}, R extends []> (
   source: (() => T) | T,
@@ -31,7 +32,7 @@ function useCompute <T extends {}, R> (
 
   const deps = [uid(source)];
   const local = use(refresh => {
-    const sub = control(source).subscribe(() => update);
+    const sub = new Subscriber(control(source), () => update);
     const spy = sub.proxy as T;
 
     let make: (() => R | undefined) | undefined =

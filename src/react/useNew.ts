@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { control } from '../control';
 import { getOwnPropertyNames } from '../helper/object';
 import { Model } from '../model';
+import { Subscriber } from '../subscriber';
 import { usePeerContext } from './tap';
 
 function useNew <T extends Model> (
@@ -62,7 +63,7 @@ function useNew <T extends Model> (
   const state = React.useState(0);
   const local = React.useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
-    return control(instance).subscribe(() => refresh);
+    return new Subscriber(control(instance), () => refresh);
   }, []);
 
   if(typeof arg1 == "object"){

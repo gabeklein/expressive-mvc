@@ -2,6 +2,7 @@ import { control } from './control';
 import { issues } from './helper/issues';
 import { Callback } from './helper/types';
 import { Model } from './model';
+import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 
 export const Oops = issues({
@@ -58,7 +59,7 @@ export function createEffect<T extends Model>(
       });
     }
 
-    const sub = controller.subscribe(() => invoke);
+    const sub = new Subscriber(controller, () => invoke);
 
     model = sub.proxy;
     invoke();

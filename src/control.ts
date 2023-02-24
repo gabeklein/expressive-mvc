@@ -3,7 +3,7 @@ import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
 import { flush } from './instruction/get.compute';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
+import { subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
@@ -34,10 +34,6 @@ class Control<T extends {} = any> {
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
-  }
-
-  subscribe(callback: Subscriber.OnEvent<T>){
-    return new Subscriber<T>(this, callback);
   }
 
   watch(key: keyof T & string){
