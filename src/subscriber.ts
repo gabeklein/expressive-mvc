@@ -22,7 +22,7 @@ class Subscriber <T extends {} = any> {
 
   public active = false;
   public dependant = new Set<Listener>();
-  public watch = new Map<any, boolean | (() => true | void)>();
+  public watch = new Map<any, boolean | (() => boolean | void)>();
 
   constructor(
     public parent: Control<T>,
@@ -47,7 +47,7 @@ class Subscriber <T extends {} = any> {
     return Array.from(this.watch.keys());
   }
 
-  add(key: any, value?: boolean | Callback){
+  add(key: any, value?: boolean | (() => boolean | void)){
     if(value !== undefined)
       this.watch.set(key, value);
     else if(!this.watch.has(key))
