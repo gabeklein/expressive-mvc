@@ -98,6 +98,13 @@ function keyed<T extends Keyed>(
     return proxy;
   }
 
+  control.addListener(key => {
+    if(key === null){
+      update.clear();
+      context.clear();
+    }
+  })
+
   return {
     value: initial,
     get(local){
@@ -110,10 +117,6 @@ function keyed<T extends Keyed>(
       managed = init(next);
       context.clear();
       emit(ANY);
-    },
-    destroy(){
-      update.clear();
-      context.clear();
     }
   }
 }

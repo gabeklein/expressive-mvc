@@ -59,27 +59,6 @@ describe("instruction", () => {
 
     expect(ran).toBeCalledTimes(2);
   })
-
-  it("will destroy instruction on model destroy", () => {
-    const mock = jest.fn();
-
-    class Test extends Model {
-      property = add(() => {
-        mock();
-
-        return {
-          destroy: mock
-        }
-      })
-    }
-
-    const instance = Test.new();
-
-    expect(mock).toBeCalledTimes(1);
-
-    instance.end();
-    expect(mock).toBeCalledTimes(2);
-  })
 })
 
 describe("getter", () => {

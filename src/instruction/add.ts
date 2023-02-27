@@ -28,7 +28,6 @@ declare namespace Instruction {
     get?: Getter<T>;
     set?: Setter<T> | false;
     suspend?: boolean;
-    destroy?: () => void;
   }
 }
 
@@ -62,16 +61,6 @@ function add<T = any>(
 
     if("value" in output)
       state.set(key, output.value);
-
-    if("destroy" in output){
-      const { destroy } = output;
-
-      if(destroy)
-        this.addListener((key) => {
-          if(key == null)
-            destroy();
-        })
-    }
 
     const control = this;
 
