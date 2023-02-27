@@ -347,3 +347,33 @@ it("will squash multiple dependancies", async () => {
 
   expect(test.sum).toBe("Answer is 30.")
 })
+
+it('will refresh and throw if async rejects', async () => {
+  const promise = mockAsync();
+
+  class Test extends Model {
+    value = get(async () => {
+      await promise.pending();
+      throw "oh no";
+    })
+  }
+
+  const instance = Test.new();
+  let didThrow: Error | undefined;
+  
+  instance.on(state => {
+    try {
+      void state.value;
+    }
+    catch(err: any){
+      didThrow = err;
+    }
+  });
+
+  expect(didThrow).toBeInstanceOf(Promise);
+
+  await promise.resolve();
+  await instance.on();
+
+  expect(didThrow).toBe("oh no");
+})
