@@ -25,8 +25,8 @@ function useTap <T extends Model> (source: useTap.Source<T>): T;
 function useTap <T extends Model> (source: useTap.Source<T>, expect: true): NonOptionalValues<T>;
 function useTap <T extends Model> (source: useTap.Source<T>, expect?: boolean): OptionalValues<T>;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, () => R>): NoVoid<R>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, connect: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, () => R>): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
 
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;

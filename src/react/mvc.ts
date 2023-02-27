@@ -156,12 +156,12 @@ class MVC extends Model {
   static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
   static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
 
+  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, () => R>): NoVoid<R>;
+  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
-
-  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, () => R>): NoVoid<R>;
-  static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
   static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
   static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
