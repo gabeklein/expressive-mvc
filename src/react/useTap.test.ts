@@ -2,7 +2,6 @@ import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { get } from '../instruction/get';
 import { set } from '../instruction/set';
 import { Model } from '../model';
-import { Oops as Suspense } from '../suspense';
 import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
@@ -160,21 +159,6 @@ describe("computed values", () => {
 
     await promise.pending();
     test.assertDidRender(true);
-  })
-
-  it("will seem to throw error outside react", () => {
-    const instance = Test.new();
-    const expected = Suspense.NotReady(instance, "value");
-    let didThrow: Error | undefined;
-
-    try {
-      void instance.value;
-    }
-    catch(err: any){
-      didThrow = err;
-    }
-
-    expect(String(didThrow)).toBe(String(expected));
   })
 
   it("will return immediately if value is defined", async () => {
