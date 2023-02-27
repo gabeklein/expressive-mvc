@@ -13,23 +13,23 @@ class Parent extends Model {
 }
 
 it('will track recursively', async () => {
-  const state = Parent.new();
+  const parent = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
     void it.child.value;
   })
 
-  expect(state.value).toBe("foo");
-  expect(state.child.value).toBe("foo");
+  expect(parent.value).toBe("foo");
+  expect(parent.child.value).toBe("foo");
 
-  state.on(mock);
+  parent.on(mock);
 
-  state.value = "bar";
-  await state.on(true);
+  parent.value = "bar";
+  await parent.on(true);
   expect(mock).toHaveBeenCalledTimes(2)
 
-  state.child.value = "bar";
-  await state.child.on(true);
+  parent.child.value = "bar";
+  await parent.child.on(true);
   expect(mock).toHaveBeenCalledTimes(3)
 })
 
