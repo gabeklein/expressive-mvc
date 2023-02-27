@@ -9,7 +9,7 @@ import { suspend } from './suspense';
 import type { Callback } from './helper/types';
 
 const REGISTER = new WeakMap<{}, Control>();
-const PENDING = new Map<symbol, Instruction.Runner<any>>();
+const PENDING = new Map<symbol, Instruction.Runner>();
 
 declare namespace Control {
   /**
@@ -49,7 +49,7 @@ class Control<T extends {} = any> {
       if(instruction){
         delete subject[key];
         PENDING.delete(value);
-        instruction.call(this, key, this);
+        instruction(this, key);
       }
 
       return;

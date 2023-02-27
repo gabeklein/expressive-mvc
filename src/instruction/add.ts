@@ -17,8 +17,8 @@ declare namespace Instruction {
   type Getter<T> = (within?: Subscriber) => T;
   type Setter<T> = (value: T) => boolean | void;
 
-  type Runner<T> = (this: Control, key: string, on: Control) =>
-    Instruction.Descriptor<T> | boolean | undefined;
+  type Runner = (on: Control, key: string) =>
+    Instruction.Descriptor<any> | boolean | undefined;
 
   interface Descriptor<T> {
     configurable?: boolean;
@@ -27,7 +27,6 @@ declare namespace Instruction {
     writable?: boolean;
     get?: Getter<T>;
     set?: Setter<T> | false;
-    suspend?: boolean;
   }
 }
 
@@ -42,10 +41,8 @@ function add<T = any>(
   const name = label || instruction.name || "pending";
   const placeholder = Symbol(`${name} instruction`);
 
-  function setup(this: Control, key: string){
-    const { subject, state } = this;
-
-    let output = instruction.call(this, key, this);
+  PENDING.set(placeholder, (control: Control, key: string) => {
+    let output = instruction.call(control, key, control);
 
     if(typeof output == "function")
       output = { get: output };
@@ -55,51 +52,42 @@ function add<T = any>(
 
     let {
       get: onGet,
-      set: onSet,
-      suspend: shouldSuspend
-    } = output as Instruction.Descriptor<any>;
+      set: onSet
+    } = output;
 
     if("value" in output)
-      state.set(key, output.value);
+      control.state.set(key, output.value);
 
-    const control = this;
-
-    defineProperty(subject, key, {
+    defineProperty(control.subject, key, {
       enumerable: output.enumerable,
 
       set: onSet === false
         ? undefined
-        : this.ref(key, onSet),
+        : control.ref(key, onSet),
 
       get(this: any){
-        if(!state.has(key) && shouldSuspend)
-          throw suspend(control, key);
-  
         const local = subscriber(this);
-        const required = local && local.suspend;
-  
+
         if(local)
           local.add(key);
   
         try {
-          const value = onGet ? onGet(local) : state.get(key);
+          const value = onGet ? onGet(local) : control.state.get(key);
           
-          if(value === undefined && required === true)
+          if(value === undefined && local && local.suspend === true)
             throw suspend(control, key);
             
           return value;
         }
         catch(err){
-          if(err instanceof Promise && required === false)
+          if(err instanceof Promise && local && local.suspend === false)
             return;
 
           throw err;
         }
       }
     });
-  }
-
-  PENDING.set(placeholder, setup);
+  });
 
   return placeholder as unknown as T;
 }

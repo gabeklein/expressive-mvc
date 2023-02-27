@@ -81,8 +81,7 @@ function tap<T extends MVC>(
       })
 
       return {
-        get,
-        suspend: true
+        get
       }
     }
   )

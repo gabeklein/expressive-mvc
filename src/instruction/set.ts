@@ -1,4 +1,5 @@
 import { createValueEffect } from '../effect';
+import { suspend } from '../suspense';
 import { add } from './add';
 
 declare namespace set {
@@ -34,11 +35,18 @@ function set(
 
   return add(
     function set(key){
+      const { state } = this;
+
       if(value !== undefined)
-        this.state.set(key, value);
+        state.set(key, value);
 
       return {
-        suspend: true,
+        get: () => {
+          if(state.has(key))
+            return state.get(key);
+          else
+            throw suspend(this, key);
+        },
         set: typeof argument == "function"
           ? createValueEffect(argument)
           : undefined
