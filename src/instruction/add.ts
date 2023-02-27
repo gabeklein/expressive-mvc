@@ -103,9 +103,7 @@ function add<T = any>(
           local.add(key);
   
         try {
-          const value = onGet
-            ? onGet(local)
-            : state.get(key);
+          const value = onGet ? onGet(local) : state.get(key);
           
           if(value === undefined && required === true)
             throw suspend(control, key);
