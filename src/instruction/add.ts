@@ -10,7 +10,6 @@ import { suspend } from '../suspense';
 type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
   | Instruction.Getter<T>
   | Instruction.Descriptor<T>
-  | boolean
   | void;
 
 declare namespace Instruction {
@@ -18,13 +17,11 @@ declare namespace Instruction {
   type Setter<T> = (value: T) => boolean | void;
 
   type Runner = (on: Control, key: string) =>
-    Instruction.Descriptor<any> | boolean | undefined;
+    Instruction.Descriptor<any> | undefined;
 
   interface Descriptor<T> {
-    configurable?: boolean;
     enumerable?: boolean;
     value?: T;
-    writable?: boolean;
     get?: Getter<T>;
     set?: Setter<T> | false;
   }
@@ -44,26 +41,23 @@ function add<T = any>(
   PENDING.set(placeholder, (control: Control, key: string) => {
     let output = instruction.call(control, key, control);
 
-    if(typeof output == "function")
-      output = { get: output };
-
-    if(typeof output != "object")
+    if(!output)
       return undefined;
 
-    let {
-      get: onGet,
-      set: onSet
-    } = output;
+    if(typeof output == "function")
+      output = { get: output };
 
     if("value" in output)
       control.state.set(key, output.value);
 
+    let { get } = output;
+
     defineProperty(control.subject, key, {
       enumerable: output.enumerable,
 
-      set: onSet === false
+      set: output.set === false
         ? undefined
-        : control.ref(key, onSet),
+        : control.ref(key, output.set),
 
       get(this: any){
         const local = subscriber(this);
@@ -72,7 +66,7 @@ function add<T = any>(
           local.add(key);
   
         try {
-          const value = onGet ? onGet(local) : control.state.get(key);
+          const value = get ? get(local) : control.state.get(key);
           
           if(value === undefined && local && local.suspend === true)
             throw suspend(control, key);
