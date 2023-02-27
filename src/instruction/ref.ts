@@ -82,7 +82,7 @@ function ref<T>(
             })
         })
 
-      return { value, explicit: true };
+      defineProperty(this.subject, key, { value });
     }
   )
 }

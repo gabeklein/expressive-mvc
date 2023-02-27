@@ -8,8 +8,7 @@ import { suspend } from '../suspense';
  * Optional returned callback will run when once upon first access.
  */
 type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
-  | Instruction.Getter<T> 
-  | Instruction.ExplicitDescriptor
+  | Instruction.Getter<T>
   | Instruction.Descriptor<T>
   | boolean
   | void;
@@ -30,10 +29,6 @@ declare namespace Instruction {
     set?: Setter<T> | false;
     suspend?: boolean;
     destroy?: () => void;
-  }
-
-  interface ExplicitDescriptor extends PropertyDescriptor {
-    explicit: true;
   }
 }
 
@@ -57,12 +52,7 @@ function add<T = any>(
       output = { get: output };
 
     if(typeof output != "object")
-      return;
-
-    if("explicit" in output && output.explicit){
-      defineProperty(subject, key, output);
-      return false;
-    }
+      return undefined;
 
     let {
       get: onGet,
