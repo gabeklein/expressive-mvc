@@ -1,4 +1,3 @@
-import { getRecursive } from '../children';
 import { Control, PENDING } from '../control';
 import { defineProperty } from '../helper/object';
 import { Subscriber, subscriber } from '../subscriber';
@@ -12,7 +11,6 @@ type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
   | Instruction.Getter<T> 
   | Instruction.ExplicitDescriptor
   | Instruction.Descriptor<T>
-  | Instruction.RecursiveDescriptor<T>
   | boolean
   | void;
 
@@ -36,14 +34,6 @@ declare namespace Instruction {
 
   interface ExplicitDescriptor extends PropertyDescriptor {
     explicit: true;
-  }
-
-  interface RecursiveDescriptor<T> {
-    recursive: true;
-    enumerable?: boolean;
-    value?: T;
-    set?: Setter<T> | false;
-    suspend?: boolean;
   }
 }
 
@@ -82,9 +72,6 @@ function add<T = any>(
 
     if("value" in output)
       state.set(key, output.value);
-
-    if("recursive" in output && output.recursive)
-      onGet = getRecursive(key, this);
 
     if("destroy" in output){
       const { destroy } = output;

@@ -1,3 +1,4 @@
+import { getRecursive } from '../children';
 import { issues } from '../helper/issues';
 import { add } from '../instruction/add';
 import { Model } from '../model';
@@ -51,9 +52,11 @@ function tap<T extends MVC>(
 
   return add(
     function tap(key){
+      const get = getRecursive(key, this);
+
       if(MVC.isTypeof(type) && type.global)
         return {
-          recursive: true,
+          get,
           value: type.get()
         }
 
@@ -78,7 +81,7 @@ function tap<T extends MVC>(
       })
 
       return {
-        recursive: true,
+        get,
         suspend: true
       }
     }
