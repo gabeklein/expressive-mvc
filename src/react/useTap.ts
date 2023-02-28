@@ -31,35 +31,23 @@ function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
 
-function useTap <T extends Model> (
-  source: T | typeof Model | typeof MVC,
+function useTap <T extends Model, R> (
+  source: T | (() => T) | typeof Model | typeof MVC,
   arg1?: boolean | useTap.Callback<T, any>,
   arg2?: boolean) {
 
   const instance: T =
     typeof source == "object"
       ? source
-      : "get" in source
-        ? source.get() as T
-        : useContext(source) as T;
-
-  return useSubscribe(instance, arg1 as any, arg2);
-}
-
-function useSubscribe <T extends {}> (source: T, expect: true): { [P in Model.Key<T>]: Exclude<T[P], undefined> };
-function useSubscribe <T extends {}> (source: T, expect?: boolean): T;
-
-function useSubscribe <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, () => R>): NoVoid<R>;
-function useSubscribe <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
-
-function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
-
-function useSubscribe<T, R>(source: any, arg1?: any, arg2?: any){
-  const deps = [uid(source)];
+      : Model.isTypeof(source)
+        ? "get" in source
+          ? source.get() as T
+          : useContext(source) as T
+        : source() as T;
+      
+  const deps = [uid(instance)];
   const local = use(refresh => {
-    const controller = control(source);
+    const controller = control(instance);
     
     if(typeof arg1 != "function")
       return new Subscriber(controller, () => refresh, arg1)
@@ -68,7 +56,7 @@ function useSubscribe<T, R>(source: any, arg1?: any, arg2?: any){
     const spy = sub.proxy as T;
 
     let make: (() => R | undefined) | undefined =
-      () => arg1.call(spy, spy, forceUpdate)
+      () => (arg1 as any).call(spy, spy, forceUpdate)
 
     function forceUpdate(): void;
     function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
@@ -161,4 +149,4 @@ const notEqual = <T>(a: T, b: unknown) => (
   )
 )
 
-export { useTap, useSubscribe }
+export { useTap }
