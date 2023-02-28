@@ -1,4 +1,3 @@
-import { Control } from '../control';
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
@@ -85,7 +84,7 @@ function set <T> (
       const { state, subject } = this;
       
       if(typeof value == "function" || value instanceof Promise){
-        const factoryRequired = argument !== false;
+        const required = argument !== false;
         let getter: () => any;
   
         const init = () => {
@@ -93,7 +92,51 @@ function set <T> (
             if(typeof value == "function")
               value = mayRetry(value.bind(subject, key, subject));
   
-            getter = factoryMode(this, value, key, factoryRequired);
+            let pending: Promise<any> | undefined;
+            let error: any;
+
+            if(value instanceof Promise){
+              state.set(key, undefined);
+
+              pending = value
+                .catch(err => error = err)
+                .then(val => {
+                  state.set(key, val);
+                  return val;
+                })
+                .finally(() => {
+                  pending = undefined;
+                  this.update(key);
+                })
+            }
+            else
+              state.set(key, value);
+
+            const suspend = () => {
+              if(required === false)
+                return undefined;
+
+              const issue = Oops.NotReady(subject, key);
+
+              assign(pending!, {
+                message: issue.message,
+                stack: issue.stack
+              });
+
+              throw pending;
+            }
+            
+            getter = () => {
+              if(error)
+                throw error;
+
+              if(pending)
+                return suspend();
+
+              if(state.has(key))
+                return state.get(key);
+            }
+
           }
           catch(err){
             Oops.ComputeFailed(subject, key).warn();
@@ -128,60 +171,6 @@ function set <T> (
       }
     }
   )
-}
-
-export function factoryMode<T>(
-  self: Control,
-  value: Promise<T> | T,
-  key: string,
-  required: boolean
-){
-  const { subject, state } = self;
-
-  let pending: Promise<any> | undefined;
-  let error: any;
-
-  if(value instanceof Promise){
-    state.set(key, undefined);
-
-    pending = value
-      .catch(err => error = err)
-      .then(val => {
-        state.set(key, val);
-        return val;
-      })
-      .finally(() => {
-        pending = undefined;
-        self.update(key);
-      })
-  }
-  else
-    state.set(key, value);
-
-  const suspend = () => {
-    if(required === false)
-      return undefined;
-
-    const issue = Oops.NotReady(subject, key);
-
-    assign(pending!, {
-      message: issue.message,
-      stack: issue.stack
-    });
-
-    throw pending;
-  }
-  
-  return (): T | undefined => {
-    if(error)
-      throw error;
-
-    if(pending)
-      return suspend();
-
-    if(state.has(key))
-      return state.get(key);
-  }
 }
 
 export { set }
