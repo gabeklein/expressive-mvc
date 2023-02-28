@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Consumer, get, Global, MVC, Provider, tap } from '..';
+import { Consumer, Global, MVC, Provider, tap } from '..';
 import { render, subscribeTo } from '../helper/testing';
 import { Oops } from './tap';
 
@@ -287,37 +287,76 @@ describe("context", () => {
 })
 
 describe("suspense", () => {
-  it("will whatever", async () => {
-    class Foo extends MVC {
-      bar = tap(Bar, true);
-
-      value = get(() => {
-        const { bar } = this;
-        const { value } = bar;
-
-        return value;
-      }, false);
-    };
-
+  it("will throw suspense if not resolved", () => {
+    class Foo extends MVC {}
     class Bar extends MVC {
-      value = "foobar";
-    };
-
-    const didRender = jest.fn();
-
-    const Inner = () => {
-      const foo = Foo.use([]);
-      expect(foo.value).toBe("foobar");
-      didRender();
-      return null;
+      foo = tap(Foo);
     }
 
+    const bar = Bar.new();
+    
+    expect(() => bar.foo).toThrow(expect.any(Promise));
+
     render(
-      <Provider for={Bar}>
-        <Inner />
+      <Provider for={Foo}>
+        <Provider for={bar} />
       </Provider>
     );
 
-    expect(didRender).toBeCalled();
+    expect(bar.foo).toBeInstanceOf(Foo);
+  });
+
+  it("will resolve when assigned to", async () => {
+    class Foo extends MVC {}
+    class Bar extends MVC {
+      foo = tap(Foo);
+    }
+
+    const bar = Bar.new();
+    let pending!: Promise<any>;
+
+    try {
+      void bar.foo;
+    }
+    catch(err: unknown){
+      if(err instanceof Promise)
+        pending = err;
+    }
+    
+    expect(pending).toBeInstanceOf(Promise);
+
+    render(
+      <Provider for={Foo}>
+        <Provider for={bar} />
+      </Provider>
+    );
+
+    await expect(pending).resolves.toBeUndefined();
+  })
+
+  it("will refresh an effect when assigned to", async () => {
+    class Foo extends MVC {}
+    class Bar extends MVC {
+      foo = tap(Foo);
+    }
+
+    const bar = Bar.new();
+    const effect = jest.fn(bar => void bar.foo);
+
+    bar.on(effect);
+
+    expect(effect).toHaveBeenCalled();
+    expect(effect).not.toHaveReturned();
+
+    render(
+      <Provider for={Foo}>
+        <Provider for={bar} />
+      </Provider>
+    );
+
+    await bar.on();
+    
+    expect(effect).toHaveBeenCalledTimes(2);
+    expect(effect).toHaveReturnedTimes(1);
   })
 })
