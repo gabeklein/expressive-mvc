@@ -56,8 +56,8 @@ describe("callback", () => {
     expect(callback).not.toBeCalled();
     state.on("test", event, true);
 
-    state.test = 1;
-    expect(callback).toBeCalledWith(2);
+    state.test = 2;
+    expect(callback).toBeCalledWith(3);
 
     await state.on(true)
     expect(event).toBeCalledWith(["test"]);
