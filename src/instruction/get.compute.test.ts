@@ -22,6 +22,19 @@ class Subject extends Model {
 
 it.todo("will add pending compute to frame immediately");
 
+it("will throw if missing factory", () => {
+  class Test extends Model {
+    // @ts-ignore
+    value = get(this);
+  }
+
+  const test = Test.new();
+
+  expect(() => test.value).toThrowError(
+    "Factory argument cannot be undefined"
+  );
+})
+
 it('will reevaluate when inputs change', async () => {
   const state = Subject.new();
 

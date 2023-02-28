@@ -187,20 +187,6 @@ it("will suspend another factory (async)", async () => {
   expect(test.value).toBe("Hello World");
 })
 
-// TODO: this should now apply to get instruction
-it.skip("will throw if missing factory", () => {
-  class Test extends Model {
-    // @ts-ignore
-    value = set(this);
-  }
-
-  const test = Test.new();
-
-  expect(() => test.value).toThrowError(
-    "Factory argument cannot be undefined"
-  );
-})
-
 it("will nest suspense", async () => {
   class Child extends Model {
     value = set(promise.pending);
