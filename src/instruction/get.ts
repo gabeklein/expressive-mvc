@@ -3,15 +3,12 @@ import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
-import { mayRetry, suspend } from '../suspense';
+import { suspend } from '../suspense';
 import { add } from './add';
 
 export const Oops = issues({
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
-
-  ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
 
   Failed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
@@ -47,23 +44,21 @@ function get<R, T>(
 
   return add(
     function get(key){
-      const { subject } = this;
-      const required = arg1 === true || arg2 === true;
-
-      let getter: () => any;
+      const { subject, state } = this;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      this.state.set(key, undefined);
+      let getter: () => any;
+      const required = arg1 === true || arg2 === true;
 
-      const init = (): any => {
+      const init = () => {
         let source = this;
         let setter: get.Function<T, any>;
  
         if(typeof arg0 == "function"){
-          setter = mayRetry(arg0.bind(subject, key, subject));
+          setter = arg0.call(subject, key, subject) as any;
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
@@ -73,17 +68,89 @@ function get<R, T>(
         else
           throw new Error(`Factory argument cannot be ${arg1}`);
 
-        getter = compute(this, source, setter, key, required);
+        let sub: Subscriber;
+        let order = ORDER.get(this)!;
+        let pending = KEYS.get(this)!
+      
+        if(!order)
+          ORDER.set(this, order = new Map());
+      
+        if(!pending)
+          KEYS.set(this, pending = new Set());
+      
+        const compute = (initial: boolean) => {
+          try {
+            return setter.call(sub.proxy, sub.proxy);
+          }
+          catch(err){
+            Oops.Failed(subject, key, initial).warn();
+            throw err;
+          }
+        }
+      
+        const refresh = () => {
+          let value;
+      
+          try {
+            value = compute(false);
+          }
+          catch(e){
+            console.error(e);
+          }
+          finally {
+            if(state.get(key) !== value){
+              state.set(key, value);
+              this.update(key);
+              return value;
+            }
+          }
+        }
+      
+        const create = () => {
+          sub = new Subscriber(source, (_, source) => {
+            if(source !== this)
+              refresh();
+            else
+              pending.add(refresh);
+          });
+      
+          sub.watch.set(key, false);
+      
+          try {
+            const value = compute(true);
+            state.set(key, value);
+            return value;
+          }
+          catch(e){
+            throw e;
+          }
+          finally {
+            sub.commit();
+            order.set(refresh, order.size);
+          }
+        }
+      
+        getter = () => {
+          if(pending.has(refresh)){
+            pending.delete(refresh)
+            refresh();
+          }
+      
+          const value = sub ? state.get(key) : create();
+      
+          if(value === undefined && required)
+            throw suspend(this, key);
+      
+          return value;
+        }
+      
+        INFO.set(refresh, key);
       }
 
+      state.set(key, undefined);
+
       if(typeof arg0 == "function" && required)
-        try {
-          init();
-        }
-        catch(err){
-          Oops.ComputeFailed(subject, key).warn();
-          throw err;
-        }
+        init();
 
       return () => {
         if(!getter)
@@ -98,94 +165,6 @@ function get<R, T>(
 const INFO = new WeakMap<Callback, string>();
 const KEYS = new WeakMap<Control, Set<Callback>>();
 const ORDER = new WeakMap<Control, Map<Callback, number>>();
-
-export function compute(
-  self: Control,
-  source: Control,
-  setter: get.Function<any, any>,
-  key: string,
-  required: boolean
-){
-  const { subject, state } = self;
-
-  let sub: Subscriber;
-  let order = ORDER.get(self)!;
-  let pending = KEYS.get(self)!
-
-  if(!order)
-    ORDER.set(self, order = new Map());
-
-  if(!pending)
-    KEYS.set(self, pending = new Set());
-
-  const compute = (initial: boolean) => {
-    try {
-      return setter.call(sub.proxy, sub.proxy);
-    }
-    catch(err){
-      Oops.Failed(subject, key, initial).warn();
-      throw err;
-    }
-  }
-
-  const refresh = () => {
-    let value;
-
-    try {
-      value = compute(false);
-    }
-    catch(e){
-      console.error(e);
-    }
-    finally {
-      if(state.get(key) !== value){
-        state.set(key, value);
-        self.update(key);
-        return value;
-      }
-    }
-  }
-
-  const create = () => {
-    sub = new Subscriber(source, (_, source) => {
-      if(source !== self)
-        refresh();
-      else
-        pending.add(refresh);
-    });
-
-    sub.watch.set(key, false);
-
-    try {
-      const value = compute(true);
-      state.set(key, value);
-      return value;
-    }
-    catch(e){
-      throw e;
-    }
-    finally {
-      sub.commit();
-      order.set(refresh, order.size);
-    }
-  }
-
-  INFO.set(refresh, key);
-
-  return () => {
-    if(pending.has(refresh)){
-      pending.delete(refresh)
-      refresh();
-    }
-
-    const value = sub ? state.get(key) : create();
-
-    if(value === undefined && required)
-      throw suspend(self, key);
-
-    return value;
-  }
-}
 
 export function flush(control: Control){
   const pending = KEYS.get(control);
