@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { mockAsync, render } from '../helper/testing';
-import { get } from '../instruction/get';
+import { set } from '../instruction/set';
 import { Model } from '../model';
 import { Consumer } from './consumer';
 import { Global } from './global';
@@ -227,7 +227,7 @@ describe("and prop", () => {
 
 describe("suspense", () => {
   class Test extends MVC {
-    value = get(promise.pending);
+    value = set(promise.pending);
   }
 
   const DidSuspend = () => {

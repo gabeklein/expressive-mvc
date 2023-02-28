@@ -217,7 +217,7 @@ describe("computed values", () => {
     const promise = mockAsync();
   
     class Test extends Model {
-      value = get(async () => {
+      value = set(async () => {
         await promise.pending();
         throw "oh no";
       })
@@ -254,7 +254,7 @@ describe("computed values", () => {
 describe("get instruction", () => {
   it('will suspend if function is async', async () => {
     class Test extends Model {
-      value = get(() => promise.pending());
+      value = set(() => promise.pending());
     }
   
     const test = mockSuspense();
@@ -279,7 +279,7 @@ describe("get instruction", () => {
     const promise = mockAsync<string>();
   
     class Test extends Model {
-      value = get(promise.pending());
+      value = set(promise.pending());
     }
   
     const test = mockSuspense();
@@ -368,7 +368,7 @@ describe("required parameter", () => {
 
   it("will return undefined if not required", async () => {
     class Test extends Model {
-      value = get(promise.pending);
+      value = set(promise.pending);
     }
 
     const promise = mockAsync<string>();
@@ -387,7 +387,7 @@ describe("required parameter", () => {
 
   it("will force suspense if required is true", () => {
     class Test extends Model {
-      value = get(() => undefined);
+      value = set(() => undefined);
     }
 
     const instance = Test.new();
