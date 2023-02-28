@@ -1,14 +1,13 @@
 import React from 'react';
 
 import { control } from '../control';
-import { uid } from '../helper/object';
-import { NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
+import { defineProperty, uid } from '../helper/object';
+import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { useContext } from './context';
 import { MVC } from './mvc';
 import { use } from './use';
-import { useCompute } from './useCompute';
 
 declare namespace useTap {
   type Source<T extends Model> =
@@ -44,23 +43,122 @@ function useTap <T extends Model> (
         ? source.get() as T
         : useContext(source) as T;
 
-  return typeof arg1 == "function"
-    ? useCompute(instance, arg1, arg2)
-    : useSubscribe(instance, arg1);
+  return useSubscribe(instance, arg1 as any, arg2);
 }
 
 function useSubscribe <T extends {}> (source: T, expect: true): { [P in Model.Key<T>]: Exclude<T[P], undefined> };
 function useSubscribe <T extends {}> (source: T, expect?: boolean): T;
 
-function useSubscribe(source: any, expect?: boolean){
+function useSubscribe <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, () => R>): NoVoid<R>;
+function useSubscribe <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
+
+function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useSubscribe <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
+
+function useSubscribe<T, R>(source: any, arg1?: any, arg2?: any){
   const deps = [uid(source)];
-  const local = use(refresh => (
-    new Subscriber(control(source), () => refresh, expect)
-  ), deps);
+  const local = use(refresh => {
+    const controller = control(source);
+    
+    if(typeof arg1 != "function")
+      return new Subscriber(controller, () => refresh, arg1)
+      
+    const sub = new Subscriber(controller, () => update);
+    const spy = sub.proxy as T;
+
+    let make: (() => R | undefined) | undefined =
+      () => arg1.call(spy, spy, forceUpdate)
+
+    function forceUpdate(): void;
+    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
+    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)){
+      if(typeof passthru == "function")
+        passthru = passthru();
+
+      if(make)
+        reassign(make());
+      else
+        refresh();
+
+      if(passthru)
+        return passthru.finally(refresh);
+    }
+
+    function reassign(next: any){
+      value = next;
+
+      if(retry) {
+        retry();
+        retry = undefined;
+      }
+      else
+        refresh();
+    };
+
+    let retry: Callback | undefined;
+    let update: Callback | undefined;
+    let value = make();
+
+    if(value === null){
+      sub.watch.clear();
+      make = undefined;
+      return;
+    }
+
+    if(typeof value == "function"){
+      const get = value;
+
+      sub.watch.clear();
+      arg1 = () => get();
+      value = get();
+    }
+
+    if(value instanceof Promise) {
+      value.then(reassign);
+      value = undefined;
+    }
+    else {
+      sub.commit();
+      update = () => {
+        const next = make!();
+
+        if(notEqual(value, next))
+          reassign(next);
+      };
+    }
+
+    defineProperty(sub, "proxy", {
+      get() {
+        if(value !== undefined)
+          return value;
+
+        if(arg2)
+          throw new Promise<void>(res => retry = res);
+
+        return null;
+      }
+    });
+
+    return sub;
+  }, deps);
+
+  if(!local)
+    return null;
 
   React.useLayoutEffect(() => local.commit(), deps);
 
   return local.proxy;
 }
+
+/** Values are not equal for purposes of a refresh. */
+const notEqual = <T>(a: T, b: unknown) => (
+  b !== a && (
+    !Array.isArray(a) ||
+    !Array.isArray(b) ||
+    a.length !== b.length ||
+    a.some((x, i) => x !== b[i])
+  )
+)
 
 export { useTap, useSubscribe }

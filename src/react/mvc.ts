@@ -4,7 +4,6 @@ import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
-import { useCompute } from './useCompute';
 import { useNew } from './useNew';
 import { useSubscribe } from './useTap';
 
@@ -167,11 +166,7 @@ class MVC extends Model {
   static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
   static tap (arg1?: any, arg2?: boolean): any {
-    const instance = this.get();
-
-    return typeof arg1 == "function"
-      ? useCompute(instance, arg1, arg2)
-      : useSubscribe(instance, arg1);
+    return useSubscribe(this.get(), arg1, arg2);
   }
 
   static use <I extends MVC> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
@@ -193,9 +188,7 @@ class MVC extends Model {
   static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
   static meta (arg1?: any, arg2?: any): any {
-    return typeof arg1 == "function"
-      ? useCompute(this, arg1, arg2)
-      : useSubscribe(this, arg1);
+    return useSubscribe(this, arg1, arg2);
   }
 }
 

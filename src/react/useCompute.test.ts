@@ -2,7 +2,7 @@ import { act } from '@testing-library/react-hooks';
 
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { Model } from '../model';
-import { useCompute } from './useCompute';
+import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
@@ -16,7 +16,7 @@ it('will select and subscribe to subvalue', async () => {
   const parent = Test.new();
 
   const { result, waitForNextUpdate } = renderHook(() => {
-    return useCompute(parent, x => x.foo);
+    return useTap(parent, x => x.foo);
   });
 
   expect(result.current).toBe(1);
@@ -30,7 +30,7 @@ it('will select and subscribe to subvalue', async () => {
 it('will compute output', async () => {
   const parent = Test.new();
   const { result, waitForNextUpdate } =
-    renderHook(() => useCompute(parent, x => x.foo + x.bar));
+    renderHook(() => useTap(parent, x => x.foo + x.bar));
 
   expect(result.current).toBe(3);
 
@@ -47,7 +47,7 @@ it('will ignore updates with same result', async () => {
 
   const { result } = renderHook(() => {
     render();
-    return useCompute(parent, x => {
+    return useTap(parent, x => {
       compute();
       void x.foo;
       return x.bar;
@@ -76,7 +76,7 @@ describe("tuple", () => {
   
     const { result } = renderHook(() => {
       didRender();
-      return useCompute(parent, x => {
+      return useTap(parent, x => {
         didCompute(x.foo);
         return [1, x.bar, x.baz];
       });
@@ -100,7 +100,7 @@ describe("tuple", () => {
   
     const { result } = renderHook(() => {
       didRender();
-      return useCompute(parent, x => {
+      return useTap(parent, x => {
         didCompute();
         return [x.foo, x.bar, x.baz];
       });
@@ -128,7 +128,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useCompute(control, () => promise.pending());
+      return useTap(control, () => promise.pending());
     });
 
     expect(result.current).toBeNull();
@@ -144,7 +144,7 @@ describe("async", () => {
     const control = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useCompute(control, $ => {
+      return useTap(control, $ => {
         void $.foo;
         return promise.pending();
       });
@@ -177,7 +177,7 @@ describe("suspense", () => {
       promise.resolve();
       didRender();
 
-      useCompute(instance, state => {
+      useTap(instance, state => {
         didCompute();
 
         if(state.value == "foobar")
@@ -208,7 +208,7 @@ describe("suspense", () => {
     const test = mockSuspense();
 
     test.renderHook(() => {
-      useCompute(instance, () => promise.pending(), true);
+      useTap(instance, () => promise.pending(), true);
     })
 
     test.assertDidSuspend(true);
@@ -226,7 +226,7 @@ describe("undefined", () => {
   it("will convert to null", () => {
     const test = Test.new();
     const { result } = renderHook(() => {
-      return useCompute(test, () => undefined);
+      return useTap(test, () => undefined);
     });
 
     expect(result.current).toBe(null);
@@ -235,7 +235,7 @@ describe("undefined", () => {
   it("will convert to null from factory", () => {
     const test = Test.new();
     const { result } = renderHook(() => {
-      return useCompute(test, () => () => undefined);
+      return useTap(test, () => () => undefined);
     });
 
     expect(result.current).toBe(null);
@@ -251,7 +251,7 @@ describe("update callback", () => {
 
     const { unmount } = renderHook(() => {
       didRender();
-      return useCompute(test, ($, update) => {
+      return useTap(test, ($, update) => {
         didEvaluate();
         forceUpdate = update;
       });
@@ -278,7 +278,7 @@ describe("update callback", () => {
 
     const { unmount } = renderHook(() => {
       didRender();
-      return useCompute(test, ($, update) => {
+      return useTap(test, ($, update) => {
         didEvaluate();
         forceUpdate = update;
         // return null to stop subscription.
@@ -307,7 +307,7 @@ describe("update callback", () => {
     let updateValue!: (value: string) => void;
 
     const { unmount, result } = renderHook(() => {
-      return useCompute(test, ($, update) => {
+      return useTap(test, ($, update) => {
         let value = "foo";
 
         didEvaluate();
@@ -346,7 +346,7 @@ describe("update callback", () => {
 
     const { unmount } = renderHook(() => {
       didRender();
-      return useCompute(test, ($, update) => {
+      return useTap(test, ($, update) => {
         forceUpdate = update;
         return null;
       });
@@ -382,7 +382,7 @@ describe("update callback", () => {
 
     const { unmount } = renderHook(() => {
       didRender();
-      return useCompute(test, ($, update) => {
+      return useTap(test, ($, update) => {
         forceUpdate = update;
         return null;
       });

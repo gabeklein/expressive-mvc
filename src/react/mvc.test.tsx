@@ -2,11 +2,9 @@ import React from 'react';
 
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
-import { Model } from '../model';
 import { Global } from './global';
 import { MVC, Oops } from './mvc';
 import { Provider } from './provider';
-import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
@@ -185,10 +183,10 @@ describe("meta", () => {
 
 describe("tap", () => {
   it("will get model from context", () => {
-    class Test extends Model {}
+    class Test extends MVC {}
 
     const Hook = () => {
-      const value = useTap(Test);
+      const value = Test.tap();
       expect(value).toBeInstanceOf(Test);
       return null;
     }
