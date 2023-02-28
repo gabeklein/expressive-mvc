@@ -4,7 +4,6 @@ import { Model } from '../model';
 import { mayRetry } from '../suspense';
 import { add } from './add';
 import { computeMode } from './get.compute';
-import { factoryMode } from './get.factory';
 
 export const Oops = issues({
   PeerNotAllowed: (model, property) =>
@@ -19,7 +18,6 @@ export const Oops = issues({
 
 declare namespace get {
   type Function<T, S = any> = (this: S, on: S) => T;
-  type Factory<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
 }
 
 /**
@@ -40,71 +38,22 @@ function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolea
  */
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend?: boolean): R;
-
-/**
- * Set property with an async function.
- *
- * Property cannot be accessed until factory resolves, yeilding a result.
- * If accessed while processing, React Suspense will be thrown.
- *
- * - `required: true` (default) -
- *      Run factory immediately upon creation of model instance.
- * - `required: false` -
- *      Run factory only if/when accessed.
- *      Value will always throw suspense at least once - use with caution.
- *
- * @param factory - Callback run to derrive property value.
- * @param required - (default: true) Run factory immediately on creation, otherwise on access.
- */
-function get <T> (factory: get.Factory<Promise<T>>, required: false): T | undefined;
-function get <T, S> (factory: get.Factory<Promise<T>, S>, required: false): T | undefined;
-
-function get <T> (factory: get.Factory<Promise<T>>, required?: boolean): T;
-function get <T, S> (factory: get.Factory<Promise<T>, S>, required?: boolean): T;
-
-/**
- * Set property with a factory function.
- *
- * - `required: true` (default) -
- *      Run factory immediately upon creation of model instance.
- * - `required: false` -
- *      Run factory only if/when accessed.
- *      Value will always throw suspense at least once - use with caution.
- *
- * @param factory - Callback run to derrive property value.
- * @param required - (default: true) Run factory immediately on creation, otherwise on access.
- */
-function get <T>(factory: get.Factory<T>, required: false): T | undefined;
-function get <T, S>(factory: get.Factory<T, S>, required: false): T | undefined;
-
-function get <T>(factory: get.Factory<T>, required?: boolean): T;
-function get <T, S>(factory: get.Factory<T, S>, required?: boolean): T;
-
-/**
- * Assign a property with result of a promise.
- */
-function get <T> (factory: Promise<T>, required: false): T | undefined;
-function get <T> (factory: Promise<T>, required?: boolean): T;
  
 function get<R, T>(
-  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T> | T) | Promise<R> | Model,
+  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T>) | Model,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
   return add(
     function get(key){
       const { subject } = this;
-      const computeRequired = arg1 === true || arg2 === true;
-      const factoryRequired = arg1 !== false && arg2 !== false;
+      const required = arg1 === true || arg2 === true;
 
       let getter: () => any;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
-
-      // if(typeof arg0 == "function" && /^[A-Z]/.test(arg0.name))
-      //   throw Oops.BadSource(subject, key, arg0);
 
       this.state.set(key, undefined);
 
@@ -113,18 +62,7 @@ function get<R, T>(
         let setter: get.Function<T, any>;
  
         if(typeof arg0 == "function"){
-          const result = mayRetry(arg0.bind(subject, key, subject));
-  
-          if(typeof result == "function")
-            setter = result;
-          else {
-            getter = factoryMode(this, result, key, factoryRequired);
-            return;
-          }
-        }
-        else if(arg0 instanceof Promise){
-          getter = factoryMode(this, arg0, key, factoryRequired);
-          return;
+          setter = mayRetry(arg0.bind(subject, key, subject));
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
@@ -134,10 +72,10 @@ function get<R, T>(
         else
           throw new Error(`Factory argument cannot be ${arg1}`);
 
-        getter = computeMode(this, source, setter, key, computeRequired);
+        getter = computeMode(this, source, setter, key, required);
       }
 
-      if(typeof arg0 == "function" && computeRequired)
+      if(typeof arg0 == "function" && required)
         try {
           init();
         }
