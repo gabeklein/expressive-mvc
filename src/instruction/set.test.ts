@@ -44,7 +44,7 @@ describe("placeholder", () => {
 describe("callback", () => {
   it('will invoke callback on property put', async () => {
     class Subject extends Model {
-      test = set<number>(value => {
+      test = set<number>(1, value => {
         callback(value + 1);
       });
     }
@@ -65,7 +65,7 @@ describe("callback", () => {
 
   it('will invoke return-callback on overwrite', async () => {
     class Subject extends Model {
-      test = set<number>(() => {
+      test = set<number>(1, () => {
         return () => {
           callback(true);
         }
@@ -75,11 +75,11 @@ describe("callback", () => {
     const callback = jest.fn()
     const state = Subject.new();
 
-    state.test = 1;
+    state.test = 2;
 
     await state.on(true);
     expect(callback).not.toBeCalled();
-    state.test = 2;
+    state.test = 3;
 
     await state.on(true);
     expect(callback).toBeCalledWith(true);

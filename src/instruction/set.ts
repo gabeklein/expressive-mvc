@@ -1,10 +1,19 @@
 import { createValueEffect } from '../effect';
-import { suspend } from '../suspense';
+import { issues } from '../helper/issues';
+import { mayRetry, suspend } from '../suspense';
 import { add } from './add';
+import { factoryMode } from './get.factory';
+
+export const Oops = issues({
+  ComputeFailed: (model, key) =>
+    `Generating initial value for ${model}.${key} failed.`,
+});
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, argument: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
+
+  type Factory<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
 }
 
 /**
@@ -15,8 +24,47 @@ declare namespace set {
  */
 function set <T = any>(): T;
 
-function set <T> (onUpdate: set.Callback<T>): T;
-function set <T, S> (onUpdate: set.Callback<T, S>): T;
+/**
+ * Set property with an async function.
+ *
+ * Property cannot be accessed until factory resolves, yeilding a result.
+ * If accessed while processing, React Suspense will be thrown.
+ *
+ * - `required: true` (default) -
+ *      Run factory immediately upon creation of model instance.
+ * - `required: false` -
+ *      Run factory only if/when accessed.
+ *      Value will always throw suspense at least once - use with caution.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+ */
+function set <T> (factory: set.Factory<Promise<T>>, required: false): T | undefined;
+function set <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
+
+function set <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
+function set <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
+
+/**
+ * Set property with a factory function.
+ *
+ * - `required: true` (default) -
+ *      Run factory immediately upon creation of model instance.
+ * - `required: false` -
+ *      Run factory only if/when accessed.
+ *      Value will always throw suspense at least once - use with caution.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+ */
+function set <T>(factory: set.Factory<T>, required: false): T | undefined;
+function set <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
+
+function set <T>(factory: set.Factory<T>, required?: boolean): T;
+function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
+
+function set <T> (factory: Promise<T>, required: false): T | undefined;
+function set <T> (factory: Promise<T>, required?: boolean): T;
 
 function set <T> (value: undefined, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T;
@@ -24,18 +72,41 @@ function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T;
 function set <T> (value: T, onUpdate: set.Callback<T>): T;
 function set <T, S> (value: T, onUpdate: set.Callback<T, S>): T;
 
-function set(
-  value?: any,
+function set <T> (
+  value?: set.Factory<T | Promise<T>> | Promise<T> | T,
   argument?: set.Callback<any> | boolean): any {
-
-  if(!(1 in arguments)){
-    argument = value;
-    value = undefined;
-  }
 
   return add(
     function set(key){
-      const { state } = this;
+      const { state, subject } = this;
+      
+      if(typeof value == "function" || value instanceof Promise){
+        const factoryRequired = argument !== false;
+        let getter: () => any;
+  
+        const init = () => {
+          try {
+            if(typeof value == "function")
+              value = mayRetry(value.bind(subject, key, subject));
+  
+            getter = factoryMode(this, value, key, factoryRequired);
+          }
+          catch(err){
+            Oops.ComputeFailed(subject, key).warn();
+            throw err;
+          }
+        }
+
+        if(argument === true)
+          init();
+  
+        return () => {
+          if(!getter)
+            init();
+  
+          return getter();
+        }
+      }
 
       if(value !== undefined)
         state.set(key, value);
