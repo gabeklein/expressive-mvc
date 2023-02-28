@@ -1,7 +1,7 @@
 import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
-import { flush } from './instruction/get.compute';
+import { flush } from './instruction/get';
 import { Model } from './model';
 import { subscriber } from './subscriber';
 import { suspend } from './suspense';
