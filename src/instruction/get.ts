@@ -185,7 +185,7 @@ function get<R, T extends Model>(
 
       state.set(key, undefined);
 
-      if(typeof arg0 == "function" && required)
+      if(required)
         init();
 
       return () => {
