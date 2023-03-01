@@ -1,6 +1,6 @@
 import { mockConsole } from '../helper/testing';
 import { Model } from '../model';
-import { get, Oops as Compute } from './get';
+import { get, Oops } from './get';
 import { use } from './use';
 
 class Child extends Model {
@@ -271,7 +271,7 @@ describe("failures", () => {
     const state = Subject.new();
     const attempt = () => state.never;
 
-    const failed = Compute.Failed(Subject.name, "never", true);
+    const failed = Oops.Failed(Subject.name, "never", true);
 
     expect(attempt).toThrowError();
     expect(warn).toBeCalledWith(failed.message);
@@ -290,7 +290,7 @@ describe("failures", () => {
     }
 
     const state = Test.new();
-    const failed = Compute.Failed(Test.name, "value", false);
+    const failed = Oops.Failed(Test.name, "value", false);
 
     state.on("value");
     state.shouldFail = true;
@@ -311,7 +311,7 @@ describe("failures", () => {
       value = get(this.peer, () => {});
     }
 
-    const expected = Compute.PeerNotAllowed("Test", "value");
+    const expected = Oops.PeerNotAllowed("Test", "value");
 
     expect(() => Test.new()).toThrow(expected);
   })
