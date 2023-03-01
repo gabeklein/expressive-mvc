@@ -5,7 +5,6 @@ import { defineProperty, uid } from '../helper/object';
 import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
-import { useContext } from './context';
 import { MVC } from './mvc';
 import { use } from './use';
 
@@ -32,18 +31,16 @@ function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.
 function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model, R> (
-  source: T | (() => T) | typeof Model | typeof MVC,
+  source: T | (() => T) | typeof MVC,
   arg1?: boolean | useTap.Callback<T, any>,
   arg2?: boolean) {
 
   const instance: T =
     typeof source == "object"
       ? source
-      : Model.isTypeof(source)
-        ? "get" in source
-          ? source.get() as T
-          : useContext(source) as T
-        : source() as T;
+      : "get" in source
+        ? source.get() as T
+        : source();
       
   const deps = [uid(instance)];
   const local = use(refresh => {
