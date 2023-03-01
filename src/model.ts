@@ -21,7 +21,7 @@ declare namespace Model {
   type Extends<T> = T | (string & Record<never, never>);
 
   /** Any typeof Model, using class constructor as the reference. */
-  export type Type<T extends Model = Model> = abstract new (...args: any[]) => T;
+  export type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
 
   /** A typeof Model, specifically one which may be created without arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
