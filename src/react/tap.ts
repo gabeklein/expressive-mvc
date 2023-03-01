@@ -76,9 +76,7 @@ function tap<T extends MVC>(
         })
       }
 
-      return {
-        get: getRecursive(key, this)
-      }
+      return getRecursive(key, this);
     }
   )
 };

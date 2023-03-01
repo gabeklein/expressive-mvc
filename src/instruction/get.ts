@@ -82,9 +82,7 @@ function get<R, T extends Model>(
 
         this.state.set(key, value);
 
-        return {
-          get: getRecursive(key, this)
-        }
+        return getRecursive(key, this)
       }
 
       let getter: () => any;

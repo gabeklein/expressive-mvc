@@ -50,14 +50,14 @@ function add<T = any>(
     if("value" in output)
       control.state.set(key, output.value);
 
-    let { get } = output;
+    let { enumerable, get, set } = output;
 
     defineProperty(control.subject, key, {
-      enumerable: output.enumerable,
+      enumerable,
 
-      set: output.set === false
+      set: set === false
         ? undefined
-        : control.ref(key, output.set),
+        : control.ref(key, set),
 
       get(this: any){
         const local = subscriber(this);
