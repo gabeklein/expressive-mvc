@@ -28,9 +28,7 @@ it("will throw if missing factory", () => {
     value = get(this);
   }
 
-  const test = Test.new();
-
-  expect(() => test.value).toThrowError(
+  expect(() => Test.new()).toThrowError(
     "Factory argument cannot be undefined"
   );
 })

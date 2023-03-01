@@ -69,6 +69,10 @@ function get<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
+      let init: (() => void) | undefined;
+      let getter: () => any;
+      const required = arg1 === true || arg2 === true;
+
       if(Model.isTypeof(arg0)){
         const value = Parent.get(subject) as T;
         const expected = arg0.name;
@@ -84,113 +88,110 @@ function get<R, T extends Model>(
 
         return getRecursive(key, this)
       }
-
-      let getter: () => any;
-      const required = arg1 === true || arg2 === true;
-
-      const init = () => {
-        let source = this;
+      else {
+        let source: Control;
         let setter: get.Function<T, any>;
-        const from = arg0 as get.Factory<R, T> | T;
- 
-        if(typeof from == "function"){
-          setter = from.call(subject, key, subject) as any;
+
+        if(typeof arg0 == "function"){
+          source = this;
+          setter = arg0.call(subject, key, subject) as any;
         }
         else if(typeof arg1 == "function"){
-          // replace source controller in-case it is different
-          source = control(from);
+          source = control(arg0);
           setter = arg1;
         }
         else
           throw new Error(`Factory argument cannot be ${arg1}`);
 
-        let sub: Subscriber;
-        let order = ORDER.get(this)!;
-        let pending = KEYS.get(this)!
-      
-        if(!order)
-          ORDER.set(this, order = new Map());
-      
-        if(!pending)
-          KEYS.set(this, pending = new Set());
-      
-        const compute = (initial: boolean) => {
-          try {
-            return setter.call(sub.proxy, sub.proxy);
-          }
-          catch(err){
-            Oops.Failed(subject, key, initial).warn();
-            throw err;
-          }
-        }
-      
-        const refresh = () => {
-          let value;
-      
-          try {
-            value = compute(false);
-          }
-          catch(e){
-            console.error(e);
-          }
-          finally {
-            if(state.get(key) !== value){
-              state.set(key, value);
-              this.update(key);
-              return value;
+        init = () => {
+          let sub: Subscriber;
+          let order = ORDER.get(this)!;
+          let pending = KEYS.get(this)!
+        
+          if(!order)
+            ORDER.set(this, order = new Map());
+        
+          if(!pending)
+            KEYS.set(this, pending = new Set());
+        
+          const compute = (initial: boolean) => {
+            try {
+              return setter.call(sub.proxy, sub.proxy);
+            }
+            catch(err){
+              Oops.Failed(subject, key, initial).warn();
+              throw err;
             }
           }
-        }
-      
-        const create = () => {
-          sub = new Subscriber(source, (_, source) => {
-            if(source !== this)
+        
+          const refresh = () => {
+            let value;
+        
+            try {
+              value = compute(false);
+            }
+            catch(e){
+              console.error(e);
+            }
+            finally {
+              if(state.get(key) !== value){
+                state.set(key, value);
+                this.update(key);
+                return value;
+              }
+            }
+          }
+        
+          const create = () => {
+            sub = new Subscriber(source, (_, source) => {
+              if(source !== this)
+                refresh();
+              else
+                pending.add(refresh);
+            });
+        
+            sub.watch.set(key, false);
+        
+            try {
+              const value = compute(true);
+              state.set(key, value);
+              return value;
+            }
+            catch(e){
+              throw e;
+            }
+            finally {
+              sub.commit();
+              order.set(refresh, order.size);
+            }
+          }
+        
+          getter = () => {
+            if(pending.has(refresh)){
+              pending.delete(refresh)
               refresh();
-            else
-              pending.add(refresh);
-          });
-      
-          sub.watch.set(key, false);
-      
-          try {
-            const value = compute(true);
-            state.set(key, value);
+            }
+        
+            const value = sub ? state.get(key) : create();
+        
+            if(value === undefined && required)
+              throw suspend(this, key);
+        
             return value;
           }
-          catch(e){
-            throw e;
-          }
-          finally {
-            sub.commit();
-            order.set(refresh, order.size);
-          }
+        
+          INFO.set(refresh, key);
         }
-      
-        getter = () => {
-          if(pending.has(refresh)){
-            pending.delete(refresh)
-            refresh();
-          }
-      
-          const value = sub ? state.get(key) : create();
-      
-          if(value === undefined && required)
-            throw suspend(this, key);
-      
-          return value;
-        }
-      
-        INFO.set(refresh, key);
       }
 
       state.set(key, undefined);
 
       if(required)
-        init();
+        init && init();
 
       return () => {
         if(!getter)
-          init();
+          init && init();
 
         return getter();
       }
