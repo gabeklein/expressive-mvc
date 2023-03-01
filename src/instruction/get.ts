@@ -70,7 +70,7 @@ function get<R, T extends Model>(
         throw Oops.PeerNotAllowed(subject, key);
 
       let init: (() => void) | undefined;
-      let getter: () => any;
+      let getter: (local: Subscriber | undefined) => any;
       const required = arg1 === true || arg2 === true;
 
       if(Model.isTypeof(arg0)){
@@ -86,7 +86,7 @@ function get<R, T extends Model>(
 
         this.state.set(key, value);
 
-        return getRecursive(key, this)
+        getter = getRecursive(key, this)
       }
       else {
         let source: Control;
@@ -102,6 +102,8 @@ function get<R, T extends Model>(
         }
         else
           throw new Error(`Factory argument cannot be ${arg1}`);
+
+        state.set(key, undefined);
 
         init = () => {
           let sub: Subscriber;
@@ -121,24 +123,6 @@ function get<R, T extends Model>(
             catch(err){
               Oops.Failed(subject, key, initial).warn();
               throw err;
-            }
-          }
-        
-          const refresh = () => {
-            let value;
-        
-            try {
-              value = compute(false);
-            }
-            catch(e){
-              console.error(e);
-            }
-            finally {
-              if(state.get(key) !== value){
-                state.set(key, value);
-                this.update(key);
-                return value;
-              }
             }
           }
         
@@ -166,6 +150,26 @@ function get<R, T extends Model>(
             }
           }
         
+          const refresh = () => {
+            let value;
+        
+            try {
+              value = compute(false);
+            }
+            catch(e){
+              console.error(e);
+            }
+            finally {
+              if(state.get(key) !== value){
+                state.set(key, value);
+                this.update(key);
+                return value;
+              }
+            }
+          }
+        
+          INFO.set(refresh, key);
+        
           getter = () => {
             if(pending.has(refresh)){
               pending.delete(refresh)
@@ -179,21 +183,17 @@ function get<R, T extends Model>(
         
             return value;
           }
-        
-          INFO.set(refresh, key);
         }
       }
 
-      state.set(key, undefined);
+      if(required && init)
+        init();
 
-      if(required)
-        init && init();
+      return (sub) => {
+        if(!getter && init)
+          init();
 
-      return () => {
-        if(!getter)
-          init && init();
-
-        return getter();
+        return getter(sub);
       }
     }
   )
