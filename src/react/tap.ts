@@ -52,36 +52,32 @@ function tap<T extends MVC>(
 
   return add(
     function tap(key){
-      const get = getRecursive(key, this);
-
       if(MVC.isTypeof(type) && type.global)
-        return {
-          get,
-          value: type.get()
-        }
-
-      const { subject } = this;
-
-      if(subject.constructor.global)
-        throw Oops.NotAllowed(subject, type.name);
-
-      getPending(subject).push(context => {
-        let instance = context.get<T>(type);
-
-        if(typeof argument == "function"){
-          if(argument(instance) === false)
-            instance = undefined;
-        }
-
-        else if(!instance && argument)
-          throw Oops.AmbientRequired(type.name, subject, key);
-
-        this.state.set(key, instance);
-        this.update(key);
-      })
+        this.state.set(key, type.get())
+      else {
+        const { subject } = this;
+  
+        if(subject.constructor.global)
+          throw Oops.NotAllowed(subject, type.name);
+  
+        getPending(subject).push(context => {
+          let instance = context.get<T>(type);
+  
+          if(typeof argument == "function"){
+            if(argument(instance) === false)
+              instance = undefined;
+          }
+  
+          else if(!instance && argument)
+            throw Oops.AmbientRequired(type.name, subject, key);
+  
+          this.state.set(key, instance);
+          this.update(key);
+        })
+      }
 
       return {
-        get
+        get: getRecursive(key, this)
       }
     }
   )
