@@ -1,3 +1,4 @@
+import { Parent } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -7,6 +8,12 @@ import { suspend } from '../suspense';
 import { add } from './add';
 
 export const Oops = issues({
+  Required: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
+
+  Unexpected: (expects, child, got) =>
+    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
+
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
 
@@ -16,6 +23,7 @@ export const Oops = issues({
 
 declare namespace get {
   type Function<T, S = any> = (this: S, on: S) => T;
+  type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 }
 
 /**
@@ -29,6 +37,17 @@ function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend: true): 
 function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolean): R;
 
 /**
+ * Fetches and assigns the controller which spawned this host.
+ * When parent assigns an instance via `use()` directive, it
+ * will be made available to child upon this request.
+ *
+ * @param Type - Type of controller compatible with this class. 
+ * @param required - Throw if controller is created independantly.
+ */
+function get <T extends Model> (Type: Model.Type<T>, required?: true): T;
+function get <T extends Model> (Type: Model.Type<T>, required: boolean): T | undefined;
+
+/**
  * Implement a computed value; output is returned by function from provided factory.
  *
  * @param compute - Factory function to generate a getter to subscribe dependancies.
@@ -37,8 +56,8 @@ function get <R, T> (source: T, compute: (this: T, on: T) => R, suspend?: boolea
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend: true): Exclude<R, undefined>;
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R, suspend?: boolean): R;
  
-function get<R, T>(
-  arg0: ((this: T, key: string, thisArg: T) => get.Function<R, T>) | Model,
+function get<R, T extends Model>(
+  arg0: get.Factory<R, T> | Model.Type<T> | T,
   arg1?: get.Function<T> | boolean,
   arg2?: boolean): R {
 
@@ -50,19 +69,34 @@ function get<R, T>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
+      if(Model.isTypeof(arg0)){
+        const value = Parent.get(subject) as T;
+        const expected = arg0.name;
+
+        if(!value){
+          if(arg1 !== false)
+            throw Oops.Required(expected, subject);
+        }
+        else if(!(value instanceof arg0))
+          throw Oops.Unexpected(expected, subject, value);
+
+        return { value };
+      }
+
       let getter: () => any;
       const required = arg1 === true || arg2 === true;
 
       const init = () => {
         let source = this;
         let setter: get.Function<T, any>;
+        const from = arg0 as get.Factory<R, T> | T;
  
-        if(typeof arg0 == "function"){
-          setter = arg0.call(subject, key, subject) as any;
+        if(typeof from == "function"){
+          setter = from.call(subject, key, subject) as any;
         }
         else if(typeof arg1 == "function"){
           // replace source controller in-case it is different
-          source = control(arg0);
+          source = control(from);
           setter = arg1;
         }
         else
