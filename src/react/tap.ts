@@ -52,11 +52,12 @@ function tap<T extends MVC>(
 
   return add(
     function tap(key){
+      const { subject, state } = this;
+
       if(MVC.isTypeof(type) && type.global)
-        this.state.set(key, type.get())
-      else {
-        const { subject } = this;
-  
+        state.set(key, type.get())
+
+      else {  
         if(subject.constructor.global)
           throw Oops.NotAllowed(subject, type.name);
   
@@ -71,7 +72,7 @@ function tap<T extends MVC>(
           else if(!instance && argument)
             throw Oops.AmbientRequired(type.name, subject, key);
   
-          this.state.set(key, instance);
+          state.set(key, instance);
           this.update(key);
         })
       }
