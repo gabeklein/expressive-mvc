@@ -2,7 +2,6 @@ import React, { Suspense } from 'react';
 
 import { mockAsync, render } from '../helper/testing';
 import { set } from '../instruction/set';
-import { Model } from '../model';
 import { Consumer } from './consumer';
 import { Global } from './global';
 import { MVC } from './mvc';
@@ -50,7 +49,7 @@ it("will create all models in given object", () => {
 it("will destroy created model on unmount", () => {
   const willDestroy = jest.fn();
 
-  class Test extends Model {}
+  class Test extends MVC {}
 
   const rendered = render(
     <Provider for={{ Test }}>
@@ -68,8 +67,8 @@ it("will destroy created model on unmount", () => {
 it("will destroy multiple created on unmount", () => {
   const willDestroy = jest.fn();
 
-  class Foo extends Model {}
-  class Bar extends Model {}
+  class Foo extends MVC {}
+  class Bar extends MVC {}
 
   const rendered = render(
     <Provider for={{ Foo, Bar }}>
@@ -89,7 +88,7 @@ it("will destroy multiple created on unmount", () => {
 it("will not destroy given instance on unmount", () => {
   const didUnmount = jest.fn();
 
-  class Test extends Model {}
+  class Test extends MVC {}
 
   const instance = Test.new();
 
@@ -200,7 +199,7 @@ describe("and prop", () => {
   })
 
   it("will assign values to muliple", () => {
-    class Bar extends Model {
+    class Bar extends MVC {
       value = "";
     }
 

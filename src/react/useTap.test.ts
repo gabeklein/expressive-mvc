@@ -3,13 +3,13 @@ import { act } from '@testing-library/react-hooks';
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
 import { get } from '../instruction/get';
 import { set } from '../instruction/set';
-import { Model } from '../model';
+import { MVC } from './mvc';
 import { useTap } from './useTap';
 
 const opts = { timeout: 100 };
 
 describe("callback", () => {
-  class Test extends Model {
+  class Test extends MVC {
     foo = 1;
     bar = 2;
     baz = 3;
@@ -109,7 +109,7 @@ describe("callback", () => {
 });
 
 describe("get properties", () => {
-  class Test extends Model {
+  class Test extends MVC {
     random = 0;
     source?: string = undefined;
 
@@ -138,7 +138,7 @@ describe("get properties", () => {
   })
 
   it("will suspend in method mode", async () => {
-    class Test extends Model {
+    class Test extends MVC {
       source?: string = undefined;
       value = get(() => this.getValue, true);
 
@@ -218,7 +218,7 @@ describe("get properties", () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
   
-    class Test extends Model {
+    class Test extends MVC {
       value = set(async () => {
         await promise.pending();
         throw "oh no";
@@ -255,7 +255,7 @@ describe("get properties", () => {
 
 describe("get instruction", () => {
   it('will suspend if function is async', async () => {
-    class Test extends Model {
+    class Test extends MVC {
       value = set(() => promise.pending());
     }
   
@@ -280,7 +280,7 @@ describe("get instruction", () => {
   it('will suspend if value is promise', async () => {
     const promise = mockAsync<string>();
   
-    class Test extends Model {
+    class Test extends MVC {
       value = set(promise.pending());
     }
   
@@ -304,7 +304,7 @@ describe("get instruction", () => {
 
 describe("set instruction", () => {
   it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
+    class Test extends MVC {
       foobar = set<string>();
     }
 
@@ -328,7 +328,7 @@ describe("set instruction", () => {
   })
 
   it('will not suspend if value is defined', async () => {
-    class Test extends Model {
+    class Test extends MVC {
       foobar = set<string>();
     }
 
@@ -347,7 +347,7 @@ describe("set instruction", () => {
 
 describe("required parameter", () => {
   it('will suspend if subvalue is undefined', async () => {
-    class Test extends Model {
+    class Test extends MVC {
       value?: string = undefined;
     }
   
@@ -369,7 +369,7 @@ describe("required parameter", () => {
   })
 
   it("will return undefined if not required", async () => {
-    class Test extends Model {
+    class Test extends MVC {
       value = set(promise.pending);
     }
 
@@ -388,7 +388,7 @@ describe("required parameter", () => {
   })
 
   it("will force suspense if required is true", () => {
-    class Test extends Model {
+    class Test extends MVC {
       value = set(() => undefined);
     }
 
@@ -403,7 +403,7 @@ describe("required parameter", () => {
   });
 
   it("will cancel out suspense if required is false", () => {
-    class Test extends Model {
+    class Test extends MVC {
       source?: string = undefined;
       value = get(() => this.getValue, true);
 
@@ -426,7 +426,7 @@ describe("required parameter", () => {
 describe("computed", () => {
   const opts = { timeout: 100 };
 
-  class Test extends Model {
+  class Test extends MVC {
     foo = 1;
     bar = 2;
     baz = 3;
@@ -539,7 +539,7 @@ describe("computed", () => {
   })
 
   describe("async", () => {
-    class Test extends Model {
+    class Test extends MVC {
       foo = "bar";
     };
 
@@ -581,7 +581,7 @@ describe("computed", () => {
   })
 
   describe("suspense", () => {
-    class Test extends Model {
+    class Test extends MVC {
       value?: string = undefined;
     }
 
@@ -641,7 +641,7 @@ describe("computed", () => {
   })
 
   describe("undefined", () => {
-    class Test extends Model {};
+    class Test extends MVC {};
 
     it("will convert to null", () => {
       const test = Test.new();
@@ -664,7 +664,7 @@ describe("computed", () => {
 
   describe("update callback", () => {
     it("will force a refresh", () => {
-      const test = Model.new();
+      const test = MVC.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate!: () => Promise<void>;
@@ -691,7 +691,7 @@ describe("computed", () => {
     })
 
     it("will refresh without reevaluating", () => {
-      const test = Model.new();
+      const test = MVC.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate!: () => void;
@@ -720,7 +720,7 @@ describe("computed", () => {
     })
 
     it("will refresh returned function instead", () => {
-      const test = Model.new();
+      const test = MVC.new();
       const didEvaluate = jest.fn();
       const didEvaluateInner = jest.fn();
 
@@ -758,7 +758,7 @@ describe("computed", () => {
     })
 
     it("will refresh again after promise", async () => {
-      const test = Model.new();
+      const test = MVC.new();
       const didRender = jest.fn();
       const promise = mockAsync<string>();
       
@@ -794,7 +794,7 @@ describe("computed", () => {
     })
 
     it("will invoke async function", async () => {
-      const test = Model.new();
+      const test = MVC.new();
       const didRender = jest.fn();
       const promise = mockAsync();
       
