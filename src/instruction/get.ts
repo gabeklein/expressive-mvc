@@ -1,4 +1,4 @@
-import { Parent } from '../children';
+import { getRecursive, Parent } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -80,7 +80,11 @@ function get<R, T extends Model>(
         else if(!(value instanceof arg0))
           throw Oops.Unexpected(expected, subject, value);
 
-        return { value };
+        this.state.set(key, value);
+
+        return {
+          get: getRecursive(key, this)
+        }
       }
 
       let getter: () => any;

@@ -511,6 +511,34 @@ describe("parent-child", () => {
   
     expect(attempt).toThrowError(error);
   })
+
+  it('will track recursively', async () => {
+    class Child extends Model {
+      value = "foo";
+      parent = get(Parent);
+    }
+    
+    class Parent extends Model {
+      value = "foo";
+      child = use(Child);
+    }
+  
+    const { child } = Parent.new();
+    const effect = jest.fn((it: Child) => {
+      void it.value;
+      void it.parent.value;
+    })
+  
+    child.on(effect);
+  
+    child.value = "bar";
+    await child.on(true);
+    expect(effect).toHaveBeenCalledTimes(2)
+  
+    child.parent.value = "bar";
+    await child.parent.on(true);
+    expect(effect).toHaveBeenCalledTimes(3)
+  })
 })
 
 /* Feature is temporarily removed - evaluating usefulness.
