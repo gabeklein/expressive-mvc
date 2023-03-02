@@ -471,7 +471,7 @@ describe("parent-child", () => {
     expect(bar).toBeInstanceOf(Bar);
     expect(bar.parent).toBe(foo);
   })
-  
+
   it("throws when required parent is absent :(", () => {
     class Detatched extends Model {}
     class NonStandalone extends Model {
@@ -542,6 +542,39 @@ describe("parent-child", () => {
     child.parent.value = "bar";
     await child.parent.on(true);
     expect(effect).toHaveBeenCalledTimes(3)
+  })
+
+  it('will yeild a computed value', async () => {
+    class Foo extends Model {
+      bar = use(Bar);
+      seconds = 0;
+    }
+
+    class Bar extends Model {
+      minutes = get(Foo, state => {
+        return Math.floor(state.seconds / 60);
+      })
+    }
+
+    const { is: foo, bar } = Foo.new();
+  
+    foo.seconds = 30;
+  
+    await foo.on(true);
+  
+    expect(foo.seconds).toEqual(30);
+    expect(bar.minutes).toEqual(0);
+  
+    foo.seconds = 60;
+  
+    // make sure both did declare an update
+    await Promise.all([
+      bar.on(true),
+      foo.on(true)
+    ])
+  
+    expect(foo.seconds).toEqual(60);
+    expect(bar.minutes).toEqual(1);
   })
 })
 
