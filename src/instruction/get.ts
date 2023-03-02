@@ -85,7 +85,6 @@ function get<R, T extends Model>(
           throw Oops.Unexpected(expected, subject, value);
 
         this.state.set(key, value);
-
         getter = getRecursive(key, this)
       }
       else {
@@ -140,9 +139,6 @@ function get<R, T extends Model>(
               const value = compute(true);
               state.set(key, value);
               return value;
-            }
-            catch(e){
-              throw e;
             }
             finally {
               sub.commit();
