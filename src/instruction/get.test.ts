@@ -3,23 +3,6 @@ import { Model } from '../model';
 import { get, Oops } from './get';
 import { use } from './use';
 
-class Child extends Model {
-  value = "foo";
-}
-
-class Subject extends Model {
-  child = use(Child);
-  seconds = 0;
-
-  minutes = get(this, state => {
-    return Math.floor(state.seconds / 60);
-  })
-
-  nested = get(this, state => {
-    return state.child.value;
-  })
-}
-
 it.todo("will add pending compute to frame immediately");
 
 it("will throw if missing factory", () => {
@@ -34,41 +17,64 @@ it("will throw if missing factory", () => {
 })
 
 it('will reevaluate when inputs change', async () => {
-  const state = Subject.new();
+  class Subject extends Model {
+    seconds = 0;
 
-  state.seconds = 30;
+    minutes = get(this, state => {
+      return Math.floor(state.seconds / 60);
+    })
+  }
 
-  await state.on(true);
+  const subject = Subject.new();
 
-  expect(state.seconds).toEqual(30);
-  expect(state.minutes).toEqual(0);
+  subject.seconds = 30;
 
-  await state.on(null);
+  await subject.on(true);
 
-  state.seconds = 60;
+  expect(subject.seconds).toEqual(30);
+  expect(subject.minutes).toEqual(0);
 
-  await state.on(true);
+  subject.seconds = 60;
 
-  expect(state.seconds).toEqual(60);
-  expect(state.minutes).toEqual(1);
+  await subject.on(true);
+
+  expect(subject.seconds).toEqual(60);
+  expect(subject.minutes).toEqual(1);
 })
 
 it('will trigger when nested inputs change', async () => {
-  const state = Subject.new();
+  class Subject extends Model {
+    child = use(Child);
+    seconds = 0;
+  
+    minutes = get(this, state => {
+      return Math.floor(state.seconds / 60);
+    })
+  
+    nested = get(this, state => {
+      return state.child.value;
+    })
+  }
 
-  expect(state.nested).toBe("foo");
+  class Child extends Model {
+    value = "foo";
+  }
 
-  state.child.value = "bar";
-  await state.on(true);
+  const subject = Subject.new();
 
-  expect(state.nested).toBe("bar");
+  expect(subject.nested).toBe("foo");
 
-  state.child = new Child();
-  await state.on(true);
+  subject.child.value = "bar";
+  await subject.on(true);
+
+  expect(subject.nested).toBe("bar");
+
+  subject.child = new Child();
+  await subject.on(true);
 
   // sanity check
-  expect(state.child.value).toBe("foo");
-  expect(state.nested).toBe("foo");
+  expect(subject.child.value).toBe("foo");
+  expect(subject.nested).toBe("foo");
 })
 
 it('will compute immediately if needed', () => {
