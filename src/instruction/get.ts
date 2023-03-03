@@ -72,6 +72,7 @@ function get<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
+      let source = this;
       const required = arg1 === true || arg2 === true;
 
       if(Model.isTypeof(arg0)){
@@ -84,32 +85,25 @@ function get<R, T extends Model>(
         }
         else if(!(value instanceof arg0))
           throw Oops.Unexpected(expected, subject, value);
+        else
+          source = control(value);
 
         state.set(key, value);
-        
-        return typeof arg1 == "function"
-          ? getComputed(key, this, control(value), arg1, required)
-          : getRecursive(key, this);
       }
       else {
-        let source: Control;
-        let setter: get.Function<T, any>;
-
-        if(typeof arg0 == "function"){
-          source = this;
-          setter = arg0.call(subject, key, subject) as any;
-        }
-        else if(typeof arg1 == "function"){
+        if(typeof arg0 == "function")
+          arg1 = arg0.call(subject, key, subject) as any;
+        else if(typeof arg1 == "function")
           source = control(arg0);
-          setter = arg1;
-        }
         else
           throw new Error(`Factory argument cannot be ${arg1}`);
 
         state.set(key, undefined);
-        
-        return getComputed(key, this, source, setter, required);
       }
+
+      return typeof arg1 == "function"
+        ? getComputed(key, this, source, arg1, required)
+        : getRecursive(key, this);
     }
   )
 }
