@@ -110,22 +110,22 @@ function get<R, T extends Model>(
 
 function getComputed<T>(
   key: string,
-  target: Control,
+  parent: Control,
   source: Control,
   setter: get.Function<T, any>,
   required: boolean){
 
-  const { state } = target;
+  const { state } = parent;
 
   let sub: Subscriber;
-  let order = ORDER.get(target)!;
-  let pending = KEYS.get(target)!
+  let order = ORDER.get(parent)!;
+  let pending = KEYS.get(parent)!
 
   if(!order)
-    ORDER.set(target, order = new Map());
+    ORDER.set(parent, order = new Map());
 
   if(!pending)
-    KEYS.set(target, pending = new Set());
+    KEYS.set(parent, pending = new Set());
 
   const compute = (initial: boolean) => {
     try {
@@ -138,8 +138,8 @@ function getComputed<T>(
   }
 
   const create = () => {
-    sub = new Subscriber(source, (_, source) => {
-      if(source !== target)
+    sub = new Subscriber(source, (_, control) => {
+      if(control !== parent)
         refresh();
       else
         pending.add(refresh);
@@ -170,7 +170,7 @@ function getComputed<T>(
     finally {
       if(state.get(key) !== value){
         state.set(key, value);
-        target.update(key);
+        parent.update(key);
         return value;
       }
     }
@@ -187,7 +187,7 @@ function getComputed<T>(
     const value = sub ? state.get(key) : create();
 
     if(value === undefined && required)
-      throw suspend(target, key);
+      throw suspend(parent, key);
 
     return value;
   }
