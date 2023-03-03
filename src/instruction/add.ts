@@ -63,7 +63,7 @@ function add<T = any>(
         const local = subscriber(this);
 
         if(local)
-          local.add(key);
+          local.follow(key);
   
         try {
           const value = get ? get(local) : control.state.get(key);

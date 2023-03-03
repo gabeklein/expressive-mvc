@@ -70,7 +70,7 @@ class Control<T extends {} = any> {
         const value = state.get(key);
 
         if(sub){
-          sub.add(key);
+          sub.follow(key);
 
           if(value === undefined && sub.suspend)
             throw suspend(this, key);

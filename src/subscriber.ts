@@ -47,7 +47,7 @@ class Subscriber <T extends {} = any> {
     return Array.from(this.watch.keys());
   }
 
-  add(key: any, value?: boolean | (() => boolean | void)){
+  follow(key: any, value?: boolean | (() => boolean | void)){
     if(value !== undefined)
       this.watch.set(key, value);
     else if(!this.watch.has(key))

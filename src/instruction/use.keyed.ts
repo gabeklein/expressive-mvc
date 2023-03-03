@@ -78,7 +78,7 @@ function keyed<T extends Keyed>(
         }
       }
   
-      local.add(property, false);
+      local.follow(property, false);
       local.dependant.add({
         commit(){
           if(using.size === 0)

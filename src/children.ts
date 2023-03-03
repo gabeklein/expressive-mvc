@@ -53,7 +53,7 @@ export function getRecursive(key: string, from: Control){
         return true;
       }
   
-      local.add(key, init);
+      local.follow(key, init);
       init();
     }
 
@@ -90,7 +90,7 @@ export function setRecursive(
       const local = subscriber(this);
 
       if(local)
-        local.add(key);
+        local.follow(key);
 
       return get(local);
     }
