@@ -72,30 +72,19 @@ function get<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source = this;
+      let source = this.subject;
       const required = arg1 === true || arg2 === true;
 
       if(Model.isTypeof(arg0)){
-        const value = Parent.get(subject) as T;
-        const expected = arg0.name;
-
-        if(!value){
-          if(arg1 !== false)
-            throw Oops.Required(expected, subject);
-        }
-        else if(!(value instanceof arg0))
-          throw Oops.Unexpected(expected, subject, value);
-        else
-          source = control(value);
-
-        state.set(key, value);
+        source = getModel(subject, arg0, arg1 !== false);
+        state.set(key, source);
       }
       else if(typeof arg0 == "function"){
         arg1 = arg0.call(subject, key, subject) as any;
         state.set(key, undefined);
       }
       else if(typeof arg1 == "function")
-        source = control(arg0);
+        source = arg0;
       else
         throw new Error(`Factory argument cannot be ${arg1}`);
 
@@ -106,10 +95,26 @@ function get<R, T extends Model>(
   )
 }
 
+function getModel<T extends Model>(from: Model, type: Model.Type<T>, required: true): Model;
+function getModel<T extends Model>(from: Model, type: Model.Type<T>, required?: boolean): Model | undefined;
+function getModel<T extends Model>(from: Model, type: Model.Type<T>, required?: boolean){
+  const value = Parent.get(from) as T;
+  const expected = type.name;
+
+  if(!value){
+    if(required)
+      throw Oops.Required(expected, from);
+  }
+  else if(!(value instanceof type))
+    throw Oops.Unexpected(expected, from, value);
+  else
+    return value;
+}
+
 function getComputed<T>(
   key: string,
   parent: Control,
-  source: Control,
+  source: Model,
   setter: get.Function<T, any>,
   required: boolean){
 
@@ -130,13 +135,13 @@ function getComputed<T>(
       return setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
-      Oops.Failed(source.subject, key, initial).warn();
+      Oops.Failed(source, key, initial).warn();
       throw err;
     }
   }
 
   const create = () => {
-    sub = new Subscriber(source, (_, control) => {
+    sub = new Subscriber(control(source), (_, control) => {
       if(control !== parent)
         refresh();
       else
