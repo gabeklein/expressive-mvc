@@ -69,7 +69,7 @@ export function setRecursive(
 
   let get: (local: Subscriber | undefined) => any
 
-  const onUpdate = (next: {} | undefined) => {
+  const onUpdate = (next: Model | undefined) => {
     state.set(key, next);
 
     if(!(next instanceof Type))

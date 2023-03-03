@@ -84,7 +84,7 @@ function use(
       if(input instanceof Map || input instanceof Set)
         return keyed(this, key, input);
 
-      const onUpdate = (next: {} | undefined) => {
+      const onUpdate = (next: Model | undefined) => {
         state.set(key, next);
 
         if(next){

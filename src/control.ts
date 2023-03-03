@@ -151,9 +151,12 @@ class Control<T extends {} = any> {
     this.followers.clear();
     listeners.forEach(x => x(null, this));
   }
+
+  static get = controller;
+  static for = control;
 }
 
-function controller<T extends {}>(from: T){
+function controller<T extends Model>(from: T){
   if("is" in from)
     from = (from as any).is as T;
 
@@ -165,12 +168,12 @@ declare namespace control {
    * Callback for Controller.for() static method.
    * Returned callback is forwarded.
    */
-  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
+  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 }
 
-function control<T extends {}>(subject: T): Control<T>;
-function control<T extends {}>(subject: T, cb: control.OnReady<T>): Callback;
-function control<T extends {}>(subject: T, cb?: control.OnReady<T>){
+function control<T extends Model>(subject: T): Control<T>;
+function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
+function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   const control = controller(subject) || new Control(subject);
 
   if(!control.state){
