@@ -90,16 +90,14 @@ function get<R, T extends Model>(
 
         state.set(key, value);
       }
-      else {
-        if(typeof arg0 == "function")
-          arg1 = arg0.call(subject, key, subject) as any;
-        else if(typeof arg1 == "function")
-          source = control(arg0);
-        else
-          throw new Error(`Factory argument cannot be ${arg1}`);
-
+      else if(typeof arg0 == "function"){
+        arg1 = arg0.call(subject, key, subject) as any;
         state.set(key, undefined);
       }
+      else if(typeof arg1 == "function")
+        source = control(arg0);
+      else
+        throw new Error(`Factory argument cannot be ${arg1}`);
 
       return typeof arg1 == "function"
         ? getComputed(key, this, source, arg1, required)
