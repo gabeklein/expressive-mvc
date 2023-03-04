@@ -1,15 +1,10 @@
-import { get } from './instruction/get';
+import { set } from './instruction/set';
 import { Model } from './model';
 import { Oops as Suspense } from './suspense';
 
 it("will seem to throw error outside react", () => {
   class Test extends Model {
-    source?: string = undefined;
-    value = get(() => this.getValue, true);
-
-    getValue(){
-      return this.source;
-    }
+    value = set<never>();
   }
 
   const instance = Test.new();
