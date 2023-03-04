@@ -58,7 +58,7 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
  
 function get<R, T extends Model>(
   arg0: get.Factory<R, T> | Model.Type<T> | T,
-  arg1?: get.Function<T> | boolean): R {
+  arg1?: get.Function<R, T> | boolean): R {
 
   return add(
     function get(key){
@@ -75,8 +75,8 @@ function get<R, T extends Model>(
         source = getModel(subject, arg0, sourceRequired);
       }
       else if(typeof arg0 == "function"){
-        source = this.subject;
-        arg1 = arg0.call(subject, key, subject) as any;
+        arg1 = arg0.call(subject, key, subject);
+        source = subject;
       }
       else if(typeof arg1 == "function"){
         source = arg0;
@@ -84,10 +84,8 @@ function get<R, T extends Model>(
       else
         throw new Error(`Factory argument cannot be ${arg1}`);
 
-      if(typeof arg1 == "function"){
-        state.set(key, undefined);
+      if(typeof arg1 == "function")
         return getComputed(key, this, source!, arg1);
-      }
       else {
         state.set(key, source);
         return getRecursive(key, this);
