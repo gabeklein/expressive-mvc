@@ -1,7 +1,6 @@
 import { act } from '@testing-library/react-hooks';
 
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
-import { get } from '../instruction/get';
 import { set } from '../instruction/set';
 import { MVC } from './mvc';
 import { useTap } from './useTap';
@@ -107,116 +106,6 @@ describe("callback", () => {
     expect(result.current).toBe(4);
   })
 });
-
-describe("get properties", () => {
-  class Test extends MVC {
-    random = 0;
-    source?: string = undefined;
-
-    value = get(this, x => {
-      void x.random;
-      return x.source;
-    }, true);
-  }
-
-  it("will suspend if value is undefined", async () => {
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.new();
-
-    test.renderHook(() => {
-      useTap(instance).value;
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.source = "foobar!";
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it("will suspend in method mode", async () => {
-    class Test extends MVC {
-      source?: string = undefined;
-      value = get(() => this.getValue, true);
-
-      getValue(){
-        return this.source;
-      }
-    }
-
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.new();
-
-    test.renderHook(() => {
-      useTap(instance).value;
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-    instance.source = "foobar!";
-
-    await promise.pending();
-    test.assertDidRender(true);
-  })
-
-  it("will return immediately if value is defined", async () => {
-    const test = mockSuspense();
-    const instance = Test.new();
-
-    instance.source = "foobar!";
-
-    let value: string | undefined;
-
-    test.renderHook(() => {
-      ({ value } = useTap(instance));
-    })
-
-    test.assertDidRender(true);
-
-    expect(value).toBe("foobar!");
-  })
-
-  it("will not resolve if value stays undefined", async () => {
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.new();
-
-    test.renderHook(() => {
-      useTap(instance).value;
-      promise.resolve();
-    })
-
-    test.assertDidSuspend(true);
-
-    instance.random = 1;
-
-    // update to value is expected
-    const pending = await instance.on(true);
-    expect(pending).toContain("random");
-
-    // value will still be undefined
-    expect(instance.get().value).toBe(undefined);
-
-    // give react a moment to render (if it were)
-    await new Promise(res => setTimeout(res, 100));
-
-    // expect no action - value still is undefined
-    test.assertDidRender(false);
-
-    instance.source = "foobar!";
-
-    // we do expect a render this time
-    await promise.pending();
-
-    test.assertDidRender(true);
-  })
-
-  it.todo("will start suspense if value becomes undefined");
-})
 
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
@@ -404,12 +293,7 @@ describe("required parameter", () => {
 
   it("will cancel out suspense if required is false", () => {
     class Test extends MVC {
-      source?: string = undefined;
-      value = get(() => this.getValue, true);
-
-      getValue(){
-        return this.source;
-      }
+      value = set<never>();
     }
 
     const instance = Test.new();
