@@ -253,7 +253,7 @@ describe("get properties", () => {
   it.todo("will start suspense if value becomes undefined");
 })
 
-describe("get instruction", () => {
+describe("set factory", () => {
   it('will suspend if function is async', async () => {
     class Test extends MVC {
       value = set(() => promise.pending());
@@ -302,7 +302,7 @@ describe("get instruction", () => {
   })
 });
 
-describe("set instruction", () => {
+describe("set placeholder", () => {
   it('will suspend if value is accessed before put', async () => {
     class Test extends MVC {
       foobar = set<string>();
