@@ -5,65 +5,6 @@ import { set } from '../instruction/set';
 import { MVC } from './mvc';
 import { useTap } from './useTap';
 
-const opts = { timeout: 100 };
-
-describe("callback", () => {
-  class Test extends MVC {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-  }
-
-  it("will disable updates if null returned", async () => {
-    const instance = Test.new();
-    const didRender = jest.fn(() => {
-      return useTap(instance, $ => null);
-    })
-
-    const { result } = renderHook(didRender);
-
-    expect(didRender).toBeCalledTimes(1);
-    expect(result.current).toBe(null);
-
-    instance.foo = 2;
-
-    await instance.on(true);
-    expect(didRender).toBeCalledTimes(1);
-  })
-
-  it("will use returned function as compute", async () => {
-    const test = Test.new();
-    const willCompute = jest.fn();
-    const willMount = jest.fn();
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(test, $ => {
-        willMount();
-        void $.foo;
-  
-        return () => {
-          willCompute();
-          return $.foo + $.bar;
-        };
-      });
-    });
-
-    expect(result.current).toBe(3);
-
-    expect(willMount).toBeCalledTimes(1);
-    expect(willCompute).toBeCalledTimes(1);
-
-    test.foo = 2;
-
-    await waitForNextUpdate(opts);
-
-    expect(willMount).toBeCalledTimes(1);
-    expect(willCompute).toBeCalledTimes(2);
-
-    expect(result.current).toBe(4);
-  })
-});
-
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
     class Test extends MVC {
@@ -330,6 +271,55 @@ describe("computed", () => {
     // compute did not trigger a new render
     expect(render).toBeCalledTimes(1);
     expect(result.current).toBe(2);
+  })
+
+  it("will disable updates if null returned", async () => {
+    const instance = Test.new();
+    const didRender = jest.fn(() => {
+      return useTap(instance, $ => null);
+    })
+
+    const { result } = renderHook(didRender);
+
+    expect(didRender).toBeCalledTimes(1);
+    expect(result.current).toBe(null);
+
+    instance.foo = 2;
+
+    await instance.on(true);
+    expect(didRender).toBeCalledTimes(1);
+  })
+
+  it("will use returned function as compute", async () => {
+    const test = Test.new();
+    const willCompute = jest.fn();
+    const willMount = jest.fn();
+
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(test, $ => {
+        willMount();
+        void $.foo;
+  
+        return () => {
+          willCompute();
+          return $.foo + $.bar;
+        };
+      });
+    });
+
+    expect(result.current).toBe(3);
+
+    expect(willMount).toBeCalledTimes(1);
+    expect(willCompute).toBeCalledTimes(1);
+
+    test.foo = 2;
+
+    await waitForNextUpdate(opts);
+
+    expect(willMount).toBeCalledTimes(1);
+    expect(willCompute).toBeCalledTimes(2);
+
+    expect(result.current).toBe(4);
   })
 
   describe("tuple", () => {
