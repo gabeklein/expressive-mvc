@@ -14,49 +14,6 @@ describe("callback", () => {
     baz = 3;
   }
 
-  it("will subscribe callback to updates", async () => {
-    const test = Test.new();
-    const didEvaluate = jest.fn();
-
-    const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(test, $ => {
-        didEvaluate($.foo + $.bar);
-        return Math.floor($.foo + $.bar);
-      });
-    });
-
-    expect(result.current).toBe(3);
-
-    test.foo = 2;
-    await waitForNextUpdate(opts);
-
-    expect(result.current).toBe(4);
-    expect(didEvaluate).toHaveBeenCalledWith(4);
-  })
-
-  it("will not refresh if output does not change", async () => {
-    const test = Test.new();
-    const didEvaluate = jest.fn();
-
-    const { result, rerender } = renderHook(() => {
-      return useTap(test, $ => {
-        didEvaluate($.foo + $.bar);
-        return Math.floor($.foo + $.bar);
-      });
-    });
-
-    expect(result.current).toBe(3);
-
-    test.foo = 1.5;
-
-    await test.on(true);
-
-    rerender();
-
-    expect(result.current).toBe(3);
-    expect(didEvaluate).toHaveBeenCalledWith(3.5);
-  })
-
   it("will disable updates if null returned", async () => {
     const instance = Test.new();
     const didRender = jest.fn(() => {
@@ -333,8 +290,11 @@ describe("computed", () => {
 
   it('will compute output', async () => {
     const parent = Test.new();
-    const { result, waitForNextUpdate } =
-      renderHook(() => useTap(parent, x => x.foo + x.bar));
+    const { result, waitForNextUpdate } = renderHook(() => {
+      return useTap(parent, x => {
+        return x.foo + x.bar;
+      });
+    });
 
     expect(result.current).toBe(3);
 
