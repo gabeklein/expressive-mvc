@@ -215,6 +215,33 @@ describe("get properties", () => {
     test.assertDidRender(true);
   })
 
+  it.todo("will start suspense if value becomes undefined");
+})
+
+describe("set factory", () => {
+  it('will suspend if function is async', async () => {
+    class Test extends MVC {
+      value = set(() => promise.pending());
+    }
+  
+    const test = mockSuspense();
+    const promise = mockAsync();
+    const didRender = mockAsync();
+    const instance = Test.new();
+  
+    test.renderHook(() => {
+      void useTap(instance).value;
+      didRender.resolve();
+    })
+  
+    test.assertDidSuspend(true);
+  
+    promise.resolve();
+    await didRender.pending();
+  
+    test.assertDidRender(true);
+  })
+
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
   
@@ -248,33 +275,6 @@ describe("get properties", () => {
     const error = await didThrow.pending();
   
     expect(error).toBe("oh no");
-  })
-
-  it.todo("will start suspense if value becomes undefined");
-})
-
-describe("set factory", () => {
-  it('will suspend if function is async', async () => {
-    class Test extends MVC {
-      value = set(() => promise.pending());
-    }
-  
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const didRender = mockAsync();
-    const instance = Test.new();
-  
-    test.renderHook(() => {
-      void useTap(instance).value;
-      didRender.resolve();
-    })
-  
-    test.assertDidSuspend(true);
-  
-    promise.resolve();
-    await didRender.pending();
-  
-    test.assertDidRender(true);
   })
 
   it('will suspend if value is promise', async () => {
