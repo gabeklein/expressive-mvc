@@ -72,25 +72,31 @@ function get<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source = this.subject;
-      const required = arg1 === true || arg2 === true;
+      let source: Model | undefined;
+      const resultRequired = arg1 === true || arg2 === true;
+      const sourceRequired = arg1 !== false;
 
       if(Model.isTypeof(arg0)){
-        source = getModel(subject, arg0, arg1 !== false);
-        state.set(key, source);
+        source = getModel(subject, arg0, sourceRequired);
       }
       else if(typeof arg0 == "function"){
+        source = this.subject;
         arg1 = arg0.call(subject, key, subject) as any;
-        state.set(key, undefined);
       }
-      else if(typeof arg1 == "function")
+      else if(typeof arg1 == "function"){
         source = arg0;
+      }
       else
         throw new Error(`Factory argument cannot be ${arg1}`);
 
-      return typeof arg1 == "function"
-        ? getComputed(key, this, source, arg1, required)
-        : getRecursive(key, this);
+      if(typeof arg1 == "function"){
+        state.set(key, undefined);
+        return getComputed(key, this, source!, arg1, resultRequired);
+      }
+      else {
+        state.set(key, source);
+        return getRecursive(key, this);
+      }
     }
   )
 }
