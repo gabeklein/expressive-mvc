@@ -54,33 +54,37 @@ function tap<T extends MVC>(
     function tap(key){
       const { subject, state } = this;
 
-      if(MVC.isTypeof(type) && type.global)
-        state.set(key, type.get())
+      findRelative(subject, type, instance => {
+        if(typeof argument == "function"){
+          if(argument(instance) === false)
+            instance = undefined;
+        }
+        else if(!instance && argument)
+          throw Oops.AmbientRequired(type.name, subject, key);
 
-      else {  
-        if(subject.constructor.global)
-          throw Oops.NotAllowed(subject, type.name);
-  
-        getPending(subject).push(context => {
-          let instance = context.get<T>(type);
-  
-          if(typeof argument == "function"){
-            if(argument(instance) === false)
-              instance = undefined;
-          }
-  
-          else if(!instance && argument)
-            throw Oops.AmbientRequired(type.name, subject, key);
-  
-          state.set(key, instance);
-          this.update(key);
-        })
-      }
+        state.set(key, instance);
+        this.update(key);
+      })
 
       return getRecursive(key, this);
     }
   )
 };
+
+function findRelative<T extends Model>(
+  from: Model,
+  type: Model.Type<T>,
+  callback: (got: T | undefined) => void){
+
+  if(MVC.isTypeof(type) && type.global)
+    callback(type.get());
+  else if((from as any).constructor.global)
+    throw Oops.NotAllowed(from, type.name)
+  else
+    getPending(from).push(context => {
+      callback(context.get<T>(type));
+    })
+}
 
 function usePeerContext(subject: Model){
   if(Applied.has(subject)){
