@@ -71,9 +71,13 @@ function get<R, T extends Model>(
       let source: Model | undefined;
       const sourceRequired = arg1 !== false;
 
-      if(Model.isTypeof(arg0)){
-        source = getModel(subject, arg0, sourceRequired);
-      }
+      if(Model.isTypeof(arg0))
+        getModel(subject, arg0, got => {
+          if(got)
+            source = got;
+          else if(sourceRequired)
+            throw Oops.Required(arg0.name, subject);
+        });
       else if(typeof arg0 == "function"){
         arg1 = arg0.call(subject, key, subject);
         source = subject;
@@ -85,7 +89,7 @@ function get<R, T extends Model>(
         throw new Error(`Factory argument cannot be ${arg1}`);
 
       if(typeof arg1 == "function")
-        return getComputed(key, this, source!, arg1);
+        return getComputed(key, this, () => source, arg1);
       else {
         state.set(key, source);
         return getRecursive(key, this);
@@ -94,33 +98,31 @@ function get<R, T extends Model>(
   )
 }
 
-function getModel<T extends Model>(from: Model, type: Model.Type<T>, required: true): Model;
-function getModel<T extends Model>(from: Model, type: Model.Type<T>, required?: boolean): Model | undefined;
-function getModel<T extends Model>(from: Model, type: Model.Type<T>, required?: boolean){
-  const value = Parent.get(from) as T;
-  const expected = type.name;
+function getModel<T extends Model>(
+  from: Model,
+  type: Model.Type<T>,
+  callback: (got: T | undefined) => void){
 
-  if(!value){
-    if(required)
-      throw Oops.Required(expected, from);
-  }
-  else if(!(value instanceof type))
-    throw Oops.Unexpected(expected, from, value);
-  else
-    return value;
+  const value = Parent.get(from) as T;
+
+  if(value && !(value instanceof type))
+    throw Oops.Unexpected(type.name, from, value);
+
+  callback(value);
 }
 
 function getComputed<T>(
   key: string,
   parent: Control,
-  source: Model,
+  source: () => Model | undefined,
   setter: get.Function<T, any>){
 
   const { state } = parent;
 
   let sub: Subscriber;
   let order = ORDER.get(parent)!;
-  let pending = KEYS.get(parent)!
+  let pending = KEYS.get(parent)!;
+  let instance: Model;
 
   if(!order)
     ORDER.set(parent, order = new Map());
@@ -133,13 +135,20 @@ function getComputed<T>(
       return setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
-      Oops.Failed(source, key, initial).warn();
+      Oops.Failed(instance, key, initial).warn();
       throw err;
     }
   }
 
   const create = () => {
-    sub = new Subscriber(control(source), (_, control) => {
+    const got = source();
+
+    if(!got)
+      throw new Error("TODO: Implement suspense.")
+
+    instance = got;
+
+    sub = new Subscriber(control(instance), (_, control) => {
       if(control !== parent)
         refresh();
       else
