@@ -1,4 +1,4 @@
-import { getRecursive, Parent } from '../children';
+import { getRecursive, getRelative } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -9,9 +9,6 @@ import { add } from './add';
 export const Oops = issues({
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
-
-  Unexpected: (expects, child, got) =>
-    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
@@ -103,12 +100,7 @@ function getModel<T extends Model>(
   type: Model.Type<T>,
   callback: (got: T | undefined) => void){
 
-  const value = Parent.get(from) as T;
-
-  if(value && !(value instanceof type))
-    throw Oops.Unexpected(type.name, from, value);
-
-  callback(value);
+  callback(getRelative(type, from));
 }
 
 function getComputed<T>(

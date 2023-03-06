@@ -1,6 +1,7 @@
 import { mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
+import { Oops as Child } from '../children';
 import { use } from './use';
 
 it.todo("will add pending compute to frame immediately");
@@ -509,7 +510,7 @@ describe("parent-child", () => {
     }
   
     const attempt = () => Unexpected.new();
-    const error = Oops.Unexpected(
+    const error = Child.Unexpected(
       Expected.name, Adopted.name, Unexpected.name
     )
   

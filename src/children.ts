@@ -10,8 +10,23 @@ export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
-    `Property ${parent} expected Model of type ${expected} but got ${got}.`
+    `Property ${parent} expected Model of type ${expected} but got ${got}.`,
+
+  Unexpected: (expects, child, got) =>
+    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 })
+
+export function getRelative<T extends Model>(
+  type: Model.Type<T>,
+  from: Model){
+
+  const value = Parent.get(from) as T;
+
+  if(value && !(value instanceof type))
+    throw Oops.Unexpected(type.name, from, value);
+
+  return value;
+}
 
 export function getRecursive(key: string, from: Control){
   const context = new WeakMap<Subscriber, {} | undefined>();
