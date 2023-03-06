@@ -1,4 +1,4 @@
-import { getRecursive, getRelative } from '../children';
+import { getRecursive } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -69,7 +69,7 @@ function get<R, T extends Model>(
       const sourceRequired = arg1 !== false;
 
       if(Model.isTypeof(arg0))
-        getModel(subject, arg0, got => {
+        arg0.findForGetInstruction(subject, got => {
           if(got)
             source = got;
           else if(sourceRequired)
@@ -93,14 +93,6 @@ function get<R, T extends Model>(
       }
     }
   )
-}
-
-function getModel<T extends Model>(
-  from: Model,
-  type: Model.Type<T>,
-  callback: (got: T | undefined) => void){
-
-  callback(getRelative(type, from));
 }
 
 function getComputed<T>(

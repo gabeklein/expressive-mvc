@@ -1,4 +1,5 @@
-import { control, Control } from './control';
+import { getRelative } from './children';
+import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
@@ -229,6 +230,14 @@ class Model {
     const instance = new this(...args);
     control(instance);
     return instance;
+  }
+
+  static findForGetInstruction<T extends Model, R>(
+    this: Model.Type<T>,
+    relativeTo: Model,
+    callback: (got: T) => R){
+
+    callback(getRelative(this, relativeTo));
   }
 
   /**
