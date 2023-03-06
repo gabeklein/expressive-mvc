@@ -1,8 +1,11 @@
 import React from 'react';
 
-import { Consumer, Global, MVC, Provider, tap } from '..';
 import { render, subscribeTo } from '../helper/testing';
-import { Oops } from './tap';
+import { Consumer } from './consumer';
+import { Global } from './global';
+import { MVC } from './mvc';
+import { Provider } from './provider';
+import { Oops, tap } from './tap';
 
 describe("tap instruction", () => {
   class Foo extends MVC {
