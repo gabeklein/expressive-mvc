@@ -71,7 +71,7 @@ function tap<T extends MVC>(
   )
 };
 
-function findRelative<T extends Model>(
+export function findRelative<T extends Model>(
   from: Model,
   type: Model.Type<T>,
   callback: (got: T | undefined) => void){

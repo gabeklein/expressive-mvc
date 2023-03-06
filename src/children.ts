@@ -16,7 +16,7 @@ export const Oops = issues({
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 })
 
-export function getRelative<T extends Model>(
+export function getParent<T extends Model>(
   type: Model.Type<T>,
   from: Model){
 

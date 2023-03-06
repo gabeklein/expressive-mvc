@@ -1,9 +1,11 @@
 import React from 'react';
 
+import { getParent } from '../children';
 import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Model } from '../model';
 import { useContext } from './context';
+import { findRelative } from './tap';
 import { useNew } from './useNew';
 import { useTap } from './useTap';
 
@@ -57,6 +59,19 @@ class MVC extends Model {
 
   static global?: boolean;
   static keepAlive?: boolean;
+
+  static findForGetInstruction<T extends Model, R>(
+    this: Model.Type<T>,
+    relativeTo: Model,
+    callback: (got: T | undefined) => R): void {
+
+    const parent = getParent(this, relativeTo);
+
+    if(parent)
+      callback(parent)
+    else
+      findRelative(relativeTo, this, callback);
+  }
 
   /**
    * Create a new instance of this model and activate its managed state.
