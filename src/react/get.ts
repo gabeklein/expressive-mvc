@@ -1,8 +1,9 @@
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
-import { Lookup, useLookup } from './context';
+import { Lookup } from './lookup';
 import { MVC } from './mvc';
+import { useLookup } from './useContext';
 
 export const Oops = issues({
   NotAllowed: (parent, child) =>

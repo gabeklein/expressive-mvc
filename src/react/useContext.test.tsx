@@ -1,9 +1,9 @@
 import React from 'react';
 
 import { render } from '../helper/testing';
-import { Oops } from './context';
 import { MVC } from './mvc';
 import { Provider } from './provider';
+import { Oops } from './useContext';
 
 describe("get", () => {
   class Test extends MVC {

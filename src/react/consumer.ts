@@ -2,7 +2,7 @@ import React from 'react';
 
 import { issues } from '../helper/issues';
 import { Class } from '../helper/types';
-import { useContext } from './context';
+import { useContext } from './useContext';
 import { useTap } from './useTap';
 
 export const Oops = issues({
