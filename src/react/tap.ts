@@ -15,7 +15,7 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-export function getContextForGetInstruction<T extends Model>(
+function getContextForGetInstruction<T extends Model>(
   type: Model.Type<T>,
   relativeTo: Model,
   required: boolean
@@ -37,7 +37,7 @@ export function getContextForGetInstruction<T extends Model>(
   }
 }
 
-export function findRelative<T extends Model>(
+function findRelative<T extends Model>(
   from: Model,
   type: Model.Type<T>,
   callback: (got: T | undefined) => void){
@@ -83,4 +83,8 @@ function getPending(subject: {}){
   return pending;
 }
 
-export { usePeerContext, getPending }
+export {
+  getContextForGetInstruction,
+  usePeerContext,
+  getPending
+}
