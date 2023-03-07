@@ -4,7 +4,7 @@ import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
-import { defineProperty, getPrototypeOf } from './helper/object';
+import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
 import type { Callback, Class, InstanceOf } from './helper/types';
@@ -264,21 +264,4 @@ const FindInstruction =
     [Model, getParentForGetInstruction]
   ]);
 
-function findModel(
-  type: Model.Type,
-  relativeTo: Model,
-  required: boolean){
-
-  let T = type;
-
-  do {
-    T = getPrototypeOf(T);
-    const getter = FindInstruction.get(T);
-
-    if(getter)
-      return getter(type, relativeTo, required);
-  }
-  while(T.prototype instanceof Model);
-}
-
-export { FindInstruction, Model, findModel }
+export { FindInstruction, Model }

@@ -1,8 +1,9 @@
 import { getRecursive } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
+import { getPrototypeOf } from '../helper/object';
 import { Callback } from '../helper/types';
-import { findModel, Model } from '../model';
+import { FindInstruction, Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { add } from './add';
@@ -214,6 +215,23 @@ export function flush(control: Control){
   }
 
   pending.clear();
+}
+
+function findModel(
+  type: Model.Type,
+  relativeTo: Model,
+  required: boolean){
+
+  let T = type;
+
+  do {
+    T = getPrototypeOf(T);
+    const getter = FindInstruction.get(T);
+
+    if(getter)
+      return getter(type, relativeTo, required);
+  }
+  while(T.prototype instanceof Model);
 }
 
 export { get }
