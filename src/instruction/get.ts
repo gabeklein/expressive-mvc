@@ -68,16 +68,22 @@ function get<R, T extends Model>(
       let source: Model | undefined;
       const sourceRequired = arg1 !== false;
 
-      if(Model.isTypeof(arg0))
+      if(arg0 instanceof Model){
+        source = arg0;
+
+        if(typeof arg1 !== "function")
+          throw new Error(`Factory argument cannot be ${arg1}`);
+      }
+      else if(Model.isTypeof(arg0))
         arg0.findForGetInstruction(subject, got => {
           if(got){
+            source = got;
+
             // TODO: remove
             if(typeof arg1 !== "function"){
               state.set(key, got);
               this.update(key);
             }
-
-            source = got;
           }
           else if(sourceRequired)
             throw Oops.Required(arg0.name, subject);
@@ -86,11 +92,6 @@ function get<R, T extends Model>(
         arg1 = arg0.call(subject, key, subject);
         source = subject;
       }
-      else if(typeof arg1 == "function"){
-        source = arg0;
-      }
-      else
-        throw new Error(`Factory argument cannot be ${arg1}`);
 
       if(typeof arg1 == "function")
         return getComputed(key, this, () => source, arg1);
