@@ -9,6 +9,5 @@ export { MVC, MVC as Model, MVC as default } from './react/mvc';
 export { Consumer } from './react/consumer';
 export { Provider } from './react/provider';
 export { Global } from './react/global';
-export { tap } from './react/tap';
 
 export { Debug } from './debug';

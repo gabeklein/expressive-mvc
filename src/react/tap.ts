@@ -1,6 +1,5 @@
-import { getParent, getRecursive } from '../children';
+import { getParent } from '../children';
 import { issues } from '../helper/issues';
-import { add } from '../instruction/add';
 import { Model } from '../model';
 import { Lookup, useLookup } from './context';
 import { MVC } from './mvc';
@@ -15,61 +14,6 @@ export const Oops = issues({
 
 const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
-
-declare namespace tap {
-  type Callback<T extends Model> = (instance: T | undefined) => void | boolean;
-}
-
-/**
- * Find and attach most applicable instance of Model via context.
- * 
- * Host controller will search element-hierarchy relative to where it spawned.
- * 
- * @param Type - Type of model to find from context
- * @param callback -
- *  - Invoked after context is scanned, is passed result - either found or undefined.
- *  - If argument is inadequate, but required, your implemention should simply throw.
- *  - If inadequate and not required, conditionally return false.
- */
-function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) => void | true): T;
-function tap <T extends Model> (Type: Model.Type<T>, callback?: (instance?: T) => void | boolean): T | undefined;
-
-/**
- * Find and attach most applicable instance of Model via context.
- *
- * Expects a `<Provider>` of target controller to exist. 
- * Host controller will search element-hierarchy relative to where it spawned.
- *
- * @param Type - Type of controller to attach to property. 
- * @param required - Throw if instance of Type cannot be found.
- */
-function tap <T extends Model> (Type: Model.Type<T>, required: true): T;
-function tap <T extends Model> (Type: Model.Type<T>, required?: boolean): T | undefined;
-
-function tap<T extends MVC>(
-  type: Model.Type<T>,
-  argument?: boolean | tap.Callback<T>){
-
-  return add(
-    function tap(key){
-      const { subject, state } = this;
-
-      findRelative(subject, type, instance => {
-        if(typeof argument == "function"){
-          if(argument(instance) === false)
-            instance = undefined;
-        }
-        else if(!instance && argument)
-          throw Oops.AmbientRequired(type.name, subject);
-
-        state.set(key, instance);
-        this.update(key);
-      })
-
-      return getRecursive(key, this);
-    }
-  )
-};
 
 export function getContextForGetInstruction<T extends Model>(
   type: Model.Type<T>,
@@ -139,4 +83,4 @@ function getPending(subject: {}){
   return pending;
 }
 
-export { tap, usePeerContext, getPending }
+export { usePeerContext, getPending }
