@@ -84,7 +84,6 @@ describe("tap instruction", () => {
     render(<Test />);
   })
 
-  // TODO: revamp errors here
   it("will throw if strict tap is undefined", () => {
     class Foo extends MVC {
       bar = get(Bar);
@@ -235,7 +234,7 @@ describe("context", () => {
 })
 
 describe("suspense", () => {
-  it("will throw suspense if not resolved", () => {
+  it("will throw if not resolved", () => {
     class Foo extends MVC {}
     class Bar extends MVC {
       foo = get(Foo);
@@ -306,5 +305,26 @@ describe("suspense", () => {
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
+  })
+
+  it("will prevent compute if not resolved", () => {
+    class Foo extends MVC {
+      value = "foobar";
+    }
+    class Bar extends MVC {
+      foo = get(Foo, foo => foo.value);
+    }
+
+    const bar = Bar.new();
+    
+    expect(() => bar.foo).toThrow(expect.any(Promise));
+
+    render(
+      <Provider for={Foo}>
+        <Provider for={bar} />
+      </Provider>
+    );
+
+    expect(bar.foo).toBe("foobar");
   })
 })

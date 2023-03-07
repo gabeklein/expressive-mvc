@@ -4,6 +4,7 @@ import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
+import { suspend } from '../suspense';
 import { add } from './add';
 
 export const Oops = issues({
@@ -131,7 +132,7 @@ function getComputed<T>(
     const got = source(create);
 
     if(!got)
-      throw new Error("TODO: Implement suspense.")
+      throw suspend(parent, key);
 
     instance = got;
 
