@@ -7,9 +7,6 @@ import { Subscriber } from '../subscriber';
 import { add } from './add';
 
 export const Oops = issues({
-  Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
-
   PeerNotAllowed: (model, property) =>
     `Attempted to use an instruction result (probably use or get) as computed source for ${model}.${property}. This is not allowed.`,
 
@@ -65,40 +62,34 @@ function get<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source: Model | undefined;
+      let source!: (refresh: (x: any) => void) => Model | undefined;
       const sourceRequired = arg1 !== false;
 
       if(arg0 instanceof Model){
-        source = arg0;
+        source = () => arg0;
 
         if(typeof arg1 !== "function")
           throw new Error(`Factory argument cannot be ${arg1}`);
       }
-      else if(Model.isTypeof(arg0))
-        arg0.findForGetInstruction(subject, got => {
-          if(got){
-            source = got;
-
-            // TODO: remove
-            if(typeof arg1 !== "function"){
-              state.set(key, got);
-              this.update(key);
-            }
-          }
-          else if(sourceRequired)
-            throw Oops.Required(arg0.name, subject);
-        });
+      else if(Model.isTypeof(arg0)){
+        source = arg0.findForGetInstruction(subject, sourceRequired);
+      }
       else if(typeof arg0 == "function"){
         arg1 = arg0.call(subject, key, subject);
-        source = subject;
+        source = () => subject;
       }
 
       if(typeof arg1 == "function")
-        return getComputed(key, this, () => source, arg1);
+        return getComputed(key, this, source, arg1);
       else {
+        const init = source((got) => {
+          state.set(key, got)
+          this.update(key);
+        });
+
         // TODO: remove fixes suspense test
-        if(arg1 === false)
-          state.set(key, source);
+        if(init || arg1 === false)
+          state.set(key, init);
 
         return getRecursive(key, this);
       }
@@ -109,7 +100,7 @@ function get<R, T extends Model>(
 function getComputed<T>(
   key: string,
   parent: Control,
-  source: () => Model | undefined,
+  source: (refresh: () => void) => Model | undefined,
   setter: get.Function<T, any>){
 
   const { state } = parent;
@@ -136,7 +127,8 @@ function getComputed<T>(
   }
 
   const create = () => {
-    const got = source();
+    // TODO: replace create with a cleanup function
+    const got = source(create);
 
     if(!got)
       throw new Error("TODO: Implement suspense.")

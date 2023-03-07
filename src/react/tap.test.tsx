@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { render, subscribeTo } from '../helper/testing';
-import { get, Oops as Get } from '../instruction/get';
+import { get } from '../instruction/get';
 import { Consumer } from './consumer';
 import { Global } from './global';
 import { MVC } from './mvc';
@@ -73,7 +73,7 @@ describe("tap instruction", () => {
       bar = get(Bar);
     }
 
-    const expected = Get.Required("Bar", "Foo");
+    const expected = Oops.AmbientRequired(Bar.name, Foo.name);
     const useFoo = () => Foo.use();
 
     const Test = () => {
@@ -85,12 +85,12 @@ describe("tap instruction", () => {
   })
 
   // TODO: revamp errors here
-  it.skip("will throw if strict tap is undefined", () => {
+  it("will throw if strict tap is undefined", () => {
     class Foo extends MVC {
       bar = get(Bar);
     }
 
-    const expected = Oops.AmbientRequired(Bar.name, Foo.name, "bar");
+    const expected = Oops.AmbientRequired(Bar.name, Foo.name);
     const useStrictFooBar = () => Foo.use();
 
     const TestComponent = () => {

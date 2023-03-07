@@ -12,9 +12,28 @@ export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
     `Property ${parent} expected Model of type ${expected} but got ${got}.`,
 
+  Required: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
+
   Unexpected: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 })
+
+export function getParentForGetInstruction<T extends Model>(
+  type: Model.Type<T>,
+  relativeTo: Model,
+  required: boolean){
+
+  const item = getParent(type, relativeTo);
+
+  return (_refresh: (x: T) => void) => {
+    if(item)
+      return item;
+    
+    if(required)
+      throw Oops.Required(type.name, relativeTo);
+  };
+}
 
 export function getParent<T extends Model>(
   type: Model.Type<T>,

@@ -482,7 +482,7 @@ describe("parent-child", () => {
     const attempt = () => 
       NonStandalone.new();
   
-    const error = Oops.Required(
+    const error = Child.Required(
       Detatched.name, NonStandalone.name
     )
   
@@ -517,7 +517,7 @@ describe("parent-child", () => {
     expect(attempt).toThrowError(error);
   })
 
-  it.skip('will track recursively', async () => {
+  it('will track recursively', async () => {
     class Child extends Model {
       value = "foo";
       parent = get(Parent);

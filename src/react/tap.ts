@@ -1,4 +1,4 @@
-import { getRecursive } from '../children';
+import { getParent, getRecursive } from '../children';
 import { issues } from '../helper/issues';
 import { add } from '../instruction/add';
 import { Model } from '../model';
@@ -9,8 +9,8 @@ export const Oops = issues({
   NotAllowed: (parent, child) =>
     `Global '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
 
-  AmbientRequired: (requested, requester, key) =>
-    `Attempted to find an instance of ${requested} in context. It is required for [${requester}.${key}], but one could not be found.`
+  AmbientRequired: (requested, requester) =>
+    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 })
 
 const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
@@ -60,7 +60,7 @@ function tap<T extends MVC>(
             instance = undefined;
         }
         else if(!instance && argument)
-          throw Oops.AmbientRequired(type.name, subject, key);
+          throw Oops.AmbientRequired(type.name, subject);
 
         state.set(key, instance);
         this.update(key);
@@ -70,6 +70,28 @@ function tap<T extends MVC>(
     }
   )
 };
+
+export function getContextForGetInstruction<T extends Model>(
+  type: Model.Type<T>,
+  relativeTo: Model,
+  required: boolean
+){
+  let item = getParent(type, relativeTo);
+
+  return (refresh: (x: T) => void) => {
+    if(item)
+      return item;
+
+    findRelative(relativeTo, type, got => {
+      if(got){
+        item = got;
+        refresh(got);
+      }
+      else if(required)
+        throw Oops.AmbientRequired(type.name, relativeTo);
+    })
+  }
+}
 
 export function findRelative<T extends Model>(
   from: Model,

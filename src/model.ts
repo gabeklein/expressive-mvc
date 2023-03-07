@@ -1,4 +1,4 @@
-import { getParent } from './children';
+import { getParentForGetInstruction } from './children';
 import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
@@ -235,9 +235,9 @@ class Model {
   static findForGetInstruction<T extends Model, R>(
     this: Model.Type<T>,
     relativeTo: Model,
-    callback: (got: T | undefined) => R){
-
-    callback(getParent(this, relativeTo));
+    required: boolean
+  ){
+    return getParentForGetInstruction(this, relativeTo, required);
   }
 
   /**
