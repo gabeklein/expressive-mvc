@@ -2,7 +2,7 @@ import { getRecursive } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
-import { Model } from '../model';
+import { findModel, Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { add } from './add';
@@ -73,7 +73,7 @@ function get<R, T extends Model>(
           throw new Error(`Factory argument cannot be ${arg1}`);
       }
       else if(Model.isTypeof(arg0)){
-        source = arg0.findForGetInstruction(subject, sourceRequired);
+        source = findModel(arg0, subject, sourceRequired)!;
       }
       else if(typeof arg0 == "function"){
         arg1 = arg0.call(subject, key, subject);

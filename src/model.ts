@@ -4,7 +4,7 @@ import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
-import { defineProperty } from './helper/object';
+import { defineProperty, getPrototypeOf } from './helper/object';
 import { Subscriber } from './subscriber';
 
 import type { Callback, Class, InstanceOf } from './helper/types';
@@ -79,6 +79,12 @@ declare namespace Model {
   export type Get<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
   export type Export<T> = { [P in Key<T>]: Value<T[P]> };
+
+  export type FindFunction = <T extends Model>(
+    type: Model.Type<T>,
+    relativeTo: Model,
+    required: boolean
+  ) => (_refresh: (x: T) => void) => T | undefined;
 }
 
 class Model {
@@ -232,14 +238,6 @@ class Model {
     return instance;
   }
 
-  static findForGetInstruction<T extends Model, R>(
-    this: Model.Type<T>,
-    relativeTo: Model,
-    required: boolean
-  ){
-    return getParentForGetInstruction(this, relativeTo, required);
-  }
-
   /**
    * Static equivalent of `x instanceof this`.
    * 
@@ -261,4 +259,26 @@ defineProperty(Model.prototype, "toString", {
   }
 })
 
-export { Model }
+const FindInstruction =
+  new WeakMap<Model.Type, Model.FindFunction>([
+    [Model, getParentForGetInstruction]
+  ]);
+
+function findModel(
+  type: Model.Type,
+  relativeTo: Model,
+  required: boolean){
+
+  let T = type;
+
+  do {
+    T = getPrototypeOf(T);
+    const getter = FindInstruction.get(T);
+
+    if(getter)
+      return getter(type, relativeTo, required);
+  }
+  while(T.prototype instanceof Model);
+}
+
+export { FindInstruction, Model, findModel }

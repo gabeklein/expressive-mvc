@@ -2,7 +2,7 @@ import React from 'react';
 
 import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
-import { Model } from '../model';
+import { FindInstruction, Model } from '../model';
 import { useContext } from './context';
 import { getContextForGetInstruction } from './tap';
 import { useNew } from './useNew';
@@ -58,14 +58,6 @@ class MVC extends Model {
 
   static global?: boolean;
   static keepAlive?: boolean;
-
-  static findForGetInstruction<T extends Model, R>(
-    this: Model.Type<T>,
-    relativeTo: Model,
-    required: boolean){
-
-    return getContextForGetInstruction(this, relativeTo, required);
-  }
 
   /**
    * Create a new instance of this model and activate its managed state.
@@ -200,5 +192,7 @@ class MVC extends Model {
     return useTap(() => this, arg1, arg2);
   }
 }
+
+FindInstruction.set(MVC, getContextForGetInstruction);
 
 export { MVC };
