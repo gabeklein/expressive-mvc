@@ -41,8 +41,8 @@ function getContextForGetInstruction<T extends Model>(
 function findRelative<T extends Model>(
   from: Model,
   type: Model.Type<T>,
-  callback: (got: T | undefined) => void){
-
+  callback: (got: T | undefined) => void
+){
   if(MVC.isTypeof(type) && type.global)
     callback(type.get());
   else if((from as any).constructor.global)
