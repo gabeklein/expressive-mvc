@@ -6,7 +6,7 @@ import { Consumer } from './consumer';
 import { Global } from './global';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './tap';
+import { Oops } from './get';
 
 describe("tap instruction", () => {
   class Foo extends MVC {

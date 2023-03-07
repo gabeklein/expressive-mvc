@@ -7,7 +7,7 @@ import { assignWeak, entries } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
 import { LookupContext, useLookup } from './context';
-import { getPending } from './tap';
+import { getPending } from './get';
 
 export const Oops = issues({
   NoType: () =>

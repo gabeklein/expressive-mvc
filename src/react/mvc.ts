@@ -4,7 +4,7 @@ import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { FindInstruction, Model } from '../model';
 import { useContext } from './context';
-import { getContextForGetInstruction } from './tap';
+import { getContextForGetInstruction } from './get';
 import { useNew } from './useNew';
 import { useTap } from './useTap';
 

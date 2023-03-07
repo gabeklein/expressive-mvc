@@ -4,7 +4,7 @@ import { control } from '../control';
 import { getOwnPropertyNames } from '../helper/object';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
-import { usePeerContext } from './tap';
+import { usePeerContext } from './get';
 
 function useNew <T extends Model> (
   source: Model.New<T> | (() => T),
