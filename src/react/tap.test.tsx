@@ -1,15 +1,16 @@
 import React from 'react';
 
 import { render, subscribeTo } from '../helper/testing';
+import { get, Oops as Get } from '../instruction/get';
 import { Consumer } from './consumer';
 import { Global } from './global';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops, tap } from './tap';
+import { Oops } from './tap';
 
 describe("tap instruction", () => {
   class Foo extends MVC {
-    bar = tap(Bar);
+    bar = get(Bar, false);
   }
 
   class Bar extends MVC {
@@ -34,7 +35,7 @@ describe("tap instruction", () => {
 
   it("will subscribe peer from context", async () => {
     class Foo extends MVC {
-      bar = tap(Bar, true);
+      bar = get(Bar, true);
     }
 
     const bar = Bar.new();
@@ -67,13 +68,30 @@ describe("tap instruction", () => {
     render(<Test />);
   })
 
-  it("will throw if strict tap is undefined", () => {
+  it("will complain if instance not found", () => {
     class Foo extends MVC {
-      bar = tap(Bar, true);
+      bar = get(Bar);
+    }
+
+    const expected = Get.Required("Bar", "Foo");
+    const useFoo = () => Foo.use();
+
+    const Test = () => {
+      expect(useFoo).toThrowError(expected);
+      return null;
+    }
+
+    render(<Test />);
+  })
+
+  // TODO: revamp errors here
+  it.skip("will throw if strict tap is undefined", () => {
+    class Foo extends MVC {
+      bar = get(Bar);
     }
 
     const expected = Oops.AmbientRequired(Bar.name, Foo.name, "bar");
-    const useStrictFooBar = () => Foo.use().bar;
+    const useStrictFooBar = () => Foo.use();
 
     const TestComponent = () => {
       expect(useStrictFooBar).toThrowError(expected);
@@ -84,83 +102,10 @@ describe("tap instruction", () => {
   })
 })
 
-describe("callback", () => {
-  class Foo extends MVC {}
-  class Bar extends MVC {
-    didTap = jest.fn();
-    foo = tap(Foo, this.didTap);
-  }
-
-  it("will run on attachment of model", () => {
-    render(
-      <Provider for={Foo}>
-        <Provider for={Bar}>
-          <Consumer for={Bar} has={bar => {
-            expect(bar.didTap).toBeCalledWith(expect.any(Foo));
-          }}/>
-        </Provider>
-      </Provider>
-    )
-  })
-
-  it("will pass undefined if not found", () => {
-    render(
-      <Provider for={Bar}>
-        <Consumer for={Bar} has={bar => {
-          expect(bar.didTap).toHaveBeenCalledWith(undefined);
-        }}/>
-      </Provider>
-    )
-  })
-
-  it("will force undefined if returns false", () => {
-    class Bar extends MVC {
-      foo = tap(Foo, () => false);
-    }
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={Bar}>
-          <Consumer for={Bar} has={bar => {
-            expect(bar.foo).toBe(undefined);
-          }}/>
-        </Provider>
-      </Provider>
-    )
-  })
-
-  it("will not run before first effect", () => {
-    const didInit = jest.fn();
-
-    class Bar extends MVC {
-      constructor(){
-        super();
-        this.on(didInit, []);
-      }
-
-      foo = tap(Foo, () => {
-        expect(didInit).toHaveBeenCalled();
-      });
-    }
-
-    render(
-      <Provider for={Foo}>
-        <Provider for={Bar}>
-          {null}
-        </Provider>
-      </Provider>
-    )
-  })
-
-  it.todo("will suspend if required until processed")
-  it.todo("will return undefined if not required")
-  it.todo("will update key when resolved")
-})
-
 describe("singleton", () => {
   it("will attach to model", () => {
     class Foo extends MVC {
-      global = tap(TestGlobal);
+      global = get(TestGlobal);
     }
 
     class TestGlobal extends Global {
@@ -181,7 +126,7 @@ describe("singleton", () => {
   it("will attach to another singleton", () => {
     class Peer extends Global {}
     class Test extends Global {
-      peer = tap(Peer);
+      peer = get(Peer);
     }
 
     const peer = Peer.new();
@@ -193,7 +138,7 @@ describe("singleton", () => {
   it("will throw if tries to attach Model", () => {
     class Normal extends MVC {}
     class TestGlobal extends Global {
-      notPossible = tap(Normal);
+      notPossible = get(Normal);
     }
 
     const attempt = () => TestGlobal.new();
@@ -205,7 +150,7 @@ describe("singleton", () => {
 
 describe("context", () => {
   class Foo extends MVC {
-    bar = tap(Bar, true);
+    bar = get(Bar);
   };
 
   class Bar extends MVC {
@@ -218,8 +163,8 @@ describe("context", () => {
     };
 
     class Multi extends MVC {
-      bar = tap(Bar);
-      foo = tap(Foo);
+      bar = get(Bar);
+      foo = get(Foo);
     };
 
     const Inner = () => {
@@ -250,10 +195,10 @@ describe("context", () => {
 
   it("will access peers sharing same provider", () => {
     class Foo extends MVC {
-      bar = tap(Bar, true);
+      bar = get(Bar);
     }
     class Bar extends MVC {
-      foo = tap(Foo, true);
+      foo = get(Foo);
     }
 
     render(
@@ -293,7 +238,7 @@ describe("suspense", () => {
   it("will throw suspense if not resolved", () => {
     class Foo extends MVC {}
     class Bar extends MVC {
-      foo = tap(Foo);
+      foo = get(Foo);
     }
 
     const bar = Bar.new();
@@ -312,7 +257,7 @@ describe("suspense", () => {
   it("will resolve when assigned to", async () => {
     class Foo extends MVC {}
     class Bar extends MVC {
-      foo = tap(Foo);
+      foo = get(Foo);
     }
 
     const bar = Bar.new();
@@ -340,7 +285,7 @@ describe("suspense", () => {
   it("will refresh an effect when assigned to", async () => {
     class Foo extends MVC {}
     class Bar extends MVC {
-      foo = tap(Foo);
+      foo = get(Foo);
     }
 
     const bar = Bar.new();

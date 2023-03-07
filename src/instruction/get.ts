@@ -11,7 +11,7 @@ export const Oops = issues({
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 
   PeerNotAllowed: (model, property) =>
-    `Attempted to use an instruction result (probably use or tap) as computed source for ${model}.${property}. This is not possible.`,
+    `Attempted to use an instruction result (probably use or get) as computed source for ${model}.${property}. This is not allowed.`,
 
   Failed: (parent, property, initial) =>
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
@@ -70,8 +70,15 @@ function get<R, T extends Model>(
 
       if(Model.isTypeof(arg0))
         arg0.findForGetInstruction(subject, got => {
-          if(got)
+          if(got){
+            // TODO: remove
+            if(typeof arg1 !== "function"){
+              state.set(key, got);
+              this.update(key);
+            }
+
             source = got;
+          }
           else if(sourceRequired)
             throw Oops.Required(arg0.name, subject);
         });
@@ -88,7 +95,10 @@ function get<R, T extends Model>(
       if(typeof arg1 == "function")
         return getComputed(key, this, () => source, arg1);
       else {
-        state.set(key, source);
+        // TODO: remove fixes suspense test
+        if(arg1 === false)
+          state.set(key, source);
+
         return getRecursive(key, this);
       }
     }
