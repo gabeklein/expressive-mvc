@@ -3,14 +3,14 @@ import React from 'react';
 import { render, subscribeTo } from '../helper/testing';
 import { get } from '../instruction/get';
 import { Consumer } from './consumer';
+import { Oops } from './get';
 import { Global } from './global';
 import { MVC } from './mvc';
 import { Provider } from './provider';
-import { Oops } from './get';
 
-describe("tap instruction", () => {
+describe("context", () => {
   class Foo extends MVC {
-    bar = get(Bar, false);
+    bar = get(Bar);
   }
 
   class Bar extends MVC {
@@ -59,6 +59,10 @@ describe("tap instruction", () => {
   })
 
   it("will return undefined if instance not found", () => {
+    class Foo extends MVC {
+      bar = get(Bar, false);
+    }
+
     const Test = () => {
       const foo = Foo.use();
       expect(foo.bar).toBeUndefined();
@@ -98,6 +102,58 @@ describe("tap instruction", () => {
     }
 
     render(<TestComponent />);
+  })
+
+  it("will access while created by provider", () => {
+    render(
+      <Provider for={Bar}>
+        <Provider for={Foo}>
+          <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
+        </Provider>
+      </Provider>
+    );
+  })
+
+  it("will access peers sharing same provider", () => {
+    class Foo extends MVC {
+      bar = get(Bar);
+    }
+    class Bar extends MVC {
+      foo = get(Foo);
+    }
+
+    render(
+      <Provider for={{ Foo, Bar }}>
+        <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
+        <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
+      </Provider>
+    );
+  });
+
+  it("will assign multiple peers", async () => {
+    class Foo extends MVC {
+      value = 2;
+    };
+
+    class Baz extends MVC {
+      bar = get(Bar);
+      foo = get(Foo);
+    };
+
+    const Inner = () => {
+      const { bar, foo } = Baz.use();
+
+      expect(bar).toBeInstanceOf(Bar);
+      expect(foo).toBeInstanceOf(Foo);
+
+      return null;
+    }
+
+    render(
+      <Provider for={{ Foo, Bar }}>
+        <Inner />
+      </Provider>
+    );
   })
 })
 
@@ -144,92 +200,6 @@ describe("singleton", () => {
     const issue = Oops.NotAllowed(TestGlobal.name, Normal.name);
 
     expect(attempt).toThrowError(issue);
-  })
-})
-
-describe("context", () => {
-  class Foo extends MVC {
-    bar = get(Bar);
-  };
-
-  class Bar extends MVC {
-    value = 1;
-  };
-
-  it("will assign multiple peers", async () => {
-    class Foo extends MVC {
-      value = 2;
-    };
-
-    class Multi extends MVC {
-      bar = get(Bar);
-      foo = get(Foo);
-    };
-
-    const Inner = () => {
-      const { bar, foo } = Multi.use();
-
-      expect(bar).toBeInstanceOf(Bar);
-      expect(foo).toBeInstanceOf(Foo);
-
-      return null;
-    }
-
-    render(
-      <Provider for={{ Foo, Bar }}>
-        <Inner />
-      </Provider>
-    );
-  })
-
-  it("will still access when created by provider", () => {
-    render(
-      <Provider for={Bar}>
-        <Provider for={Foo}>
-          <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
-        </Provider>
-      </Provider>
-    );
-  })
-
-  it("will access peers sharing same provider", () => {
-    class Foo extends MVC {
-      bar = get(Bar);
-    }
-    class Bar extends MVC {
-      foo = get(Foo);
-    }
-
-    render(
-      <Provider for={{ Foo, Bar }}>
-        <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
-        <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
-      </Provider>
-    );
-  });
-
-  it("will maintain hook", async () => {
-    const didRender = jest.fn();
-
-    const Inner = () => {
-      Foo.use();
-      didRender();
-      return null;
-    }
-
-    const x = render(
-      <Provider for={Bar}>
-        <Inner />
-      </Provider>
-    );
-
-    x.update(
-      <Provider for={Bar}>
-        <Inner />
-      </Provider>
-    );
-
-    expect(didRender).toBeCalledTimes(2);
   })
 })
 
