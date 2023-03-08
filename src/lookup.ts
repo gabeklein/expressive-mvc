@@ -79,7 +79,9 @@ export class Lookup {
       const entry = getOwnPropertyDescriptor(this, key)!;
 
       if(entry.writable && entry.value)
-        items.add(entry.value)
+        items.add(entry.value);
+
+      delete (this as any)[key];
     }
 
     for(const model of items)
