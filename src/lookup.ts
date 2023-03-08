@@ -1,8 +1,8 @@
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from '../helper/object';
-import { Model } from '../model';
-import { MVC } from './mvc';
+import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
+import { Model } from './model';
+import { MVC } from './react/mvc';
 
-class Lookup {
+export class Lookup {
   private table = new Map<Model.Type, symbol>();
   private register!: Map<string | number, Model | Model.Type>;
 
@@ -96,4 +96,4 @@ class Lookup {
   }
 }
 
-export { Lookup }
+export const Global = new Lookup();

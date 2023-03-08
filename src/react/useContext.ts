@@ -1,15 +1,15 @@
 import React from 'react';
 
 import { issues } from '../helper/issues';
+import { Global } from '../lookup';
 import { Model } from '../model';
-import { Lookup } from './lookup';
 
 const Oops = issues({
   NotFound: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`
 })
 
-const LookupContext = React.createContext(new Lookup());
+const LookupContext = React.createContext(Global);
 const useLookup = () => React.useContext(LookupContext);
 
 function useContext <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;

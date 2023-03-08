@@ -1,7 +1,7 @@
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
+import { Lookup } from '../lookup';
 import { Model } from '../model';
-import { Lookup } from './lookup';
 import { MVC } from './mvc';
 import { useLookup } from './useContext';
 
