@@ -5,7 +5,7 @@ import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues 
 import { FindInstruction, Model } from '../model';
 import { getContextForGetInstruction } from './get';
 import { useContext } from './useContext';
-import { useNew } from './useNew';
+import { useModel } from './useModel';
 import { useTap } from './useTap';
 
 export const Global = new WeakMap<Class, MVC>();
@@ -175,7 +175,7 @@ class MVC extends Model {
   static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
   static use <T extends typeof MVC> (this: T, a: any, b?: any){
-    return useNew(this, a, b);
+    return useModel(this, a, b);
   }
 
   static meta <T extends Class>(this: T): T;

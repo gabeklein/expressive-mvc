@@ -2,7 +2,7 @@ import React from 'react';
 
 import { render, renderHook } from '../helper/testing';
 import { MVC } from './mvc';
-import { useNew } from './useNew';
+import { useModel } from './useModel';
 
 const opts = { timeout: 100 };
 
@@ -64,7 +64,7 @@ describe("subscription", () => {
     const test = Test.new();
 
     const TestComponent = (props: any) => {
-      const { value } = useNew(() => test, props);
+      const { value } = useModel(() => test, props);
       didRender(value);
       return null;
     }

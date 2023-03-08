@@ -6,24 +6,24 @@ import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { usePeerContext } from './get';
 
-function useNew <T extends Model> (
+function useModel <T extends Model> (
   source: Model.New<T> | (() => T),
   callback?: (instance: T) => void
 ): T;
 
-function useNew <T extends Model> (
+function useModel <T extends Model> (
   source: Model.New<T> | (() => T),
   watch: Model.Key<T>[],
   callback?: (instance: T) => void
 ): T;
 
-function useNew <T extends Model> (
+function useModel <T extends Model> (
   source: Model.New<T> | (() => T),
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
-function useNew <T extends Model> (
+function useModel <T extends Model> (
   source: (() => T) | Model.New<T>,
   arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Key<T>[]){
@@ -96,4 +96,4 @@ function useNew <T extends Model> (
   return local.proxy;
 }
 
-export { useNew }
+export { useModel }
