@@ -146,8 +146,8 @@ class MVC extends Model {
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
-  static tap <T extends MVC, K extends Model.Key<T>> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
+  static tap <T extends MVC> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
+  static tap <T extends MVC> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
   static tap (arg1?: any, arg2?: boolean): any {
     return useTap(this, arg1, arg2);
