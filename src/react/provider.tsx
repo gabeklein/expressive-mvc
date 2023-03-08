@@ -82,8 +82,7 @@ function useNewContext<T extends Model>(
         ? input
         : context.get(input)!;
     else {
-      instance = context.add(input) as T;
-      context.register.set(key, input);
+      instance = context.add(input, key);
     }
 
     init.add(instance);

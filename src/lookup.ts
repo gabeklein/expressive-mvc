@@ -20,7 +20,10 @@ export class Lookup {
     return this[this.key(Type)] as unknown as T | undefined;
   }
 
-  public add(input: Model.New | Model): Model {
+  public add(
+    input: Model.New | Model,
+    key?: number | string): Model {
+
     let writable = true;
     let T: Model.New;
     let I: Model;
@@ -47,6 +50,9 @@ export class Lookup {
       T = getPrototypeOf(T);
     }
     while(T !== Model);
+    
+    if(key !== undefined)
+      this.register.set(key, input);
 
     return I;
   }
