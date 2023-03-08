@@ -6,7 +6,6 @@ import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/t
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { MVC } from './mvc';
-import { use } from './use';
 
 declare namespace useTap {
   type Source<T extends Model> =
@@ -43,7 +42,9 @@ function useTap <T extends Model, R> (
         : source();
       
   const deps = [uid(instance)];
-  const local = use(refresh => {
+  const state = React.useState(0);
+  const local = React.useMemo(() => {
+    const refresh = state[1].bind(null, x => x+1);
     const controller = control(instance);
     
     if(typeof arg1 != "function")
