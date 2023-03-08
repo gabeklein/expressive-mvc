@@ -1,10 +1,9 @@
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
-import { MVC } from './react/mvc';
 
 export class Lookup {
   private table = new Map<Model.Type, symbol>();
-  private register!: Map<string | number, Model | Model.Type>;
+  public register!: Map<string | number, Model | Model.Type>;
 
   private key(T: Model.Type){
     let key = this.table.get(T);
@@ -19,29 +18,6 @@ export class Lookup {
 
   public get<T extends Model>(Type: Model.Type<T>){
     return this[this.key(Type)] as unknown as T | undefined;
-  }
-
-  public has<T extends Model>(
-    key: string | number,
-    input: Model.New<T> | T,
-    callback?: (i: T) => void){
-
-    if(MVC.isTypeof(input) && input.global)
-      return input.new();
-  
-    if(this.register.get(key) === input)
-      return typeof input == "object"
-        ? input
-        : this.get(input)!;
-
-    const instance = this.add(input) as T;
-
-    this.register.set(key, input);
-
-    if(callback)
-      callback(instance);
-
-    return instance;
   }
 
   public add(input: Model.New | Model): Model {
