@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-hooks';
 
 import { Global } from '..';
-import { Oops } from './mvc';
+import { Oops } from './useContext';
 
 describe("init", () => {
   class Test extends Global {

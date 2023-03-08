@@ -1,22 +1,12 @@
 import React from 'react';
 
-import { issues } from '../helper/issues';
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
+import { Global } from '../lookup';
 import { FindInstruction, Model } from '../model';
 import { getContextForGetInstruction } from './get';
-import { useContext } from './useContext';
+import { Oops, useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
-
-export const Global = new WeakMap<Class, MVC>();
-
-export const Oops = issues({
-  DoesNotExist: (name) =>
-    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
-
-  AlreadyExists: (name) =>
-    `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`
-})
 
 declare namespace MVC {
   type EffectCallback<T = MVC> = (found: T) => Callback | void;
@@ -51,7 +41,7 @@ class MVC extends Model {
       return false;
 
     super.end();
-    Global.delete(type);
+    Global.delete(this);
 
     return true;
   }
@@ -67,16 +57,18 @@ class MVC extends Model {
   static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
 
   static new(...args: []){
-    if(Global.has(this))
+    const exists = Global.get(this);
+
+    if(exists)
       if(this.keepAlive)
-        return Global.get(this);
+        return exists;
       else
         throw Oops.AlreadyExists(this.name);
 
     const instance = super.new(...args) as MVC;
 
     if(this.global)
-      Global.set(this, instance);
+      Global.add(instance);
 
     return instance;
   }
@@ -112,21 +104,12 @@ class MVC extends Model {
     arg1?: string | boolean | MVC.EffectCallback,
     arg2?: MVC.EffectCallback<MVC | undefined>){
 
-    let instance: MVC | undefined;
     const required = arg1 === undefined || arg1 === true;
-
-    if(this.global){
-      instance = Global.get(this);
-
-      if(!instance && required)
-        throw Oops.DoesNotExist(this.name);
-    }
-    else
-      instance = useContext(this, required);
+    const instance = useContext(this, required);
 
     function callback(effect: MVC.EffectCallback<any>){
       try {
-        React.useLayoutEffect(() => effect(instance!), []);
+        React.useLayoutEffect(() => effect(instance), []);
       }
       catch(err){
         if(instance)

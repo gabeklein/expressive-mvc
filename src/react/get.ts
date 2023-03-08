@@ -1,6 +1,6 @@
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
-import { Lookup } from '../lookup';
+import { Global, Lookup } from '../lookup';
 import { Model } from '../model';
 import { MVC } from './mvc';
 import { useLookup } from './useContext';
@@ -44,7 +44,7 @@ function findRelative<T extends Model>(
   callback: (got: T | undefined) => void
 ){
   if(MVC.isTypeof(type) && type.global)
-    callback(type.get());
+    callback(Global.get(type));
   else if((from as any).constructor.global)
     throw Oops.NotAllowed(from, type.name)
   else

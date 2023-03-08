@@ -3,8 +3,9 @@ import React from 'react';
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
 import { Global } from './global';
-import { MVC, Oops } from './mvc';
+import { MVC } from './mvc';
 import { Provider } from './provider';
+import { Oops } from './useContext';
 
 const opts = { timeout: 100 };
 
