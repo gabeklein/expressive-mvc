@@ -12,24 +12,16 @@ describe("hook", () => {
   };
 
   it("will create instance given a class", () => {
-    const render = renderHook(() => useNew(Test));
+    const render = renderHook(() => Test.use());
     const result = render.result.current;
 
     expect(result).toBeInstanceOf(Test);
   })
 
-  it("will use factory function", () => {
-    const instance = Test.new();
-    const render = renderHook(() => useNew(() => instance));
-    const result = render.result.current;
-
-    expect(result).toStrictEqual(instance);
-  })
-
   it("will run callback", () => {
     const callback = jest.fn();
 
-    renderHook(() => useNew(Test, callback));
+    renderHook(() => Test.use(callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 
@@ -43,7 +35,7 @@ describe("hook", () => {
       }
     }
 
-    const render = renderHook(() => useNew(Test));
+    const render = renderHook(() => Test.use());
 
     expect(didDestroy).not.toBeCalled();
     render.unmount();
@@ -58,7 +50,7 @@ describe("subscription", () => {
 
   it("will subscribe to instance of controller", async () => {
     const { result, waitForNextUpdate } =
-      renderHook(() => useNew(Test));
+      renderHook(() => Test.use());
 
     expect(result.current.value).toBe("foo");
     result.current.value = "bar";
@@ -100,7 +92,7 @@ describe("specific", () => {
 
   it("will subscribe to only keys specified", async () => {
     const { result, waitForNextUpdate } = renderHook(() => {
-      const control = useNew(Test, ["foo"]);
+      const control = Test.use(["foo"]);
 
       void control.foo;
       void control.bar;
@@ -120,7 +112,7 @@ describe("specific", () => {
 
   it("will run callback after creation", () => {
     const callback = jest.fn();
-    renderHook(() => useNew(Test, [], callback));
+    renderHook(() => Test.use([], callback));
     expect(callback).toHaveBeenCalledWith(expect.any(Test));
   })
 
@@ -133,7 +125,7 @@ describe("specific", () => {
     }
 
     const didDestroy = jest.fn();
-    const element = renderHook(() => useNew(Test, []));
+    const element = renderHook(() => Test.use([]));
 
     element.unmount();
 
@@ -154,7 +146,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useNew(Test, mockExternal);
+      return Test.use(mockExternal);
     });
 
     const state = render.result.current.get();
@@ -166,7 +158,7 @@ describe("import", () => {
     let instance!: Test;
 
     const TestComponent = (props: any) => {
-      ({ is: instance } = useNew(Test, props));
+      ({ is: instance } = Test.use(props));
       return null;
     }
 
@@ -195,7 +187,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useNew(Test, mockExternal);
+      return Test.use(mockExternal);
     });
 
     const { foobar } = render.result.current;
@@ -215,7 +207,7 @@ describe("import", () => {
     }
 
     const render = renderHook(() => {
-      return useNew(Test, mockExternal);
+      return Test.use(mockExternal);
     });
 
     const { foobar } = render.result.current;
