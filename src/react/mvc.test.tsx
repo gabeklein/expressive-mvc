@@ -112,22 +112,16 @@ describe("get", () => {
 })
 
 describe("meta", () => {
-  class Child extends MVC {
-    value = "foo";
-  }
-
-  class Parent extends MVC {
-    static value = "foo";
-    static value2 = "bar";
-    static child = use(Child);
-  }
-
-  beforeEach(() => Parent.value = "foo");
-
   it('will track static values', async () => {
+    class Parent extends MVC {
+      static value = "foo";
+      static getValue(){
+        return this.meta().value;
+      }
+    }
+
     const render = renderHook(() => {
-      const meta = Parent.meta();
-      return meta.value;
+      return Parent.getValue();
     });
 
     expect(render.result.current).toBe("foo");
@@ -141,44 +135,64 @@ describe("meta", () => {
     expect(render.result.current).toBe("baz");
   })
 
-  it('will track specific value', async () => {
-    const render = renderHook(() => {
-      return Parent.meta(x => x.value2);
-    });
+  it('will compute value', async () => {
+    class Parent extends MVC {
+      static value = "foo";
+      static getValue(){
+        return this.meta(x => x.value);
+      }
+    }
 
-    expect(render.result.current).toBe("bar");
-
-    Parent.value2 = "foo";
-    await render.waitForNextUpdate(opts);
-    expect(render.result.current).toBe("foo");
-  })
-
-  it('will track child controller values', async () => {
     const {
-      result: { current },
+      result,
       waitForNextUpdate
     } = renderHook(() => {
-      const meta = Parent.meta();
-      void meta.child.value;
-      return meta;
+      return Parent.getValue();
     });
 
-    expect(current.child.value).toBe("foo");
+    expect(result.current).toBe("foo");
+
+    Parent.value = "bar";
+
+    await waitForNextUpdate(opts);
+    expect(result.current).toBe("bar");
+  })
+
+  it('will track recursive values', async () => {
+    class Child extends MVC {
+      value = "foo";
+    }
+
+    class Parent extends MVC {
+      static child = use(Child);
+      static getValue(){
+        return this.meta().child.value;
+      }
+    }
+
+    const {
+      result,
+      waitForNextUpdate
+    } = renderHook(() => {
+      return Parent.getValue();
+    });
+
+    expect(result.current).toBe("foo");
 
     // Will refresh on sub-value change.
-    current.child.value = "bar";
+    Parent.child.value = "bar";
     await waitForNextUpdate(opts);
-    expect(current.child.value).toBe("bar");
+    expect(result.current).toBe("bar");
 
     // Will refresh on repalcement.
-    current.child = new Child();
+    Parent.child = new Child();
     await waitForNextUpdate(opts);
-    expect(current.child.value).toBe("foo");
+    expect(result.current).toBe("foo");
 
     // Fresh subscription still works.
-    current.child.value = "bar";
+    Parent.child.value = "bar";
     await waitForNextUpdate(opts);
-    expect(current.child.value).toBe("bar");
+    expect(result.current).toBe("bar");
   })
 })
 

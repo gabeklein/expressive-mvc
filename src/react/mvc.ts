@@ -161,17 +161,17 @@ class MVC extends Model {
     return useModel(this, a, b);
   }
 
-  static meta <T extends Class>(this: T): T;
+  protected static meta <T extends Class>(this: T): T;
 
-  static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
-  static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
+  protected static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
+  protected static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
 
-  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
-  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
-  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
-  static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
-  static meta (arg1?: any, arg2?: any): any {
+  protected static meta (arg1?: any, arg2?: any): any {
     return useTap(() => this, arg1, arg2);
   }
 }
