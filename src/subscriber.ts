@@ -62,8 +62,7 @@ class Subscriber <T extends {} = any> {
 
     this.active = true;
     this.dependant.forEach(x => x.commit());
-
-    return this.release = () => {
+    this.release = () => {
       this.dependant.forEach(x => x.release());
       release();
     };

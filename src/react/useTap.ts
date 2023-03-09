@@ -132,7 +132,10 @@ function useTap <T extends Model, R> (
   if(!local)
     return null;
 
-  React.useLayoutEffect(() => local.commit(), deps);
+  React.useLayoutEffect(() => {
+    local.commit();
+    return () => local.release();
+  }, deps);
 
   return local.proxy;
 }

@@ -63,8 +63,9 @@ export function createEffect<T extends Model>(
 
     model = sub.proxy;
     invoke();
+    sub.commit();
 
-    return sub.commit();
+    return () => sub.release();
   });
 }
 
