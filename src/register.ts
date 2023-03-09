@@ -33,7 +33,7 @@ export class Register {
       I = new input();
     }
     else {
-      I = input;
+      I = input.is;
       T = I.constructor as Model.New;
       writable = false;
     }
