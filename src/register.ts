@@ -1,7 +1,7 @@
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
 
-export class Lookup {
+export class Register {
   private table = new Map<Model.Type, symbol>();
   public register!: Map<string | number, Model | Model.Type>;
 
@@ -63,15 +63,6 @@ export class Lookup {
     return next;
   }
 
-  public delete(instance: Model){
-    for(const key of getOwnPropertySymbols(this)){
-      const entry = getOwnPropertyDescriptor(this, key)!;
-
-      if(entry.value === instance)
-        delete (this as any)[key];
-    }
-  }
-
   public pop(){
     const items = new Set<Model>();
 
@@ -87,6 +78,15 @@ export class Lookup {
     for(const model of items)
       model.end();
   }
+
+  public delete(instance: Model){
+    for(const key of getOwnPropertySymbols(this)){
+      const entry = getOwnPropertyDescriptor(this, key)!;
+
+      if(entry.value === instance)
+        delete (this as any)[key];
+    }
+  }
 }
 
-export const Global = new Lookup();
+export const Global = new Register();

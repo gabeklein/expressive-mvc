@@ -1,7 +1,7 @@
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
-import { Global, Lookup } from '../lookup';
 import { Model } from '../model';
+import { Global, Register } from '../register';
 import { MVC } from './mvc';
 import { useLookup } from './useContext';
 
@@ -13,7 +13,7 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 })
 
-const Pending = new WeakMap<{}, ((context: Lookup) => void)[]>();
+const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
 function getContextForGetInstruction<T extends Model>(

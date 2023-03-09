@@ -1,8 +1,8 @@
 import React from 'react';
 
 import { issues } from '../helper/issues';
-import { Global } from '../lookup';
 import { Model } from '../model';
+import { Global } from '../register';
 import { MVC } from './mvc';
 
 const Oops = issues({

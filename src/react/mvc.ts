@@ -1,8 +1,8 @@
 import React from 'react';
 
 import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
-import { Global } from '../lookup';
 import { FindInstruction, Model } from '../model';
+import { Global } from '../register';
 import { getContextForGetInstruction } from './get';
 import { Oops, useContext } from './useContext';
 import { useModel } from './useModel';
