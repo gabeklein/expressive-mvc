@@ -74,7 +74,7 @@ function get<R, T extends Model>(
           throw new Error(`Factory argument cannot be ${arg1}`);
       }
       else if(Model.isTypeof(arg0)){
-        source = findModel(arg0, subject, sourceRequired)!;
+        source = find(arg0, subject, sourceRequired)!;
       }
       else if(typeof arg0 == "function"){
         arg1 = arg0.call(subject, key, subject);
@@ -217,7 +217,8 @@ export function flush(control: Control){
   pending.clear();
 }
 
-function findModel(
+// TODO: collapse this function when MVC is merged into Model.
+function find(
   type: Model.Type,
   relativeTo: Model,
   required: boolean){
