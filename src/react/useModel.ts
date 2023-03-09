@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import { control } from '../control';
 import { getOwnPropertyNames } from '../helper/object';
@@ -45,7 +45,7 @@ function useModel <T extends Model> (
   usePeerContext(instance);
 
   if(Array.isArray(arg1)){
-    const update = useState(0)[1];
+    const update = React.useState(0)[1];
 
     React.useLayoutEffect(() => {  
       if(arg1.length && instance instanceof Model)

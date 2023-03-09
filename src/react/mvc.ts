@@ -95,17 +95,19 @@ class MVC extends Model {
    */
   static get <I extends MVC> (this: Model.Type<I>, effectCallback: MVC.EffectCallback<I>): I | undefined;
 
-  /**
-   * **React Hook** - Fetch specific value from instance of this controller in context.
-   */
-  static get <I extends MVC, K extends Model.Key<I>> (this: Model.Type<I>, key: K): I[K];
-
   static get(
-    arg1?: string | boolean | MVC.EffectCallback,
+    arg1?: boolean | MVC.EffectCallback,
     arg2?: MVC.EffectCallback<MVC | undefined>){
 
     const required = arg1 === undefined || arg1 === true;
     const instance = useContext(this, required);
+
+    if(typeof arg1 === "function" && instance)
+      callback(arg1);
+    else if(arg2)
+      callback(arg2);
+
+    return instance;
 
     function callback(effect: MVC.EffectCallback<any>){
       try {
@@ -118,16 +120,6 @@ class MVC extends Model {
           effect(undefined);
       }
     }
-
-    if(typeof arg1 === "string")
-      return (instance as any)[arg1];
-
-    if(typeof arg1 === "function" && instance)
-      callback(arg1);
-    else if(arg2)
-      callback(arg2);
-
-    return instance;
   }
 
   /** 

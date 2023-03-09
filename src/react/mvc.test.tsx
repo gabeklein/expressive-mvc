@@ -28,13 +28,6 @@ describe("get", () => {
     expect(result.current!.value).toBe(1);
   })
 
-  it("will get instance value", () => {
-    Test.new();
-    const { result } = renderHook(() => Test.get("value"));
-
-    expect(result.current).toBe(1);
-  })
-
   it("will complain if not found", () => {
     const { result } = renderHook(() => Test.get());
     const expected = Oops.DoesNotExist(Test.name);

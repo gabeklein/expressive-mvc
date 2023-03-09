@@ -47,13 +47,6 @@ describe("init", () => {
     expect(() => hook.result.current).toThrowError(expected);
   })
 
-  it("will access values from found global", () => {
-    Test.new();
-    const rendered = renderHook(() => Test.get("value"));
-
-    expect(rendered.result.current).toBe(1);
-  })
-
   it("will complain already exists", () => {
     class Test extends Global {
       static keepAlive = false;
