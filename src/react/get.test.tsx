@@ -155,6 +155,30 @@ describe("context", () => {
       </Provider>
     );
   })
+
+  it("will maintain hook", async () => {
+    const didRender = jest.fn();
+
+    const Inner = () => {
+      Foo.use();
+      didRender();
+      return null;
+    }
+
+    const x = render(
+      <Provider for={Bar}>
+        <Inner />
+      </Provider>
+    );
+
+    x.update(
+      <Provider for={Bar}>
+        <Inner />
+      </Provider>
+    );
+
+    expect(didRender).toBeCalledTimes(2);
+  })
 })
 
 describe("singleton", () => {
