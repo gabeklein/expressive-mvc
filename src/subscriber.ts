@@ -71,20 +71,21 @@ class Subscriber <T extends {} = any> {
 
   private onEvent(key: Model.Event<T> | null){
     const { parent, watch } = this;
-    let handler = watch.get(key);
+    const handler = watch.get(key);
+
+    if(!handler)
+      return;
 
     if(typeof handler == "function")
-      handler = handler() as true | undefined;
+      handler();
 
-    if(handler){
-      const notify = this.onUpdate(key, parent);
+    const notify = this.onUpdate(key, parent);
 
-      if(notify){
-        parent.waiting.add(update => {
-          this.latest = update.filter(k => watch.has(k));
-        });
-        parent.waiting.add(notify);
-      }
+    if(notify){
+      parent.waiting.add(update => {
+        this.latest = update.filter(k => watch.has(k));
+      });
+      parent.waiting.add(notify);
     }
   }
 }

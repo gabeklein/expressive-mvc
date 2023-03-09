@@ -83,8 +83,6 @@ export function getRecursive(key: string, from: Control){
             reset = undefined;
           }
         }
-
-        return true;
       }
   
       local.follow(key, init);
