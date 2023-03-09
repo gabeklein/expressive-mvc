@@ -81,9 +81,8 @@ function useNewContext<T extends Model>(
       instance = typeof input == "object"
         ? input
         : context.get(input)!;
-    else {
+    else
       instance = context.add(input, key);
-    }
 
     init.add(instance);
 
