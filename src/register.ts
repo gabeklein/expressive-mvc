@@ -5,7 +5,7 @@ export class Register {
   private table = new Map<Model.Type, symbol>();
   public register!: Map<string | number, Model | Model.Type>;
 
-  private key(T: Model.Type){
+  private has(T: Model.Type){
     let key = this.table.get(T);
 
     if(!key){
@@ -17,7 +17,7 @@ export class Register {
   }
 
   public get<T extends Model>(Type: Model.Type<T>){
-    return this[this.key(Type)] as unknown as T | undefined;
+    return this[this.has(Type)] as unknown as T | undefined;
   }
 
   public add(
@@ -39,7 +39,7 @@ export class Register {
     }
 
     do {
-      const key = this.key(T);
+      const key = this.has(T);
 
       defineProperty(this, key, {
         configurable: true,
