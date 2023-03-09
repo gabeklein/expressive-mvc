@@ -68,13 +68,13 @@ function add<T = any>(
         try {
           const value = get ? get(local) : control.state.get(key);
           
-          if(value === undefined && local && local.suspend === true)
+          if(value === undefined && local && local.strict === true)
             throw suspend(control, key);
             
           return value;
         }
         catch(err){
-          if(err instanceof Promise && local && local.suspend === false)
+          if(err instanceof Promise && local && local.strict === false)
             return;
 
           throw err;

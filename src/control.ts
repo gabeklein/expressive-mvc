@@ -72,7 +72,7 @@ class Control<T extends {} = any> {
         if(sub){
           sub.follow(key);
 
-          if(value === undefined && sub.suspend)
+          if(value === undefined && sub.strict)
             throw suspend(this, key);
         }
 
