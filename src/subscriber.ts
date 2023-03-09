@@ -17,7 +17,7 @@ declare namespace Subscriber {
 
 class Subscriber <T extends {} = any> {
   public proxy!: T;
-  public release!: Callback;
+  public clear: () => void;
   public latest?: Model.Event<T>[];
 
   public active = false;
@@ -41,6 +41,11 @@ class Subscriber <T extends {} = any> {
         return proxy;
       }
     })
+
+    this.clear = parent.addListener(key => {
+      if(this.active)
+        this.notify(key);
+    });
   }
 
   get using(): Model.Key<T>[] {
@@ -55,20 +60,16 @@ class Subscriber <T extends {} = any> {
   }
 
   commit(){
-    const release = this.parent.addListener(key => {
-      if(this.active)
-        this.onEvent(key);
-    });
-
     this.active = true;
     this.dependant.forEach(x => x.commit());
-    this.release = () => {
-      this.dependant.forEach(x => x.release());
-      release();
-    };
   }
 
-  private onEvent(key: Model.Event<T> | null){
+  release(){
+    this.clear();
+    this.dependant.forEach(x => x.release());
+  }
+
+  private notify(key: Model.Event<T> | null){
     const { parent, watch } = this;
     const handler = watch.get(key);
 
