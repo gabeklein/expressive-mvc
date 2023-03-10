@@ -53,7 +53,7 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
  
 function get<R, T extends Model>(
-  arg0: get.Factory<R, T> | Model.Type<T> | T,
+  arg0: get.Factory<R, T> | (Model.Type<T> & typeof Model) | T,
   arg1?: get.Function<R, T> | boolean): R {
 
   return add(
