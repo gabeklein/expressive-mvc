@@ -1,7 +1,6 @@
 import React from 'react';
 
 import { control } from '../control';
-import { getOwnPropertyNames } from '../helper/object';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { usePeerContext } from './get';
@@ -66,21 +65,8 @@ function useModel <T extends Model> (
     return new Subscriber(control(instance), () => refresh);
   }, []);
 
-  if(typeof arg1 == "object"){
-    const { waiting, subject } = local.parent;
-    let keys = arg2 as Model.Key<T>[];
-
-    local.active = false;
-
-    if(!keys)
-      keys = getOwnPropertyNames(subject) as Model.Key<T>[];
-
-    for(const key of keys)
-      if(key in arg1)
-        subject[key] = arg1[key]!;
-
-    waiting.add(() => local.active = true);
-  }
+  if(typeof arg1 == "object")
+    local.apply(arg1, arg2 as Model.Key<T>[]);
 
   React.useLayoutEffect(() => {
     local.commit();

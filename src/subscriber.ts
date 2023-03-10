@@ -1,5 +1,5 @@
 import { Control } from './control';
-import { create, defineProperty } from './helper/object';
+import { create, defineProperty, getOwnPropertyNames } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from './helper/types';
@@ -50,6 +50,21 @@ class Subscriber <T extends {} = any> {
 
   get using(): Model.Key<T>[] {
     return Array.from(this.watch.keys());
+  }
+
+  apply(values: Model.Compat<T>, keys?: Model.Key<T>[]){
+    const { waiting, subject } = this.parent;
+
+    this.active = false;
+
+    if(!keys)
+      keys = getOwnPropertyNames(subject) as Model.Key<T>[];
+
+    for(const key of keys)
+      if(key in values)
+        subject[key] = values[key]!;
+
+    waiting.add(() => this.active = true);
   }
 
   follow(key: any, value?: boolean | (() => boolean | void)){
