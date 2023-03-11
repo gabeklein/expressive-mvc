@@ -4,7 +4,6 @@ import { render, subscribeTo } from '../helper/testing';
 import { get } from '../instruction/get';
 import { Consumer } from './consumer';
 import { Oops } from './get';
-import { Global } from './global';
 import { MVC } from './mvc';
 import { Provider } from './provider';
 
@@ -178,52 +177,6 @@ describe("context", () => {
     );
 
     expect(didRender).toBeCalledTimes(2);
-  })
-})
-
-describe("singleton", () => {
-  it("will attach to model", () => {
-    class Foo extends MVC {
-      global = get(TestGlobal);
-    }
-
-    class TestGlobal extends Global {
-      value = "bar";
-    }
-
-    TestGlobal.new();
-
-    const Test = () => {
-      const { global } = Foo.use();
-      expect(global.value).toBe("bar");
-      return null;
-    }
-
-    render(<Test />);
-  })
-
-  it("will attach to another singleton", () => {
-    class Peer extends Global {}
-    class Test extends Global {
-      peer = get(Peer);
-    }
-
-    const peer = Peer.new();
-    const global = Test.new();    
-
-    expect(global.peer).toBe(peer);
-  })
-
-  it("will throw if tries to attach Model", () => {
-    class Normal extends MVC {}
-    class TestGlobal extends Global {
-      notPossible = get(Normal);
-    }
-
-    const attempt = () => TestGlobal.new();
-    const issue = Oops.NotAllowed(TestGlobal.name, Normal.name);
-
-    expect(attempt).toThrowError(issue);
   })
 })
 

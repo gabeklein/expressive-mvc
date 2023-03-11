@@ -3,10 +3,9 @@ import React, { Suspense } from 'react';
 import { mockAsync, render } from '../helper/testing';
 import { set } from '../instruction/set';
 import { Consumer } from './consumer';
-import { Global } from './global';
 import { MVC } from './mvc';
-import { Oops as Context } from './useContext';
 import { Oops, Provider } from './provider';
+import { Oops as Context } from './useContext';
 
 class Foo extends MVC {
   value?: string = undefined;
@@ -341,27 +340,6 @@ describe("suspense", () => {
     expect(didRender).toBeCalledWith("hello!");
 
     element.unmount();
-  })
-})
-
-describe("global", () => {
-  it("will create but not destroy instance", () => {
-    class Test extends Global {}
-
-    expect(Test.get(false)).toBeUndefined();
-
-    const element = render(<Provider for={Test} />);
-    const test = Test.get();
-
-    expect(test).toBeInstanceOf(Test);
-
-    element.unmount();
-
-    expect(Test.get()).toBe(test);
-
-    render(<Provider for={Test} />).unmount();
-
-    test.gc(true);
   })
 })
 
