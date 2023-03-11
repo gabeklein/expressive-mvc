@@ -89,9 +89,8 @@ declare namespace Model {
 
 class Model {
   /**
-   * Circular reference to `this` controller.
-   * 
-   * Useful to obtain full reference where one has already destructured.
+   * Reference to `this` without a subscription.
+   * Use to obtain full reference from a destructure.
    */
   is!: this;
 
