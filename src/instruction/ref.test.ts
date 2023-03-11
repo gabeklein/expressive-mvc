@@ -1,4 +1,5 @@
-import { Model, ref } from '..';
+import { Model } from '../model';
+import { ref } from './ref';
 
 describe("property", () => {
   class Subject extends Model {

@@ -1,5 +1,5 @@
-import { run, Model } from '..';
-import { Oops } from './run';
+import { Model } from '../model';
+import { Oops, run } from './run';
 import { set } from './set';
 
 class Test extends Model {

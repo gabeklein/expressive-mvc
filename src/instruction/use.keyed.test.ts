@@ -1,4 +1,4 @@
-import { Model } from '..';
+import { Model } from '../model';
 import { get } from './get';
 import { use } from './use';
 
