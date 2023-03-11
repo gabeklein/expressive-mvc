@@ -5,6 +5,7 @@ import { set } from '../instruction/set';
 import { Consumer } from './consumer';
 import { Global } from './global';
 import { MVC } from './mvc';
+import { Oops as Context } from './useContext';
 import { Oops, Provider } from './provider';
 
 class Foo extends MVC {
@@ -122,6 +123,24 @@ it("will provide a mix of state and models", () => {
       <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
     </Provider>
   )
+})
+
+it("will conflict colliding Model types", () => {
+  const foo = Foo.new();
+  const expected = Context.MultipleExist("Foo");
+
+  const Consumer: React.VFC = jest.fn(() => {
+    expect(() => Foo.tap()).toThrowError(expected);
+    return null;
+  });
+
+  render(
+    <Provider for={{ Foo, foo }}>
+      <Consumer />
+    </Provider>
+  )
+
+  expect(Consumer).toHaveBeenCalled();
 })
 
 it("will throw if missing `for` prop", () => {

@@ -13,7 +13,10 @@ const Oops = issues({
     `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
 
   NotFound: (name) =>
-    `Couldn't find ${name} in context; did you forget to use a Provider?`
+    `Couldn't find ${name} in context; did you forget to use a Provider?`,
+
+  MultipleExist: (name) =>
+    `Did find ${name} in context, but multiple were defined by same Provider.`
 })
 
 const LookupContext = React.createContext(Global);
@@ -33,7 +36,10 @@ function useContext <T extends Model> (Type: Model.Type<T>, required?: boolean):
 function useContext<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined {
   const instance = useLookup().get(Type);
 
-  if (!instance && required !== false)
+  if(instance === null)
+    throw Oops.MultipleExist(Type.name);
+
+  if(!instance && required !== false)
     throw MVC.isTypeof(Type) && Type.global
       ? Oops.DoesNotExist(Type.name)
       : Oops.NotFound(Type.name);
