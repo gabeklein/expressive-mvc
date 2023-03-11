@@ -434,6 +434,8 @@ describe("method", () => {
 
   it("will provide property key to factory", () => {
     class Test extends Model {
+      // TODO: why is key not implicit?
+      // @ts-ignore
       fooBar = get((key) => () => key);
     }
 
