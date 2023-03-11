@@ -54,11 +54,11 @@ function add<T = any>(
 
     defineProperty(control.subject, key, {
       enumerable,
-
-      set: set === false
-        ? undefined
-        : control.ref(key, set),
-
+      set: (
+        set === false
+          ? undefined
+          : control.ref(key, set)
+      ),
       get(this: any){
         const local = subscriber(this);
 
