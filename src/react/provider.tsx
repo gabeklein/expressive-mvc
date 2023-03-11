@@ -97,6 +97,7 @@ function useNewContext<T extends Model>(
 
   for(const instance of init){
     control(instance).state.forEach(value => {
+      // TODO: should this run repeatedly?
       if(Parent.get(value) === instance){
         context.add(value);
         init.add(value);
@@ -105,6 +106,9 @@ function useNewContext<T extends Model>(
 
     for(const apply of getPending(instance))
       apply(context)
+
+    // TODO: add test to validate this.
+    init.delete(instance);
   }
 
   React.useLayoutEffect(() => () => context.pop(), []);
