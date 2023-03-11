@@ -43,7 +43,7 @@ export class Register {
 
       defineProperty(this, key, {
         configurable: true,
-        value: this.hasOwnProperty(key) ? null : I,
+        value: this.hasOwnProperty(key) && I !== this[key] ? null : I,
         writable
       });
 
