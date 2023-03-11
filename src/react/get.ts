@@ -18,39 +18,33 @@ const Applied = new WeakMap<Model, boolean>();
 
 function getContextForGetInstruction<T extends Model>(
   type: Model.Type<T>,
-  relativeTo: Model,
+  from: Model,
   required: boolean
 ){
-  let item = getParent(type, relativeTo);
+  let item = getParent(type, from);
 
   return (refresh: (x: T) => void) => {
     if(item)
       return item;
 
-    findRelative(relativeTo, type, got => {
+    const callback = (got: T | undefined) => {
       if(got){
         item = got;
         refresh(got);
       }
       else if(required)
-        throw Oops.AmbientRequired(type.name, relativeTo);
-    })
-  }
-}
+        throw Oops.AmbientRequired(type.name, from);
+    }
 
-function findRelative<T extends Model>(
-  from: Model,
-  type: Model.Type<T>,
-  callback: (got: T | undefined) => void
-){
-  if(MVC.isTypeof(type) && type.global)
-    callback(Global.get(type));
-  else if((from as any).constructor.global)
-    throw Oops.NotAllowed(from, type.name)
-  else
-    getPending(from).push(context => {
-      callback(context.get<T>(type));
-    })
+    if(MVC.isTypeof(type) && type.global)
+      callback(Global.get(type));
+    else if((from as any).constructor.global)
+      throw Oops.NotAllowed(from, type.name)
+    else
+      getPending(from).push(context => {
+        callback(context.get<T>(type));
+      })
+  }
 }
 
 function usePeerContext(subject: Model){
