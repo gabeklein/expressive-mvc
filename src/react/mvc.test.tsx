@@ -16,7 +16,7 @@ describe("get", () => {
 
   afterEach(() => {
     Test.get(instance => {
-      instance.end(true);
+      instance.gc(true);
     });
   });
 
@@ -98,7 +98,7 @@ describe("get", () => {
     expect(effect).toBeCalled();
     expect(effect2).not.toBeCalled();
 
-    test.end(true);
+    test.gc(true);
 
     expect(effect2).toBeCalled();
   })

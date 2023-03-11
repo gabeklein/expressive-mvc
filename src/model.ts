@@ -219,7 +219,7 @@ class Model {
   /** 
    * Clean up side effects and mark this instance for garbage-collection.
    */
-  end(){
+  gc(){
     control(this).clear();
   }
 

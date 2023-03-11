@@ -10,7 +10,7 @@ describe("init", () => {
 
   afterEach(() => {
     Test.get(instance => {
-      instance.end(true);
+      instance.gc(true);
     });
   });
 
@@ -36,7 +36,7 @@ describe("init", () => {
     Test.new();
     expect(Test.get()).toBeDefined();
 
-    Test.get().end(true);
+    Test.get().gc(true);
     expect(Test.get(false)).toBeUndefined();
   })
 

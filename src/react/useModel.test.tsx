@@ -29,8 +29,8 @@ describe("hook", () => {
     const didDestroy = jest.fn();
 
     class Test extends MVC {
-      end(){
-        super.end();
+      gc(){
+        super.gc();
         didDestroy();
       }
     }

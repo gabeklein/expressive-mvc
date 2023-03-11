@@ -76,7 +76,7 @@ export class Register {
     }
 
     for(const model of items)
-      model.end();
+      model.gc();
   }
 
   public delete(instance: Model){

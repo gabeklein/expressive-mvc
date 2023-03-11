@@ -34,13 +34,13 @@ declare namespace MVC {
 }
 
 class MVC extends Model {
-  end(force?: boolean): boolean | void {
+  gc(force?: boolean): boolean | void {
     const type = this.constructor as typeof MVC;
     
     if(type.keepAlive && !force)
       return false;
 
-    super.end();
+    super.gc();
     Global.delete(this);
 
     return true;

@@ -170,7 +170,7 @@ describe("on multiple", () => {
 
     expect(callback).not.toBeCalled();
 
-    state.end();
+    state.gc();
 
     expect(callback).toBeCalledWith([]);
   })
@@ -240,7 +240,7 @@ describe("on promise", () => {
     const state = Subject.new();
     const update = state.on([]);
 
-    state.end();
+    state.gc();
 
     await expect(update).resolves.toEqual([]);
   })
@@ -292,7 +292,7 @@ describe("timeout", () => {
     const promise = state.on("seconds");
     const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
 
-    state.end();
+    state.gc();
 
     await expect(promise).rejects.toThrow(expected);
   })

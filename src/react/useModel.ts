@@ -52,7 +52,7 @@ function useModel <T extends Model> (
 
       return () => {
         if(Model.isTypeof(source))
-          (instance as Model).end();
+          (instance as Model).gc();
       }
     }, []);
 
@@ -75,7 +75,7 @@ function useModel <T extends Model> (
       local.release();
 
       if(Model.isTypeof(source))
-        (instance as Model).end();
+        (instance as Model).gc();
     };
   }, []);
 
