@@ -61,17 +61,12 @@ class MVC extends Model {
 
     const required = arg1 === undefined || arg1 === true;
     const instance = useContext(this, required);
+    const effect = typeof arg1 === "function" && instance ? arg1 : arg2;
 
-    if(typeof arg1 === "function" && instance)
-      callback(arg1);
-    else if(arg2)
-      callback(arg2);
+    if(effect)
+      React.useLayoutEffect(() => effect(instance), []);
 
     return instance;
-
-    function callback(effect: MVC.EffectCallback<any>){
-      React.useLayoutEffect(() => effect(instance), []);
-    }
   }
 
   /** 
