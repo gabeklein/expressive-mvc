@@ -78,13 +78,4 @@ export class Register {
     for(const model of items)
       model.gc();
   }
-
-  public delete(instance: Model){
-    for(const key of getOwnPropertySymbols(this)){
-      const entry = getOwnPropertyDescriptor(this, key)!;
-
-      if(entry.value === instance)
-        delete (this as any)[key];
-    }
-  }
 }
