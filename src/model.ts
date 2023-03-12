@@ -215,9 +215,7 @@ class Model {
     }
   }
 
-  /** 
-   * Clean up side effects and mark this instance for garbage-collection.
-   */
+  /** Mark this instance for garbage collection. */
   gc(){
     control(this).clear();
   }
