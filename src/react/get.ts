@@ -1,14 +1,10 @@
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
-import { Global, Register } from '../register';
-import { MVC } from './mvc';
+import { Register } from '../register';
 import { useLookup } from './useContext';
 
 export const Oops = issues({
-  NotAllowed: (parent, child) =>
-    `Global '${parent}' attempted to attach '${child}' but it is not also a singleton.`,
-
   AmbientRequired: (requested, requester) =>
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 })
@@ -27,23 +23,16 @@ function getContextForGetInstruction<T extends Model>(
     if(item)
       return item;
 
-    const callback = (got: T | undefined) => {
+    getPending(from).push(context => {
+      let got = context.get<T>(type);
+
       if(got){
         item = got;
         refresh(got);
       }
       else if(required)
         throw Oops.AmbientRequired(type.name, from);
-    }
-
-    if(MVC.isTypeof(type) && type.global)
-      callback(Global.get(type));
-    else if((from as any).constructor.global)
-      throw Oops.NotAllowed(from, type.name)
-    else
-      getPending(from).push(context => {
-        callback(context.get<T>(type));
-      })
+    })
   }
 }
 

@@ -3,15 +3,8 @@ import React from 'react';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { Global } from '../register';
-import { MVC } from './mvc';
 
 const Oops = issues({
-  AlreadyExists: (name) =>
-    `Shared instance of ${name} already exists! Consider unmounting existing, or use ${name}.reset() to force-delete it.`,
-
-  DoesNotExist: (name) =>
-    `Tried to access singleton ${name}, but none exist! Did you forget to initialize?\nCall ${name}.new() before attempting to access, or consider using ${name}.use() instead.`,
-
   NotFound: (name) =>
     `Couldn't find ${name} in context; did you forget to use a Provider?`,
 
@@ -40,9 +33,7 @@ function useContext<T extends Model>(Type: Model.Type<T>, required?: boolean): T
     throw Oops.MultipleExist(Type.name);
 
   if(!instance && required !== false)
-    throw MVC.isTypeof(Type) && Type.global
-      ? Oops.DoesNotExist(Type.name)
-      : Oops.NotFound(Type.name);
+    throw Oops.NotFound(Type.name);
 
   return instance;
 }

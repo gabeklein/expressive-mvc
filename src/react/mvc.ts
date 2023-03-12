@@ -1,10 +1,9 @@
 import React from 'react';
 
-import { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
+import { Callback, Class, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { FindInstruction, Model } from '../model';
-import { Global } from '../register';
 import { getContextForGetInstruction } from './get';
-import { Oops, useContext } from './useContext';
+import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
@@ -34,45 +33,6 @@ declare namespace MVC {
 }
 
 class MVC extends Model {
-  gc(force?: boolean): boolean | void {
-    const type = this.constructor as typeof MVC;
-    
-    if(type.keepAlive && !force)
-      return false;
-
-    super.gc();
-    Global.delete(this);
-
-    return true;
-  }
-
-  static global?: boolean;
-  static keepAlive?: boolean;
-
-  /**
-   * Create a new instance of this model and activate its managed state.
-   * 
-   * @param args - arguments sent to constructor
-   */
-  static new <T extends Class> (this: T, ...args: ConstructorParameters<T>): InstanceOf<T>;
-
-  static new(...args: []){
-    const exists = Global.get(this);
-
-    if(exists)
-      if(this.keepAlive)
-        return exists;
-      else
-        throw Oops.AlreadyExists(this.name);
-
-    const instance = super.new(...args) as MVC;
-
-    if(this.global)
-      Global.add(instance);
-
-    return instance;
-  }
-
   /**
    * **React Hook** - Fetch most instance of this controller from context, if it exists.
    * 

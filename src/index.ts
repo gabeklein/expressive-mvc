@@ -8,6 +8,5 @@ export { use } from './instruction/use';
 export { MVC, MVC as Model, MVC as default } from './react/mvc';
 export { Consumer } from './react/consumer';
 export { Provider } from './react/provider';
-export { Global } from './react/global';
 
 export { Debug } from './debug';

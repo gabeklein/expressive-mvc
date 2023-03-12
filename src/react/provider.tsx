@@ -7,7 +7,6 @@ import { assignWeak, entries } from '../helper/object';
 import { Class } from '../helper/types';
 import { Model } from '../model';
 import { getPending } from './get';
-import { MVC } from './mvc';
 import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
@@ -75,9 +74,7 @@ function useNewContext<T extends Model>(
   function register(key: string | number, input: Model | Model.New){
     let instance: Model;
 
-    if(MVC.isTypeof(input) && input.global)
-      instance = input.new();
-    else if(context.register.get(key) === input)
+    if(context.register.get(key) === input)
       instance = typeof input == "object"
         ? input
         : context.get(input)!;
