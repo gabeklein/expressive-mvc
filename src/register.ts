@@ -88,5 +88,3 @@ export class Register {
     }
   }
 }
-
-export const Global = new Register();

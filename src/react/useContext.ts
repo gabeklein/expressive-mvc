@@ -2,7 +2,7 @@ import React from 'react';
 
 import { issues } from '../helper/issues';
 import { Model } from '../model';
-import { Global } from '../register';
+import { Register } from '../register';
 
 const Oops = issues({
   NotFound: (name) =>
@@ -12,6 +12,7 @@ const Oops = issues({
     `Did find ${name} in context, but multiple were defined by same Provider.`
 })
 
+const Global = new Register();
 const LookupContext = React.createContext(Global);
 
 function useLookup(){
