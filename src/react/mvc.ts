@@ -70,15 +70,7 @@ class MVC extends Model {
     return instance;
 
     function callback(effect: MVC.EffectCallback<any>){
-      try {
-        React.useLayoutEffect(() => effect(instance), []);
-      }
-      catch(err){
-        if(instance)
-          instance.on(effect, []);
-        else
-          effect(undefined);
-      }
+      React.useLayoutEffect(() => effect(instance), []);
     }
   }
 

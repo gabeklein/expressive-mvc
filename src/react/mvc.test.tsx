@@ -67,12 +67,6 @@ describe("get", () => {
     renderHook(() => Test.get(false, didGet));
     expect(didGet).toBeCalledWith(undefined);
   })
-
-  it("will callback with undefined outside component", () => {
-    const didGet = jest.fn();
-    Test.get(false, didGet)
-    expect(didGet).toBeCalledWith(undefined);
-  })
 })
 
 describe("meta", () => {
