@@ -73,18 +73,14 @@ class MVC extends Model {
    * **React Hook** - Fetch and subscribe to instance of this controller within ambient component.
    */
   static tap <T extends MVC> (this: Model.Type<T>): T;
-
   static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, R | (() => R)>, expect?: boolean): R;
   static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
   static tap <T extends MVC, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-
   static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, () => R>): NoVoid<R>;
   static tap <T extends MVC, R> (this: Model.Type<T>, init: MVC.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
-
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends MVC, R> (this: Model.Type<T>, compute: MVC.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
-
   static tap <T extends MVC> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
   static tap <T extends MVC> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
@@ -101,10 +97,8 @@ class MVC extends Model {
   }
 
   protected static meta <T extends Class>(this: T): T;
-
   protected static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
   protected static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
-
   protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
   protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
   protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
