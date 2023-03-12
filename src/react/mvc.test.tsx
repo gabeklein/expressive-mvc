@@ -2,7 +2,6 @@ import React from 'react';
 
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
-import { Global } from './global';
 import { MVC } from './mvc';
 import { Provider } from './provider';
 import { Oops } from './useContext';
@@ -10,45 +9,56 @@ import { Oops } from './useContext';
 const opts = { timeout: 100 };
 
 describe("get", () => {
-  class Test extends Global {
+  class Test extends MVC {
     value = 1;
   }
 
-  afterEach(() => {
-    Test.get(instance => {
-      instance.gc(true);
-    });
-  });
+  function render<T>(
+    hook: () => T,
+    provide?: MVC){
+
+    let wrapper: React.FC | undefined;
+
+    if(provide)
+      wrapper = ({ children }) => (
+        <Provider for={provide}>
+          {children}
+        </Provider>
+      )
+
+    return renderHook(hook, { wrapper }).result;
+  }
 
   it("will get instance", () => {
     const instance = Test.new();
-    const { result } = renderHook(() => Test.get());
+    const result = render(() => Test.get(), instance);
 
     expect(result.current).toBe(instance);
     expect(result.current!.value).toBe(1);
   })
 
   it("will complain if not found", () => {
-    const { result } = renderHook(() => Test.get());
-    const expected = Oops.DoesNotExist(Test.name);
+    const result = render(() => Test.get());
+    const expected = Oops.NotFound(Test.name);
 
     expect(() => result.current).toThrowError(expected);
   })
 
   it("will return undefined if not found", () => {
-    const { result } = renderHook(() => Test.get(false));
+    const result = render(() => Test.get(false));
 
     expect(result.current).toBeUndefined();
   })
 
   it("will only callback if instance exists", () => {
     const didGet = jest.fn();
-    renderHook(() => Test.get(didGet));
 
+    render(() => Test.get(didGet));
     expect(didGet).not.toBeCalled();
 
-    Test.new();
-    renderHook(() => Test.get(didGet));
+    const test = Test.new();
+
+    render(() => Test.get(didGet), test);
     expect(didGet).toBeCalledWith(expect.any(Test));
   })
 
@@ -62,45 +72,6 @@ describe("get", () => {
     const didGet = jest.fn();
     Test.get(false, didGet)
     expect(didGet).toBeCalledWith(undefined);
-  })
-
-  it("will get instance outside component", () => {
-    const instance = Test.new();
-    const got = Test.get();
-
-    expect(got).toBe(instance);
-    expect(got.value).toBe(1);
-  })
-
-  it("will call return-effect on unmount", () => {
-    const effect = jest.fn(() => effect2);
-    const effect2 = jest.fn();
-
-    Test.new();
-
-    const element = renderHook(() => Test.get(effect));
-
-    expect(effect).toBeCalled();
-    expect(effect2).not.toBeCalled();
-
-    element.unmount();
-
-    expect(effect2).toBeCalled();
-  })
-
-  it("will call return-effect on destroy", () => {
-    const effect = jest.fn(() => effect2);
-    const effect2 = jest.fn();
-    const test = Test.new();
-
-    Test.get(effect)
-
-    expect(effect).toBeCalled();
-    expect(effect2).not.toBeCalled();
-
-    test.gc(true);
-
-    expect(effect2).toBeCalled();
   })
 })
 

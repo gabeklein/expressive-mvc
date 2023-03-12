@@ -130,5 +130,55 @@ describe("get instruction", () => {
 
     expect(attempt).toThrowError(issue);
   })
-  
+})
+
+describe("mvc", () => {
+  class Test extends Global {
+    value = 1;
+  }
+
+  afterEach(() => {
+    Test.get(instance => {
+      instance.gc(true);
+    });
+  });
+
+  it("will get instance outside component", () => {
+    const instance = Test.new();
+    const got = Test.get();
+
+    expect(got).toBe(instance);
+    expect(got.value).toBe(1);
+  })
+
+  it("will call return-effect on unmount", () => {
+    const effect = jest.fn(() => effect2);
+    const effect2 = jest.fn();
+
+    Test.new();
+
+    const element = renderHook(() => Test.get(effect));
+
+    expect(effect).toBeCalled();
+    expect(effect2).not.toBeCalled();
+
+    element.unmount();
+
+    expect(effect2).toBeCalled();
+  })
+
+  it("will call return-effect on destroy", () => {
+    const effect = jest.fn(() => effect2);
+    const effect2 = jest.fn();
+    const test = Test.new();
+
+    Test.get(effect)
+
+    expect(effect).toBeCalled();
+    expect(effect2).not.toBeCalled();
+
+    test.gc(true);
+
+    expect(effect2).toBeCalled();
+  })
 })
