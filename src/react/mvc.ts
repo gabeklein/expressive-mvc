@@ -96,8 +96,8 @@ class MVC extends Model {
   static use <I extends MVC> (this: Model.Type<I>, callback?: (instance: I) => void): I;
   static use <I extends MVC> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
-  static use <T extends typeof MVC> (this: T, a: any, b?: any){
-    return useModel(this, a, b);
+  static use <T extends typeof MVC> (this: T, arg1: any, arg2?: any){
+    return useModel(this, arg1, arg2);
   }
 
   protected static meta <T extends Class>(this: T): T;
