@@ -51,6 +51,71 @@ describe("get", () => {
   })
 })
 
+describe("tap", () => {
+  it("will get model from context", () => {
+    class Test extends MVC {}
+
+    const Hook = () => {
+      const value = Test.tap();
+      expect(value).toBeInstanceOf(Test);
+      return null;
+    }
+
+    render(
+      <Provider for={Test}>
+        <Hook />
+      </Provider>
+    );
+  })
+
+  it("will run initial callback syncronously", async () => {
+    class Parent extends MVC {
+      values = [] as string[]
+    }
+    
+    type ChildProps = {
+      value: string;
+    }
+
+    const Child = (props: ChildProps) => {
+      Parent.tap($ => {
+        didPushToValues();
+        $.values.push(props.value);
+        $.set("values");
+
+        return () => null;
+      });
+
+      return null;
+    }
+
+    const parent = Parent.new();
+    const didUpdateValues = jest.fn();
+    const didPushToValues = jest.fn();
+
+    parent.on("values", didUpdateValues);
+
+    const element = render(
+      <Provider for={parent}>
+        <Child value='foo' />
+        <Child value='bar' />
+        <Child value='baz' />
+      </Provider>
+    )
+
+    expect(didPushToValues).toBeCalledTimes(3);
+
+    await parent.on(true);
+
+    expect(parent.values.length).toBe(3);
+
+    // Expect updates to have bunched up before new frame.
+    expect(didUpdateValues).toBeCalledTimes(1);
+
+    element.unmount();
+  })
+})
+
 describe("meta", () => {
   it('will track static values', async () => {
     class Parent extends MVC {
@@ -133,70 +198,5 @@ describe("meta", () => {
     Parent.child.value = "bar";
     await waitForNextUpdate(opts);
     expect(result.current).toBe("bar");
-  })
-})
-
-describe("tap", () => {
-  it("will get model from context", () => {
-    class Test extends MVC {}
-
-    const Hook = () => {
-      const value = Test.tap();
-      expect(value).toBeInstanceOf(Test);
-      return null;
-    }
-
-    render(
-      <Provider for={Test}>
-        <Hook />
-      </Provider>
-    );
-  })
-
-  it("will run initial callback syncronously", async () => {
-    class Parent extends MVC {
-      values = [] as string[]
-    }
-    
-    type ChildProps = {
-      value: string;
-    }
-
-    const Child = (props: ChildProps) => {
-      Parent.tap($ => {
-        didPushToValues();
-        $.values.push(props.value);
-        $.set("values");
-
-        return () => null;
-      });
-
-      return null;
-    }
-
-    const parent = Parent.new();
-    const didUpdateValues = jest.fn();
-    const didPushToValues = jest.fn();
-
-    parent.on("values", didUpdateValues);
-
-    const element = render(
-      <Provider for={parent}>
-        <Child value='foo' />
-        <Child value='bar' />
-        <Child value='baz' />
-      </Provider>
-    )
-
-    expect(didPushToValues).toBeCalledTimes(3);
-
-    await parent.on(true);
-
-    expect(parent.values.length).toBe(3);
-
-    // Expect updates to have bunched up before new frame.
-    expect(didUpdateValues).toBeCalledTimes(1);
-
-    element.unmount();
   })
 })
