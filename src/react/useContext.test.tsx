@@ -36,27 +36,4 @@ describe("get", () => {
       Oops.NotFound(Test.name)
     );
   })
-
-
-  it("will run callback if function", async () => {
-    const willMount = jest.fn(() => willUnmount);
-    const willUnmount = jest.fn();
-
-    const Hook = () => {
-      Test.get(willMount);
-      return null;
-    }
-
-    const element = render(
-      <Provider for={Test}>
-        <Hook />
-      </Provider>
-    );
-
-    expect(willMount).toBeCalledWith(expect.any(Test));
-
-    element.unmount();
-
-    expect(willUnmount).toBeCalled();
-  })
 })

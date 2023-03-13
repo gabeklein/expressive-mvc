@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Callback, Class, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { FindInstruction, Model } from '../model';
 import { getContextForGetInstruction } from './get';
@@ -33,22 +31,11 @@ declare namespace MVC {
 }
 
 class MVC extends Model {
-  static get <T extends MVC> (this: Model.Type<T>, required?: boolean, effectCallback?: MVC.EffectCallback<T>): T;
-  static get <T extends MVC> (this: Model.Type<T>, required: false, effectCallback?: MVC.EffectCallback<T | undefined>): T | undefined;
-  static get <I extends MVC> (this: Model.Type<I>, effectCallback: MVC.EffectCallback<I>): I | undefined;
+  static get <T extends MVC> (this: Model.Type<T>, required?: boolean): T;
+  static get <T extends MVC> (this: Model.Type<T>, required: false): T | undefined;
 
-  static get(
-    arg1?: boolean | MVC.EffectCallback,
-    arg2?: MVC.EffectCallback<MVC | undefined>){
-
-    const required = arg1 === undefined || arg1 === true;
-    const instance = useContext(this, required);
-    const effect = typeof arg1 === "function" && instance ? arg1 : arg2;
-
-    if(effect)
-      React.useLayoutEffect(() => effect(instance), []);
-
-    return instance;
+  static get(required?: boolean){
+    return useContext(this, required);
   }
 
   static tap <T extends MVC> (this: Model.Type<T>): T;

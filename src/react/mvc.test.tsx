@@ -49,24 +49,6 @@ describe("get", () => {
 
     expect(result.current).toBeUndefined();
   })
-
-  it("will only callback if instance exists", () => {
-    const didGet = jest.fn();
-
-    render(() => Test.get(didGet));
-    expect(didGet).not.toBeCalled();
-
-    const test = Test.new();
-
-    render(() => Test.get(didGet), test);
-    expect(didGet).toBeCalledWith(expect.any(Test));
-  })
-
-  it("will callback with undefined", () => {
-    const didGet = jest.fn();
-    renderHook(() => Test.get(false, didGet));
-    expect(didGet).toBeCalledWith(undefined);
-  })
 })
 
 describe("meta", () => {
