@@ -7,11 +7,13 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, InstanceOf } from './helper/types';
+import type { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>
-    `Then called with undefined; update promise will never catch nor supports chaining.`
+    `Then called with undefined; update promise will never catch nor supports chaining.`,
+
+  NoAdapter: (method) => `Can't call Model.${method} without an adapter.`
 });
 
 declare namespace Model {
@@ -85,6 +87,27 @@ declare namespace Model {
     relativeTo: Model,
     required: boolean
   ) => (_refresh: (x: T) => void) => T | undefined;
+
+  export type TapCallback<T extends Model, R> =
+    (this: T, model: T, update: ForceUpdate) => R;
+
+  type ForceUpdate = {
+    /** Force an update in current component. */
+    (): void;
+    
+    /**
+     * Force an update and again after promise either resolves or rejects.
+     * Will return a duplicate of given Promise, which resolves after refresh.
+     */
+    <T = void>(passthru?: Promise<T>): Promise<T>
+
+    /**
+     * Force a update while calling async function.
+     * A refresh will occur both before and after given function.
+     * Any actions performed before first `await` will occur before refresh!
+     */
+    <T = void>(invoke?: () => Promise<T>): Promise<T>
+  };
 }
 
 class Model {
@@ -233,6 +256,49 @@ class Model {
     const instance = new this(...args);
     control(instance);
     return instance;
+  }
+
+  static use <I extends Model> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
+  static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
+  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
+
+  static use(){
+    return Oops.NoAdapter("use");
+  }
+
+  static get <T extends Model> (this: Model.Type<T>, required?: boolean): T;
+  static get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+
+  static get(){
+    throw Oops.NoAdapter("get");
+  }
+
+  static tap <T extends Model> (this: Model.Type<T>): T;
+  static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, R | (() => R)>, expect?: boolean): R;
+  static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+  static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+  static tap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
+  static tap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+  static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+  static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+  static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
+  static tap <T extends Model> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
+  static tap <T extends Model> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
+
+  static tap(){
+    return Oops.NoAdapter("tap");
+  }
+
+  protected static meta <T extends Class>(this: T): T;
+  protected static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
+  protected static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
+  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
+
+  protected static meta(){
+    return Oops.NoAdapter("meta");
   }
 
   /**
