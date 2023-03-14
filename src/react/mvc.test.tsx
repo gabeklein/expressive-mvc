@@ -2,20 +2,20 @@ import React from 'react';
 
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
-import { MVC } from './mvc';
+import { Model } from './mvc';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
 const opts = { timeout: 100 };
 
 describe("get", () => {
-  class Test extends MVC {
+  class Test extends Model {
     value = 1;
   }
 
   function render<T>(
     hook: () => T,
-    provide?: MVC){
+    provide?: Model){
 
     let wrapper: React.FC | undefined;
 
@@ -53,7 +53,7 @@ describe("get", () => {
 
 describe("tap", () => {
   it("will get model from context", () => {
-    class Test extends MVC {}
+    class Test extends Model {}
 
     const Hook = () => {
       const value = Test.tap();
@@ -69,7 +69,7 @@ describe("tap", () => {
   })
 
   it("will run initial callback syncronously", async () => {
-    class Parent extends MVC {
+    class Parent extends Model {
       values = [] as string[]
     }
     
@@ -118,7 +118,7 @@ describe("tap", () => {
 
 describe("meta", () => {
   it('will track static values', async () => {
-    class Parent extends MVC {
+    class Parent extends Model {
       static value = "foo";
       static getValue(){
         return this.meta().value;
@@ -141,7 +141,7 @@ describe("meta", () => {
   })
 
   it('will compute value', async () => {
-    class Parent extends MVC {
+    class Parent extends Model {
       static value = "foo";
       static getValue(){
         return this.meta(x => x.value);
@@ -164,11 +164,11 @@ describe("meta", () => {
   })
 
   it('will track recursive values', async () => {
-    class Child extends MVC {
+    class Child extends Model {
       value = "foo";
     }
 
-    class Parent extends MVC {
+    class Parent extends Model {
       static child = use(Child);
       static getValue(){
         return this.meta().child.value;

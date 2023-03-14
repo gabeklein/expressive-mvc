@@ -3,18 +3,14 @@ import React from 'react';
 import { control } from '../control';
 import { defineProperty, uid } from '../helper/object';
 import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
-import { Model } from '../model';
 import { Subscriber } from '../subscriber';
-import { MVC } from './mvc';
+import { Model } from './mvc';
 
 declare namespace useTap {
   type Source<T extends Model> =
     | T
     | Model.Type<T>
     | (() => T | Model.Type<T>);
-
-  type Callback<T extends Model, R> =
-    (this: T, model: T, update: MVC.ForceUpdate) => R;
 }
 
 function useTap <T extends Model> (source: useTap.Source<T>): T;
@@ -22,16 +18,16 @@ function useTap <T extends Model> (source: useTap.Source<T>): T;
 function useTap <T extends Model> (source: useTap.Source<T>, expect: true): NonOptionalValues<T>;
 function useTap <T extends Model> (source: useTap.Source<T>, expect?: boolean): OptionalValues<T>;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, () => R>): NoVoid<R>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, init: useTap.Callback<T, (() => R) | null>): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: useTap.Callback<T, R>, expect?: boolean): NoVoid<R>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model, R> (
-  source: T | (() => T) | typeof MVC,
-  arg1?: boolean | useTap.Callback<T, any>,
+  source: T | (() => T) | typeof Model,
+  arg1?: boolean | Model.TapCallback<T, any>,
   arg2?: boolean) {
 
   const instance: T =

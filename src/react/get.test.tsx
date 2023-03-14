@@ -2,17 +2,17 @@ import React from 'react';
 
 import { render, subscribeTo } from '../helper/testing';
 import { get } from '../instruction/get';
+import { Model } from './mvc';
 import { Consumer } from './consumer';
 import { Oops } from './get';
-import { MVC } from './mvc';
 import { Provider } from './provider';
 
 describe("context", () => {
-  class Foo extends MVC {
+  class Foo extends Model {
     bar = get(Bar);
   }
 
-  class Bar extends MVC {
+  class Bar extends Model {
     value = "bar";
   }
 
@@ -33,7 +33,7 @@ describe("context", () => {
   })
 
   it("will subscribe peer from context", async () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       bar = get(Bar, true);
     }
 
@@ -58,7 +58,7 @@ describe("context", () => {
   })
 
   it("will return undefined if instance not found", () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       bar = get(Bar, false);
     }
 
@@ -72,7 +72,7 @@ describe("context", () => {
   })
 
   it("will complain if instance not found", () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       bar = get(Bar);
     }
 
@@ -88,7 +88,7 @@ describe("context", () => {
   })
 
   it("will throw if strict tap is undefined", () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       bar = get(Bar);
     }
 
@@ -114,10 +114,10 @@ describe("context", () => {
   })
 
   it("will access peers sharing same provider", () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       bar = get(Bar);
     }
-    class Bar extends MVC {
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -130,11 +130,11 @@ describe("context", () => {
   });
 
   it("will assign multiple peers", async () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       value = 2;
     };
 
-    class Baz extends MVC {
+    class Baz extends Model {
       bar = get(Bar);
       foo = get(Foo);
     };
@@ -182,8 +182,8 @@ describe("context", () => {
 
 describe("suspense", () => {
   it("will throw if not resolved", () => {
-    class Foo extends MVC {}
-    class Bar extends MVC {
+    class Foo extends Model {}
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -201,8 +201,8 @@ describe("suspense", () => {
   });
 
   it("will resolve when assigned to", async () => {
-    class Foo extends MVC {}
-    class Bar extends MVC {
+    class Foo extends Model {}
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -229,8 +229,8 @@ describe("suspense", () => {
   })
 
   it("will refresh an effect when assigned to", async () => {
-    class Foo extends MVC {}
-    class Bar extends MVC {
+    class Foo extends Model {}
+    class Bar extends Model {
       foo = get(Foo);
     }
 
@@ -255,10 +255,10 @@ describe("suspense", () => {
   })
 
   it("will prevent compute if not resolved", () => {
-    class Foo extends MVC {
+    class Foo extends Model {
       value = "foobar";
     }
-    class Bar extends MVC {
+    class Bar extends Model {
       foo = get(Foo, foo => foo.value);
     }
 

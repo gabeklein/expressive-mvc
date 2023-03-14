@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { issues } from '../helper/issues';
-import { Model } from '../model';
+import { Model } from './mvc';
 import { Register } from '../register';
 
 const Oops = issues({

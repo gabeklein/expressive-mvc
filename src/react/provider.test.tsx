@@ -2,15 +2,15 @@ import React, { Suspense } from 'react';
 
 import { mockAsync, render } from '../helper/testing';
 import { set } from '../instruction/set';
+import { Model } from './mvc';
 import { Consumer } from './consumer';
-import { MVC } from './mvc';
 import { Oops, Provider } from './provider';
 import { Oops as Context } from './useContext';
 
-class Foo extends MVC {
+class Foo extends Model {
   value?: string = undefined;
 }
-class Bar extends MVC {}
+class Bar extends Model {}
 
 it("will create instance of given model", () => {
   render(
@@ -22,7 +22,7 @@ it("will create instance of given model", () => {
 
 it("will destroy instance of given model", async () => {
   const willDestroy = jest.fn();
-  class Test extends MVC {
+  class Test extends Model {
     gc(){
       willDestroy();
       super.gc();
@@ -49,7 +49,7 @@ it("will create all models in given object", () => {
 it("will destroy created model on unmount", () => {
   const willDestroy = jest.fn();
 
-  class Test extends MVC {}
+  class Test extends Model {}
 
   const rendered = render(
     <Provider for={{ Test }}>
@@ -67,8 +67,8 @@ it("will destroy created model on unmount", () => {
 it("will destroy multiple created on unmount", () => {
   const willDestroy = jest.fn();
 
-  class Foo extends MVC {}
-  class Bar extends MVC {}
+  class Foo extends Model {}
+  class Bar extends Model {}
 
   const rendered = render(
     <Provider for={{ Foo, Bar }}>
@@ -88,7 +88,7 @@ it("will destroy multiple created on unmount", () => {
 it("will not destroy given instance on unmount", () => {
   const didUnmount = jest.fn();
 
-  class Test extends MVC {}
+  class Test extends Model {}
 
   const instance = Test.new();
 
@@ -150,11 +150,11 @@ it("will throw if missing `for` prop", () => {
 })
 
 describe("children", () => {
-  class Foo extends MVC {
+  class Foo extends Model {
     bar = new Bar();
   }
 
-  class Bar extends MVC {
+  class Bar extends Model {
     value = 3;
   }
 
@@ -217,7 +217,7 @@ describe("and prop", () => {
   })
 
   it("will assign values to muliple", () => {
-    class Bar extends MVC {
+    class Bar extends Model {
       value = "";
     }
 
@@ -243,7 +243,7 @@ describe("and prop", () => {
 })
 
 describe("suspense", () => {
-  class Test extends MVC {
+  class Test extends Model {
     value = set(promise.pending);
   }
 

@@ -1,13 +1,13 @@
 import React from 'react';
 
 import { render, renderHook } from '../helper/testing';
-import { MVC } from './mvc';
+import { Model } from './mvc';
 import { useModel } from './useModel';
 
 const opts = { timeout: 100 };
 
 describe("hook", () => {
-  class Test extends MVC {
+  class Test extends Model {
     value = "foo";
   };
 
@@ -28,7 +28,7 @@ describe("hook", () => {
   it("will destroy instance of given class", () => {
     const didDestroy = jest.fn();
 
-    class Test extends MVC {
+    class Test extends Model {
       gc(){
         super.gc();
         didDestroy();
@@ -44,7 +44,7 @@ describe("hook", () => {
 })
 
 describe("subscription", () => {
-  class Test extends MVC {
+  class Test extends Model {
     value = "foo";
   };
 
@@ -85,7 +85,7 @@ describe("subscription", () => {
 })
 
 describe("specific", () => {
-  class Test extends MVC {
+  class Test extends Model {
     foo = "foo";
     bar = "bar";
   }
@@ -117,7 +117,7 @@ describe("specific", () => {
   })
 
   it("will destroy on unmount", () => {
-    class Test extends MVC {
+    class Test extends Model {
       constructor(){
         super();
         this.on(() => didDestroy, []);
@@ -134,7 +134,7 @@ describe("specific", () => {
 })
 
 describe("import", () => {
-  class Test extends MVC {
+  class Test extends Model {
     foo?: string = undefined;
     bar?: string = undefined;
   }
@@ -178,7 +178,7 @@ describe("import", () => {
   })
 
   it("will override (untracked) arrow functions", () => {
-    class Test extends MVC {
+    class Test extends Model {
       foobar = () => "Hello world!";
     }
 
@@ -196,7 +196,7 @@ describe("import", () => {
   })
 
   it("will not override prototype methods", () => {
-    class Test extends MVC {
+    class Test extends Model {
       foobar(){
         return "Hello world!";
       };

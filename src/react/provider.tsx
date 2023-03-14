@@ -5,7 +5,7 @@ import { control } from '../control';
 import { issues } from '../helper/issues';
 import { assignWeak, entries } from '../helper/object';
 import { Class } from '../helper/types';
-import { Model } from '../model';
+import { Model } from './mvc';
 import { getPending } from './get';
 import { LookupContext, useLookup } from './useContext';
 

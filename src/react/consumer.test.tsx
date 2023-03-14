@@ -1,15 +1,15 @@
 import React from 'react';
 
 import { render } from '../helper/testing';
+import { Model } from './mvc';
 import { Consumer } from './consumer';
-import { MVC } from './mvc';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
-class Foo extends MVC {
+class Foo extends Model {
   value?: string = undefined;
 }
-class Bar extends MVC {}
+class Bar extends Model {}
 class Baz extends Bar {}
 
 it("will handle complex arrangement", () => {
@@ -29,7 +29,7 @@ it("will handle complex arrangement", () => {
 })
 
 it("will render with instance for child-function", async () => {
-  class Test extends MVC {
+  class Test extends Model {
     value = "foobar";
   }
 
