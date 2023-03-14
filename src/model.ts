@@ -168,16 +168,17 @@ class Model {
     arg2?: Function | boolean | number){
 
     const { state } = control(this);
-    const extract = typeof arg1 == "string"
-      ? () => state.get(arg1)
-      : () => {
-        const output = {} as any;
+    const extract = () => {
+      if(typeof arg1 == "string")
+        return state.get(arg1);
+      
+      const output = {} as any;
 
-        for(const key of arg1 || state.keys())
-          output[key] = state.get(key);
+      for(const key of arg1 || state.keys())
+        output[key] = state.get(key);
 
-        return output as Model.Get<this, P>;
-      }
+      return output as Model.Get<this, P>;
+    }
 
     if(!arg1 || arg2 === undefined)
       return extract();
