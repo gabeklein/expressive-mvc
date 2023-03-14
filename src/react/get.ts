@@ -7,7 +7,7 @@ import { useLookup } from './useContext';
 export const Oops = issues({
   AmbientRequired: (requested, requester) =>
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
-})
+});
 
 const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
