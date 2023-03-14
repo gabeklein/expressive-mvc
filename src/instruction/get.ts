@@ -1,9 +1,8 @@
-import { getRecursive } from '../children';
+import { getParentForGetInstruction, getRecursive } from '../children';
 import { Control, control } from '../control';
 import { issues } from '../helper/issues';
-import { getPrototypeOf } from '../helper/object';
 import { Callback } from '../helper/types';
-import { FindInstruction, Model } from '../model';
+import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { suspend } from '../suspense';
 import { add } from './add';
@@ -16,9 +15,18 @@ export const Oops = issues({
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
 });
 
+let find: get.FindFunction = getParentForGetInstruction;
+
 declare namespace get {
   type Function<T, S = any> = (this: S, on: S) => T;
+
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
+
+  type FindFunction = <T extends Model>(
+    type: Model.Type<T>,
+    relativeTo: Model,
+    required: boolean
+  ) => (_refresh: (x: T) => void) => T | undefined;
 }
 
 /**
@@ -191,7 +199,7 @@ const INFO = new WeakMap<Callback, string>();
 const KEYS = new WeakMap<Control, Set<Callback>>();
 const ORDER = new WeakMap<Control, Map<Callback, number>>();
 
-export function flush(control: Control){
+function flush(control: Control){
   const pending = KEYS.get(control);
 
   if(!pending || !pending.size)
@@ -217,22 +225,12 @@ export function flush(control: Control){
   pending.clear();
 }
 
-// TODO: collapse this function when MVC is merged into Model.
-function find(
-  type: Model.Type,
-  relativeTo: Model,
-  required: boolean){
-
-  let T = type;
-
-  do {
-    T = getPrototypeOf(T);
-    const getter = FindInstruction.get(T);
-
-    if(getter)
-      return getter(type, relativeTo, required);
-  }
-  while(T.prototype instanceof Model);
+function setFindFunction(to: get.FindFunction){
+  find = to;
 }
 
-export { get }
+export {
+  flush,
+  get,
+  setFindFunction
+}

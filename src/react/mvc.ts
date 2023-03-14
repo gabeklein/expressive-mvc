@@ -1,4 +1,5 @@
-import { FindInstruction, Model } from '../model';
+import { setFindFunction } from '../instruction/get';
+import { Model } from '../model';
 import { getForGetInstruction } from './get';
 import { useContext } from './useContext';
 import { useModel } from './useModel';
@@ -6,7 +7,7 @@ import { useTap } from './useTap';
 
 export { Model };
 
-FindInstruction.set(Model, getForGetInstruction);
+setFindFunction(getForGetInstruction);
 
 Object.assign(Model, <any>{
   use(arg1: any, arg2?: any){

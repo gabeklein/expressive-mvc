@@ -1,4 +1,3 @@
-import { getParentForGetInstruction } from './children';
 import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
@@ -322,9 +321,4 @@ defineProperty(Model.prototype, "toString", {
   }
 })
 
-const FindInstruction =
-  new WeakMap<Model.Type, Model.FindFunction>([
-    [Model, getParentForGetInstruction]
-  ]);
-
-export { FindInstruction, Model }
+export { Model }
