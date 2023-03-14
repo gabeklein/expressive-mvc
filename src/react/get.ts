@@ -12,7 +12,7 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-function getContextForGetInstruction<T extends Model>(
+function getForGetInstruction<T extends Model>(
   type: Model.Type<T>,
   from: Model,
   required: boolean
@@ -68,7 +68,7 @@ function getPending(subject: {}){
 }
 
 export {
-  getContextForGetInstruction,
+  getForGetInstruction,
   usePeerContext,
   getPending
 }
