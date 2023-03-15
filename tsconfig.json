@@ -9,5 +9,10 @@
         "sourceMap": true,
         "strict": true,
         "types": [ "node", "jest" ],
+        "paths": {
+            "@expressive/*": [
+              "packages/*/src"
+            ]
+        },
     }
 }
