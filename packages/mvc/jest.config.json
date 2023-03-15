@@ -3,9 +3,7 @@
   "testEnvironment": "node",
   "testTimeout": 1000,
   "coveragePathIgnorePatterns": [
-    "/node_modules/",
-    "/src/index.ts",
-    "tests/adapter.ts"
+    "/src/index.ts"
   ],
   "coverageThreshold": {
     "global": {
