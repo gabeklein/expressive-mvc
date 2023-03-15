@@ -484,7 +484,7 @@ describe("parent-child", () => {
     const attempt = () => 
       NonStandalone.new();
   
-    const error = Child.Required(
+    const error = Oops.Required(
       Detatched.name, NonStandalone.name
     )
   
