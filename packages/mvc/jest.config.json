@@ -1,6 +1,5 @@
 {
   "preset": "ts-jest",
-  "testEnvironment": "node",
   "testTimeout": 1000,
   "coveragePathIgnorePatterns": [
     "/src/index.ts"
