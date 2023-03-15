@@ -1,6 +1,6 @@
+import { Model } from '..';
 import { getParent } from '../children';
 import { issues } from '../helper/issues';
-import { Model } from './mvc';
 import { Register } from '../register';
 import { useLookup } from './useContext';
 

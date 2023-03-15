@@ -1,8 +1,8 @@
 import React from 'react';
 
+import { Model } from '..';
 import { render, renderHook } from '../helper/testing';
 import { use } from '../instruction/use';
-import { Model } from './mvc';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 

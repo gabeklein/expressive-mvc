@@ -1,9 +1,7 @@
 import React, { Suspense } from 'react';
 
+import { Model, Consumer, set } from '..';
 import { mockAsync, render } from '../helper/testing';
-import { set } from '../instruction/set';
-import { Model } from './mvc';
-import { Consumer } from './consumer';
 import { Oops, Provider } from './provider';
 import { Oops as Context } from './useContext';
 

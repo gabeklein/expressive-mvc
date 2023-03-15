@@ -1,10 +1,10 @@
 import React from 'react';
 
+import { Model } from '..';
 import { control } from '../control';
 import { defineProperty, uid } from '../helper/object';
 import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Subscriber } from '../subscriber';
-import { Model } from './mvc';
 
 declare namespace useTap {
   type Source<T extends Model> =

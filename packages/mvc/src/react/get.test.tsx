@@ -1,8 +1,7 @@
 import React from 'react';
 
+import { get, Model } from '..';
 import { render, subscribeTo } from '../helper/testing';
-import { get } from '../instruction/get';
-import { Model } from './mvc';
 import { Consumer } from './consumer';
 import { Oops } from './get';
 import { Provider } from './provider';

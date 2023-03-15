@@ -1,8 +1,7 @@
 import { act } from '@testing-library/react-hooks';
 
+import { Model, set } from '..';
 import { mockAsync, mockSuspense, renderHook } from '../helper/testing';
-import { set } from '../instruction/set';
-import { Model } from './mvc';
 import { useTap } from './useTap';
 
 describe("set factory", () => {
