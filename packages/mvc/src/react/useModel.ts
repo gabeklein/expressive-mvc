@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { control } from '../control';
+import { Control } from '../control';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { usePeerContext } from './get';
@@ -33,7 +33,7 @@ function useModel <T extends Model> (
       ? new source()
       : source();
 
-    control(instance);
+    Control.for(instance);
 
     if(typeof callback == "function")
       callback(instance);

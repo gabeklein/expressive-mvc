@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 
 import { Model } from '..';
 import { Parent } from '../children';
-import { control } from '../control';
+import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { assignWeak, entries } from '../helper/object';
 import { Class } from '../helper/types';
@@ -93,7 +93,7 @@ function useNewContext<T extends Model>(
     entries(include).forEach(e => register(...e));
 
   for(const instance of init){
-    control(instance).state.forEach(value => {
+    Control.for(instance).state.forEach(value => {
       // TODO: should this run repeatedly?
       if(Parent.get(value) === instance){
         context.add(value);
