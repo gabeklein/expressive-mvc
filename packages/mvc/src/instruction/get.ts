@@ -1,4 +1,4 @@
-import { getParentForGetInstruction, getRecursive } from '../children';
+import { getParent, getRecursive } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -12,7 +12,10 @@ export const Oops = issues({
     `Attempted to use an instruction result (probably use or get) as computed source for ${model}.${property}. This is not allowed.`,
 
   Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
+
+  Required: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
 });
 
 let find: get.FindFunction = getParentForGetInstruction;
@@ -227,6 +230,22 @@ function flush(control: Control){
 
 function setFindFunction(to: get.FindFunction){
   find = to;
+}
+
+export function getParentForGetInstruction<T extends Model>(
+  type: Model.Type<T>,
+  relativeTo: Model,
+  required: boolean){
+
+  const item = getParent(type, relativeTo);
+
+  return (_refresh: (x: T) => void) => {
+    if(item)
+      return item;
+    
+    if(required)
+      throw Oops.Required(type.name, relativeTo);
+  };
 }
 
 export {
