@@ -263,7 +263,7 @@ class Model {
   static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
 
   static use(){
-    return Oops.NoAdapter("use");
+    throw Oops.NoAdapter("use");
   }
 
   static get <T extends Model> (this: Model.Type<T>, required?: boolean): T;
@@ -285,8 +285,8 @@ class Model {
   static tap <T extends Model> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
   static tap <T extends Model> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
-  static tap(){
-    return Oops.NoAdapter("tap");
+  static tap(): never {
+    throw Oops.NoAdapter("tap");
   }
 
   protected static meta <T extends Class> (this: T): T;
@@ -297,8 +297,8 @@ class Model {
   protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
   protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
 
-  protected static meta(){
-    return Oops.NoAdapter("meta");
+  protected static meta(): never {
+    throw Oops.NoAdapter("meta");
   }
 
   /**

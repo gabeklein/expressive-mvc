@@ -1,5 +1,5 @@
 import { ref } from './instruction/ref';
-import { Model } from './model';
+import { Model, Oops } from './model';
 
 describe("Model", () => {
   class Subject extends Model {
@@ -355,4 +355,15 @@ describe("get", () => {
 
     expect(didUpdate).toBeCalledTimes(2);
   })
+})
+
+describe("adapter", () => {
+  const methods = ["get", "tap", "use", "meta"] as const;
+
+  it.each(methods)("will throw by default for %p", (method) => {
+    const useMethod = () => Model[method].call(Model);
+    const expected = Oops.NoAdapter(method);
+
+    expect(useMethod).toThrowError(expected);
+  });
 })
