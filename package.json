@@ -1,0 +1,19 @@
+{
+	"name": "expressive-mvc",
+	"license": "MIT",
+	"workspaces": [
+		"packages/*"
+	],
+	"scripts": {
+		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
+	},
+	"devDependencies": {
+    "@types/jest": "^27.4.1",
+    "@types/node": "^15.12.4",
+		"@typescript-eslint/eslint-plugin": "^5.53.0",
+		"@typescript-eslint/parser": "^5.53.0",
+		"eslint": "^8.35.0",
+		"lerna": "^6.5.1",
+		"typescript": "^4.9.5"
+	}
+}
