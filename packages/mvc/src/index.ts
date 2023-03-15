@@ -9,4 +9,6 @@ export { Model } from './react/mvc';
 export { Consumer } from './react/consumer';
 export { Provider } from './react/provider';
 
+export { Control } from './control';
+export { Subscriber } from './subscriber';
 export { Debug } from './debug';
