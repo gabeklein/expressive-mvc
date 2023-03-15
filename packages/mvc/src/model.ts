@@ -44,7 +44,7 @@ declare namespace Model {
       never;
   }[keyof T];
 
-  type BuiltIn = keyof Model | keyof Debug<{}>;
+  type BuiltIn = keyof Model | keyof Debug<Model>;
 
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.

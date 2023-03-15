@@ -1,5 +1,5 @@
 import { getParentForGetInstruction, getRecursive } from '../children';
-import { Control, control } from '../control';
+import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
@@ -145,7 +145,7 @@ function getComputed<T>(
 
     instance = got;
 
-    sub = new Subscriber(control(instance), (_, control) => {
+    sub = new Subscriber(instance, (_, control) => {
       if(control !== parent)
         refresh();
       else

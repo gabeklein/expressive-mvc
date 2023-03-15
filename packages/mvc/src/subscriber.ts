@@ -15,7 +15,7 @@ declare namespace Subscriber {
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
 }
 
-class Subscriber <T extends {} = any> {
+class Subscriber <T extends Model = any> {
   public proxy!: T;
   public clear: () => void;
   public latest?: Model.Event<T>[];
@@ -23,17 +23,21 @@ class Subscriber <T extends {} = any> {
   public active = false;
   public dependant = new Set<Listener>();
   public watch = new Map<any, boolean | (() => boolean | void)>();
+  public parent: Control<T>;
 
   constructor(
-    public parent: Control<T>,
+    parent: Control<T> | T,
     public onUpdate: Subscriber.OnEvent,
     public strict?: boolean){
 
-    const proxy = create(parent.subject);
+    if(!(parent instanceof Control))
+      parent = Control.for(parent);
+
     const reset = () => this.latest = undefined;
+    const proxy = create(parent.subject);
 
     REGISTER.set(proxy, this);
-    
+
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
@@ -42,6 +46,7 @@ class Subscriber <T extends {} = any> {
       }
     })
 
+    this.parent = parent;
     this.clear = parent.addListener(key => {
       if(this.active)
         this.notify(key);
@@ -105,7 +110,7 @@ class Subscriber <T extends {} = any> {
   }
 }
 
-function subscriber<T extends {}>(from: T){
+function subscriber<T extends Model>(from: T){
   return REGISTER.get(from) as Subscriber<T> | undefined;
 }
 

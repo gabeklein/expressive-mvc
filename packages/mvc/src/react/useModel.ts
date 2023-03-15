@@ -62,7 +62,7 @@ function useModel <T extends Model> (
   const state = React.useState(0);
   const local = React.useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
-    return new Subscriber(control(instance), () => refresh);
+    return new Subscriber(instance, () => refresh);
   }, []);
 
   if(typeof arg1 == "object")

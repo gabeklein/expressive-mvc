@@ -68,7 +68,7 @@ export function getRecursive(key: string, from: Control){
         const value = state.get(key);
   
         if(value && controller(value)){
-          const child = new Subscriber(control(value), local.onUpdate);
+          const child = new Subscriber(value, local.onUpdate);
   
           if(local.active)
             child.commit();

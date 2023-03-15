@@ -1,7 +1,6 @@
 import React from 'react';
 
 import { Model } from '..';
-import { control } from '../control';
 import { defineProperty, uid } from '../helper/object';
 import { Callback, NonOptionalValues, NoVoid, OptionalValues } from '../helper/types';
 import { Subscriber } from '../subscriber';
@@ -41,12 +40,11 @@ function useTap <T extends Model, R> (
   const state = React.useState(0);
   const local = React.useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
-    const controller = control(instance);
-    
+
     if(typeof arg1 != "function")
-      return new Subscriber(controller, () => refresh, arg1)
+      return new Subscriber(instance, () => refresh, arg1)
       
-    const sub = new Subscriber(controller, () => update);
+    const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy as T;
 
     let make: (() => R | undefined) | undefined =

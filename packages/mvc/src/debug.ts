@@ -43,7 +43,7 @@ const Debug = {
   UPDATE
 } as const;
 
-type Debug<T extends {}> = T & {
+type Debug<T extends Model> = T & {
   /** Controller for this instance. */
   [CONTROL]?: Control<T>;
 
