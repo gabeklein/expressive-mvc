@@ -1,10 +1,4 @@
-import { createElement, Suspense } from 'react';
-import { create as render } from 'react-test-renderer';
-
 import { Model } from '../model';
-
-export { renderHook } from '@testing-library/react-hooks';
-export { create as render } from "react-test-renderer";
 
 export function subscribeTo<T extends Model>(
   target: T,
@@ -54,60 +48,6 @@ export function mockAsync<T = void>(){
   return {
     pending: event,
     resolve
-  }
-}
-
-export function mockSuspense(){
-  const promise = mockAsync();
-
-  let renderHook!: () => void;
-  let didRender = false;
-  let didSuspend = false;
-
-  const reset = () => {
-    didSuspend = didRender = false;
-  }
-
-  const Waiting = () => {
-    didSuspend = true;
-    return null;
-  }
-
-  const Component = () => {
-    try {
-      didRender = true;
-      renderHook();
-    }
-    finally {
-      promise.resolve();
-    }
-
-    return null;
-  }
-
-  return {
-    waitForNextRender(){
-      return promise.pending();
-    },
-    renderHook(fn: () => void){
-      renderHook = fn;
-
-      render(
-        createElement(Suspense, {
-          fallback: createElement(Waiting),
-          children: createElement(Component)
-        })
-      )
-    },
-    assertDidRender(yes: boolean){
-      expect(didRender).toBe(yes);
-      expect(didSuspend).toBe(false);
-      reset();
-    },
-    assertDidSuspend(yes: boolean){
-      expect(didSuspend).toBe(yes);
-      reset();
-    }
   }
 }
 
