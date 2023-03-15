@@ -17,12 +17,12 @@ export const Oops = issues({
 })
 
 export function getParent<T extends Model>(
-  type: Model.Type<T>,
-  from: Model){
+  from: Model,
+  type?: Model.Type<T>){
 
   const value = Parent.get(from) as T;
 
-  if(value && !(value instanceof type))
+  if(value && type && !(value instanceof type))
     throw Oops.Unexpected(type.name, from, value);
 
   return value;

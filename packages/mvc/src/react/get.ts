@@ -17,7 +17,7 @@ function getForGetInstruction<T extends Model>(
   from: Model,
   required: boolean
 ){
-  let item = getParent(type, from);
+  let item = getParent(from, type);
 
   return (refresh: (x: T) => void) => {
     if(item)

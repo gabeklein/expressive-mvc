@@ -237,7 +237,7 @@ export function getParentForGetInstruction<T extends Model>(
   relativeTo: Model,
   required: boolean){
 
-  const item = getParent(type, relativeTo);
+  const item = getParent(relativeTo, type);
 
   return (_refresh: (x: T) => void) => {
     if(item)
