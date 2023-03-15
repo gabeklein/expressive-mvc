@@ -35,8 +35,6 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.0",
     "@testing-library/react-hooks": "^8.0.0",
-    "@types/jest": "^27.4.1",
-    "@types/node": "^15.12.4",
     "@types/react": "^17.0.11",
     "@types/react-test-renderer": "^18.0.0",
     "jest": "^27.5.1",

@@ -1,18 +1,3 @@
 {
-    "compilerOptions": {
-        "outDir": "lib/",
-        "target": "ES6",
-        "sourceMap": true,
-        "moduleResolution": "node",
-        "noUnusedLocals": true,
-        "strict": true,
-        "esModuleInterop": true,
-        "types": [ "node", "jest" ],
-        "jsx": "react",
-        "lib": ["ES2018", "DOM"]
-    },
-    "include": [
-        "src",
-        "tests"
-    ]
+    "extends": "../../tsconfig.json"
 }
