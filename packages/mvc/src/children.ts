@@ -4,7 +4,6 @@ import { defineProperty } from './helper/object';
 import { Callback } from './helper/types';
 import { Model } from './model';
 import { Subscriber, subscriber } from './subscriber';
-import { suspend } from './suspense';
 
 export const Parent = new WeakMap<{}, {}>();
 
@@ -34,7 +33,7 @@ export function getRecursive(key: string, from: Control){
 
   return (local: Subscriber | undefined) => {
     if(!state.has(key))
-      throw suspend(from, key);
+      from.waitFor(key);
 
     if(!local)
       return state.get(key);

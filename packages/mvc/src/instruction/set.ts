@@ -1,7 +1,7 @@
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
-import { mayRetry, suspend } from '../suspense';
+import { mayRetry } from '../suspense';
 import { add } from './add';
 
 export const Oops = issues({
@@ -163,7 +163,7 @@ function set <T> (
           if(state.has(key))
             return state.get(key);
           else
-            throw suspend(this, key);
+            this.waitFor(key);
         },
         set: typeof argument == "function"
           ? createValueEffect(argument)

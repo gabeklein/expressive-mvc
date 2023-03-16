@@ -1,16 +1,15 @@
 import { Control } from './control';
 import { issues } from './helper/issues';
 import { assign } from './helper/object';
+import { Model } from './model';
 
 export const Oops = issues({
   NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
 })
 
-type Suspense<T = any> = Promise<T> & Error;
-
 export function suspend(
-  source: Control, key: string): Suspense {
+  source: Control, key: string): Model.Suspense {
 
   const error = Oops.NotReady(source.subject, key);
 

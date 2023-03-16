@@ -107,6 +107,8 @@ declare namespace Model {
      */
     <T = void>(invoke?: () => Promise<T>): Promise<T>
   };
+
+  export type Suspense = Promise<void> & Error;
 }
 
 class Model {

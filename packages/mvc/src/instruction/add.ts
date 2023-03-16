@@ -1,7 +1,6 @@
 import { Control, PENDING } from '../control';
 import { defineProperty } from '../helper/object';
 import { Subscriber, subscriber } from '../subscriber';
-import { suspend } from '../suspense';
 
 /**
  * Property initializer, will run upon instance creation.
@@ -69,7 +68,7 @@ function add<T = any>(
           const value = get ? get(local) : control.state.get(key);
           
           if(value === undefined && local && local.strict === true)
-            throw suspend(control, key);
+            control.waitFor(key);
             
           return value;
         }

@@ -73,12 +73,17 @@ class Control<T extends {} = any> {
           sub.follow(key);
 
           if(value === undefined && sub.strict)
-            throw suspend(this, key);
+            sub.parent.waitFor(key);
         }
 
         return value;
       }
     });
+  }
+
+  /** Throw suspense which resolves when key is set. */
+  waitFor(key: string): never {
+    throw suspend(this, key);
   }
 
   addListener(listener: Control.OnSync<T>){
