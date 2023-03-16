@@ -1,5 +1,4 @@
 import { getParent } from './children';
-import { setFindFunction } from './instruction/get';
 
 export { add } from './instruction/add';
 export { run } from './instruction/run';
@@ -15,6 +14,5 @@ export { Debug } from './debug';
 export { Register } from './register';
 
 export const Internal = {
-  setFindFunction,
   getParent
 }

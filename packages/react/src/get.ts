@@ -10,10 +10,6 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-Internal.setFindFunction(getForGetInstruction);
-
-export { get };
-
 function getForGetInstruction<T extends Model>(
   type: Model.Type<T>,
   from: Model,
@@ -69,8 +65,10 @@ function getPending(subject: {}){
   return pending;
 }
 
+get.fetch = getForGetInstruction;
+
 export {
-  getForGetInstruction,
+  get,
   usePeerContext,
   getPending
 }
