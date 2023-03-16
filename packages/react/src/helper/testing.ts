@@ -19,15 +19,11 @@ export function subscribeTo<T extends Model>(
   // ignore initial scan-phase
   didTrigger.mockReset();
 
-  return async (isExpected = true) => {
+  return async () => {
     await new Promise(res => setTimeout(res, 0));
 
-    if(isExpected){
-      expect(didTrigger).toHaveBeenCalled();
-      didTrigger.mockReset();
-    }
-    else
-      expect(didTrigger).not.toHaveBeenCalled();
+    expect(didTrigger).toHaveBeenCalled();
+    didTrigger.mockReset();
   }
 }
 
