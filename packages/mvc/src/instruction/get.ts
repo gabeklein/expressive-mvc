@@ -68,7 +68,7 @@ function instruction<R, T extends Model>(
   arg1?: instruction.Function<R, T> | boolean): R {
 
   return add(
-    function gets(key){
+    function get(key){
       const { subject, state } = this;
 
       // Easy mistake, using a peer, will always be unresolved.
