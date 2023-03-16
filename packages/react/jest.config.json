@@ -11,5 +11,8 @@
       "lines": 100,
       "statements": 100
     }
+  },
+  "moduleNameMapper": {
+    "@expressive/(.*)$": "<rootDir>/../$1/src"
   }
 }
