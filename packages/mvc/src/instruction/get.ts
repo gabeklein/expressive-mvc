@@ -93,18 +93,17 @@ function get<R, T extends Model>(
 
       if(typeof arg1 == "function")
         return getComputed(key, this, source, arg1);
-      else {
-        const init = source((got) => {
-          state.set(key, got)
-          this.update(key);
-        });
 
-        // TODO: remove fixes suspense test
-        if(init || arg1 === false)
-          state.set(key, init);
+      const init = source((got) => {
+        state.set(key, got)
+        this.update(key);
+      });
 
-        return getRecursive(key, this);
-      }
+      // TODO: remove fixes suspense test
+      if(init || arg1 === false)
+        state.set(key, init);
+
+      return getRecursive(key, this);
     }
   )
 }
