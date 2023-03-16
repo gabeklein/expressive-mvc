@@ -61,23 +61,11 @@ function add<T = any>(
       get(this: any){
         const local = subscriber(this);
 
-        if(local)
-          local.follow(key);
-  
-        try {
-          const value = get ? get(local) : control.state.get(key);
-          
-          if(value === undefined && local && local.strict === true)
-            control.waitFor(key);
-            
-          return value;
-        }
-        catch(err){
-          if(err instanceof Promise && local && local.strict === false)
-            return;
-
-          throw err;
-        }
+        return (
+          local ? local.get(key, get) :
+          get ? get(local) :
+          control.state.get(key)
+        )
       }
     });
   });

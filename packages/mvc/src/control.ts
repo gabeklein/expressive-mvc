@@ -66,17 +66,11 @@ class Control<T extends {} = any> {
       enumerable: false,
       set: this.ref(key as any),
       get(){
-        const sub = subscriber(this);
-        const value = state.get(key);
+        const local = subscriber(this);
 
-        if(sub){
-          sub.follow(key);
-
-          if(value === undefined && sub.strict)
-            sub.parent.waitFor(key);
-        }
-
-        return value;
+        return local
+          ? local.get(key)
+          : state.get(key);
       }
     });
   }

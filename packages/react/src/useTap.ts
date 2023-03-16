@@ -41,7 +41,7 @@ function useTap <T extends Model, R> (
     const refresh = state[1].bind(null, x => x+1);
 
     if(typeof arg1 != "function")
-      return new Subscriber(instance, () => refresh, arg1)
+      return new TapSubscriber(instance, () => refresh, arg1)
       
     const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy as T;
@@ -131,6 +131,33 @@ function useTap <T extends Model, R> (
   }, deps);
 
   return local.proxy;
+}
+
+class TapSubscriber<T extends Model> extends Subscriber<T> {
+  constructor(
+    parent: T,
+    onUpdate: Subscriber.OnEvent<T>,
+    protected strict: boolean | undefined){
+
+    super(parent, onUpdate);
+  }
+
+  get(key: string, using?: Model.Subscriber.Getter<any> | undefined) {
+    try {
+      const value = super.get(key, using);
+      
+      if(value === undefined && this.strict === true)
+        this.parent.waitFor(key);
+        
+      return value;
+    }
+    catch(err){
+      if(err instanceof Promise && this.strict === false)
+        return;
+
+      throw err;
+    }
+  }
 }
 
 /** Values are not equal for purposes of a refresh. */

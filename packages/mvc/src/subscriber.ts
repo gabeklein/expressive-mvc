@@ -13,6 +13,7 @@ type Listener = {
 
 declare namespace Subscriber {
   type OnEvent<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
+  type Getter<T extends Model> = (within?: Subscriber<T> | undefined) => any;
 }
 
 class Subscriber <T extends Model = any> {
@@ -27,8 +28,7 @@ class Subscriber <T extends Model = any> {
 
   constructor(
     parent: Control<T> | T,
-    public onUpdate: Subscriber.OnEvent,
-    public strict?: boolean){
+    public onUpdate: Subscriber.OnEvent){
 
     if(!(parent instanceof Control))
       parent = Control.for(parent);
@@ -55,6 +55,14 @@ class Subscriber <T extends Model = any> {
 
   get using(): Model.Key<T>[] {
     return Array.from(this.watch.keys());
+  }
+
+  get(key: string, using?: Subscriber.Getter<T>){
+    this.follow(key);
+
+    return using
+      ? using(this)
+      : this.parent.state.get(key);
   }
 
   follow(key: any, value?: boolean | (() => boolean | void)){
