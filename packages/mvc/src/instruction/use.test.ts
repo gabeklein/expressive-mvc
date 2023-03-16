@@ -183,7 +183,7 @@ it('will create from async factory', async () => {
   await parent.child.on(true);
 });
 
-it('will suspend if required', async () => {
+it('will suspend if awaited', async () => {
   class Parent extends Model {
     child = use(async () => new Child());
   }
