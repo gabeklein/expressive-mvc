@@ -29,7 +29,7 @@ declare namespace instruction {
   ) => (_refresh: (x: T) => void) => T | undefined;
 
   /** Fetch algorithm for get instruction. */
-  export let fetch: FindFunction;
+  export let using: (fn: FindFunction) => typeof instruction;
 }
 
 /**
@@ -64,8 +64,11 @@ function instruction <R, T> (compute: (property: string, on: T) => (this: T, sta
 function instruction <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
  
 function instruction<R, T extends Model>(
+  this: instruction.FindFunction,
   arg0: instruction.Factory<R, T> | (Model.Type<T> & typeof Model) | T,
   arg1?: instruction.Function<R, T> | boolean): R {
+
+  const fetch = this;
 
   return add(
     function get(key){
@@ -85,11 +88,11 @@ function instruction<R, T extends Model>(
           throw new Error(`Factory argument cannot be ${arg1}`);
       }
       else if(Model.isTypeof(arg0)){
-        source = instruction.fetch(arg0, subject, sourceRequired)!;
+        source = fetch(arg0, subject, sourceRequired)!;
       }
       else if(typeof arg0 == "function"){
-        arg1 = arg0.call(subject, key, subject);
         source = () => subject;
+        arg1 = arg0.call(subject, key, subject);
       }
 
       if(typeof arg1 == "function")
@@ -243,9 +246,13 @@ function flush(control: Control){
   pending.clear();
 }
 
-instruction.fetch = getParentForGetInstruction;
+function using(fn: instruction.FindFunction){
+  return Object.assign(instruction.bind(fn), { using, fn });
+}
+
+const get = using(getParentForGetInstruction);
 
 export {
   flush,
-  instruction as get
+  get
 }

@@ -65,10 +65,10 @@ function getPending(subject: {}){
   return pending;
 }
 
-get.fetch = getForGetInstruction;
+const instruction = get.using(getForGetInstruction);
 
 export {
-  get,
+  instruction as get,
   usePeerContext,
   getPending
 }
