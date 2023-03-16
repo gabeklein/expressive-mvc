@@ -1,8 +1,9 @@
-import { get, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 
 import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
+import { get } from './get';
 
 Object.assign(Model, <any>{
   use(arg1: any, arg2?: any){
@@ -11,7 +12,7 @@ Object.assign(Model, <any>{
   get(required?: boolean){
     return useContext(this, required);
   },
-  tap(arg1?: any, arg2?: boolean): any {
+  tap(arg1?: any, arg2?: boolean){
     return useTap(this, arg1, arg2);
   },
   meta(arg1?: any, arg2?: any){
