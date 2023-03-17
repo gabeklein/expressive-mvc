@@ -141,12 +141,6 @@ function getComputed<T>(
   let pending = KEYS.get(parent)!;
   let instance: Model;
 
-  if(!order)
-    ORDER.set(parent, order = new Map());
-
-  if(!pending)
-    KEYS.set(parent, pending = new Set());
-
   const compute = (initial: boolean) => {
     try {
       return setter.call(sub.proxy, sub.proxy);
@@ -157,9 +151,9 @@ function getComputed<T>(
     }
   }
 
-  const create = () => {
+  const bootstrap = () => {
     // TODO: replace create with a cleanup function
-    const got = source(create);
+    const got = source(bootstrap);
 
     if(!got)
       parent.waitFor(key);
@@ -178,7 +172,6 @@ function getComputed<T>(
     try {
       const value = compute(true);
       state.set(key, value);
-      return value;
     }
     finally {
       sub.commit();
@@ -199,12 +192,17 @@ function getComputed<T>(
       if(state.get(key) !== value){
         state.set(key, value);
         parent.update(key);
-        return value;
       }
     }
   }
 
   INFO.set(refresh, key);
+
+  if(!order)
+    ORDER.set(parent, order = new Map());
+
+  if(!pending)
+    KEYS.set(parent, pending = new Set());
 
   return () => {
     if(pending.has(refresh)){
@@ -212,7 +210,10 @@ function getComputed<T>(
       refresh();
     }
 
-    return sub ? state.get(key) : create();
+    if(!sub)
+      bootstrap();
+
+    return state.get(key);
   }
 }
 
