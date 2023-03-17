@@ -136,7 +136,7 @@ function getComputed<T>(
 
   const { state } = parent;
 
-  let sub: Subscriber;
+  let local: Subscriber;
   let current: T | undefined;
 
   let order = ORDER.get(parent)!;
@@ -151,7 +151,7 @@ function getComputed<T>(
   const compute = (initial: boolean) => {
     try {
       current = undefined;
-      current = setter.call(sub.proxy, sub.proxy);
+      current = setter.call(local.proxy, local.proxy);
     }
     catch(err){
       Oops.Failed(parent.subject, key, initial).warn();
@@ -179,20 +179,20 @@ function getComputed<T>(
     if(!got)
       parent.waitFor(key);
 
-    sub = new Subscriber(got, (_, control) => {
+    local = new Subscriber(got, (_, control) => {
       if(control !== parent)
         refresh();
       else
         pending.add(refresh);
     });
 
-    sub.watch.set(key, false);
+    local.watch.set(key, false);
 
     try {
       compute(true);
     }
     finally {
-      sub.commit();
+      local.commit();
       state.set(key, current);
       order.set(refresh, order.size);
     }
@@ -204,7 +204,7 @@ function getComputed<T>(
     if(pending.delete(refresh))
       refresh();
 
-    if(!sub)
+    if(!local)
       init();
 
     return state.get(key);
