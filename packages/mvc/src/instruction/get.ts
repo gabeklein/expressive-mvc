@@ -140,10 +140,12 @@ function getComputed<T>(
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
   let instance: Model;
+  let current: T | undefined;
 
   const compute = (initial: boolean) => {
     try {
-      return setter.call(sub.proxy, sub.proxy);
+      current = undefined;
+      current = setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
       Oops.Failed(instance, key, initial).warn();
@@ -170,27 +172,25 @@ function getComputed<T>(
     sub.watch.set(key, false);
 
     try {
-      const value = compute(true);
-      state.set(key, value);
+      compute(true);
     }
     finally {
       sub.commit();
+      state.set(key, current);
       order.set(refresh, order.size);
     }
   }
 
   const refresh = () => {
-    let value;
-
     try {
-      value = compute(false);
+      compute(false);
     }
     catch(e){
       console.error(e);
     }
     finally {
-      if(state.get(key) !== value){
-        state.set(key, value);
+      if(current !== state.get(key)){
+        state.set(key, current);
         parent.update(key);
       }
     }
