@@ -1,5 +1,5 @@
-import { getParent, getRecursive } from '../children';
-import { Control } from '../control';
+import { getParent } from '../children';
+import { Control, controller } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
@@ -72,7 +72,7 @@ function instruction<R, T extends Model>(
 
   return add(
     function get(key){
-      const { subject, state } = this;
+      const { subject } = this;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
@@ -95,19 +95,9 @@ function instruction<R, T extends Model>(
         arg1 = arg0.call(subject, key, subject);
       }
 
-      if(typeof arg1 == "function")
-        return getComputed(key, this, source, arg1);
-
-      const init = source((got) => {
-        state.set(key, got)
-        this.update(key);
-      });
-
-      // TODO: remove fixes suspense test
-      if(init || arg1 === false)
-        state.set(key, init);
-
-      return getRecursive(key, this);
+      return typeof arg1 == "function"
+        ? getComputed(key, this, source, arg1)
+        : getRecursive(key, this, source, arg1);
     }
   )
 }
@@ -126,6 +116,71 @@ function getParentForGetInstruction<T extends Model>(
     if(required)
       throw Oops.Required(type.name, relativeTo);
   };
+}
+
+function getRecursive(
+  key: string,
+  parent: Control,
+  source: (refresh: (got: any) => void) => Model | undefined,
+  required?: boolean){
+
+  const context = new WeakMap<Subscriber, {} | undefined>();
+  const { state } = parent;
+
+  const value = source((got) => {
+    state.set(key, got)
+    parent.update(key);
+  });
+
+  // TODO: remove fixes suspense test
+  if(value || required === false)
+    state.set(key, value);
+
+  const create = (local: Subscriber) => {
+    let reset: Callback | undefined;
+
+    local.follow(key, init);
+    init();
+
+    function init(){
+      if(reset)
+        reset();
+
+      const value = state.get(key);
+
+      if(value && controller(value)){
+        const child = new Subscriber(value, local.onUpdate);
+
+        if(local.active)
+          child.commit();
+
+        local.dependant.add(child);
+        context.set(local, child.proxy);
+
+        reset = () => {
+          child.release();
+          local.dependant.delete(child);
+          context.set(local, undefined);
+          reset = undefined;
+        }
+      }
+    }
+  }
+
+  return (local: Subscriber | undefined) => {
+    const value = state.get(key);
+
+    if(!value && required !== false)
+      parent.waitFor(key);
+
+    if(!local)
+      return value;
+
+    if(!context.has(local))
+      create(local);
+
+    return context.get(local);
+  }
 }
 
 function getComputed<T>(
