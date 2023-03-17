@@ -139,7 +139,6 @@ function getComputed<T>(
   let sub: Subscriber;
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
-  let instance: Model;
   let current: T | undefined;
 
   const compute = (initial: boolean) => {
@@ -148,7 +147,7 @@ function getComputed<T>(
       current = setter.call(sub.proxy, sub.proxy);
     }
     catch(err){
-      Oops.Failed(instance, key, initial).warn();
+      Oops.Failed(parent.subject, key, initial).warn();
       throw err;
     }
   }
@@ -160,9 +159,7 @@ function getComputed<T>(
     if(!got)
       parent.waitFor(key);
 
-    instance = got;
-
-    sub = new Subscriber(instance, (_, control) => {
+    sub = new Subscriber(got, (_, control) => {
       if(control !== parent)
         refresh();
       else
