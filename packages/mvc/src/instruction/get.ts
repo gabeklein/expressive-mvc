@@ -137,9 +137,16 @@ function getComputed<T>(
   const { state } = parent;
 
   let sub: Subscriber;
+  let current: T | undefined;
+
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
-  let current: T | undefined;
+
+  if(!order)
+    ORDER.set(parent, order = new Map());
+
+  if(!pending)
+    KEYS.set(parent, pending = new Set());
 
   const compute = (initial: boolean) => {
     try {
@@ -152,9 +159,22 @@ function getComputed<T>(
     }
   }
 
-  const bootstrap = () => {
+  const refresh = () => {
+    try {
+      compute(false);
+    }
+    catch(e){
+      console.error(e);
+    }
+    if(current !== state.get(key)){
+      state.set(key, current);
+      parent.update(key);
+    }
+  }
+
+  const init = () => {
     // TODO: replace create with a cleanup function
-    const got = source(bootstrap);
+    const got = source(init);
 
     if(!got)
       parent.waitFor(key);
@@ -178,37 +198,14 @@ function getComputed<T>(
     }
   }
 
-  const refresh = () => {
-    try {
-      compute(false);
-    }
-    catch(e){
-      console.error(e);
-    }
-    finally {
-      if(current !== state.get(key)){
-        state.set(key, current);
-        parent.update(key);
-      }
-    }
-  }
-
   INFO.set(refresh, key);
 
-  if(!order)
-    ORDER.set(parent, order = new Map());
-
-  if(!pending)
-    KEYS.set(parent, pending = new Set());
-
   return () => {
-    if(pending.has(refresh)){
-      pending.delete(refresh)
+    if(pending.delete(refresh))
       refresh();
-    }
 
     if(!sub)
-      bootstrap();
+      init();
 
     return state.get(key);
   }
