@@ -82,9 +82,6 @@ function instruction<R, T extends Model>(
 
       if(arg0 instanceof Model){
         subject = arg0;
-
-        if(typeof arg1 !== "function")
-          throw new Error(`Factory argument cannot be ${arg1}`);
       }
       else if(Model.isTypeof(arg0)){
         source = fetch(arg0, subject, arg1 !== false)!;

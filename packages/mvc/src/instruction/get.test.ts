@@ -6,17 +6,6 @@ import { use } from './use';
 
 it.todo("will add pending compute to frame immediately");
 
-it("will throw if missing factory", () => {
-  class Test extends Model {
-    // @ts-ignore
-    value = get(this);
-  }
-
-  expect(() => Test.new()).toThrowError(
-    "Factory argument cannot be undefined"
-  );
-})
-
 it('will reevaluate when inputs change', async () => {
   class Subject extends Model {
     seconds = 0;
