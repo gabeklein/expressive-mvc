@@ -74,21 +74,19 @@ function instruction<R, T extends Model>(
     function get(key){
       let { subject } = this;
 
-      // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
       let source: instruction.Source = () => subject;
 
-      if(arg0 instanceof Model){
+      if(arg0 instanceof Model)
         subject = arg0;
-      }
-      else if(Model.isTypeof(arg0)){
+
+      else if(Model.isTypeof(arg0))
         source = fetch(arg0, subject, arg1 !== false)!;
-      }
-      else if(typeof arg0 == "function"){
+
+      else if(typeof arg0 == "function")
         arg1 = arg0.call(subject, key, subject);
-      }
 
       return typeof arg1 == "function"
         ? getComputed(key, this, source, arg1)
