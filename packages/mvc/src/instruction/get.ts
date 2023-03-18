@@ -28,8 +28,11 @@ declare namespace instruction {
   type Source<T extends Model = Model> =
     (_refresh: (x: T) => void) => T | undefined;
 
-  /** Fetch algorithm for get instruction. */
-  export let using: (fn: FindFunction) => typeof instruction;
+  /** Assign fetch algorithm for get instruction. */
+  export let use: (fn: FindFunction) => typeof instruction;
+
+  /** Current fetch for this get instruction. */
+  export let uses: FindFunction;
 }
 
 /**
@@ -289,11 +292,11 @@ function flush(control: Control){
   pending.clear();
 }
 
-function using(fn: instruction.FindFunction){
-  return Object.assign(instruction.bind(fn), { using, fn });
+function use(fn: instruction.FindFunction){
+  return Object.assign(instruction.bind(fn), { use, uses: fn });
 }
 
-const get = using(getParentForGetInstruction);
+const get = use(getParentForGetInstruction);
 
 export {
   flush,
