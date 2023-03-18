@@ -22,11 +22,11 @@ declare namespace instruction {
 
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
-  type FindFunction = <T extends Model>(
-    type: Model.Type<T>,
-    relativeTo: Model,
-    required: boolean
-  ) => (_refresh: (x: T) => void) => T | undefined;
+  type FindFunction<T extends Model = Model> =
+    (type: Model.Type<T>, relativeTo: Model, required: boolean) => Source<T>;
+
+  type Source<T extends Model = Model> =
+    (_refresh: (x: T) => void) => T | undefined;
 
   /** Fetch algorithm for get instruction. */
   export let using: (fn: FindFunction) => typeof instruction;
@@ -78,7 +78,7 @@ function instruction<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source!: (refresh: (x: any) => void) => Model | undefined;
+      let source!: instruction.Source;
       const sourceRequired = arg1 !== false;
 
       if(arg0 instanceof Model){
@@ -105,11 +105,11 @@ function instruction<R, T extends Model>(
 function getParentForGetInstruction<T extends Model>(
   type: Model.Type<T>,
   relativeTo: Model,
-  required: boolean){
-
+  required: boolean
+): instruction.Source {
   const item = getParent(relativeTo, type);
 
-  return (_refresh: (x: T) => void) => {
+  return () => {
     if(item)
       return item;
     
@@ -121,7 +121,7 @@ function getParentForGetInstruction<T extends Model>(
 function getRecursive(
   key: string,
   parent: Control,
-  source: (refresh: (got: any) => void) => Model | undefined,
+  source: instruction.Source,
   required?: boolean){
 
   const context = new WeakMap<Subscriber, {} | undefined>();
@@ -186,7 +186,7 @@ function getRecursive(
 function getComputed<T>(
   key: string,
   parent: Control,
-  source: (refresh: () => void) => Model | undefined,
+  source: instruction.Source,
   setter: instruction.Function<T, any>){
 
   const { state } = parent;
