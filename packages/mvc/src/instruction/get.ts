@@ -72,26 +72,24 @@ function instruction<R, T extends Model>(
 
   return add(
     function get(key){
-      const { subject } = this;
+      let { subject } = this;
 
       // Easy mistake, using a peer, will always be unresolved.
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source!: instruction.Source;
-      const sourceRequired = arg1 !== false;
+      let source: instruction.Source = () => subject;
 
       if(arg0 instanceof Model){
-        source = () => arg0;
+        subject = arg0;
 
         if(typeof arg1 !== "function")
           throw new Error(`Factory argument cannot be ${arg1}`);
       }
       else if(Model.isTypeof(arg0)){
-        source = fetch(arg0, subject, sourceRequired)!;
+        source = fetch(arg0, subject, arg1 !== false)!;
       }
       else if(typeof arg0 == "function"){
-        source = () => subject;
         arg1 = arg0.call(subject, key, subject);
       }
 
