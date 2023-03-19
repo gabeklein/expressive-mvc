@@ -132,7 +132,7 @@ function getRecursive(
   if(value || required === false)
     state.set(key, value);
 
-  const create = (local: Subscriber) => {
+  function create(local: Subscriber){
     let reset: Callback | undefined;
 
     local.follow(key, init);
@@ -199,7 +199,19 @@ function getComputed<T>(
   if(!pending)
     KEYS.set(parent, pending = new Set());
 
-  const compute = (initial: boolean) => {
+  INFO.set(refresh, key);
+
+  return () => {
+    if(pending.delete(refresh))
+      refresh();
+
+    if(!local)
+      init();
+
+    return state.get(key);
+  }
+
+  function compute(initial: boolean){
     try {
       current = undefined;
       current = setter.call(local.proxy, local.proxy);
@@ -210,7 +222,7 @@ function getComputed<T>(
     }
   }
 
-  const refresh = () => {
+  function refresh(){
     try {
       compute(false);
     }
@@ -223,7 +235,7 @@ function getComputed<T>(
     }
   }
 
-  const init = () => {
+  function init(){
     // TODO: replace create with a cleanup function
     const got = source(init);
 
@@ -247,18 +259,6 @@ function getComputed<T>(
       state.set(key, current);
       order.set(refresh, order.size);
     }
-  }
-
-  INFO.set(refresh, key);
-
-  return () => {
-    if(pending.delete(refresh))
-      refresh();
-
-    if(!local)
-      init();
-
-    return state.get(key);
   }
 }
 
