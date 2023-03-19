@@ -15,13 +15,10 @@
       "request": "launch",
       "name": "Jest Tests",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
-      "cwd": "${workspaceFolder}/packages/${input:module}",
       "args": [
         "--watchAll",
         "--runInBand",
-        "--config=./jest.config.json",
-        "--globals='{ \"ts-jest\": { \"isolatedModules\": true } }'",
-        "${input:testName}"
+        "${input:pattern}"
       ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -30,19 +27,9 @@
   ],
   "inputs": [
     {
-      "id": "testName",
+      "id": "pattern",
       "type": "promptString",
-      "description": "Test you wish to run a debug session for."
-    },
-    {
-      "id": "module",
-      "type": "pickString",
-      "description": "Module you want to run tests for.",
-      "options": [
-        "mvc",
-        "react"
-      ],
-      "default": "mvc"
+      "description": "Tests you wish to run a debug session for."
     }
   ]
 }
