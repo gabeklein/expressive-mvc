@@ -1,5 +1,5 @@
 declare namespace Issue {
-  export type Variable = {} | string | number | boolean | null;
+  export type Variable = {} | string | number | boolean | null | undefined;
   export type Variables<T> = T extends (...args: infer T) => any ? T : never;
 
   export type Messages = {
