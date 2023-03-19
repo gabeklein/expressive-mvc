@@ -189,7 +189,6 @@ function getComputed<T>(
 
   let local: Subscriber | undefined;
   let active: boolean;
-  let current: T | undefined;
 
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
@@ -204,8 +203,7 @@ function getComputed<T>(
 
   function compute(initial: boolean){
     try {
-      current = undefined;
-      current = setter.call(local!.proxy, local!.proxy);
+      return setter.call(local!.proxy, local!.proxy);
     }
     catch(err){
       Oops.Failed(parent.subject, key, initial).warn();
@@ -214,14 +212,17 @@ function getComputed<T>(
   }
 
   function refresh(){
+    let next: T | undefined;
+
     try {
-      compute(false);
+      next = compute(false);
     }
     catch(e){
       console.error(e);
     }
-    if(current !== state.get(key)){
-      state.set(key, current);
+
+    if(next !== state.get(key)){
+      state.set(key, next);
       parent.update(key);
     }
   }
@@ -242,12 +243,10 @@ function getComputed<T>(
     local.watch.set(key, false);
 
     try {
-      state.set(key, undefined);
-      compute(true);
+      state.set(key, compute(true));
     }
     finally {
       local.commit();
-      state.set(key, current);
       order.set(refresh, order.size);
     }
   }
