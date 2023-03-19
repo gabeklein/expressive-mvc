@@ -26,7 +26,7 @@ declare namespace instruction {
     (type: Model.Type<T>, relativeTo: Model, required: boolean) => Source<T>;
 
   type Source<T extends Model = Model> =
-    (_refresh: (x: T) => void) => T | undefined;
+    (callback: (x: T | undefined) => void) => void;
 
   /** Assign fetch algorithm for get instruction. */
   export let use: (fn: FindFunction) => typeof instruction;
@@ -80,7 +80,7 @@ function instruction<R, T extends Model>(
       if(typeof arg0 == "symbol")
         throw Oops.PeerNotAllowed(subject, key);
 
-      let source: instruction.Source = () => subject;
+      let source: instruction.Source = cb => cb(subject);
 
       if(arg0 instanceof Model)
         subject = arg0;
@@ -105,11 +105,10 @@ function getParentForGetInstruction<T extends Model>(
 ): instruction.Source {
   const item = getParent(relativeTo, type);
 
-  return () => {
+  return callback => {
     if(item)
-      return item;
-    
-    if(required)
+      callback(item);
+    else if(required)
       throw Oops.Required(type.name, relativeTo);
   };
 }
@@ -122,15 +121,16 @@ function getRecursive(
 
   const context = new WeakMap<Subscriber, {} | undefined>();
   const { state } = parent;
+  let waiting: boolean;
 
-  const value = source((got) => {
-    state.set(key, got)
-    parent.update(key);
+  source((got) => {
+    state.set(key, got);
+
+    if(waiting)
+      parent.update(key);
   });
 
-  // TODO: remove fixes suspense test
-  if(value || required === false)
-    state.set(key, value);
+  waiting = true;
 
   function create(local: Subscriber){
     let reset: Callback | undefined;
@@ -187,7 +187,8 @@ function getComputed<T>(
 
   const { state } = parent;
 
-  let local: Subscriber;
+  let local: Subscriber | undefined;
+  let get: (() => T) | undefined;
   let current: T | undefined;
 
   let order = ORDER.get(parent)!;
@@ -201,20 +202,12 @@ function getComputed<T>(
 
   INFO.set(refresh, key);
 
-  return () => {
-    if(pending.delete(refresh))
-      refresh();
-
-    if(!local)
-      init();
-
-    return state.get(key);
-  }
+  return () => get ? get() : init();
 
   function compute(initial: boolean){
     try {
       current = undefined;
-      current = setter.call(local.proxy, local.proxy);
+      current = setter.call(local!.proxy, local!.proxy);
     }
     catch(err){
       Oops.Failed(parent.subject, key, initial).warn();
@@ -236,29 +229,43 @@ function getComputed<T>(
   }
 
   function init(){
-    // TODO: replace create with a cleanup function
-    const got = source(init);
-
-    if(!got)
-      parent.waitFor(key);
-
-    local = new Subscriber(got, (_, control) => {
-      if(control !== parent)
+    get = () => {
+      if(!local)
+        parent.waitFor(key);
+  
+      if(pending.delete(refresh))
         refresh();
-      else
-        pending.add(refresh);
+
+      return state.get(key);
+    }
+
+    source(model => {
+      if(!model){
+        local = undefined;
+        return;
+      }
+
+      local = new Subscriber(model, (_, control) => {
+        if(control !== parent)
+          refresh();
+        else
+          pending.add(refresh);
+      });
+
+      local.watch.set(key, false);
+
+      try {
+        state.set(key, undefined);
+        compute(true);
+      }
+      finally {
+        local.commit();
+        state.set(key, current);
+        order.set(refresh, order.size);
+      }
     });
 
-    local.watch.set(key, false);
-
-    try {
-      compute(true);
-    }
-    finally {
-      local.commit();
-      state.set(key, current);
-      order.set(refresh, order.size);
-    }
+    return get();
   }
 }
 

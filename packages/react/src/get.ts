@@ -15,22 +15,20 @@ function getForGetInstruction<T extends Model>(
   from: Model,
   required: boolean
 ){
-  let item = Internal.getParent(from, type);
+  return (callback: (got: T) => void) => {
+    const item = Internal.getParent(from, type);
 
-  return (refresh: (x: T) => void) => {
     if(item)
-      return item;
+      callback(item);
+    else
+      getPending(from).push(context => {
+        const got = context.get<T>(type);
 
-    getPending(from).push(context => {
-      const got = context.get<T>(type);
-
-      if(got){
-        item = got;
-        refresh(got);
-      }
-      else if(required)
-        throw Oops.AmbientRequired(type.name, from);
-    })
+        if(got)
+          callback(got);
+        else if(required)
+          throw Oops.AmbientRequired(type.name, from);
+      })
   }
 }
 
