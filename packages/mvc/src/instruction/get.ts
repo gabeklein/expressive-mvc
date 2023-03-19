@@ -199,31 +199,28 @@ function getComputed<T>(
   if(!pending)
     KEYS.set(parent, pending = new Set());
 
-  INFO.set(refresh, key);
+  INFO.set(compute, key);
 
-  function compute(initial: boolean){
-    try {
-      return setter.call(local!.proxy, local!.proxy);
-    }
-    catch(err){
-      Oops.Failed(parent.subject, key, initial).warn();
-      throw err;
-    }
-  }
-
-  function refresh(){
+  function compute(initial?: boolean){
     let next: T | undefined;
 
     try {
-      next = compute(false);
+      next = setter.call(local!.proxy, local!.proxy);
     }
-    catch(e){
-      console.error(e);
+    catch(err){
+      Oops.Failed(parent.subject, key, initial).warn();
+
+      if(initial)
+        throw err;
+      
+      console.error(err);
     }
 
     if(next !== state.get(key)){
       state.set(key, next);
-      parent.update(key);
+
+      if(!initial)
+        parent.update(key);
     }
   }
 
@@ -235,19 +232,19 @@ function getComputed<T>(
 
     local = new Subscriber(model, (_, control) => {
       if(control !== parent)
-        refresh();
+        compute();
       else
-        pending.add(refresh);
+        pending.add(compute);
     });
 
     local.watch.set(key, false);
 
     try {
-      state.set(key, compute(true));
+      compute(true);
     }
     finally {
       local.commit();
-      order.set(refresh, order.size);
+      order.set(compute, order.size);
     }
   }
 
@@ -260,8 +257,8 @@ function getComputed<T>(
     if(!local)
       parent.waitFor(key);
 
-    if(pending.delete(refresh))
-      refresh();
+    if(pending.delete(compute))
+      compute();
 
     return state.get(key);
   }
