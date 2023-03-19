@@ -188,7 +188,7 @@ function getComputed<T>(
   const { state } = parent;
 
   let local: Subscriber | undefined;
-  let get: (() => T) | undefined;
+  let active: boolean;
   let current: T | undefined;
 
   let order = ORDER.get(parent)!;
@@ -201,8 +201,6 @@ function getComputed<T>(
     KEYS.set(parent, pending = new Set());
 
   INFO.set(refresh, key);
-
-  return () => get ? get() : init();
 
   function compute(initial: boolean){
     try {
@@ -228,44 +226,45 @@ function getComputed<T>(
     }
   }
 
-  function init(){
-    get = () => {
-      if(!local)
-        parent.waitFor(key);
-  
-      if(pending.delete(refresh))
-        refresh();
-
-      return state.get(key);
+  function connect(model: Model | undefined){
+    if(!model){
+      local = undefined;
+      return;
     }
 
-    source(model => {
-      if(!model){
-        local = undefined;
-        return;
-      }
-
-      local = new Subscriber(model, (_, control) => {
-        if(control !== parent)
-          refresh();
-        else
-          pending.add(refresh);
-      });
-
-      local.watch.set(key, false);
-
-      try {
-        state.set(key, undefined);
-        compute(true);
-      }
-      finally {
-        local.commit();
-        state.set(key, current);
-        order.set(refresh, order.size);
-      }
+    local = new Subscriber(model, (_, control) => {
+      if(control !== parent)
+        refresh();
+      else
+        pending.add(refresh);
     });
 
-    return get();
+    local.watch.set(key, false);
+
+    try {
+      state.set(key, undefined);
+      compute(true);
+    }
+    finally {
+      local.commit();
+      state.set(key, current);
+      order.set(refresh, order.size);
+    }
+  }
+
+  return () => {
+    if(!active){
+      active = true;
+      source(connect);
+    }
+    
+    if(!local)
+      parent.waitFor(key);
+
+    if(pending.delete(refresh))
+      refresh();
+
+    return state.get(key);
   }
 }
 
