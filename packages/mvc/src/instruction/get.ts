@@ -23,13 +23,13 @@ declare namespace instruction {
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
   type FindFunction<T extends Model = Model> =
-    (type: Model.Type<T>, relativeTo: Model, required: boolean) => Source<T>;
+    (type: typeof Model, relativeTo: Model, required: boolean) => Source<T>;
 
   type Source<T extends Model = Model> =
-    (callback: (x: T | undefined) => void) => void;
+    (callback: (x: T) => void) => void;
 
   /** Assign fetch algorithm for get instruction. */
-  export let use: (fn: FindFunction) => typeof instruction;
+  export let using: (fn: FindFunction) => typeof instruction;
 
   /** Current fetch for this get instruction. */
   export let uses: FindFunction;
@@ -189,6 +189,7 @@ function getComputed<T>(
 
   let local: Subscriber | undefined;
   let active: boolean;
+  let isAsync: boolean;
 
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
@@ -219,17 +220,12 @@ function getComputed<T>(
     if(next !== state.get(key)){
       state.set(key, next);
 
-      if(!initial)
+      if(!initial || isAsync)
         parent.update(key);
     }
   }
 
-  function connect(model: Model | undefined){
-    if(!model){
-      local = undefined;
-      return;
-    }
-
+  function connect(model: Model){
     local = new Subscriber(model, (_, control) => {
       if(control !== parent)
         compute();
@@ -252,6 +248,7 @@ function getComputed<T>(
     if(!active){
       active = true;
       source(connect);
+      isAsync = true;
     }
     
     if(!local)
@@ -294,11 +291,11 @@ function flush(control: Control){
   pending.clear();
 }
 
-function use(fn: instruction.FindFunction){
-  return Object.assign(instruction.bind(fn), { use, uses: fn });
+function using(fn: instruction.FindFunction){
+  return Object.assign(instruction.bind(fn), { using, uses: fn });
 }
 
-const get = use(getParentForGetInstruction);
+const get = using(getParentForGetInstruction);
 
 export {
   flush,

@@ -569,3 +569,46 @@ describe("parent-child", () => {
     expect(bar.minutes).toEqual(1);
   })
 })
+
+describe("async", () => {
+  const asyncGet = get.using(Type => {
+    let instance: Model | undefined;
+
+    return (refresh) => {
+      if(instance)
+        refresh(instance);
+
+      setTimeout(() => {
+        instance = Type.new();
+        refresh(instance);
+      }, 100);
+    }
+  });
+  
+  it("will prevent compute if not ready", async () => {
+    class Foo extends Model {
+      value = "foobar";
+    }
+    class Bar extends Model {
+      foo = asyncGet(Foo, foo => {
+        return foo.value;
+      });
+    }
+  
+    const bar = Bar.new();
+    let suspense: Model.Suspense;
+
+    try {
+      void bar.foo;
+      throw false;
+    }
+    catch(err){
+      expect(err).toBeInstanceOf(Promise);
+      suspense = err as Model.Suspense;
+    }
+
+    await suspense;
+  
+    expect(bar.foo).toBe("foobar");
+  })
+})

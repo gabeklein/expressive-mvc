@@ -63,7 +63,7 @@ function getPending(subject: {}){
   return pending;
 }
 
-const instruction = get.use(getForGetInstruction);
+const instruction = get.using(getForGetInstruction);
 
 export {
   instruction as get,
