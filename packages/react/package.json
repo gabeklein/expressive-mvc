@@ -30,11 +30,11 @@
     "postversion": "git push & npm publish"
   },
   "peerDependencies": {
-    "react": ">=16.8.0 <19.0.0",
-    "@expressive/mvc": "^0.17.1"
+    "@expressive/mvc": "^0.17.1",
+    "react": ">=16.8.0 <19.0.0"
   },
   "devDependencies": {
-    "@expressive/mvc": "^0.17.1",
+    "@expressive/mvc": "^0.18.0",
     "@rollup/plugin-commonjs": "^22.0.0",
     "@testing-library/react-hooks": "^8.0.0",
     "@types/react": "^17.0.11",
@@ -47,7 +47,7 @@
     "rollup-plugin-typescript2": "^0.31.1",
     "ts-jest": "^27.0.3",
     "tslib": "^2.3.0",
-		"typescript": "^4.9.5"
+    "typescript": "^4.9.5"
   },
-  "version": "0.17.1"
+  "version": "0.18.0"
 }
