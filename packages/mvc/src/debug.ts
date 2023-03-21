@@ -3,10 +3,10 @@ import { defineProperties } from './helper/object';
 import { Model } from './model';
 import { Subscriber, subscriber } from './subscriber';
 
-const LOCAL = "$debug local";
-const STATE = "$debug state";
-const UPDATE = "$debug update";
-const CONTROL = "$debug control";
+const LOCAL = "__local";
+const STATE = "__state";
+const UPDATE = "__update";
+const CONTROL = "__control";
 
 defineProperties(Model.prototype, {
   [CONTROL]: {
@@ -43,10 +43,10 @@ const Debug = {
   UPDATE
 } as {
   /** Use to access Model's local Subscriber (if exists). */
-  LOCAL: "$debug local";
+  LOCAL: "__local";
 
   /** Use to access snapshot of Model's current state. */
-  STATE: "$debug state";
+  STATE: "__state";
 
   /**
    * Use to access snapshot of Model's latest update.
@@ -54,10 +54,10 @@ const Debug = {
    * Note: If used within a Subscriber, update will be narrowed to the specific keys
    * which triggered a refresh (if one did).
    */
-  UPDATE: "$debug update";
+  UPDATE: "__update";
 
   /** Use to access a Model's controller. */
-  CONTROL: "$debug control";
+  CONTROL: "__control";
 }
 
 /**
