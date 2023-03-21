@@ -177,6 +177,32 @@ describe("context", () => {
 
     expect(didRender).toBeCalledTimes(2);
   })
+
+  it("will prefer parent over context", () => {
+    class Parent extends Model {
+      child = new Child();
+      value = "foo";
+    }
+
+    class Child extends Model {
+      parent = get(Parent);
+    }
+
+    const { is: parent, child } = Parent.new();
+    const standalone = Child.new();
+
+    parent.value = "bar";
+
+    render(
+      <Provider for={Parent}>
+        <Provider for={child} />
+        <Provider for={standalone} />
+      </Provider>
+    );
+
+    expect(child.parent.value).toBe("bar");
+    expect(standalone.parent.value).toBe("foo");
+  })
 })
 
 describe("suspense", () => {
