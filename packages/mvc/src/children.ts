@@ -32,9 +32,6 @@ export function getRecursive(key: string, from: Control){
   const { state } = from;
 
   return (local: Subscriber | undefined) => {
-    if(!state.has(key))
-      from.waitFor(key);
-
     if(!local)
       return state.get(key);
 
