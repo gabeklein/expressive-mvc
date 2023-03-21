@@ -7,7 +7,7 @@ export { ref } from './instruction/ref';
 export { set } from './instruction/set';
 export { use } from './instruction/use';
 
-export { Model } from './model';
+export { Model, Model as default } from './model';
 export { Control } from './control';
 export { Subscriber } from './subscriber';
 export { Debug } from './debug';

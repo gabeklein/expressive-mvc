@@ -3,7 +3,6 @@ import { Model } from '@expressive/mvc';
 import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
-import { get } from './get';
 
 Object.assign(Model, <any>{
   use(arg1: any, arg2?: any){
@@ -20,8 +19,17 @@ Object.assign(Model, <any>{
   }
 });
 
+export {
+  default,
+  Model,
+  Debug,
+  add,
+  ref,
+  run,
+  set,
+  use,
+} from '@expressive/mvc';
+
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
-
-export * from "@expressive/mvc";
-export { Model, get };
+export { get } from './get';
