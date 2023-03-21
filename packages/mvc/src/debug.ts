@@ -60,6 +60,11 @@ const Debug = {
   CONTROL: "$debug control";
 }
 
+/**
+ * Generic will declare debug properties on a given Model.
+ * 
+ * These properties always exist at runtime, however are hidden unless you cast your Model as `Debug<T>`.
+ */
 type Debug<T extends Model> = T & {
   /** Controller for this instance. */
   [CONTROL]?: Control<T>;
