@@ -1,5 +1,5 @@
-import { getParent } from '../children';
-import { Control, controller } from '../control';
+import { getParent, getRecursive } from '../children';
+import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
@@ -89,8 +89,8 @@ function get<R, T extends Model>(
         arg1 = arg0.call(subject, key, subject);
 
       return typeof arg1 == "function"
-        ? getComputed(key, this, source, arg1)
-        : getRecursive(key, this, source, arg1);
+        ? computed(this, key, source, arg1)
+        : recursive(this, key, source, arg1);
     }
   )
 }
@@ -110,18 +110,17 @@ function getParentForGetInstruction<T extends Model>(
   };
 }
 
-function getRecursive(
-  key: string,
+function recursive(
   parent: Control,
+  key: string,
   source: get.Source,
   required?: boolean){
 
-  const context = new WeakMap<Subscriber, {} | undefined>();
-  const { state } = parent;
+  const getter = getRecursive(key, parent);
   let waiting: boolean;
 
   source((got) => {
-    state.set(key, got);
+    parent.state.set(key, got);
 
     if(waiting)
       parent.update(key);
@@ -129,56 +128,19 @@ function getRecursive(
 
   waiting = true;
 
-  function create(local: Subscriber){
-    let reset: Callback | undefined;
-
-    local.follow(key, init);
-    init();
-
-    function init(){
-      if(reset)
-        reset();
-
-      const value = state.get(key);
-
-      if(value && controller(value)){
-        const child = new Subscriber(value, local.onUpdate);
-
-        if(local.active)
-          child.commit();
-
-        local.dependant.add(child);
-        context.set(local, child.proxy);
-
-        reset = () => {
-          child.release();
-          local.dependant.delete(child);
-          context.set(local, undefined);
-          reset = undefined;
-        }
-      }
-    }
-  }
-
   return (local: Subscriber | undefined) => {
-    const value = state.get(key);
+    const value = parent.state.get(key);
 
     if(!value && required !== false)
       parent.waitFor(key);
 
-    if(!local)
-      return value;
-
-    if(!context.has(local))
-      create(local);
-
-    return context.get(local);
+    return local ? getter(local) : value;
   }
 }
 
-function getComputed<T>(
-  key: string,
+function computed<T>(
   parent: Control,
+  key: string,
   source: get.Source,
   setter: get.Function<T, any>){
 
