@@ -21,7 +21,7 @@ describe("get", () => {
     const render = renderHook(() => Test.get(), { wrapper });
 
     expect(render.result.current).toBe(instance);
-    expect(render.result.current!.value).toBe(1);
+    expect(render.result.current.value).toBe(1);
   })
 
   it("will complain if not found", () => {
