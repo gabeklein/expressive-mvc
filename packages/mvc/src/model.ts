@@ -292,18 +292,6 @@ class Model {
     throw Oops.NoAdapter("tap");
   }
 
-  protected static meta <T extends Class> (this: T): T;
-  protected static meta <T extends Class> (this: T, expect: true): NonOptionalValues<T>;
-  protected static meta <T extends Class> (this: T, expect?: boolean): OptionalValues<T>;
-  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect: true): Exclude<T, undefined>;
-  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => Promise<T>, expect?: boolean): T;
-  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect: true): Exclude<T, undefined>;
-  protected static meta <T, M extends Class> (this: M, from: (this: M, state: M) => T, expect?: boolean): T;
-
-  protected static meta(): never {
-    throw Oops.NoAdapter("meta");
-  }
-
   /**
    * Static equivalent of `x instanceof this`.
    * 

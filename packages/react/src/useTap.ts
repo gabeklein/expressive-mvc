@@ -4,36 +4,27 @@ import React from 'react';
 import { uid } from './helper/object';
 import { Callback, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
 
-declare namespace useTap {
-  type Source<T extends Model> =
-    | T
-    | Model.Type<T>
-    | (() => T | Model.Type<T>);
-}
+function useTap <T extends Model> (source: T | Model.Type<T>): T;
 
-function useTap <T extends Model> (source: useTap.Source<T>): T;
+function useTap <T extends Model> (source: T | Model.Type<T>, expect: true): NonOptionalValues<T>;
+function useTap <T extends Model> (source: T | Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
-function useTap <T extends Model> (source: useTap.Source<T>, expect: true): NonOptionalValues<T>;
-function useTap <T extends Model> (source: useTap.Source<T>, expect?: boolean): OptionalValues<T>;
+function useTap <T extends Model, R> (source: T | Model.Type<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
+function useTap <T extends Model, R> (source: T | Model.Type<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useTap <T extends Model, R> (source: useTap.Source<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
-
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useTap <T extends Model, R> (source: useTap.Source<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
+function useTap <T extends Model, R> (source: T | Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (source: T | Model.Type<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useTap <T extends Model, R> (source: T | Model.Type<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model, R> (
-  source: T | (() => T) | typeof Model,
+  source: T | typeof Model,
   arg1?: boolean | Model.TapCallback<T, any>,
   arg2?: boolean) {
 
   const instance: T =
     typeof source == "object"
       ? source
-      : "get" in source
-        ? source.get() as T
-        : source();
+      : source.get() as T;
       
   const deps = [uid(instance)];
   const state = React.useState(0);

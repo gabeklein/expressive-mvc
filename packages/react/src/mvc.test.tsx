@@ -1,11 +1,9 @@
-import { Model, use } from '.';
 import React from 'react';
 
+import { Model } from '.';
 import { render, renderHook } from './helper/testing';
 import { Provider } from './provider';
 import { Oops } from './useContext';
-
-const opts = { timeout: 100 };
 
 describe("get", () => {
   class Test extends Model {
@@ -112,90 +110,5 @@ describe("tap", () => {
     expect(didUpdateValues).toBeCalledTimes(1);
 
     element.unmount();
-  })
-})
-
-describe("meta", () => {
-  it('will track static values', async () => {
-    class Parent extends Model {
-      static value = "foo";
-      static getValue(){
-        return this.meta().value;
-      }
-    }
-
-    const render = renderHook(() => {
-      return Parent.getValue();
-    });
-
-    expect(render.result.current).toBe("foo");
-
-    Parent.value = "bar";
-    await render.waitForNextUpdate(opts);
-    expect(render.result.current).toBe("bar");
-
-    Parent.value = "baz";
-    await render.waitForNextUpdate(opts);
-    expect(render.result.current).toBe("baz");
-  })
-
-  it('will compute value', async () => {
-    class Parent extends Model {
-      static value = "foo";
-      static getValue(){
-        return this.meta(x => x.value);
-      }
-    }
-
-    const {
-      result,
-      waitForNextUpdate
-    } = renderHook(() => {
-      return Parent.getValue();
-    });
-
-    expect(result.current).toBe("foo");
-
-    Parent.value = "bar";
-
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-  })
-
-  it('will track recursive values', async () => {
-    class Child extends Model {
-      value = "foo";
-    }
-
-    class Parent extends Model {
-      static child = use(Child);
-      static getValue(){
-        return this.meta().child.value;
-      }
-    }
-
-    const {
-      result,
-      waitForNextUpdate
-    } = renderHook(() => {
-      return Parent.getValue();
-    });
-
-    expect(result.current).toBe("foo");
-
-    // Will refresh on sub-value change.
-    Parent.child.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
-
-    // Will refresh on repalcement.
-    Parent.child = new Child();
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("foo");
-
-    // Fresh subscription still works.
-    Parent.child.value = "bar";
-    await waitForNextUpdate(opts);
-    expect(result.current).toBe("bar");
   })
 })

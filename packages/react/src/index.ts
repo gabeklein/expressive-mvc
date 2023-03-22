@@ -13,9 +13,6 @@ Object.assign(Model, <any>{
   },
   tap(arg1?: any, arg2?: boolean){
     return useTap(this, arg1, arg2);
-  },
-  meta(arg1?: any, arg2?: any){
-    return useTap(() => this, arg1, arg2);
   }
 });
 

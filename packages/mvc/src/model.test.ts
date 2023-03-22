@@ -358,7 +358,7 @@ describe("get", () => {
 })
 
 describe("adapter", () => {
-  const methods = ["get", "tap", "use", "meta"] as const;
+  const methods = ["get", "tap", "use"] as const;
 
   it.each(methods)("will throw by default for %p", (method) => {
     const useMethod = () => Model[method].call(Model);
