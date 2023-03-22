@@ -4,6 +4,22 @@ import { Model, set } from '.';
 import { mockAsync, mockSuspense, renderHook } from './helper/testing';
 import { useTap } from './useTap';
 
+it("will refresh for accessed values", async () => {
+  class Test extends Model {
+    foo = "foo";
+  }
+
+  const test = Test.new();
+  const render = renderHook(() => {
+    return useTap(test).foo;
+  });
+
+  expect(render.result.current).toBe("foo");
+  test.foo = "bar";
+
+  await render.waitForNextUpdate();
+})
+
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
     class Test extends Model {
