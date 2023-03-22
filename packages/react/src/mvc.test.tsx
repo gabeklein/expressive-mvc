@@ -12,13 +12,13 @@ describe("get", () => {
 
   function render<T>(
     hook: () => T,
-    provide?: Model){
+    inContext?: Model){
 
     let wrapper: React.FC | undefined;
 
-    if(provide)
+    if(inContext)
       wrapper = ({ children }) => (
-        <Provider for={provide}>
+        <Provider for={inContext}>
           {children}
         </Provider>
       )
