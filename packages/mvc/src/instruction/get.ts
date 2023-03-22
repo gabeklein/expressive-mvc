@@ -224,7 +224,7 @@ const INFO = new WeakMap<Callback, string>();
 const KEYS = new WeakMap<Control, Set<Callback>>();
 const ORDER = new WeakMap<Control, Map<Callback, number>>();
 
-function flush(control: Control){
+function flushComputed(control: Control){
   const pending = KEYS.get(control);
 
   if(!pending || !pending.size)
@@ -257,6 +257,6 @@ function using(fn: get.FindFunction){
 get.using = using;
 
 export {
-  flush,
+  flushComputed,
   get
 }

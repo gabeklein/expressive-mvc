@@ -1,7 +1,7 @@
 import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Instruction } from './instruction/add';
-import { flush } from './instruction/get';
+import { flushComputed } from './instruction/get';
 import { Model } from './model';
 import { subscriber } from './subscriber';
 import { suspend } from './suspense';
@@ -118,7 +118,7 @@ class Control<T extends {} = any> {
   
     else if(!frame.size)
       setTimeout(() => {
-        flush(this);  
+        flushComputed(this);  
         const keys = this.latest = Array.from(frame);
         setTimeout(() => this.latest = undefined, 0);
 
