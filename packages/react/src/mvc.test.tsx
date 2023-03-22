@@ -10,41 +10,31 @@ describe("get", () => {
     value = 1;
   }
 
-  function render<T>(
-    hook: () => T,
-    inContext?: Model){
-
-    let wrapper: React.FC | undefined;
-
-    if(inContext)
-      wrapper = ({ children }) => (
-        <Provider for={inContext}>
-          {children}
-        </Provider>
-      )
-
-    return renderHook(hook, { wrapper }).result;
-  }
-
   it("will get instance", () => {
     const instance = Test.new();
-    const result = render(() => Test.get(), instance);
+    const wrapper: React.FC = ({ children }) => (
+      <Provider for={instance}>
+        {children}
+      </Provider>
+    )
 
-    expect(result.current).toBe(instance);
-    expect(result.current!.value).toBe(1);
+    const render = renderHook(() => Test.get(), { wrapper });
+
+    expect(render.result.current).toBe(instance);
+    expect(render.result.current!.value).toBe(1);
   })
 
   it("will complain if not found", () => {
-    const result = render(() => Test.get());
+    const render = renderHook(() => Test.get());
     const expected = Oops.NotFound(Test.name);
 
-    expect(() => result.current).toThrowError(expected);
+    expect(() => render.result.current).toThrowError(expected);
   })
 
   it("will return undefined if not found", () => {
-    const result = render(() => Test.get(false));
+    const render = renderHook(() => Test.get(false));
 
-    expect(result.current).toBeUndefined();
+    expect(render.result.current).toBeUndefined();
   })
 })
 
