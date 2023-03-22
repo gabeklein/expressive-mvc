@@ -2,7 +2,6 @@ import React from 'react';
 
 import { Model } from '.';
 import { render, renderHook } from './helper/testing';
-import { useModel } from './useModel';
 
 const opts = { timeout: 100 };
 
@@ -61,11 +60,11 @@ describe("subscription", () => {
 
   it("will ignore causal updates", async () => {
     const didRender = jest.fn();
-    const test = Test.new();
+    let test!: Test;
 
     const TestComponent = (props: any) => {
-      const { value } = useModel(() => test, props);
-      didRender(value);
+      test = Test.use(props);
+      didRender(test.value);
       return null;
     }
 
@@ -78,7 +77,7 @@ describe("subscription", () => {
     expect(didRender).toBeCalledTimes(2);
     expect(didRender).toBeCalledWith("bar");
 
-    await test.on();
+    await test.on(true);
 
     expect(didRender).toBeCalledTimes(2);
   })

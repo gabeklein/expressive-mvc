@@ -2,8 +2,6 @@ import React from 'react';
 
 import { issues } from './helper/issues';
 import { Class } from './helper/types';
-import { useContext } from './useContext';
-import { useTap } from './useTap';
 
 export const Oops = issues({
   BadProps: () =>
@@ -59,12 +57,12 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const { get, has, children, for: type } = props as any;
 
   if(typeof children == "function")
-    return children(useTap(type));
+    return children(type.tap());
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(useContext(type, !!has));
+    callback(type.get(!!has));
   else
     throw Oops.BadProps()
 

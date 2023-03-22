@@ -4,17 +4,9 @@ import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
-Object.assign(Model, <any>{
-  use(arg1: any, arg2?: any){
-    return useModel(this, arg1, arg2);
-  },
-  get(required?: boolean){
-    return useContext(this, required);
-  },
-  tap(arg1?: any, arg2?: boolean){
-    return useTap(this, arg1, arg2);
-  }
-});
+Model.tap = useTap;
+Model.get = useContext;
+Model.use = useModel;
 
 export {
   default,

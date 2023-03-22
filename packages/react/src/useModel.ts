@@ -4,32 +4,30 @@ import React from 'react';
 import { usePeerContext } from './get';
 
 function useModel <T extends Model> (
-  source: Model.New<T> | (() => T),
+  this: Model.New<T>,
   callback?: (instance: T) => void
 ): T;
 
 function useModel <T extends Model> (
-  source: Model.New<T> | (() => T),
+  this: Model.New<T>,
   watch: Model.Key<T>[],
   callback?: (instance: T) => void
 ): T;
 
 function useModel <T extends Model> (
-  source: Model.New<T> | (() => T),
+  this: Model.New<T>,
   apply: Model.Compat<T>,
   keys?: Model.Event<T>[]
 ): T;
 
 function useModel <T extends Model> (
-  source: (() => T) | Model.New<T>,
+  this: Model.New<T>,
   arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Key<T>[]){
 
   const instance = React.useMemo(() => {
     const callback = arg2 || arg1;
-    const instance = Model.isTypeof(source)
-      ? new source()
-      : source();
+    const instance = new this();
 
     Control.for(instance);
 
@@ -49,8 +47,7 @@ function useModel <T extends Model> (
         instance.on(arg1, () => update(x => x+1));
 
       return () => {
-        if(Model.isTypeof(source))
-          (instance as Model).gc();
+        instance.gc();
       }
     }, []);
 
@@ -71,9 +68,7 @@ function useModel <T extends Model> (
 
     return () => {
       local.release();
-
-      if(Model.isTypeof(source))
-        (instance as Model).gc();
+      instance.gc();
     };
   }, []);
 

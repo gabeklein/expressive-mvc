@@ -23,17 +23,16 @@ function useLookup(){
   }
 };
 
-function useContext <T extends Model> (Type: Model.Type<T>, required: false): T | undefined;
-function useContext <T extends Model> (Type: Model.Type<T>, required?: boolean): T;
-
-function useContext<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined {
-  const instance = useLookup().get(Type);
+function useContext <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+function useContext <T extends Model> (this: Model.Type<T>, required?: boolean): T;
+function useContext<T extends Model>(this: Model.Type<T>, required?: boolean): T | undefined {
+  const instance = useLookup().get(this);
 
   if(instance === null)
-    throw Oops.MultipleExist(Type.name);
+    throw Oops.MultipleExist(this.name);
 
   if(!instance && required !== false)
-    throw Oops.NotFound(Type.name);
+    throw Oops.NotFound(this.name);
 
   return instance;
 }
