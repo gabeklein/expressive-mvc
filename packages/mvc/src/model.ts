@@ -206,15 +206,7 @@ class Model {
     const controller = control(this);
     const { state } = controller;
 
-    if(typeof arg1 == "object")
-      for(const key in arg1){
-        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
-          state.set(key, (arg1 as any)[key]);
-          controller.update(key as any);
-        }
-      }
-
-    else if(typeof arg1 == "string"){
+    if(typeof arg1 == "string"){
       controller.update(arg1 as Model.Key<this>);
 
       if(1 in arguments){
@@ -229,6 +221,12 @@ class Model {
         }
       }
     }
+    else if(typeof arg1 == "object")
+      for(const key in arg1)
+        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
+          state.set(key, (arg1 as any)[key]);
+          controller.update(key as any);
+        }
 
     return <PromiseLike<readonly Model.Event<this>[] | null>> {
       then: (callback) => {
