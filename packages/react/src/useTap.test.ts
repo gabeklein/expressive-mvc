@@ -2,16 +2,33 @@ import { act } from '@testing-library/react-hooks';
 
 import { Model, set } from '.';
 import { mockAsync, mockSuspense, renderHook } from './helper/testing';
-import { useTap } from './useTap';
 
-it("will refresh for accessed values", async () => {
-  class Test extends Model {
+/**
+ * Bypass context to fascilitate tests.
+ */
+class Singleton extends Model {
+  static instance: Singleton;
+
+  static new<T extends Singleton>(this: Model.Type<T>): T;
+  static new(){
+    return this.instance = super.new();
+  }
+
+  /** Inherited by `tap`, will return (or create) only one instance. */
+  static get<T extends Singleton>(this: Model.Type<T>): T;
+  static get(){
+    return this.instance || this.new();
+  }
+}
+
+it("will refresh for values accessed", async () => {
+  class Test extends Singleton {
     foo = "foo";
   }
 
   const test = Test.new();
   const render = renderHook(() => {
-    return useTap(test).foo;
+    return Test.tap().foo;
   });
 
   expect(render.result.current).toBe("foo");
@@ -22,17 +39,16 @@ it("will refresh for accessed values", async () => {
 
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value = set(() => promise.pending());
     }
   
     const test = mockSuspense();
     const promise = mockAsync();
     const didRender = mockAsync();
-    const instance = Test.new();
   
     test.renderHook(() => {
-      void useTap(instance).value;
+      void Test.tap().value;
       didRender.resolve();
     })
   
@@ -47,7 +63,7 @@ describe("set factory", () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
   
-    class Test extends Model {
+    class Test extends Singleton {
       value = set(async () => {
         await promise.pending();
         throw "oh no";
@@ -55,12 +71,11 @@ describe("set factory", () => {
     }
   
     const test = mockSuspense();
-    const instance = Test.new();
     const didThrow = mockAsync();
   
     test.renderHook(() => {
       try {
-        void useTap(instance).value;
+        void Test.tap().value;
       }
       catch(err: any){
         if(err instanceof Promise)
@@ -82,16 +97,15 @@ describe("set factory", () => {
   it('will suspend if value is promise', async () => {
     const promise = mockAsync<string>();
   
-    class Test extends Model {
+    class Test extends Singleton {
       value = set(promise.pending());
     }
   
     const test = mockSuspense();
     const didRender = mockAsync();
-    const instance = Test.new();
   
     test.renderHook(() => {
-      void useTap(instance).value;
+      void Test.tap().value;
       didRender.resolve();
     })
   
@@ -106,7 +120,7 @@ describe("set factory", () => {
 
 describe("set placeholder", () => {
   it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
+    class Test extends Singleton {
       foobar = set<string>();
     }
 
@@ -115,7 +129,7 @@ describe("set placeholder", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      useTap(instance).foobar;
+      Test.tap().foobar;
       promise.resolve();
     })
 
@@ -130,7 +144,7 @@ describe("set placeholder", () => {
   })
 
   it('will not suspend if value is defined', async () => {
-    class Test extends Model {
+    class Test extends Singleton {
       foobar = set<string>();
     }
 
@@ -140,7 +154,7 @@ describe("set placeholder", () => {
     instance.foobar = "foo!";
 
     test.renderHook(() => {
-      useTap(instance).foobar;
+      Test.tap().foobar;
     })
 
     test.assertDidRender(true);
@@ -149,7 +163,7 @@ describe("set placeholder", () => {
 
 describe("required parameter", () => {
   it('will suspend if subvalue is undefined', async () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value?: string = undefined;
     }
   
@@ -158,7 +172,7 @@ describe("required parameter", () => {
     const instance = Test.new();
   
     test.renderHook(() => {
-      useTap(instance, true).value;
+      Test.tap(true).value;
       promise.resolve();
     })
   
@@ -171,18 +185,17 @@ describe("required parameter", () => {
   })
 
   it("will return undefined if not required", async () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value = set(promise.pending);
     }
 
     const promise = mockAsync<string>();
-    const instance = Test.new();
     const test = mockSuspense();
 
     let value: string | undefined;
 
     test.renderHook(() => {
-      ({ value } = useTap(instance, false));
+      ({ value } = Test.tap(false));
     })
 
     test.assertDidRender(true);
@@ -190,30 +203,28 @@ describe("required parameter", () => {
   })
 
   it("will force suspense if required is true", () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value = set(() => undefined);
     }
 
-    const instance = Test.new();
     const test = mockSuspense();
 
     test.renderHook(() => {
-      useTap(instance, true).value;
+      Test.tap(true).value;
     })
 
     test.assertDidSuspend(true);
   });
 
   it("will cancel out suspense if required is false", () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value = set<never>();
     }
 
-    const instance = Test.new();
     const test = mockSuspense();
 
     test.renderHook(() => {
-      useTap(instance, false).value;
+      Test.tap(false).value;
     })
 
     test.assertDidRender(true);
@@ -223,7 +234,7 @@ describe("required parameter", () => {
 describe("computed", () => {
   const opts = { timeout: 100 };
 
-  class Test extends Model {
+  class Test extends Singleton {
     foo = 1;
     bar = 2;
     baz = 3;
@@ -233,7 +244,7 @@ describe("computed", () => {
     const parent = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(parent, x => x.foo);
+      return Test.tap(x => x.foo);
     });
 
     expect(result.current).toBe(1);
@@ -247,7 +258,7 @@ describe("computed", () => {
   it('will compute output', async () => {
     const parent = Test.new();
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(parent, x => {
+      return Test.tap(x => {
         return x.foo + x.bar;
       });
     });
@@ -267,7 +278,7 @@ describe("computed", () => {
 
     const { result } = renderHook(() => {
       render();
-      return useTap(parent, x => {
+      return Test.tap(x => {
         compute();
         void x.foo;
         return x.bar;
@@ -291,7 +302,7 @@ describe("computed", () => {
   it("will disable updates if null returned", async () => {
     const instance = Test.new();
     const didRender = jest.fn(() => {
-      return useTap(instance, $ => null);
+      return Test.tap($ => null);
     })
 
     const { result } = renderHook(didRender);
@@ -311,7 +322,7 @@ describe("computed", () => {
     const willMount = jest.fn();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return useTap(test, $ => {
+      return Test.tap($ => {
         willMount();
         void $.foo;
   
@@ -345,7 +356,7 @@ describe("computed", () => {
     
       const { result } = renderHook(() => {
         didRender();
-        return useTap(parent, x => {
+        return Test.tap(x => {
           didCompute(x.foo);
           return [1, x.bar, x.baz];
         });
@@ -369,7 +380,7 @@ describe("computed", () => {
     
       const { result } = renderHook(() => {
         didRender();
-        return useTap(parent, x => {
+        return Test.tap(x => {
           didCompute();
           return [x.foo, x.bar, x.baz];
         });
@@ -388,16 +399,15 @@ describe("computed", () => {
   })
 
   describe("async", () => {
-    class Test extends Model {
+    class Test extends Singleton {
       foo = "bar";
     };
 
     it('will return null then refresh', async () => {
       const promise = mockAsync<string>();
-      const control = Test.new();
 
       const { result, waitForNextUpdate } = renderHook(() => {
-        return useTap(control, () => promise.pending());
+        return Test.tap(() => promise.pending());
       });
 
       expect(result.current).toBeNull();
@@ -413,7 +423,7 @@ describe("computed", () => {
       const control = Test.new();
 
       const { result, waitForNextUpdate } = renderHook(() => {
-        return useTap(control, $ => {
+        return Test.tap($ => {
           void $.foo;
           return promise.pending();
         });
@@ -430,7 +440,7 @@ describe("computed", () => {
   })
 
   describe("suspense", () => {
-    class Test extends Model {
+    class Test extends Singleton {
       value?: string = undefined;
     }
 
@@ -446,7 +456,7 @@ describe("computed", () => {
         promise.resolve();
         didRender();
 
-        useTap(instance, state => {
+        Test.tap(state => {
           didCompute();
 
           if(state.value == "foobar")
@@ -472,12 +482,11 @@ describe("computed", () => {
     })
 
     it('will suspend strict async', async () => {
-      const instance = Test.new();
       const promise = mockAsync();
       const test = mockSuspense();
 
       test.renderHook(() => {
-        useTap(instance, () => promise.pending(), true);
+        Test.tap(() => promise.pending(), true);
       })
 
       test.assertDidSuspend(true);
@@ -490,21 +499,19 @@ describe("computed", () => {
   })
 
   describe("undefined", () => {
-    class Test extends Model {};
+    class Test extends Singleton {};
 
     it("will convert to null", () => {
-      const test = Test.new();
       const { result } = renderHook(() => {
-        return useTap(test, () => undefined);
+        return Test.tap(() => undefined);
       });
 
       expect(result.current).toBe(null);
     })
 
     it("will convert to null from factory", () => {
-      const test = Test.new();
       const { result } = renderHook(() => {
-        return useTap(test, () => () => undefined);
+        return Test.tap(() => () => undefined);
       });
 
       expect(result.current).toBe(null);
@@ -513,14 +520,13 @@ describe("computed", () => {
 
   describe("update callback", () => {
     it("will force a refresh", () => {
-      const test = Model.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate!: () => Promise<void>;
 
       const { unmount } = renderHook(() => {
         didRender();
-        return useTap(test, ($, update) => {
+        return Test.tap(($, update) => {
           didEvaluate();
           forceUpdate = update;
         });
@@ -540,14 +546,13 @@ describe("computed", () => {
     })
 
     it("will refresh without reevaluating", () => {
-      const test = Model.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate!: () => void;
 
       const { unmount } = renderHook(() => {
         didRender();
-        return useTap(test, ($, update) => {
+        return Test.tap(($, update) => {
           didEvaluate();
           forceUpdate = update;
           // return null to stop subscription.
@@ -569,14 +574,13 @@ describe("computed", () => {
     })
 
     it("will refresh returned function instead", () => {
-      const test = Model.new();
       const didEvaluate = jest.fn();
       const didEvaluateInner = jest.fn();
 
       let updateValue!: (value: string) => void;
 
       const { unmount, result } = renderHook(() => {
-        return useTap(test, ($, update) => {
+        return Test.tap(($, update) => {
           let value = "foo";
 
           didEvaluate();
@@ -607,7 +611,6 @@ describe("computed", () => {
     })
 
     it("will refresh again after promise", async () => {
-      const test = Model.new();
       const didRender = jest.fn();
       const promise = mockAsync<string>();
       
@@ -615,7 +618,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return useTap(test, ($, update) => {
+        return Test.tap(($, update) => {
           forceUpdate = update;
           return null;
         });
@@ -643,7 +646,6 @@ describe("computed", () => {
     })
 
     it("will invoke async function", async () => {
-      const test = Model.new();
       const didRender = jest.fn();
       const promise = mockAsync();
       
@@ -651,7 +653,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return useTap(test, ($, update) => {
+        return Test.tap(($, update) => {
           forceUpdate = update;
           return null;
         });
