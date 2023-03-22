@@ -6,7 +6,7 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, InstanceOf, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
+import type { Callback, Class, InstanceOf, MaybePromise, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>
@@ -153,20 +153,23 @@ class Model {
 
   get(): Model.Export<this>;
 
-  get <P extends Model.Key<this>> (property: P): this[P];
-  get <P extends Model.Key<this>> (property: P, timeout: number): Promise<this[P]>;
-  get <P extends Model.Key<this>> (property: P, onChange: true): Promise<this[P]>;
-  get <P extends Model.Key<this>> (property: P, onChange: boolean): this[P] | Promise<this[P]>;
-  get <P extends Model.Key<this>> (property: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
-
+  get <P extends Model.Key<this>> (select: P): this[P];
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
+
+  get <P extends Model.Key<this>> (select: P, timeout: number): Promise<this[P]>;
   get <P extends Model.Key<this>> (select: Iterable<P>, timeout: number): Promise<Model.Get<this, P>>;
+
+  get <P extends Model.Key<this>> (select: P, onChange: true): Promise<this[P]>;
   get <P extends Model.Key<this>> (select: Iterable<P>, onChange: true): Promise<Model.Get<this, P>>;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: boolean): Model.Get<this, P> | Promise<Model.Get<this, P>>;
+
+  get <P extends Model.Key<this>> (select: P, onChange: boolean): MaybePromise<this[P]>;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: boolean): MaybePromise<Model.Get<this, P>>;
+
+  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
   get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, key: P[]) => void): Callback;
   
   get <P extends Model.Key<this>> (
-    arg1?: Iterable<P> | P,
+    arg1?: P | Iterable<P>,
     arg2?: Function | boolean | number){
 
     const { state } = control(this);
