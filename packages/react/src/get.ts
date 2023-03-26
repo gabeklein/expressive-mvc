@@ -1,5 +1,5 @@
-import { Model, Internal, Register, get } from '@expressive/mvc';
-import { issues } from './helper/issues';
+import { get, Internal, issues, Model, Register } from '@expressive/mvc';
+
 import { useLookup } from './useContext';
 
 export const Oops = issues({

@@ -12,6 +12,7 @@ export { Control } from './control';
 export { Subscriber } from './subscriber';
 export { Debug } from './debug';
 export { Register } from './register';
+export { issues } from './helper/issues';
 
 export const Internal = {
   getParent

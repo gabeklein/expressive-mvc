@@ -1,6 +1,6 @@
+import { issues } from '@expressive/mvc';
 import React from 'react';
 
-import { issues } from './helper/issues';
 import { Class } from './helper/types';
 
 export const Oops = issues({

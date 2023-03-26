@@ -1,7 +1,5 @@
+import { issues, Model, Register } from '@expressive/mvc';
 import React from 'react';
-
-import { Model, Register } from '@expressive/mvc';
-import { issues } from './helper/issues';
 
 const Oops = issues({
   NotFound: (name) =>
