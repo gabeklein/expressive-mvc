@@ -261,14 +261,6 @@ class Model {
     return instance;
   }
 
-  static use <I extends Model> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
-  static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
-  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
-
-  static use(){
-    throw Oops.NoAdapter("use");
-  }
-
   static find <T extends Model> (this: Model.Type<T>, required?: boolean): T;
   static find <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
 
@@ -290,6 +282,14 @@ class Model {
 
   static get(): never {
     throw Oops.NoAdapter("get");
+  }
+
+  static use <I extends Model> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
+  static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
+  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
+
+  static use(){
+    throw Oops.NoAdapter("use");
   }
 
   /**
