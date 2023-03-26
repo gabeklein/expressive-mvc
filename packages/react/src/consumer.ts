@@ -10,9 +10,6 @@ export const Oops = issues({
 
 declare namespace Consumer {
   type HasProps<E extends Class> = {
-      /** @deprecated - use for instead */
-      of?: never;
-
       /** Type of controller to fetch from context. */
       for: E;
 
@@ -24,9 +21,6 @@ declare namespace Consumer {
   }
 
   type GetProps<E extends Class> = {
-      /** @deprecated - use for instead */
-      of?: never;
-
       /** Type of controller to fetch from context. */
       for: E;
 
@@ -35,9 +29,6 @@ declare namespace Consumer {
   }
 
   type RenderProps<E extends Class> = {
-      /** @deprecated - use for instead */
-      of?: never;
-
       /** Type of controller to fetch from context. */
       for: E;
 
