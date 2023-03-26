@@ -43,7 +43,7 @@ describe("tap", () => {
     class Test extends Model {}
 
     const Hook = () => {
-      const value = Test.tap();
+      const value = Test.get();
       expect(value).toBeInstanceOf(Test);
       return null;
     }
@@ -65,7 +65,7 @@ describe("tap", () => {
     }
 
     const Child = (props: ChildProps) => {
-      Parent.tap($ => {
+      Parent.get($ => {
         didPushToValues();
         $.values.push(props.value);
         $.set("values");

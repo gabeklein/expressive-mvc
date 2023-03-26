@@ -29,7 +29,7 @@ it("will refresh for values accessed", async () => {
 
   const test = Test.new();
   const render = renderHook(() => {
-    return Test.tap().foo;
+    return Test.get().foo;
   });
 
   expect(render.result.current).toBe("foo");
@@ -49,7 +49,7 @@ describe("set factory", () => {
     const didRender = mockAsync();
   
     test.renderHook(() => {
-      void Test.tap().value;
+      void Test.get().value;
       didRender.resolve();
     })
   
@@ -76,7 +76,7 @@ describe("set factory", () => {
   
     test.renderHook(() => {
       try {
-        void Test.tap().value;
+        void Test.get().value;
       }
       catch(err: any){
         if(err instanceof Promise)
@@ -106,7 +106,7 @@ describe("set factory", () => {
     const didRender = mockAsync();
   
     test.renderHook(() => {
-      void Test.tap().value;
+      void Test.get().value;
       didRender.resolve();
     })
   
@@ -130,7 +130,7 @@ describe("set placeholder", () => {
     const instance = Test.new();
 
     test.renderHook(() => {
-      Test.tap().foobar;
+      Test.get().foobar;
       promise.resolve();
     })
 
@@ -155,7 +155,7 @@ describe("set placeholder", () => {
     instance.foobar = "foo!";
 
     test.renderHook(() => {
-      Test.tap().foobar;
+      Test.get().foobar;
     })
 
     test.assertDidRender(true);
@@ -172,7 +172,7 @@ describe("passive mode", () => {
     const didRender = jest.fn();
 
     renderHook(() => {
-      didRender(Test.tap(true).value);
+      didRender(Test.get(true).value);
     });
 
     expect(didRender).toBeCalledWith(1);
@@ -193,7 +193,7 @@ describe("passive mode", () => {
     const expected = Oops.NotFound("Test");
     const useTest = jest.fn(() => {
       try {
-        Test.tap(true);
+        Test.get(true);
       }
       catch(err){
         expect(err).toEqual(expected);
@@ -209,7 +209,7 @@ describe("passive mode", () => {
       value = 1;
     }
 
-    const useTest = jest.fn(() => Test.tap(false));
+    const useTest = jest.fn(() => Test.get(false));
     
     renderHook(useTest);
     expect(useTest).toHaveReturnedWith(undefined);
@@ -228,7 +228,7 @@ describe("computed", () => {
     const parent = Test.new();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return Test.tap(x => x.foo);
+      return Test.get(x => x.foo);
     });
 
     expect(result.current).toBe(1);
@@ -242,7 +242,7 @@ describe("computed", () => {
   it('will compute output', async () => {
     const parent = Test.new();
     const { result, waitForNextUpdate } = renderHook(() => {
-      return Test.tap(x => {
+      return Test.get(x => {
         return x.foo + x.bar;
       });
     });
@@ -262,7 +262,7 @@ describe("computed", () => {
 
     const { result } = renderHook(() => {
       render();
-      return Test.tap(x => {
+      return Test.get(x => {
         compute();
         void x.foo;
         return x.bar;
@@ -286,7 +286,7 @@ describe("computed", () => {
   it("will disable updates if null returned", async () => {
     const instance = Test.new();
     const didRender = jest.fn(() => {
-      return Test.tap($ => null);
+      return Test.get($ => null);
     })
 
     const { result } = renderHook(didRender);
@@ -306,7 +306,7 @@ describe("computed", () => {
     const willMount = jest.fn();
 
     const { result, waitForNextUpdate } = renderHook(() => {
-      return Test.tap($ => {
+      return Test.get($ => {
         willMount();
         void $.foo;
   
@@ -346,7 +346,7 @@ describe("computed", () => {
     
       const { result } = renderHook(() => {
         didRender();
-        return Test.tap(x => {
+        return Test.get(x => {
           didCompute(x.foo);
           return ["something", x.bar, x.baz];
         });
@@ -374,7 +374,7 @@ describe("computed", () => {
     
       const { result } = renderHook(() => {
         didRender();
-        return Test.tap(x => {
+        return Test.get(x => {
           didCompute();
           return [x.foo, x.bar, x.baz];
         });
@@ -404,7 +404,7 @@ describe("computed", () => {
       const promise = mockAsync<string>();
 
       const { result, waitForNextUpdate } = renderHook(() => {
-        return Test.tap(() => promise.pending());
+        return Test.get(() => promise.pending());
       });
 
       expect(result.current).toBeNull();
@@ -420,7 +420,7 @@ describe("computed", () => {
       const control = Test.new();
 
       const { result, waitForNextUpdate } = renderHook(() => {
-        return Test.tap($ => {
+        return Test.get($ => {
           void $.foo;
           return promise.pending();
         });
@@ -453,7 +453,7 @@ describe("computed", () => {
         promise.resolve();
         didRender();
 
-        Test.tap(state => {
+        Test.get(state => {
           didCompute();
 
           if(state.value == "foobar")
@@ -483,7 +483,7 @@ describe("computed", () => {
       const test = mockSuspense();
 
       test.renderHook(() => {
-        Test.tap(() => promise.pending(), true);
+        Test.get(() => promise.pending(), true);
       })
 
       test.assertDidSuspend(true);
@@ -500,7 +500,7 @@ describe("computed", () => {
 
     it("will convert to null", () => {
       const { result } = renderHook(() => {
-        return Test.tap(() => undefined);
+        return Test.get(() => undefined);
       });
 
       expect(result.current).toBe(null);
@@ -508,7 +508,7 @@ describe("computed", () => {
 
     it("will convert to null from factory", () => {
       const { result } = renderHook(() => {
-        return Test.tap(() => () => undefined);
+        return Test.get(() => () => undefined);
       });
 
       expect(result.current).toBe(null);
@@ -523,7 +523,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return Test.tap(($, update) => {
+        return Test.get(($, update) => {
           didEvaluate();
           forceUpdate = update;
         });
@@ -549,7 +549,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return Test.tap(($, update) => {
+        return Test.get(($, update) => {
           didEvaluate();
           forceUpdate = update;
           // return null to stop subscription.
@@ -577,7 +577,7 @@ describe("computed", () => {
       let updateValue!: (value: string) => void;
 
       const { unmount, result } = renderHook(() => {
-        return Test.tap(($, update) => {
+        return Test.get(($, update) => {
           let value = "foo";
 
           didEvaluate();
@@ -615,7 +615,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return Test.tap(($, update) => {
+        return Test.get(($, update) => {
           forceUpdate = update;
           return null;
         });
@@ -650,7 +650,7 @@ describe("computed", () => {
 
       const { unmount } = renderHook(() => {
         didRender();
-        return Test.tap(($, update) => {
+        return Test.get(($, update) => {
           forceUpdate = update;
           return null;
         });

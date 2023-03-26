@@ -128,7 +128,7 @@ it("will conflict colliding Model types", () => {
   const expected = Context.MultipleExist("Foo");
 
   const Consumer: React.VFC = jest.fn(() => {
-    expect(() => Foo.tap()).toThrowError(expected);
+    expect(() => Foo.get()).toThrowError(expected);
     return null;
   });
 
@@ -173,7 +173,7 @@ describe("children", () => {
     const gotBar = jest.fn();
 
     const BarConsumer = () => {
-      Bar.tap(gotBar);
+      Bar.get(gotBar);
       return null;
     }
   
@@ -263,7 +263,7 @@ describe("suspense", () => {
   }
 
   const GetValue = () => {
-    const test = Test.tap();
+    const test = Test.get();
     didRender(test.value);
     didRefresh.resolve();
     return null;

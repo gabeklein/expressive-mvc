@@ -12,8 +12,8 @@ describe("get", () => {
 
   it("will get instance of model", () => {
     const Hook = () => {
-      const value = Test.find().value;
-      expect(value).toBe("foo")
+      const test = Test.get();
+      expect(test.value).toBe("foo")
       return null;
     }
 
@@ -26,7 +26,7 @@ describe("get", () => {
 
   it("will fail if not found", () => {
     const Hook = () => {
-      Test.find();
+      Test.get();
       return null;
     }
 

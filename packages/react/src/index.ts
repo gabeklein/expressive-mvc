@@ -5,7 +5,7 @@ import { useModel } from './useModel';
 import { useTap } from './useTap';
 
 Model.find = useContext;
-Model.tap = useTap;
+Model.get = useTap;
 Model.use = useModel;
 
 export {

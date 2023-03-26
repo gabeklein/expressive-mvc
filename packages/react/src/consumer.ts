@@ -48,7 +48,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const { get, has, children, for: type } = props as any;
 
   if(typeof children == "function")
-    return children(type.tap());
+    return children(type.get());
 
   const callback = has || get;
 
