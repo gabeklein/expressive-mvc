@@ -18,21 +18,21 @@ describe("get", () => {
       </Provider>
     )
 
-    const render = renderHook(() => Test.get(), { wrapper });
+    const render = renderHook(() => Test.find(), { wrapper });
 
     expect(render.result.current).toBe(instance);
     expect(render.result.current.value).toBe(1);
   })
 
   it("will complain if not found", () => {
-    const render = renderHook(() => Test.get());
+    const render = renderHook(() => Test.find());
     const expected = Oops.NotFound(Test.name);
 
     expect(() => render.result.current).toThrowError(expected);
   })
 
   it("will return undefined if not found", () => {
-    const render = renderHook(() => Test.get(false));
+    const render = renderHook(() => Test.find(false));
 
     expect(render.result.current).toBeUndefined();
   })

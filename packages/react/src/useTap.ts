@@ -22,7 +22,7 @@ function useTap <T extends Model> (
   arg2?: boolean) {
 
   const Type = this as unknown as typeof Model;
-  const instance = Type.get(arg1 !== false) as T;
+  const instance = Type.find(arg1 !== false) as T;
       
   if(typeof arg1 == "boolean")
     return instance;

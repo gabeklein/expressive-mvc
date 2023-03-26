@@ -4,8 +4,8 @@ import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
+Model.find = useContext;
 Model.tap = useTap;
-Model.get = useContext;
 Model.use = useModel;
 
 export {

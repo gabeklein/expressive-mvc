@@ -269,11 +269,11 @@ class Model {
     throw Oops.NoAdapter("use");
   }
 
-  static get <T extends Model> (this: Model.Type<T>, required?: boolean): T;
-  static get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+  static find <T extends Model> (this: Model.Type<T>, required?: boolean): T;
+  static find <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
 
-  static get(){
-    throw Oops.NoAdapter("get");
+  static find(){
+    throw Oops.NoAdapter("find");
   }
 
   static tap <T extends Model> (this: Model.Type<T>): T;
