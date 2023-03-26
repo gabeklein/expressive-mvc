@@ -237,7 +237,6 @@ describe("computed", () => {
   class Test extends Singleton {
     foo = 1;
     bar = 2;
-    baz = 3;
   }
 
   it('will select and subscribe to subvalue', async () => {
@@ -358,11 +357,13 @@ describe("computed", () => {
         didRender();
         return Test.tap(x => {
           didCompute(x.foo);
-          return [1, x.bar, x.baz];
+          return ["something", x.bar, x.baz];
         });
       });
+
+      const returned = result.current;
     
-      expect(result.current).toEqual([1,2,3]);
+      expect(returned).toStrictEqual(["something", true, "foo"]);
     
       await act(async () => {
         parent.foo = 2;
@@ -371,9 +372,11 @@ describe("computed", () => {
 
       expect(didRender).toBeCalledTimes(1);
       expect(didCompute).toBeCalledWith(2);
+
+      expect(result.current).toBe(returned);
     })
 
-    it("will update if any value different", async () => {
+    it("will update if any value differs", async () => {
       const parent = Test.new();
       const didCompute = jest.fn();
       const didRender = jest.fn();
@@ -386,15 +389,18 @@ describe("computed", () => {
         });
       });
     
-      expect(result.current).toEqual([1,2,3]);
+      expect(result.current).toStrictEqual([1, true, "foo"]);
     
       await act(async () => {
         parent.foo = 2;
+        parent.bar = false;
         await parent.on(true);
       })
 
       expect(didRender).toBeCalledTimes(2);
       expect(didCompute).toBeCalledTimes(2);
+    
+      expect(result.current).toEqual([2, false, "foo"]);
     })
   })
 
