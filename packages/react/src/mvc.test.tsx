@@ -18,41 +18,23 @@ describe("get", () => {
       </Provider>
     )
 
-    const render = renderHook(() => Test.find(), { wrapper });
+    const render = renderHook(() => Test.get(true), { wrapper });
 
     expect(render.result.current).toBe(instance);
     expect(render.result.current.value).toBe(1);
   })
 
   it("will complain if not found", () => {
-    const render = renderHook(() => Test.find());
+    const render = renderHook(() => Test.get());
     const expected = Oops.NotFound(Test.name);
 
     expect(() => render.result.current).toThrowError(expected);
   })
 
   it("will return undefined if not found", () => {
-    const render = renderHook(() => Test.find(false));
+    const render = renderHook(() => Test.get(false));
 
     expect(render.result.current).toBeUndefined();
-  })
-})
-
-describe("tap", () => {
-  it("will get model from context", () => {
-    class Test extends Model {}
-
-    const Hook = () => {
-      const value = Test.get();
-      expect(value).toBeInstanceOf(Test);
-      return null;
-    }
-
-    render(
-      <Provider for={Test}>
-        <Hook />
-      </Provider>
-    );
   })
 
   it("will run initial callback syncronously", async () => {
