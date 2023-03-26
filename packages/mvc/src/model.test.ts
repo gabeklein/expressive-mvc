@@ -361,7 +361,7 @@ describe("adapter", () => {
   const methods = ["get", "tap", "use"] as const;
 
   it.each(methods)("will throw by default for %p", (method) => {
-    const useMethod = () => Model[method].call(Model);
+    const useMethod = () => Model[method].apply(Model);
     const expected = Oops.NoAdapter(method);
 
     expect(useMethod).toThrowError(expected);

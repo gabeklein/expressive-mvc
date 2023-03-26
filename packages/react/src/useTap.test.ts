@@ -2,6 +2,7 @@ import { act } from '@testing-library/react-hooks';
 
 import { Model, set } from '.';
 import { mockAsync, mockSuspense, renderHook } from './helper/testing';
+import { Oops } from './useContext';
 
 /**
  * Bypass context to fascilitate tests.
@@ -159,77 +160,61 @@ describe("set placeholder", () => {
 
     test.assertDidRender(true);
   })
-})
-
-describe("required parameter", () => {
-  it('will suspend if subvalue is undefined', async () => {
-    class Test extends Singleton {
-      value?: string = undefined;
-    }
-  
-    const test = mockSuspense();
-    const promise = mockAsync();
-    const instance = Test.new();
-  
-    test.renderHook(() => {
-      Test.tap(true).value;
-      promise.resolve();
-    })
-  
-    test.assertDidSuspend(true);
-  
-    instance.value = "foobar!";
-    await promise.pending();
-  
-    test.assertDidRender(true);
-  })
-
-  it("will return undefined if not required", async () => {
-    class Test extends Singleton {
-      value = set(promise.pending);
-    }
-
-    const promise = mockAsync<string>();
-    const test = mockSuspense();
-
-    let value: string | undefined;
-
-    test.renderHook(() => {
-      ({ value } = Test.tap(false));
-    })
-
-    test.assertDidRender(true);
-    expect(value).toBe(undefined);
-  })
-
-  it("will force suspense if required is true", () => {
-    class Test extends Singleton {
-      value = set(() => undefined);
-    }
-
-    const test = mockSuspense();
-
-    test.renderHook(() => {
-      Test.tap(true).value;
-    })
-
-    test.assertDidSuspend(true);
-  });
-
-  it("will cancel out suspense if required is false", () => {
-    class Test extends Singleton {
-      value = set<never>();
-    }
-
-    const test = mockSuspense();
-
-    test.renderHook(() => {
-      Test.tap(false).value;
-    })
-
-    test.assertDidRender(true);
-  });
 });
+
+describe("passive mode", () => {
+  it("will not subscribe", async () => {
+    class Test extends Singleton {
+      value = 1;
+    }
+
+    const test = Test.new();
+    const didRender = jest.fn();
+
+    renderHook(() => {
+      didRender(Test.tap(true).value);
+    });
+
+    expect(didRender).toBeCalledWith(1);
+
+    test.value++;
+
+    await test.on(true);
+    
+    expect(didRender).not.toBeCalledWith(2);
+    expect(didRender).toBeCalledTimes(1);
+  });
+
+  it("will throw if not found", () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    const expected = Oops.NotFound("Test");
+    const useTest = jest.fn(() => {
+      try {
+        Test.tap(true);
+      }
+      catch(err){
+        expect(err).toEqual(expected);
+      }
+    });
+    
+    renderHook(useTest);
+    expect(useTest).toHaveReturned();
+  });
+
+  it("will return undefined if not requred", () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    const useTest = jest.fn(() => Test.tap(false));
+    
+    renderHook(useTest);
+    expect(useTest).toHaveReturnedWith(undefined);
+  })
+})
 
 describe("computed", () => {
   const opts = { timeout: 100 };
@@ -348,6 +333,12 @@ describe("computed", () => {
   })
 
   describe("tuple", () => {
+    class Test extends Singleton {
+      foo = 1;
+      bar = true;
+      baz = "foo";
+    }
+
     it("will not update if values are same", async () => {
       const parent = Test.new();
       const didCompute = jest.fn();

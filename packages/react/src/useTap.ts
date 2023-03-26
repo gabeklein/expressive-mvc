@@ -2,10 +2,12 @@ import { Model, Subscriber } from '@expressive/mvc';
 import React from 'react';
 
 import { uid } from './helper/object';
-import { Callback, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
+import { Callback, NoVoid } from './helper/types';
 
-function useTap <T extends Model> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
-function useTap <T extends Model> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
+function useTap <T extends Model> (this: Model.Type<T>): T;
+
+function useTap <T extends Model> (this: Model.Type<T>, passive: true): T;
+function useTap <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
 
 function useTap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
 function useTap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
@@ -14,26 +16,38 @@ function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCal
 function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
 function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-function useTap <T extends Model, R> (
+function useTap <T extends Model> (
   this: Model.Type<T>,
   arg1?: boolean | Model.TapCallback<T, any>,
   arg2?: boolean) {
 
-  const instance = (this as unknown as typeof Model).get() as T;
+  const Type = this as unknown as typeof Model;
+  const instance = Type.get(arg1 !== false) as T;
       
-  const deps = [uid(instance)];
+  if(typeof arg1 == "boolean")
+    return instance;
+
+  return useSubscriber(instance, arg1, arg2);
+}
+
+function useSubscriber<T extends Model, R>(
+  source: T,
+  callback?: Model.TapCallback<T, any>,
+  required?: boolean){
+
+  const deps = [uid(source)];
   const state = React.useState(0);
   const local = React.useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
 
-    if(typeof arg1 != "function")
-      return new TapSubscriber(instance, () => refresh, arg1)
+    if(!callback)
+      return new Subscriber(source, () => refresh);
       
-    const sub = new Subscriber(instance, () => update);
+    const sub = new Subscriber(source, () => update);
     const spy = sub.proxy as T;
 
     let make: (() => R | undefined) | undefined =
-      () => (arg1 as any).call(spy, spy, forceUpdate)
+      () => callback!.call(spy, spy, forceUpdate)
 
     function forceUpdate(): void;
     function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
@@ -75,7 +89,7 @@ function useTap <T extends Model, R> (
       const get = value;
 
       sub.watch.clear();
-      arg1 = () => get();
+      callback = () => get();
       value = get();
     }
 
@@ -98,7 +112,7 @@ function useTap <T extends Model, R> (
         if(value !== undefined)
           return value;
 
-        if(arg2)
+        if(required)
           throw new Promise<void>(res => retry = res);
 
         return null;
@@ -117,33 +131,6 @@ function useTap <T extends Model, R> (
   }, deps);
 
   return local.proxy;
-}
-
-class TapSubscriber<T extends Model> extends Subscriber<T> {
-  constructor(
-    parent: T,
-    onUpdate: Subscriber.OnEvent<T>,
-    protected strict: boolean | undefined){
-
-    super(parent, onUpdate);
-  }
-
-  get(key: string, using?: Model.Subscriber.Getter<any> | undefined) {
-    try {
-      const value = super.get(key, using);
-      
-      if(value === undefined && this.strict === true)
-        this.parent.waitFor(key);
-        
-      return value;
-    }
-    catch(err){
-      if(err instanceof Promise && this.strict === false)
-        return;
-
-      throw err;
-    }
-  }
 }
 
 /** Values are not equal for purposes of a refresh. */

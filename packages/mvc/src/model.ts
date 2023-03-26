@@ -6,7 +6,7 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, InstanceOf, MaybePromise, NonOptionalValues, NoVoid, OptionalValues } from './helper/types';
+import type { Callback, Class, InstanceOf, MaybePromise, NoVoid } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>
@@ -277,6 +277,8 @@ class Model {
   }
 
   static tap <T extends Model> (this: Model.Type<T>): T;
+  static tap <T extends Model> (this: Model.Type<T>, passive: true): T
+  static tap <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
   static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, R | (() => R)>, expect?: boolean): R;
   static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
   static tap <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
@@ -285,8 +287,6 @@ class Model {
   static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
   static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static tap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
-  static tap <T extends Model> (this: Model.Type<T>, expect: true): NonOptionalValues<T>;
-  static tap <T extends Model> (this: Model.Type<T>, expect?: boolean): OptionalValues<T>;
 
   static tap(): never {
     throw Oops.NoAdapter("tap");
