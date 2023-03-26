@@ -42,11 +42,11 @@ function useSubscriber<T extends Model, R>(
 
     if(!callback)
       return new Subscriber(source, () => refresh);
-      
+
     const sub = new Subscriber(source, () => update);
     const spy = sub.proxy as T;
 
-    let make: (() => R | undefined) | undefined =
+    let compute: (() => R | undefined) | undefined =
       () => callback!.call(spy, spy, forceUpdate)
 
     function forceUpdate(): void;
@@ -55,8 +55,8 @@ function useSubscriber<T extends Model, R>(
       if(typeof passthru == "function")
         passthru = passthru();
 
-      if(make)
-        reassign(make());
+      if(compute)
+        reassign(compute());
       else
         refresh();
 
@@ -77,11 +77,11 @@ function useSubscriber<T extends Model, R>(
 
     let retry: Callback | undefined;
     let update: Callback | undefined;
-    let value = make();
+    let value = compute();
 
     if(value === null){
       sub.watch.clear();
-      make = undefined;
+      compute = undefined;
       return;
     }
 
@@ -100,7 +100,7 @@ function useSubscriber<T extends Model, R>(
     else {
       sub.commit();
       update = () => {
-        const next = make!();
+        const next = compute!();
 
         if(notEqual(value, next))
           reassign(next);
