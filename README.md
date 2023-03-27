@@ -35,7 +35,7 @@ Classes which extend `Model` can manage behavior for components. Models are easy
 
 <br/>
 
-## How to use
+## A basic example
 
 ### Step 1
 
@@ -80,9 +80,9 @@ Expressive leverages the advantages of classes to make state management simpler.
 <br />
 <br />
 
-### Track any number of values
+### Track any number of values:
 
-Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh; plus it makes clear what's being used!
+Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
 
 ```jsx
 class State extends Model {
@@ -106,7 +106,7 @@ const MyComponent = () => {
 
 <br/>
 
-### Update using simple assignment
+### Update using simple assignment:
 
 State management is portable because values are held in an object.
 Updates may originate from anywhere with a reference to the model. Logic can live in the class too, having strict types and easy introspection.
@@ -149,7 +149,7 @@ const MyComponent = () => {
 
 <br/>
 
-### Control components using `async`
+### Control components with `async` functions:
 
 With no additional libraries, expressive makes it possible to implement things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
 
@@ -192,7 +192,7 @@ const MyComponent = () => {
 
 </br>
 
-### Extend to configure
+### Extend to configure:
 Capture shared behavior as reusable classes and extend them as needed. This makes logic is reusable and easy to document and share!
 
 ```ts
@@ -215,7 +215,7 @@ class AboutJohn extends About {
 
 <br/>
 
-### Share state between components using context
+### Share state between components using context:
 Providing and consuming models is dead simple using `Provider` and `get` methods. Classes act as their own key!
 
 ```jsx
@@ -263,10 +263,8 @@ const AboutBar = () => {
   )
 }
 ```
-
+<br/>
 <br/>
 
-#### And you can do more, all with type safety and code-assist, out of the box.
-<br/>
-
-### :construction: More Docs are on the way! 🏗
+<h2 align="center"> 🚧 More Docs are on the way! 🏗 </h2>
+<p align="center">Documenation is actively being built out - stay tuned!</p>
