@@ -4,9 +4,13 @@ import { useContext } from './useContext';
 import { useModel } from './useModel';
 import { useTap } from './useTap';
 
-Model.find = useContext;
-Model.get = useTap;
-Model.use = useModel;
+function bootstrap(this: typeof Model){
+  this.find = useContext;
+  this.get = useTap;
+  this.use = useModel;
+}
+
+bootstrap.call(Model);
 
 export {
   default,
