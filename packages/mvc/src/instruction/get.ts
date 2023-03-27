@@ -96,7 +96,7 @@ function get<R, T extends Model>(
 }
 
 function getParentForGetInstruction<T extends Model>(
-  type: Model.Type<T>,
+  type: Model.Class<T>,
   relativeTo: Model,
   required: boolean
 ): get.Source {
@@ -106,7 +106,7 @@ function getParentForGetInstruction<T extends Model>(
     if(item)
       callback(item);
     else if(required)
-      throw Oops.Required(type.name, relativeTo);
+      throw Oops.Required(type, relativeTo);
   };
 }
 

@@ -17,12 +17,12 @@ export const Oops = issues({
 
 export function getParent<T extends Model>(
   from: Model,
-  type?: Model.Type<T>){
+  type?: Model.Class<T>){
 
   const value = Parent.get(from) as T;
 
   if(value && type && !(value instanceof type))
-    throw Oops.Unexpected(type.name, from, value);
+    throw Oops.Unexpected(type, from, value);
 
   return value;
 }
@@ -79,7 +79,7 @@ export function setRecursive(
     state.set(key, next);
 
     if(!(next instanceof Type))
-      throw Oops.BadAssignment(`${subject}.${key}`, Type.name, String(next));
+      throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
 
     const getter = getRecursive(key, controller);
 

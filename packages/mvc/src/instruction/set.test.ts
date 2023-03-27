@@ -278,7 +278,7 @@ describe("factory", () => {
       }
     }
 
-    const failed = Oops.ComputeFailed(Test.name, "memoized");
+    const failed = Oops.ComputeFailed(Test, "memoized");
 
     expect(() => Test.new()).toThrowError("Foobar");
     expect(warn).toBeCalledWith(failed.message);

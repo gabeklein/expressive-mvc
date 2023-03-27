@@ -75,7 +75,7 @@ describe("context", () => {
       bar = get(Bar);
     }
 
-    const expected = Oops.AmbientRequired(Bar.name, Foo.name);
+    const expected = Oops.AmbientRequired(Bar, Foo);
     const useFoo = () => Foo.use();
 
     const Test = () => {
@@ -91,7 +91,7 @@ describe("context", () => {
       bar = get(Bar);
     }
 
-    const expected = Oops.AmbientRequired(Bar.name, Foo.name);
+    const expected = Oops.AmbientRequired(Bar, Foo);
     const useStrictFooBar = () => Foo.use();
 
     const TestComponent = () => {

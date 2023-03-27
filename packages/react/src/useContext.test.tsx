@@ -26,7 +26,7 @@ describe("get", () => {
 
   it("will complain if not found", () => {
     const render = renderHook(() => Test.get());
-    const expected = Oops.NotFound(Test.name);
+    const expected = Oops.NotFound(Test);
 
     expect(() => render.result.current).toThrowError(expected);
   })

@@ -316,4 +316,10 @@ defineProperty(Model.prototype, "toString", {
   }
 })
 
+defineProperty(Model, "toString", {
+  value(){
+    return this.name;
+  }
+})
+
 export { Model }

@@ -266,7 +266,7 @@ describe("compute mode", () => {
       const state = Subject.new();
       const attempt = () => state.never;
 
-      const failed = Oops.Failed(Subject.name, "never", true);
+      const failed = Oops.Failed(state, "never", true);
 
       expect(attempt).toThrowError();
       expect(warn).toBeCalledWith(failed.message);
@@ -285,7 +285,7 @@ describe("compute mode", () => {
       }
 
       const state = Test.new();
-      const failed = Oops.Failed(Test.name, "value", false);
+      const failed = Oops.Failed(state, "value", false);
 
       state.on("value");
       state.shouldFail = true;
@@ -492,12 +492,8 @@ describe("fetch mode", () => {
       expects = get(Detatched);
     }
   
-    const attempt = () => 
-      NonStandalone.new();
-  
-    const error = Oops.Required(
-      Detatched.name, NonStandalone.name
-    )
+    const attempt = () => NonStandalone.new();
+    const error = Oops.Required(Detatched, NonStandalone);
   
     expect(attempt).toThrowError(error);
   })
@@ -523,9 +519,7 @@ describe("fetch mode", () => {
     }
   
     const attempt = () => Unexpected.new();
-    const error = Child.Unexpected(
-      Expected.name, Adopted.name, Unexpected.name
-    )
+    const error = Child.Unexpected(Expected, Adopted, Unexpected);
   
     expect(attempt).toThrowError(error);
   })

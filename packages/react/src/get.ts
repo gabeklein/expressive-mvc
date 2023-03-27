@@ -11,7 +11,7 @@ const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
 function getForGetInstruction<T extends Model>(
-  type: Model.Type<T>,
+  type: Model.Class<T>,
   from: Model,
   required: boolean
 ){
@@ -27,7 +27,7 @@ function getForGetInstruction<T extends Model>(
         if(got)
           callback(got);
         else if(required)
-          throw Oops.AmbientRequired(type.name, from);
+          throw Oops.AmbientRequired(type, from);
       })
   }
 }

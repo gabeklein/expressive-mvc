@@ -76,9 +76,7 @@ it("will throw if not found where required", () => {
     <Consumer for={Bar} has={i => void i} />
   )
 
-  expect(test).toThrowError(
-    Oops.NotFound(Bar.name)
-  );
+  expect(test).toThrowError(Oops.NotFound(Bar));
 })
 
 it("will eagerly select extended class", () => {

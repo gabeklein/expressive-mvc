@@ -27,10 +27,10 @@ function useContext<T extends Model>(this: Model.Type<T>, required?: boolean): T
   const instance = useLookup().get(this);
 
   if(instance === null)
-    throw Oops.MultipleExist(this.name);
+    throw Oops.MultipleExist(this);
 
   if(!instance && required !== false)
-    throw Oops.NotFound(this.name);
+    throw Oops.NotFound(this);
 
   return instance;
 }
