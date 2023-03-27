@@ -35,7 +35,7 @@ declare namespace Consumer {
       /**
        * Render function, will receive instance of desired controller.
        *
-       * Similar to `tap()`, updates to properties accessed in
+       * Similar to `get()`, updates to properties accessed in
        * this function will cause a refresh when they change.
        */
       children: (value: InstanceType<E>) => React.ReactElement<any, any> | null;

@@ -1,12 +1,12 @@
 import { Model } from '@expressive/mvc';
 
 import { useContext } from './useContext';
+import { useGet } from './useGet';
 import { useModel } from './useModel';
-import { useTap } from './useTap';
 
 function bootstrap(this: typeof Model){
   this.find = useContext;
-  this.get = useTap;
+  this.get = useGet;
   this.use = useModel;
 }
 

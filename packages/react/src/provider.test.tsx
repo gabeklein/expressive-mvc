@@ -168,7 +168,7 @@ describe("children", () => {
     )
   })
 
-  it("will be provided to useTap", () => {
+  it("will be provided to get", () => {
     const foo = Foo.new();
     const gotBar = jest.fn();
 
@@ -186,7 +186,7 @@ describe("children", () => {
     expect(gotBar).toBeCalledWith(foo.bar, expect.any(Function));
   })
 
-  it.todo("will pass parent as second argument to useTap");
+  it.todo("will pass parent as second argument to get");
 })
 
 describe("and prop", () => {
@@ -342,7 +342,7 @@ describe("suspense", () => {
   })
 })
 
-it.todo("will apply tap instructions to new instances");
+it.todo("will apply get instructions to new instances");
 it.todo("will remove replaced instances");
 it.todo("will ignore child if type exists");
 it.todo("will not nullify if conflict has same value");

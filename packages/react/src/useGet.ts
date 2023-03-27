@@ -4,21 +4,21 @@ import React from 'react';
 import { uid } from './helper/object';
 import { Callback, NoVoid } from './helper/types';
 
-function useTap <T extends Model> (this: Model.Class<T>): T;
+function useGet <T extends Model> (this: Model.Class<T>): T;
 
-function useTap <T extends Model> (this: Model.Class<T>, passive: true): T;
-function useTap <T extends Model> (this: Model.Class<T>, required: false): T | undefined;
+function useGet <T extends Model> (this: Model.Class<T>, passive: true): T;
+function useGet <T extends Model> (this: Model.Class<T>, required: false): T | undefined;
 
-function useTap <T extends Model, R> (this: Model.Class<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
-function useTap <T extends Model, R> (this: Model.Class<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+function useGet <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
+function useGet <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
+function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-function useTap <T extends Model> (
+function useGet <T extends Model> (
   this: Model.Class<T>,
-  arg1?: boolean | Model.TapCallback<T, any>,
+  arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean) {
 
   const instance = this.find(arg1 !== false) as T;
@@ -31,7 +31,7 @@ function useTap <T extends Model> (
 
 function useSubscriber<T extends Model, R>(
   source: T,
-  callback?: Model.TapCallback<T, any>,
+  callback?: Model.GetCallback<T, any>,
   required?: boolean){
 
   const deps = [uid(source)];
@@ -142,4 +142,4 @@ const notEqual = <T>(a: T, b: unknown) => (
   )
 )
 
-export { useTap }
+export { useGet }

@@ -15,7 +15,7 @@ class Singleton extends Model {
     return this.instance = super.new();
   }
 
-  /** Inherited by `tap`, will return (or create) only one instance. */
+  /** Used by `get`, will return (or create) only one instance. */
   static find<T extends Singleton>(this: Model.Type<T>): T;
   static find(){
     return this.instance || this.new();

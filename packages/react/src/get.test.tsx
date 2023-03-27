@@ -86,7 +86,7 @@ describe("context", () => {
     render(<Test />);
   })
 
-  it("will throw if strict tap is undefined", () => {
+  it("will throw if strict get is undefined", () => {
     class Foo extends Model {
       bar = get(Bar);
     }
