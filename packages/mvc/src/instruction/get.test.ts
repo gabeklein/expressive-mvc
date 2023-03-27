@@ -601,8 +601,7 @@ describe("async", () => {
         refresh(instance);
 
       setTimeout(() => {
-        instance = Type.new();
-        refresh(instance);
+        refresh(instance = Type.new());
       }, 100);
     }
   });
