@@ -80,189 +80,189 @@ Expressive leverages the advantages of classes to make state management simpler.
 <br />
 <br />
 
-- ### Track any number of values
+### Track any number of values
 
-  Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh; plus it makes clear what's being used!
+Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh; plus it makes clear what's being used!
 
-  ```jsx
-  class State extends Model {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-  }
+```jsx
+class State extends Model {
+  foo = 1;
+  bar = 2;
+  baz = 3;
+}
 
-  const MyComponent = () => {
-    const { foo, bar } = State.use();
+const MyComponent = () => {
+  const { foo, bar } = State.use();
 
-    return (
-      <ul>
-        <li>Foo is {foo}</li>
-        <li>Bar is {bar}</li>
-      </ul>
-    )
-  }
-  ```
-  > Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` however is not being used, and so is ignored.
-
-<br/>
-
-- ### Update using simple assignment
-
-  State management is portable because values are held in an object.
-  Updates may originate from anywhere with a reference to the model. Logic can live in the class too, having strict types and easy introspection.
-
-  ```jsx
-  class State extends Model {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-
-    barPlusOne = () => {
-      this.bar++;
-    }
-  }
-
-  const MyComponent = () => {
-    const { is: state, foo, bar, baz } = State.use();
-
-    useEffect(() => {
-      const ticker = setInterval(() => state.baz++, 1000);
-      return () => clearInterval(ticker);
-    }, [])
-
-    return (
-      <ul>
-        <li onClick={() => state.foo++}>
-          Foo is {foo}!
-        </li>
-        <li onClick={state.barPlusOne}>
-          Bar is {bar}!
-        </li>
-        <li>
-          Bar is {baz}
-        </li>
-      </ul>
-    )
-  }
-  ```
-  > Reserved property `is` loops back to the instance, helpful to update values after having destructured.
+  return (
+    <ul>
+      <li>Foo is {foo}</li>
+      <li>Bar is {bar}</li>
+    </ul>
+  )
+}
+```
+> Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` however is not being used, and so is ignored.
 
 <br/>
 
-- ### Control components using `async`
+### Update using simple assignment
 
-  With no additional libraries, expressive makes it possible to implement things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
+State management is portable because values are held in an object.
+Updates may originate from anywhere with a reference to the model. Logic can live in the class too, having strict types and easy introspection.
 
-  ```jsx
-  class Greetings extends Model {
-    response = undefined;
-    waiting = false;
-    error = false;
+```jsx
+class State extends Model {
+  foo = 1;
+  bar = 2;
+  baz = 3;
 
-    sayHello = async () => {
-      this.waiting = true;
+  barPlusOne = () => {
+    this.bar++;
+  }
+}
 
-      try {
-        const res = await fetch("http://my.api/hello");
-        this.response = await res.text();
-      }
-      catch(){
-        this.error = true;
-      }
+const MyComponent = () => {
+  const { is: state, foo, bar, baz } = State.use();
+
+  useEffect(() => {
+    const ticker = setInterval(() => state.baz++, 1000);
+    return () => clearInterval(ticker);
+  }, [])
+
+  return (
+    <ul>
+      <li onClick={() => state.foo++}>
+        Foo is {foo}!
+      </li>
+      <li onClick={state.barPlusOne}>
+        Bar is {bar}!
+      </li>
+      <li>
+        Bar is {baz}
+      </li>
+    </ul>
+  )
+}
+```
+> Reserved property `is` loops back to the instance, helpful to update values after having destructured.
+
+<br/>
+
+### Control components using `async`
+
+With no additional libraries, expressive makes it possible to implement things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
+
+```jsx
+class Greetings extends Model {
+  response = undefined;
+  waiting = false;
+  error = false;
+
+  sayHello = async () => {
+    this.waiting = true;
+
+    try {
+      const res = await fetch("http://my.api/hello");
+      this.response = await res.text();
+    }
+    catch(){
+      this.error = true;
     }
   }
+}
 
-  const MyComponent = () => {
-    const { error, response, waiting, sayHello } = Greetings.use();
+const MyComponent = () => {
+  const { error, response, waiting, sayHello } = Greetings.use();
 
-    if(response)
-      return <p>Server said: {response}</p>
+  if(response)
+    return <p>Server said: {response}</p>
 
-    if(error)
-      return <p>There was an error saying hello.</p>
+  if(error)
+    return <p>There was an error saying hello.</p>
 
-    if(waiting)
-      return <p>Sent! Waiting on response...</p>
+  if(waiting)
+    return <p>Sent! Waiting on response...</p>
 
-    return (
-      <a onClick={sayHello}>Say hello to server!</a>
-    )
-  }
-  ```
+  return (
+    <a onClick={sayHello}>Say hello to server!</a>
+  )
+}
+```
 
 </br>
 
-- ### Extend to configure
-  Capture shared behavior as reusable classes and extend them as needed. This makes logic is reusable and easy to document and share!
+### Extend to configure
+Capture shared behavior as reusable classes and extend them as needed. This makes logic is reusable and easy to document and share!
 
-  ```ts
-  abstract class About extends Model {
-    abstract name: string;
-    abstract birthday: Date;
-    abstract wants: any;
+```ts
+abstract class About extends Model {
+  abstract name: string;
+  abstract birthday: Date;
+  abstract wants: any;
 
-    happyBirthday(){
-      // ...
-    }
+  happyBirthday(){
+    // ...
   }
+}
 
-  class AboutJohn extends About {
-    name = "John Doe";
-    birthday = new Date("January 1");
-    wants = "a PS5";
-  }
-  ```
+class AboutJohn extends About {
+  name = "John Doe";
+  birthday = new Date("January 1");
+  wants = "a PS5";
+}
+```
 
 <br/>
 
-- ### Share state between components using context
-  Providing and consuming models is dead simple using `Provider` and `get` methods. Classes act as their own key!
+### Share state between components using context
+Providing and consuming models is dead simple using `Provider` and `get` methods. Classes act as their own key!
 
-  ```jsx
-  import Model, { Provider } from "@expressive/react";
+```jsx
+import Model, { Provider } from "@expressive/react";
 
-  class State extends Model {
-    foo = 1;
-    bar = 2;
-  }
+class State extends Model {
+  foo = 1;
+  bar = 2;
+}
 
-  const Parent = () => {
-    const state = State.use();
+const Parent = () => {
+  const state = State.use();
 
-    // Instance `state` is now available as its own class `State`
-    <Provider of={state}>
-      <AboutFoo />
-      <AboutBar />
-    </Provider>
-  }
+  // Instance `state` is now available as its own class `State`
+  <Provider of={state}>
+    <AboutFoo />
+    <AboutBar />
+  </Provider>
+}
 
-  const AboutFoo = () => {
-    // Like with `use` we retain types and autocomplete!
-    const { is: state, foo } = State.get();
+const AboutFoo = () => {
+  // Like with `use` we retain types and autocomplete!
+  const { is: state, foo } = State.get();
 
-    return (
-      <p>
-        Shared value foo is: {foo}!
-        <button onClick={() => state.bar++}>
-          Plus one to bar
-        </button>
-      </p>
-    )
-  }
+  return (
+    <p>
+      Shared value foo is: {foo}!
+      <button onClick={() => state.bar++}>
+        Plus one to bar
+      </button>
+    </p>
+  )
+}
 
-  const AboutBar = () => {
-    const { is: state, bar } = State.get();
+const AboutBar = () => {
+  const { is: state, bar } = State.get();
 
-    return (
-      <p>
-        Shared value bar is: {bar}!
-        <button onClick={() => state.foo++}>
-          Plus one to foo
-        </button>
-      </p>
-    )
-  }
-  ```
+  return (
+    <p>
+      Shared value bar is: {bar}!
+      <button onClick={() => state.foo++}>
+        Plus one to foo
+      </button>
+    </p>
+  )
+}
+```
 
 <br/>
 
