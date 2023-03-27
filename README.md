@@ -82,7 +82,7 @@ Everything you can do with classes naturally, can be done here. Model's simply f
 
 ### Track any number of values
 
-Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh; plus it makes clear what's being used!
+Models use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" to cause a refresh; plus it makes clear what's being used!
 
 ```jsx
 class State extends Model {
