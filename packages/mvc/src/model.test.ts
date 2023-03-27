@@ -45,6 +45,10 @@ describe("Model", () => {
       get bar(){
         return "bar";
       }
+
+      set baz(value: string){
+        this.foo = value;
+      }
     }
   
     const test = Test.new();
