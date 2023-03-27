@@ -25,6 +25,9 @@ declare namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = (abstract new (...args: any[]) => T);
 
+  // TODO: Can this be combined with Type?
+  export type Class<T extends Model> = Type<T> & typeof Model;
+
   /** A typeof Model, specifically one which may be created without arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
 

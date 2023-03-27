@@ -23,7 +23,7 @@ declare namespace get {
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
   type FindFunction<T extends Model = Model> =
-    (type: typeof Model, relativeTo: Model, required: boolean) => Source<T>;
+    (type: Model.Class<T>, relativeTo: Model, required: boolean) => Source<T>;
 
   type Source<T extends Model = Model> =
     (callback: (x: T) => void) => void;
@@ -65,7 +65,7 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
  
 function get<R, T extends Model>(
   this: get.FindFunction,
-  arg0: get.Factory<R, T> | (Model.Type<T> & typeof Model) | T,
+  arg0: get.Factory<R, T> | Model.Class<T> | T,
   arg1?: get.Function<R, T> | boolean): R {
 
   const fetch = this || getParentForGetInstruction;

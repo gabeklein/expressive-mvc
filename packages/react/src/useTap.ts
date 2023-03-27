@@ -4,25 +4,24 @@ import React from 'react';
 import { uid } from './helper/object';
 import { Callback, NoVoid } from './helper/types';
 
-function useTap <T extends Model> (this: Model.Type<T>): T;
+function useTap <T extends Model> (this: Model.Class<T>): T;
 
-function useTap <T extends Model> (this: Model.Type<T>, passive: true): T;
-function useTap <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+function useTap <T extends Model> (this: Model.Class<T>, passive: true): T;
+function useTap <T extends Model> (this: Model.Class<T>, required: false): T | undefined;
 
-function useTap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
-function useTap <T extends Model, R> (this: Model.Type<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
+function useTap <T extends Model, R> (this: Model.Class<T>, init: Model.TapCallback<T, () => R>): NoVoid<R>;
+function useTap <T extends Model, R> (this: Model.Class<T>, init: Model.TapCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useTap <T extends Model, R> (this: Model.Type<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
+function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useTap <T extends Model, R> (this: Model.Class<T>, compute: Model.TapCallback<T, R>, expect?: boolean): NoVoid<R>;
 
 function useTap <T extends Model> (
-  this: Model.Type<T>,
+  this: Model.Class<T>,
   arg1?: boolean | Model.TapCallback<T, any>,
   arg2?: boolean) {
 
-  const Type = this as unknown as typeof Model;
-  const instance = Type.find(arg1 !== false) as T;
+  const instance = this.find(arg1 !== false) as T;
       
   if(typeof arg1 == "boolean")
     return instance;
