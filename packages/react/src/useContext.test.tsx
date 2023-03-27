@@ -1,39 +1,86 @@
 import React from 'react';
 
 import { Model } from '.';
-import { render } from './helper/testing';
+import { render, renderHook } from './helper/testing';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
 describe("get", () => {
   class Test extends Model {
-    value = "foo";
+    value = 1;
   }
 
-  it("will get instance of model", () => {
-    const Hook = () => {
-      const test = Test.get();
-      expect(test.value).toBe("foo")
-      return null;
-    }
-
-    render(
-      <Provider for={Test}>
-        <Hook />
+  it("will get instance", () => {
+    const instance = Test.new();
+    const wrapper: React.FC = ({ children }) => (
+      <Provider for={instance}>
+        {children}
       </Provider>
-    );
+    )
+
+    const render = renderHook(() => Test.get(true), { wrapper });
+
+    expect(render.result.current).toBe(instance);
+    expect(render.result.current.value).toBe(1);
   })
 
-  it("will fail if not found", () => {
-    const Hook = () => {
-      Test.get();
+  it("will complain if not found", () => {
+    const render = renderHook(() => Test.get());
+    const expected = Oops.NotFound(Test.name);
+
+    expect(() => render.result.current).toThrowError(expected);
+  })
+
+  it("will return undefined if not found", () => {
+    const render = renderHook(() => Test.get(false));
+
+    expect(render.result.current).toBeUndefined();
+  })
+
+  it("will run initial callback syncronously", async () => {
+    class Parent extends Model {
+      values = [] as string[]
+    }
+    
+    type ChildProps = {
+      value: string;
+    }
+
+    const Child = (props: ChildProps) => {
+      Parent.get($ => {
+        didPushToValues();
+        $.values.push(props.value);
+        $.set("values");
+
+        return () => null;
+      });
+
       return null;
     }
 
-    const test = () => render(<Hook />);
+    const parent = Parent.new();
+    const didUpdateValues = jest.fn();
+    const didPushToValues = jest.fn();
 
-    expect(test).toThrowError(
-      Oops.NotFound(Test.name)
-    );
+    parent.on("values", didUpdateValues);
+
+    const element = render(
+      <Provider for={parent}>
+        <Child value='foo' />
+        <Child value='bar' />
+        <Child value='baz' />
+      </Provider>
+    )
+
+    expect(didPushToValues).toBeCalledTimes(3);
+
+    await parent.on(true);
+
+    expect(parent.values.length).toBe(3);
+
+    // Expect updates to have bunched up before new frame.
+    expect(didUpdateValues).toBeCalledTimes(1);
+
+    element.unmount();
   })
 })
