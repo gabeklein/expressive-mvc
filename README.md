@@ -139,7 +139,7 @@ const MyComponent = () => {
         Bar is {bar}!
       </li>
       <li>
-        Bar is {baz}
+        Bar is {baz}!
       </li>
     </ul>
   )
@@ -151,7 +151,7 @@ const MyComponent = () => {
 
 ### Control components with `async` functions:
 
-With no additional libraries, expressive makes it possible to implement things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
+With no additional libraries, expressive makes it possible to do things like queries quickly and simply. Sometimes, less is more, and async functions are great for this.
 
 ```jsx
 class Greetings extends Model {
