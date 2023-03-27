@@ -107,7 +107,7 @@ Expressive leverages the advantages of classes to make state management simpler.
 
 ### Track any number of values:
 
-Models use property access to know what need an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
+Models use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
 
 ```jsx
 class State extends Model {
@@ -218,7 +218,7 @@ const MyComponent = () => {
 </br>
 
 ### Extend to configure:
-Capture shared behavior as reusable classes and extend them as needed. This makes logic is reusable and easy to document and share!
+Capture shared behavior as reusable classes and extend them as needed. This makes logic reusable and easy to document and share!
 
 ```ts
 abstract class About extends Model {
