@@ -9,7 +9,7 @@ export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
-    `Property ${parent} expected Model of type ${expected} but got ${got}.`,
+    `${parent} expected Model of type ${expected} but got ${got}.`,
 
   Unexpected: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,

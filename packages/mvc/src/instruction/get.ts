@@ -11,7 +11,7 @@ export const Oops = issues({
     `Attempted to use an instruction result (probably use or get) as computed source for ${model}.${property}. This is not allowed.`,
 
   Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} [${parent}.${property}].`,
+    `An exception was thrown while ${initial ? "initializing" : "refreshing"} ${parent}.${property}.`,
 
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
@@ -106,7 +106,7 @@ function getParentForGetInstruction<T extends Model>(
     if(item)
       callback(item);
     else if(required)
-      throw Oops.Required(type, relativeTo);
+      throw Oops.Required(type, relativeTo.constructor);
   };
 }
 
