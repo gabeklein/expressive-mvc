@@ -2,7 +2,6 @@ import { Control, Internal, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { getPending } from './get';
-import { assignWeak } from './helper/object';
 import { Class } from './helper/types';
 import { LookupContext, useLookup } from './useContext';
 
@@ -108,4 +107,10 @@ function useNewContext<T extends Model>(
   React.useLayoutEffect(() => () => context.pop(), []);
 
   return context;
+}
+
+function assignWeak(into: any, from: any){
+  for(const K in from)
+    if(K in into)
+      into[K] = from[K];
 }
