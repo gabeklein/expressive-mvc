@@ -1,7 +1,7 @@
 import { issues } from '@expressive/mvc';
 import React from 'react';
 
-import { Class } from './helper/types';
+type Class = new () => any;
 
 export const Oops = issues({
   BadProps: () =>

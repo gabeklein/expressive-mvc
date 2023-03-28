@@ -1,7 +1,8 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import React from 'react';
 
-import { Callback, NoVoid } from './helper/types';
+/** Type may not be undefined - instead will be null.  */
+type NoVoid<T> = T extends undefined ? null : T;
 
 function useGet <T extends Model> (this: Model.Class<T>): T;
 
@@ -72,8 +73,8 @@ function useSubscriber<T extends Model, R>(
         refresh();
     };
 
-    let retry: Callback | undefined;
-    let update: Callback | undefined;
+    let retry: (() => void) | undefined;
+    let update: (() => void) | undefined;
     let value = compute();
 
     if(value === null){

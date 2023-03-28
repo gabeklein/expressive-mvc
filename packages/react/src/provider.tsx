@@ -2,13 +2,13 @@ import { Control, Internal, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { getPending } from './get';
-import { Class } from './helper/types';
 import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
-  NoType: () =>
-    "Provider 'for' prop must be Model, typeof Model or a collection of them."
+  NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
 })
+
+type Class = new () => any;
 
 declare namespace Provider {
   type Item = Model | Model.New;
