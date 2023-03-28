@@ -19,25 +19,21 @@ export function createEffect<T extends Model>(
     let unSet: Callback | Promise<any> | void;
     let busy = false;
 
-    function effect(this: any, value: any){
-      if(typeof unSet == "function")
-        unSet();
-  
-      unSet = callback.call(this, value);
-  
-      if(unSet instanceof Promise)
-        unSet = undefined;
-  
-      if(unSet && typeof unSet !== "function")
-        throw Oops.BadCallback()
-    }
-
     function invoke(){
       if(busy)
         return;
 
       const output = mayRetry(() => {
-        effect.call(model, model);
+        if(typeof unSet == "function")
+          unSet();
+    
+        unSet = callback.call(model, model);
+    
+        if(unSet instanceof Promise)
+          unSet = undefined;
+    
+        if(unSet && typeof unSet !== "function")
+          throw Oops.BadCallback()
       })
 
       if(output instanceof Promise){

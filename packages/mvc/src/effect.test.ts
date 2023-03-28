@@ -122,6 +122,21 @@ describe("explicit", () => {
     expect(didCreate).toBeCalled();
   })
 
+  it("will bind to model called upon", () => {
+    class Test extends Model {}
+
+    function testEffect(this: Test){
+      didCreate(this);
+    }
+
+    const didCreate = jest.fn();
+    const test = Test.new();
+
+    test.on(testEffect, []);
+
+    expect(didCreate).toBeCalledWith(test);
+  })
+
   it('will callback on willDestroy by default', async () => {
     class Test extends Model {}
 
