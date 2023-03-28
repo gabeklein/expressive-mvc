@@ -191,7 +191,7 @@ class Greetings extends Model {
       const res = await fetch("http://my.api/hello");
       this.response = await res.text();
     }
-    catch(){
+    catch(e) {
       this.error = true;
     }
   }
@@ -255,10 +255,12 @@ const Parent = () => {
   const state = State.use();
 
   // Instance `state` is now available as its own class `State`
-  <Provider of={state}>
-    <AboutFoo />
-    <AboutBar />
-  </Provider>
+  return (
+    <Provider for={state}>
+      <AboutFoo />
+      <AboutBar />
+    </Provider>
+  )
 }
 
 const AboutFoo = () => {
