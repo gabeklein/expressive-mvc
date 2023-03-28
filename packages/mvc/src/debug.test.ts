@@ -141,11 +141,26 @@ describe("UPDATE", () => {
 })
 
 describe("toString", () => {
-  class Test extends Model {};
+  it("will output a unique ID", () => {
+    const a = String(Model.new());
+    const b = String(Model.new());
 
-  it("Model will cast to string as class name", () => {
-    const test = Test.new();
-    expect(String(test)).toBe("Test");
+    expect(a).not.toBe(b);
+  })
+
+  it("will use user-defined ID", () => {
+    const a = String(Model.new("ID"));
+    const b = String(Model.new("ID"));
+
+    expect(a).toBe(b);
+  })
+
+  it("will be class name and 6 random characters", () => {
+    class FooBar extends Model {}
+
+    const foobar = String(FooBar.new());
+
+    expect(foobar).toMatch(/^FooBar-\w{6}/)
   })
 })
 

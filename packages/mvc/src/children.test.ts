@@ -59,25 +59,24 @@ it('will subscribe to child controllers', async () => {
 })
 
 it('will only assign matching model', () => {
+  class Child extends Model {}
+  class Unrelated extends Model {};
   class Parent extends Model {
     child = new Child();
   }
 
-  class Child extends Model {}
-  class Unrelated extends Model {};
-
-  const parent = Parent.new();
+  const parent = Parent.new("ID");
 
   expect(() => {
-    parent.child = new Unrelated();
+    parent.child = Unrelated.new("ID");
   }).toThrowError(
-    Oops.BadAssignment(`Parent.child`, `Child`, `Unrelated`)
+    Oops.BadAssignment(`Parent-ID.child`, `Child`, "Unrelated-ID")
   );
 
   expect(() => {
     // @ts-ignore
     parent.child = undefined;
   }).toThrowError(
-    Oops.BadAssignment(`Parent.child`, `Child`, `undefined`)
+    Oops.BadAssignment(`Parent-ID.child`, `Child`, `undefined`)
   );
 })

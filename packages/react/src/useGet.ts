@@ -1,7 +1,6 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import React from 'react';
 
-import { uid } from './helper/object';
 import { Callback, NoVoid } from './helper/types';
 
 function useGet <T extends Model> (this: Model.Class<T>): T;
@@ -34,7 +33,6 @@ function useSubscriber<T extends Model, R>(
   callback?: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const deps = [uid(source)];
   const state = React.useState(0);
   const local = React.useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
@@ -119,7 +117,7 @@ function useSubscriber<T extends Model, R>(
     });
 
     return sub;
-  }, deps);
+  }, [source]);
 
   if(!local)
     return null;
@@ -127,7 +125,7 @@ function useSubscriber<T extends Model, R>(
   React.useLayoutEffect(() => {
     local.commit();
     return () => local.release();
-  }, deps);
+  }, [source]);
 
   return local.proxy;
 }

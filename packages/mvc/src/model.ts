@@ -3,7 +3,7 @@ import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
-import { defineProperty } from './helper/object';
+import { defineProperty, random } from './helper/object';
 import { Subscriber } from './subscriber';
 
 import type { Callback, Class, InstanceOf, MaybePromise, NoVoid } from './helper/types';
@@ -23,10 +23,10 @@ declare namespace Model {
   type Extends<T> = T | (string & Record<never, never>);
 
   /** Any typeof Model, using class constructor as the reference. */
-  export type Type<T extends Model = Model> = (abstract new (...args: any[]) => T);
+  export type Type<T extends Model = Model> = abstract new () => T;
 
   // TODO: Can this be combined with Type?
-  export type Class<T extends Model> = Type<T> & typeof Model;
+  export type Class<T extends Model> = (abstract new () => T) & typeof Model;
 
   /** A typeof Model, specifically one which may be created without arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
@@ -121,9 +121,13 @@ class Model {
    */
   is!: this;
 
-  constructor(){
+  /** Unique identifier for Model instance. */
+  id!: string;
+
+  constructor(id?: string){
     new Control(this);
     defineProperty(this, "is", { value: this });
+    defineProperty(this, "id", { value: id || random() });
   }
 
   on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[]>;
@@ -311,8 +315,9 @@ class Model {
 }
 
 defineProperty(Model.prototype, "toString", {
+  configurable: true,
   value(){
-    return this.constructor.name;
+    return `${this.constructor.name}-${this.id}`;
   }
 })
 

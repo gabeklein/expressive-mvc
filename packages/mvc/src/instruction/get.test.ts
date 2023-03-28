@@ -301,9 +301,9 @@ describe("compute mode", () => {
         value = get(this.peer, () => {});
       }
 
-      const expected = Oops.PeerNotAllowed("Test", "value");
+      const expected = Oops.PeerNotAllowed("Test-ID", "value");
 
-      expect(() => Test.new()).toThrow(expected);
+      expect(() => Test.new("ID")).toThrow(expected);
     })
   })
 
@@ -507,14 +507,14 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = new Adopted();
+      child = new Adopted("ID");
     }
     class Adopted extends Model {
       expects = get(Expected);
     }
   
-    const attempt = () => Unexpected.new();
-    const error = Child.Unexpected(Expected, Adopted, Unexpected);
+    const attempt = () => Unexpected.new("ID");
+    const error = Child.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
   
     expect(attempt).toThrowError(error);
   })

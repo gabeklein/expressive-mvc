@@ -72,10 +72,14 @@ describe("context", () => {
 
   it("will complain if instance not found", () => {
     class Foo extends Model {
+      constructor(){
+        super("ID");
+      }
+
       bar = get(Bar);
     }
 
-    const expected = Oops.AmbientRequired(Bar, Foo);
+    const expected = Oops.AmbientRequired(Bar, Foo + "-ID");
     const useFoo = () => Foo.use();
 
     const Test = () => {
@@ -89,9 +93,13 @@ describe("context", () => {
   it("will throw if strict get is undefined", () => {
     class Foo extends Model {
       bar = get(Bar);
+
+      constructor(){
+        super("ID");
+      }
     }
 
-    const expected = Oops.AmbientRequired(Bar, Foo);
+    const expected = Oops.AmbientRequired(Bar, Foo + "-ID");
     const useStrictFooBar = () => Foo.use();
 
     const TestComponent = () => {
