@@ -32,6 +32,31 @@
 
 Classes which extend `Model` can manage behavior for components. Models are easy to extend, use and even provide via context. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, typescript controllers instead.
 
+<br/>
+
+<h1 id="install-section">Installation</h1>
+
+Install with your preferred package manager
+```bash
+npm install --save @expressive/react
+```
+
+Import and use in your react apps
+
+```js
+import Model from "@expressive/react";
+```
+
+<br/>
+<h1 id="started-section">Getting Started</h1>
+
+Ultimately, the workflow is simple.
+
+1. Create a class. Fill it with the values, getters, and methods you'll need.
+2. Extend `Model` (or any derivative, for that matter), making it reactive.
+3. Within a component, use built-in methods as you would normal hooks.
+4. Destructure out the values used by a component, to then subscribe.
+5. Update those values on demand. Component will sync automagically. ✨
 
 <br/>
 
@@ -74,7 +99,7 @@ const KitchenCounter = () => {
 [See it in action](https://codesandbox.io/s/example-counter-th8xl) 🚀 — You've already got something usable!
 
 <br/>
-<h2 id="good-start">Things you can do</h2>
+<h1 id="good-start">Things you can do</h1>
 
 Expressive leverages the advantages of classes to make state management simpler. Model's fascilitate binding between components and the values held by a given instance. Here are some of the things which are possible.
 <br />
@@ -102,7 +127,7 @@ const MyComponent = () => {
   )
 }
 ```
-> Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` however is not being used, and so is ignored.
+> Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` is not being used however - and so it's ignored.
 
 <br/>
 
