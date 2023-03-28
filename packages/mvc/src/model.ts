@@ -278,11 +278,14 @@ class Model {
   static get <T extends Model> (this: Model.Type<T>): T;
   static get <T extends Model> (this: Model.Type<T>, passive: true): T
   static get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
-  static get <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
-  static get <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
-  static get <T extends Model, R extends readonly unknown[] | []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+
+  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
+  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+
   static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
   static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
+
   static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
   static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
