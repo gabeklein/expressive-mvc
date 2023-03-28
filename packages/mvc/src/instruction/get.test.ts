@@ -2,7 +2,6 @@ import { mockAsync, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 import { Oops as Child } from '../children';
-import { use } from './use';
 
 it.todo("will add pending compute to frame immediately");
 
@@ -35,7 +34,7 @@ describe("compute mode", () => {
   
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
-      child = use(Child);
+      child = new Child();
       seconds = 0;
     
       minutes = get(this, state => {
@@ -161,7 +160,7 @@ describe("compute mode", () => {
       })
   
       // sanity check; multi-source updates do work
-      x = use(Inner);
+      x = new Inner();
     }
   
     const state = Test.new();
@@ -297,12 +296,8 @@ describe("compute mode", () => {
     })
 
     it('will throw if source is another instruction', () => {
-      class Peer extends Model {
-        value = 1;
-      }
-
       class Test extends Model {
-        peer = use(Peer);
+        peer = get(this, () => "foobar");
         value = get(this.peer, () => {});
       }
 
@@ -440,7 +435,7 @@ describe("fetch mode", () => {
   it("will allow overwrite", async () => {
     class Foo extends Model {
       value = "foo";
-      bar = use(Bar)
+      bar = new Bar();
     }
   
     class Bar extends Model {
@@ -473,7 +468,7 @@ describe("fetch mode", () => {
   
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = use(Bar);
+      child = new Bar();
     }
     class Bar extends Model {
       parent = get(Foo);
@@ -512,7 +507,7 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = use(Adopted as any) as Adopted;
+      child = new Adopted();
     }
     class Adopted extends Model {
       expects = get(Expected);
@@ -532,7 +527,7 @@ describe("fetch mode", () => {
     
     class Parent extends Model {
       value = "foo";
-      child = use(Child);
+      child = new Child();
     }
   
     const { child } = Parent.new();
@@ -554,7 +549,7 @@ describe("fetch mode", () => {
 
   it('will yeild a computed value', async () => {
     class Foo extends Model {
-      bar = use(Bar);
+      bar = new Bar();
       seconds = 0;
     }
 
