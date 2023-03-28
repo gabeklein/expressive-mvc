@@ -1,7 +1,7 @@
 import { get, Model } from '.';
 import React from 'react';
 
-import { render, subscribeTo } from './helper/testing';
+import { create, subscribeTo } from './helper/testing';
 import { Consumer } from './consumer';
 import { Oops } from './get';
 import { Provider } from './provider';
@@ -24,7 +24,7 @@ describe("context", () => {
       return null;
     }
 
-    render(
+    create(
       <Provider for={bar}>
         <Test />
       </Provider>
@@ -44,7 +44,7 @@ describe("context", () => {
       return null;
     }
 
-    render(
+    create(
       <Provider for={bar}>
         <Child />
       </Provider>
@@ -67,7 +67,7 @@ describe("context", () => {
       return null;
     }
 
-    render(<Test />);
+    create(<Test />);
   })
 
   it("will complain if instance not found", () => {
@@ -87,7 +87,7 @@ describe("context", () => {
       return null;
     }
 
-    render(<Test />);
+    create(<Test />);
   })
 
   it("will throw if strict get is undefined", () => {
@@ -107,11 +107,11 @@ describe("context", () => {
       return null;
     }
 
-    render(<TestComponent />);
+    create(<TestComponent />);
   })
 
   it("will access while created by provider", () => {
-    render(
+    create(
       <Provider for={Bar}>
         <Provider for={Foo}>
           <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
@@ -128,7 +128,7 @@ describe("context", () => {
       foo = get(Foo);
     }
 
-    render(
+    create(
       <Provider for={{ Foo, Bar }}>
         <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
         <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
@@ -155,7 +155,7 @@ describe("context", () => {
       return null;
     }
 
-    render(
+    create(
       <Provider for={{ Foo, Bar }}>
         <Inner />
       </Provider>
@@ -171,7 +171,7 @@ describe("context", () => {
       return null;
     }
 
-    const x = render(
+    const x = create(
       <Provider for={Bar}>
         <Inner />
       </Provider>
@@ -201,7 +201,7 @@ describe("context", () => {
 
     parent.value = "bar";
 
-    render(
+    create(
       <Provider for={Parent}>
         <Provider for={child} />
         <Provider for={standalone} />
@@ -224,7 +224,7 @@ describe("suspense", () => {
     
     expect(() => bar.foo).toThrow(expect.any(Promise));
 
-    render(
+    create(
       <Provider for={Foo}>
         <Provider for={bar} />
       </Provider>
@@ -252,7 +252,7 @@ describe("suspense", () => {
     
     expect(pending).toBeInstanceOf(Promise);
 
-    render(
+    create(
       <Provider for={Foo}>
         <Provider for={bar} />
       </Provider>
@@ -275,7 +275,7 @@ describe("suspense", () => {
     expect(effect).toHaveBeenCalled();
     expect(effect).not.toHaveReturned();
 
-    render(
+    create(
       <Provider for={Foo}>
         <Provider for={bar} />
       </Provider>
@@ -299,7 +299,7 @@ describe("suspense", () => {
     
     expect(() => bar.foo).toThrow(expect.any(Promise));
 
-    render(
+    create(
       <Provider for={Foo}>
         <Provider for={bar} />
       </Provider>

@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Model } from '.';
-import { render, renderHook } from './helper/testing';
+import { create, renderHook } from './helper/testing';
 
 const opts = { timeout: 100 };
 
@@ -68,7 +68,7 @@ describe("subscription", () => {
       return null;
     }
 
-    const element = render(<TestComponent />);
+    const element = create(<TestComponent />);
 
     expect(didRender).toBeCalledTimes(1);
 
@@ -161,7 +161,7 @@ describe("import", () => {
       return null;
     }
 
-    const rendered = render(<TestComponent />);
+    const rendered = create(<TestComponent />);
 
     expect(instance).toBeInstanceOf(Test);
 

@@ -1,9 +1,9 @@
 import { Model } from '@expressive/mvc';
 import { createElement, Suspense } from 'react';
-import { create as render } from 'react-test-renderer';
+import { create } from 'react-test-renderer';
 
 export { renderHook } from '@testing-library/react-hooks';
-export { create as render } from "react-test-renderer";
+export { create } from "react-test-renderer";
 
 export function subscribeTo<T extends Model>(
   target: T,
@@ -87,7 +87,7 @@ export function mockSuspense(){
     renderHook(fn: () => void){
       renderHook = fn;
 
-      render(
+      create(
         createElement(Suspense, {
           fallback: createElement(Waiting),
           children: createElement(Component)

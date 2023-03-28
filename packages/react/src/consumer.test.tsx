@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Model } from '.';
 import { Consumer } from './consumer';
-import { render } from './helper/testing';
+import { create } from './helper/testing';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
@@ -15,7 +15,7 @@ class Baz extends Bar {}
 it("will handle complex arrangement", () => {
   const instance = Foo.new();
 
-  render(
+  create(
     <Provider for={instance}>
       <Provider for={Baz}>
         <Provider for={{ Bar }}>
@@ -42,7 +42,7 @@ it("will render with instance for child-function", async () => {
     return <span>{value}</span>;
   }
 
-  render(
+  create(
     <Provider for={instance}>
       <Consumer for={Test}>
         {onRender}
@@ -55,7 +55,7 @@ it("will render with instance for child-function", async () => {
 
 it("will throw if expected-prop missing", () => {
   const instance = Foo.new();
-  const attempt = () => render(
+  const attempt = () => create(
     <Provider for={instance}>
       { /* @ts-ignore */}
       <Consumer for={Foo} />
@@ -66,13 +66,13 @@ it("will throw if expected-prop missing", () => {
 })
 
 it("will pass undefined if not found for get-prop", () => {
-  render(
+  create(
     <Consumer for={Bar} get={i => expect(i).toBeUndefined()} />
   )
 })
 
 it("will throw if not found where required", () => {
-  const test = () => render(
+  const test = () => create(
     <Consumer for={Bar} has={i => void i} />
   )
 
@@ -80,7 +80,7 @@ it("will throw if not found where required", () => {
 })
 
 it("will eagerly select extended class", () => {
-  render(
+  create(
     <Provider for={Baz}>
       <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />
     </Provider>
@@ -88,7 +88,7 @@ it("will eagerly select extended class", () => {
 })
 
 it("will select closest instance of same type", () => {
-  render(
+  create(
     <Provider for={Foo} use={{ value: "outer" }}>
       <Provider for={Foo} use={{ value: "inner" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("inner")} />
@@ -98,7 +98,7 @@ it("will select closest instance of same type", () => {
 });
 
 it("will select closest match over best match", () => {
-  render(
+  create(
     <Provider for={Bar}>
       <Provider for={Baz}>
         <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Baz)} />

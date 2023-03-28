@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Model } from '.';
-import { render, renderHook } from './helper/testing';
+import { create, renderHook } from './helper/testing';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
@@ -64,7 +64,7 @@ describe("get", () => {
 
     parent.on("values", didUpdateValues);
 
-    const element = render(
+    const element = create(
       <Provider for={parent}>
         <Child value='foo' />
         <Child value='bar' />

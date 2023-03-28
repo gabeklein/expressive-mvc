@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 
 import { Model, set } from '.';
 import { Consumer } from './consumer';
-import { mockAsync, render } from './helper/testing';
+import { mockAsync, create } from './helper/testing';
 import { Oops, Provider } from './provider';
 import { Oops as Context } from './useContext';
 
@@ -12,7 +12,7 @@ class Foo extends Model {
 class Bar extends Model {}
 
 it("will create instance of given model", () => {
-  render(
+  create(
     <Provider for={Foo}>
       <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
     </Provider>
@@ -28,7 +28,7 @@ it("will destroy instance of given model", async () => {
     }
   };
 
-  const element = render(
+  const element = create(
     <Provider for={Test} />
   );
 
@@ -37,7 +37,7 @@ it("will destroy instance of given model", async () => {
 });
 
 it("will create all models in given object", () => {
-  render(
+  create(
     <Provider for={{ Foo, Bar }}>
       <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
       <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
@@ -50,7 +50,7 @@ it("will destroy created model on unmount", () => {
 
   class Test extends Model {}
 
-  const rendered = render(
+  const rendered = create(
     <Provider for={{ Test }}>
       <Consumer for={Test} has={i => {
         expect(i).toBeInstanceOf(Test)
@@ -69,7 +69,7 @@ it("will destroy multiple created on unmount", () => {
   class Foo extends Model {}
   class Bar extends Model {}
 
-  const rendered = render(
+  const rendered = create(
     <Provider for={{ Foo, Bar }}>
       <Consumer for={Foo} has={i => {
         i.on(() => willDestroy, []);
@@ -91,7 +91,7 @@ it("will not destroy given instance on unmount", () => {
 
   const instance = Test.new();
 
-  const rendered = render(
+  const rendered = create(
     <Provider for={{ instance }}>
       <Consumer for={Test} has={i => {
         i.on(() => didUnmount, []);
@@ -104,7 +104,7 @@ it("will not destroy given instance on unmount", () => {
 })
 
 it("will create all models in given array", () => {
-  render(
+  create(
     <Provider for={[ Foo, Bar ]}>
       <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
       <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
@@ -115,7 +115,7 @@ it("will create all models in given array", () => {
 it("will provide a mix of state and models", () => {
   const foo = Foo.new();
 
-  render(
+  create(
     <Provider for={{ foo, Bar }}>
       <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
       <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
@@ -132,7 +132,7 @@ it("will conflict colliding Model types", () => {
     return null;
   });
 
-  render(
+  create(
     <Provider for={{ Foo, foo }}>
       <Consumer />
     </Provider>
@@ -143,7 +143,7 @@ it("will conflict colliding Model types", () => {
 
 it("will throw if missing `for` prop", () => {
   // @ts-ignore
-  const test = () => render(<Provider />);
+  const test = () => create(<Provider />);
 
   expect(test).toThrow(Oops.NoType());
 })
@@ -160,7 +160,7 @@ describe("children", () => {
   it("will be provided to Consumer", () => {
     const foo = Foo.new();
   
-    render(
+    create(
       <Provider for={foo}>
         <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
         <Consumer for={Bar} get={i => expect(i).toBe(foo.bar)} />
@@ -177,7 +177,7 @@ describe("children", () => {
       return null;
     }
   
-    render(
+    create(
       <Provider for={foo}>
         <BarConsumer />
       </Provider>
@@ -191,7 +191,7 @@ describe("children", () => {
 
 describe("and prop", () => {
   it("will assign values to instance", () => {
-    render(
+    create(
       <Provider for={Foo} use={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
@@ -200,7 +200,7 @@ describe("and prop", () => {
 
   it("will assign every render", async () => {
     const foo = Foo.new();
-    const element = render(
+    const element = create(
       <Provider for={foo} use={{ value: "foo" }} />
     );
 
@@ -220,7 +220,7 @@ describe("and prop", () => {
       value = "";
     }
 
-    render(
+    create(
       <Provider for={{ Foo, Bar }} use={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
         <Consumer for={Bar} has={i => expect(i.value).toBe("foobar")} />
@@ -229,7 +229,7 @@ describe("and prop", () => {
   });
 
   it("will not assign foreign values", () => {
-    render(
+    create(
       /// @ts-ignore - type-checking warns against this
       <Provider for={Foo} use={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
@@ -283,7 +283,7 @@ describe("suspense", () => {
   })
 
   it("will apply fallback", async () => {
-    const element = render(
+    const element = create(
       <TestComponent fallback={<DidSuspend />} />
     )
 
@@ -302,7 +302,7 @@ describe("suspense", () => {
   });
 
   it("will apply fallback implicitly", async () => {
-    const element = render(
+    const element = create(
       <Suspense fallback={<DidSuspend />}>
         <TestComponent />
       </Suspense>
@@ -321,7 +321,7 @@ describe("suspense", () => {
   })
 
   it("will not apply fallback", async () => {
-    const element = render(
+    const element = create(
       <Suspense fallback={<DidSuspend />}>
         <TestComponent fallback={false} />
       </Suspense>
