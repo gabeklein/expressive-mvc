@@ -13,12 +13,7 @@ const Global = new Register();
 const LookupContext = React.createContext(Global);
 
 function useLookup(){
-  try {
-    return React.useContext(LookupContext);
-  }
-  catch(err){
-    return Global;
-  }
+  return React.useContext(LookupContext);
 };
 
 function useContext <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
