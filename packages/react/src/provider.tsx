@@ -60,22 +60,22 @@ function useNewContext<T extends Model>(
 
   const init = new Set<Model>();
   const ambient = useLookup();
-  const context = React.useMemo(() => {
-    if(!include)
-      throw Oops.NoType();
+  const current = React.useMemo(() => {
+    if(include)
+      return ambient.push();
 
-    return ambient.push();
+    throw Oops.NoType();
   }, []);
 
   function register(key: string | number, input: Model | Model.New){
     let instance: Model;
 
-    if(context.register.get(key) === input)
+    if(current.register.get(key) === input)
       instance = typeof input == "object"
         ? input
-        : context.get(input)!;
+        : current.get(input)!;
     else
-      instance = context.add(input, key);
+      instance = current.add(input, key);
 
     init.add(instance);
 
@@ -92,21 +92,21 @@ function useNewContext<T extends Model>(
     Control.for(instance).state.forEach(value => {
       // TODO: should this run repeatedly?
       if(Internal.getParent(value) === instance){
-        context.add(value);
+        current.add(value);
         init.add(value);
       }
     });
 
     for(const apply of getPending(instance))
-      apply(context)
+      apply(current)
 
     // TODO: add test to validate this.
     init.delete(instance);
   }
 
-  React.useLayoutEffect(() => () => context.pop(), []);
+  React.useLayoutEffect(() => () => current.pop(), []);
 
-  return context;
+  return current;
 }
 
 function assignWeak(into: any, from: any){
