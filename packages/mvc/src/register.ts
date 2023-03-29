@@ -20,13 +20,18 @@ export class Register {
     return this[this.has(Type)] as unknown as T | undefined;
   }
 
-  public add(
-    input: Model.New | Model,
-    key?: number | string): Model {
+  public add<T extends Model>(
+    input: T | Model.New<T>,
+    key?: number | string){
+
+    if(key && this.register.get(key) === input)
+      return typeof input == "object"
+        ? input
+        : this[this.has(input)] as T;
 
     let writable = true;
-    let T: Model.New;
-    let I: Model;
+    let T: Model.New<T>;
+    let I: T;
 
     if(typeof input == "function"){
       T = input;
@@ -34,7 +39,7 @@ export class Register {
     }
     else {
       I = input.is;
-      T = I.constructor as Model.New;
+      T = I.constructor as Model.New<T>;
       writable = false;
     }
 

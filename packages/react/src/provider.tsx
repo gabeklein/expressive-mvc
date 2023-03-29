@@ -68,14 +68,7 @@ function useNewContext<T extends Model>(
   }, []);
 
   function register(key: string | number, input: Model | Model.New){
-    let instance: Model;
-
-    if(current.register.get(key) === input)
-      instance = typeof input == "object"
-        ? input
-        : current.get(input)!;
-    else
-      instance = current.add(input, key);
+    const instance = current.add(input, key);
 
     init.add(instance);
 
