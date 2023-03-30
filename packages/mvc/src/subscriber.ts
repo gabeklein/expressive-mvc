@@ -38,6 +38,12 @@ class Subscriber <T extends Model = any> {
 
     REGISTER.set(proxy, this);
 
+    this.parent = parent;
+    this.clear = parent.addListener(key => {
+      if(this.active)
+        this.notify(key);
+    });
+
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
@@ -46,11 +52,9 @@ class Subscriber <T extends Model = any> {
       }
     })
 
-    this.parent = parent;
-    this.clear = parent.addListener(key => {
-      if(this.active)
-        this.notify(key);
-    });
+    defineProperty(proxy, "is", {
+      value: parent.subject
+    })
   }
 
   get using(): Model.Key<T>[] {

@@ -15,6 +15,8 @@ export const Oops = issues({
   NoAdapter: (method) => `Can't call Model.${method} without an adapter.`
 });
 
+const Exist = new WeakMap<Model, string>();
+
 declare namespace Model {
   export { Control };
   export { Subscriber };
@@ -119,15 +121,13 @@ class Model {
    * Reference to `this` without a subscription.
    * Use to obtain full reference from a destructure.
    */
-  is!: this;
-
-  /** Unique identifier for Model instance. */
-  id!: string;
+  get is(){
+    return this;
+  }
 
   constructor(id?: string){
     new Control(this);
-    defineProperty(this, "is", { value: this });
-    defineProperty(this, "id", { value: id || random() });
+    Exist.set(this, id || random());
   }
 
   on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[]>;
@@ -320,7 +320,7 @@ class Model {
 defineProperty(Model.prototype, "toString", {
   configurable: true,
   value(){
-    return `${this.constructor.name}-${this.id}`;
+    return `${this.constructor.name}-${Exist.get(this.is)}`;
   }
 })
 
