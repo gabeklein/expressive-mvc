@@ -67,8 +67,11 @@ function useNewContext<T extends Model>(
     throw Oops.NoType();
   }, []);
 
-  function register(key: string | number, input: Model | Model.New){
-    const instance = current.add(input, key);
+  if(typeof include == "function" || include instanceof Model)
+    include = { [0]: include };
+
+  for(const key in include){
+    const instance = current.add(include[key], key);
 
     init.add(instance);
 
@@ -76,26 +79,18 @@ function useNewContext<T extends Model>(
       assignWeak(instance, assign);
   }
 
-  if(typeof include == "function" || include instanceof Model)
-    register(0, include);
-  else
-    for(const key in include)
-      register(key, include[key]);
-
-  for(const instance of init){
-    Control.for(instance).state.forEach(value => {
+  for(const model of init){
+    Control.for(model).state.forEach(value => {
       // TODO: should this run repeatedly?
-      if(Internal.getParent(value) === instance){
+      if(Internal.getParent(value) === model){
         current.add(value);
         init.add(value);
       }
     });
 
-    for(const apply of getPending(instance))
-      apply(current)
-
-    // TODO: add test to validate this.
-    init.delete(instance);
+    // TODO: add test to validate the need for this.
+    init.delete(model);
+    getPending(model).forEach(cb => cb(current));
   }
 
   React.useLayoutEffect(() => () => current.pop(), []);
