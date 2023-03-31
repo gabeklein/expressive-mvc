@@ -103,15 +103,6 @@ it("will not destroy given instance on unmount", () => {
   expect(didUnmount).not.toBeCalled();
 })
 
-it("will create all models in given array", () => {
-  create(
-    <Provider for={[ Foo, Bar ]}>
-      <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
-      <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
-    </Provider>
-  )
-})
-
 it("will provide a mix of state and models", () => {
   const foo = Foo.new();
 

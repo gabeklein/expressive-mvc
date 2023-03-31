@@ -13,7 +13,7 @@ type Class = new () => any;
 declare namespace Provider {
   type Item = Model | Model.New;
 
-  type Multiple<T extends Item = Item> = T[] | { [key: string]: T };
+  type Multiple<T extends Item = Item> = { [key: string | number]: T };
 
   type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
@@ -79,7 +79,8 @@ function useNewContext<T extends Model>(
   if(typeof include == "function" || include instanceof Model)
     register(0, include);
   else
-    Object.entries(include).forEach(e => register(...e));
+    for(const key in include)
+      register(key, include[key]);
 
   for(const instance of init){
     Control.for(instance).state.forEach(value => {
