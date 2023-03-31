@@ -1,7 +1,7 @@
 import { Control, Internal, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
-import { getPending } from './get';
+import { Pending } from './get';
 import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
@@ -90,7 +90,11 @@ function useNewContext<T extends Model>(
 
     // TODO: add test to validate the need for this.
     init.delete(model);
-    getPending(model).forEach(cb => cb(current));
+
+    const pending = Pending.get(model);
+
+    if(pending)
+      pending.forEach(cb => cb(current));
   }
 
   React.useLayoutEffect(() => () => current.pop(), []);

@@ -20,8 +20,13 @@ function getForGetInstruction<T extends Model>(
 
     if(item)
       callback(item);
-    else
-      getPending(from).push(context => {
+    else {
+      let pending = Pending.get(from);
+
+      if(!pending)
+        Pending.set(from, pending = []);
+
+      pending.push(context => {
         const got = context.get<T>(type);
 
         if(got)
@@ -29,6 +34,7 @@ function getForGetInstruction<T extends Model>(
         else if(required)
           throw Oops.AmbientRequired(type, from);
       })
+    }
   }
 }
 
@@ -54,19 +60,10 @@ function usePeerContext(subject: Model){
   Applied.set(subject, !!pending);
 }
 
-function getPending(subject: {}){
-  let pending = Pending.get(subject);
-
-  if(!pending)
-    Pending.set(subject, pending = []);
-
-  return pending;
-}
-
 const instruction = get.using(getForGetInstruction);
 
 export {
   instruction as get,
   usePeerContext,
-  getPending
+  Pending
 }
