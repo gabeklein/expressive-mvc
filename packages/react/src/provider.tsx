@@ -88,9 +88,6 @@ function useNewContext<T extends Model>(
       }
     });
 
-    // TODO: add test to validate the need for this.
-    init.delete(model);
-
     const pending = Pending.get(model);
 
     if(pending)
