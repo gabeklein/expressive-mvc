@@ -18,7 +18,7 @@ export const Oops = issues({
     `New ${child} created standalone but requires parent of type ${expects}.`,
 });
 
-const Exist = new WeakMap<Model, string>();
+const Exist = new WeakMap<Model, string | number>();
 
 declare namespace Model {
   export { Control };
@@ -128,7 +128,7 @@ class Model {
     return this;
   }
 
-  constructor(id?: string){
+  constructor(id?: string | number){
     new Control(this);
     Exist.set(this, id || random());
   }
