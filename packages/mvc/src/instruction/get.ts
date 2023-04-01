@@ -1,4 +1,4 @@
-import { getParent, getRecursive } from '../children';
+import { getRecursive } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -14,7 +14,7 @@ export const Oops = issues({
     `An exception was thrown while ${initial ? "initializing" : "refreshing"} ${parent}.${property}.`,
 
   Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}. Did you remember to create via use(${child})?`,
+    `New ${child} created standalone but requires parent of type ${expects}.`,
 });
 
 declare namespace get {
@@ -25,11 +25,7 @@ declare namespace get {
   type FindFunction<T extends Model = Model> =
     (type: Model.Class<T>, relativeTo: Model, required: boolean) => Source<T>;
 
-  type Source<T extends Model = Model> =
-    (callback: (x: T) => void) => void;
-
-  /** Assign fetch algorithm for get instruction. */
-  export let using: (fn: FindFunction) => typeof get;
+  type Source<T extends Model = Model> = (callback: (x: T) => void) => void;
 }
 
 /**
@@ -64,11 +60,8 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
  
 function get<R, T extends Model>(
-  this: get.FindFunction,
   arg0: get.Factory<R, T> | Model.Class<T> | T,
   arg1?: get.Function<R, T> | boolean): R {
-
-  const fetch = this || getParentForGetInstruction;
 
   return add(
     function get(key){
@@ -83,7 +76,7 @@ function get<R, T extends Model>(
         subject = arg0;
 
       else if(Model.isTypeof(arg0))
-        source = fetch(arg0, subject, arg1 !== false)!;
+        source = arg0.fetch(subject, arg1 !== false)!;
 
       else if(typeof arg0 == "function")
         arg1 = arg0.call(subject, key, subject);
@@ -93,21 +86,6 @@ function get<R, T extends Model>(
         : recursive(this, key, source, arg1);
     }
   )
-}
-
-function getParentForGetInstruction<T extends Model>(
-  type: Model.Class<T>,
-  relativeTo: Model,
-  required: boolean
-): get.Source {
-  const item = getParent(relativeTo, type);
-
-  return callback => {
-    if(item)
-      callback(item);
-    else if(required)
-      throw Oops.Required(type, relativeTo.constructor);
-  };
 }
 
 function recursive(
@@ -249,12 +227,6 @@ function flushComputed(control: Control){
 
   pending.clear();
 }
-
-function using(fn: get.FindFunction){
-  return Object.assign(get.bind(fn), { using });
-}
-
-get.using = using;
 
 export {
   flushComputed,

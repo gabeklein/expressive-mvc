@@ -1,3 +1,4 @@
+import { getParent } from './children';
 import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
@@ -12,7 +13,10 @@ export const Oops = issues({
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`,
 
-  NoAdapter: (method) => `Can't call Model.${method} without an adapter.`
+  NoAdapter: (method) => `Can't call Model.${method} without an adapter.`,
+
+  Required: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}.`,
 });
 
 const Exist = new WeakMap<Model, string>();
@@ -267,6 +271,21 @@ class Model {
     const instance = new this(...args);
     control(instance);
     return instance;
+  }
+
+  static fetch <T extends Model> (
+    this: Model.Class<T>,
+    from: Model,
+    required?: boolean
+  ): (callback: (x: T) => void) => void {
+    const item = getParent(from, this);
+
+    return callback => {
+      if(item)
+        callback(item);
+      else if(required)
+        throw Oops.Required(this, from.constructor);
+    };
   }
 
   static find <T extends Model> (this: Model.Type<T>, required?: boolean): T;

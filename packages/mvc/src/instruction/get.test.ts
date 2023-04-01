@@ -582,25 +582,27 @@ describe("fetch mode", () => {
 })
 
 describe("async", () => {
-  const asyncGet = get.using(Type => {
-    let instance: Model | undefined;
+  class Singleton extends Model {
+    static fetch<T extends Model>(this: Model.Class<T>){
+      let instance: T | undefined;
 
-    return (refresh) => {
-      if(instance)
-        refresh(instance);
+      return (refresh: (x: T) => void) => {
+        if(instance)
+          refresh(instance);
 
-      setTimeout(() => {
-        refresh(instance = Type.new());
-      }, 100);
+        setTimeout(() => {
+          refresh(instance = this.new());
+        }, 100);
+      }
     }
-  });
+  }
   
   it("will suspend if not ready", async () => {
-    class Foo extends Model {
+    class Foo extends Singleton {
       value = "foobar";
     }
-    class Bar extends Model {
-      foo = asyncGet(Foo);
+    class Bar extends Singleton {
+      foo = get(Foo);
     }
   
     const bar = Bar.new();
@@ -621,11 +623,11 @@ describe("async", () => {
   })
   
   it("will prevent compute if not ready", async () => {
-    class Foo extends Model {
+    class Foo extends Singleton {
       value = "foobar";
     }
-    class Bar extends Model {
-      foo = asyncGet(Foo, foo => {
+    class Bar extends Singleton {
+      foo = get(Foo, foo => {
         return foo.value;
       });
     }

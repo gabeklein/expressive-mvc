@@ -1,4 +1,4 @@
-import { get, Internal, issues, Model, Register } from '@expressive/mvc';
+import { Internal, issues, Model, Register } from '@expressive/mvc';
 
 import { useLookup } from './useContext';
 
@@ -10,31 +10,30 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-function getForGetInstruction<T extends Model>(
-  type: Model.Class<T>,
+function getPeerContext<T extends Model>(
+  this: Model.Class<T>,
   from: Model,
   required: boolean
 ){
   return (callback: (got: T) => void) => {
-    const item = Internal.getParent(from, type);
+    const item = Internal.getParent(from, this);
 
     if(item)
-      callback(item);
-    else {
-      let pending = Pending.get(from);
+      return callback(item);
 
-      if(!pending)
-        Pending.set(from, pending = []);
+    let pending = Pending.get(from);
 
-      pending.push(context => {
-        const got = context.get<T>(type);
+    if(!pending)
+      Pending.set(from, pending = []);
 
-        if(got)
-          callback(got);
-        else if(required)
-          throw Oops.AmbientRequired(type, from);
-      })
-    }
+    pending.push(context => {
+      const got = context.get<T>(this);
+
+      if(got)
+        callback(got);
+      else if(required)
+        throw Oops.AmbientRequired(this, from);
+    })
   }
 }
 
@@ -60,10 +59,8 @@ function usePeerContext(subject: Model){
   Applied.set(subject, !!pending);
 }
 
-const instruction = get.using(getForGetInstruction);
-
 export {
-  instruction as get,
+  getPeerContext,
   usePeerContext,
   Pending
 }
