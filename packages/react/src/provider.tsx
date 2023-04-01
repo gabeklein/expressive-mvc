@@ -1,4 +1,4 @@
-import { Control, Internal, issues, Model } from '@expressive/mvc';
+import { Control, getParent, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { Pending } from './get';
@@ -82,7 +82,7 @@ function useNewContext<T extends Model>(
   for(const model of init){
     Control.for(model).state.forEach(value => {
       // TODO: should this run repeatedly?
-      if(Internal.getParent(value) === model){
+      if(getParent(value) === model){
         current.add(value);
         init.add(value);
       }

@@ -1,4 +1,4 @@
-import { getRecursive } from '../children';
+import { getParent, getRecursive } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
@@ -75,8 +75,14 @@ function get<R, T extends Model>(
       if(arg0 instanceof Model)
         subject = arg0;
 
-      else if(Model.isTypeof(arg0))
-        source = arg0.fetch(subject, arg1 !== false)!;
+      else if(Model.isTypeof(arg0)){
+        const parent = getParent(subject, arg0);
+
+        if(parent)
+          subject = parent;
+        else
+          source = arg0.fetch(subject, arg1 !== false)!;
+      }
 
       else if(typeof arg0 == "function")
         arg1 = arg0.call(subject, key, subject);
@@ -91,18 +97,19 @@ function get<R, T extends Model>(
 function recursive(
   parent: Control,
   key: string,
-  source: get.Source,
-  required?: boolean){
+  source: get.Source | undefined,
+  required: boolean | undefined){
 
   const getter = getRecursive(key, parent);
   let waiting: boolean;
 
-  source((got) => {
-    parent.state.set(key, got);
+  if(source)
+    source((got) => {
+      parent.state.set(key, got);
 
-    if(waiting)
-      parent.update(key);
-  });
+      if(waiting)
+        parent.update(key);
+    });
 
   waiting = true;
 

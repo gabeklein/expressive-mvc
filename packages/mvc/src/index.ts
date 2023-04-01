@@ -1,4 +1,4 @@
-import { getParent } from './children';
+export { getParent } from './children';
 
 export { add } from './instruction/add';
 export { run } from './instruction/run';
@@ -13,7 +13,3 @@ export { Subscriber } from './subscriber';
 export { Debug } from './debug';
 export { Register } from './register';
 export { issues } from './helper/issues';
-
-export const Internal = {
-  getParent
-}

@@ -1,4 +1,3 @@
-import { getParent } from './children';
 import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
@@ -277,15 +276,9 @@ class Model {
     this: Model.Class<T>,
     from: Model,
     required?: boolean
-  ): (callback: (x: T) => void) => void {
-    const item = getParent(from, this);
-
-    return callback => {
-      if(item)
-        callback(item);
-      else if(required)
-        throw Oops.Required(this, from.constructor);
-    };
+  ): ((callback: (x: T) => void) => void) | void {
+    if(required)
+      throw Oops.Required(this, from.constructor);
   }
 
   static find <T extends Model> (this: Model.Type<T>, required?: boolean): T;
@@ -296,8 +289,12 @@ class Model {
   }
 
   static get <T extends Model> (this: Model.Type<T>): T;
-  static get <T extends Model> (this: Model.Type<T>, passive: true): T
-  static get <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
+
+  /** Fetch instance of this class in passive mode. Will not subscribe to events. */
+  static get<T extends Model>(this: Model.Type<T>, ignoreUpdates: true): T;
+
+  /** Fetch instance of this class optionally. May be undefined. */
+  static get<T extends Model>(this: Model.Type<T>, required: false): T | undefined;
 
   static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
   static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;

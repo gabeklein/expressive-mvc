@@ -1,4 +1,4 @@
-import { Internal, issues, Model, Register } from '@expressive/mvc';
+import { issues, Model, Register } from '@expressive/mvc';
 
 import { useLookup } from './useContext';
 
@@ -16,19 +16,14 @@ function getPeerContext<T extends Model>(
   required: boolean
 ){
   return (callback: (got: T) => void) => {
-    const item = Internal.getParent(from, this);
-
-    if(item)
-      return callback(item);
-
     let pending = Pending.get(from);
-
+  
     if(!pending)
       Pending.set(from, pending = []);
-
+  
     pending.push(context => {
       const got = context.get<T>(this);
-
+  
       if(got)
         callback(got);
       else if(required)
