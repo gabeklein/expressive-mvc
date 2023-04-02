@@ -3,7 +3,7 @@ import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
-import { defineProperty, random } from './helper/object';
+import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
 import type { Callback, Class, InstanceOf, MaybePromise, NoVoid } from './helper/types';
@@ -17,8 +17,6 @@ export const Oops = issues({
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}.`,
 });
-
-const Exist = new WeakMap<Model, string | number>();
 
 declare namespace Model {
   export { Control };
@@ -129,8 +127,7 @@ class Model {
   }
 
   constructor(id?: string | number){
-    new Control(this);
-    Exist.set(this, id || random());
+    new Control(this, id);
   }
 
   on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[]>;
@@ -337,7 +334,7 @@ class Model {
 defineProperty(Model.prototype, "toString", {
   configurable: true,
   value(){
-    return `${this.constructor.name}-${Exist.get(this.is)}`;
+    return `${this.constructor.name}-${control(this).id}`;
   }
 })
 

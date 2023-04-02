@@ -1,5 +1,5 @@
 import { setRecursive } from './children';
-import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
+import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
 import { Instruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
@@ -32,7 +32,10 @@ class Control<T extends {} = any> {
   public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
 
-  constructor(public subject: T){
+  constructor(
+    public subject: T,
+    public id: string | number = random()){
+
     REGISTER.set(subject, this);
   }
 
