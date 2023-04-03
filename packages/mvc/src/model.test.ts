@@ -1,3 +1,4 @@
+import { assertDidUpdate } from './helper/testing';
 import { ref } from './instruction/ref';
 import { Model, Oops } from './model';
 
@@ -33,7 +34,7 @@ describe("Model", () => {
     expect(state.is.value).toBe(1);
   
     state.value = 2;
-    await state.on(true);
+    await assertDidUpdate(state);
   
     expect(state.is.value).toBe(2)
   })
@@ -63,7 +64,7 @@ describe("Model", () => {
     expect(state.value).toBe(1);
   
     state.value = 2
-    await state.on(true);
+    await assertDidUpdate(state);
   
     expect(state.value).toBe(2);
   })
@@ -74,7 +75,7 @@ describe("Model", () => {
     expect(state.value).toBe(1);
   
     state.value = 1
-    await state.on(null);
+    await assertDidUpdate(state, false);
   })
   
   it('accepts update from within a method', async () => {
@@ -89,7 +90,7 @@ describe("Model", () => {
     const state = Subject.new();
   
     state.setValue(3);
-    await state.on(true);
+    await assertDidUpdate(state);
   
     expect(state.value).toBe(3)
   })
@@ -110,7 +111,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foo");
 
-    const update = await test.on(true);
+    const update = await test.on(0);
     expect(update).toContain("foo");
   })
 
@@ -120,7 +121,7 @@ describe("dispatch", () => {
     test.foo = "bar";
     test.set("foo");
 
-    const update = await test.on(true);
+    const update = await test.on(0);
     expect(update).toContain("foo");
   })
 
@@ -128,7 +129,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foobar");
 
-    const update = await test.on(true);
+    const update = await test.on(0);
     expect(update).toContain("foobar");
   })
 
@@ -285,7 +286,7 @@ describe("get", () => {
     expect(test.get("foo")).toBeUndefined();
 
     test.foo("foobar");
-    await test.on(true);
+    await assertDidUpdate(test);
 
     expect(test.get("foo")).toBe("foobar");
   })

@@ -1,4 +1,5 @@
 import { Control } from '../control';
+import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { add } from './add';
@@ -121,12 +122,12 @@ describe("custom", () => {
     test.property = "test";
     expect(didSetValue).toBeCalledWith("test");
     expect(test.property).toBe("test");
-    await test.on(true);
+    await assertDidUpdate(test);
 
     test.property = "ignore";
     expect(didSetValue).toBeCalledWith("ignore");
     expect(test.property).toBe("test");
-    await test.on(null);
+    await assertDidUpdate(test, false);
   })
 
   it("will delegate value if returns boolean", async () => {
@@ -150,11 +151,11 @@ describe("custom", () => {
 
     instance.property = 10;
     expect(instance.property).toBe(20);
-    await instance.on(true);
+    await assertDidUpdate(instance);
 
     shouldUpdate = false;
     instance.property = 0;
     expect(instance.property).toBe(10);
-    await instance.on(null);
+    await assertDidUpdate(instance, false);
   })
 })

@@ -1,3 +1,4 @@
+import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { Oops, run } from './run';
 import { set } from './set';
@@ -40,19 +41,19 @@ it("will set active to true for run-duration", async () => {
 })
 
 it("will emit method key before/after activity", async () => {
-  let update: readonly string[];
+  let update: readonly string[] | false;
   const { test, is } = Test.new();
 
   expect(test.active).toBe(false);
 
   const result = test("foobar");
-  update = await is.on(true);
+  update = await is.on(0);
 
   expect(test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
-  update = await is.on(true);
+  update = await is.on(0);
 
   expect(test.active).toBe(false);
   expect(update).toContain("test");
@@ -74,7 +75,7 @@ it("will throw and reset if action fails", async () => {
 
   const result = nope();
 
-  await test.on(true);
+  await assertDidUpdate(test);
   expect(nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
@@ -103,12 +104,12 @@ it("will internally retry on suspense", async () => {
   const value = test.getValue();
 
   expect(didInvoke).toBeCalled();
-  await test.on(true);
+  await assertDidUpdate(test);
 
   test.value = "foobar";
 
   await expect(value).resolves.toBe("foobar");
-  await test.on(true);
+  await assertDidUpdate(test);
 
   expect(didInvoke).toBeCalledTimes(2);
 })

@@ -1,8 +1,17 @@
 import { Model } from '../model';
 
+export async function assertDidUpdate(
+  model: Model, exists?: boolean){
+
+  const assert = expect(model.on(0)).resolves;
+
+  return exists === false
+    ? assert.toBe(false)
+    : assert.toBeTruthy();
+}
+
 export function subscribeTo<T extends Model>(
-  target: T,
-  accessor: (self: T) => void){
+  target: T, accessor: (self: T) => void){
 
   const didTrigger = jest.fn();
 
@@ -27,8 +36,7 @@ export function subscribeTo<T extends Model>(
 }
 
 export function mockAsync<T = void>(){
-  const pending =
-    new Set<[Function, Function]>();
+  const pending = new Set<[Function, Function]>();
 
   const event = () => (
     new Promise<T>((res, rej) => {

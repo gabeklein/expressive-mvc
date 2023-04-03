@@ -1,4 +1,5 @@
 import { Oops } from './event';
+import { assertDidUpdate } from './helper/testing';
 import { get } from './instruction/get';
 import { Model } from './model';
 
@@ -35,22 +36,15 @@ describe("assert", () => {
 
     control.foo = 2;
 
-    const updated = await control.on();
+    const updated = await control.on(0);
     expect(updated).toMatchObject(["foo"]);
   })
 
   it('will resolve immediately when no updates pending', async () => {
     const control = Control.new();
-    const update = await control.on(null);
+    const update = await control.on(0);
 
-    expect(update).toBe(null);
-  })
-
-  it('will reject if no update pending in strict mode', async () => {
-    const control = Control.new();
-    const update = control.on(true);
-
-    await expect(update).rejects.toThrowError();
+    expect(update).toBe(false);
   })
 
   it("will include getters in batch which trigger them", async () => {
@@ -159,7 +153,7 @@ describe("on multiple", () => {
     expect(callback).toBeCalledTimes(1);
   })
 
-  it('will callback on death if empty', async () => {
+  it('will callback on destroy if empty', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
@@ -175,25 +169,6 @@ describe("on multiple", () => {
     expect(callback).toBeCalledWith([]);
   })
 });
-
-describe("on null", () => {
-  it('will resolve immediately', async () => {
-    const state = Subject.new();
-    const update = await state.on(null);
-
-    expect(update).toEqual(null);
-  })
-
-  it('will reject immediately if update', async () => {
-    const state = Subject.new();
-    const expected = Oops.StrictNoUpdate();
-
-    state.seconds = 61;
-    
-    const update = state.on(null);
-    await expect(update).rejects.toThrow(expected);
-  })
-})
 
 describe("on promise", () => {
   it('will resolve with update value', async () => {
@@ -230,7 +205,7 @@ describe("on promise", () => {
 
     state.seconds = 61;
 
-    const update = await state.on(true);
+    const update = await state.on(0);
 
     // should this also expect minutes?
     expect(update).toEqual(["seconds"]);
@@ -244,58 +219,42 @@ describe("on promise", () => {
 
     await expect(update).resolves.toEqual([]);
   })
-
-  it('will reject on required update', async () => {
-    const state = Subject.new();
-    const promise = state.on(true);
-    const expected = Oops.StrictUpdate();
-
-    await expect(promise).rejects.toThrow(expected);
-  })
 })
 
 describe("timeout", () => {
-  it('will reject on required key', async () => {
+  it('will resolve false', async () => {
     const state = Subject.new();
-    const promise = state.on("seconds", 0);
-    const expected = Oops.KeysExpected("seconds");
+    const promise = state.on(1);
 
-    await expect(promise).rejects.toThrow(expected);
+    await expect(promise).resolves.toBe(false);
   })
 
-  it('will reject', async () => {
+  it('will resolve false for key', async () => {
     const state = Subject.new();
     const promise = state.on("seconds", 1);
-    const expected = Oops.Timeout("seconds", "1ms");
 
-    await expect(promise).rejects.toThrow(expected);
+    await expect(promise).resolves.toBe(false);
   })
 
-  it('will reject multiple keys', async () => {
+  it('will resolve for multiple keys', async () => {
     const state = Subject.new();
     const promise = state.on(["seconds", "minutes"], 1);
-    const expected = Oops.Timeout("seconds, minutes", "1ms");
 
-    await expect(promise).rejects.toThrow(expected);
+    await expect(promise).resolves.toBe(false);
   })
 
-  it('will reject undefined', async () => {
+  it('will reject on required key', async () => {
     const state = Subject.new();
-    const promise = state.on(undefined, 1);
-    const expected = Oops.Timeout("any", "1ms");
 
-    await expect(promise).rejects.toThrow(expected);
+    state.hours = 2;
+
+    const promise = state.on("seconds", 0);
+    const expected = Oops.KeysExpected("seconds")
+
+    await expect(promise).rejects.toThrowError(expected);
   })
 
-  it('will reject on destroy state', async () => {
-    const state = Subject.new();
-    const promise = state.on("seconds");
-    const expected = Oops.Timeout(["seconds"], `lifetime of ${state}`);
-
-    state.gc();
-
-    await expect(promise).rejects.toThrow(expected);
-  })
+  it.todo('will timeout on destroy state');
 })
 
 describe("before ready", () => {
@@ -354,17 +313,17 @@ describe("before ready", () => {
     const test = Test.new();
 
     test.value++;
-    await test.on(true);
+    await assertDidUpdate(test);
     expect(mock).toBeCalledTimes(1);
 
     test.value++;
-    await test.on(true);
+    await assertDidUpdate(test);
     expect(mock).toBeCalledTimes(2);
 
     test.done();
 
     test.value++;
-    await test.on(true);
+    await assertDidUpdate(test);
     expect(mock).toBeCalledTimes(2);
   })
 });

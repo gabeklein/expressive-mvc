@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Model } from '.';
-import { create, renderHook } from './helper/testing';
+import { create, assertDidUpdate, renderHook } from './helper/testing';
 import { Provider } from './provider';
 import { Oops } from './useContext';
 
@@ -74,7 +74,7 @@ describe("get", () => {
 
     expect(didPushToValues).toBeCalledTimes(3);
 
-    await parent.on(true);
+    await assertDidUpdate(parent);
 
     expect(parent.values.length).toBe(3);
 

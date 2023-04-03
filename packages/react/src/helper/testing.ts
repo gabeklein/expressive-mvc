@@ -5,6 +5,10 @@ import { create } from 'react-test-renderer';
 export { renderHook } from '@testing-library/react-hooks';
 export { create } from "react-test-renderer";
 
+export async function assertDidUpdate(model: Model){
+  return expect(model.on(0)).resolves.toBeTruthy();
+}
+
 export function subscribeTo<T extends Model>(
   target: T,
   accessor: (self: T) => void){
@@ -28,8 +32,7 @@ export function subscribeTo<T extends Model>(
 }
 
 export function mockAsync<T = void>(){
-  const pending =
-    new Set<[Function, Function]>();
+  const pending = new Set<[Function, Function]>();
 
   const event = () => (
     new Promise<T>((res, rej) => {

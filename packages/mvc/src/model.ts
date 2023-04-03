@@ -16,6 +16,9 @@ export const Oops = issues({
 
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}.`,
+
+  Timeout: (keys, timeout) => 
+    `No update seen for [${keys}] within ${timeout}.`,
 });
 
 declare namespace Model {
@@ -130,26 +133,28 @@ class Model {
     new Control(this, id);
   }
 
-  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[]>;
+  on (): Promise<Model.Event<this>[]>;
+  on (timeout?: number): Promise<Model.Event<this>[] | false>;
+
+  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[] | false>;
   on <P extends Model.Event<this>> (keys: P | Iterable<P>, listener: (this: this, keys: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
   on (effect: Model.Effect<this>, watch?: []): Callback;
   on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
-  on (key?: undefined, timeout?: number): Promise<Model.Event<this>[]>;
-
-  on (current?: boolean): Promise<Model.Event<this>[] | null>;
-  on (current: true): Promise<Model.Event<this>[]>;
-  on (current: null): Promise<null>;
-
   on <P extends Model.Event<this>> (
-    arg1?: boolean | null | P | P[] | Model.Effect<this>,
+    arg1?: number | P | P[] | Model.Effect<this>,
     arg2?: number | P[] | ((this: this, keys: Model.Event<this>[]) => void),
     arg3?: boolean){
 
     if(typeof arg1 == "function")
       return createEffect(this.is, arg1, arg2 as P[]);
+
+    if(typeof arg1 == "number"){
+      arg2 = arg1;
+      arg1 = undefined;
+    }
 
     if(typeof arg2 != "function")
       return awaitUpdate(this.is, arg1, arg2 as number);
@@ -200,7 +205,12 @@ class Model {
 
     const timeout = typeof arg2 == "number" ? arg2 : undefined;
 
-    return this.on(arg1, timeout).then(extract);
+    return this.on(arg1, timeout).then(update => {
+      if(update === false)
+        throw Oops.Timeout(arg1, timeout);
+      
+      return extract();
+    });
   }
 
   set(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;

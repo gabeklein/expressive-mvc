@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react-hooks';
 
 import { Model, set } from '.';
-import { mockAsync, mockSuspense, renderHook } from './helper/testing';
+import { assertDidUpdate, mockAsync, mockSuspense, renderHook } from './helper/testing';
 import { Oops } from './useContext';
 
 /**
@@ -179,7 +179,7 @@ describe("passive mode", () => {
 
     test.value++;
 
-    await test.on(true);
+    await assertDidUpdate(test);
     
     expect(didRender).not.toBeCalledWith(2);
     expect(didRender).toBeCalledTimes(1);
@@ -296,7 +296,7 @@ describe("computed", () => {
 
     instance.foo = 2;
 
-    await instance.on(true);
+    await assertDidUpdate(instance);
     expect(didRender).toBeCalledTimes(1);
   })
 
@@ -358,7 +358,7 @@ describe("computed", () => {
     
       await act(async () => {
         parent.foo = 2;
-        await parent.on(true);
+        await assertDidUpdate(parent);
       })
 
       expect(didRender).toBeCalledTimes(1);
@@ -385,7 +385,7 @@ describe("computed", () => {
       await act(async () => {
         parent.foo = 2;
         parent.bar = false;
-        await parent.on(true);
+        await assertDidUpdate(parent);
       })
 
       expect(didRender).toBeCalledTimes(2);

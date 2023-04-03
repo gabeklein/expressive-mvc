@@ -1,4 +1,4 @@
-import { mockAsync, mockConsole } from '../helper/testing';
+import { assertDidUpdate, mockAsync, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 import { Oops as Child } from '../children';
@@ -19,14 +19,14 @@ describe("compute mode", () => {
   
     subject.seconds = 30;
   
-    await subject.on(true);
+    await assertDidUpdate(subject);
   
     expect(subject.seconds).toEqual(30);
     expect(subject.minutes).toEqual(0);
   
     subject.seconds = 60;
   
-    await subject.on(true);
+    await assertDidUpdate(subject);
   
     expect(subject.seconds).toEqual(60);
     expect(subject.minutes).toEqual(1);
@@ -55,12 +55,12 @@ describe("compute mode", () => {
     expect(subject.nested).toBe("foo");
   
     subject.child.value = "bar";
-    await subject.on(true);
+    await assertDidUpdate(subject);
   
     expect(subject.nested).toBe("bar");
   
     subject.child = new Child();
-    await subject.on(true);
+    await assertDidUpdate(subject);
   
     // sanity check
     expect(subject.child.value).toBe("foo");
@@ -125,7 +125,7 @@ describe("compute mode", () => {
     expect(didCompute).not.toBeCalledWith(2)
   
     // does compute eventually
-    await test.on(true);
+    await assertDidUpdate(test);
     expect(didCompute).toBeCalledWith(2)
     expect(test.plusOne).toBe(2);
   
@@ -139,7 +139,7 @@ describe("compute mode", () => {
     expect(didCompute).toBeCalledWith(3);
   
     // update should still occur
-    await test.on(true);
+    await assertDidUpdate(test);
   })
   
   it('will be squashed with regular updates', async () => {
@@ -174,7 +174,7 @@ describe("compute mode", () => {
     state.b++;
     state.x.value++;
   
-    await state.on(true);
+    await assertDidUpdate(state);
   
     expect(exec).toBeCalledTimes(2);
     expect(emit).toBeCalledTimes(1);
@@ -224,7 +224,7 @@ describe("compute mode", () => {
   
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.on(true);
+    const updated = await test.on(0);
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -247,7 +247,7 @@ describe("compute mode", () => {
     expect(test.greeting).toBe("Hello World!");
   
     test.friend = "Foo";
-    await test.on(true);
+    await assertDidUpdate(test);
   
     expect(test.greeting).toBe("Hello Foo!");
   })
@@ -289,7 +289,7 @@ describe("compute mode", () => {
       state.on("value");
       state.shouldFail = true;
 
-      await state.on(true);
+      await assertDidUpdate(state);
 
       expect(warn).toBeCalledWith(failed.message);
       expect(error).toBeCalled();
@@ -339,7 +339,7 @@ describe("compute mode", () => {
 
       // change upstream value to trigger re-compute
       test.multiplier = 1;
-      await test.on(true);
+      await assertDidUpdate(test);
 
       // getter should see current value while producing new one
       expect(test.previous).toBe(initial);
@@ -378,7 +378,7 @@ describe("compute mode", () => {
       expect(test.value).toBe(3);
       expect(didGetOldValue).toBeCalledWith(2);
     
-      await test.on(true);
+      await assertDidUpdate(test);
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     })
@@ -401,7 +401,7 @@ describe("compute mode", () => {
 
       test.foo++;
 
-      await test.on(true);
+      await assertDidUpdate(test);
       expect(test.bar).toBe(3);
     })
 
@@ -539,11 +539,11 @@ describe("fetch mode", () => {
     child.on(effect);
   
     child.value = "bar";
-    await child.on(true);
+    await assertDidUpdate(child);
     expect(effect).toHaveBeenCalledTimes(2)
   
     child.parent.value = "bar";
-    await child.parent.on(true);
+    await assertDidUpdate(child.parent);
     expect(effect).toHaveBeenCalledTimes(3)
   })
 
@@ -563,7 +563,7 @@ describe("fetch mode", () => {
   
     foo.seconds = 30;
   
-    await foo.on(true);
+    await assertDidUpdate(foo);
   
     expect(foo.seconds).toEqual(30);
     expect(bar.minutes).toEqual(0);
@@ -572,8 +572,8 @@ describe("fetch mode", () => {
   
     // make sure both did declare an update
     await Promise.all([
-      bar.on(true),
-      foo.on(true)
+      assertDidUpdate(bar),
+      assertDidUpdate(foo)
     ])
   
     expect(foo.seconds).toEqual(60);

@@ -1,3 +1,4 @@
+import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { use } from './use';
@@ -20,7 +21,7 @@ describe("Map", () => {
     expect(mock).toBeCalledWith("foo");
   
     test.map.set("foo", "bar");
-    await test.on(true);
+    await assertDidUpdate(test);
   
     expect(mock).toBeCalledTimes(2);
     expect(mock).toBeCalledWith("bar");
@@ -52,7 +53,7 @@ describe("Set", () => {
     expect(didEffect).toBeCalledWith(0, undefined);
   
     test.values.add("hello");
-    await test.on(true);
+    await assertDidUpdate(test);
   
     expect(didEffect).toBeCalledWith(1, "hello");
   })
@@ -105,7 +106,7 @@ for(const T of [Map, Set])
       expect(mock).toBeCalledWith(false);
     
       test.insert("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledWith(true);
       test.gc();
@@ -120,7 +121,7 @@ for(const T of [Map, Set])
       expect(mock).toBeCalledTimes(1);
   
       test.insert("bar");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(1);
     })
@@ -132,10 +133,10 @@ for(const T of [Map, Set])
       test.on(mock);
     
       test.insert("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       test.values.delete("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(3);
     })
@@ -147,7 +148,7 @@ for(const T of [Map, Set])
       test.on(mock)
     
       test.values.clear();
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(2);
     })
@@ -166,7 +167,7 @@ for(const T of [Map, Set])
       test.on(mockKeys);
     
       test.insert("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mockIterator).toBeCalledTimes(2);
       expect(mockEntries).toBeCalledTimes(2);
@@ -189,7 +190,7 @@ for(const T of [Map, Set])
 
       test.values = T === Map ? new Map() : new Set();
 
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(2);
     })
@@ -202,7 +203,7 @@ for(const T of [Map, Set])
     
       test.values = T === Map ? new Map() : new Set();
   
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(2);
     })
@@ -218,7 +219,7 @@ for(const T of [Map, Set])
     
       test.insert("foo");
       test.insert("bar");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(2);
     })
@@ -263,14 +264,14 @@ for(const T of [Map, Set])
       expect(mock2).toBeCalledTimes(1);
     
       test.values = new Set();
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock1).toBeCalledTimes(2);
       expect(mock2).toBeCalledTimes(2);
     
       release1();
       test.values = new Set();
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock1).toBeCalledTimes(2);
       expect(mock2).toBeCalledTimes(3);
@@ -289,7 +290,7 @@ for(const T of [Map, Set])
       expect(mock).toBeCalledWith(0);
     
       test.insert("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledWith(1);
     })
@@ -303,7 +304,7 @@ for(const T of [Map, Set])
       expect(mock).toBeCalledWith(0);
     
       test.insert("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
     
       expect(mock).toBeCalledTimes(2)
       expect(mock).toBeCalledWith(1);
@@ -323,7 +324,7 @@ for(const T of [Map, Set])
       expect(mock).toBeCalledWith(false);
     
       test.values.add("foo");
-      await test.on(true);
+      await assertDidUpdate(test);
   
       expect(mock).toBeCalledTimes(1);
     })

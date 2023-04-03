@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 
 import { Model, set } from '.';
 import { Consumer } from './consumer';
-import { mockAsync, create } from './helper/testing';
+import { mockAsync, create, assertDidUpdate } from './helper/testing';
 import { Oops, Provider } from './provider';
 import { Oops as Context } from './useContext';
 
@@ -201,7 +201,7 @@ describe("and prop", () => {
       <Provider for={foo} use={{ value: "bar" }} />
     );
 
-    await foo.on(true);
+    await assertDidUpdate(foo);
 
     expect(foo.value).toBe("bar");
   })
