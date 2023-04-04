@@ -36,17 +36,21 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
+  const { for: includes, use: assign } = props;
+
   const ambient = useLookup();
   const context = React.useMemo(() => {
-    if(props.for)
+    if(includes)
       return ambient.push();
 
     throw Oops.NoType();
   }, []);
 
-  include(context, props.for, instance => {
-    if(props.use)
-      assignWeak(instance, props.use);
+  include(context, includes, instance => {
+    if(assign)
+      for(const K in assign)
+        if(K in instance)
+          (instance as any)[K] = (assign as any)[K];
   })
 
   React.useLayoutEffect(() => () => context.pop(), []);
@@ -98,10 +102,4 @@ function include(
     if(pending)
       pending.forEach(cb => cb(current));
   }
-}
-
-function assignWeak(into: any, from: any){
-  for(const K in from)
-    if(K in into)
-      into[K] = from[K];
 }
