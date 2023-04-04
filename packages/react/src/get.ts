@@ -22,7 +22,7 @@ function getPeerContext<T extends Model>(
       Pending.set(from, pending = []);
   
     pending.push(context => {
-      const got = context.get<T>(this);
+      const got = context.get<T>(this, false);
   
       if(got)
         callback(got);

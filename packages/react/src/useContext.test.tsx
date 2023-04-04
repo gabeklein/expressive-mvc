@@ -3,14 +3,12 @@ import React from 'react';
 import { Model } from '.';
 import { create, assertDidUpdate, renderHook } from './helper/testing';
 import { Provider } from './provider';
-import { Oops } from './useContext';
 
 describe("get", () => {
-  class Test extends Model {
-    value = 1;
-  }
-
   it("will get instance", () => {
+    class Test extends Model {
+      value = 1;
+    }
     const instance = Test.new();
     const wrapper: React.FC = ({ children }) => (
       <Provider for={instance}>
@@ -18,23 +16,10 @@ describe("get", () => {
       </Provider>
     )
 
-    const render = renderHook(() => Test.get(true), { wrapper });
+    const render = renderHook(() => Test.get(), { wrapper });
 
-    expect(render.result.current).toBe(instance);
+    expect(render.result.current).toBeInstanceOf(Test);
     expect(render.result.current.value).toBe(1);
-  })
-
-  it("will complain if not found", () => {
-    const render = renderHook(() => Test.get());
-    const expected = Oops.NotFound(Test);
-
-    expect(() => render.result.current).toThrowError(expected);
-  })
-
-  it("will return undefined if not found", () => {
-    const render = renderHook(() => Test.get(false));
-
-    expect(render.result.current).toBeUndefined();
   })
 
   it("will run initial callback syncronously", async () => {

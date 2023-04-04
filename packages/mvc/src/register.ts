@@ -1,5 +1,14 @@
+import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
+
+export const Oops = issues({
+  NotFound: (name) =>
+    `Could not find ${name} in context.`,
+
+  MultipleExist: (name) =>
+    `Did find ${name} in context, but multiple were defined.`
+})
 
 export class Register {
   private table = new Map<Model.Type, symbol>();
@@ -16,8 +25,18 @@ export class Register {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Type<T>){
-    return this[this.has(Type)] as unknown as T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, required?: true): T;
+  public get<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, required?: boolean){
+    const result = this[this.has(Type)] as T | undefined;
+
+    if(result === null)
+      throw Oops.MultipleExist(Type);
+
+    if(!result && required !== false)
+      throw Oops.NotFound(Type);
+
+    return result;
   }
 
   public add<T extends Model>(

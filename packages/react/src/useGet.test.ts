@@ -2,7 +2,6 @@ import { act } from '@testing-library/react-hooks';
 
 import { Model, set } from '.';
 import { assertDidUpdate, mockAsync, mockSuspense, renderHook } from './helper/testing';
-import { Oops } from './useContext';
 
 /**
  * Bypass context to fascilitate tests.
@@ -190,14 +189,8 @@ describe("passive mode", () => {
       value = 1;
     }
 
-    const expected = Oops.NotFound("Test");
     const useTest = jest.fn(() => {
-      try {
-        Test.get(true);
-      }
-      catch(err){
-        expect(err).toEqual(expected);
-      }
+      expect(() => Test.get()).toThrow("Could not find Test in context.");
     });
     
     renderHook(useTest);

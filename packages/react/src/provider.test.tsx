@@ -4,7 +4,6 @@ import { Model, set } from '.';
 import { Consumer } from './consumer';
 import { mockAsync, create, assertDidUpdate } from './helper/testing';
 import { Oops, Provider } from './provider';
-import { Oops as Context } from './useContext';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -116,10 +115,11 @@ it("will provide a mix of state and models", () => {
 
 it("will conflict colliding Model types", () => {
   const foo = Foo.new();
-  const expected = Context.MultipleExist("Foo");
 
   const Consumer: React.VFC = jest.fn(() => {
-    expect(() => Foo.get()).toThrowError(expected);
+    expect(() => Foo.get()).toThrowError(
+      "Did find Foo in context, but multiple were defined."
+    );
     return null;
   });
 

@@ -4,7 +4,6 @@ import { Model } from '.';
 import { Consumer } from './consumer';
 import { create } from './helper/testing';
 import { Provider } from './provider';
-import { Oops } from './useContext';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -76,7 +75,7 @@ it("will throw if not found where required", () => {
     <Consumer for={Bar} has={i => void i} />
   )
 
-  expect(test).toThrowError(Oops.NotFound(Bar));
+  expect(test).toThrowError("Could not find Bar in context.");
 })
 
 it("will eagerly select extended class", () => {
