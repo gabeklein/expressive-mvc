@@ -17,6 +17,8 @@ declare namespace Provider {
 
   type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
+  type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
+
   type NormalProps<E, I = Instance<E>> = {
     for: E;
     fallback?: React.ReactNode;
@@ -31,8 +33,6 @@ declare namespace Provider {
     children?: React.ReactNode;
     use?: Model.Compat<Instance<T>>;
   }
-
-  type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
