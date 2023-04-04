@@ -1,4 +1,4 @@
-import { Control, getParent, issues, Model } from '@expressive/mvc';
+import { Control, getParent, issues, Model, Register } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { Pending } from './get';
@@ -55,17 +55,33 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 export { Provider };
 
 function useNewContext<T extends Model>(
-  include: Provider.Item | Provider.Multiple,
+  includes: Provider.Item | Provider.Multiple,
   assign: Model.Compat<T> | undefined){
 
-  const init = new Set<Model>();
   const ambient = useLookup();
   const current = React.useMemo(() => {
-    if(include)
+    if(includes)
       return ambient.push();
 
     throw Oops.NoType();
   }, []);
+
+  include(current, includes, instance => {
+    if(assign)
+      assignWeak(instance, assign);
+  })
+
+  React.useLayoutEffect(() => () => current.pop(), []);
+
+  return current;
+}
+
+function include(
+  current: Register,
+  include: Provider.Item | Provider.Multiple,
+  callback: (model: Model) => void){
+
+  const init = new Set<Model>();
 
   if(typeof include == "function" || include instanceof Model)
     include = { [0]: include };
@@ -74,9 +90,7 @@ function useNewContext<T extends Model>(
     const instance = current.add(include[key], key);
 
     init.add(instance);
-
-    if(assign)
-      assignWeak(instance, assign);
+    callback(instance);
   }
 
   for(const model of init){
@@ -93,10 +107,6 @@ function useNewContext<T extends Model>(
     if(pending)
       pending.forEach(cb => cb(current));
   }
-
-  React.useLayoutEffect(() => () => current.pop(), []);
-
-  return current;
 }
 
 function assignWeak(into: any, from: any){
