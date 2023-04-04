@@ -1,5 +1,5 @@
 import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
-import React, { createContext, Suspense, useContext, useLayoutEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, Suspense, useContext, useLayoutEffect, useMemo } from 'react';
 
 import { setPeers } from './get';
 
@@ -23,16 +23,16 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
-    fallback?: ReactNode;
-    children?: ReactNode | ((instance: I) => ReactNode);
+    fallback?: React.ReactNode;
+    children?: React.ReactNode | ((instance: I) => React.ReactNode);
     use?: Model.Compat<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    fallback?: ReactNode;
-    children?: ReactNode;
+    fallback?: React.ReactNode;
+    children?: React.ReactNode;
     use?: Model.Compat<Instance<T>>;
   }
 }

@@ -1,5 +1,4 @@
 import { issues } from '@expressive/mvc';
-import { ReactElement } from 'react';
 
 type Class = new () => any;
 
@@ -38,7 +37,7 @@ declare namespace Consumer {
        * Similar to `get()`, updates to properties accessed in
        * this function will cause a refresh when they change.
        */
-      children: (value: InstanceType<E>) => ReactElement<any, any> | null;
+      children: (value: InstanceType<E>) => React.ReactElement<any, any> | null;
   }
 
   type Props<T extends Class> = HasProps<T> | GetProps<T> | RenderProps<T>
