@@ -1,6 +1,6 @@
 import { issues, Model, Context } from '@expressive/mvc';
 
-import { useLookup } from './useContext';
+import { useAmbient } from './provider';
 
 export const Oops = issues({
   AmbientRequired: (requested, requester) =>
@@ -35,7 +35,7 @@ function getPeerContext<T extends Model>(
 function usePeerContext(subject: Model){
   if(Applied.has(subject)){
     if(Applied.get(subject))
-      useLookup();
+      useAmbient();
 
     return;
   }
@@ -43,7 +43,7 @@ function usePeerContext(subject: Model){
   const pending = Pending.get(subject);
 
   if(pending){
-    const local = useLookup();
+    const local = useAmbient();
 
     for(const init of pending)
       init(local);

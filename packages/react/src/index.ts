@@ -1,9 +1,15 @@
 import { Model } from '@expressive/mvc';
 
 import { getPeerContext } from './get';
-import { useContext } from './useContext';
+import { useAmbient } from './provider';
 import { useGet } from './useGet';
 import { useModel } from './useModel';
+
+function useContext<T extends Model>(
+  this: Model.Type<T>, required?: boolean): T | undefined {
+
+  return useAmbient().get(this, required);
+}
 
 function bootstrap(this: typeof Model){
   this.fetch = getPeerContext;

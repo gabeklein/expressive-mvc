@@ -2,7 +2,9 @@ import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { setPeers } from './get';
-import { LookupContext, useLookup } from './useContext';
+
+export const LookupContext = React.createContext(new Context());
+export const useAmbient = () => React.useContext(LookupContext);
 
 export const Oops = issues({
   NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
@@ -38,7 +40,7 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const { for: includes, use: assign } = props;
 
-  const ambient = useLookup();
+  const ambient = useAmbient();
   const context = React.useMemo(() => {
     if(includes)
       return ambient.push();
