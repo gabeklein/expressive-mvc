@@ -5,7 +5,7 @@ import { useAmbient } from './provider';
 import { useGet } from './useGet';
 import { useModel } from './useModel';
 
-function useContext<T extends Model>(
+function getFromContext<T extends Model>(
   this: Model.Type<T>, required?: boolean): T | undefined {
 
   return useAmbient().get(this, required);
@@ -13,7 +13,7 @@ function useContext<T extends Model>(
 
 function bootstrap(this: typeof Model){
   this.fetch = getPeerContext;
-  this.find = useContext;
+  this.find = getFromContext;
   this.get = useGet;
   this.use = useModel;
 }
