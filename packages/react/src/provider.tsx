@@ -36,7 +36,20 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const context = useNewContext(props.for, props.use);
+  const ambient = useLookup();
+  const context = React.useMemo(() => {
+    if(props.for)
+      return ambient.push();
+
+    throw Oops.NoType();
+  }, []);
+
+  include(context, props.for, instance => {
+    if(props.use)
+      assignWeak(instance, props.use);
+  })
+
+  React.useLayoutEffect(() => () => context.pop(), []);
 
   return (
     <LookupContext.Provider value={context}>
@@ -53,28 +66,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 }
 
 export { Provider };
-
-function useNewContext<T extends Model>(
-  includes: Provider.Item | Provider.Multiple,
-  assign: Model.Compat<T> | undefined){
-
-  const ambient = useLookup();
-  const current = React.useMemo(() => {
-    if(includes)
-      return ambient.push();
-
-    throw Oops.NoType();
-  }, []);
-
-  include(current, includes, instance => {
-    if(assign)
-      assignWeak(instance, assign);
-  })
-
-  React.useLayoutEffect(() => () => current.pop(), []);
-
-  return current;
-}
 
 function include(
   current: Register,
