@@ -1,7 +1,7 @@
 import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
-import { Pending } from './get';
+import { setPeers } from './get';
 import { LookupContext, useLookup } from './useContext';
 
 export const Oops = issues({
@@ -46,7 +46,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
     throw Oops.NoType();
   }, []);
 
-  include(context, includes, instance => {
+  addTo(context, includes, instance => {
     if(assign)
       for(const K in assign)
         if(K in instance)
@@ -71,35 +71,30 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
 export { Provider };
 
-function include(
-  current: Context,
-  include: Provider.Item | Provider.Multiple,
+function addTo(
+  context: Context,
+  items: Provider.Item | Provider.Multiple,
   callback: (model: Model) => void){
 
   const init = new Set<Model>();
 
-  if(typeof include == "function" || include instanceof Model)
-    include = { [0]: include };
+  if(typeof items == "function" || items instanceof Model)
+    items = { [0]: items };
 
-  for(const key in include){
-    const instance = current.add(include[key], key);
+  for(const key in items){
+    const instance = context.add(items[key], key);
 
     init.add(instance);
     callback(instance);
   }
 
   for(const model of init){
+    setPeers(context, model);
     Control.for(model).state.forEach(value => {
-      // TODO: should this run repeatedly?
       if(getParent(value) === model){
-        current.add(value);
+        context.add(value);
         init.add(value);
       }
     });
-
-    const pending = Pending.get(model);
-
-    if(pending)
-      pending.forEach(cb => cb(current));
   }
 }

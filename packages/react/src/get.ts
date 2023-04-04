@@ -54,8 +54,15 @@ function usePeerContext(subject: Model){
   Applied.set(subject, !!pending);
 }
 
+function setPeers(context: Context, onto: Model){
+  const pending = Pending.get(onto);
+
+  if(pending)
+    pending.forEach(cb => cb(context));
+}
+
 export {
   getPeerContext,
   usePeerContext,
-  Pending
+  setPeers
 }
