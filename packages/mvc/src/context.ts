@@ -10,7 +10,7 @@ export const Oops = issues({
     `Did find ${name} in context, but multiple were defined.`
 })
 
-export class Register {
+export class Context {
   private table = new Map<Model.Type, symbol>();
   public register!: Map<string | number, Model | Model.Type>;
 

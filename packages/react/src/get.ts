@@ -1,4 +1,4 @@
-import { issues, Model, Register } from '@expressive/mvc';
+import { issues, Model, Context } from '@expressive/mvc';
 
 import { useLookup } from './useContext';
 
@@ -7,7 +7,7 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 });
 
-const Pending = new WeakMap<{}, ((context: Register) => void)[]>();
+const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
 function getPeerContext<T extends Model>(

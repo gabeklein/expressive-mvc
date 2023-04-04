@@ -11,5 +11,5 @@ export { Model, Model as default } from './model';
 export { Control } from './control';
 export { Subscriber } from './subscriber';
 export { Debug } from './debug';
-export { Register } from './register';
+export { Context } from './context';
 export { issues } from './helper/issues';

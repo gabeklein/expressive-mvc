@@ -1,7 +1,7 @@
-import { Model, Register } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import React from 'react';
 
-const LookupContext = React.createContext(new Register());
+const LookupContext = React.createContext(new Context());
 
 function useLookup(){
   return React.useContext(LookupContext);

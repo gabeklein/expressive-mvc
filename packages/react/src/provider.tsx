@@ -1,4 +1,4 @@
-import { Control, getParent, issues, Model, Register } from '@expressive/mvc';
+import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 
 import { Pending } from './get';
@@ -72,7 +72,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 export { Provider };
 
 function include(
-  current: Register,
+  current: Context,
   include: Provider.Item | Provider.Multiple,
   callback: (model: Model) => void){
 
