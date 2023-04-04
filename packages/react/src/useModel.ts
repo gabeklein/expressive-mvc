@@ -1,5 +1,5 @@
 import { Control, Model, Subscriber } from '@expressive/mvc';
-import React from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { usePeerContext } from './get';
 
@@ -25,7 +25,7 @@ function useModel <T extends Model> (
   arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Key<T>[]){
 
-  const instance = React.useMemo(() => {
+  const instance = useMemo(() => {
     const callback = arg2 || arg1;
     const instance = new this();
 
@@ -40,9 +40,9 @@ function useModel <T extends Model> (
   usePeerContext(instance);
 
   if(Array.isArray(arg1)){
-    const update = React.useState(0)[1];
+    const update = useState(0)[1];
 
-    React.useLayoutEffect(() => {  
+    useLayoutEffect(() => {  
       if(arg1.length && instance instanceof Model)
         instance.on(arg1, () => update(x => x+1));
 
@@ -54,8 +54,8 @@ function useModel <T extends Model> (
     return instance;
   }
 
-  const state = React.useState(0);
-  const local = React.useMemo(() => {
+  const state = useState(0);
+  const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
     return new Subscriber(instance, () => refresh);
   }, []);
@@ -63,7 +63,7 @@ function useModel <T extends Model> (
   if(typeof arg1 == "object")
     applyValues(local, arg1, arg2 as Model.Key<T>[]);
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     local.commit();
 
     return () => {

@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { FC, ReactNode, Suspense } from 'react';
 
 import { Model, set } from '.';
 import { Consumer } from './consumer';
@@ -116,7 +116,7 @@ it("will provide a mix of state and models", () => {
 it("will conflict colliding Model types", () => {
   const foo = Foo.new();
 
-  const Consumer: React.VFC = jest.fn(() => {
+  const Consumer: FC = jest.fn(() => {
     expect(() => Foo.get()).toThrowError(
       "Did find Foo in context, but multiple were defined."
     );
@@ -243,7 +243,7 @@ describe("suspense", () => {
   }
 
   const TestComponent = (
-    props: { fallback?: React.ReactNode }) => {
+    props: { fallback?: ReactNode }) => {
 
     willRender();
     return (

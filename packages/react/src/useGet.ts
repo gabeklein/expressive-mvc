@@ -1,5 +1,5 @@
 import { Model, Subscriber } from '@expressive/mvc';
-import React from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined ? null : T;
@@ -34,8 +34,8 @@ function useSubscriber<T extends Model, R>(
   callback?: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const state = React.useState(0);
-  const local = React.useMemo(() => {
+  const state = useState(0);
+  const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
 
     if(!callback)
@@ -123,7 +123,7 @@ function useSubscriber<T extends Model, R>(
   if(!local)
     return null;
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     local.commit();
     return () => local.release();
   }, [source]);

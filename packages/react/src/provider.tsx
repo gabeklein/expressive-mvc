@@ -1,10 +1,10 @@
 import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
-import React, { Suspense } from 'react';
+import React, { createContext, Suspense, useContext, useLayoutEffect, useMemo, ReactNode } from 'react';
 
 import { setPeers } from './get';
 
-export const LookupContext = React.createContext(new Context());
-export const useAmbient = () => React.useContext(LookupContext);
+export const LookupContext = createContext(new Context());
+export const useAmbient = () => useContext(LookupContext);
 
 export const Oops = issues({
   NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
@@ -23,16 +23,16 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
-    fallback?: React.ReactNode;
-    children?: React.ReactNode | ((instance: I) => React.ReactNode);
+    fallback?: ReactNode;
+    children?: ReactNode | ((instance: I) => ReactNode);
     use?: Model.Compat<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    fallback?: React.ReactNode;
-    children?: React.ReactNode;
+    fallback?: ReactNode;
+    children?: ReactNode;
     use?: Model.Compat<Instance<T>>;
   }
 }
@@ -41,7 +41,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   const { for: includes, use: assign } = props;
 
   const ambient = useAmbient();
-  const context = React.useMemo(() => {
+  const context = useMemo(() => {
     if(includes)
       return ambient.push();
 
@@ -55,7 +55,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
           (instance as any)[K] = (assign as any)[K];
   })
 
-  React.useLayoutEffect(() => () => context.pop(), []);
+  useLayoutEffect(() => () => context.pop(), []);
 
   return (
     <LookupContext.Provider value={context}>

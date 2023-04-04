@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react-hooks';
-import React from 'react';
+import React, { FC } from 'react';
 
 import { Model, Provider, set } from '.';
 import { assertDidUpdate, create, mockAsync, mockSuspense, renderHook } from './helper/testing';
@@ -685,7 +685,7 @@ describe("in-context", () => {
       value = 1;
     }
     const instance = Test.new();
-    const wrapper: React.FC = ({ children }) => (
+    const wrapper: FC = ({ children }) => (
       <Provider for={instance}>
         {children}
       </Provider>
