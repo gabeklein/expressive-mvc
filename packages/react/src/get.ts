@@ -11,10 +11,10 @@ const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
 function getPeerContext<T extends Model>(
-  this: Model.Class<T>,
+  type: Model.Type<T>,
   callback: (got: T) => void,
-  from: Model,
-  required: boolean
+  required: boolean | undefined,
+  from: Model
 ){
   let pending = Pending.get(from);
   
@@ -22,12 +22,12 @@ function getPeerContext<T extends Model>(
     Pending.set(from, pending = []);
 
   pending.push(context => {
-    const got = context.get<T>(this, false);
+    const got = context.get<T>(type, false);
 
     if(got)
       callback(got);
     else if(required)
-      throw Oops.AmbientRequired(this, from);
+      throw Oops.AmbientRequired(type, from);
   })
 }
 

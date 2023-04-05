@@ -15,10 +15,8 @@ class Singleton extends Model {
     return this.instance = super.new();
   }
 
-  /** Used by `get`, will return (or create) only one instance. */
-  static find<T extends Singleton>(this: Model.Type<T>): T;
-  static find(){
-    return this.instance || this.new();
+  static find(cb: (got: Model) => void){
+    return cb(this.instance || this.new());
   }
 }
 

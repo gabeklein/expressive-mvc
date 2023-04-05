@@ -1,8 +1,6 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-
-
 function useSubscriber<T extends Model, R>(
   instance: T,
   arg1?: Model.GetCallback<T, any>,

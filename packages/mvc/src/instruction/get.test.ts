@@ -582,20 +582,18 @@ describe("fetch mode", () => {
 })
 
 describe("async", () => {
-  class Singleton extends Model {
-    static fetch<T extends Singleton>(
-      this: Model.Class<T> & typeof Model,
-      callback: (x: T) => void){
-
+  class Test extends Model {
+    /** Override method to simplify tests. */
+    static find(callback: (x: Model) => void){
       setTimeout(() => {
         callback(this.new());
-      }, 100);
+      }, 0);
     }
   }
   
   it("will suspend if not ready", async () => {
-    class Foo extends Singleton {}
-    class Bar extends Singleton {
+    class Foo extends Test {}
+    class Bar extends Model {
       foo = get(Foo);
     }
   
@@ -617,10 +615,10 @@ describe("async", () => {
   })
   
   it("will prevent compute if not ready", async () => {
-    class Foo extends Singleton {
+    class Foo extends Test {
       value = "foobar";
     }
-    class Bar extends Singleton {
+    class Bar extends Model {
       foo = get(Foo, foo => foo.value);
     }
   

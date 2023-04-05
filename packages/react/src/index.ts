@@ -6,28 +6,42 @@ import { useSubscriber } from './useSubscriber';
 import { useModel } from './useModel';
 
 function getFromContext<T extends Model>(
-  this: Model.Type<T>, required?: boolean): T | undefined {
+  this: Model.Type<T>,
+  callback?: (got: T) => void,
+  required?: boolean,
+  relativeTo?: Model
+){
+  if(relativeTo)
+    getPeerContext(this, callback!, required, relativeTo);
 
-  return useAmbient().get(this, required);
+  else {
+    const got = useAmbient().get(this, required);
+  
+    if(callback && got)
+      callback(got);
+
+    return got;
+  }
 }
 
-function useGet <T extends Model> (
+function useContext <T extends Model> (
   this: Model.Class<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
-  arg2?: boolean) {
+  arg2?: boolean){
 
-  const instance = this.find(arg1 !== false) as T;
+  let model: T | undefined;
+  
+  this.find($ => model = $, arg1 !== false);
       
   if(typeof arg1 == "boolean")
-    return instance;
+    return model;
 
-  return useSubscriber(instance, arg1, arg2);
+  return useSubscriber(model!, arg1, arg2);
 }
 
 function bootstrap(this: typeof Model){
-  this.fetch = getPeerContext;
   this.find = getFromContext;
-  this.get = useGet;
+  this.get = useContext;
   this.use = useModel;
 }
 

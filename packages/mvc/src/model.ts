@@ -249,28 +249,30 @@ class Model {
     return instance;
   }
 
-  static fetch <T extends Model> (
+  static find <T extends Model> (
     this: Model.Class<T>,
-    callback: (x: T) => void,
-    from: Model,
-    required: boolean
+    callback?: (got: T) => void,
+    required?: boolean,
+    relativeTo?: Model
   ): void;
 
-  static fetch <T extends Model> (
-    this: Model.Class<T>,
-    _callback: (x: T) => void,
-    from: Model,
-    required: boolean,
+  static find <T extends Model> (
+    this: Model.Type<T>,
+    callback?: (got: T | undefined) => void,
+    required?: false,
+    relativeTo?: Model
+  ): void;
+
+  static find(
+    _callback?: (got: Model | undefined) => void,
+    required?: false,
+    relativeTo?: Model
   ){
+    if(!relativeTo)
+      throw Oops.NoAdapter("find");
+
     if(required)
-      throw Oops.Required(this, from.constructor);
-  }
-
-  static find <T extends Model> (this: Model.Type<T>, required?: boolean): T;
-  static find <T extends Model> (this: Model.Type<T>, required: false): T | undefined;
-
-  static find(){
-    throw Oops.NoAdapter("find");
+      throw Oops.Required(this, relativeTo.constructor);
   }
 
   static get <T extends Model> (this: Model.Type<T>): T;
