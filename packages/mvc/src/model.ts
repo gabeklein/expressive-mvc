@@ -6,7 +6,7 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, InstanceOf, MaybePromise, NoVoid } from './helper/types';
+import type { Callback, Class, Extends, InstanceOf, MaybePromise, NoVoid } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>
@@ -24,9 +24,6 @@ export const Oops = issues({
 declare namespace Model {
   export { Control };
   export { Subscriber };
-
-  /** Including but not limited to T. */
-  type Extends<T> = T | (string & Record<never, never>);
 
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new () => T;
