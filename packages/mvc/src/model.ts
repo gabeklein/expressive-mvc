@@ -251,9 +251,17 @@ class Model {
 
   static fetch <T extends Model> (
     this: Model.Class<T>,
+    callback: (x: T) => void,
     from: Model,
-    required?: boolean
-  ): ((callback: (x: T) => void) => void) | void {
+    required: boolean
+  ): void;
+
+  static fetch <T extends Model> (
+    this: Model.Class<T>,
+    _callback: (x: T) => void,
+    from: Model,
+    required: boolean,
+  ){
     if(required)
       throw Oops.Required(this, from.constructor);
   }

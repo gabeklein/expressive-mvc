@@ -81,7 +81,9 @@ function get<R, T extends Model>(
         if(parent)
           subject = parent;
         else
-          source = arg0.fetch(subject, arg1 !== false)!;
+          source = callback => {
+            arg0.fetch(callback, subject, arg1 !== false);
+          }
       }
 
       else if(typeof arg0 == "function")

@@ -583,24 +583,18 @@ describe("fetch mode", () => {
 
 describe("async", () => {
   class Singleton extends Model {
-    static fetch<T extends Model>(this: Model.Class<T>){
-      let instance: T | undefined;
+    static fetch<T extends Singleton>(
+      this: Model.Class<T> & typeof Model,
+      callback: (x: T) => void){
 
-      return (refresh: (x: T) => void) => {
-        if(instance)
-          refresh(instance);
-
-        setTimeout(() => {
-          refresh(instance = this.new());
-        }, 100);
-      }
+      setTimeout(() => {
+        callback(this.new());
+      }, 100);
     }
   }
   
   it("will suspend if not ready", async () => {
-    class Foo extends Singleton {
-      value = "foobar";
-    }
+    class Foo extends Singleton {}
     class Bar extends Singleton {
       foo = get(Foo);
     }
@@ -619,7 +613,7 @@ describe("async", () => {
 
     await suspense;
   
-    expect(bar.foo.value).toBe("foobar");
+    expect(bar.foo).toBeInstanceOf(Foo);
   })
   
   it("will prevent compute if not ready", async () => {
@@ -627,9 +621,7 @@ describe("async", () => {
       value = "foobar";
     }
     class Bar extends Singleton {
-      foo = get(Foo, foo => {
-        return foo.value;
-      });
+      foo = get(Foo, foo => foo.value);
     }
   
     const bar = Bar.new();

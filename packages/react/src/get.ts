@@ -12,24 +12,23 @@ const Applied = new WeakMap<Model, boolean>();
 
 function getPeerContext<T extends Model>(
   this: Model.Class<T>,
+  callback: (got: T) => void,
   from: Model,
   required: boolean
 ){
-  return (callback: (got: T) => void) => {
-    let pending = Pending.get(from);
+  let pending = Pending.get(from);
   
-    if(!pending)
-      Pending.set(from, pending = []);
-  
-    pending.push(context => {
-      const got = context.get<T>(this, false);
-  
-      if(got)
-        callback(got);
-      else if(required)
-        throw Oops.AmbientRequired(this, from);
-    })
-  }
+  if(!pending)
+    Pending.set(from, pending = []);
+
+  pending.push(context => {
+    const got = context.get<T>(this, false);
+
+    if(got)
+      callback(got);
+    else if(required)
+      throw Oops.AmbientRequired(this, from);
+  })
 }
 
 function usePeerContext(subject: Model){
