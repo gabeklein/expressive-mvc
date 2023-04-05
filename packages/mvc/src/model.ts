@@ -6,19 +6,17 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, Extends, InstanceOf, MaybePromise, NoVoid } from './helper/types';
+import type { Callback, Class, Extends, InstanceOf, NoVoid } from './helper/types';
 
 export const Oops = issues({
   NoChaining: () =>
     `Then called with undefined; update promise will never catch nor supports chaining.`,
 
-  NoAdapter: (method) => `Can't call Model.${method} without an adapter.`,
+  NoAdapter: (method) =>
+    `Can't call Model.${method} without an adapter.`,
 
   Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}.`,
-
-  Timeout: (keys, timeout) => 
-    `No update seen for [${keys}] within ${timeout}.`,
+    `New ${child} created standalone but requires parent of type ${expects}.`
 });
 
 declare namespace Model {
@@ -163,51 +161,32 @@ class Model {
   get(): Model.Export<this>;
 
   get <P extends Model.Key<this>> (select: P): this[P];
+  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P], changed: P[]) => void): Callback;
+
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
-
-  get <P extends Model.Key<this>> (select: P, timeout: number): Promise<this[P]>;
-  get <P extends Model.Key<this>> (select: Iterable<P>, timeout: number): Promise<Model.Get<this, P>>;
-
-  get <P extends Model.Key<this>> (select: P, onChange: true): Promise<this[P]>;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: true): Promise<Model.Get<this, P>>;
-
-  get <P extends Model.Key<this>> (select: P, onChange: boolean): MaybePromise<this[P]>;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onChange: boolean): MaybePromise<Model.Get<this, P>>;
-
-  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P], key: P[]) => void): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, key: P[]) => void): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, changed: P[]) => void): Callback;
   
   get <P extends Model.Key<this>> (
     arg1?: P | Iterable<P>,
-    arg2?: Function | boolean | number){
+    arg2?: Function){
 
     const { state } = control(this);
-    const extract = () => {
+
+    function values(){
       if(typeof arg1 == "string")
         return state.get(arg1);
-      
+  
       const output = {} as any;
-
+  
       for(const key of arg1 || state.keys())
         output[key] = state.get(key);
-
-      return output as Model.Get<this, P>;
+  
+      return output;
     }
 
-    if(!arg1 || arg2 === undefined)
-      return extract();
-
-    if(typeof arg2 == "function")
-      return this.on(arg1, () => arg2(extract()));
-
-    const timeout = typeof arg2 == "number" ? arg2 : undefined;
-
-    return this.on(arg1, timeout).then(update => {
-      if(update === false)
-        throw Oops.Timeout(arg1, timeout);
-      
-      return extract();
-    });
+    return typeof arg2 == "function"
+      ? this.on(arg1!, () => arg2(values()))
+      : values();
   }
 
   set(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
@@ -300,9 +279,9 @@ class Model {
   /** Fetch instance of this class optionally. May be undefined. */
   static get<T extends Model>(this: Model.Type<T>, required: false): T | undefined;
 
-  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
-  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
-  static get <T extends Model, R extends []> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
+  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
 
   static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
   static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;

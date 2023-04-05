@@ -291,34 +291,6 @@ describe("get", () => {
     expect(test.get("foo")).toBe("foobar");
   })
 
-  it("will return promise for next update", async () => {
-    const test = Test.new();
-    const value = test.get("foo", true);
-
-    test.foo = "foobar";
-
-    await expect(value).resolves.toBe("foobar");
-  })
-
-  it("will return promise with export values", async () => {
-    const test = Test.new();
-    const values = test.get(["foo", "bar"], true);
-
-    test.foo = "foobar";
-
-    expect(values).resolves.toEqual({
-      foo: "foobar",
-      bar: "bar"
-    })
-  })
-
-  it("will reject promise on timeout", async () => {
-    const test = Test.new();
-    const value = test.get("foo", 1);
-
-    await expect(value).rejects.toThrowError();
-  })
-
   it("will observe value", async () => {
     const test = Test.new();
     const didUpdate = jest.fn();
