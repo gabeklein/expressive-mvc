@@ -85,12 +85,6 @@ declare namespace Model {
 
   export type Export<T> = { [P in Key<T>]: Value<T[P]> };
 
-  export type FindFunction = <T extends Model>(
-    type: Model.Type<T>,
-    relativeTo: Model,
-    required: boolean
-  ) => (_refresh: (x: T) => void) => T | undefined;
-
   export type GetCallback<T extends Model, R> =
     (this: T, model: T, update: ForceUpdate) => R;
 
