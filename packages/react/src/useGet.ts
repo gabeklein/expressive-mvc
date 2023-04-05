@@ -1,21 +1,6 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-/** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined ? null : T;
-
-function useGet <T extends Model> (this: Model.Class<T>): T;
-
-function useGet <T extends Model> (this: Model.Class<T>, passive: true): T;
-function useGet <T extends Model> (this: Model.Class<T>, required: false): T | undefined;
-
-function useGet <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
-function useGet <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
-
-function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useGet <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
-
 function useGet <T extends Model> (
   this: Model.Class<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
