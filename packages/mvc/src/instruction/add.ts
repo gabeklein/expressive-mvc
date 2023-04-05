@@ -35,7 +35,7 @@ function add<T = any>(
   label?: string){
 
   const name = label || instruction.name || "pending";
-  const placeholder = Symbol(`${name} instruction`);
+  const placeholder = Symbol(name + " instruction");
 
   PENDING.set(placeholder, (control: Control, key: string) => {
     let output = instruction.call(control, key, control);
