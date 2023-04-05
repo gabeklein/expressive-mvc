@@ -1,36 +1,25 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-function useGet <T extends Model> (
-  this: Model.Class<T>,
-  arg1?: boolean | Model.GetCallback<T, any>,
-  arg2?: boolean) {
 
-  const instance = this.find(arg1 !== false) as T;
-      
-  if(typeof arg1 == "boolean")
-    return instance;
-
-  return useSubscriber(instance, arg1, arg2);
-}
 
 function useSubscriber<T extends Model, R>(
-  source: T,
-  callback?: Model.GetCallback<T, any>,
-  required?: boolean){
+  instance: T,
+  arg1?: Model.GetCallback<T, any>,
+  arg2?: boolean){
 
   const state = useState(0);
   const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
 
-    if(!callback)
-      return new Subscriber(source, () => refresh);
+    if(!arg1)
+      return new Subscriber(instance, () => refresh);
 
-    const sub = new Subscriber(source, () => update);
+    const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy as T;
 
     let compute: (() => R | undefined) | undefined =
-      () => callback!.call(spy, spy, forceUpdate)
+      () => arg1!.call(spy, spy, forceUpdate)
 
     function forceUpdate(): void;
     function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
@@ -72,7 +61,7 @@ function useSubscriber<T extends Model, R>(
       const get = value;
 
       sub.watch.clear();
-      callback = () => get();
+      arg1 = () => get();
       value = get();
     }
 
@@ -95,7 +84,7 @@ function useSubscriber<T extends Model, R>(
         if(value !== undefined)
           return value;
 
-        if(required)
+        if(arg2)
           throw new Promise<void>(res => retry = res);
 
         return null;
@@ -103,7 +92,7 @@ function useSubscriber<T extends Model, R>(
     });
 
     return sub;
-  }, [source]);
+  }, [instance]);
 
   if(!local)
     return null;
@@ -111,7 +100,7 @@ function useSubscriber<T extends Model, R>(
   useLayoutEffect(() => {
     local.commit();
     return () => local.release();
-  }, [source]);
+  }, [instance]);
 
   return local.proxy;
 }
@@ -126,4 +115,4 @@ const notEqual = <T>(a: T, b: unknown) => (
   )
 )
 
-export { useGet }
+export { useSubscriber }
