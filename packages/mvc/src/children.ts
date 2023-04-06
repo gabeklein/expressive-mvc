@@ -96,12 +96,7 @@ export function setRecursive(
   defineProperty(subject, key, {
     set: controller.ref(key, onUpdate),
     get(this: Model){
-      const local = subscriber(this);
-
-      if(local)
-        local.follow(key);
-
-      return get(local);
+      return get(subscriber(this));
     }
   });
 }
