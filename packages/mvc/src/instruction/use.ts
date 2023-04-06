@@ -88,11 +88,7 @@ function use(
         state.set(key, next);
 
         if(next){
-          const getter = getRecursive(key, this);
-
-          get = (local: Subscriber | undefined) =>
-            local ? getter(local) : state.get(key);
-  
+          get = getRecursive(key, this);
           Parent.set(next, subject);
           control(next);
         }

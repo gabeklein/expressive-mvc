@@ -116,12 +116,11 @@ function recursive(
   waiting = true;
 
   return (local: Subscriber | undefined) => {
-    const value = parent.state.get(key);
+    if(parent.state.get(key))
+      return getter(local);
 
-    if(!value && required !== false)
+    if(required !== false)
       parent.waitFor(key);
-
-    return local ? getter(local) : value;
   }
 }
 

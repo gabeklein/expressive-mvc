@@ -31,7 +31,10 @@ export function getRecursive(key: string, from: Control){
   const context = new WeakMap<Subscriber, {} | undefined>();
   const { state } = from;
 
-  return (local: Subscriber) => {
+  return (local?: Subscriber) => {
+    if(!local)
+      return state.get(key);
+
     if(!context.has(local)){
       let reset: Callback | undefined;
 
@@ -81,11 +84,7 @@ export function setRecursive(
     if(!(next instanceof Type))
       throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
 
-    const getter = getRecursive(key, controller);
-
-    get = (local: Subscriber | undefined) =>
-      local ? getter(local) : state.get(key);
-
+    get = getRecursive(key, controller);
     Parent.set(next, subject);
     control(next);
 
