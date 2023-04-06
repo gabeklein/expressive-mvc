@@ -335,7 +335,7 @@ describe("get", () => {
 })
 
 describe("adapter", () => {
-  const methods = ["find", "get", "use"] as const;
+  const methods = ["has", "get", "use"] as const;
 
   it.each(methods)("will throw by default for %p", (method) => {
     const useMethod = () => Model[method].apply(Model);

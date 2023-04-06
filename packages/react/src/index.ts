@@ -1,28 +1,8 @@
 import { Model } from '@expressive/mvc';
 
-import { getPeerContext } from './get';
-import { useAmbient } from './provider';
+import { hasContext } from './get';
 import { useSubscriber } from './useSubscriber';
 import { useModel } from './useModel';
-
-function getFromContext<T extends Model>(
-  this: Model.Type<T>,
-  callback?: (got: T) => void,
-  required?: boolean,
-  relativeTo?: Model
-){
-  if(relativeTo)
-    getPeerContext(this, callback!, required, relativeTo);
-
-  else {
-    const got = useAmbient().get(this, required);
-  
-    if(callback && got)
-      callback(got);
-
-    return got;
-  }
-}
 
 function useContext <T extends Model> (
   this: Model.Class<T>,
@@ -31,7 +11,7 @@ function useContext <T extends Model> (
 
   let model: T | undefined;
   
-  this.find($ => model = $, arg1 !== false);
+  this.has($ => model = $, arg1 !== false);
       
   if(typeof arg1 == "boolean")
     return model;
@@ -40,7 +20,7 @@ function useContext <T extends Model> (
 }
 
 function bootstrap(this: typeof Model){
-  this.find = getFromContext;
+  this.has = hasContext;
   this.get = useContext;
   this.use = useModel;
 }

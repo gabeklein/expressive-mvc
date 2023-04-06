@@ -82,7 +82,7 @@ function get<R, T extends Model>(
           subject = parent;
         else
           source = callback => {
-            arg0.find(callback, arg1 !== false, subject);
+            arg0.has(callback, arg1 !== false, subject);
           }
       }
 

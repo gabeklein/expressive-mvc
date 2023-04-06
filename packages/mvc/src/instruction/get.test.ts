@@ -584,7 +584,7 @@ describe("fetch mode", () => {
 describe("async", () => {
   class Test extends Model {
     /** Override method to simplify tests. */
-    static find(callback: (x: Model) => void){
+    static has(callback: (x: Model) => void){
       setTimeout(() => {
         callback(this.new());
       }, 0);

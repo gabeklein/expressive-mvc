@@ -10,28 +10,37 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-function getPeerContext<T extends Model>(
-  type: Model.Type<T>,
+export function hasContext<T extends Model>(
+  this: Model.Type<T>,
   callback: (got: T) => void,
-  required: boolean | undefined,
-  from: Model
+  required?: boolean | undefined,
+  relativeTo?: Model
 ){
-  let pending = Pending.get(from);
+  if(!relativeTo){
+    const got = useAmbient().get(this, required);
+  
+    if(callback && got)
+      callback(got);
+
+    return;
+  }
+
+  let pending = Pending.get(relativeTo);
   
   if(!pending)
-    Pending.set(from, pending = []);
+    Pending.set(relativeTo, pending = []);
 
   pending.push(context => {
-    const got = context.get<T>(type, false);
+    const got = context.get<T>(this, false);
 
     if(got)
       callback(got);
     else if(required)
-      throw Oops.AmbientRequired(type, from);
+      throw Oops.AmbientRequired(this, relativeTo);
   })
 }
 
-function usePeerContext(subject: Model){
+export function usePeerContext(subject: Model){
   if(Applied.has(subject)){
     if(Applied.get(subject))
       useAmbient();
@@ -53,15 +62,9 @@ function usePeerContext(subject: Model){
   Applied.set(subject, !!pending);
 }
 
-function setPeers(context: Context, onto: Model){
+export function setPeers(context: Context, onto: Model){
   const pending = Pending.get(onto);
 
   if(pending)
     pending.forEach(cb => cb(context));
-}
-
-export {
-  getPeerContext,
-  usePeerContext,
-  setPeers
 }

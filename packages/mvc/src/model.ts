@@ -249,27 +249,27 @@ class Model {
     return instance;
   }
 
-  static find <T extends Model> (
+  static has <T extends Model> (
     this: Model.Class<T>,
     callback?: (got: T) => void,
     required?: boolean,
     relativeTo?: Model
   ): void;
 
-  static find <T extends Model> (
+  static has <T extends Model> (
     this: Model.Type<T>,
     callback?: (got: T | undefined) => void,
     required?: false,
     relativeTo?: Model
   ): void;
 
-  static find(
+  static has(
     _callback?: (got: Model | undefined) => void,
     required?: false,
     relativeTo?: Model
   ){
     if(!relativeTo)
-      throw Oops.NoAdapter("find");
+      throw Oops.NoAdapter("has");
 
     if(required)
       throw Oops.Required(this, relativeTo.constructor);
