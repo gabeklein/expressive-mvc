@@ -9,28 +9,6 @@ export async function assertDidUpdate(model: Model){
   return expect(model.on(0)).resolves.toBeTruthy();
 }
 
-export function subscribeTo<T extends Model>(
-  target: T,
-  accessor: (self: T) => void){
-
-  const didTrigger = jest.fn();
-
-  target.on(state => {
-    accessor(state);
-    didTrigger();
-  });
-
-  // ignore initial scan-phase
-  didTrigger.mockReset();
-
-  return async () => {
-    await new Promise(res => setTimeout(res, 0));
-
-    expect(didTrigger).toHaveBeenCalled();
-    didTrigger.mockReset();
-  }
-}
-
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();
 

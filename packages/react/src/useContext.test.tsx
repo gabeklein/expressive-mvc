@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Consumer, get, Model, Provider } from '.';
-import { create, subscribeTo } from './helper/testing';
+import { create } from './helper/testing';
 import { Oops } from './useContext';
 
 describe("context", () => {
@@ -31,7 +31,7 @@ describe("context", () => {
 
   it("will subscribe peer from context", async () => {
     class Foo extends Model {
-      bar = get(Bar, true);
+      bar = get(Bar);
     }
 
     const bar = Bar.new();
@@ -46,12 +46,17 @@ describe("context", () => {
       <Provider for={bar}>
         <Child />
       </Provider>
-    )
+    );
 
-    const update = subscribeTo(foo, it => it.bar.value);
+    const mock = jest.fn((effect: Foo) => {
+      void effect.bar.value;
+    })
 
+    foo.on(mock);
     bar.value = "foo";
-    await update();
+
+    await bar.on(0);
+    expect(mock).toBeCalledTimes(2);
   })
 
   it("will return undefined if instance not found", () => {
