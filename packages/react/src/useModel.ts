@@ -1,7 +1,7 @@
 import { Control, Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { usePeerContext } from './get';
+import { usePeerContext } from './useContext';
 
 function useModel <T extends Model> (
   this: Model.New<T>,

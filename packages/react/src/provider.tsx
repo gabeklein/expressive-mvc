@@ -1,7 +1,7 @@
 import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
 import React, { createContext, Suspense, useContext, useLayoutEffect, useMemo } from 'react';
 
-import { setPeers } from './get';
+import { setPeers } from './useContext';
 
 export const LookupContext = createContext(new Context());
 export const useAmbient = () => useContext(LookupContext);

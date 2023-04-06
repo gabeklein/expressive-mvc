@@ -1,10 +1,8 @@
-import { get, Model } from '.';
 import React from 'react';
 
+import { Consumer, get, Model, Provider } from '.';
 import { create, subscribeTo } from './helper/testing';
-import { Consumer } from './consumer';
-import { Oops } from './get';
-import { Provider } from './provider';
+import { Oops } from './useContext';
 
 describe("context", () => {
   class Foo extends Model {

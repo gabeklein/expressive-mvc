@@ -1,6 +1,7 @@
 import { issues, Model, Context } from '@expressive/mvc';
 
 import { useAmbient } from './provider';
+import { useSubscriber } from './useSubscriber';
 
 export const Oops = issues({
   AmbientRequired: (requested, requester) =>
@@ -10,34 +11,48 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
+export function useContext <T extends Model> (
+  this: Model.Class<T>,
+  arg1?: boolean | Model.GetCallback<T, any>,
+  arg2?: boolean){
+
+  let model: T | undefined;
+  
+  this.has($ => model = $, arg1 !== false);
+      
+  if(typeof arg1 == "boolean")
+    return model;
+
+  return useSubscriber(model!, arg1, arg2);
+}
+
 export function hasContext<T extends Model>(
   this: Model.Type<T>,
   callback: (got: T) => void,
   required?: boolean | undefined,
   relativeTo?: Model
 ){
-  if(!relativeTo){
+  if(relativeTo){
+    let pending = Pending.get(relativeTo);
+    
+    if(!pending)
+      Pending.set(relativeTo, pending = []);
+  
+    pending.push(context => {
+      const got = context.get<T>(this, false);
+  
+      if(got)
+        callback(got);
+      else if(required)
+        throw Oops.AmbientRequired(this, relativeTo);
+    })
+  }
+  else {
     const got = useAmbient().get(this, required);
   
     if(callback && got)
       callback(got);
-
-    return;
   }
-
-  let pending = Pending.get(relativeTo);
-  
-  if(!pending)
-    Pending.set(relativeTo, pending = []);
-
-  pending.push(context => {
-    const got = context.get<T>(this, false);
-
-    if(got)
-      callback(got);
-    else if(required)
-      throw Oops.AmbientRequired(this, relativeTo);
-  })
 }
 
 export function usePeerContext(subject: Model){
