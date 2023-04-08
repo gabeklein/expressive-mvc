@@ -71,9 +71,10 @@ class Control<T extends {} = any> {
       get(){
         const local = subscriber(this);
 
-        return local
-          ? local.get(key)
-          : state.get(key);
+        if(local)
+          local.follow(key);
+
+        return state.get(key);
       }
     });
   }

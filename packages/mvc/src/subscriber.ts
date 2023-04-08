@@ -61,14 +61,6 @@ class Subscriber <T extends Model = any> {
     return Array.from(this.watch.keys());
   }
 
-  get(key: string, using?: Subscriber.Getter<T>){
-    this.follow(key);
-
-    return using
-      ? using(this)
-      : this.parent.state.get(key);
-  }
-
   follow(key: any, value?: boolean | (() => boolean | void)){
     if(value !== undefined)
       this.watch.set(key, value);

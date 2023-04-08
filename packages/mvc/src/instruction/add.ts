@@ -61,11 +61,12 @@ function add<T = any>(
       get(this: any){
         const local = subscriber(this);
 
-        return (
-          local ? local.get(key, get) :
-          get ? get(local) :
-          control.state.get(key)
-        )
+        if(local)
+          local.follow(key);
+
+        return get
+          ? get(local)
+          : control.state.get(key)
       }
     });
   });
