@@ -1,13 +1,11 @@
 import { Control } from '../control';
 import { assign, create, defineProperty } from '../helper/object';
 import { Subscriber } from '../subscriber';
-import { Instruction } from './add';
+import { add, Instruction } from './add';
 
 type MapFunction<T, R> =
   T extends Map<infer K, infer V> ?
     (value: V, key: K, map: T) => R | void :
-  T extends Set<infer K> ?
-    (value: K, key: K, set: T) => R | void :
   never;
 
 type Managed<T> = Exclude<T, "forEach"> & {
@@ -15,13 +13,37 @@ type Managed<T> = Exclude<T, "forEach"> & {
 
   forEach<R>(
     mapFunction: MapFunction<T, R>,
-    thisArg?: any
+    thisArg?: T
   ): Exclude<R, undefined>[] | void;
 }
 
 const ANY = Symbol("any");
 
-type Keyed<K = unknown> = Set<K> | Map<K, unknown>;
+type Keyed<K = unknown> = Map<K, unknown>;
+
+function map <K, V = any> (initial?: Map<K, V>): Managed<Map<K, V>>;
+function map <K, V = any> (from: () => Map<K, V>): Managed<Map<K, V>>;
+
+function map <T extends Map<any, any>> (initial: T): Managed<T>;
+function map <T extends Map<any, any>> (from: () => T): Managed<T>;
+
+function map(input: any){
+  return add(
+    function map(key){
+      if(!input)
+        input = new Map();
+
+      if(typeof input === "function"
+      && "prototype" in input
+      && input === input.prototype.constructor)
+        input = new input();
+
+      return keyed(this, key, input);
+    }
+  )
+}
+
+export { map }
 
 function keyed<T extends Keyed>(
   control: Control,
@@ -125,7 +147,7 @@ function createProxy(
   emit: (key: any) => void,
   watch: (self: any, key: any) => void){
 
-  return <T extends Keyed<any>>(from: T) => {
+  return <T extends Map<any, any>>(from: T) => {
     const proxy = create(from) as T;
 
     assign(proxy,
@@ -141,6 +163,15 @@ function createProxy(
         clear(){
           from.clear();
           emit(ANY);
+        },
+        get(key: any){
+          watch(this, ANY);
+          return from.get(key);
+        },
+        set(key: any, value: any){
+          from.set(key, value);
+          emit(key);
+          return this;
         },
         has(key: any){
           watch(this, key);
@@ -179,27 +210,7 @@ function createProxy(
           watch(this, ANY);
           return from[Symbol.iterator]();
         },
-      },
-      from instanceof Set
-        ? {
-          add(key: any){
-            from.add(key);
-            emit(key);
-            return this;
-          }
-        }
-        : {
-          get(key: any){
-            watch(this, ANY);
-            return from.get(key);
-          },
-          set(key: any, value: any){
-            from.set(key, value);
-            emit(key);
-            return this;
-          }
-        }
-      )
+      })
 
       defineProperty(proxy, "size", {
         get(){

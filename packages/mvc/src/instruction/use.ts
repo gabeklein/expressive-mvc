@@ -6,7 +6,6 @@ import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
 import { add } from './add';
-import { keyed, Managed } from './use.keyed';
 
 
 export const Oops = issues({
@@ -16,18 +15,6 @@ export const Oops = issues({
   NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`
 })
-
-function use <K = any> (initial: SetConstructor): Managed<Set<K>>;
-function use <K = any, V = any> (initial: MapConstructor): Managed<Map<K, V>>;
-
-function use (initial: Set<unknown>): Managed<Set<any>>;
-function use (initial: Map<unknown, unknown>): Managed<Map<any, any>>;
-
-function use (from: () => Set<unknown>): Managed<Set<any>>;
-function use (from: () => Map<unknown, unknown>): Managed<Map<any, any>>;
-
-function use <T extends Set<any> | Map<any, any>> (initial: T): Managed<T>;
-function use <T extends Set<any> | Map<any, any>> (from: () => T): Managed<T>;
 
 /**
  * Create a placeholder for specified Model type.
@@ -80,9 +67,6 @@ function use(
 
       else if(input && typeof input !== "object")
         throw Oops.BadArgument(typeof input);
-
-      if(input instanceof Map || input instanceof Set)
-        return keyed(this, key, input);
 
       const onUpdate = (next: Model | undefined) => {
         state.set(key, next);
