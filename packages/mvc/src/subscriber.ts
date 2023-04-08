@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { control, Control } from './control';
 import { create, defineProperty } from './helper/object';
 import { Model } from './model';
 
@@ -24,24 +24,40 @@ class Subscriber <T extends Model = any> {
   public active = false;
   public dependant = new Set<Listener>();
   public watch = new Map<any, boolean | (() => boolean | void)>();
-  public parent: Control<T>;
 
   constructor(
     parent: Control<T> | T,
     public onUpdate: Subscriber.OnEvent){
 
-    if(!(parent instanceof Control))
-      parent = Control.for(parent);
+    const source = parent instanceof Control
+      ? parent : control(parent);
 
     const reset = () => this.latest = undefined;
-    const proxy = create(parent.subject);
+    const proxy = create(source.subject);
 
     REGISTER.set(proxy, this);
 
-    this.parent = parent;
-    this.clear = parent.addListener(key => {
-      if(this.active)
-        this.notify(key);
+    this.clear = source.addListener(key => {
+      if(!this.active)
+        return;
+      
+      const { watch } = this;
+      const handler = watch.get(key);
+
+      if(!handler)
+        return;
+
+      if(typeof handler == "function")
+        handler();
+
+      const notify = this.onUpdate(key, source);
+
+      if(notify){
+        source.waiting.add(update => {
+          this.latest = update.filter(k => watch.has(k));
+        });
+        source.waiting.add(notify);
+      }
     });
 
     defineProperty(this, "proxy", {
@@ -53,7 +69,7 @@ class Subscriber <T extends Model = any> {
     })
 
     defineProperty(proxy, "is", {
-      value: parent.subject
+      value: source.subject
     })
   }
 
@@ -76,26 +92,6 @@ class Subscriber <T extends Model = any> {
   release(){
     this.clear();
     this.dependant.forEach(x => x.release());
-  }
-
-  private notify(key: Model.Event<T> | null){
-    const { parent, watch } = this;
-    const handler = watch.get(key);
-
-    if(!handler)
-      return;
-
-    if(typeof handler == "function")
-      handler();
-
-    const notify = this.onUpdate(key, parent);
-
-    if(notify){
-      parent.waiting.add(update => {
-        this.latest = update.filter(k => watch.has(k));
-      });
-      parent.waiting.add(notify);
-    }
   }
 }
 
