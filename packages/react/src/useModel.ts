@@ -60,8 +60,21 @@ function useModel <T extends Model> (
     return new Subscriber(instance, () => refresh);
   }, []);
 
-  if(typeof arg1 == "object")
-    applyValues(local, arg1, arg2 as Model.Key<T>[]);
+  if(typeof arg1 == "object"){
+    const { waiting } = Control.get(instance)!;
+    let keys = arg2 as Model.Key<T>[];
+  
+    local.active = false;
+  
+    if(!keys)
+      keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
+  
+    for(const key of keys)
+      if(key in arg1)
+        instance[key] = arg1[key]!;
+  
+    waiting.add(() => local.active = true);
+  }
 
   useLayoutEffect(() => {
     local.commit();
@@ -73,26 +86,6 @@ function useModel <T extends Model> (
   }, []);
 
   return local.proxy;
-}
-
-// TODO: move back to MVC pending a generic use-case.
-function applyValues<T>(
-  target: Subscriber,
-  values: Model.Compat<T>,
-  keys: Model.Key<T>[] | undefined){
-
-  const { waiting, subject } = target.parent;
-
-  target.active = false;
-
-  if(!keys)
-    keys = Object.getOwnPropertyNames(subject) as Model.Key<T>[];
-
-  for(const key of keys)
-    if(key in values)
-      subject[key] = values[key]!;
-
-  waiting.add(() => target.active = true);
 }
 
 export { useModel }
