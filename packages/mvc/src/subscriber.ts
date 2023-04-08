@@ -25,19 +25,21 @@ class Subscriber <T extends Model = any> {
   public dependant = new Set<Listener>();
   public watch = new Map<any, boolean | (() => boolean | void)>();
 
+  get using(): Model.Key<T>[] {
+    return Array.from(this.watch.keys());
+  }
+
   constructor(
-    parent: Control<T> | T,
+    subject: T,
     public onUpdate: Subscriber.OnEvent){
 
-    const source = parent instanceof Control
-      ? parent : control(parent);
-
+    const proxy = create(subject);
+    const parent = control(subject);
     const reset = () => this.latest = undefined;
-    const proxy = create(source.subject);
 
     REGISTER.set(proxy, this);
 
-    this.clear = source.addListener(key => {
+    this.clear = parent.addListener(key => {
       if(!this.active)
         return;
       
@@ -50,16 +52,17 @@ class Subscriber <T extends Model = any> {
       if(typeof handler == "function")
         handler();
 
-      const notify = this.onUpdate(key, source);
+      const notify = this.onUpdate(key, parent);
 
       if(notify){
-        source.waiting.add(update => {
+        parent.waiting.add(update => {
           this.latest = update.filter(k => watch.has(k));
         });
-        source.waiting.add(notify);
+        parent.waiting.add(notify);
       }
     });
 
+    defineProperty(proxy, "is", { value: subject });
     defineProperty(this, "proxy", {
       configurable: true,
       get(){
@@ -67,14 +70,6 @@ class Subscriber <T extends Model = any> {
         return proxy;
       }
     })
-
-    defineProperty(proxy, "is", {
-      value: source.subject
-    })
-  }
-
-  get using(): Model.Key<T>[] {
-    return Array.from(this.watch.keys());
   }
 
   follow(key: any, value?: boolean | (() => boolean | void)){

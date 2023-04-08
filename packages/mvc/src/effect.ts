@@ -55,7 +55,7 @@ export function createEffect<T extends Model>(
       });
     }
 
-    const sub = new Subscriber(controller, () => invoke);
+    const sub = new Subscriber(model, () => invoke);
 
     model = sub.proxy;
     invoke();
