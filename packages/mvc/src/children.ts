@@ -70,7 +70,8 @@ export function getRecursive(key: string, from: Control){
 }
 
 export function setRecursive(
-  controller: Control, key: string, initial: Model){
+  controller: Control, key: string, initial: Model
+): Control.Instruction.Descriptor {
 
   const { state, subject } = controller;
   const Type = initial.constructor;
@@ -89,5 +90,5 @@ export function setRecursive(
 
   set(initial);
   
-  return { get, set } as Control.Instruction.Descriptor<any>;
+  return { get, set };
 }

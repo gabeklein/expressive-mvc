@@ -21,7 +21,8 @@ export function add<T = any>(
 export function setInstruction(
   from: symbol,
   onto: Control,
-  key: string): Control.Instruction.Descriptor<any> | void {
+  key: string
+): Control.Instruction.Descriptor | void {
 
   const instruction = PENDING.get(from);
 

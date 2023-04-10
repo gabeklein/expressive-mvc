@@ -36,7 +36,7 @@ declare namespace Control {
     type Getter<T> = (within?: Subscriber) => T;
     type Setter<T> = (value: T) => boolean | void;
 
-    interface Descriptor<T> {
+    interface Descriptor<T = any> {
       enumerable?: boolean;
       value?: T;
       get?: Getter<T>;
@@ -81,11 +81,9 @@ class Control<T extends Model = any> {
 
     defineProperty(this.subject, key, {
       enumerable: output.enumerable,
-      set: (
-        output.set === false
-          ? undefined
-          : this.ref(key as Model.Key<T>, output.set)
-      ),
+      set: output.set === false
+        ? undefined
+        : this.ref(key as Model.Key<T>, output.set),
       get(this: any){
         const local = subscriber(this);
 
