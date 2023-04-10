@@ -66,29 +66,15 @@ class Control<T extends Model = any> {
     if(typeof value == "function")
       return;
 
-    let output;
+    const output =
+      typeof value == "symbol" ?
+        setInstruction(value, this, key) :
+      value instanceof Model ?
+        setRecursive(this, key, value) :
+      { value };
 
-    if(typeof value == "symbol"){
-      output = setInstruction(value, this, key)
-
-      if(!output)
-        return;
-    }
-
-    else if(value instanceof Model)
-      output = setRecursive(this, key, value);
-
-    else 
-      state.set(key, value);
-
-    this.assign(key, output || {});
-  }
-
-  assign(
-    key: keyof T & string,
-    output: Control.Instruction.Descriptor<any>){
-
-    const { state } = this;
+    if(!output)
+      return;
 
     if("value" in output)
       state.set(key, output.value);
