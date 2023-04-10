@@ -1,12 +1,12 @@
 import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
+import { setInstruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
-import { subscriber, Subscriber } from './subscriber';
+import { Subscriber, subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
-import { setInstruction } from './instruction/add';
 
 const REGISTER = new WeakMap<{}, Control>();
 
