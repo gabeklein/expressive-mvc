@@ -66,6 +66,11 @@ class Control<T extends Model = any> {
     if(typeof value == "function")
       return;
 
+    if(value instanceof Model){
+      setRecursive(this, key, value);
+      return;
+    }
+
     if(typeof value == "symbol"){
       const instruction = PENDING.get(value);
 
@@ -84,11 +89,6 @@ class Control<T extends Model = any> {
         this.assign(key, output);
       }
 
-      return;
-    }
-
-    if(value instanceof Model){
-      setRecursive(this, key, value);
       return;
     }
 
