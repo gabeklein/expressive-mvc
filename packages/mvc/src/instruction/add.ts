@@ -8,21 +8,10 @@ function add<T = any>(
   instruction: Control.Instruction<any>,
   label?: string){
 
-  const placeholder = Symbol((
-    label || instruction.name || "pending"
-  ) + " instruction");
+  const name = label || instruction.name || "pending";
+  const placeholder = Symbol(name + " instruction");
 
-  PENDING.set(placeholder, (control: Control, key: string) => {
-    let output = instruction.call(control, key, control);
-
-    if(!output)
-      return;
-
-    if(typeof output == "function")
-      output = { get: output };
-
-    control.assign(key, output);
-  });
+  PENDING.set(placeholder, instruction);
 
   return placeholder as unknown as T;
 }

@@ -8,7 +8,7 @@ import { suspend } from './suspense';
 import type { Callback } from './helper/types';
 
 const REGISTER = new WeakMap<{}, Control>();
-const PENDING = new Map<symbol, Control.Instruction.Runner>();
+const PENDING = new Map<symbol, Control.Instruction<any>>();
 
 declare namespace Control {
   /**
@@ -28,16 +28,13 @@ declare namespace Control {
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
-  | Instruction.Getter<T>
-  | Instruction.Descriptor<T>
-  | void;
+    | Instruction.Getter<T>
+    | Instruction.Descriptor<T>
+    | void;
 
   namespace Instruction {
     type Getter<T> = (within?: Subscriber) => T;
     type Setter<T> = (value: T) => boolean | void;
-
-    type Runner = (on: Control, key: string) =>
-      Instruction.Descriptor<any> | void;
 
     interface Descriptor<T> {
       enumerable?: boolean;
@@ -75,7 +72,16 @@ class Control<T extends Model = any> {
       if(instruction){
         delete subject[key];
         PENDING.delete(value);
-        instruction(this, key);
+
+        let output = instruction.call(this, key, this);
+
+        if(!output)
+          return;
+    
+        if(typeof output == "function")
+          output = { get: output };
+
+        this.assign(key, output);
       }
 
       return;
