@@ -77,15 +77,14 @@ export function setRecursive(
 
   const get = getRecursive(key, controller);
   const set = (next: Model | undefined) => {
-    state.set(key, next);
+    if(next instanceof Type){
+      state.set(key, next);
+      Parent.set(next, subject);
+      control(next);
+      return true;
+    }
 
-    if(!(next instanceof Type))
-      throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
-
-    Parent.set(next, subject);
-    control(next);
-
-    return true;
+    throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
   }
 
   set(initial);
