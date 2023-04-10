@@ -81,13 +81,12 @@ class Control<T extends Model = any> {
       return;
     }
 
-    state.set(key, value);
-
     if(value instanceof Model){
       setRecursive(this, key, value);
       return;
     }
 
+    state.set(key, value);
     this.assign(key, {});
   }
 
