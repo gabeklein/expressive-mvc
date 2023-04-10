@@ -89,5 +89,5 @@ export function setRecursive(
 
   set(initial);
   
-  controller.assign(key, { get, set });
+  return { get, set } as Control.Instruction.Descriptor<any>;
 }

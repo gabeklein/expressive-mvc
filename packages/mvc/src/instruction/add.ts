@@ -1,10 +1,33 @@
-import { Control, PENDING } from '../control';
+import { Control } from '../control';
+
+const PENDING = new Map<symbol, Control.Instruction<any>>();
+
+export function setInstruction(
+  from: symbol,
+  onto: Control,
+  key: string): Control.Instruction.Descriptor<any> | void {
+
+  const instruction = PENDING.get(from);
+
+  if(!instruction)
+    return;
+
+  delete onto.subject[key];
+  PENDING.delete(from);
+
+  const output = instruction.call(onto, key, onto);
+
+  if(typeof output == "function")
+    return { get: output };
+
+  return output;
+}
 
 /**
  * Run instruction as controller sets itself up.
  * This will specialize the behavior of a given property.
  */
-function add<T = any>(
+export function add<T = any>(
   instruction: Control.Instruction<any>,
   label?: string){
 
@@ -15,5 +38,3 @@ function add<T = any>(
 
   return placeholder as unknown as T;
 }
-
-export { add }

@@ -6,9 +6,9 @@ import { subscriber, Subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
+import { setInstruction } from './instruction/add';
 
 const REGISTER = new WeakMap<{}, Control>();
-const PENDING = new Map<symbol, Control.Instruction<any>>();
 
 declare namespace Control {
   /**
@@ -66,34 +66,22 @@ class Control<T extends Model = any> {
     if(typeof value == "function")
       return;
 
-    if(value instanceof Model){
-      setRecursive(this, key, value);
-      return;
-    }
+    let output;
 
     if(typeof value == "symbol"){
-      const instruction = PENDING.get(value);
+      output = setInstruction(value, this, key)
 
-      if(instruction){
-        delete subject[key];
-        PENDING.delete(value);
-
-        let output = instruction.call(this, key, this);
-
-        if(!output)
-          return;
-    
-        if(typeof output == "function")
-          output = { get: output };
-
-        this.assign(key, output);
-      }
-
-      return;
+      if(!output)
+        return;
     }
 
-    state.set(key, value);
-    this.assign(key, {});
+    else if(value instanceof Model)
+      output = setRecursive(this, key, value);
+
+    else 
+      state.set(key, value);
+
+    this.assign(key, output || {});
   }
 
   assign(
@@ -258,6 +246,5 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
 export {
   Control,
   control,
-  controller,
-  PENDING
+  controller
 }
