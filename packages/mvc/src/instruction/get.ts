@@ -102,7 +102,7 @@ function recursive(
   source: get.Source | undefined,
   required: boolean | undefined){
 
-  const getter = getRecursive(key, parent);
+  const get = getRecursive(key, parent);
   let waiting: boolean;
 
   if(source)
@@ -117,7 +117,7 @@ function recursive(
 
   return (local: Subscriber | undefined) => {
     if(parent.state.get(key))
-      return getter(local);
+      return get(local);
 
     if(required !== false)
       parent.waitFor(key);
