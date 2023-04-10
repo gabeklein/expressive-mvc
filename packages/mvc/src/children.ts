@@ -70,22 +70,20 @@ export function getRecursive(key: string, from: Control){
 }
 
 export function setRecursive(
-  controller: Control, key: string, initial: Model
+  on: Control, key: string, initial: Model
 ): Control.Instruction.Descriptor {
 
-  const { state, subject } = controller;
-  const Type = initial.constructor;
-
-  const get = getRecursive(key, controller);
+  const expected = initial.constructor;
+  const get = getRecursive(key, on);
   const set = (next: Model | undefined) => {
-    if(next instanceof Type){
-      state.set(key, next);
-      Parent.set(next, subject);
+    if(next instanceof expected){
+      on.state.set(key, next);
+      Parent.set(next, on.subject);
       control(next);
       return true;
     }
 
-    throw Oops.BadAssignment(`${subject}.${key}`, Type, next);
+    throw Oops.BadAssignment(`${on.subject}.${key}`, expected, next);
   }
 
   set(initial);
