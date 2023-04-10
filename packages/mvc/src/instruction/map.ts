@@ -1,7 +1,7 @@
 import { Control } from '../control';
 import { assign, create, defineProperty } from '../helper/object';
 import { Subscriber } from '../subscriber';
-import { add, Instruction } from './add';
+import { add } from './add';
 
 type MapFunction<T, R> =
   T extends Map<infer K, infer V> ?
@@ -49,7 +49,7 @@ function keyed<T extends Keyed>(
   control: Control,
   property: any,
   initial: T
-): Instruction.Descriptor<T> {
+): Control.Instruction.Descriptor<T> {
   type K = typeof ANY | (
     T extends Set<infer U> ? U :
     T extends Map<infer U, any> ? U :

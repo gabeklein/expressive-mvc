@@ -1,9 +1,8 @@
 import { Control, control, controller } from './control';
 import { issues } from './helper/issues';
-import { defineProperty } from './helper/object';
 import { Callback } from './helper/types';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
+import { Subscriber } from './subscriber';
 
 export const Parent = new WeakMap<{}, {}>();
 
@@ -76,27 +75,20 @@ export function setRecursive(
   const { state, subject } = controller;
   const Type = initial.constructor;
 
-  let get: (local: Subscriber | undefined) => any
-
-  const onUpdate = (next: Model | undefined) => {
+  const get = getRecursive(key, controller);
+  const set = (next: Model | undefined) => {
     state.set(key, next);
 
     if(!(next instanceof Type))
       throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
 
-    get = getRecursive(key, controller);
     Parent.set(next, subject);
     control(next);
 
     return true;
   }
 
-  onUpdate(initial);
-
-  defineProperty(subject, key, {
-    set: controller.ref(key, onUpdate),
-    get(this: Model){
-      return get(subscriber(this));
-    }
-  });
+  set(initial);
+  
+  controller.assign(key, { get, set });
 }

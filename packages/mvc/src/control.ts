@@ -1,15 +1,14 @@
 import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
-import { Instruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
-import { subscriber } from './subscriber';
+import { subscriber, Subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
 
 const REGISTER = new WeakMap<{}, Control>();
-const PENDING = new Map<symbol, Instruction.Runner>();
+const PENDING = new Map<symbol, Control.Instruction.Runner>();
 
 declare namespace Control {
   /**
@@ -23,9 +22,33 @@ declare namespace Control {
 
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
+  
+  /**
+   * Property initializer, will run upon instance creation.
+   * Optional returned callback will run when once upon first access.
+   */
+  type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
+  | Instruction.Getter<T>
+  | Instruction.Descriptor<T>
+  | void;
+
+  namespace Instruction {
+    type Getter<T> = (within?: Subscriber) => T;
+    type Setter<T> = (value: T) => boolean | void;
+
+    type Runner = (on: Control, key: string) =>
+      Instruction.Descriptor<any> | void;
+
+    interface Descriptor<T> {
+      enumerable?: boolean;
+      value?: T;
+      get?: Getter<T>;
+      set?: Setter<T> | false;
+    }
+  }
 }
 
-class Control<T extends {} = any> {
+class Control<T extends Model = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
   public waiting = new Set<Control.OnAsync<T>>();
@@ -65,16 +88,34 @@ class Control<T extends {} = any> {
       return;
     }
 
-    defineProperty(subject, key, {
-      enumerable: false,
-      set: this.ref(key as any),
-      get(){
+    this.assign(key, {});
+  }
+
+  assign(
+    key: keyof T & string,
+    output: Control.Instruction.Descriptor<any>){
+
+    const { state } = this;
+
+    if("value" in output)
+      state.set(key, output.value);
+
+    defineProperty(this.subject, key, {
+      enumerable: output.enumerable,
+      set: (
+        output.set === false
+          ? undefined
+          : this.ref(key as Model.Key<T>, output.set)
+      ),
+      get(this: any){
         const local = subscriber(this);
 
         if(local)
           local.follow(key);
 
-        return state.get(key);
+        return output.get
+          ? output.get(local)
+          : state.get(key)
       }
     });
   }
