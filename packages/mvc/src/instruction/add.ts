@@ -16,7 +16,7 @@ declare namespace Instruction {
   type Setter<T> = (value: T) => boolean | void;
 
   type Runner = (on: Control, key: string) =>
-    Instruction.Descriptor<any> | undefined;
+    Instruction.Descriptor<any> | void;
 
   interface Descriptor<T> {
     enumerable?: boolean;
@@ -41,7 +41,7 @@ function add<T = any>(
     let output = instruction.call(control, key, control);
 
     if(!output)
-      return undefined;
+      return;
 
     if(typeof output == "function")
       output = { get: output };
