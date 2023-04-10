@@ -61,6 +61,16 @@ describe("instruction", () => {
 
     expect(ran).toBeCalledTimes(2);
   })
+
+  it("will ignore normal symbol", () => {
+    class Test extends Model {
+      value = Symbol("hello");
+    }
+    
+    const test = Test.new();
+
+    expect(test.value).toBeInstanceOf(Symbol);
+  })
 })
 
 describe("getter", () => {
