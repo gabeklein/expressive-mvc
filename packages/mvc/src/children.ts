@@ -84,7 +84,7 @@ export function setRecursive(
       return true;
     }
 
-    throw Oops.BadAssignment(`${subject}.${key}`, Type, String(next));
+    throw Oops.BadAssignment(`${subject}.${key}`, Type, next);
   }
 
   set(initial);
