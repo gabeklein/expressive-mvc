@@ -59,25 +59,39 @@ class Control<T extends Model = any> {
     REGISTER.set(subject, this);
   }
 
-  watch(key: keyof T & string){
-    const { subject, state } = this;
-    const { value } = getOwnPropertyDescriptor(subject, key)!;
+  init(){
+    const { subject } = this;
+    
+    this.state = new Map();
 
-    if(typeof value == "function")
-      return;
+    for(const key in subject){
+      const { value } = getOwnPropertyDescriptor(subject, key)!;
+  
+      if(typeof value == "function")
+        continue;
+  
+      const output =
+        typeof value == "symbol" ?
+          setInstruction(value, this, key) :
+        value instanceof Model ?
+          setRecursive(this, key, value) :
+        { value };
 
-    const output =
-      typeof value == "symbol" ?
-        setInstruction(value, this, key) :
-      value instanceof Model ?
-        setRecursive(this, key, value) :
-      { value };
+      if(!output)
+        continue;
 
-    if(!output)
-      return;
+      if("value" in output)
+        this.state.set(key, output.value);
 
-    if("value" in output)
-      state.set(key, output.value);
+      this.watch(key, output);
+    }
+  }
+
+  watch(
+    key: keyof T & string,
+    output: Control.Instruction.Descriptor<any>){
+
+    const { state } = this;
 
     defineProperty(this.subject, key, {
       enumerable: output.enumerable,
@@ -213,11 +227,7 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
       }
     }
 
-    control.state = new Map();
-
-    for(const key in subject)
-      control.watch(key);
-
+    control.init();
     control.waiting = new Set();
 
     for(const cb of waiting)
