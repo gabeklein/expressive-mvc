@@ -40,19 +40,16 @@ class Subscriber <T extends Model = any> {
     REGISTER.set(proxy, this);
 
     this.clear = parent.addListener(key => {
-      if(!this.active)
-        return;
-      
-      const { watch } = this;
+      const { watch, active } = this;
       const handler = watch.get(key);
 
-      if(!handler)
+      if(!handler || !active)
         return;
 
       if(typeof handler == "function")
         handler();
 
-      const notify = this.onUpdate(key, parent);
+      const notify = onUpdate(key, parent);
 
       if(notify){
         parent.waiting.add(update => {
