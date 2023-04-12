@@ -72,7 +72,7 @@ class Control<T extends Model = any> {
   
       const output =
         typeof value == "symbol" ?
-          setInstruction(value, this, key) :
+          setInstruction(this, key, value) :
         value instanceof Model ?
           setRecursive(this, key, value) :
         { value };
