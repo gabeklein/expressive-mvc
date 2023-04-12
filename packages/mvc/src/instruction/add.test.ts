@@ -69,7 +69,7 @@ describe("instruction", () => {
     
     const test = Test.new();
 
-    expect(test.value).toBeInstanceOf(Symbol);
+    expect(typeof test.value).toBe("symbol");
   })
 })
 
