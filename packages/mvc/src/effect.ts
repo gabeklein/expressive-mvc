@@ -15,7 +15,7 @@ export function createEffect<T extends Model>(
   callback: Model.Effect<T>,
   keys: Model.Event<T>[]){
 
-  return control(model, controller => {
+  return control(model, self => {
     let unSet: Callback | Promise<any> | void;
     let busy = false;
 
@@ -45,7 +45,7 @@ export function createEffect<T extends Model>(
     if(Array.isArray(keys)){
       invoke();
 
-      return controller.addListener(key => {
+      return self.addListener(key => {
         if(key === null){
           if(!keys.length)
             invoke();

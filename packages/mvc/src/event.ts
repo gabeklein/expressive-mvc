@@ -16,13 +16,13 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
   if(typeof arg1 == "string")
     arg1 = [arg1];
 
-  return control(source, controller => {
+  return control(source, self => {
     for(const key of arg1)
       try { void (source as any)[key] }
       catch(e){}
 
     const removeListener =
-      controller.addListener(key => {
+      self.addListener(key => {
         if(!key && !arg1.length)
           arg2.call(source, []);
           
@@ -50,8 +50,8 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
     undefined;
 
   return new Promise<any>((resolve, reject) => {
-    const removeListener = control(source, controller => {
-      const pending = controller.frame;
+    const removeListener = control(source, self => {
+      const pending = self.frame;
 
       if(arg2 === 0){
         if(!pending.size){
@@ -65,7 +65,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
 
       if(!keys)
-        controller.waiting.add(resolve);
+        self.waiting.add(resolve);
 
       else if(keys.length)
         for(const key of keys)
@@ -73,7 +73,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
             try { void source[key as keyof T] }
             catch(e){}
 
-      return controller.addListener(key => {
+      return self.addListener(key => {
         if(!key){
           if(keys && !keys.length)
             resolve([]);
@@ -85,7 +85,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         else if(!keys || keys.includes(key as P)){
           removeListener();
           return keys =>
-            resolve(single ? controller.state.get(key) : keys)
+            resolve(single ? self.state.get(key) : keys)
         }
       });
     })
