@@ -152,7 +152,7 @@ class Control<T extends Model = any> {
     if(frame.has(key))
       return;
   
-    else if(!frame.size)
+    if(!frame.size)
       setTimeout(() => {
         flushComputed(this);  
         const keys = this.latest = Array.from(frame);
