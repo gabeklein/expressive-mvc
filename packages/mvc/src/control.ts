@@ -10,6 +10,25 @@ import type { Callback } from './helper/types';
 
 const REGISTER = new WeakMap<{}, Control>();
 
+function flushEvents(on: Control){
+  const { frame, waiting } = on;
+  const keys = on.latest = Array.from(frame);
+  setTimeout(() => on.latest = undefined, 0);
+
+  frame.clear();
+
+  waiting.forEach(notify => {
+    waiting.delete(notify);
+
+    try {
+      notify(keys);
+    }
+    catch(err){
+      console.error(err);
+    }
+  })
+}
+
 declare namespace Control {
   /**
    * Called immediately when any key is changed or emitted.
@@ -155,19 +174,7 @@ class Control<T extends Model = any> {
     if(!frame.size)
       setTimeout(() => {
         flushComputed(this);  
-        const keys = this.latest = Array.from(frame);
-        setTimeout(() => this.latest = undefined, 0);
-
-        frame.clear();
-      
-        for(const notify of waiting)
-          try {
-            waiting.delete(notify);
-            notify(keys);
-          }
-          catch(err){
-            console.error(err);
-          }
+        flushEvents(this);
       }, 0);
   
     frame.add(key);
