@@ -143,30 +143,21 @@ class Control<T extends Model = any> {
   }
 
   ref<K extends Model.Key<T>>(
-    key: K,
-    handler?: (this: T, value: T[K]) => boolean | void){
-  
-    const { subject, state } = this;
+    key: K, cb?: (this: T, value: T[K]) => boolean | void){
   
     return (value: any) => {
-      if(state.get(key) == value)
-        return;
-  
-      if(handler)
-        switch(handler.call(subject, value)){
+      if(value !== this.state.get(key))
+        switch(cb && cb.call(this.subject, value)){
+          case undefined:
+            this.state.set(key, value);
           case true:
             this.update(key);
-          case false:
-            return;
         }
-  
-      state.set(key, value);
-      this.update(key);
     }
   }
 
   update(key: Model.Key<T>){
-    const { followers, frame, waiting } = this;
+    const { frame, waiting } = this;
   
     if(frame.has(key))
       return;
@@ -179,7 +170,7 @@ class Control<T extends Model = any> {
   
     frame.add(key);
   
-    for(const callback of followers){
+    for(const callback of this.followers){
       const event = callback(key, this);
   
       if(typeof event == "function")
