@@ -74,7 +74,9 @@ it("will update on add", async () => {
 
 it("will not update for unwatched", async () => {
   const test = Test.new();
-  const mock = jest.fn(($: Test) => void $.values.has("foo"));
+  const mock = jest.fn(($: Test) => {
+    void $.values.has("foo");
+  });
 
   test.on(mock);
 
