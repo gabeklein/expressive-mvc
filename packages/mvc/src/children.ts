@@ -1,4 +1,4 @@
-import { Control, control, controller } from './control';
+import { Control, control, controller, detectAccess, Observer } from './control';
 import { issues } from './helper/issues';
 import { Callback } from './helper/types';
 import { Model } from './model';
@@ -30,9 +30,14 @@ export function getRecursive(key: string, from: Control){
   const context = new WeakMap<Subscriber, {} | undefined>();
   const { state } = from;
 
-  return (local?: Subscriber) => {
-    if(!local)
-      return state.get(key);
+  return (local?: Subscriber, observer?: Observer) => {
+    if(!local){
+      const value = state.get(key);
+
+      return observer && value instanceof Model
+        ? detectAccess(value, observer)
+        : value;
+    }
 
     if(!context.has(local)){
       let reset: Callback | undefined;

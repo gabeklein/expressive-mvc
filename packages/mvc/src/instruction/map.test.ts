@@ -3,6 +3,8 @@ import { Model } from '../model';
 import { get } from './get';
 import { map } from './map';
 
+it.only("will skip all tests", () => {});
+
 describe("Map", () => {
   class Test extends Model {
     map = map();

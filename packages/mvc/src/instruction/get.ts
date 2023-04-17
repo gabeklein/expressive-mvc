@@ -1,5 +1,5 @@
 import { getParent, getRecursive } from '../children';
-import { Control } from '../control';
+import { Control, Observer } from '../control';
 import { issues } from '../helper/issues';
 import { Callback } from '../helper/types';
 import { Model } from '../model';
@@ -115,9 +115,9 @@ function recursive(
 
   waiting = true;
 
-  return (local: Subscriber | undefined) => {
+  return (local?: Subscriber, observer?: Observer) => {
     if(parent.state.get(key))
-      return get(local);
+      return get(local, observer);
 
     if(required !== false)
       parent.waitFor(key);

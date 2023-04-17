@@ -8,7 +8,20 @@ import { suspend } from './suspense';
 
 import type { Callback } from './helper/types';
 
+export type Observer = (key: string | null, from: Control) => Callback | boolean | void;
+
 const REGISTER = new WeakMap<{}, Control>();
+const OBSERVER = new WeakMap<{}, Observer>();
+
+export function detectAccess<T extends Model>(
+  on: T, cb: Observer): T {
+
+  const proxy = Object.create(on);
+
+  OBSERVER.set(proxy, cb);
+
+  return proxy;
+}
 
 function flushEvents(on: Control){
   const { frame, waiting } = on;
@@ -52,7 +65,7 @@ declare namespace Control {
     | void;
 
   namespace Instruction {
-    type Getter<T> = (within?: Subscriber) => T;
+    type Getter<T> = (within?: Subscriber, accessor?: Observer) => T;
     type Setter<T> = (value: T) => boolean | void;
 
     interface Descriptor<T = any> {
@@ -70,6 +83,7 @@ class Control<T extends Model = any> {
   public waiting = new Set<Control.OnAsync<T>>();
   public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
+  public observers = new Map<string, Set<Observer>>();
 
   constructor(
     public subject: T,
@@ -111,6 +125,9 @@ class Control<T extends Model = any> {
     output: Control.Instruction.Descriptor<any>){
 
     const { state } = this;
+    const subs = new Set<Observer>();
+    
+    this.observers.set(key, subs);
 
     defineProperty(this.subject, key, {
       enumerable: output.enumerable,
@@ -119,13 +136,17 @@ class Control<T extends Model = any> {
         : this.ref(key as Model.Key<T>, output.set),
       get(this: any){
         const local = subscriber(this);
+        const onAccess = OBSERVER.get(this);
 
         if(local)
           local.follow(key);
 
+        if(onAccess)
+          subs.add(onAccess);
+
         return output.get
-          ? output.get(local)
-          : state.get(key)
+          ? output.get(local, onAccess)
+          : state.get(key);
       }
     });
   }
@@ -162,7 +183,7 @@ class Control<T extends Model = any> {
 
   update(key: string){
     const { followers, frame, waiting } = this;
-  
+
     if(frame.has(key))
       return;
   
@@ -173,6 +194,18 @@ class Control<T extends Model = any> {
       }, 0);
   
     frame.add(key);
+
+    const subs = this.observers.get(key);
+
+    if(subs)
+      for(const callback of subs){
+        const notify = callback(key, this);
+
+        if(notify === false)
+          subs.delete(callback);
+        else if(typeof notify == "function")
+          waiting.add(notify);
+      }
   
     for(const callback of followers){
       const event = callback(key, this);

@@ -1,8 +1,7 @@
-import { control } from './control';
+import { control, detectAccess } from './control';
 import { issues } from './helper/issues';
 import { Callback } from './helper/types';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
 
 export const Oops = issues({
@@ -55,13 +54,16 @@ export function createEffect<T extends Model>(
       });
     }
 
-    const sub = new Subscriber(model, () => invoke);
+    let active: boolean | undefined;
 
-    model = sub.proxy;
+    model = detectAccess(model, () => {
+      return active ? invoke : active;
+    });
+
     invoke();
-    sub.commit();
+    active = true;
 
-    return () => sub.release();
+    return () => active = false;
   });
 }
 
