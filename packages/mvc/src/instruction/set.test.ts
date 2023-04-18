@@ -22,7 +22,7 @@ describe("placeholder", () => {
 
     instance.foobar = "foo!";
 
-    const result = await promise.pending();
+    const result = await promise;
 
     expect(mockEffect).toBeCalledTimes(2);
     expect(result).toBe("foo!");
@@ -240,7 +240,7 @@ describe("factory", () => {
     const promise = mockAsync();
 
     class Test extends Model {
-      value = set(promise.pending);
+      value = set(promise);
     }
 
     const instance = Test.new();
@@ -255,7 +255,7 @@ describe("factory", () => {
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise.pending, false);
+      value = set(promise, false);
     }
 
     const test = Test.new();
@@ -295,8 +295,8 @@ describe("factory", () => {
     );
 
     class Test extends Model {
-      greet = set(greet.pending);
-      name = set(name.pending);
+      greet = set(greet);
+      name = set(name);
 
       value = set(didEvaluate);
     }
@@ -326,8 +326,8 @@ describe("factory", () => {
     );
 
     class Test extends Model {
-      greet = set(greet.pending);
-      name = set(name.pending);
+      greet = set(greet);
+      name = set(name);
       value = set(didEvaluate);
     }
 
@@ -347,7 +347,7 @@ describe("factory", () => {
 
   it("will nest suspense", async () => {
     class Child extends Model {
-      value = set(promise.pending);
+      value = set(promise);
     }
 
     class Test extends Model {
@@ -375,17 +375,15 @@ describe("factory", () => {
 
     expect(effect).toBeCalledTimes(1);
 
-    const pending = didUpdate.pending();
-
     promise.resolve("hello");
 
-    await expect(pending).resolves.toBe("hello world!");
+    await expect(didUpdate).resolves.toBe("hello world!");
     expect(effect).toBeCalledTimes(2);
   })
 
   it("will return undefined on suspense", async () => {
     class Test extends Model {
-      asyncValue = set(() => promise.pending());
+      asyncValue = set(() => promise);
 
       value = get(() => this.getValue);
 
@@ -410,23 +408,22 @@ describe("factory", () => {
 
     promise.resolve("World");
 
-    await didEvaluate.pending();
+    await didEvaluate;
 
     expect(test.value).toBe("Hello World")
   })
 
   it("will squash repeating suspense", async () => {
-    const promise = mockAsync();
-    let shouldSuspend = true;
-
     class Test extends Model {
       message = set(this.getSum);
+      suspend = true;
+      pending = mockAsync();
 
       getSum(){
         didTryToEvaluate()
 
-        if(shouldSuspend)
-          throw promise.pending();
+        if(this.suspend)
+          throw this.pending;
 
         return `OK I'm unblocked.`;
       }
@@ -444,12 +441,17 @@ describe("factory", () => {
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
+    expect(didTryToEvaluate).toBeCalledTimes(1);
 
-    await promise.resolve();
+    test.pending.resolve();
+    await test.on(0);
 
-    shouldSuspend = false;
-    await promise.resolve();
-    await didEvaluate.pending();
+    // expect eval to run again because promise resolved.
+    expect(didTryToEvaluate).toBeCalledTimes(2);
+
+    test.suspend = false;
+    test.pending.resolve();
+    await didEvaluate;
 
     expect(test.message).toBe("OK I'm unblocked.");
     expect(didTryToEvaluate).toBeCalledTimes(3);
@@ -462,8 +464,8 @@ describe("factory", () => {
     const promise2 = mockAsync<number>();
 
     class Test extends Model {
-      a = set(promise.pending());
-      b = set(promise2.pending());
+      a = set(promise);
+      b = set(promise2);
 
       sum = set(this.getSum);
 
@@ -486,10 +488,10 @@ describe("factory", () => {
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
-    await promise.resolve(10);
-    await promise2.resolve(20);
+    promise.resolve(10);
+    promise2.resolve(20);
 
-    await didEvaluate.pending();
+    await didEvaluate;
 
     expect(test.sum).toBe("Answer is 30.")
   })
@@ -499,7 +501,7 @@ describe("factory", () => {
 
     class Test extends Model {
       value = set(async () => {
-        await promise.pending();
+        await promise;
         throw "oh no";
       })
     }
@@ -518,7 +520,7 @@ describe("factory", () => {
 
     expect(didThrow).toBeInstanceOf(Promise);
 
-    await promise.resolve();
+    promise.resolve();
     await instance.on();
 
     expect(didThrow).toBe("oh no");

@@ -20,7 +20,7 @@ it('will subscribe to child controllers', async () => {
 
   const parent = Parent.new();
   const effect = jest.fn();
-  const promise = mockAsync();
+  let promise = mockAsync();
 
   parent.on(state => {
     const { child } = state;
@@ -33,27 +33,31 @@ it('will subscribe to child controllers', async () => {
   expect(effect).toBeCalledWith("foo", "bar");
   effect.mockClear();
 
+  promise = mockAsync();
   parent.child.value = "bar";
+  await promise;
   
-  await promise.pending();
   expect(effect).toBeCalledWith("bar", "bar");
   effect.mockClear();
 
+  promise = mockAsync();
   parent.child = new Child();
+  await promise;
   
-  await promise.pending();
   expect(effect).toBeCalledWith("foo", "bar");
   effect.mockClear();
 
+  promise = mockAsync();
   parent.child.value = "bar";
+  await promise;
   
-  await promise.pending();
   expect(effect).toBeCalledWith("bar", "bar");
   effect.mockClear();
 
+  promise = mockAsync();
   parent.child.grandchild.value = "foo";
+  await promise;
   
-  await promise.pending();
   expect(effect).toBeCalledWith("bar", "foo");
   effect.mockClear();
 })

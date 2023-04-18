@@ -10,28 +10,20 @@ export async function assertDidUpdate(
     : assert.toBeTruthy();
 }
 
-export function mockAsync<T = void>(){
-  const pending = new Set<[Function, Function]>();
+export function mockAsync<T = void>(timeout = 250){
+  let resolve!: (value?: T | PromiseLike<T>) => void;
+  let reject!: (reason?: any) => void;
 
-  const event = () => (
-    new Promise<T>((res, rej) => {
-      pending.add([res, rej]);
-    })
-  );
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res as any;
+    reject = rej;
+  });
 
-  const resolve = (value: T) => {
-    const done = event();
+  setTimeout(() => {
+    reject(new Error("timeout"));
+  }, timeout);
 
-    pending.forEach(x => x[0](value));
-    pending.clear();
-
-    return done;
-  }
-
-  return {
-    pending: event,
-    resolve
-  }
+  return Object.assign(promise, { resolve, reject });
 }
 
 export function mockConsole(){

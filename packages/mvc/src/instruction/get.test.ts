@@ -444,26 +444,28 @@ describe("fetch mode", () => {
     }
   
     const foo = Foo.new();
-    const mock = jest.fn();
-    const promise = mockAsync();
+    const mockEffect = jest.fn();
+    let promise = mockAsync();
     
     expect(foo.bar.foo).toBe(foo);
   
     foo.on(state => {
-      mock(state.bar.foo.value);
+      mockEffect(state.bar.foo.value);
       promise.resolve();
     })
   
+    promise = mockAsync();
     foo.value = "bar";
-    await promise.pending();
+    await promise;
   
-    expect(mock).toBeCalledWith("bar");
+    expect(mockEffect).toBeCalledWith("bar");
   
+    promise = mockAsync();
     foo.bar.foo = Foo.new();
-    await promise.pending();
+    await promise;
   
-    expect(mock).toBeCalledWith("foo");
-    expect(mock).toBeCalledTimes(3);
+    expect(mockEffect).toBeCalledWith("foo");
+    expect(mockEffect).toBeCalledTimes(3);
   })
   
   it("creates parent-child relationship", () => {

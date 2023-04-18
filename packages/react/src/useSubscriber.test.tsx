@@ -624,7 +624,7 @@ describe("computed", () => {
       expect(didRender).toHaveBeenCalledTimes(2);
 
       await act(async () => {
-        await promise.resolve("hello");
+        promise.resolve("hello");
       })
 
       await expect(out).resolves.toBe("hello");
@@ -667,7 +667,7 @@ describe("computed", () => {
       expect(didRender).toHaveBeenCalledTimes(2);
 
       await act(async () => {
-        await promise.resolve();
+        promise.resolve();
       })
       
       expect(didRender).toHaveBeenCalledTimes(3);
