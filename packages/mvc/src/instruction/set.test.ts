@@ -365,10 +365,7 @@ describe("factory", () => {
 
     const test = Test.new();
     const effect = jest.fn((state: Test) => {
-      // should suspend here
-      const { childValue } = state;
-
-      didUpdate.resolve(childValue);
+      didUpdate.resolve(state.childValue);
     })
 
     test.on(effect);

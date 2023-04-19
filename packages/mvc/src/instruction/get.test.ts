@@ -55,8 +55,8 @@ describe("compute mode", () => {
     expect(subject.nested).toBe("foo");
   
     subject.child.value = "bar";
+
     await expect(subject).toUpdate();
-  
     expect(subject.nested).toBe("bar");
   
     subject.child = new Child();
