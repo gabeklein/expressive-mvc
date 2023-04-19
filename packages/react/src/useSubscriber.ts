@@ -13,11 +13,16 @@ function useSubscriber<T extends Model, R>(
     if(!arg1)
       return new Subscriber(instance, () => refresh);
 
+    let dropSuspense: (() => void) | undefined;
+    let update: (() => void) | undefined;
+
     const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy as T;
 
     let compute: (() => R | undefined) | undefined =
       () => arg1!.call(spy, spy, forceUpdate)
+
+    let value = compute();
 
     function forceUpdate(): void;
     function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
@@ -26,7 +31,7 @@ function useSubscriber<T extends Model, R>(
         passthru = passthru();
 
       if(compute)
-        reassign(compute());
+        didUpdate(compute());
       else
         refresh();
 
@@ -34,20 +39,16 @@ function useSubscriber<T extends Model, R>(
         return passthru.finally(refresh);
     }
 
-    function reassign(next: any){
+    function didUpdate(next: any){
       value = next;
 
-      if(retry) {
-        retry();
-        retry = undefined;
+      if(dropSuspense) {
+        dropSuspense();
+        dropSuspense = undefined;
       }
       else
         refresh();
     };
-
-    let retry: (() => void) | undefined;
-    let update: (() => void) | undefined;
-    let value = compute();
 
     if(value === null){
       sub.watch.clear();
@@ -64,7 +65,7 @@ function useSubscriber<T extends Model, R>(
     }
 
     if(value instanceof Promise) {
-      value.then(reassign);
+      value.then(didUpdate);
       value = undefined;
     }
     else {
@@ -73,7 +74,7 @@ function useSubscriber<T extends Model, R>(
         const next = compute!();
 
         if(notEqual(value, next))
-          reassign(next);
+          didUpdate(next);
       };
     }
 
@@ -83,7 +84,9 @@ function useSubscriber<T extends Model, R>(
           return value;
 
         if(arg2)
-          throw new Promise<void>(res => retry = res);
+          throw new Promise<void>(res => {
+            dropSuspense = res;
+          });
 
         return null;
       }
@@ -96,8 +99,10 @@ function useSubscriber<T extends Model, R>(
     return null;
 
   useLayoutEffect(() => {
-    local.commit();
-    return () => local.release();
+    local.active = true
+    return () => {
+      local.active = false;
+    }
   }, [instance]);
 
   return local.proxy;
