@@ -1,15 +1,3 @@
-import { Model } from '../model';
-
-export async function assertDidUpdate(
-  model: Model, exists?: boolean){
-
-  const assert = expect(model.on(0)).resolves;
-
-  return exists === false
-    ? assert.toBe(false)
-    : assert.toBeTruthy();
-}
-
 export function mockAsync<T = void>(timeout = 250){
   let resolve!: (value?: T | PromiseLike<T>) => void;
   let reject!: (reason?: any) => void;

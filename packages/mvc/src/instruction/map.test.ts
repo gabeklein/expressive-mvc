@@ -1,4 +1,3 @@
-import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { map } from './map';
@@ -23,7 +22,7 @@ describe("Map", () => {
     expect(mock).toBeCalledWith("foo");
   
     test.map.set("foo", "bar");
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
   
     expect(mock).toBeCalledTimes(2);
     expect(mock).toBeCalledWith("bar");
@@ -68,7 +67,7 @@ it("will update on add", async () => {
   expect(mock).toBeCalledWith(false);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledWith(true);
   test.gc();
@@ -85,7 +84,7 @@ it("will not update for unwatched", async () => {
   expect(mock).toBeCalledTimes(1);
 
   test.values.set("bar", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(1);
 })
@@ -97,10 +96,10 @@ it("will update on delete", async () => {
   test.on(mock);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   test.values.delete("foo");
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(3);
 })
@@ -112,7 +111,7 @@ it("will update on clear", async () => {
   test.on(mock)
 
   test.values.clear();
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(2);
 })
@@ -131,7 +130,7 @@ it("will update any key where iterated", async () => {
   test.on(mockKeys);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mockIterator).toBeCalledTimes(2);
   expect(mockEntries).toBeCalledTimes(2);
@@ -154,7 +153,7 @@ it("will update any key on replacement", async () => {
 
   test.values = new Map();
 
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(2);
 })
@@ -167,7 +166,7 @@ it("will update size on replacement", async () => {
 
   test.values = new Map();
 
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(2);
 })
@@ -183,7 +182,7 @@ it("will squash multiple updates", async () => {
 
   test.values.set("foo", true);
   test.values.set("bar", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(2);
 })
@@ -228,14 +227,14 @@ it("will not update a stopped subscriber", async () => {
   expect(mock2).toBeCalledTimes(1);
 
   test.values = new Map();
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock1).toBeCalledTimes(2);
   expect(mock2).toBeCalledTimes(2);
 
   release1();
   test.values = new Map();
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock1).toBeCalledTimes(2);
   expect(mock2).toBeCalledTimes(3);
@@ -254,7 +253,7 @@ it("will update size for any change", async () => {
   expect(mock).toBeCalledWith(0);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledWith(1);
 })
@@ -268,7 +267,7 @@ it("will update computed for used keys", async () => {
   expect(mock).toBeCalledWith(0);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(2)
   expect(mock).toBeCalledWith(1);
@@ -288,7 +287,7 @@ it("will update computed for used keys only", async () => {
   expect(mock).toBeCalledWith(false);
 
   test.values.set("foo", true);
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(mock).toBeCalledTimes(1);
 })

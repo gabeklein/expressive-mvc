@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Model } from '.';
-import { create, assertDidUpdate, renderHook } from './helper/testing';
+import { create, renderHook } from './helper/testing';
 
 const opts = { timeout: 100 };
 
@@ -77,7 +77,7 @@ describe("subscription", () => {
     expect(didRender).toBeCalledTimes(2);
     expect(didRender).toBeCalledWith("bar");
 
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
 
     expect(didRender).toBeCalledTimes(2);
   })

@@ -2,7 +2,7 @@ import { act } from '@testing-library/react-hooks';
 import React from 'react';
 
 import { Model, Provider, set } from '.';
-import { assertDidUpdate, create, mockAsync, mockSuspense, renderHook } from './helper/testing';
+import { create, mockAsync, mockSuspense, renderHook } from './helper/testing';
 
 /**
  * Bypass context to fascilitate tests.
@@ -177,7 +177,7 @@ describe("passive mode", () => {
 
     test.value++;
 
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     
     expect(didRender).not.toBeCalledWith(2);
     expect(didRender).toBeCalledTimes(1);
@@ -288,7 +288,8 @@ describe("computed", () => {
 
     instance.foo = 2;
 
-    await assertDidUpdate(instance);
+    await expect(instance).toUpdate();
+
     expect(didRender).toBeCalledTimes(1);
   })
 
@@ -350,7 +351,7 @@ describe("computed", () => {
     
       await act(async () => {
         parent.foo = 2;
-        await assertDidUpdate(parent);
+        await expect(parent).toUpdate();
       })
 
       expect(didRender).toBeCalledTimes(1);
@@ -377,7 +378,7 @@ describe("computed", () => {
       await act(async () => {
         parent.foo = 2;
         parent.bar = false;
-        await assertDidUpdate(parent);
+        await expect(parent).toUpdate();
       })
 
       expect(didRender).toBeCalledTimes(2);
@@ -732,7 +733,7 @@ describe("in-context", () => {
 
     expect(didPushToValues).toBeCalledTimes(3);
 
-    await assertDidUpdate(parent);
+    await expect(parent).toUpdate();
 
     expect(parent.values.length).toBe(3);
 

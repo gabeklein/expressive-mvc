@@ -1,8 +1,8 @@
-import { control, Control } from './control';
+import { Control, control } from './control';
 import { create, defineProperty } from './helper/object';
 import { Model } from './model';
 
-import type { Callback } from './helper/types';
+import type { Callback } from '../types';
 
 const REGISTER = new WeakMap<{}, Subscriber>();
 

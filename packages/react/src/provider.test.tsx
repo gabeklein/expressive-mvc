@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 
 import { Model, set } from '.';
 import { Consumer } from './consumer';
-import { mockAsync, create, assertDidUpdate } from './helper/testing';
+import { mockAsync, create } from './helper/testing';
 import { Oops, Provider } from './provider';
 
 class Foo extends Model {
@@ -201,7 +201,7 @@ describe("and prop", () => {
       <Provider for={foo} use={{ value: "bar" }} />
     );
 
-    await assertDidUpdate(foo);
+    await expect(foo).toUpdate();
 
     expect(foo.value).toBe("bar");
   })

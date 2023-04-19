@@ -6,7 +6,7 @@ import { Model } from './model';
 import { Subscriber, subscriber } from './subscriber';
 import { suspend } from './suspense';
 
-import type { Callback } from './helper/types';
+import type { Callback } from '../types';
 
 export type Observer = (key: string | null, from: Control) => Callback | boolean | void;
 
