@@ -37,6 +37,30 @@ describe("explicit", () => {
     expect(mock).toBeCalledTimes(3)
   })
 
+  it("will update for nested values", async () => {
+    class Nested extends Model {
+      value = "foo";
+    }
+  
+    class Test extends Model {
+      nested = new Nested();
+    }
+  
+    const test = Test.new();
+    const effect = jest.fn((state: Test) => {
+      void state.nested.value;
+    });
+  
+    test.on(effect);
+  
+    expect(effect).toBeCalledTimes(1);
+    test.nested.value = "bar";
+  
+    await expect(test.nested).toUpdate();
+    
+    expect(effect).toBeCalledTimes(2);
+  })
+
   it('will squash simultaneous updates', async () => {
     const state = TestValues.new();
     const mock = jest.fn();
