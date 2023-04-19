@@ -1,4 +1,3 @@
-import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { Oops, run } from './run';
 import { set } from './set';
@@ -75,7 +74,7 @@ it("will throw and reset if action fails", async () => {
 
   const result = nope();
 
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
   expect(nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
@@ -104,12 +103,12 @@ it("will internally retry on suspense", async () => {
   const value = test.getValue();
 
   expect(didInvoke).toBeCalled();
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   test.value = "foobar";
 
   await expect(value).resolves.toBe("foobar");
-  await assertDidUpdate(test);
+  await expect(test).toUpdate();
 
   expect(didInvoke).toBeCalledTimes(2);
 })

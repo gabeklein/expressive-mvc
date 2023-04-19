@@ -1,5 +1,4 @@
 import { Oops } from './event';
-import { assertDidUpdate } from './helper/testing';
 import { get } from './instruction/get';
 import { Model } from './model';
 
@@ -313,17 +312,17 @@ describe("before ready", () => {
     const test = Test.new();
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(1);
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(2);
 
     test.done();
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(2);
   })
 });

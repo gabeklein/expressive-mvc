@@ -1,5 +1,5 @@
 import { Oops as Effect } from '../effect';
-import { assertDidUpdate, mockAsync, mockConsole } from '../helper/testing';
+import { mockAsync, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
@@ -60,7 +60,7 @@ describe("callback", () => {
     state.test = 2;
     expect(callback).toBeCalledWith(3);
 
-    await assertDidUpdate(state)
+    await expect(state).toUpdate()
     expect(event).toBeCalledWith(["test"]);
   })
 
@@ -78,11 +78,11 @@ describe("callback", () => {
 
     state.test = 2;
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).not.toBeCalled();
     state.test = 3;
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith(true);
   })
 
@@ -141,7 +141,7 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await assertDidUpdate(state, false);
+    await expect(state).not.toUpdate();
     expect(callback).toBeCalledWith("bar");
     expect(state.test).toBe("foo");
   })
@@ -156,7 +156,7 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(state.test).toBe("foo");
   })
 })

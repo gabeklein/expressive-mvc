@@ -1,9 +1,10 @@
 import { control } from './control';
 import { issues } from './helper/issues';
-import { Callback } from './helper/types';
 import { Model } from './model';
 import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
+
+import type { Callback } from '../types';
 
 export const Oops = issues({
   BadCallback: () =>

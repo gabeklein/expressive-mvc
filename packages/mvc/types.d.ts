@@ -7,3 +7,12 @@ export type NoVoid<T> = T extends undefined ? null : T;
 
 /** Including but not limited to T. */
 export type Extends<T> = T | (string & Record<never, never>);
+
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      /** Assert model does have one or more updates pending. */
+      toUpdate(): Promise<R>;
+    }
+  }
+}

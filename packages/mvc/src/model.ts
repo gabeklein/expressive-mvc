@@ -6,7 +6,7 @@ import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { Subscriber } from './subscriber';
 
-import type { Callback, Class, Extends, InstanceOf, NoVoid } from './helper/types';
+import type { Callback, Class, Extends, InstanceOf, NoVoid } from '../types';
 
 export const Oops = issues({
   NoChaining: () =>

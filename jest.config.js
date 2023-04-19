@@ -6,7 +6,10 @@ module.exports = {
       displayName: "MVC",
       testMatch: [
         '<rootDir>/packages/mvc/src/**/*.test.*'
-      ]
+      ],
+      setupFilesAfterEnv: [
+        "<rootDir>/jest.setup.ts"
+      ],
     },
     {
       preset: "ts-jest",
@@ -17,6 +20,9 @@ module.exports = {
       moduleNameMapper: {
         "@expressive/(.*)$": "<rootDir>/packages/$1/src"
       },
+      setupFilesAfterEnv: [
+        "<rootDir>/jest.setup.ts"
+      ],
     }
   ]
 }

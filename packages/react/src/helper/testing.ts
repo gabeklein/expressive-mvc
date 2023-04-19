@@ -1,13 +1,8 @@
-import { Model } from '@expressive/mvc';
 import { createElement, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create } from "react-test-renderer";
-
-export async function assertDidUpdate(model: Model){
-  return expect(model.on(0)).resolves.toBeTruthy();
-}
 
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();

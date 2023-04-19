@@ -6,7 +6,7 @@ import { Model } from './model';
 import { Subscriber, subscriber } from './subscriber';
 import { suspend } from './suspense';
 
-import type { Callback } from './helper/types';
+import type { Callback } from '../types';
 
 const REGISTER = new WeakMap<{}, Control>();
 

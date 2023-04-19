@@ -1,10 +1,11 @@
 import { getParent, getRecursive } from '../children';
 import { Control } from '../control';
 import { issues } from '../helper/issues';
-import { Callback } from '../helper/types';
 import { Model } from '../model';
 import { Subscriber } from '../subscriber';
 import { add } from './add';
+
+import type { Callback } from '../../types';
 
 export const Oops = issues({
   PeerNotAllowed: (model, property) =>
