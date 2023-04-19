@@ -6,10 +6,10 @@ expect.extend({
 
     return didUpdate ? {
       pass: true,
-      message: () => `Expected ${received} to have pending update.`
+      message: () => `Expected ${received} not to have pending update.`
     } : {
       pass: false,
-      message: () => `Expected ${received} not to have a pending update.`
+      message: () => `Expected ${received} to have a pending update.`
     };
   }
 })
