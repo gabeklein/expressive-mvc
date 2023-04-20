@@ -22,7 +22,6 @@ declare namespace Subscriber {
 
 class Subscriber <T extends Model = any> {
   public proxy!: T;
-  public clear: () => void;
   public latest?: Model.Event<T>[];
 
   public active = false;
@@ -43,7 +42,7 @@ class Subscriber <T extends Model = any> {
 
     REGISTER.set(proxy, this);
 
-    this.clear = parent.addListener(key => {
+    const removeListener = parent.addListener(key => {
       const { watch, active } = this;
       const handler = watch.get(key);
 
@@ -63,6 +62,11 @@ class Subscriber <T extends Model = any> {
       }
     });
 
+    this.release = () => {
+      removeListener();
+      this.dependant.forEach(x => x.release());
+    }
+
     defineProperty(proxy, "is", { value: subject });
     defineProperty(this, "proxy", {
       configurable: true,
@@ -80,14 +84,11 @@ class Subscriber <T extends Model = any> {
       this.watch.set(key, true);
   }
 
+  release: () => void;
+
   commit(){
     this.active = true;
     this.dependant.forEach(x => x.commit());
-  }
-
-  release(){
-    this.clear();
-    this.dependant.forEach(x => x.release());
   }
 }
 
