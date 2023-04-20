@@ -3,7 +3,7 @@ import { defineProperty, getOwnPropertyDescriptor, random } from './helper/objec
 import { setInstruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
+import { subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from '../types';
@@ -12,6 +12,10 @@ export type Observer = (key: string | null, from: Control) => Callback | boolean
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
+
+export function observer<T extends Model>(from: T){
+  return OBSERVER.get(from);
+}
 
 export function detectAccess<T extends Model>(
   on: T, cb: Observer): T {
@@ -64,7 +68,7 @@ declare namespace Control {
     | Getter<T>
     | void;
 
-    type Getter<T> = (within?: Subscriber, accessor?: Observer) => T;
+  type Getter<T> = (source: Model) => T;
     type Setter<T> = (value: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
@@ -135,16 +139,16 @@ class Control<T extends Model = any> {
         : this.ref(key as Model.Key<T>, set),
       get(this: any){
         const local = subscriber(this);
-        const onAccess = OBSERVER.get(this);
+        const event = observer(this);
 
         if(local)
           local.follow(key);
 
-        if(onAccess)
-          subs.add(onAccess);
+        if(event)
+          subs.add(event);
 
         return get
-          ? get(local, onAccess)
+          ? get(this)
           : state.get(key);
       }
     });

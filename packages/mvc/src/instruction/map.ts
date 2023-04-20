@@ -1,6 +1,6 @@
 import { Control } from '../control';
 import { assign, create, defineProperty } from '../helper/object';
-import { Subscriber } from '../subscriber';
+import { subscriber, Subscriber } from '../subscriber';
 import { add } from './add';
 
 type MapFunction<T, R> =
@@ -129,7 +129,9 @@ function keyed<T extends Keyed>(
 
   return {
     value: initial,
-    get(local){
+    get(source){
+      const local = subscriber(source);
+
       return local ?
         context.get(local) || subscribe(local) :
         managed;

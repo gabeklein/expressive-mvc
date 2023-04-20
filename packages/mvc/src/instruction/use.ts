@@ -1,9 +1,8 @@
 import { getRecursive, Parent } from '../children';
-import { control, Observer } from '../control';
+import { control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
 import { add } from './add';
 
@@ -57,8 +56,7 @@ function use(
 
       let pending: Promise<any> | undefined;
       let error: any;
-      let get: (local: Subscriber | undefined, accessor?: Observer) => any =
-        (_local: Subscriber | undefined) => state.get(key);
+      let get = (_source: Model) => state.get(key);
 
       if(typeof input === "function"){
         if("prototype" in input && input === input.prototype.constructor)
@@ -125,7 +123,7 @@ function use(
 
       return {
         set: onUpdate,
-        get(local, accessor){
+        get(source){
           if(pending)
             return suspend();
   
@@ -138,7 +136,7 @@ function use(
           if(pending)
             return suspend();
   
-          return get(local, accessor);
+          return get(source);
         }
       };
     }

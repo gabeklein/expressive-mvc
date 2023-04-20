@@ -1,7 +1,7 @@
-import { Control, control, controller, detectAccess, Observer } from './control';
+import { Control, control, controller, detectAccess, observer } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
+import { Subscriber, subscriber } from './subscriber';
 
 import type { Callback } from '../types';
 
@@ -13,7 +13,7 @@ export const Oops = issues({
 
   Unexpected: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
-})
+});
 
 export function getParent<T extends Model>(
   from: Model,
@@ -31,12 +31,15 @@ export function getRecursive(key: string, from: Control){
   const context = new WeakMap<Subscriber, {} | undefined>();
   const { state } = from;
 
-  return (local?: Subscriber, observer?: Observer) => {
+  return (source: Model) => {
+    const local = subscriber(source);
+    const event = observer(source);
+
     if(!local){
       const value = state.get(key);
 
-      return observer && value instanceof Model
-        ? detectAccess(value, observer)
+      return event && value instanceof Model
+        ? detectAccess(value, event)
         : value;
     }
 

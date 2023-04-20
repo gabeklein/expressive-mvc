@@ -6,6 +6,10 @@ import type { Callback } from '../types';
 
 const REGISTER = new WeakMap<{}, Subscriber>();
 
+function subscriber<T extends Model>(from: T){
+  return REGISTER.get(from) as Subscriber<T> | undefined;
+}
+
 type Listener = {
   commit(): void;
   release(): void;
@@ -85,10 +89,6 @@ class Subscriber <T extends Model = any> {
     this.clear();
     this.dependant.forEach(x => x.release());
   }
-}
-
-function subscriber<T extends Model>(from: T){
-  return REGISTER.get(from) as Subscriber<T> | undefined;
 }
 
 export { Subscriber, subscriber }

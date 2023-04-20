@@ -1,6 +1,5 @@
 import { Control } from '../control';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
 import { add } from './add';
 
 describe("instruction", () => {
@@ -88,10 +87,10 @@ describe("getter", () => {
     );
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
-    expect(mockAccess).toBeCalledWith(undefined, undefined);
+    expect(mockAccess).toBeCalledWith(instance);
   })
 
-  it.skip("will pass subscriber if within one", () => {
+  it("will pass subscriber if within one", () => {
     const didGetValue = jest.fn();
 
     class Test extends Model {
@@ -104,7 +103,7 @@ describe("getter", () => {
       void own.property;
     });
 
-    expect(didGetValue).toBeCalledWith(expect.any(Subscriber), undefined);
+    expect(didGetValue).toBeCalledWith(state);
   });
 })
 
