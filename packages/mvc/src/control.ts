@@ -198,13 +198,15 @@ class Control<T extends Model = any> {
     const subs = this.observers.get(key);
 
     if(subs)
-      for(const callback of subs){
+      for(const callback of subs)
+        try {
         const notify = callback(key, this);
 
-        if(notify === false)
+          if(typeof notify == "function")
+            waiting.add(notify);
+        }
+        catch(err){
           subs.delete(callback);
-        else if(typeof notify == "function")
-          waiting.add(notify);
       }
   
     for(const callback of followers){
