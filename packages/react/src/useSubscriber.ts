@@ -25,8 +25,8 @@ function useSubscriber<T extends Model, R>(
     let value = compute();
 
     function forceUpdate(): void;
-    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)): Promise<any>;
-    function forceUpdate(passthru?: Promise<any> | (() => Promise<any>)){
+    function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
+    function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
       if(typeof passthru == "function")
         passthru = passthru();
 

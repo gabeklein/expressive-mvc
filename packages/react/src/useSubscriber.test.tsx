@@ -512,7 +512,7 @@ describe("computed", () => {
     it("will force a refresh", () => {
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
-      let forceUpdate!: () => Promise<void>;
+      let forceUpdate: () => void;
 
       const { unmount } = renderHook(() => {
         didRender();

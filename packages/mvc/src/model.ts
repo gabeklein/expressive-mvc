@@ -96,14 +96,14 @@ declare namespace Model {
      * Force an update and again after promise either resolves or rejects.
      * Will return a duplicate of given Promise, which resolves after refresh.
      */
-    <T = void>(passthru?: Promise<T>): Promise<T>
+    <T = void>(passthru: Promise<T>): Promise<T>
 
     /**
      * Force a update while calling async function.
      * A refresh will occur both before and after given function.
      * Any actions performed before first `await` will occur before refresh!
      */
-    <T = void>(invoke?: () => Promise<T>): Promise<T>
+    <T = void>(invoke: () => Promise<T>): Promise<T>
   };
 
   export type Suspense = Promise<void> & Error;
