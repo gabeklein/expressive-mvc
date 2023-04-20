@@ -1,8 +1,7 @@
 import { getParent, getRecursive } from '../children';
-import { Control } from '../control';
+import { Control, detectAccess } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
 import { add } from './add';
 
 import type { Callback } from '../../types';
@@ -133,9 +132,10 @@ function computed<T>(
 
   const { state } = parent;
 
-  let local: Subscriber | undefined;
+  let proxy: any;
   let active: boolean;
   let isAsync: boolean;
+  let reset: (() => void) | undefined;
 
   let order = ORDER.get(parent)!;
   let pending = KEYS.get(parent)!;
@@ -152,7 +152,7 @@ function computed<T>(
     let next: T | undefined;
 
     try {
-      next = setter.call(local!.proxy, local!.proxy);
+      next = setter.call(proxy, proxy);
     }
     catch(err){
       Oops.Failed(parent.subject, key, initial).warn();
@@ -172,20 +172,27 @@ function computed<T>(
   }
 
   function connect(model: Model){
-    local = new Subscriber(model, (_, control) => {
+    if(reset)
+      reset();
+
+    let done: boolean;
+
+    reset = () => done = true;
+
+    proxy = detectAccess(model, (_, control) => {
+      if(done)
+        throw 0;
+
       if(control !== parent)
         compute();
       else
         pending.add(compute);
     });
 
-    local.watch.set(key, false);
-
     try {
       compute(true);
     }
     finally {
-      local.commit();
       order.set(compute, order.size);
     }
   }
@@ -197,7 +204,7 @@ function computed<T>(
       isAsync = true;
     }
     
-    if(!local)
+    if(!proxy)
       parent.waitFor(key);
 
     if(pending.delete(compute))
