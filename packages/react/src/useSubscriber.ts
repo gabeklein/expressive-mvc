@@ -24,32 +24,6 @@ function useSubscriber<T extends Model, R>(
 
     let value = compute();
 
-    function forceUpdate(): void;
-    function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
-    function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
-      if(typeof passthru == "function")
-        passthru = passthru();
-
-      if(compute)
-        didUpdate(compute());
-      else
-        refresh();
-
-      if(passthru)
-        return passthru.finally(refresh);
-    }
-
-    function didUpdate(next: any){
-      value = next;
-
-      if(dropSuspense) {
-        dropSuspense();
-        dropSuspense = undefined;
-      }
-      else
-        refresh();
-    };
-
     if(value === null){
       sub.watch.clear();
       compute = undefined;
@@ -91,6 +65,32 @@ function useSubscriber<T extends Model, R>(
 
         return null;
       }
+    };
+
+    function forceUpdate(): void;
+    function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
+    function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
+      if(typeof passthru == "function")
+        passthru = passthru();
+
+      if(compute)
+        didUpdate(compute());
+      else
+        refresh();
+
+      if(passthru)
+        return passthru.finally(refresh);
+    }
+
+    function didUpdate(next: any){
+      value = next;
+
+      if(dropSuspense) {
+        dropSuspense();
+        dropSuspense = undefined;
+      }
+      else
+        refresh();
     };
   }, [instance]);
 
