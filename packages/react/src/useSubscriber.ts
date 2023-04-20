@@ -99,9 +99,9 @@ function useSubscriber<T extends Model, R>(
     return null;
 
   useLayoutEffect(() => {
-    local.active = true
+    local.commit();
     return () => {
-      local.active = false;
+      local.release();
     }
   }, [instance]);
 
