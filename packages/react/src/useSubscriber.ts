@@ -78,8 +78,9 @@ function useSubscriber<T extends Model, R>(
       };
     }
 
-    Object.defineProperty(sub, "proxy", {
-      get() {
+    return {
+      commit: sub.commit,
+      get proxy(){
         if(value !== undefined)
           return value;
 
@@ -90,20 +91,13 @@ function useSubscriber<T extends Model, R>(
 
         return null;
       }
-    });
-
-    return sub;
+    };
   }, [instance]);
 
   if(!local)
     return null;
 
-  useLayoutEffect(() => {
-    local.commit();
-    return () => {
-      local.release();
-    }
-  }, [instance]);
+  useLayoutEffect(local.commit, [instance]);
 
   return local.proxy;
 }

@@ -57,33 +57,48 @@ function useModel <T extends Model> (
   const state = useState(0);
   const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
-    return new Subscriber(instance, () => refresh);
-  }, []);
-
-  if(typeof arg1 == "object"){
     const control = Control.get(instance)!;
-    let keys = arg2 as Model.Key<T>[];
-  
-    local.active = false;
-  
-    if(!keys)
-      keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
-  
-    for(const key of keys)
-      if(key in arg1)
-        instance[key] = arg1[key]!;
-  
-    control.waiting.add(() => local.active = true);
-  }
+    const local = new Subscriber(instance, () => refresh);
 
-  useLayoutEffect(() => {
-    local.commit();
+    function apply(values: Model.Compat<T>){
+      let keys = arg2 as Model.Key<T>[];
+    
+      local.active = false;
+    
+      if(!keys)
+        keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
+    
+      for(const key of keys)
+        if(key in values)
+          instance[key] = values[key]!;
+    
+      control.waiting.add(() => {
+        local.active = true;
+      });
+    }
 
-    return () => {
-      local.release();
-      instance.gc();
-    };
+    function commit(){
+      local.commit();
+
+      return () => {
+        local.release();
+        instance.gc();
+      };
+    }
+
+    return {
+      apply,
+      commit,
+      get proxy(){
+        return local.proxy;
+      }
+    }
   }, []);
+
+  if(typeof arg1 == "object")
+    local.apply(arg1);
+
+  useLayoutEffect(local.commit, []);
 
   return local.proxy;
 }

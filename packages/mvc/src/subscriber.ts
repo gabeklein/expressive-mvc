@@ -62,6 +62,12 @@ class Subscriber <T extends Model = any> {
       }
     });
 
+    this.commit = () => {
+      this.active = true;
+      this.dependant.forEach(x => x.commit());
+      return this.release;
+    }
+
     this.release = () => {
       removeListener();
       this.dependant.forEach(x => x.release());
@@ -85,11 +91,7 @@ class Subscriber <T extends Model = any> {
   }
 
   release: () => void;
-
-  commit(){
-    this.active = true;
-    this.dependant.forEach(x => x.commit());
-  }
+  commit: () => () => void;
 }
 
 export { Subscriber, subscriber }
