@@ -61,7 +61,7 @@ function useModel <T extends Model> (
   }, []);
 
   if(typeof arg1 == "object"){
-    const { waiting } = Control.get(instance)!;
+    const control = Control.get(instance)!;
     let keys = arg2 as Model.Key<T>[];
   
     local.active = false;
@@ -73,7 +73,7 @@ function useModel <T extends Model> (
       if(key in arg1)
         instance[key] = arg1[key]!;
   
-    waiting.add(() => local.active = true);
+    control.waiting.add(() => local.active = true);
   }
 
   useLayoutEffect(() => {
