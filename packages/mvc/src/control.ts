@@ -60,20 +60,18 @@ declare namespace Control {
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
-    | Instruction.Getter<T>
-    | Instruction.Descriptor<T>
+    | PropertyDescriptor<T>
+    | Getter<T>
     | void;
 
-  namespace Instruction {
     type Getter<T> = (within?: Subscriber, accessor?: Observer) => T;
     type Setter<T> = (value: T) => boolean | void;
 
-    interface Descriptor<T = any> {
+  type PropertyDescriptor<T = any> = {
       enumerable?: boolean;
       value?: T;
       get?: Getter<T>;
       set?: Setter<T> | false;
-    }
   }
 }
 
@@ -122,7 +120,7 @@ class Control<T extends Model = any> {
 
   watch(
     key: keyof T & string,
-    output: Control.Instruction.Descriptor<any>){
+    output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
     const { get, set, enumerable } = output;

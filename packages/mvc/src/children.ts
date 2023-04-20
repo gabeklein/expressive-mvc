@@ -77,7 +77,7 @@ export function getRecursive(key: string, from: Control){
 
 export function setRecursive(
   on: Control, key: string, initial: Model
-): Control.Instruction.Descriptor {
+): Control.PropertyDescriptor {
 
   const expected = initial.constructor;
   const get = getRecursive(key, on);

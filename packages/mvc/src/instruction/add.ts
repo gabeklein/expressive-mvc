@@ -22,7 +22,7 @@ export function setInstruction(
   onto: Control,
   key: string,
   from: symbol
-): Control.Instruction.Descriptor | void {
+): Control.PropertyDescriptor | void {
 
   const instruction = PENDING.get(from);
 

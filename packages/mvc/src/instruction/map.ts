@@ -49,7 +49,7 @@ function keyed<T extends Keyed>(
   control: Control,
   property: any,
   initial: T
-): Control.Instruction.Descriptor<T> {
+): Control.PropertyDescriptor<T> {
   type K = typeof ANY | (
     T extends Set<infer U> ? U :
     T extends Map<infer U, any> ? U :
