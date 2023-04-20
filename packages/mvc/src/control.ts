@@ -125,15 +125,16 @@ class Control<T extends Model = any> {
     output: Control.Instruction.Descriptor<any>){
 
     const { state } = this;
+    const { get, set, enumerable } = output;
     const subs = new Set<Observer>();
     
     this.observers.set(key, subs);
 
     defineProperty(this.subject, key, {
-      enumerable: output.enumerable,
-      set: output.set === false
+      enumerable,
+      set: set === false
         ? undefined
-        : this.ref(key as Model.Key<T>, output.set),
+        : this.ref(key as Model.Key<T>, set),
       get(this: any){
         const local = subscriber(this);
         const onAccess = OBSERVER.get(this);
@@ -144,8 +145,8 @@ class Control<T extends Model = any> {
         if(onAccess)
           subs.add(onAccess);
 
-        return output.get
-          ? output.get(local, onAccess)
+        return get
+          ? get(local, onAccess)
           : state.get(key);
       }
     });
