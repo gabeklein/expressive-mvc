@@ -1,4 +1,4 @@
-import { Control, Model, Subscriber } from '@expressive/mvc';
+import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { usePeerContext } from './useContext';
@@ -58,12 +58,20 @@ function useModel <T extends Model> (
   const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
     const control = Control.get(instance)!;
-    const local = new Subscriber(instance, () => refresh);
+    let active: boolean | null = false;
+
+    const proxy = Control.sub(instance, () => {
+      if(active === null)
+        throw 0;
+
+      if(active)
+        return refresh;
+    });
 
     function apply(values: Model.Compat<T>){
       let keys = arg2 as Model.Key<T>[];
     
-      local.active = false;
+      active = false;
     
       if(!keys)
         keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
@@ -73,26 +81,20 @@ function useModel <T extends Model> (
           instance[key] = values[key]!;
     
       control.waiting.add(() => {
-        local.active = true;
+        active = true;
       });
     }
 
     function commit(){
-      local.commit();
+      active = true;
 
       return () => {
-        local.release();
+        active = null;
         instance.gc();
       };
     }
 
-    return {
-      apply,
-      commit,
-      get proxy(){
-        return local.proxy;
-      }
-    }
+    return { apply, commit, proxy }
   }, []);
 
   if(typeof arg1 == "object")

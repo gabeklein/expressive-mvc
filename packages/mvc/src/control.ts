@@ -23,6 +23,7 @@ export function detectAccess<T extends Model>(
   const proxy = Object.create(on);
 
   OBSERVER.set(proxy, cb);
+  defineProperty(proxy, "is", { value: on });
 
   return proxy;
 }
@@ -229,6 +230,7 @@ class Control<T extends Model = any> {
 
   static get = controller;
   static for = control;
+  static sub = detectAccess;
 }
 
 function controller<T extends Model>(from: T){
