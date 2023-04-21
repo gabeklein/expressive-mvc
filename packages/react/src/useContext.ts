@@ -1,7 +1,7 @@
 import { issues, Model, Context } from '@expressive/mvc';
 
 import { useAmbient } from './provider';
-import { useSubscriber } from './useSubscriber';
+import { useComputed, useSubscriber } from './useSubscriber';
 
 export const Oops = issues({
   AmbientRequired: (requested, requester) =>
@@ -16,14 +16,17 @@ export function useContext <T extends Model> (
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
 
-  let model: T | undefined;
+  let model!: T;
   
   this.has($ => model = $, arg1 !== false);
       
   if(typeof arg1 == "boolean")
     return model;
 
-  return useSubscriber(model!, arg1, arg2);
+  if(!arg1)
+    return useSubscriber(model);
+
+  return useComputed(model, arg1, arg2);
 }
 
 export function hasContext<T extends Model>(

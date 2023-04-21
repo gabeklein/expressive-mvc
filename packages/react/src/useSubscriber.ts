@@ -1,17 +1,26 @@
 import { Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-function useSubscriber<T extends Model, R>(
+export function useSubscriber<T extends Model>(instance: T){
+  const state = useState(0);
+  const local = useMemo(() => {
+    const refresh = state[1].bind(null, x => x+1);
+    return new Subscriber(instance, () => refresh);
+  }, [instance]);
+
+  useLayoutEffect(local.commit, [instance]);
+
+  return local.proxy;
+}
+
+export function useComputed<T extends Model, R>(
   instance: T,
-  arg1?: Model.GetCallback<T, any>,
+  arg1: Model.GetCallback<T, any>,
   arg2?: boolean){
 
   const state = useState(0);
   const local = useMemo(() => {
     const refresh = state[1].bind(null, x => x+1);
-
-    if(!arg1)
-      return new Subscriber(instance, () => refresh);
 
     let dropSuspense: (() => void) | undefined;
     let update: (() => void) | undefined;
@@ -111,5 +120,3 @@ const notEqual = <T>(a: T, b: unknown) => (
     a.some((x, i) => x !== b[i])
   )
 )
-
-export { useSubscriber }
