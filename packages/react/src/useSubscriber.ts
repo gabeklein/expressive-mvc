@@ -27,9 +27,10 @@ export function useComputed<T extends Model, R>(
 
     const sub = new Subscriber(instance, () => update);
     const spy = sub.proxy as T;
+    let getter = arg1;
 
     let compute: (() => R | undefined) | undefined =
-      () => arg1!.call(spy, spy, forceUpdate)
+      () => getter.call(spy, spy, forceUpdate)
 
     let value = compute();
 
@@ -43,7 +44,7 @@ export function useComputed<T extends Model, R>(
       const get = value;
 
       sub.watch.clear();
-      arg1 = () => get();
+      getter = () => get();
       value = get();
     }
 
