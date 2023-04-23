@@ -1,11 +1,19 @@
-import { Model, Subscriber } from '@expressive/mvc';
+import { Control, Model, Subscriber } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 export function useSubscriber<T extends Model>(instance: T){
   const state = useState(0);
   const local = useMemo(() => {
-    const refresh = state[1].bind(null, x => x+1);
-    return new Subscriber(instance, () => refresh);
+    let refresh: (() => void) | undefined;
+    const proxy = Control.sub(instance, () => refresh);
+
+    return {
+      proxy,
+      commit(){
+        refresh = () => state[1](x => x+1);
+        return () => refresh = undefined;
+      }
+    }
   }, [instance]);
 
   useLayoutEffect(local.commit, [instance]);
