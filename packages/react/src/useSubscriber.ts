@@ -1,4 +1,4 @@
-import { Control, Model, Subscriber } from '@expressive/mvc';
+import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 export function useSubscriber<T extends Model>(instance: T){
@@ -10,7 +10,7 @@ export function useSubscriber<T extends Model>(instance: T){
     return {
       proxy,
       commit(){
-        refresh = () => state[1](x => x+1);
+        refresh = state[1].bind(null, x => x+1);
         return () => refresh = undefined;
       }
     }
@@ -23,19 +23,22 @@ export function useSubscriber<T extends Model>(instance: T){
 
 export function useComputed<T extends Model, R>(
   instance: T,
-  arg1: Model.GetCallback<T, any>,
-  arg2?: boolean){
+  getter: Model.GetCallback<T, any>,
+  required?: boolean){
 
   const state = useState(0);
   const local = useMemo(() => {
+    let resolve: (() => void) | undefined;
+    let update: (() => void) | undefined | null;
+    let isFactory: true | undefined;
+
     const refresh = state[1].bind(null, x => x+1);
-
-    let dropSuspense: (() => void) | undefined;
-    let update: (() => void) | undefined;
-
-    const sub = new Subscriber(instance, () => update);
-    const spy = sub.proxy as T;
-    let getter = arg1;
+    const spy = Control.sub(instance, () => {
+      if(isFactory || update === null)
+        throw 0;
+      
+      return update;
+    })
 
     let compute: (() => R | undefined) | undefined =
       () => getter.call(spy, spy, forceUpdate)
@@ -43,25 +46,32 @@ export function useComputed<T extends Model, R>(
     let value = compute();
 
     if(value === null){
-      sub.watch.clear();
       compute = undefined;
+      update = null;
       return;
     }
 
     if(typeof value == "function"){
       const get = value;
+      
+      isFactory = true;
+      Control.sub(spy, () => {
+        if(update === null)
+          throw 0;
+        
+        return update;
+      })
 
-      sub.watch.clear();
       getter = () => get();
       value = get();
     }
 
     if(value instanceof Promise) {
+      update = null;
       value.then(didUpdate);
       value = undefined;
     }
     else {
-      sub.commit();
       update = () => {
         const next = compute!();
 
@@ -71,14 +81,16 @@ export function useComputed<T extends Model, R>(
     }
 
     return {
-      commit: sub.commit,
+      commit: () => () => {
+        update = null;
+      },
       get proxy(){
         if(value !== undefined)
           return value;
 
-        if(arg2)
+        if(required)
           throw new Promise<void>(res => {
-            dropSuspense = res;
+            resolve = res;
           });
 
         return null;
@@ -103,9 +115,9 @@ export function useComputed<T extends Model, R>(
     function didUpdate(next: any){
       value = next;
 
-      if(dropSuspense) {
-        dropSuspense();
-        dropSuspense = undefined;
+      if(resolve) {
+        resolve();
+        resolve = undefined;
       }
       else
         refresh();

@@ -20,12 +20,12 @@ export function observer<T extends Model>(from: T){
 export function detectAccess<T extends Model>(
   on: T, cb: Observer): T {
 
-  const proxy = Object.create(on);
+  if(!on.hasOwnProperty("is"))
+    on = defineProperty(Object.create(on), "is", { value: on });
 
-  OBSERVER.set(proxy, cb);
-  defineProperty(proxy, "is", { value: on });
+  OBSERVER.set(on, cb);
 
-  return proxy;
+  return on;
 }
 
 function flushEvents(on: Control){

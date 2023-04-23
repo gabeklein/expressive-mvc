@@ -329,7 +329,7 @@ describe("computed", () => {
     const test = Test.new();
     const willCompute = jest.fn();
 
-    const { result } = renderHook(() => {
+    const { result, waitForNextUpdate } = renderHook(() => {
       return Test.get($ => {
         void $.foo;
   
@@ -348,6 +348,13 @@ describe("computed", () => {
 
     expect(willCompute).toBeCalledTimes(1);
     expect(result.current).toBe(2);
+
+    test.bar = 3;
+
+    await waitForNextUpdate(opts);
+
+    expect(willCompute).toBeCalledTimes(2);
+    expect(result.current).toBe(3);
   })
 
   describe("tuple", () => {
