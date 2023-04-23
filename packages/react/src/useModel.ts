@@ -56,22 +56,22 @@ function useModel <T extends Model> (
 
   const state = useState(0);
   const local = useMemo(() => {
-    const refresh = state[1].bind(null, x => x+1);
     const control = Control.get(instance)!;
-    let active: boolean | null = false;
+    const update = () => state[1](x => x+1);
+    let refresh: (() => void) | undefined;
+    let done: undefined | boolean;
 
     const proxy = Control.sub(instance, () => {
-      if(active === null)
+      if(done)
         throw 0;
 
-      if(active)
-        return refresh;
+      return refresh;
     });
 
     function apply(values: Model.Compat<T>){
       let keys = arg2 as Model.Key<T>[];
     
-      active = false;
+      refresh = undefined;
     
       if(!keys)
         keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
@@ -81,20 +81,23 @@ function useModel <T extends Model> (
           instance[key] = values[key]!;
     
       control.waiting.add(() => {
-        active = true;
+        refresh = update;
       });
     }
 
     function commit(){
-      active = true;
-
+      refresh = update;
       return () => {
-        active = null;
+        done = true;
         instance.gc();
-      };
+      }
     }
 
-    return { apply, commit, proxy }
+    return {
+      apply,
+      commit,
+      proxy
+    };
   }, []);
 
   if(typeof arg1 == "object")

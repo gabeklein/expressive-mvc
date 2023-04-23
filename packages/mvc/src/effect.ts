@@ -55,16 +55,14 @@ export function createEffect<T extends Model>(
       });
     }
 
-    let active: boolean | undefined;
+    let refresh: (() => void) | undefined;
 
-    model = detectAccess(model, () => {
-      return active ? invoke : active;
-    });
+    model = detectAccess(model, () => refresh);
 
     invoke();
-    active = true;
+    refresh = invoke;
 
-    return () => active = false;
+    return () => refresh = undefined;
   });
 }
 
