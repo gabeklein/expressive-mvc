@@ -325,6 +325,31 @@ describe("computed", () => {
     expect(result.current).toBe(4);
   })
 
+  it("will not subscribe to keys pulled by factory", async () => {
+    const test = Test.new();
+    const willCompute = jest.fn();
+
+    const { result } = renderHook(() => {
+      return Test.get($ => {
+        void $.foo;
+  
+        return () => {
+          willCompute();
+          return $.bar;
+        };
+      });
+    });
+
+    expect(result.current).toBe(2);
+
+    test.foo = 2;
+
+    await test.on(0);
+
+    expect(willCompute).toBeCalledTimes(1);
+    expect(result.current).toBe(2);
+  })
+
   describe("tuple", () => {
     class Test extends Singleton {
       foo = 1;
