@@ -38,7 +38,6 @@ export function getRecursive(key: string, from: Control){
 export function setRecursive(
   on: Control, key: string, initial: Model
 ): Control.PropertyDescriptor {
-
   const expected = initial.constructor;
   const get = getRecursive(key, on);
   const set = (next: Model | undefined) => {

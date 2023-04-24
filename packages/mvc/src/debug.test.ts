@@ -46,7 +46,7 @@ describe("Symbols", () => {
   })
 })
 
-describe.skip("UPDATE", () => {
+describe("UPDATE", () => {
   class Test extends Model {
     value1 = 1;
     value2 = 2;
@@ -68,7 +68,7 @@ describe.skip("UPDATE", () => {
     expect(updated).toContain("value2");
   })
 
-  it("will reveal cause for update", async () => {
+  it.skip("will reveal cause for update", async () => {
     const test = Test.new() as Debug<Test>;
 
     let update: readonly string[] | undefined;
