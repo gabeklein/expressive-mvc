@@ -1,4 +1,4 @@
-import { Control, control, detectAccess, observer } from './control';
+import { Control, control, detect, observer } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 
@@ -30,7 +30,7 @@ export function getRecursive(key: string, from: Control){
     const value = from.state.get(key);
 
     return event && value instanceof Model
-      ? detectAccess(value, event)
+      ? detect(value, event)
       : value;
   }
 }

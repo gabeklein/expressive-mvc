@@ -3,7 +3,7 @@ import { Control } from '../control';
 const PENDING = new Map<symbol, Control.Instruction<any>>();
 
 /**
- * Run instruction as controller sets itself up.
+ * Run instruction as model sets itself up.
  * This will specialize the behavior of a given property.
  */
 export function add<T = any>(

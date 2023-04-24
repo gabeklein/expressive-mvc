@@ -1,4 +1,4 @@
-import { control, detectAccess } from './control';
+import { control, detect } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 import { mayRetry } from './suspense';
@@ -57,7 +57,7 @@ export function createEffect<T extends Model>(
 
     let refresh: (() => void) | undefined;
 
-    model = detectAccess(model, () => refresh);
+    model = detect(model, () => refresh);
 
     invoke();
     refresh = invoke;

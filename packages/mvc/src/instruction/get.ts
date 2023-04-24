@@ -1,5 +1,5 @@
 import { getParent, getRecursive } from '../children';
-import { Control, detectAccess } from '../control';
+import { Control, detect } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { add } from './add';
@@ -179,7 +179,7 @@ function computed<T>(
 
     reset = () => done = true;
 
-    proxy = detectAccess(model, (_, control) => {
+    proxy = detect(model, (_, control) => {
       if(done)
         throw 0;
 

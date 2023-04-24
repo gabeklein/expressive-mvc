@@ -16,7 +16,7 @@ export function observer<T extends Model>(from: T){
   return OBSERVER.get(from);
 }
 
-export function detectAccess<T extends Model>(
+export function detect<T extends Model>(
   on: T, cb: Observer): T {
 
   if(!on.hasOwnProperty("is"))
@@ -225,7 +225,7 @@ class Control<T extends Model = any> {
 
   static get = controller;
   static for = control;
-  static sub = detectAccess;
+  static sub = detect;
 }
 
 function controller<T extends Model>(from: T){
