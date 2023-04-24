@@ -181,7 +181,7 @@ function computed<T>(
 
     proxy = detect(model, (_, control) => {
       if(done)
-        throw 0;
+        return null;
 
       if(control !== parent)
         compute();

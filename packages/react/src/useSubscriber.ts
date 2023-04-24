@@ -33,12 +33,7 @@ export function useComputed<T extends Model, R>(
     let isFactory: true | undefined;
 
     const refresh = state[1].bind(null, x => x+1);
-    const spy = Control.sub(instance, () => {
-      if(isFactory || update === null)
-        throw 0;
-      
-      return update;
-    })
+    const spy = Control.sub(instance, () => isFactory ? null : update);
 
     let compute: (() => R | undefined) | undefined =
       () => getter.call(spy, spy, forceUpdate)
@@ -55,12 +50,7 @@ export function useComputed<T extends Model, R>(
       const get = value;
       
       isFactory = true;
-      Control.sub(spy, () => {
-        if(update === null)
-          throw 0;
-        
-        return update;
-      })
+      Control.sub(spy, () => update)
 
       getter = () => get();
       value = get();

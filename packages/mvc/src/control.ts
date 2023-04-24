@@ -7,7 +7,7 @@ import { suspend } from './suspense';
 
 import type { Callback } from '../types';
 
-export type Observer = (key: string | null, from: Control) => Callback | boolean | void;
+export type Observer = (key: string | null, from: Control) => Callback | null | void;
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
@@ -197,15 +197,13 @@ class Control<T extends Model = any> {
     const subs = this.observers.get(key);
 
     if(subs)
-      for(const callback of subs)
-        try {
+      for(const callback of subs){
         const notify = callback(key, this);
 
-          if(typeof notify == "function")
-            waiting.add(notify);
-        }
-        catch(err){
+        if(notify === null)
           subs.delete(callback);
+        else if(notify)
+          waiting.add(notify);
       }
   
     for(const callback of followers){

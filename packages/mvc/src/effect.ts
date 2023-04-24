@@ -55,14 +55,14 @@ export function createEffect<T extends Model>(
       });
     }
 
-    let refresh: (() => void) | undefined;
+    let refresh: (() => void) | null;
 
     model = detect(model, () => refresh);
 
     invoke();
     refresh = invoke;
 
-    return () => refresh = undefined;
+    return () => refresh = null;
   });
 }
 
