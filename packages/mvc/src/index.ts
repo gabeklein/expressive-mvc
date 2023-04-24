@@ -9,7 +9,6 @@ export { use } from './instruction/use';
 
 export { Model, Model as default } from './model';
 export { Control } from './control';
-export { Subscriber } from './subscriber';
 export { Debug } from './debug';
 export { Context } from './context';
 export { issues } from './helper/issues';

@@ -1,6 +1,5 @@
-import { Control } from '../control';
+import { Control, Observer, observer } from '../control';
 import { assign, create, defineProperty } from '../helper/object';
-import { subscriber, Subscriber } from '../subscriber';
 import { add } from './add';
 
 type MapFunction<T, R> =
@@ -57,9 +56,9 @@ function keyed<T extends Keyed>(
   );
 
   const init = createProxy(emit, watch);
-  const frozen = new Set<Subscriber>();
-  const context = new Map<Subscriber, T>();
-  const users = new Map<Subscriber, Set<K>>();
+  const frozen = new Set<Observer>();
+  const context = new Map<Observer, T>();
+  const users = new Map<Observer, Set<K>>();
   const watched = new WeakMap<T, Set<K>>();
   const update = new Set<(key: K) => void>();
 
@@ -78,7 +77,7 @@ function keyed<T extends Keyed>(
     update.forEach(notify => notify(key));
   }
 
-  function subscribe(local: Subscriber){
+  function subscribe(local: Observer){
     const proxy = create(managed);
     let watch = users.get(local);
 
@@ -86,32 +85,32 @@ function keyed<T extends Keyed>(
       const using = watch = new Set<K>();
       users.set(local, using);
   
-      function onEvent(key: K){
-        if(frozen.has(local))
-          return;
+      // function onEvent(key: K){
+      //   if(frozen.has(local))
+      //     return;
   
-        if(key === ANY || using.has(key) || using.has(ANY)){
-          const refresh = local.onUpdate(property, control);
+      //   if(key === ANY || using.has(key) || using.has(ANY)){
+      //     const refresh = local(property, control);
   
-          if(refresh){
-            frozen.add(local);
-            refresh()
-          }
-        }
-      }
+      //     if(typeof refresh == 'function'){
+      //       frozen.add(local);
+      //       refresh()
+      //     }
+      //   }
+      // }
   
-      local.follow(property, false);
-      local.dependant.add({
-        commit(){
-          if(using.size === 0)
-            using.add(ANY);
+      // local.follow(property, false);
+      // local.dependant.add({
+      //   commit(){
+      //     if(using.size === 0)
+      //       using.add(ANY);
   
-          update.add(onEvent);
-        },
-        release(){
-          update.delete(onEvent);
-        }
-      })
+      //     update.add(onEvent);
+      //   },
+      //   release(){
+      //     update.delete(onEvent);
+      //   }
+      // })
     }
 
     watched.set(proxy, watch);
@@ -130,7 +129,7 @@ function keyed<T extends Keyed>(
   return {
     value: initial,
     get(source){
-      const local = subscriber(source);
+      const local = observer(source);
 
       return local ?
         context.get(local) || subscribe(local) :

@@ -3,7 +3,6 @@ import { defineProperty, getOwnPropertyDescriptor, random } from './helper/objec
 import { setInstruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
-import { subscriber } from './subscriber';
 import { suspend } from './suspense';
 
 import type { Callback } from '../types';
@@ -139,11 +138,7 @@ class Control<T extends Model = any> {
         ? undefined
         : this.ref(key as Model.Key<T>, set),
       get(this: any){
-        const local = subscriber(this);
         const event = observer(this);
-
-        if(local)
-          local.follow(key);
 
         if(event)
           subs.add(event);

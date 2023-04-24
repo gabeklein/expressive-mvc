@@ -1,9 +1,6 @@
-import { Control, control, controller, detectAccess, observer } from './control';
+import { Control, control, detectAccess, observer } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
-
-import type { Callback } from '../types';
 
 export const Parent = new WeakMap<{}, {}>();
 
@@ -28,53 +25,13 @@ export function getParent<T extends Model>(
 }
 
 export function getRecursive(key: string, from: Control){
-  const context = new WeakMap<Subscriber, {} | undefined>();
-  const { state } = from;
-
   return (source: Model) => {
-    const local = subscriber(source);
     const event = observer(source);
+    const value = from.state.get(key);
 
-    if(!local){
-      const value = state.get(key);
-
-      return event && value instanceof Model
-        ? detectAccess(value, event)
-        : value;
-    }
-
-    if(!context.has(local)){
-      let reset: Callback | undefined;
-
-      const init = () => {
-        if(reset)
-          reset();
-
-        const value = state.get(key);
-  
-        if(value && controller(value)){
-          const child = new Subscriber(value, local.onUpdate);
-  
-          if(local.active)
-            child.commit();
-  
-          local.dependant.add(child);
-          context.set(local, child.proxy);
-
-          reset = () => {
-            child.release();
-            local.dependant.delete(child);
-            context.set(local, undefined);
-            reset = undefined;
-          }
-        }
-      }
-  
-      local.follow(key, init);
-      init();
-    }
-
-    return context.get(local);
+    return event && value instanceof Model
+      ? detectAccess(value, event)
+      : value;
   }
 }
 

@@ -4,7 +4,6 @@ import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
-import { Subscriber } from './subscriber';
 
 import type { Callback, Class, Extends, InstanceOf, NoVoid } from '../types';
 
@@ -21,7 +20,6 @@ export const Oops = issues({
 
 declare namespace Model {
   export { Control };
-  export { Subscriber };
 
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new () => T;

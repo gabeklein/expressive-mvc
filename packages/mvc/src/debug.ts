@@ -1,9 +1,7 @@
 import { Control, controller } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
 
-const LOCAL = "__local";
 const STATE = "__state";
 const UPDATE = "__update";
 const CONTROL = "__control";
@@ -12,11 +10,6 @@ defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
       return controller(this);
-    }
-  },
-  [LOCAL]: {
-    get(this: Model){
-      return subscriber(this);
     }
   },
   [STATE]: {
@@ -31,28 +24,21 @@ defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      return (subscriber(this) || controller(this))!.latest;
+      return controller(this)!.latest;
     }
   }
 })
 
 const Debug = {
   CONTROL,
-  LOCAL,
   STATE,
   UPDATE
 } as {
-  /** Use to access Model's local Subscriber (if exists). */
-  LOCAL: "__local";
-
   /** Use to access snapshot of Model's current state. */
   STATE: "__state";
 
   /**
    * Use to access snapshot of Model's latest update.
-   * 
-   * Note: If used within a Subscriber, update will be narrowed to the specific keys
-   * which triggered a refresh (if one did).
    */
   UPDATE: "__update";
 
@@ -68,9 +54,6 @@ const Debug = {
 type Debug<T extends Model> = T & {
   /** Controller for this instance. */
   [CONTROL]?: Control<T>;
-
-  /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
-  [LOCAL]?: Subscriber<T>;
 
   /** Current state of this instance. */
   [STATE]?: Model.Export<T>;
