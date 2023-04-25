@@ -1,4 +1,4 @@
-import { getRecursive, Parent } from '../children';
+import { Parent } from '../children';
 import { control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
@@ -56,7 +56,6 @@ function use(
 
       let pending: Promise<any> | undefined;
       let error: any;
-      let get = (_source: Model) => state.get(key);
 
       if(typeof input === "function"){
         if("prototype" in input && input === input.prototype.constructor)
@@ -70,7 +69,6 @@ function use(
         state.set(key, next);
 
         if(next){
-          get = getRecursive(key, this);
           Parent.set(next, subject);
           control(next);
         }
@@ -123,7 +121,7 @@ function use(
 
       return {
         set: onUpdate,
-        get(source){
+        get(){
           if(pending)
             return suspend();
   
@@ -136,7 +134,7 @@ function use(
           if(pending)
             return suspend();
   
-          return get(source);
+          return state.get(key);
         }
       };
     }

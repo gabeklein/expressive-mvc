@@ -143,9 +143,11 @@ class Control<T extends Model = any> {
         if(event)
           subs.add(event);
 
-        return get
-          ? get(this)
-          : state.get(key);
+        const value = get ? get(this) : state.get(key);
+
+        return event && value instanceof Model
+          ? detect(value, event)
+          : value;
       }
     });
   }
@@ -200,6 +202,7 @@ class Control<T extends Model = any> {
       for(const callback of subs){
         const notify = callback(key, this);
 
+        // TODO: Is this necessary?
         if(notify === null)
           subs.delete(callback);
         else if(notify)

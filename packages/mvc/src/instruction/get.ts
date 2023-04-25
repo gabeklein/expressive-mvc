@@ -1,4 +1,4 @@
-import { getParent, getRecursive } from '../children';
+import { getParent } from '../children';
 import { Control, detect } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
@@ -100,7 +100,6 @@ function recursive(
   source: get.Source | undefined,
   required: boolean | undefined){
 
-  const get = getRecursive(key, parent);
   let waiting: boolean;
 
   if(source)
@@ -113,9 +112,11 @@ function recursive(
 
   waiting = true;
 
-  return (source: Model) => {
-    if(parent.state.get(key))
-      return get(source);
+  return () => {
+    const value = parent.state.get(key);
+
+    if(value)
+      return value;
 
     if(required !== false)
       parent.waitFor(key);

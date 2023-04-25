@@ -1,4 +1,4 @@
-import { Control, control, detect, observer } from './control';
+import { Control, control } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 
@@ -24,22 +24,10 @@ export function getParent<T extends Model>(
   return value;
 }
 
-export function getRecursive(key: string, from: Control){
-  return (source: Model) => {
-    const event = observer(source);
-    const value = from.state.get(key);
-
-    return event && value instanceof Model
-      ? detect(value, event)
-      : value;
-  }
-}
-
 export function setRecursive(
   on: Control, key: string, initial: Model
 ): Control.PropertyDescriptor {
   const expected = initial.constructor;
-  const get = getRecursive(key, on);
   const set = (next: Model | undefined) => {
     if(next instanceof expected){
       on.state.set(key, next);
@@ -53,5 +41,5 @@ export function setRecursive(
 
   set(initial);
   
-  return { get, set };
+  return { set };
 }

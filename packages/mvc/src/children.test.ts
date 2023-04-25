@@ -60,7 +60,7 @@ it('will subscribe to child controllers', async () => {
   
   expect(effect).toBeCalledWith("bar", "foo");
   effect.mockClear();
-})
+});
 
 it('will only assign matching model', () => {
   class Child extends Model {}
