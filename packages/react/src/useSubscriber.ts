@@ -27,7 +27,7 @@ export function useSubscriber<T extends Model>(
 }
 
 export function useComputed<T extends Model, R>(
-  factory: ((callback: (got: T) => void) => void),
+  source: ((callback: (got: T) => void) => void),
   getter: Model.GetCallback<T, any>,
   required?: boolean){
 
@@ -35,29 +35,16 @@ export function useComputed<T extends Model, R>(
     let resolve: (() => void) | undefined;
     let update: (() => void) | undefined | null;
     let isFactory: true | undefined;
+    let proxy!: T;
 
     let compute: (() => R | undefined) | undefined =
       () => getter.call(proxy, proxy, forceUpdate)
 
-    let instance!: T;
-    factory($ => instance = $);
-
-    const proxy = Control.sub(instance, () => isFactory ? null : update);
-    const commit = () => () => { update = null };
-    const subscribe = () => ({
-      commit,
-      get proxy(){
-        if(value !== undefined)
-          return value;
-
-        if(required)
-          throw new Promise<void>(res => {
-            resolve = res;
-          });
-
-        return null;
-      }
-    })
+    source(got => {
+      proxy = Control.sub(got, () => {
+        return isFactory ? null : update;
+      });
+    });
 
     let refresh = () => next(subscribe);
     let value = compute();
@@ -75,9 +62,9 @@ export function useComputed<T extends Model, R>(
     if(typeof value == "function"){
       const get = value;
       
-      isFactory = true;
       Control.sub(proxy, () => update)
 
+      isFactory = true;
       getter = () => get();
       value = get();
     }
@@ -97,6 +84,27 @@ export function useComputed<T extends Model, R>(
     }
 
     return subscribe();
+
+    function subscribe(){
+      return {
+        commit(){
+          return () => {
+            update = null;
+          }
+        },
+        get proxy(){
+          if(value !== undefined)
+            return value;
+  
+          if(required)
+            throw new Promise<void>(res => {
+              resolve = res;
+            });
+  
+          return null;
+        }
+      }
+    }
 
     function forceUpdate(): void;
     function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
