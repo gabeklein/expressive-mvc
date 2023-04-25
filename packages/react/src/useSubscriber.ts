@@ -31,12 +31,12 @@ export function useComputed<T extends Model, R>(
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const [state, next] = useState(() => {
-    let ready: (() => void) | undefined;
+  const [state, push] = useState(() => {
+    let suspense: (() => void) | undefined;
     let update: (() => void) | undefined | null;
     let value: R | undefined;
 
-    let subscribe = (): {
+    let next = (): {
       commit?: React.EffectCallback;
       proxy?: R | null;
     } => ({
@@ -51,7 +51,7 @@ export function useComputed<T extends Model, R>(
 
         if(required)
           throw new Promise<void>(res => {
-            ready = res;
+            suspense = res;
           });
 
         return null;
@@ -59,7 +59,6 @@ export function useComputed<T extends Model, R>(
     })
 
     let getValue: (() => R | undefined) | undefined;
-    let refresh = () => next(subscribe);
     let factory: true | undefined;
     let proxy!: T;
 
@@ -70,8 +69,7 @@ export function useComputed<T extends Model, R>(
     });
 
     if(value === null){
-      refresh = () => next({});
-      subscribe = () => ({});
+      next = () => ({});
       getValue = undefined;
       update = null;
     }
@@ -86,7 +84,7 @@ export function useComputed<T extends Model, R>(
       value = get();
     }
 
-    if(value instanceof Promise) {
+    if(value instanceof Promise){
       update = null;
       value.then(didUpdate);
       value = undefined;
@@ -99,15 +97,15 @@ export function useComputed<T extends Model, R>(
           didUpdate(next);
       };
 
-    function didUpdate(next: any){
-      value = next;
+    function didUpdate(got: any){
+      value = got;
 
-      if(ready) {
-        ready();
-        ready = undefined;
+      if(suspense){
+        suspense();
+        suspense = undefined;
       }
       else
-        refresh();
+        push(next);
     };
 
     function forceUpdate(): void;
@@ -119,13 +117,13 @@ export function useComputed<T extends Model, R>(
       if(getValue)
         didUpdate(getValue());
       else
-        refresh();
+        push(next);
 
       if(passthru)
-        return passthru.finally(refresh);
+        return passthru.finally(() => push(next));
     }
 
-    return subscribe();
+    return next();
   });
 
   if(!state.commit)
