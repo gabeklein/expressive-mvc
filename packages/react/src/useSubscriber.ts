@@ -5,8 +5,8 @@ export function useSubscriber<T extends Model>(
   getInstance: (cb: (got: T) => void) => void){
     
   const state = useState(() => {
-    let refresh: (() => void) | undefined;
     const next = () => state[1]({ commit, proxy });
+    let refresh: (() => void) | undefined;
     let proxy!: T;
 
     getInstance(got => {
@@ -28,35 +28,52 @@ export function useSubscriber<T extends Model>(
 
 export function useComputed<T extends Model, R>(
   source: ((callback: (got: T) => void) => void),
-  getter: Model.GetCallback<T, any>,
+  compute: Model.GetCallback<T, any>,
   required?: boolean){
 
   const [state, next] = useState(() => {
-    let resolve: (() => void) | undefined;
+    let ready: (() => void) | undefined;
     let update: (() => void) | undefined | null;
-    let isFactory: true | undefined;
+    let value: R | undefined;
+
+    let subscribe = (): {
+      commit?: React.EffectCallback;
+      proxy?: R | null;
+    } => ({
+      commit(){
+        return () => {
+          update = null;
+        }
+      },
+      get proxy(){
+        if(value !== undefined)
+          return value;
+
+        if(required)
+          throw new Promise<void>(res => {
+            ready = res;
+          });
+
+        return null;
+      }
+    })
+
+    let getValue: (() => R | undefined) | undefined;
+    let refresh = () => next(subscribe);
+    let factory: true | undefined;
     let proxy!: T;
 
-    let compute: (() => R | undefined) | undefined =
-      () => getter.call(proxy, proxy, forceUpdate)
-
     source(got => {
-      proxy = Control.sub(got, () => {
-        return isFactory ? null : update;
-      });
+      proxy = Control.sub(got, () => factory ? null : update);
+      getValue = () => compute.call(proxy, proxy, forceUpdate);
+      value = getValue();
     });
-
-    let refresh = () => next(subscribe);
-    let value = compute();
 
     if(value === null){
       refresh = () => next({});
-      compute = undefined;
+      subscribe = () => ({});
+      getValue = undefined;
       update = null;
-      return {} as {
-        commit?: React.EffectCallback;
-        proxy?: R | null;
-      };
     }
 
     if(typeof value == "function"){
@@ -64,8 +81,8 @@ export function useComputed<T extends Model, R>(
       
       Control.sub(proxy, () => update)
 
-      isFactory = true;
-      getter = () => get();
+      factory = true;
+      compute = () => get();
       value = get();
     }
 
@@ -74,37 +91,24 @@ export function useComputed<T extends Model, R>(
       value.then(didUpdate);
       value = undefined;
     }
-    else {
+    else
       update = () => {
-        const next = compute!();
+        const next = getValue!();
 
         if(notEqual(value, next))
           didUpdate(next);
       };
-    }
 
-    return subscribe();
+    function didUpdate(next: any){
+      value = next;
 
-    function subscribe(){
-      return {
-        commit(){
-          return () => {
-            update = null;
-          }
-        },
-        get proxy(){
-          if(value !== undefined)
-            return value;
-  
-          if(required)
-            throw new Promise<void>(res => {
-              resolve = res;
-            });
-  
-          return null;
-        }
+      if(ready) {
+        ready();
+        ready = undefined;
       }
-    }
+      else
+        refresh();
+    };
 
     function forceUpdate(): void;
     function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
@@ -112,8 +116,8 @@ export function useComputed<T extends Model, R>(
       if(typeof passthru == "function")
         passthru = passthru();
 
-      if(compute)
-        didUpdate(compute());
+      if(getValue)
+        didUpdate(getValue());
       else
         refresh();
 
@@ -121,23 +125,13 @@ export function useComputed<T extends Model, R>(
         return passthru.finally(refresh);
     }
 
-    function didUpdate(next: any){
-      value = next;
-
-      if(resolve) {
-        resolve();
-        resolve = undefined;
-      }
-      else
-        refresh();
-    };
+    return subscribe();
   });
 
-  if(state.proxy === undefined)
+  if(!state.commit)
     return null;
 
-  if(state.commit)
-    useLayoutEffect(state.commit, []);
+  useLayoutEffect(state.commit, []);
 
   return state.proxy;
 }
