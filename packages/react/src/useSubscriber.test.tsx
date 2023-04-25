@@ -15,8 +15,10 @@ class Singleton extends Model {
     return this.instance = super.new();
   }
 
-  static has(cb: (found: Model) => void){
-    return cb(this.instance || this.new());
+  static has(){
+    return (cb: (found: Model) => void) => {
+      cb(this.instance || this.new());
+    }
   }
 }
 

@@ -586,10 +586,12 @@ describe("fetch mode", () => {
 describe("async", () => {
   class Test extends Model {
     /** Override method to simplify tests. */
-    static has(callback: (x: Model) => void){
-      setTimeout(() => {
-        callback(this.new());
-      }, 0);
+    static has(){
+      return (callback: (x: Model) => void) => {
+        setTimeout(() => {
+          callback(this.new());
+        }, 0);
+      }
     }
   }
   

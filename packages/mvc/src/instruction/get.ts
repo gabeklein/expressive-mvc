@@ -81,9 +81,7 @@ function get<R, T extends Model>(
         if(parent)
           subject = parent;
         else
-          source = callback => {
-            arg0.has(callback, arg1 !== false, subject);
-          }
+          source = arg0.has(arg1 !== false, subject);
       }
 
       else if(typeof arg0 == "function")

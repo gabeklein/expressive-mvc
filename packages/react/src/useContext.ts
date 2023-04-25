@@ -16,43 +16,50 @@ export function useContext <T extends Model> (
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
 
-  let model!: T;
-  
-  this.has($ => model = $, arg1 !== false);
-      
-  if(typeof arg1 == "boolean")
+  const factory = this.has(arg1 !== false);
+
+  if(typeof arg1 == "boolean"){
+    let model!: T;
+    factory($ => model = $);
     return model;
+  }
 
   if(!arg1)
-    return useSubscriber(model);
+    return useSubscriber(factory);
+
+  let model!: T;
+  factory($ => model = $);
 
   return useComputed(model, arg1, arg2);
 }
 
 export function hasContext<T extends Model>(
   this: Model.Type<T>,
-  callback: (got: T) => void,
   required?: boolean | undefined,
   relativeTo?: Model
-){
-  if(relativeTo){
-    let pending = Pending.get(relativeTo);
+): any {
+  if(relativeTo)
+    return (callback: (got: T) => void) => {
+      let pending = Pending.get(relativeTo);
+      
+      if(!pending)
+        Pending.set(relativeTo, pending = []);
     
-    if(!pending)
-      Pending.set(relativeTo, pending = []);
-  
-    pending.push(context => {
-      const got = context.get<T>(this, false);
-  
-      if(got)
-        callback(got);
-      else if(required)
-        throw Oops.AmbientRequired(this, relativeTo);
-    })
-  }
-  else {
-    const got = useAmbient().get(this, required);
-  
+      pending.push(context => {
+        const got = context.get<T>(this, false);
+    
+        if(got)
+          callback(got);
+        else if(required)
+          throw Oops.AmbientRequired(this, relativeTo);
+      })
+    }
+
+  const context = useAmbient()
+
+  return (callback?: (got: T) => void) => {
+    const got = context.get(this, required);
+
     if(callback && got)
       callback(got);
   }

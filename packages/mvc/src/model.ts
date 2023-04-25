@@ -247,10 +247,10 @@ class Model {
     return instance;
   }
 
-  static has <T extends Model> (this: Model.Class<T>, callback?: (got: T) => void, required?: boolean, relativeTo?: Model): void;
-  static has <T extends Model> (this: Model.Type<T>, callback?: (got: T | undefined) => void, required?: false, relativeTo?: Model): void;
+  static has <T extends Model> (this: Model.Class<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
+  static has <T extends Model> (this: Model.Type<T>, required?: false, relativeTo?: Model): (callback: (got: T | undefined) => void) => void;
 
-  static has(_callback?: (got: Model | undefined) => void, required?: false, relativeTo?: Model){
+  static has(required?: false, relativeTo?: Model): any {
     if(!relativeTo)
       throw Oops.NoAdapter("has");
 

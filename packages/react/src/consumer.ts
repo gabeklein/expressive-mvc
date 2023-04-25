@@ -52,7 +52,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const callback = has || get;
 
   if(typeof callback == "function")
-    type.has(callback, !!has);
+    type.has(!!has)(callback);
   else
     throw Oops.BadProps()
 

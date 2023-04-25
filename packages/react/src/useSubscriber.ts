@@ -1,24 +1,29 @@
 import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-export function useSubscriber<T extends Model>(instance: T){
-  const state = useState(0);
-  const local = useMemo(() => {
+export function useSubscriber<T extends Model>(
+  getInstance: (cb: (got: T) => void) => void){
+    
+  const state = useState(() => {
     let refresh: (() => void) | undefined;
-    const proxy = Control.sub(instance, () => refresh);
+    const next = () => state[1]({ commit, proxy });
+    let proxy!: T;
 
-    return {
-      proxy,
-      commit(){
-        refresh = state[1].bind(null, x => x+1);
-        return () => refresh = undefined;
-      }
+    getInstance(got => {
+      proxy = Control.sub(got, () => refresh);
+    })
+
+    const commit = () => {
+      refresh = next;
+      return () => refresh = undefined;
     }
-  }, [instance]);
 
-  useLayoutEffect(local.commit, [instance]);
+    return { commit, proxy }
+  });
 
-  return local.proxy;
+  useLayoutEffect(state[0].commit, []);
+
+  return state[0].proxy;
 }
 
 export function useComputed<T extends Model, R>(
