@@ -40,6 +40,23 @@ describe("hook", () => {
     render.unmount();
     expect(didDestroy).toBeCalled();
   })
+
+  it("will ignore updates after unmount", async () => {
+    const render = renderHook(() => {
+      const test = Test.use();
+      void test.value;
+      return test.is;
+    });
+
+    const test = render.result.current;
+
+    test.value = "bar";
+
+    await render.waitForNextUpdate();
+
+    render.unmount();
+    test.value = "baz";
+  })
 })
 
 describe("subscription", () => {

@@ -30,8 +30,8 @@ export function detect<T extends Model>(
 function flushEvents(on: Control){
   const { frame, waiting } = on;
   const keys = on.latest = Array.from(frame);
-  setTimeout(() => on.latest = undefined, 0);
 
+  setTimeout(() => on.latest = undefined, 0);
   frame.clear();
 
   waiting.forEach(notify => {

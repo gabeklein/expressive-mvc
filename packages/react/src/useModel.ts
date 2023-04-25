@@ -56,16 +56,13 @@ function useModel <T extends Model> (
 
   const state = useState(0);
   const local = useMemo(() => {
-    const control = Control.get(instance)!;
-    const update = () => state[1](x => x+1);
     let refresh: (() => void) | undefined;
     let done: undefined | boolean;
 
+    const control = Control.get(instance)!;
+    const update = () => state[1](x => x+1);
     const proxy = Control.sub(instance, () => {
-      if(done)
-        throw 0;
-
-      return refresh;
+      return done ? null : refresh;
     });
 
     function apply(values: Model.Compat<T>){
