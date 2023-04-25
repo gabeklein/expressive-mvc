@@ -61,6 +61,40 @@ describe("explicit", () => {
     expect(effect).toBeCalledTimes(2);
   })
 
+  it.skip("will not update for removed children", async() => {
+    class Nested extends Model {
+      value = 1;
+    }
+  
+    class Test extends Model {
+      nested = new Nested();
+    }
+  
+    const test = Test.new();
+    const effect = jest.fn((state: Test) => {
+      void state.nested.value;
+    });
+  
+    test.on(effect);
+    expect(effect).toBeCalledTimes(1);
+
+    test.nested.value++;
+    await expect(test.nested).toUpdate();
+    expect(effect).toBeCalledTimes(2);
+
+    const old = test.nested;
+  
+    test.nested = Nested.new();
+    await expect(test).toUpdate();
+    // Updates because nested property is new.
+    expect(effect).toBeCalledTimes(3);
+
+    old.value++;
+    await expect(old).toUpdate();
+    // Should not update on new event from previous.
+    expect(effect).toBeCalledTimes(3);
+  })
+
   it('will squash simultaneous updates', async () => {
     const state = TestValues.new();
     const mock = jest.fn();
