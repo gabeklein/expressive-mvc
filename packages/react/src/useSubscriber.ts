@@ -1,5 +1,5 @@
 import { Control, Model } from '@expressive/mvc';
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 export function useSubscriber<T extends Model>(
   getInstance: (cb: (got: T) => void) => void){
@@ -27,35 +27,56 @@ export function useSubscriber<T extends Model>(
 }
 
 export function useComputed<T extends Model, R>(
-  instance: T,
+  factory: ((callback: (got: T) => void) => void),
   getter: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const state = useState(0);
-  const local = useMemo(() => {
+  const [state, next] = useState(() => {
     let resolve: (() => void) | undefined;
     let update: (() => void) | undefined | null;
     let isFactory: true | undefined;
 
-    const refresh = state[1].bind(null, x => x+1);
-    const spy = Control.sub(instance, () => isFactory ? null : update);
-
     let compute: (() => R | undefined) | undefined =
-      () => getter.call(spy, spy, forceUpdate)
+      () => getter.call(proxy, proxy, forceUpdate)
 
+    let instance!: T;
+    factory($ => instance = $);
+
+    const proxy = Control.sub(instance, () => isFactory ? null : update);
+    const commit = () => () => { update = null };
+    const subscribe = () => ({
+      commit,
+      get proxy(){
+        if(value !== undefined)
+          return value;
+
+        if(required)
+          throw new Promise<void>(res => {
+            resolve = res;
+          });
+
+        return null;
+      }
+    })
+
+    let refresh = () => next(subscribe);
     let value = compute();
 
     if(value === null){
+      refresh = () => next({});
       compute = undefined;
       update = null;
-      return;
+      return {} as {
+        commit?: React.EffectCallback;
+        proxy?: R | null;
+      };
     }
 
     if(typeof value == "function"){
       const get = value;
       
       isFactory = true;
-      Control.sub(spy, () => update)
+      Control.sub(proxy, () => update)
 
       getter = () => get();
       value = get();
@@ -75,22 +96,7 @@ export function useComputed<T extends Model, R>(
       };
     }
 
-    return {
-      commit: () => () => {
-        update = null;
-      },
-      get proxy(){
-        if(value !== undefined)
-          return value;
-
-        if(required)
-          throw new Promise<void>(res => {
-            resolve = res;
-          });
-
-        return null;
-      }
-    };
+    return subscribe();
 
     function forceUpdate(): void;
     function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
@@ -117,14 +123,15 @@ export function useComputed<T extends Model, R>(
       else
         refresh();
     };
-  }, [instance]);
+  });
 
-  if(!local)
+  if(state.proxy === undefined)
     return null;
 
-  useLayoutEffect(local.commit, [instance]);
+  if(state.commit)
+    useLayoutEffect(state.commit, []);
 
-  return local.proxy;
+  return state.proxy;
 }
 
 /** Values are not equal for purposes of a refresh. */

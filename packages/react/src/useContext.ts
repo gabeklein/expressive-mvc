@@ -24,13 +24,9 @@ export function useContext <T extends Model> (
     return model;
   }
 
-  if(!arg1)
-    return useSubscriber(factory);
-
-  let model!: T;
-  factory($ => model = $);
-
-  return useComputed(model, arg1, arg2);
+  return arg1
+    ? useComputed(factory, arg1, arg2)
+    : useSubscriber(factory);
 }
 
 export function hasContext<T extends Model>(
