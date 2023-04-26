@@ -99,7 +99,7 @@ describe("callback", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.on();
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith("bar");
   })
 

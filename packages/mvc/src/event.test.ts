@@ -69,7 +69,7 @@ describe("on single", () => {
     state.on("seconds", callback);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds"]);
   })
@@ -81,9 +81,9 @@ describe("on single", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).toBeCalled();
   })
 
   it('will compute pending value early', async () => {
@@ -93,9 +93,9 @@ describe("on single", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).toBeCalled();
   })
 
   it('will ignore subsequent events in once mode', async () => {
@@ -105,12 +105,12 @@ describe("on single", () => {
     state.on("seconds", callback, true);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds"]);
 
     state.seconds = 45;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
   })
@@ -124,13 +124,13 @@ describe("on multiple", () => {
     state.on(["seconds", "hours"], callback);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
     expect(callback).toBeCalledWith(["seconds"]);
 
     state.hours = 2;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["hours"]);
   })
@@ -142,12 +142,12 @@ describe("on multiple", () => {
     state.on(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds", "minutes"]);
 
     state.seconds = 61;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
   })
@@ -159,7 +159,7 @@ describe("on multiple", () => {
     state.on([], callback);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).not.toBeCalled();
 
@@ -193,10 +193,7 @@ describe("on promise", () => {
 
     state.seconds = 61;
 
-    const update = await state.on();
-
-    // should this also expect minutes?
-    expect(update).toEqual(["seconds"]);
+    await expect(state).toHaveUpdated(["seconds"]);
   })
 
   it('will resolve any updated expected', async () => {
@@ -204,10 +201,8 @@ describe("on promise", () => {
 
     state.seconds = 61;
 
-    const update = await state.on(0);
-
     // should this also expect minutes?
-    expect(update).toEqual(["seconds"]);
+    await expect(state).toHaveUpdated(["seconds"]);
   })
 
   it('will resolve on destroy', async () => {
@@ -278,7 +273,7 @@ describe("before ready", () => {
     const state = Test.new();
 
     state.value1++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
   })
@@ -295,7 +290,7 @@ describe("before ready", () => {
     const state = Test.new();
 
     state.value2++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
   })

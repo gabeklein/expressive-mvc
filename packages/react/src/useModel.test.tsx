@@ -182,15 +182,11 @@ describe("import", () => {
 
     expect(instance).toBeInstanceOf(Test);
 
-    const update = instance.on();
-
     rendered.update(
       <TestComponent foo="foo" bar="bar" />
     );
 
-    expect(await update).toEqual(
-      expect.arrayContaining(["foo", "bar"])
-    );
+    await expect(instance).toHaveUpdated(["foo", "bar"]);
   })
 
   it("will override (untracked) arrow functions", () => {
