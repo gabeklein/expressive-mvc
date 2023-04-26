@@ -7,7 +7,7 @@ import { suspend } from './suspense';
 
 import type { Callback } from '../types';
 
-export type Observer = (key: string | null, from: Control) => ((keys: string[]) => void) | null | void;
+export type Observer = (key: string | null, from: Control) => (() => void) | null | void;
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
@@ -27,21 +27,21 @@ export function detect<T extends Model>(on: T, cb: Observer): T {
 
 function flushEvents(on: Control){
   const { frame, waiting } = on;
-  const keys = on.latest = Array.from(frame);
 
+  on.latest = Array.from(frame);
   setTimeout(() => on.latest = undefined, 0);
   frame.clear();
 
   waiting.forEach(notify => {
-    waiting.delete(notify);
-
     try {
-      notify(keys);
+      notify();
     }
     catch(err){
       console.error(err);
     }
   })
+
+  waiting.clear();
 }
 
 declare namespace Control {
@@ -49,10 +49,7 @@ declare namespace Control {
    * Called immediately when any key is changed or emitted.
    * Returned callback is notified when update is complete.
    */
-  type OnSync<T = any> = (key: Model.Event<T> | null, source: Control) => OnAsync<T> | void;
-
-  /** Called at the end of an event frame with all keys affected. */
-  type OnAsync<T = any> = (keys: Model.Event<T>[]) => void;
+  type OnSync<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
 
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
@@ -80,7 +77,7 @@ declare namespace Control {
 class Control<T extends Model = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
-  public waiting = new Set<Control.OnAsync<T>>();
+  public waiting = new Set<Callback>();
   public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
   public observers: Map<string | null, Set<Observer>> = new Map([[null, new Set()]]);
@@ -268,7 +265,7 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
     control.waiting = new Set();
 
     for(const cb of waiting)
-      cb([]);
+      cb();
   }
 
   return cb ? cb(control) : control;

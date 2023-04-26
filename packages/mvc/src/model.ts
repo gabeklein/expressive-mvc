@@ -222,7 +222,7 @@ class Model {
         if(!callback)
           throw Oops.NoChaining();
 
-        controller.waiting.add(callback);
+        controller.waiting.add(() => callback(controller.latest!));
       }
     }
   }

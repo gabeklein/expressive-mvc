@@ -29,7 +29,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
           if(required)
             removeListener();
 
-          return callback.bind(source);
+          return () => callback.call(source, self.latest!);
         }
       });
 
@@ -64,7 +64,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
     }
 
     if(!keys)
-      self.waiting.add(resolve);
+      self.waiting.add(() => resolve(self.latest));
 
     else if(keys.length)
       for(const key of keys)
@@ -72,7 +72,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
           try { void source[key as keyof T] }
           catch(e){}
 
-    const remove =  self.addListener(key => {
+    const remove = self.addListener(key => {
       if(!key){
         if(keys && !keys.length)
           resolve([]);
@@ -83,8 +83,8 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
       else if(!keys || keys.includes(key as P)){
         remove();
-        return keys =>
-          resolve(single ? self.state.get(key) : keys)
+        return () =>
+          resolve(single ? self.state.get(key) : self.latest)
       }
     });
 
