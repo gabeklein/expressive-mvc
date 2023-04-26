@@ -214,7 +214,7 @@ class Control<T extends Model = any> {
   }
 
   clear(){
-    this,this.followers.forEach(x => x(null, this));
+    this.followers.forEach(x => x(null, this));
     this.followers.clear();
 
     this.observers.forEach(subs => {
