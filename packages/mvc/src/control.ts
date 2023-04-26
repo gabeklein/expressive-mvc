@@ -7,7 +7,7 @@ import { suspend } from './suspense';
 
 import type { Callback } from '../types';
 
-export type Observer = (key: string | null, from: Control) => Callback | null | void;
+export type Observer = (key: string | null, from: Control) => ((keys: string[]) => void) | null | void;
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
@@ -16,9 +16,7 @@ export function observer<T extends Model>(from: T){
   return OBSERVER.get(from);
 }
 
-export function detect<T extends Model>(
-  on: T, cb: Observer): T {
-
+export function detect<T extends Model>(on: T, cb: Observer): T {
   if(!on.hasOwnProperty("is"))
     on = defineProperty(Object.create(on), "is", { value: on });
 
@@ -69,7 +67,7 @@ declare namespace Control {
     | void;
 
   type Getter<T> = (source: Model) => T;
-    type Setter<T> = (value: T) => boolean | void;
+  type Setter<T> = (value: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
       enumerable?: boolean;
@@ -85,7 +83,7 @@ class Control<T extends Model = any> {
   public waiting = new Set<Control.OnAsync<T>>();
   public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
-  public observers = new Map<string, Set<Observer>>();
+  public observers: Map<string | null, Set<Observer>> = new Map([[null, new Set()]]);
 
   constructor(
     public subject: T,
@@ -218,10 +216,13 @@ class Control<T extends Model = any> {
   }
 
   clear(){
-    const listeners = [ ...this.followers ];
-
+    this,this.followers.forEach(x => x(null, this));
     this.followers.clear();
-    listeners.forEach(x => x(null, this));
+
+    this.observers.forEach(subs => {
+      subs.forEach(fn => fn(null, this));
+    });
+    this.observers.clear();
   }
 
   static get = controller;

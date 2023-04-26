@@ -20,3 +20,24 @@ it("will seem to throw error outside react", () => {
 
   expect(String(didThrow)).toBe(String(expected));
 })
+
+it("will reject if model destroyed before resolved", async () => {
+  class Test extends Model {
+    value = set<never>();
+  }
+
+  const instance = Test.new();
+  const expected = Suspense.Destoryed();
+  let didThrow: Promise<any> | undefined;
+
+  try {
+    void instance.value;
+  }
+  catch(err: any){
+    didThrow = err;
+  }
+
+  instance.gc();
+
+  await expect(didThrow).rejects.toThrow(expected);
+})

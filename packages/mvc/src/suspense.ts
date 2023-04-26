@@ -6,6 +6,8 @@ import { Model } from './model';
 export const Oops = issues({
   NotReady: (model, key) =>
     `Value ${model}.${key} value is not yet available.`,
+
+  Destoryed: () => "Model is destroyed."
 })
 
 export function suspend(
@@ -13,16 +15,21 @@ export function suspend(
 
   const error = Oops.NotReady(source.subject, key);
 
-  const promise = new Promise<void>(resolve => {
-    const release = source.addListener(forKey => {
-      if(forKey == key)
+  const promise = new Promise<void>((resolve, reject) => {
+    const subs = source.observers.get(key)!;
+    const onUpdate = (key: string | null) => {
+      if(key)
         return () => {
           if(source.state.get(key) !== undefined){
-            release();
+            subs.delete(onUpdate);
             resolve();
           }
-        }
-    });
+        };
+
+      reject(Oops.Destoryed());
+    }
+
+    subs.add(onUpdate)
   });
 
   return assign(promise, {
