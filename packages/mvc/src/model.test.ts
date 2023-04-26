@@ -205,8 +205,9 @@ describe("import", () => {
     expect(test.foo).toBe(0);
     expect(test.bar).toBe(1);
 
-    const keys = await test.set(values);
-    expect(keys).toEqual(["foo", "bar"]);
+    test.set(values);
+
+    await expect(test).toHaveUpdated(["foo", "bar"]);
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
@@ -214,9 +215,10 @@ describe("import", () => {
 
   it("will assign specific values", async () => {
     const test = Test.new();
-    const keys = await test.set(values, ["foo"]);
+    
+    test.set(values, ["foo"]);
 
-    expect(keys).toEqual(["foo"]);
+    await expect(test).toHaveUpdated(["foo"]);
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(1);
@@ -225,9 +227,10 @@ describe("import", () => {
   it("will force assign values from source", async () => {
     const test = Test.new();
     const baz = test.on("baz");
-    const keys = await test.set(values, true);
 
-    expect(keys).toEqual(["foo", "bar", "baz"]);
+    test.set(values, true);
+
+    await expect(test).toHaveUpdated(["foo", "bar", "baz"]);
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);

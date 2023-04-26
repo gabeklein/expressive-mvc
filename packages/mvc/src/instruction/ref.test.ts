@@ -68,11 +68,11 @@ describe("property", () => {
   
     state.ref3.current = 1;
   
-    await state.on();
+    await expect(state).toUpdate();
     expect(state.didTrigger).not.toBeCalled();
     state.ref3.current = 2;
   
-    await state.on();
+    await expect(state).toUpdate();
     expect(state.didTrigger).toBeCalledWith(true);
   })
   

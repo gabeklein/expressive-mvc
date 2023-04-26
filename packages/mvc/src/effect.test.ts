@@ -83,7 +83,7 @@ describe("explicit", () => {
     expect(mock).not.toBeCalled();
 
     state.value1 = 2;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
   })
@@ -100,12 +100,12 @@ describe("explicit", () => {
     const state = Test.new();
 
     state.value1++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
 
     state.value3++;
-    await state.on();
+    await expect(state).toUpdate();
 
     // expect pre-existing listener to hit
     expect(mock).toBeCalledTimes(3);
@@ -183,14 +183,14 @@ describe("implicit", () => {
     });
 
     state.value1 = 2;
-    await state.on();
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.on();
+    await expect(state).toUpdate();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.on();
+    await expect(state).toUpdate();
 
     /**
      * must invoke once to detect subscription
@@ -218,14 +218,14 @@ describe("implicit", () => {
     state.on(testEffect);
 
     state.value1 = 2;
-    await state.on();
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.on();
+    await expect(state).toUpdate();
 
     state.value2 = 4;
     state.value3 = 4;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalledTimes(4);
   })
@@ -288,12 +288,12 @@ describe("implicit", () => {
     expect(mock).toBeCalled();
 
     state.value1++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalledTimes(2);
 
     state.value3++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalledTimes(3);
   })
