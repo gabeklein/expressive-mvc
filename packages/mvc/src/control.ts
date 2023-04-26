@@ -93,12 +93,10 @@ class Control<T extends Model = any> {
   }
 
   init(){
-    const { subject } = this;
-    
     this.state = new Map();
 
-    for(const key in subject){
-      const { value } = getOwnPropertyDescriptor(subject, key)!;
+    for(const key in this.subject){
+      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
   
       if(typeof value == "function")
         continue;
