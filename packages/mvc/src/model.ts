@@ -147,7 +147,7 @@ class Model {
       return awaitUpdate(this.is, arg1, arg2 as number);
 
     if(arg1)
-      return addEventListener(this.is, arg1 as P | P[], arg2, arg3);
+      return addEventListener(this.is, arg1, arg2, arg3);
   }
 
   get(): Model.Export<this>;

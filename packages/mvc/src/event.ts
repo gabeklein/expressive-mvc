@@ -9,28 +9,27 @@ export const Oops = issues({
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
-  arg1: P | P[],
-  arg2: (this: T, keys: Model.Event<T>[]) => void,
-  arg3?: boolean){
+  select: P | P[],
+  callback: (this: T, keys: Model.Event<T>[]) => void,
+  required?: boolean){
 
-  if(typeof arg1 == "string")
-    arg1 = [arg1];
+  const keys = typeof select == "object" ? select : [select];
 
   return control(source, self => {
-    for(const key of arg1)
+    for(const key of keys)
       try { void (source as any)[key] }
       catch(e){}
 
     const removeListener =
       self.addListener(key => {
-        if(!key && !arg1.length)
-          arg2.call(source, []);
+        if(!key && !keys.length)
+          callback.call(source, []);
           
-        if(arg1.includes(key as P)){
-          if(arg3)
+        if(keys.includes(key as P)){
+          if(required)
             removeListener();
 
-          return arg2.bind(source);
+          return callback.bind(source);
         }
       });
 
