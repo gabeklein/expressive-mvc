@@ -51,7 +51,7 @@ const Debug = {
  * 
  * These properties always exist at runtime, however are hidden unless you cast your Model as `Debug<T>`.
  */
-type Debug<T extends Model> = T & {
+type Debug<T extends Model = Model> = T & {
   /** Controller for this instance. */
   [CONTROL]?: Control<T>;
 
