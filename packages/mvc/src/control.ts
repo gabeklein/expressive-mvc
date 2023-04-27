@@ -12,6 +12,25 @@ export type Observer = (key: string | null, from: Control) => (() => void) | nul
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 
+const WAITING = new Set<Callback>();
+
+export function setPending(event: Callback, passive?: boolean){
+  if(!WAITING.size && !passive)
+    setTimeout(() => {
+      WAITING.forEach(notify => {
+        try {
+          notify();
+        }
+        catch(err){
+          console.error(err);
+        }
+      });
+      WAITING.clear();
+    }, 0);
+
+  WAITING.add(event);
+}
+
 export function observer<T extends Model>(from: T){
   return OBSERVER.get(from);
 }
@@ -165,12 +184,13 @@ class Control<T extends Model = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      setTimeout(() => {
-        flushComputed(this);  
-
+      waiting.add(() => {
+        flushComputed(this);
         this.latest = Array.from(frame);
         frame.clear();
+      })
 
+      setPending(() => {
         waiting.forEach(notify => {
           try {
             notify();
@@ -180,7 +200,7 @@ class Control<T extends Model = any> {
           }
         })
         waiting.clear();
-      }, 0);
+      })
     }
   
     frame.add(key);
