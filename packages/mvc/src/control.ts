@@ -25,25 +25,6 @@ export function detect<T extends Model>(on: T, cb: Observer): T {
   return on;
 }
 
-function flushEvents(on: Control){
-  const { frame, waiting } = on;
-
-  on.latest = Array.from(frame);
-  setTimeout(() => on.latest = undefined, 0);
-  frame.clear();
-
-  waiting.forEach(notify => {
-    try {
-      notify();
-    }
-    catch(err){
-      console.error(err);
-    }
-  })
-
-  waiting.clear();
-}
-
 declare namespace Control {
   /**
    * Called immediately when any key is changed or emitted.
@@ -181,11 +162,26 @@ class Control<T extends Model = any> {
     if(frame.has(key))
       return;
   
-    if(!frame.size)
+    if(!frame.size){
+      this.latest = undefined;
+
       setTimeout(() => {
         flushComputed(this);  
-        flushEvents(this);
+
+        this.latest = Array.from(frame);
+        frame.clear();
+
+        waiting.forEach(notify => {
+          try {
+            notify();
+          }
+          catch(err){
+            console.error(err);
+          }
+        })
+        waiting.clear();
       }, 0);
+    }
   
     frame.add(key);
 
