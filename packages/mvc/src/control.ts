@@ -174,6 +174,7 @@ class Control<T extends Model = any> {
       waiting.add(() => {
         flushComputed(this);
         this.latest = Array.from(frame);
+        this.update("");
         frame.clear();
       })
 

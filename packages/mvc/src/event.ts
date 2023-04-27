@@ -21,7 +21,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
       catch(e){}
 
     const cb: Control.OnSync = key => {
-      if(!key && !keys.length)
+      if(key === null && !keys.length)
         callback.call(source, []);
         
       if(keys.includes(key as P)){
@@ -45,7 +45,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   arg1?: P | P[],
   arg2?: number){
 
-  const single = typeof arg1 == "string";
+  const single = arg1 && typeof arg1 == "string";
   const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
 
   return new Promise<any>((resolve, reject) => {
@@ -63,25 +63,14 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
     }
 
-    if(!keys){
-      self.waiting.add(() => {
-        resolve(self.latest)
-      });
-
-      if(arg2 as number > 0)
-        setTimeout(() => resolve(false), arg2);
-
-      return;
-    }
-
-    if(keys.length)
+    if(keys && keys.length)
       for(const key of keys)
         if(key in source)
           try { void source[key as keyof T] }
           catch(e){}
 
     const callback: Control.OnSync = key => {
-      if(!key){
+      if(key === null){
         if(keys && !keys.length)
           resolve([]);
         else {
