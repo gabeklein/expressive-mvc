@@ -219,14 +219,7 @@ class Model {
       }
     }
 
-    return <PromiseLike<readonly Model.Event<this>[] | null>> {
-      then: (callback) => {
-        if(!callback)
-          throw Oops.NoChaining();
-
-        controller.waiting.add(callback);
-      }
-    }
+    return this.on(0);
   }
 
   /** Mark this instance for garbage collection. */
