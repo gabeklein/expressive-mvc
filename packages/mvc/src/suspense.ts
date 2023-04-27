@@ -10,7 +10,7 @@ export const Oops = issues({
   Destoryed: () => "Model is destroyed."
 })
 
-export function suspend(
+export function suspense(
   source: Control, key: string): Model.Suspense {
 
   const error = Oops.NotReady(source.subject, key);

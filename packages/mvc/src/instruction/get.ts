@@ -2,6 +2,7 @@ import { getParent } from '../children';
 import { Control, detect } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
+import { suspense } from '../suspense';
 import { add } from './add';
 
 import type { Callback } from '../../types';
@@ -119,7 +120,7 @@ function recursive(
       return value;
 
     if(required !== false)
-      parent.waitFor(key);
+      throw suspense(parent, key);
   }
 }
 
@@ -204,7 +205,7 @@ function computed<T>(
     }
     
     if(!proxy)
-      parent.waitFor(key);
+      throw suspense(parent, key);
 
     if(pending.delete(compute))
       compute();

@@ -3,7 +3,6 @@ import { defineProperty, getOwnPropertyDescriptor, random } from './helper/objec
 import { setInstruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
-import { suspend } from './suspense';
 
 import type { Callback } from '../types';
 
@@ -143,11 +142,6 @@ class Control<T extends Model = any> {
           : value;
       }
     });
-  }
-
-  /** Throw suspense which resolves when key is set. */
-  waitFor(key: string): never {
-    throw suspend(this, key);
   }
 
   ref<K extends Model.Key<T>>(
