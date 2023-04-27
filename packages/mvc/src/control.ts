@@ -150,13 +150,6 @@ class Control<T extends Model = any> {
     throw suspend(this, key);
   }
 
-  addListener(listener: Control.OnSync<T>){
-    this.followers.add(listener);
-    return () => {
-      this.followers.delete(listener)
-    }
-  }
-
   ref<K extends Model.Key<T>>(
     key: K, cb?: (this: T, value: T[K]) => boolean | void){
 

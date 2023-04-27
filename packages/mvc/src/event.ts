@@ -1,4 +1,4 @@
-import { control } from './control';
+import { Control, control } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 
@@ -20,18 +20,21 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
       try { void (source as any)[key] }
       catch(e){}
 
-    const removeListener =
-      self.addListener(key => {
-        if(!key && !keys.length)
-          callback.call(source, []);
-          
-        if(keys.includes(key as P)){
-          if(required)
-            removeListener();
+    const cb: Control.OnSync = key => {
+      if(!key && !keys.length)
+        callback.call(source, []);
+        
+      if(keys.includes(key as P)){
+        if(required)
+          removeListener();
 
-          return () => callback.call(source, self.latest!);
-        }
-      });
+        return () => callback.call(source, self.latest!);
+      }
+    }
+
+    self.followers.add(cb);
+    
+    const removeListener = () => self.followers.delete(cb);
 
     return removeListener;
   });
@@ -72,7 +75,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
           try { void source[key as keyof T] }
           catch(e){}
 
-    const remove = self.addListener(key => {
+    const callback: Control.OnSync = key => {
       if(!key){
         if(keys && !keys.length)
           resolve([]);
@@ -86,7 +89,11 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         return () =>
           resolve(single ? self.state.get(key) : self.latest)
       }
-    });
+    }
+
+    self.followers.add(callback)
+
+    const remove = () => self.followers.delete(callback);
 
     if(arg2 as number > 0)
       setTimeout(() => {

@@ -1,4 +1,4 @@
-import { control, detect } from './control';
+import { Control, control, detect } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 import { mayRetry } from './suspense';
@@ -45,14 +45,18 @@ export function createEffect<T extends Model>(
     if(Array.isArray(keys)){
       invoke();
 
-      return self.addListener(key => {
+      const callback: Control.OnSync = key => {
         if(key === null){
           if(!keys.length)
             invoke();
         }
         else if(keys.includes(key))
           return invoke;
-      });
+      };
+
+      self.followers.add(callback);
+
+      return () => self.followers.delete(callback);
     }
 
     let refresh: (() => void) | null;
