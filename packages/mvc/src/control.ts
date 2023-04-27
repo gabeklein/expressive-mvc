@@ -79,7 +79,7 @@ class Control<T extends Model = any> {
   public waiting = new Set<Callback>();
   public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
-  public observers: Map<string | null, Set<Observer>> = new Map([[null, new Set()]]);
+  public observers = new Map<string | undefined | null, Set<Observer>>();
 
   constructor(
     public subject: T,

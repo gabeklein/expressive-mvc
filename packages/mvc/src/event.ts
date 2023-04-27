@@ -46,10 +46,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   arg2?: number){
 
   const single = typeof arg1 == "string";
-  const keys =
-    typeof arg1 == "string" ? [ arg1 ] :
-    typeof arg1 == "object" ? arg1 : 
-    undefined;
+  const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
 
   return new Promise<any>((resolve, reject) => {
     const self = control(source);
@@ -66,10 +63,18 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
     }
 
-    if(!keys)
-      self.waiting.add(() => resolve(self.latest));
+    if(!keys){
+      self.waiting.add(() => {
+        resolve(self.latest)
+      });
 
-    else if(keys.length)
+      if(arg2 as number > 0)
+        setTimeout(() => resolve(false), arg2);
+
+      return;
+    }
+
+    if(keys.length)
       for(const key of keys)
         if(key in source)
           try { void source[key as keyof T] }
@@ -93,7 +98,8 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
 
     self.followers.add(callback)
 
-    const remove = () => self.followers.delete(callback);
+    const remove = () =>
+      self.followers.delete(callback);
 
     if(arg2 as number > 0)
       setTimeout(() => {
