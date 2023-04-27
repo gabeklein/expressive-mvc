@@ -2,6 +2,7 @@ import React from 'react';
 
 import { Model } from '.';
 import { create, renderHook } from './helper/testing';
+import { act } from 'react-test-renderer';
 
 const opts = { timeout: 100 };
 
@@ -97,6 +98,45 @@ describe("subscription", () => {
     await expect(test).toUpdate();
 
     expect(didRender).toBeCalledTimes(2);
+
+    // remove value prop to prevent snap-back
+    element.update(<TestComponent />);
+    expect(didRender).toBeCalledTimes(3);
+
+    await act(async () => {
+      test.value = "foo";
+      await expect(test).toUpdate();
+    })
+
+    // expect updates re-enabled
+    expect(didRender).toBeCalledTimes(4);
+  })
+
+  it.skip("will still refresh if outside value changes", async () => {
+    class Test extends Model {
+      foo = 1;
+      bar = 2;
+    }
+
+    const didRender = jest.fn();
+    let test!: Test;
+
+    const TestComponent = (props: any) => {
+      test = Test.use(props);
+      didRender(test.bar);
+      return null;
+    }
+
+    const element = create(<TestComponent />);
+
+    expect(test.foo).toBe(1);
+
+    await act(async () => {
+      element.update(<TestComponent foo={2} />)
+      test.bar++;
+    })
+
+    expect(didRender).toBeCalledTimes(3);
   })
 })
 

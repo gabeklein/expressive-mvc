@@ -59,27 +59,31 @@ function useModel <T extends Model> (
     let refresh: (() => void) | undefined;
     let done: undefined | boolean;
 
-    const control = Control.get(instance)!;
-    const update = () => state[1](x => x+1);
-    const proxy = Control.sub(instance, () => {
+    const ignore = new Set<string>();
+    const reset = () => ignore.clear();
+    const update = () => {
+      state[1](x => x+1);
+      ignore.clear();
+    }
+
+    const proxy = Control.sub(instance, (key) => {
+      if(ignore.has(key!))
+        return reset;
+
       return done ? null : refresh;
     });
 
     function apply(values: Model.Compat<T>){
       let keys = arg2 as Model.Key<T>[];
     
-      refresh = undefined;
-    
       if(!keys)
         keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
     
       for(const key of keys)
-        if(key in values)
+        if(key in values){
+          ignore.add(key);
           instance[key] = values[key]!;
-    
-      control.waiting.add(() => {
-        refresh = update;
-      });
+        }
     }
 
     function commit(){
