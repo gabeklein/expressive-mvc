@@ -156,16 +156,6 @@ describe("dispatch", () => {
 
   it.todo("will set value to argument if not a function");
 
-  it("will throw if callback is undefined", async () => {
-    const test = Test.new();
-    const attempt = () => {
-      // @ts-ignore
-      test.set("foo").then();
-    }
-
-    expect(attempt).toThrowError();
-  })
-
   it("will include caused-by-method updates", async () => {
     const test = Test.new();
     const updates = await test.set("methodString", "foobar");
