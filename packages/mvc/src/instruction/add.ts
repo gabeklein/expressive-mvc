@@ -21,9 +21,8 @@ export function add<T = any>(
 export function setInstruction(
   onto: Control,
   key: string,
-  from: symbol
-): Control.PropertyDescriptor | void {
-
+  from: any
+){
   const instruction = PENDING.get(from);
 
   if(!instruction)
@@ -32,10 +31,14 @@ export function setInstruction(
   delete onto.subject[key];
   PENDING.delete(from);
 
-  const output = instruction.call(onto, key, onto);
+  let output = instruction.call(onto, key, onto);
 
-  if(typeof output == "function")
-    return { get: output };
+  if(output){
+    if(typeof output == "function")
+      output = { get: output };
 
-  return output;
+    onto.watch(key, output);
+  }
+
+  return true;
 }

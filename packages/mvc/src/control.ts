@@ -95,21 +95,16 @@ class Control<T extends Model = any> {
   
       if(typeof value == "function")
         continue;
-  
-      const output =
-        typeof value == "symbol" ?
-          setInstruction(this, key, value) :
-        value instanceof Model ?
-          setRecursive(this, key, value) :
-        { value };
 
-      if(!output)
+      if(typeof value == "symbol"){
+        setInstruction(this, key, value)
         continue;
+      }
 
-      if("value" in output)
-        this.state.set(key, output.value);
-
-      this.watch(key, output);
+      if(value instanceof Model)
+        setRecursive(this, key, value)
+      else
+        this.watch(key, { value });
     }
   }
 
@@ -122,6 +117,9 @@ class Control<T extends Model = any> {
     const subs = new Set<Observer>();
     
     this.observers.set(key, subs);
+
+    if("value" in output)
+      this.state.set(key, output.value);
 
     defineProperty(this.subject, key, {
       enumerable,

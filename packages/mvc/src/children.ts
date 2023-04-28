@@ -25,9 +25,9 @@ export function getParent<T extends Model>(
 }
 
 export function setRecursive(
-  on: Control, key: string, initial: Model
-): Control.PropertyDescriptor {
-  const expected = initial.constructor;
+  on: Control, key: string, value: Model
+){
+  const expected = value.constructor;
   const set = (next: Model | undefined) => {
     if(next instanceof expected){
       on.state.set(key, next);
@@ -39,7 +39,7 @@ export function setRecursive(
     throw Oops.BadAssignment(`${on.subject}.${key}`, expected, next);
   }
 
-  set(initial);
+  set(value);
   
-  return { set };
+  on.watch(key, { set, value });
 }
