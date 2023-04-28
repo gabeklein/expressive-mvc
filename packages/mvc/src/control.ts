@@ -7,7 +7,9 @@ import type { Callback } from '../types';
 
 export type Observer = (key: string | null, from: Control) => (() => void) | null | void;
 
-const FACTORY = new Map<symbol, Control.Instruction<any>>();
+type InstructionRunner = (key: string, controller: Control) => void;
+
+const FACTORY = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const WAITING = new Set<Callback>();
@@ -63,7 +65,7 @@ class Control<T extends Model = any> {
 
     if(typeof instruction == "function"){
       FACTORY.delete(value);
-      instruction.call(this, key, this);
+      instruction(key, this);
     }
     else if(value instanceof Model)
       setRecursive(this, key, value);
