@@ -10,7 +10,6 @@ export type Observer = (key: string | null, from: Control) => (() => void) | nul
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
-
 const WAITING = new Set<Callback>();
 
 export function setPending(event: Callback, passive?: boolean){
@@ -163,7 +162,7 @@ class Control<T extends Model = any> {
   }
 
   update(key: string){
-    const { followers, frame, waiting } = this;
+    const { followers, frame } = this;
 
     if(frame.has(key))
       return;
@@ -171,23 +170,11 @@ class Control<T extends Model = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      waiting.add(() => {
+      setPending(() => {
         flushComputed(this);
         this.latest = Array.from(frame);
         this.update("");
         frame.clear();
-      })
-
-      setPending(() => {
-        waiting.forEach(notify => {
-          try {
-            notify();
-          }
-          catch(err){
-            console.error(err);
-          }
-        })
-        waiting.clear();
       })
     }
   
@@ -203,14 +190,14 @@ class Control<T extends Model = any> {
         if(notify === null)
           subs.delete(callback);
         else if(notify)
-          waiting.add(notify);
+          WAITING.add(notify);
       }
   
     for(const callback of followers){
       const event = callback(key, this);
   
       if(typeof event == "function")
-        waiting.add(event);
+        WAITING.add(event);
     }
   }
 
@@ -266,10 +253,9 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
     }
 
     control.init();
-    control.waiting = new Set();
 
-    for(const cb of waiting)
-      cb();
+    for(const callback of waiting)
+      callback();
   }
 
   return cb ? cb(control) : control;
