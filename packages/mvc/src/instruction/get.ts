@@ -124,6 +124,10 @@ function recursive(
   }
 }
 
+const INFO = new WeakMap<Callback, string>();
+const KEYS = new WeakMap<Control, Set<Callback>>();
+const ORDER = new WeakMap<Control, Map<Callback, number>>();
+
 function computed<T>(
   parent: Control,
   key: string,
@@ -213,10 +217,6 @@ function computed<T>(
     return state.get(key);
   }
 }
-
-const INFO = new WeakMap<Callback, string>();
-const KEYS = new WeakMap<Control, Set<Callback>>();
-const ORDER = new WeakMap<Control, Map<Callback, number>>();
 
 function flushComputed(control: Control){
   const pending = KEYS.get(control);
