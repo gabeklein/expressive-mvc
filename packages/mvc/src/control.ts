@@ -79,6 +79,7 @@ class Control<T extends Model = any> {
 
     const { state } = this;
     const { get, set, enumerable } = output;
+
     const subs = new Set<Observer>();
     
     this.observers.set(key, subs);
@@ -125,7 +126,7 @@ class Control<T extends Model = any> {
   }
 
   update(key: string){
-    const { followers, frame } = this;
+    const { frame } = this;
 
     if(frame.has(key))
       return;
@@ -143,10 +144,11 @@ class Control<T extends Model = any> {
   
     frame.add(key);
 
-    const subs = this.observers.get(key);
+    const dispatch = (
+      callback: Observer,
+      callback2: Observer,
+      subs: Set<Observer>) => {
 
-    if(subs)
-      for(const callback of subs){
         const notify = callback(key, this);
 
         // TODO: Is this necessary?
@@ -156,12 +158,12 @@ class Control<T extends Model = any> {
           WAITING.add(notify);
       }
   
-    for(const callback of followers){
-      const event = callback(key, this);
+    const subs = this.observers.get(key);
+
+    if(subs)
+      subs.forEach(dispatch)
   
-      if(typeof event == "function")
-        WAITING.add(event);
-    }
+    this.followers.forEach(dispatch);
   }
 
   clear(){
