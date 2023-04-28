@@ -82,7 +82,7 @@ class Control<T extends Model = any> {
     this.observers.set(key, subs);
 
     if("value" in output)
-      this.state.set(key, output.value);
+      state.set(key, output.value);
 
     defineProperty(this.subject, key, {
       enumerable,
