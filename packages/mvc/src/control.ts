@@ -87,23 +87,18 @@ class Control<T extends Model = any> {
     REGISTER.set(subject, this);
   }
 
-  init(){
-    this.state = new Map();
+  add(key: Extract<keyof T, string>){
+    const { value } = getOwnPropertyDescriptor(this.subject, key)!;
+    const instruction = FACTORY.get(value);
 
-    for(const key in this.subject){
-      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-
-      const instruction = FACTORY.get(value);
-
-      if(typeof instruction == "function"){
-        FACTORY.delete(value);
-        instruction.call(this, key, this);
-      }
-      else if(value instanceof Model)
-        setRecursive(this, key, value);
-      else if(typeof value != "function")
-        this.watch(key, { value });
+    if(typeof instruction == "function"){
+      FACTORY.delete(value);
+      instruction.call(this, key, this);
     }
+    else if(value instanceof Model)
+      setRecursive(this, key, value);
+    else if(typeof value != "function")
+      this.watch(key, { value });
   }
 
   watch(
@@ -247,8 +242,11 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
           callback();
       }
     }
+    
+    control.state = new Map();
 
-    control.init();
+    for(const key in control.subject)
+      control.add(key);
 
     for(const callback of waiting)
       callback();
