@@ -252,17 +252,10 @@ describe("timeout", () => {
 })
 
 describe("before ready", () => {
-  class TestValues extends Model {
-    value1 = 1;
-    value2 = 2;
-
-    value3 = get(this, state => {
-      return state.value2 + 1;
-    });
-  }
-
   it('will watch value', async () => {
-    class Test extends TestValues {
+    class Test extends Model {
+      value1 = 1;
+
       constructor(){
         super();
         this.on("value1", mock);
@@ -279,17 +272,23 @@ describe("before ready", () => {
   })
 
   it('will watch computed value', async () => {
-    class Test extends TestValues {
+    class Test extends Model {
+      value1 = 2;
+
+      value2 = get(this, $ => {
+        return $.value1 + 1;
+      });
+      
       constructor(){
         super();
-        this.on("value3", mock);
+        this.on("value2", mock);
       }
     }
 
     const mock = jest.fn();
     const state = Test.new();
 
-    state.value2++;
+    state.value1++;
     await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
