@@ -1,6 +1,5 @@
 import { setRecursive } from './children';
 import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
-import { setInstruction } from './instruction/add';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
 
@@ -8,6 +7,7 @@ import type { Callback } from '../types';
 
 export type Observer = (key: string | null, from: Control) => (() => void) | null | void;
 
+const FACTORY = new Map<symbol, Control.Instruction<any>>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const WAITING = new Set<Callback>();
@@ -92,18 +92,16 @@ class Control<T extends Model = any> {
 
     for(const key in this.subject){
       const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-  
-      if(typeof value == "function")
-        continue;
 
-      if(typeof value == "symbol"){
-        setInstruction(this, key, value)
-        continue;
+      const instruction = FACTORY.get(value);
+
+      if(typeof instruction == "function"){
+        FACTORY.delete(value);
+        instruction.call(this, key, this);
       }
-
-      if(value instanceof Model)
-        setRecursive(this, key, value)
-      else
+      else if(value instanceof Model)
+        setRecursive(this, key, value);
+      else if(typeof value != "function")
         this.watch(key, { value });
     }
   }
@@ -262,5 +260,6 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
 export {
   Control,
   control,
-  controller
+  controller,
+  FACTORY as SETUP
 }

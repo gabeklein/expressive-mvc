@@ -1,6 +1,4 @@
-import { Control } from '../control';
-
-const PENDING = new Map<symbol, Control.Instruction<any>>();
+import { Control, SETUP } from '../control';
 
 /**
  * Run instruction as model sets itself up.
@@ -13,32 +11,18 @@ export function add<T = any>(
   const name = label || instruction.name || "pending";
   const placeholder = Symbol(name + " instruction");
 
-  PENDING.set(placeholder, instruction);
+  SETUP.set(placeholder, (key, onto) => {
+    delete onto.subject[key];
+  
+    let output = instruction.call(onto, key, onto);
+  
+    if(output){
+      if(typeof output == "function")
+        output = { get: output };
+  
+      onto.watch(key, output);
+    }
+  });
 
   return placeholder as unknown as T;
-}
-
-export function setInstruction(
-  onto: Control,
-  key: string,
-  from: any
-){
-  const instruction = PENDING.get(from);
-
-  if(!instruction)
-    return;
-
-  delete onto.subject[key];
-  PENDING.delete(from);
-
-  let output = instruction.call(onto, key, onto);
-
-  if(output){
-    if(typeof output == "function")
-      output = { get: output };
-
-    onto.watch(key, output);
-  }
-
-  return true;
 }
