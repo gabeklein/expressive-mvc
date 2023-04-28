@@ -6,40 +6,27 @@ export const Parent = new WeakMap<{}, {}>();
 
 export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
-    `${parent} expected Model of type ${expected} but got ${got}.`,
-
-  Unexpected: (expects, child, got) =>
-    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
+    `${parent} expected Model of type ${expected} but got ${got}.`
 });
 
-export function getParent<T extends Model>(
-  from: Model,
-  type?: Model.Class<T>){
-
-  const value = Parent.get(from) as T;
-
-  if(value && type && !(value instanceof type))
-    throw Oops.Unexpected(type, from, value);
-
-  return value;
+export function getParent<T extends Model>(subject: Model){
+  return Parent.get(subject) as T;
 }
 
 export function setRecursive(
   on: Control, key: string, value: Model
 ){
-  const expected = value.constructor;
   const set = (next: Model | undefined) => {
-    if(next instanceof expected){
+    if(next instanceof value.constructor){
       on.state.set(key, next);
       Parent.set(next, on.subject);
       control(next);
       return true;
     }
 
-    throw Oops.BadAssignment(`${on.subject}.${key}`, expected, next);
+    throw Oops.BadAssignment(`${on.subject}.${key}`, value.constructor, next);
   }
 
+  on.watch(key, { set });
   set(value);
-  
-  on.watch(key, { set, value });
 }

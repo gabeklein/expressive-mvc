@@ -16,6 +16,9 @@ export const Oops = issues({
 
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}.`,
+
+  Unexpected: (expects, child, got) =>
+    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
 });
 
 declare namespace get {
@@ -77,12 +80,14 @@ function get<R, T extends Model>(
         subject = arg0;
 
       else if(Model.isTypeof(arg0)){
-        const parent = getParent(subject, arg0);
+        const parent = getParent(subject);
 
-        if(parent)
+        if(!parent)
+          source = arg0.has(arg1 !== false, subject);
+        else if(!arg0 || parent instanceof arg0)
           subject = parent;
         else
-          source = arg0.has(arg1 !== false, subject);
+          throw Oops.Unexpected(arg0, subject, parent);
       }
 
       else if(typeof arg0 == "function")

@@ -1,7 +1,6 @@
 import { mockAsync, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
-import { Oops as Child } from '../children';
 
 it.todo("will add pending compute to frame immediately");
 
@@ -516,7 +515,7 @@ describe("fetch mode", () => {
     }
   
     const attempt = () => Unexpected.new("ID");
-    const error = Child.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
+    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
   
     expect(attempt).toThrowError(error);
   })
