@@ -35,10 +35,10 @@ declare namespace Control {
   type Setter<T> = (value: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
-      enumerable?: boolean;
-      value?: T;
-      get?: Getter<T>;
-      set?: Setter<T> | false;
+    enumerable?: boolean;
+    value?: T;
+    get?: Getter<T>;
+    set?: Setter<T> | false;
   }
 }
 
@@ -177,13 +177,6 @@ class Control<T extends Model = any> {
   static sub = detect;
 }
 
-function controller<T extends Model>(from: T){
-  if("is" in from)
-    from = from.is;
-
-  return REGISTER.get(from) as Control<T> | undefined;
-}
-
 declare namespace control {
   /**
    * Callback for Controller.for() static method.
@@ -223,6 +216,10 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   }
 
   return cb ? cb(control) : control;
+}
+
+function controller<T extends Model>(from: T){
+  return REGISTER.get(from.is) as Control<T> | undefined;
 }
 
 function setPending(event: Callback, passive?: boolean){
