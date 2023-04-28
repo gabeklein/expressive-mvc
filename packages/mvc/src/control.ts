@@ -12,36 +12,6 @@ const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const WAITING = new Set<Callback>();
 
-export function setPending(event: Callback, passive?: boolean){
-  if(!WAITING.size && !passive)
-    setTimeout(() => {
-      WAITING.forEach(notify => {
-        try {
-          notify();
-        }
-        catch(err){
-          console.error(err);
-        }
-      });
-      WAITING.clear();
-    }, 0);
-
-  WAITING.add(event);
-}
-
-export function observer<T extends Model>(from: T){
-  return OBSERVER.get(from);
-}
-
-export function detect<T extends Model>(on: T, cb: Observer): T {
-  if(!on.hasOwnProperty("is"))
-    on = defineProperty(Object.create(on), "is", { value: on });
-
-  OBSERVER.set(on, cb);
-
-  return on;
-}
-
 declare namespace Control {
   /**
    * Called immediately when any key is changed or emitted.
@@ -255,9 +225,42 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   return cb ? cb(control) : control;
 }
 
+function setPending(event: Callback, passive?: boolean){
+  if(!WAITING.size && !passive)
+    setTimeout(() => {
+      WAITING.forEach(notify => {
+        try {
+          notify();
+        }
+        catch(err){
+          console.error(err);
+        }
+      });
+      WAITING.clear();
+    }, 0);
+
+  WAITING.add(event);
+}
+
+function observer<T extends Model>(from: T){
+  return OBSERVER.get(from);
+}
+
+function detect<T extends Model>(on: T, cb: Observer): T {
+  if(!on.hasOwnProperty("is"))
+    on = defineProperty(Object.create(on), "is", { value: on });
+
+  OBSERVER.set(on, cb);
+
+  return on;
+}
+
 export {
-  Control,
   control,
+  Control,
   controller,
-  FACTORY as SETUP
+  detect,
+  FACTORY,
+  observer,
+  setPending,
 }
