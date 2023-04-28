@@ -240,7 +240,7 @@ class Model {
     return instance;
   }
 
-  static has <T extends Model> (this: Model.Class<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
+  static has <T extends Model> (this: Model.Type<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
   static has <T extends Model> (this: Model.Type<T>, required?: false, relativeTo?: Model): (callback: (got: T | undefined) => void) => void;
 
   static has(required?: false, relativeTo?: Model): any {

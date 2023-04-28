@@ -12,7 +12,7 @@ const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
 export function useContext <T extends Model> (
-  this: Model.Class<T>,
+  this: (typeof Model & Model.Type<T>),
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
 
