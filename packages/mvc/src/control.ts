@@ -48,8 +48,8 @@ class Control<T extends Model = any> {
   public state!: Map<any, any>;
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
-  public followers = new Set<Control.OnSync>();
   public latest?: Model.Event<T>[];
+  public followers = new Set<Control.OnSync>();
   public observers = new Map<string | undefined | null, Set<Observer>>();
 
   constructor(
@@ -181,7 +181,7 @@ class Control<T extends Model = any> {
     this.observers.clear();
   }
 
-  static get = controller;
+  static get = controls;
   static for = control;
   static sub = detect;
 }
@@ -197,37 +197,35 @@ declare namespace control {
 function control<T extends Model>(subject: T): Control<T>;
 function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
-  const control = controller(subject) || new Control(subject);
+  const control = controls(subject) || new Control(subject);
+
+  if(cb){
+    if(control.state)
+      return cb(control);
+
+    let callback: Callback | void;
+
+    control.waiting.add(() => {
+      callback = cb(control);
+    });
+
+    return () => callback && callback();
+  }
 
   if(!control.state){
-    const { waiting } = control;
-
-    if(cb){
-      let callback: Callback | void;
-
-      waiting.add(() => {
-        callback = cb(control);
-      });
-
-      return () => {
-        if(callback)
-          callback();
-      }
-    }
-    
     control.state = new Map();
 
     for(const key in control.subject)
       control.add(key);
 
-    for(const callback of waiting)
+    for(const callback of control.waiting)
       callback();
   }
 
-  return cb ? cb(control) : control;
+  return control;
 }
 
-function controller<T extends Model>(from: T){
+function controls<T extends Model>(from: T){
   return REGISTER.get(from.is) as Control<T> | undefined;
 }
 
@@ -264,7 +262,7 @@ function detect<T extends Model>(on: T, cb: Observer): T {
 export {
   control,
   Control,
-  controller,
+  controls,
   detect,
   FACTORY,
   observer,

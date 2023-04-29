@@ -1,4 +1,4 @@
-import { Control, controller } from './control';
+import { Control, controls } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
 
@@ -9,12 +9,12 @@ const CONTROL = "__control";
 defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
-      return controller(this);
+      return controls(this);
     }
   },
   [STATE]: {
     get(this: Model){
-      const { state } = controller(this)!;
+      const { state } = controls(this)!;
       const output: any = {};
 
       state.forEach((value, key) => output[key] = value);
@@ -24,7 +24,7 @@ defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      return controller(this)!.latest;
+      return controls(this)!.latest;
     }
   }
 })
