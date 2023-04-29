@@ -44,17 +44,15 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   arg2?: number){
 
   const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
+  const self = control(source);
 
   return new Promise<any>((resolve, reject) => {
-    const self = control(source);
-    const pending = self.frame;
-
     if(arg2 === 0){
-      if(!pending.size){
+      if(!self.frame.size){
         resolve(false);
         return;
       }
-      else if(typeof arg1 == "string" && !pending.has(arg1)){
+      else if(typeof arg1 == "string" && !self.frame.has(arg1)){
         reject(Oops.KeysExpected(arg1));
         return;
       }
