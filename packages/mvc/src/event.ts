@@ -66,23 +66,21 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
           try { void source[key as keyof T] }
           catch(e){}
 
-    const callback: Control.OnSync = key => {
+    const removeListener = self.addListener(key => {
       if(key === null)
         resolve(!keys || keys.length ? false : [])
 
       else if(!keys || keys.includes(key as P)){
-        remove();
+        removeListener();
         return () => {
-          resolve(arg1 === key ? self.state[key] : self.latest);
+          resolve(key && arg1 === key ? self.state[key] : self.latest);
         }
       }
-    }
-
-    const remove = self.addListener(callback);
+    });
 
     if(arg2 as number > 0)
       setTimeout(() => {
-        remove();
+        removeListener();
         resolve(false);
       }, arg2);
   });
