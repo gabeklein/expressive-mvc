@@ -16,33 +16,6 @@ const INSTRUCT = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 
-const Dispatch = new class Dispatch {
-  after = new Set<Callback>();
-  before = new Set<Callback>();
-  waiting = new Set<Callback>();
-
-  add(event: Callback){
-    const { after, before, waiting } = this;
-
-    if(!waiting.size)
-      setTimeout(() => {
-        before.forEach(x => x());
-        waiting.forEach(notify => {
-          try {
-            notify();
-          }
-          catch(err){
-            console.error(err);
-          }
-        });
-        waiting.clear();
-        after.forEach(x => x());
-      }, 0);
-  
-    waiting.add(event);
-  }
-}
-
 declare namespace Control {
   /**
    * Called immediately when any key is changed or emitted.
@@ -81,6 +54,14 @@ class Control<T extends Model = any> {
   public frame = new Set<string>();
   public followers = new Set<Control.OnSync>();
   public observers = new Map<string | undefined | null, Set<Observer>>();
+
+  static afterUpdate = new Set<Callback>();
+  static beforeUpdate = new Set<Callback>();
+  static waiting = new Set<Callback>();
+
+  static get = controls;
+  static for = control;
+  static sub = detect;
 
   constructor(
     public subject: T,
@@ -165,13 +146,13 @@ class Control<T extends Model = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      Dispatch.add(() => {
+      requestUpdateFrame(() => {
         this.latest = Array.from(frame);
         this.followers.forEach(cb => {
           const notify = cb(undefined, this);
     
           if(notify)
-            Dispatch.add(notify);
+            requestUpdateFrame(notify);
         })
         frame.clear();
       })
@@ -187,7 +168,7 @@ class Control<T extends Model = any> {
       if(notify === null)
         subs.delete(cb);
       else if(notify)
-        Dispatch.add(notify);
+        requestUpdateFrame(notify);
     }
 
     const subs = this.observers.get(key);
@@ -212,10 +193,6 @@ class Control<T extends Model = any> {
     });
     this.observers.clear();
   }
-
-  static get = controls;
-  static for = control;
-  static sub = detect;
 }
 
 declare namespace control {
@@ -262,6 +239,27 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   return cb ? cb(control) : control;
 }
 
+function requestUpdateFrame(event: Callback){
+  const { afterUpdate, beforeUpdate, waiting } = Control;
+
+  if(!waiting.size)
+    setTimeout(() => {
+      beforeUpdate.forEach(x => x());
+      waiting.forEach(notify => {
+        try {
+          notify();
+        }
+        catch(err){
+          console.error(err);
+        }
+      });
+      waiting.clear();
+      afterUpdate.forEach(x => x());
+    }, 0);
+
+  waiting.add(event);
+}
+
 function setRecursive(
   on: Control, key: string, value: Model){
 
@@ -295,7 +293,6 @@ function random(){
 }
 
 export {
-  Dispatch,
   control,
   Control,
   controls,

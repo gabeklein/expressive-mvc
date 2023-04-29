@@ -1,4 +1,4 @@
-import { Control, Dispatch, detect } from '../control';
+import { Control, detect } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
@@ -226,6 +226,6 @@ function flushComputed(){
   }
 }
 
-Dispatch.before.add(flushComputed);
+Control.beforeUpdate.add(flushComputed);
 
 export { get };
