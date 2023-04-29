@@ -218,8 +218,7 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
     for(const key in control.subject)
       control.add(key);
 
-    for(const callback of control.waiting)
-      callback();
+    control.waiting.forEach(cb => cb());
   }
 
   return control;
