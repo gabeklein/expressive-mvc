@@ -150,15 +150,12 @@ class Control<T extends Model = any> {
     frame.add(key);
 
     const dispatch = (
-      callback: Observer,
-      callback2: Observer,
-      subs: Set<Observer>) => {
+      cb: Observer, _cb: Observer, subs: Set<Observer>) => {
 
-      const notify = callback(key, this);
+      const notify = cb(key, this);
 
-      // TODO: Is this necessary?
       if(notify === null)
-        subs.delete(callback);
+        subs.delete(cb);
       else if(notify)
         WAITING.add(notify);
     }
