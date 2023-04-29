@@ -251,6 +251,7 @@ function setRecursive(
 function requestNextFrame(event: Callback, passive?: boolean){
   if(!WAITING.size && !passive)
     setTimeout(() => {
+      flushComputed();
       WAITING.forEach(notify => {
         try {
           notify();

@@ -125,9 +125,10 @@ function recursive(
   }
 }
 
-const INFO = new WeakMap<Callback, string>();
-const KEYS = new WeakMap<Control, Set<Callback>>();
-const ORDER = new WeakMap<Control, Map<Callback, number>>();
+const ORDER = new WeakMap<Callback, number>();
+const PENDING = new Set<Callback>();
+
+let OFFSET = 0;
 
 function computed<T>(
   parent: Control,
@@ -142,18 +143,10 @@ function computed<T>(
   let isAsync: boolean;
   let reset: (() => void) | undefined;
 
-  let order = ORDER.get(parent)!;
-  let pending = KEYS.get(parent)!;
-
-  if(!order)
-    ORDER.set(parent, order = new Map());
-
-  if(!pending)
-    KEYS.set(parent, pending = new Set());
-
-  INFO.set(compute, key);
-
   function compute(initial?: boolean){
+    if(parent.frame.has(key))
+      return;
+
     let next: T | undefined;
 
     try {
@@ -191,14 +184,14 @@ function computed<T>(
       if(control !== parent)
         compute();
       else
-        pending.add(compute);
+        PENDING.add(compute);
     });
 
     try {
       compute(true);
     }
     finally {
-      order.set(compute, order.size);
+      ORDER.set(compute, OFFSET++);
     }
   }
 
@@ -212,37 +205,25 @@ function computed<T>(
     if(!proxy)
       throw suspense(parent, key);
 
-    if(pending.delete(compute))
+    if(PENDING.delete(compute))
       compute();
 
     return state.get(key);
   }
 }
 
-function flushComputed(control: Control){
-  const pending = KEYS.get(control);
-
-  if(!pending || !pending.size)
-    return;
-
-  const priority = ORDER.get(control)!;
-
-  while(pending.size){
+function flushComputed(){
+  while(PENDING.size){
     let compute!: Callback;
 
-    for(const item of pending)
-      if(!compute || priority.get(item)! < priority.get(compute)!)
+    for(const item of PENDING)
+      if(!compute || ORDER.get(item)! < ORDER.get(compute)!)
         compute = item;
 
-    pending.delete(compute);
-
-    const key = INFO.get(compute)!;
-
-    if(!control.frame.has(key))
-      compute();
+    PENDING.delete(compute);
+    
+    compute();
   }
-
-  pending.clear();
 }
 
 export {
