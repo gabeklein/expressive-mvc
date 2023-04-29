@@ -1,4 +1,4 @@
-import { Control, FACTORY } from '../control';
+import { Control, INSTRUCT } from '../control';
 
 /**
  * Run instruction as model sets itself up.
@@ -11,7 +11,7 @@ export function add<T = any>(
   const name = label || instruction.name || "pending";
   const placeholder = Symbol(name + " instruction");
 
-  FACTORY.set(placeholder, (key, onto) => {
+  INSTRUCT.set(placeholder, (key, onto) => {
     delete onto.subject[key];
   
     let output = instruction.call(onto, key, onto);

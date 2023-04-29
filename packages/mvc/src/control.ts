@@ -13,7 +13,7 @@ export const Oops = issues({
 type Observer = (key: string | null, from: Control) => Callback | null | void;
 type InstructionRunner = (key: string, controller: Control) => void;
 
-const FACTORY = new Map<symbol, InstructionRunner>();
+const INSTRUCT = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const WAITING = new Set<Callback>();
@@ -66,10 +66,10 @@ class Control<T extends Model = any> {
 
   add(key: Extract<keyof T, string>){
     const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = FACTORY.get(value);
+    const instruction = INSTRUCT.get(value);
 
     if(typeof instruction == "function"){
-      FACTORY.delete(value);
+      INSTRUCT.delete(value);
       instruction(key, this);
     }
     else if(value instanceof Model)
@@ -283,7 +283,7 @@ export {
   Control,
   controls,
   detect,
-  FACTORY,
+  INSTRUCT,
   observer,
   setPending,
 }
