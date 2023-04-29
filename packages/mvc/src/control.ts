@@ -167,7 +167,12 @@ class Control<T extends Model = any> {
 
       Dispatch.add(() => {
         this.latest = Array.from(frame);
-        this.update("");
+        this.followers.forEach(cb => {
+          const notify = cb("", this);
+    
+          if(notify)
+            Dispatch.add(notify);
+        })
         frame.clear();
       })
     }
