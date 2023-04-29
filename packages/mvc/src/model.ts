@@ -201,7 +201,7 @@ class Model {
       for(const key in arg1)
         if(arg2 === true || (arg2 ? arg2.includes(key) : key in state)){
           state[key] = (arg1 as any)[key];
-          controller.update(key as any);
+          controller.update(key);
         }
     }
     else if(typeof arg1 == "string"){

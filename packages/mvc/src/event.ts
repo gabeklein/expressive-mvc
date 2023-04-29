@@ -43,7 +43,6 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   arg1?: P | P[],
   arg2?: number){
 
-  const single = arg1 && typeof arg1 == "string";
   const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
 
   return new Promise<any>((resolve, reject) => {
@@ -55,7 +54,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         resolve(false);
         return;
       }
-      else if(single && !pending.has(arg1)){
+      else if(typeof arg1 == "string" && !pending.has(arg1)){
         reject(Oops.KeysExpected(arg1));
         return;
       }
@@ -74,7 +73,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       else if(!keys || keys.includes(key as P)){
         remove();
         return () => {
-          resolve(single ? self.state[key] : self.latest);
+          resolve(arg1 === key ? self.state[key] : self.latest);
         }
       }
     }

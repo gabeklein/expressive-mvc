@@ -1,5 +1,5 @@
 import { issues } from './helper/issues';
-import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
+import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -277,7 +277,7 @@ function setRecursive(
 
 function detect<T extends Model>(on: T, cb: Observer): T {
   if(!on.hasOwnProperty("is"))
-    on = defineProperty(Object.create(on), "is", { value: on });
+    on = defineProperty(create(on), "is", { value: on });
 
   OBSERVER.set(on, cb);
 
