@@ -46,6 +46,20 @@ describe("Symbols", () => {
   })
 })
 
+describe("PARENT", () => {
+  it("will return immediate parent of Model", () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      child = new Child();
+    }
+
+    const parent = Parent.new();
+    const child = parent.child as Debug<Child>;
+    
+    expect(child[Debug.PARENT]).toBe(parent);
+  })
+})
+
 describe("UPDATE", () => {
   class Test extends Model {
     value1 = 1;

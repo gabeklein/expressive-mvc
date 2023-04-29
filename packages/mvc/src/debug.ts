@@ -5,6 +5,7 @@ import { Model } from './model';
 const STATE = "__state";
 const UPDATE = "__update";
 const CONTROL = "__control";
+const PARENT = "__parent";
 
 defineProperties(Model.prototype, {
   [CONTROL]: {
@@ -21,13 +22,19 @@ defineProperties(Model.prototype, {
     get(this: Model){
       return controls(this).latest;
     }
+  },
+  [PARENT]: {
+    get(this: Model){
+      return controls(this).parent;
+    }
   }
 })
 
 const Debug = {
   CONTROL,
   STATE,
-  UPDATE
+  UPDATE,
+  PARENT
 } as {
   /** Use to access snapshot of Model's current state. */
   STATE: "__state";
@@ -39,6 +46,9 @@ const Debug = {
 
   /** Use to access a Model's controller. */
   CONTROL: "__control";
+
+  /** Use to access a Model's parent, if exists. */
+  PARENT: "__parent";
 }
 
 /**
@@ -60,6 +70,11 @@ type Debug<T extends Model = Model> = T & {
    * If within a subscribed function, will contain only keys which explicitly caused a refresh.
    */
   [UPDATE]?: readonly Model.Event<T>[];
+
+  /**
+   * Parent currently assigned to parent. Usually the model which this one is a property of.
+   */
+  [PARENT]?: Model;
 }
 
 export { Debug };
