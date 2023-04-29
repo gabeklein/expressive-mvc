@@ -1,4 +1,4 @@
-import { Control, control } from './control';
+import { Control, control, controls } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
@@ -303,7 +303,7 @@ class Model {
 defineProperty(Model.prototype, "toString", {
   configurable: true,
   value(){
-    return `${this.constructor.name}-${control(this).id}`;
+    return `${this.constructor.name}-${controls(this).id}`;
   }
 })
 
