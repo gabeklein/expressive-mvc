@@ -1,4 +1,4 @@
-export function mockAsync<T = void>(timeout = 250){
+export function mockAsync<T = void>(){
   let resolve!: (value?: T | PromiseLike<T>) => void;
   let reject!: (reason?: any) => void;
 
@@ -6,10 +6,6 @@ export function mockAsync<T = void>(timeout = 250){
     resolve = res as any;
     reject = rej;
   });
-
-  setTimeout(() => {
-    reject(new Error("timeout"));
-  }, timeout);
 
   return Object.assign(promise, { resolve, reject });
 }
