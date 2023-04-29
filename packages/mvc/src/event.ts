@@ -32,10 +32,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
       }
     }
 
-    self.followers.add(cb);
-    
-    const removeListener = () => 
-      self.followers.delete(cb);
+    const removeListener = self.addListener(cb);
 
     return removeListener;
   });
@@ -86,10 +83,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
     }
 
-    const remove = () =>
-      self.followers.delete(callback);
-
-    self.followers.add(callback)
+    const remove = self.addListener(callback);
 
     if(arg2 as number > 0)
       setTimeout(() => {

@@ -54,10 +54,7 @@ export function createEffect<T extends Model>(
           return invoke;
       };
 
-      self.followers.add(callback);
-
-      return () =>
-        self.followers.delete(callback);
+      return self.addListener(callback);
     }
 
     let refresh: (() => void) | null;

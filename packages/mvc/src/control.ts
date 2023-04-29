@@ -149,21 +149,26 @@ class Control<T extends Model = any> {
       callback2: Observer,
       subs: Set<Observer>) => {
 
-        const notify = callback(key, this);
+      const notify = callback(key, this);
 
-        // TODO: Is this necessary?
-        if(notify === null)
-          subs.delete(callback);
-        else if(notify)
-          WAITING.add(notify);
-      }
-  
+      // TODO: Is this necessary?
+      if(notify === null)
+        subs.delete(callback);
+      else if(notify)
+        WAITING.add(notify);
+    }
+
     const subs = this.observers.get(key);
 
     if(subs)
       subs.forEach(dispatch)
-  
+
     this.followers.forEach(dispatch);
+  }
+
+  addListener(fn: Control.OnSync<any>){
+    this.followers.add(fn);
+    return () => this.followers.delete(fn);
   }
 
   clear(){
