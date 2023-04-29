@@ -217,7 +217,7 @@ class Model {
       }
     }
 
-    return this.on(0);
+    return awaitUpdate(this.is, undefined, 0);
   }
 
   /** Mark this instance for garbage collection. */
