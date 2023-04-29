@@ -1,5 +1,5 @@
 import { issues } from './helper/issues';
-import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
+import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
 
@@ -50,12 +50,13 @@ declare namespace Control {
 
 class Control<T extends Model = any> {
   public state!: Map<any, any>;
+  public latest?: Model.Event<T>[];
+  public parent?: Model;
+
   public frame = new Set<string>();
   public waiting = new Set<Callback>();
-  public latest?: Model.Event<T>[];
   public followers = new Set<Control.OnSync>();
   public observers = new Map<string | undefined | null, Set<Observer>>();
-  public parent?: Model;
 
   constructor(
     public subject: T,
@@ -276,6 +277,11 @@ function detect<T extends Model>(on: T, cb: Observer): T {
   OBSERVER.set(on, cb);
 
   return on;
+}
+
+/** Random alphanumberic of length 6; will always start with a letter. */
+function random(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
