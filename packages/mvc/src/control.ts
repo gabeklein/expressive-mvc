@@ -194,10 +194,14 @@ declare namespace control {
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 }
 
+function controls<T extends Model>(from: T): Control<T> {
+  return REGISTER.get(from.is) || new Control(from.is);
+}
+
 function control<T extends Model>(subject: T): Control<T>;
 function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
-  const control = controls(subject) || new Control(subject);
+  const control = controls(subject);
 
   if(cb){
     if(control.state)
@@ -222,10 +226,6 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   }
 
   return control;
-}
-
-function controls<T extends Model>(from: T){
-  return REGISTER.get(from.is) as Control<T> | undefined;
 }
 
 function setPending(event: Callback, passive?: boolean){
