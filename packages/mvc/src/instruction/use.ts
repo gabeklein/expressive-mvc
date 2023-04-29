@@ -100,11 +100,11 @@ function use(
 
         if(output instanceof Promise){
           pending = output
-            .catch(err => error = err)
             .then(val => {
               onUpdate(val);
               return val;
             })
+            .catch(err => error = err)
             .finally(() => {
               pending = undefined;
               this.update(key);
