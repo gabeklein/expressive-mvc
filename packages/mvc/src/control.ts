@@ -10,8 +10,7 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`
 });
 
-export type Observer = (key: string | null, from: Control) => (() => void) | null | void;
-
+type Observer = (key: string | null, from: Control) => Callback | null | void;
 type InstructionRunner = (key: string, controller: Control) => void;
 
 const FACTORY = new Map<symbol, InstructionRunner>();
