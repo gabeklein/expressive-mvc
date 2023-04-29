@@ -15,7 +15,33 @@ type InstructionRunner = (key: string, controller: Control) => void;
 const INSTRUCT = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
-const WAITING = new Set<Callback>();
+
+const Dispatch = new class Dispatch {
+  after = new Set<Callback>();
+  before = new Set<Callback>();
+  waiting = new Set<Callback>();
+
+  add(event: Callback){
+    const { after, before, waiting } = this;
+
+    if(!waiting.size)
+      setTimeout(() => {
+        before.forEach(x => x());
+        waiting.forEach(notify => {
+          try {
+            notify();
+          }
+          catch(err){
+            console.error(err);
+          }
+        });
+        waiting.clear();
+        after.forEach(x => x());
+      }, 0);
+  
+    waiting.add(event);
+  }
+}
 
 declare namespace Control {
   /**
@@ -74,6 +100,7 @@ class Control<T extends Model = any> {
     }
     else if(value instanceof Model)
       setRecursive(this, key, value);
+
     else if(typeof value != "function")
       this.watch(key, { value });
   }
@@ -139,7 +166,7 @@ class Control<T extends Model = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      requestNextFrame(() => {
+      Dispatch.add(() => {
         this.latest = Array.from(frame);
         this.update("");
         frame.clear();
@@ -156,7 +183,7 @@ class Control<T extends Model = any> {
       if(notify === null)
         subs.delete(cb);
       else if(notify)
-        WAITING.add(notify);
+        Dispatch.add(notify);
     }
 
     const subs = this.observers.get(key);
@@ -247,26 +274,6 @@ function setRecursive(
   set(value);
 }
 
-const BEFORE = new Set<Callback>();
-
-function requestNextFrame(event: Callback, passive?: boolean){
-  if(!WAITING.size && !passive)
-    setTimeout(() => {
-      BEFORE.forEach(x => x());
-      WAITING.forEach(notify => {
-        try {
-          notify();
-        }
-        catch(err){
-          console.error(err);
-        }
-      });
-      WAITING.clear();
-    }, 0);
-
-  WAITING.add(event);
-}
-
 function observer<T extends Model>(from: T){
   return OBSERVER.get(from);
 }
@@ -286,7 +293,7 @@ function random(){
 }
 
 export {
-  BEFORE,
+  Dispatch,
   control,
   Control,
   controls,
