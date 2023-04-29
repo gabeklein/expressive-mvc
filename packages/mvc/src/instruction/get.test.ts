@@ -584,6 +584,69 @@ describe("fetch mode", () => {
   })
 })
 
+describe("replaced source", () => {
+  let didUpdate: (got: Source) => void;
+  let current: Source;
+
+  class Source extends Model {
+    static has(){
+      return (onSource: (x: Model) => void) => {
+        didUpdate = onSource;
+        onSource(current);
+      }
+    }
+
+    constructor(public value: string){
+      super();
+    }
+  }
+
+  class Test extends Model {
+    greeting = get(Source, source => {
+      return `Hello ${source.value}!`;
+    })
+  }
+
+  it("will update", async () => {
+    const test = Test.new();
+    const oldSource = current = Source.new("Foo");
+  
+    expect(test.greeting).toBe("Hello Foo!");
+
+    oldSource.value = "Baz";
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Baz!");
+
+    const newSource = current = Source.new("Bar");
+
+    didUpdate(newSource);
+
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Bar!");
+
+    newSource.value = "Baz";
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Baz!");
+  })
+
+  it("will not update from previous source", async () => {
+    const test = Test.new();
+    const oldSource = current = Source.new("Foo");
+  
+    expect(test.greeting).toBe("Hello Foo!");
+
+    const newSource = current = Source.new("Bar");
+
+    didUpdate(newSource);
+
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Bar!");
+
+    oldSource.value = "Baz";
+    await expect(test).not.toUpdate();
+  })
+})
+
 describe("async", () => {
   class Test extends Model {
     /** Override method to simplify tests. */
