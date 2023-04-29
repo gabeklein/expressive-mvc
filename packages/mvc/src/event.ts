@@ -13,7 +13,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
   callback: (this: T, keys: Model.Event<T>[] | null) => void,
   required?: boolean){
 
-  const keys = typeof select == "object" ? select : [select];
+  const keys = typeof select == "string" ? [ select ] : select;
 
   return control(source, self => {
     if(keys)
@@ -40,20 +40,20 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
 
 export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   source: T,
-  arg1?: P | P[] | null,
-  arg2?: number){
+  select?: P | P[] | null,
+  timeout?: number){
 
-  const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
+  const keys = typeof select == "string" ? [ select ] : select;
   const self = control(source);
 
   return new Promise<any>((resolve, reject) => {
-    if(arg2 === 0){
+    if(timeout === 0){
       if(!self.frame.size){
         resolve(false);
         return;
       }
-      else if(typeof arg1 == "string" && !self.frame.has(arg1)){
-        reject(Oops.KeysExpected(arg1));
+      else if(typeof select == "string" && !self.frame.has(select)){
+        reject(Oops.KeysExpected(select));
         return;
       }
     }
@@ -71,15 +71,15 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       else if(!keys || keys.includes(key as P)){
         removeListener();
         return () => {
-          resolve(key && arg1 === key ? self.state[key] : self.latest);
+          resolve(key && select === key ? self.state[key] : self.latest);
         }
       }
     });
 
-    if(arg2 as number > 0)
+    if(timeout as number > 0)
       setTimeout(() => {
         removeListener();
         resolve(false);
-      }, arg2);
+      }, timeout);
   });
 }
