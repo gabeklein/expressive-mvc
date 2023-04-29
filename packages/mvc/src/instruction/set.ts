@@ -96,12 +96,12 @@ function set <T> (
             let error: any;
 
             if(value instanceof Promise){
-              state.set(key, undefined);
+              state[key] = undefined;
 
               pending = value
                 .catch(err => error = err)
                 .then(val => {
-                  state.set(key, val);
+                  state[key] = val;
                   return val;
                 })
                 .finally(() => {
@@ -110,7 +110,7 @@ function set <T> (
                 })
             }
             else
-              state.set(key, value);
+              state[key] = value;
 
             const suspend = () => {
               if(required === false)
@@ -133,8 +133,8 @@ function set <T> (
               if(pending)
                 return suspend();
 
-              if(state.has(key))
-                return state.get(key);
+              if(key in state)
+                return state[key];
             }
 
           }
@@ -156,12 +156,12 @@ function set <T> (
       }
 
       if(value !== undefined)
-        state.set(key, value);
+        state[key] = value;
 
       return {
         get: () => {
-          if(state.has(key))
-            return state.get(key);
+          if(key in state)
+            return state[key];
           else
             throw suspense(this, key);
         },

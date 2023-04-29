@@ -74,7 +74,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       else if(!keys || keys.includes(key as P)){
         remove();
         return () => {
-          resolve(single ? self.state.get(key) : self.latest);
+          resolve(single ? self.state[key] : self.latest);
         }
       }
     }

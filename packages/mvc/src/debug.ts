@@ -14,12 +14,7 @@ defineProperties(Model.prototype, {
   },
   [STATE]: {
     get(this: Model){
-      const { state } = controls(this);
-      const output: any = {};
-
-      state.forEach((value, key) => output[key] = value);
-
-      return output;
+      return { ...controls(this).state };
     }
   },
   [UPDATE]: {

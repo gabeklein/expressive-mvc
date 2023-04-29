@@ -166,12 +166,15 @@ class Model {
 
     function values(){
       if(typeof arg1 == "string")
-        return state.get(arg1);
+        return state[arg1];
+
+      if(!arg1)
+        return { ...state };
   
       const output = {} as any;
   
-      for(const key of arg1 || state.keys())
-        output[key] = state.get(key);
+      for(const key of arg1)
+        output[key] = state[key];
   
       return output;
     }
@@ -196,8 +199,8 @@ class Model {
 
     if(typeof arg1 == "object"){
       for(const key in arg1)
-        if(arg2 === true || (arg2 ? arg2.includes(key) : state.has(key))){
-          state.set(key, (arg1 as any)[key]);
+        if(arg2 === true || (arg2 ? arg2.includes(key) : key in state)){
+          state[key] = (arg1 as any)[key];
           controller.update(key as any);
         }
     }
@@ -205,8 +208,8 @@ class Model {
       controller.update(arg1 as Model.Key<this>);
 
       if(1 in arguments){
-        if(state.has(arg1))
-          state.set(arg1, arg2);
+        if(arg1 in state)
+          state[arg1] = arg2;
 
         else if(arg1 in this){
           const method = (this as any)[arg1];

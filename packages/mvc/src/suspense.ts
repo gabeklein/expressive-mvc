@@ -20,7 +20,7 @@ export function suspense(
     const onUpdate = (key: string | null) => {
       if(key)
         return () => {
-          if(source.state.get(key) !== undefined){
+          if(source.state[key] !== undefined){
             subs.delete(onUpdate);
             resolve();
           }

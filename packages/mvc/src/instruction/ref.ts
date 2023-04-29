@@ -1,4 +1,4 @@
-import { control, Control } from '../control';
+import { Control, control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
@@ -63,12 +63,12 @@ function ref<T>(
     function ref(key){
       let value: ref.Object | ref.Proxy<any> = {};
 
-      this.state.set(key, undefined);
+      this.state[key] = undefined;
 
       if(typeof arg != "object")
         value = createRef(this, key, arg);
       else
-        control(arg).state.forEach((_val, key) => {
+        for(const key in control(arg).state){
           defineProperty(value, key,
             mapper ? {
               configurable: true,
@@ -80,7 +80,7 @@ function ref<T>(
             } : {
               value: createRef(this, key)
             })
-        })
+        }
 
       defineProperty(this.subject, key, { value });
     }
@@ -99,7 +99,7 @@ function createRef(
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
-    get: () => src.state.get(key)
+    get: () => src.state[key]
   })
 
   return refObjectFunction as ref.Object;

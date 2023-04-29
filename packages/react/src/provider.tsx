@@ -92,7 +92,7 @@ function addTo(
 
   for(const model of init){
     setPeers(context, model);
-    Control.for(model).state.forEach(value => {
+    Object.values(Control.for(model).state).forEach(value => {
       if(value instanceof Model && Control.get(value).parent === model){
         context.add(value);
         init.add(value);

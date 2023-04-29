@@ -146,7 +146,7 @@ describe("custom", () => {
         return {
           value: 0,
           set: (value: any) => {
-            control.state.set(key, value + 10);
+            control.state[key] = value + 10;
             return shouldUpdate;
           }
         }

@@ -106,7 +106,7 @@ function recursive(
 
   if(source)
     source((got) => {
-      parent.state.set(key, got);
+      parent.state[key] = got;
 
       if(waiting)
         parent.update(key);
@@ -115,7 +115,7 @@ function recursive(
   waiting = true;
 
   return () => {
-    const value = parent.state.get(key);
+    const value = parent.state[key];
 
     if(value)
       return value;
@@ -161,8 +161,8 @@ function computed<T>(
       console.error(err);
     }
 
-    if(next !== state.get(key)){
-      state.set(key, next);
+    if(next !== state[key]){
+      state[key] = next;
 
       if(!initial || isAsync)
         parent.update(key);
@@ -208,7 +208,7 @@ function computed<T>(
     if(PENDING.delete(compute))
       compute();
 
-    return state.get(key);
+    return state[key];
   }
 }
 

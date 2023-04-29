@@ -74,7 +74,7 @@ declare namespace Control {
 }
 
 class Control<T extends Model = any> {
-  public state!: Map<any, any>;
+  public state!: { [key: string]: any };
   public latest?: Model.Event<T>[];
   public parent?: Model;
 
@@ -116,7 +116,7 @@ class Control<T extends Model = any> {
     this.observers.set(key, subs);
 
     if("value" in output)
-      state.set(key, output.value);
+      state[key] = output.value;
 
     defineProperty(this.subject, key, {
       enumerable,
@@ -129,7 +129,7 @@ class Control<T extends Model = any> {
         if(event)
           subs.add(event);
 
-        const value = get ? get(this) : state.get(key);
+        const value = get ? get(this) : state[key];
 
         return event && value instanceof Model
           ? detect(value, event)
@@ -144,12 +144,12 @@ class Control<T extends Model = any> {
     const { state, subject } = this
   
     return (value: any) => {
-      if(value === state.get(key))
+      if(value === state[key])
         return;
 
       switch(cb && cb.call(subject, value)){
         case undefined:
-          state.set(key, value);
+          state[key] = value;
         case true:
           this.update(key);
       }
@@ -246,7 +246,7 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
       return () => callback && callback();
     }
 
-    control.state = new Map();
+    control.state = {};
 
     for(const key in control.subject)
       control.add(key);
@@ -262,7 +262,7 @@ function setRecursive(
 
   const set = (next: Model | undefined) => {
     if(next instanceof value.constructor){
-      on.state.set(key, next);
+      on.state[key] = next;
       controls(next).parent = on.subject;
       control(next);
       return true;

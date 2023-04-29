@@ -65,7 +65,7 @@ function use(
         throw Oops.BadArgument(typeof input);
 
       const onUpdate = (next: Model | undefined) => {
-        state.set(key, next);
+        state[key] = next;
 
         if(next){
           controls(next).parent = subject;
@@ -127,13 +127,13 @@ function use(
           if(error)
             throw error;
 
-          if(!state.has(key))
+          if(!(key in state))
             initialize();
   
           if(pending)
             return suspend();
   
-          return state.get(key);
+          return state[key];
         }
       };
     }
