@@ -1,6 +1,5 @@
 import { issues } from './helper/issues';
 import { defineProperty, getOwnPropertyDescriptor } from './helper/object';
-import { flushComputed } from './instruction/get';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -248,10 +247,12 @@ function setRecursive(
   set(value);
 }
 
+const BEFORE = new Set<Callback>();
+
 function requestNextFrame(event: Callback, passive?: boolean){
   if(!WAITING.size && !passive)
     setTimeout(() => {
-      flushComputed();
+      BEFORE.forEach(x => x());
       WAITING.forEach(notify => {
         try {
           notify();
@@ -285,6 +286,7 @@ function random(){
 }
 
 export {
+  BEFORE,
   control,
   Control,
   controls,
