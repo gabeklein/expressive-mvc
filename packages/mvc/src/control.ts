@@ -124,7 +124,7 @@ class Control<T extends Model = any> {
         ? undefined
         : this.ref(key as Model.Key<T>, set),
       get(this: any){
-        const event = observer(this);
+        const event = OBSERVER.get(this);
 
         if(event)
           subs.add(event);
@@ -275,10 +275,6 @@ function setRecursive(
   set(value);
 }
 
-function observer<T extends Model>(from: T){
-  return OBSERVER.get(from);
-}
-
 function detect<T extends Model>(on: T, cb: Observer): T {
   if(!on.hasOwnProperty("is"))
     on = defineProperty(Object.create(on), "is", { value: on });
@@ -299,6 +295,5 @@ export {
   Control,
   controls,
   detect,
-  INSTRUCT,
-  observer,
+  INSTRUCT
 }
