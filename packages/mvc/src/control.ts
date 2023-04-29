@@ -48,7 +48,7 @@ declare namespace Control {
    * Called immediately when any key is changed or emitted.
    * Returned callback is notified when update is complete.
    */
-  type OnSync<T = any> = (key: Model.Event<T> | null, source: Control) => Callback | void;
+  type OnSync<T = any> = (key: Model.Event<T> | null | undefined, source: Control) => Callback | void;
 
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;
@@ -168,7 +168,7 @@ class Control<T extends Model = any> {
       Dispatch.add(() => {
         this.latest = Array.from(frame);
         this.followers.forEach(cb => {
-          const notify = cb("", this);
+          const notify = cb(undefined, this);
     
           if(notify)
             Dispatch.add(notify);
