@@ -8,9 +8,6 @@ import { defineProperty } from './helper/object';
 import type { Callback, Class, Extends, InstanceOf, NoVoid } from '../types';
 
 export const Oops = issues({
-  NoChaining: () =>
-    `Then called with undefined; update promise will never catch nor supports chaining.`,
-
   NoAdapter: (method) =>
     `Can't call Model.${method} without an adapter.`,
 
