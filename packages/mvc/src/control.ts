@@ -79,7 +79,6 @@ class Control<T extends Model = any> {
   public parent?: Model;
 
   public frame = new Set<string>();
-  public waiting = new Set<Callback>();
   public followers = new Set<Control.OnSync>();
   public observers = new Map<string | undefined | null, Set<Observer>>();
 
@@ -226,34 +225,36 @@ function controls<T extends Model>(from: T): Control<T> {
   return REGISTER.get(from.is) || new Control(from.is);
 }
 
+const WAITING = new WeakMap<Control, Set<Callback>>();
+
 function control<T extends Model>(subject: T): Control<T>;
 function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   const control = controls(subject);
 
-  if(cb){
-    if(control.state)
-      return cb(control);
-
-    let callback: Callback | void;
-
-    control.waiting.add(() => {
-      callback = cb(control);
-    });
-
-    return () => callback && callback();
-  }
-
   if(!control.state){
+    let waiting = WAITING.get(control);
+
+    if(!waiting)
+      WAITING.set(control, waiting = new Set());
+
+    if(cb){
+      let callback: Callback | void;
+  
+      waiting.add(() => callback = cb(control));
+  
+      return () => callback && callback();
+    }
+
     control.state = new Map();
 
     for(const key in control.subject)
       control.add(key);
 
-    control.waiting.forEach(cb => cb());
+    waiting.forEach(cb => cb());
   }
 
-  return control;
+  return cb ? cb(control) : control;
 }
 
 function setRecursive(
