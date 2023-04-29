@@ -56,6 +56,8 @@ declare namespace Model {
 
   /**
    * Including but not limited to `keyof T` which are not methods or defined by base Model.
+   * 
+   * TODO: Should this be supported?
    **/
   export type Event<T> = Extends<Key<T>>;
 
@@ -102,6 +104,8 @@ declare namespace Model {
   };
 
   export type Suspense = Promise<void> & Error;
+
+  export type OnCallback<T extends Model> = (this: T, keys: Model.Event<T>[] | null) => void;
 }
 
 class Model {
@@ -120,16 +124,16 @@ class Model {
   on (): Promise<Model.Event<this>[]>;
   on (timeout?: number): Promise<Model.Event<this>[] | false>;
 
-  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[] | false>;
-  on <P extends Model.Event<this>> (keys: P | Iterable<P>, listener: (this: this, keys: Model.Event<this>[]) => void, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys?: P | Iterable<P> | null, timeout?: number): Promise<P[] | false>;
+  on <P extends Model.Event<this>> (keys: P | Iterable<P> | null, listener: Model.OnCallback<this>, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
   on (effect: Model.Effect<this>, watch?: []): Callback;
   on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
   on <P extends Model.Event<this>> (
-    arg1?: number | P | P[] | Model.Effect<this>,
-    arg2?: number | P[] | ((this: this, keys: Model.Event<this>[]) => void),
+    arg1?: number | P[] | P | null | Model.Effect<this>,
+    arg2?: number | P[] | Model.OnCallback<this>,
     arg3?: boolean){
 
     if(typeof arg1 == "function")
@@ -143,7 +147,8 @@ class Model {
     if(typeof arg2 != "function")
       return awaitUpdate(this.is, arg1, arg2 as number);
 
-    if(arg1)
+    // TODO: this does nothing if arg1 is undefined?
+    if(arg1 !== undefined)
       return addEventListener(this.is, arg1, arg2, arg3);
   }
 

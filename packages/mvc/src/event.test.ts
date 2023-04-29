@@ -156,7 +156,7 @@ describe("on multiple", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on([], callback);
+    state.on(null, callback);
 
     state.seconds = 30;
     await expect(state).toUpdate();
@@ -165,7 +165,7 @@ describe("on multiple", () => {
 
     state.gc();
 
-    expect(callback).toBeCalledWith([]);
+    expect(callback).toBeCalledWith(null);
   })
 });
 
@@ -207,11 +207,11 @@ describe("on promise", () => {
 
   it('will resolve on destroy', async () => {
     const state = Subject.new();
-    const update = state.on([]);
+    const update = state.on(null);
 
     state.gc();
 
-    await expect(update).resolves.toEqual([]);
+    await expect(update).resolves.toEqual(null);
   })
 })
 

@@ -9,27 +9,27 @@ export const Oops = issues({
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
-  select: P | P[],
-  callback: (this: T, keys: Model.Event<T>[]) => void,
+  select: P | P[] | null,
+  callback: (this: T, keys: Model.Event<T>[] | null) => void,
   required?: boolean){
 
   const keys = typeof select == "object" ? select : [select];
 
   return control(source, self => {
-    for(const key of keys)
-      try { void (source as any)[key] }
-      catch(e){}
+    if(keys)
+      for(const key of keys)
+        try { void (source as any)[key] }
+        catch(e){}
 
     const cb: Control.OnSync = key => {
-      if(key === null && !keys.length)
-        callback.call(source, []);
-        
-      if(keys.includes(key as P)){
+      if(keys && keys.includes(key as P)){
         if(required)
           removeListener();
 
         return () => callback.call(source, self.latest!);
       }
+      else if(key === keys)
+        callback.call(source, null);
     }
 
     const removeListener = self.addListener(cb);
@@ -40,7 +40,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
 
 export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   source: T,
-  arg1?: P | P[],
+  arg1?: P | P[] | null,
   arg2?: number){
 
   const keys = typeof arg1 == "string" ? [ arg1 ] : arg1;
@@ -58,7 +58,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
     }
 
-    if(keys && keys.length)
+    if(keys)
       for(const key of keys)
         if(key in source)
           try { void source[key as keyof T] }
@@ -66,7 +66,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
 
     const removeListener = self.addListener(key => {
       if(key === null)
-        resolve(!keys || keys.length ? false : [])
+        resolve(keys !== null ? false : null);
 
       else if(!keys || keys.includes(key as P)){
         removeListener();
