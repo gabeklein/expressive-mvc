@@ -1,9 +1,14 @@
-import { setRecursive } from './children';
+import { issues } from './helper/issues';
 import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
 import { flushComputed } from './instruction/get';
 import { Model } from './model';
 
 import type { Callback } from '../types';
+
+export const Oops = issues({
+  BadAssignment: (parent, expected, got) =>
+    `${parent} expected Model of type ${expected} but got ${got}.`
+});
 
 export type Observer = (key: string | null, from: Control) => (() => void) | null | void;
 
@@ -227,6 +232,24 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   }
 
   return control;
+}
+
+function setRecursive(
+  on: Control, key: string, value: Model
+){
+  const set = (next: Model | undefined) => {
+    if(next instanceof value.constructor){
+      on.state.set(key, next);
+      controls(next).parent = on.subject;
+      control(next);
+      return true;
+    }
+
+    throw Oops.BadAssignment(`${on.subject}.${key}`, value.constructor, next);
+  }
+
+  on.watch(key, { set });
+  set(value);
 }
 
 function setPending(event: Callback, passive?: boolean){
