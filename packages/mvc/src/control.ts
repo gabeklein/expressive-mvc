@@ -140,8 +140,7 @@ class Control<T extends Model = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      setPending(() => {
-        flushComputed(this);
+      requestNextFrame(() => {
         this.latest = Array.from(frame);
         this.update("");
         frame.clear();
@@ -232,8 +231,8 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
 }
 
 function setRecursive(
-  on: Control, key: string, value: Model
-){
+  on: Control, key: string, value: Model){
+
   const set = (next: Model | undefined) => {
     if(next instanceof value.constructor){
       on.state.set(key, next);
@@ -249,7 +248,7 @@ function setRecursive(
   set(value);
 }
 
-function setPending(event: Callback, passive?: boolean){
+function requestNextFrame(event: Callback, passive?: boolean){
   if(!WAITING.size && !passive)
     setTimeout(() => {
       WAITING.forEach(notify => {
@@ -291,5 +290,4 @@ export {
   detect,
   INSTRUCT,
   observer,
-  setPending,
 }
