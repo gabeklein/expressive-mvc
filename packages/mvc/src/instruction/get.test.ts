@@ -297,6 +297,8 @@ describe("compute mode", () => {
     it('will throw if source is another instruction', () => {
       class Test extends Model {
         peer = get(this, () => "foobar");
+
+        // @ts-ignore
         value = get(this.peer, () => {});
       }
 
