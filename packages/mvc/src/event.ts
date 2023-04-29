@@ -68,18 +68,14 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
           catch(e){}
 
     const callback: Control.OnSync = key => {
-      if(key === null){
-        if(keys && !keys.length)
-          resolve([]);
-        else {
-          remove();
-          resolve(false);
-        }
-      }
+      if(key === null)
+        resolve(!keys || keys.length ? false : [])
+
       else if(!keys || keys.includes(key as P)){
         remove();
-        return () =>
-          resolve(single ? self.state.get(key) : self.latest)
+        return () => {
+          resolve(single ? self.state.get(key) : self.latest);
+        }
       }
     }
 
