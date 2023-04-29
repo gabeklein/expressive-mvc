@@ -1,5 +1,3 @@
-export { getParent } from './children';
-
 export { add } from './instruction/add';
 export { run } from './instruction/run';
 export { get } from './instruction/get';

@@ -1,4 +1,3 @@
-import { getParent } from '../children';
 import { Control, detect } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
@@ -77,7 +76,7 @@ function get<R, T extends Model>(
         subject = arg0;
 
       else if(Model.isTypeof(arg0)){
-        const parent = getParent(subject);
+        const { parent } = this;
 
         if(!parent)
           source = arg0.has(arg1 !== false, subject);

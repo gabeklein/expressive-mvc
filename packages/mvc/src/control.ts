@@ -51,6 +51,7 @@ class Control<T extends Model = any> {
   public latest?: Model.Event<T>[];
   public followers = new Set<Control.OnSync>();
   public observers = new Map<string | undefined | null, Set<Observer>>();
+  public parent?: Model;
 
   constructor(
     public subject: T,

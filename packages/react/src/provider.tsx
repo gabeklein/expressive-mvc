@@ -1,4 +1,4 @@
-import { Context, Control, getParent, issues, Model } from '@expressive/mvc';
+import { Context, Control, issues, Model } from '@expressive/mvc';
 import React, { createContext, Suspense, useContext, useLayoutEffect, useMemo } from 'react';
 
 import { setPeers } from './useContext';
@@ -93,7 +93,7 @@ function addTo(
   for(const model of init){
     setPeers(context, model);
     Control.for(model).state.forEach(value => {
-      if(getParent(value) === model){
+      if(value instanceof Model && Control.get(value).parent === model){
         context.add(value);
         init.add(value);
       }
