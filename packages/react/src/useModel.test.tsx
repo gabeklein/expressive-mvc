@@ -176,12 +176,12 @@ describe("specific", () => {
     class Test extends Model {
       constructor(){
         super();
-        this.on(() => didDestroy, []);
+        this.on(() => didDestroy);
       }
     }
 
     const didDestroy = jest.fn();
-    const element = renderHook(() => Test.use([]));
+    const element = renderHook(() => Test.use());
 
     element.unmount();
 
