@@ -219,6 +219,31 @@ describe("explicit", () => {
 
     expect(willDestroy).not.toBeCalled();
   })
+
+  it('will cancel effect on callback', async () => {
+    class Test extends Model {
+      value = 0;
+    }
+
+    const test = Test.new();
+    const didEffect = jest.fn((test: Test) => {
+      void test.value;
+    });
+
+    const done = test.on(didEffect);
+
+    test.value += 1;
+
+    await expect(test).toUpdate();
+    expect(didEffect).toBeCalledTimes(2);
+
+    done();
+
+    test.value += 1;
+    await expect(test).toUpdate();
+
+    expect(didEffect).toBeCalledTimes(2);
+  })
 })
 
 describe("implicit", () => {
