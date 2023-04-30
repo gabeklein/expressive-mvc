@@ -9,27 +9,25 @@ export const Oops = issues({
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
-  select: P | P[] | null,
-  callback: (this: T, keys: Model.Event<T>[] | null) => void,
-  required?: boolean){
-
-  const keys = typeof select == "string" ? [ select ] : select;
+  select: P | P[] | null | undefined,
+  callback: (this: T, keys: Model.Event<T>[] | null | false) => void,
+  once?: boolean){
 
   return control(source, self => {
-    if(keys)
-      for(const key of keys)
-        try { void (source as any)[key] }
-        catch(e){}
+    const keys = watch(self, select);
 
     const cb: Control.OnSync = key => {
-      if(keys && keys.includes(key as P)){
-        if(required)
+      if(keys === null){
+        if(key === null){
+          callback.call(source, once && key !== null ? false : null);
+        }
+      }
+      else if(!keys || keys.includes(key as P)){
+        if(once)
           removeListener();
 
         return () => callback.call(source, self.latest!);
       }
-      else if(key === keys)
-        callback.call(source, null);
     }
 
     const removeListener = self.addListener(cb);
@@ -43,36 +41,34 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   select?: P | P[] | null,
   timeout?: number){
 
-  const keys = typeof select == "string" ? [ select ] : select;
-  const self = control(source);
-
   return new Promise<any>((resolve, reject) => {
     if(timeout === 0){
-      if(!self.frame.size){
+      // = controls() instead?
+      const { frame } = control(source);
+
+      if(!frame.size){
         resolve(false);
         return;
       }
-      else if(typeof select == "string" && !self.frame.has(select)){
+      else if(typeof select == "string" && !frame.has(select)){
         reject(Oops.KeysExpected(select));
         return;
       }
     }
 
-    if(keys)
-      for(const key of keys)
-        if(key in source)
-          try { void source[key as keyof T] }
-          catch(e){}
+    const self = control(source);
+    const keys = watch(self, select);
 
     const removeListener = self.addListener(key => {
       if(key === null)
         resolve(keys !== null ? false : null);
 
       else if(!keys || keys.includes(key as P)){
+        const single = key && select === key;
+        
         removeListener();
-        return () => {
-          resolve(key && select === key ? self.state[key] : self.latest);
-        }
+        return () => 
+          resolve(single ? self.state[key] : self.latest);
       }
     });
 
@@ -82,4 +78,32 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         resolve(false);
       }, timeout);
   });
+}
+
+export function watch<T extends Model, P extends Model.Event<T>>(
+  from: Control, select: P | P[] | null | undefined){
+
+  const keys = typeof select == "string" ? [ select ] : select;
+  const source = from.subject as any;
+
+  if(keys)
+    for(const key of keys)
+      try { void source[key] }
+      catch(e){}
+
+  return keys;
+}
+
+export function watch2<T extends Model, P extends Model.Event<T>>(
+  from: Control, select: P | P[] | null | undefined){
+
+  const keys = typeof select == "string" ? [ select ] : select;
+  const source = from.subject as any;
+
+  if(keys)
+    for(const key of keys)
+      try { void source[key] }
+      catch(e){}
+
+  return keys;
 }

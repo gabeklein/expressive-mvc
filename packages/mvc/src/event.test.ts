@@ -152,7 +152,7 @@ describe("on multiple", () => {
     expect(callback).toBeCalledTimes(1);
   })
 
-  it('will callback on destroy if empty', async () => {
+  it('will callback on destroy if null', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 

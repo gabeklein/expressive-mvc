@@ -105,7 +105,7 @@ declare namespace Model {
 
   export type Suspense = Promise<void> & Error;
 
-  export type OnCallback<T extends Model> = (this: T, keys: Model.Event<T>[] | null) => void;
+  export type OnCallback<T extends Model> = (this: T, keys: Model.Event<T>[] | null | false) => void;
 }
 
 class Model {
@@ -144,12 +144,9 @@ class Model {
       arg1 = undefined;
     }
 
-    if(typeof arg2 != "function")
-      return awaitUpdate(this.is, arg1, arg2 as number);
-
-    // TODO: this does nothing if arg1 is undefined?
-    if(arg1 !== undefined)
-      return addEventListener(this.is, arg1, arg2, arg3);
+    return typeof arg2 == "function"
+      ? addEventListener(this.is, arg1, arg2, arg3)
+      : awaitUpdate(this.is, arg1, arg2 as number);
   }
 
   get(): Model.Export<this>;
