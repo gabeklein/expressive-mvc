@@ -114,6 +114,17 @@ describe("on single", () => {
 
     expect(callback).toBeCalledTimes(1);
   })
+
+  it('will resolve false if destroyed in once mode', () => {
+    const state = Subject.new();
+    const callback = jest.fn();
+
+    state.on("seconds", callback, true);
+
+    state.gc();
+
+    expect(callback).toBeCalledWith(false);
+  })
 })
 
 describe("on multiple", () => {
