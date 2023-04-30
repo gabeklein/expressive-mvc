@@ -21,7 +21,7 @@ declare namespace Control {
    * Called immediately when any key is changed or emitted.
    * Returned callback is notified when update is complete.
    */
-  type OnSync<T = any> = (key: Model.Event<T> | null | undefined, source: Control) => Callback | void;
+  type OnSync<T = any> = (key: Model.Event<T> | null | undefined, source: Control) => Callback | void | null;
 
   // TODO: implement value type
   type OnValue<T = any> = (this: T, value: any) => boolean | void;

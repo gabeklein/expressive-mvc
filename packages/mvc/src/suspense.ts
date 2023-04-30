@@ -17,7 +17,7 @@ export function suspense(
 
   const promise = new Promise<void>((resolve, reject) => {
     const subs = source.observers.get(key)!;
-    const onUpdate = (key: string | null) => {
+    const onUpdate = (key: string | null | undefined) => {
       if(key)
         return () => {
           if(source.state[key] !== undefined){
