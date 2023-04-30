@@ -100,6 +100,6 @@ export class Context {
     }
 
     for(const model of items)
-      model.gc();
+      model.null();
   }
 }

@@ -222,7 +222,7 @@ class Model {
   }
 
   /** Mark this instance for garbage collection. */
-  gc(){
+  null(){
     control(this).clear();
   }
 

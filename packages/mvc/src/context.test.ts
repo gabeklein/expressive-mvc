@@ -100,9 +100,9 @@ it("will destroy modules created by layer", () => {
   class Test extends Model {
     didDestroy = jest.fn();
 
-    gc(){
+    null(){
       this.didDestroy();
-      super.gc;
+      super.null();
     }
   }
 

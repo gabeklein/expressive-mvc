@@ -37,7 +37,7 @@ it("will reject if model destroyed before resolved", async () => {
     didThrow = err;
   }
 
-  instance.gc();
+  instance.null();
 
   await expect(didThrow).rejects.toThrow(expected);
 })

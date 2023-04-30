@@ -121,7 +121,7 @@ describe("on single", () => {
 
     state.on("seconds", callback, true);
 
-    state.gc();
+    state.null();
 
     expect(callback).toBeCalledWith(false);
   })
@@ -174,7 +174,7 @@ describe("on multiple", () => {
 
     expect(callback).not.toBeCalled();
 
-    state.gc();
+    state.null();
 
     expect(callback).toBeCalledWith(null);
   })
@@ -222,7 +222,7 @@ describe("on promise", () => {
     const state = Subject.new();
     const update = state.on(null);
 
-    state.gc();
+    state.null();
 
     await expect(update).resolves.toEqual(null);
   })

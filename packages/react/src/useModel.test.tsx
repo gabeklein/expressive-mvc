@@ -29,8 +29,8 @@ describe("hook", () => {
     const didDestroy = jest.fn();
 
     class Test extends Model {
-      gc(){
-        super.gc();
+      null(){
+        super.null();
         didDestroy();
       }
     }

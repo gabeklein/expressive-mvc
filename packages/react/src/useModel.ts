@@ -47,7 +47,7 @@ function useModel <T extends Model> (
         instance.on(arg1, () => update(x => x+1));
 
       return () => {
-        instance.gc();
+        instance.null();
       }
     }, []);
 
@@ -90,7 +90,7 @@ function useModel <T extends Model> (
       refresh = update;
       return () => {
         done = true;
-        instance.gc();
+        instance.null();
       }
     }
 
