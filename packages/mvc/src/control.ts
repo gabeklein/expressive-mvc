@@ -182,6 +182,7 @@ class Control<T extends Model = any> {
   addListener(fn: Control.OnSync<any>, once?: boolean){
     const rm = () => {
       this.followers.delete(fn);
+      this.followers.delete(rm);
     }
 
     this.followers.add(fn);
