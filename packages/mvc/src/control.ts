@@ -211,8 +211,8 @@ declare namespace control {
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 }
 
-function controls<T extends Model>(from: T): Control<T> {
-  return REGISTER.get(from.is) || new Control(from.is);
+function controls<T extends Model>(from: T){
+  return REGISTER.get(from.is) as Control<T>;
 }
 
 const WAITING = new WeakMap<Control, Set<Callback>>();
