@@ -16,8 +16,6 @@ export const Oops = issues({
 });
 
 declare namespace Model {
-  export { Control };
-
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new () => T;
 
@@ -105,7 +103,8 @@ declare namespace Model {
 
   export type Suspense = Promise<void> & Error;
 
-  export type OnCallback<T extends Model> = (this: T, keys: Model.Event<T>[] | null | false) => void;
+  export type OnCallback<T extends Model> =
+    (this: T, keys: Model.Event<T>[] | null | false) => void;
 }
 
 class Model {
