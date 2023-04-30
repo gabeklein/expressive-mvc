@@ -125,15 +125,13 @@ class Control<T extends Model = any> {
     const { state, subject } = this
   
     return (value: any) => {
-      if(value === state[key])
-        return;
-
-      switch(cb && cb.call(subject, value)){
-        case undefined:
-          state[key] = value;
-        case true:
-          this.update(key);
-      }
+      if(value !== state[key])
+        switch(cb && cb.call(subject, value)){
+          case undefined:
+            state[key] = value;
+          case true:
+            this.update(key);
+        }
     }
   }
 
