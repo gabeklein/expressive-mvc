@@ -57,8 +57,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
           else {
             removeListener();
             return () => {
-              const single = key && select === key;
-              resolve(single ? self.state[key] : self.latest);
+              resolve(key && select === key ? self.state[key] : self.latest);
             }
           }
         });

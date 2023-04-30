@@ -9,7 +9,7 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`
 });
 
-type Observer = (key: string | null, from: Control) => Callback | null | void;
+type Observer = Control.OnSync;
 type InstructionRunner = (key: string, controller: Control) => void;
 
 const INSTRUCT = new Map<symbol, InstructionRunner>();
@@ -52,8 +52,8 @@ class Control<T extends Model = any> {
   public parent?: Model;
 
   public frame = new Set<string>();
-  public followers = new Set<Control.OnSync>();
-  public observers = new Map<string | undefined | null, Set<Observer>>();
+  public followers = new Set<Observer>();
+  public observers = new Map([["", this.followers]]);
 
   static afterUpdate = new Set<Callback>();
   static beforeUpdate = new Set<Callback>();
@@ -158,34 +158,27 @@ class Control<T extends Model = any> {
   
     frame.add(key);
 
-    const dispatch = (
-      cb: Observer, _cb: Observer, subs: Set<Observer>) => {
+    for(const k of ["", key]){
+      const subs = this.observers.get(k);
 
-      const notify = cb(key, this);
-
-      if(notify === null)
-        subs.delete(cb);
-      else if(notify)
-        requestUpdateFrame(notify);
+      if(subs)
+        for(const cb of subs){
+          const notify = cb(key, this);
+    
+          if(notify === null)
+            subs.delete(cb);
+          else if(notify)
+            requestUpdateFrame(notify);
+        }
     }
-
-    const subs = this.observers.get(key);
-
-    if(subs)
-      subs.forEach(dispatch)
-
-    this.followers.forEach(dispatch);
   }
 
-  addListener(fn: Control.OnSync<any>){
+  addListener(fn: Observer){
     this.followers.add(fn);
     return () => this.followers.delete(fn);
   }
 
   clear(){
-    this.followers.forEach(x => x(null, this));
-    this.followers.clear();
-
     this.observers.forEach(subs => {
       subs.forEach(fn => fn(null, this));
     });
