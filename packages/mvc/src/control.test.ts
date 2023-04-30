@@ -1,4 +1,4 @@
-import { Oops } from './control';
+import { Control, Oops } from './control';
 import { mockAsync } from './helper/testing';
 import { Model } from './model';
 
@@ -85,4 +85,27 @@ describe("child models", () => {
       Oops.BadAssignment(`Parent-ID.child`, `Child`, `undefined`)
     );
   })
+});
+
+it("will call dispatch callbacks", async () => {
+  const didUpdate = jest.fn();
+  const willUpdate = jest.fn();
+  
+  Control.beforeUpdate.add(willUpdate);
+  Control.afterUpdate.add(didUpdate);
+
+  class Test extends Model {
+    value = 1;
+  }
+
+  const test = Test.new();
+
+  test.value += 1;
+  await expect(test).toUpdate();
+
+  expect(willUpdate).toBeCalledTimes(1);
+  expect(didUpdate).toBeCalledTimes(1);
+
+  Control.beforeUpdate.delete(willUpdate);
+  Control.afterUpdate.delete(didUpdate);
 })
