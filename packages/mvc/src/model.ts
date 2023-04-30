@@ -108,16 +108,16 @@ declare namespace Model {
 }
 
 class Model {
+  constructor(id?: string | number){
+    new Control(this, id);
+  }
+
   /**
    * Reference to `this` without a subscription.
    * Use to obtain full reference from a destructure.
    */
   get is(){
     return this;
-  }
-
-  constructor(id?: string | number){
-    new Control(this, id);
   }
 
   on (): Promise<Model.Event<this>[]>;
