@@ -190,19 +190,21 @@ describe("on promise", () => {
 
   it('will resolve any updated', async () => {
     const state = Subject.new();
+    const update = state.on();
 
     state.seconds = 61;
 
-    await expect(state).toHaveUpdated(["seconds"]);
+    await expect(update).resolves.toEqual(["seconds"]);
   })
 
   it('will resolve any updated expected', async () => {
     const state = Subject.new();
+    const update = state.on(["seconds"]);
 
     state.seconds = 61;
 
     // should this also expect minutes?
-    await expect(state).toHaveUpdated(["seconds"]);
+    await expect(update).resolves.toEqual(["seconds"]);
   })
 
   it('will resolve on destroy', async () => {
