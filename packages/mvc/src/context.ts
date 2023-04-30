@@ -12,7 +12,7 @@ export const Oops = issues({
 
 export class Context {
   private table = new Map<Model.Type, symbol>();
-  public register!: Map<string | number, Model | Model.Type>;
+  public register = new Map<string | number, Model | Model.Type>();
 
   private has(T: Model.Type){
     let key = this.table.get(T);
