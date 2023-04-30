@@ -85,10 +85,10 @@ export function watch<T extends Model, P extends Model.Event<T>>(
     if(key === null)
       return callback(keys === null ? null : false);
 
-    else if(keys === null)
+    if(keys === null)
       return;
 
-    else if(!keys || keys.includes(key as P))
+    if(!keys || !key || keys.includes(key as P))
       return callback(key);
   });
 }
