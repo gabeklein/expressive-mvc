@@ -22,7 +22,7 @@ declare namespace Model {
   // TODO: Can this be combined with Type?
   export type Class<T extends Model> = (abstract new () => T) & typeof Model;
 
-  /** A typeof Model, specifically one which may be created without arguments. */
+  /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
