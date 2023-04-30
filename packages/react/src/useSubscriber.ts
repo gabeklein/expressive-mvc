@@ -31,9 +31,9 @@ export function useComputed<T extends Model, R>(
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const [state, push] = useState(() => {
+  const [state, update] = useState(() => {
     let suspense: (() => void) | undefined;
-    let update: (() => void) | undefined | null;
+    let refresh: (() => void) | undefined | null;
     let value: R | undefined;
 
     let next = (): {
@@ -42,7 +42,7 @@ export function useComputed<T extends Model, R>(
     } => ({
       commit(){
         return () => {
-          update = null;
+          refresh = null;
         }
       },
       get proxy(){
@@ -63,7 +63,7 @@ export function useComputed<T extends Model, R>(
     let proxy!: T;
 
     source(got => {
-      proxy = Control.sub(got, () => factory ? null : update);
+      proxy = Control.sub(got, () => factory ? null : refresh);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
     });
@@ -71,13 +71,13 @@ export function useComputed<T extends Model, R>(
     if(value === null){
       next = () => ({});
       getValue = undefined;
-      update = null;
+      refresh = null;
     }
 
     if(typeof value == "function"){
       const get = value;
       
-      Control.sub(proxy, () => update)
+      Control.sub(proxy, () => refresh)
 
       factory = true;
       compute = () => get();
@@ -85,12 +85,12 @@ export function useComputed<T extends Model, R>(
     }
 
     if(value instanceof Promise){
-      update = null;
+      refresh = null;
       value.then(didUpdate);
       value = undefined;
     }
     else
-      update = () => {
+      refresh = () => {
         const next = getValue!();
 
         if(notEqual(value, next))
@@ -105,7 +105,7 @@ export function useComputed<T extends Model, R>(
         suspense = undefined;
       }
       else
-        push(next);
+        update(next);
     };
 
     function forceUpdate(): void;
@@ -117,10 +117,10 @@ export function useComputed<T extends Model, R>(
       if(getValue)
         didUpdate(getValue());
       else
-        push(next);
+        update(next);
 
       if(passthru)
-        return passthru.finally(() => push(next));
+        return passthru.finally(() => update(next));
     }
 
     return next();
