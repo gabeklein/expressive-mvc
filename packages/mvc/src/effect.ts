@@ -11,9 +11,7 @@ export const Oops = issues({
 })
 
 export function createEffect<T extends Model>(
-  model: T,
-  callback: Model.Effect<T>,
-  keys: Model.Event<T>[]){
+  model: T, callback: Model.Effect<T>){
 
   return control(model, self => {
     let unSet: Callback | Promise<any> | void;
@@ -40,17 +38,6 @@ export function createEffect<T extends Model>(
         output.finally(() => busy = false);
         busy = true;
       }
-    }
-
-    if(Array.isArray(keys)){
-      invoke();
-
-      return self.addListener(key => {
-        if(keys.includes(key!))
-          return invoke;
-        else if(key === null && !keys.length)
-          invoke();
-      });
     }
 
     let refresh: (() => void) | null;

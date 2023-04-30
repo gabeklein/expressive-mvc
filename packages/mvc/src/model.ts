@@ -127,16 +127,14 @@ class Model {
   on <P extends Model.Event<this>> (keys: P | Iterable<P> | null, listener: Model.OnCallback<this>, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
-  on (effect: Model.Effect<this>, watch?: []): Callback;
-  on (effect: Model.Effect<this>, watch?: Model.Event<this>[]): Callback;
 
   on <P extends Model.Event<this>> (
     arg1?: number | P[] | P | null | Model.Effect<this>,
-    arg2?: number | P[] | Model.OnCallback<this>,
+    arg2?: number | Model.OnCallback<this>,
     arg3?: boolean){
 
     if(typeof arg1 == "function")
-      return createEffect(this.is, arg1, arg2 as P[]);
+      return createEffect(this.is, arg1);
 
     if(typeof arg1 == "number"){
       arg2 = arg1;
