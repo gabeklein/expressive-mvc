@@ -42,8 +42,12 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         resolve(false);
       else if(typeof select == "string" && !self.frame.has(select))
         reject(Oops.KeysExpected(select));
-      else 
-        self.addListener(() => () => resolve(self.latest), true);
+      else {
+        const remove = self.addListener(() => {
+          remove();
+          return () => resolve(self.latest);
+        });
+      }
     }
     else {
       const removeListener =
