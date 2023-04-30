@@ -179,9 +179,17 @@ class Control<T extends Model = any> {
     this.followers.forEach(dispatch);
   }
 
-  addListener(fn: Control.OnSync<any>){
+  addListener(fn: Control.OnSync<any>, once?: boolean){
+    const rm = () => {
+      this.followers.delete(fn);
+    }
+
     this.followers.add(fn);
-    return () => this.followers.delete(fn);
+
+    if(once)
+      this.followers.add(rm);
+
+    return rm;
   }
 
   clear(){
