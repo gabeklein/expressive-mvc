@@ -202,6 +202,12 @@ class Control<T extends Model = any> {
   }
 }
 
+const WAITING = new WeakMap<Control, Set<Callback>>();
+
+function controls<T extends Model>(from: T){
+  return REGISTER.get(from.is) as Control<T>;
+}
+
 declare namespace control {
   /**
    * Callback for Controller.for() static method.
@@ -209,12 +215,6 @@ declare namespace control {
    */
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 }
-
-function controls<T extends Model>(from: T){
-  return REGISTER.get(from.is) as Control<T>;
-}
-
-const WAITING = new WeakMap<Control, Set<Callback>>();
 
 function control<T extends Model>(subject: T): Control<T>;
 function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
