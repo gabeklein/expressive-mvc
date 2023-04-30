@@ -400,6 +400,18 @@ describe("implicit", () => {
 
     expect(attempt).not.toThrowError();
   })
+
+  it('will callback on willDestroy by default', async () => {
+    class Test extends Model {}
+
+    const willDestroy = jest.fn();
+    const test = Test.new();
+
+    test.on(() => willDestroy);
+    test.null();
+
+    expect(willDestroy).toBeCalled();
+  })
 });
 
 describe("suspense", () => {

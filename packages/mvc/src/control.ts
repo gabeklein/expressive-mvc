@@ -180,7 +180,10 @@ class Control<T extends Model = any> {
 
   clear(){
     this.observers.forEach(subs => {
-      subs.forEach(fn => fn(null, this));
+      subs.forEach(fn => {
+        const cb = fn(null, this);
+        cb && cb();
+      });
     });
     this.observers.clear();
   }

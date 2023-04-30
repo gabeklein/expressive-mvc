@@ -56,6 +56,9 @@ export function createEffect<T extends Model>(
     let refresh: (() => void) | null;
 
     model = detect(model, () => refresh);
+    self.followers.add(key => (
+      key === null || refresh === null ? refresh : undefined
+    ));
 
     invoke();
     refresh = invoke;
