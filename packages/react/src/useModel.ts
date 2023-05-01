@@ -32,21 +32,30 @@ function useModel <T extends Model> (
 
   const state = useState(0);
   const local = useMemo(() => {
-    let refresh: (() => void) | undefined;
-    let done: undefined | boolean;
-
     const update = () => state[1](x => x+1);
+    let refresh: (() => void) | undefined | null;
 
-    const proxy = Control.sub(instance, () => {
-      return done ? null : refresh
-    });
+    const memo: {
+      apply?: (from: Model.Compat<T>) => void;
+      commit: () => () => void;
+      proxy: T;
+    } = {
+      commit(){
+        refresh = update;
+        return () => {
+          refresh = null;
+          instance.null();
+        }
+      },
+      proxy: Control.sub(instance, () => refresh)
+    };
 
-    let didApply: undefined | boolean;
-
-    function apply(values: Model.Compat<T>){
-      if(arg2 || !didApply){
-        didApply = true;
+    if(typeof arg1 == "object")
+      memo.apply = (values: Model.Compat<T>) => {
         refresh = undefined;
+
+        if(!arg2)
+          memo.apply = undefined;
 
         for(const key in values)
           if(instance.hasOwnProperty(key))
@@ -54,27 +63,14 @@ function useModel <T extends Model> (
 
         instance.on(0).then(() => refresh = update);
       }
-    }
 
-    function commit(){
-      refresh = update;
-      return () => {
-        done = true;
-        instance.null();
-      }
-    }
-
-    return {
-      apply,
-      commit,
-      proxy
-    };
+    return memo;
   }, []);
 
   usePeerContext(instance);
 
-  if(typeof arg1 == "object")
-    local.apply(arg1);
+  if(local.apply)
+    local.apply(arg1 as Model.Compat<T>);
 
   useLayoutEffect(local.commit, []);
 

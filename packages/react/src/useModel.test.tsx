@@ -215,7 +215,4 @@ describe("import", () => {
 
     expect(foobar).not.toBe(mockExternal.foobar);
   })
-
-  it.todo("will not refresh from updates caused");
-  it.todo("will still subscribe to updates");
 })
