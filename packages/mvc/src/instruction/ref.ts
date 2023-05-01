@@ -1,8 +1,7 @@
-import { Control, control } from '../control';
+import { add, Control, control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
-import { add } from './add';
 
 declare namespace ref {
   type Callback<T, S = any> = (this: S, argument: T) =>

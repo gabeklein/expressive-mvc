@@ -59,6 +59,7 @@ class Control<T extends Model = any> {
   static beforeUpdate = new Set<Callback>();
   static waiting = new Set<Callback>();
 
+  static add = add;
   static get = controls;
   static ready = control;
   static watch = watch;
@@ -281,15 +282,34 @@ function watch<T extends Model>(on: T, cb: Observer): T {
   return on;
 }
 
+function add<T = any>(
+  instruction: Control.Instruction<any>){
+
+  const placeholder = Symbol("instruction");
+
+  INSTRUCT.set(placeholder, (key, onto) => {
+    delete onto.subject[key];
+  
+    const output = instruction.call(onto, key, onto);
+  
+    if(output)
+      onto.watch(key, 
+        typeof output == "function" ? { get: output } : output
+      );
+  });
+
+  return placeholder as unknown as T;
+}
+
 /** Random alphanumberic of length 6; will always start with a letter. */
 function random(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
+  add,
   control,
   Control,
   controls,
-  INSTRUCT,
   watch
 }

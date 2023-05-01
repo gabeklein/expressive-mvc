@@ -1,7 +1,7 @@
+import { add } from '../control';
 import { issues } from '../helper/issues';
 import { defineProperty } from '../helper/object';
 import { mayRetry } from '../suspense';
-import { add } from './add';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
 

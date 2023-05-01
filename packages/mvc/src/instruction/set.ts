@@ -1,8 +1,8 @@
+import { add } from '../control';
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { mayRetry, suspense } from '../suspense';
-import { add } from './add';
 
 export const Oops = issues({
   ComputeFailed: (model, key) =>
