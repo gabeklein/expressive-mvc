@@ -10,7 +10,7 @@ export function useSubscriber<T extends Model>(
     let proxy!: T;
 
     getInstance(got => {
-      proxy = Control.sub(got, () => refresh);
+      proxy = Control.watch(got, () => refresh);
     })
 
     const commit = () => {
@@ -63,7 +63,7 @@ export function useComputed<T extends Model, R>(
     let proxy!: T;
 
     source(got => {
-      proxy = Control.sub(got, () => factory ? null : refresh);
+      proxy = Control.watch(got, () => factory ? null : refresh);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
     });
@@ -77,7 +77,7 @@ export function useComputed<T extends Model, R>(
     if(typeof value == "function"){
       const get = value;
       
-      Control.sub(proxy, () => refresh)
+      Control.watch(proxy, () => refresh);
 
       factory = true;
       compute = () => get();

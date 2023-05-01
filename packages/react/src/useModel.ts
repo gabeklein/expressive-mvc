@@ -22,7 +22,7 @@ function useModel <T extends Model> (
   const instance = useMemo(() => {
     const instance = new this();
 
-    Control.for(instance);
+    Control.ready(instance);
 
     if(typeof arg1 == "function")
       arg1(instance);
@@ -47,7 +47,7 @@ function useModel <T extends Model> (
           instance.null();
         }
       },
-      proxy: Control.sub(instance, () => refresh)
+      proxy: Control.watch(instance, () => refresh)
     };
 
     if(typeof arg1 == "object")

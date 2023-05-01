@@ -1,4 +1,4 @@
-import { Control, detect } from '../control';
+import { Control, watch } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
@@ -180,7 +180,7 @@ function computed<T>(
 
     reset = () => done = true;
 
-    proxy = detect(model, (_, control) => {
+    proxy = watch(model, (_, control) => {
       if(done)
         return null;
 

@@ -60,8 +60,8 @@ class Control<T extends Model = any> {
   static waiting = new Set<Callback>();
 
   static get = controls;
-  static for = control;
-  static sub = detect;
+  static ready = control;
+  static watch = watch;
 
   constructor(
     public subject: T,
@@ -113,7 +113,7 @@ class Control<T extends Model = any> {
         const value = get ? get(this) : state[key];
 
         return event && value instanceof Model
-          ? detect(value, event)
+          ? watch(value, event)
           : value;
       }
     });
@@ -272,7 +272,7 @@ function setRecursive(
   set(value);
 }
 
-function detect<T extends Model>(on: T, cb: Observer): T {
+function watch<T extends Model>(on: T, cb: Observer): T {
   if(!on.hasOwnProperty("is"))
     on = defineProperty(create(on), "is", { value: on });
 
@@ -290,6 +290,6 @@ export {
   control,
   Control,
   controls,
-  detect,
-  INSTRUCT
+  INSTRUCT,
+  watch
 }
