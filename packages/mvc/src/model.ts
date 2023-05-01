@@ -201,7 +201,7 @@ class Model {
         }
     }
     else if(typeof arg1 == "string"){
-      controller.update(arg1 as Model.Key<this>);
+      controller.update(arg1);
 
       if(1 in arguments){
         if(arg1 in state)
