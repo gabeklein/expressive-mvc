@@ -9,7 +9,7 @@ export const Oops = issues({
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
   select: P | P[] | undefined,
-  callback: (this: T, keys: Model.Event<T>[] | null | false) => void,
+  callback: (this: T, keys: Model.Event<T>[] | null) => void,
   once?: boolean){
 
   return control(source, self => {

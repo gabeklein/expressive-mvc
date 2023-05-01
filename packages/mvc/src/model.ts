@@ -104,7 +104,7 @@ declare namespace Model {
   export type Suspense = Promise<void> & Error;
 
   export type OnCallback<T extends Model> =
-    (this: T, keys: Model.Event<T>[] | null | false) => void;
+    (this: T, keys: Model.Event<T>[] | null) => void;
 }
 
 class Model {
