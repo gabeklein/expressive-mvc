@@ -120,19 +120,43 @@ describe("import", () => {
     bar?: string = undefined;
   }
 
-  it("will apply values", () => {
+  it("will apply values", async () => {
     const mockExternal = {
       foo: "foo",
       bar: "bar"
     }
 
-    const render = renderHook(() => {
+    const didRender = jest.fn();
+
+    const { result } = renderHook(() => {
+      didRender();
       return Test.use(mockExternal);
     });
 
-    const state = render.result.current.get();
+    expect(result.current.is).toMatchObject(mockExternal);
+  })
 
-    expect(state).toMatchObject(mockExternal);
+  it("will apply on initial render only by default", async () => {
+    let instance!: Test;
+
+    const TestComponent = (props: any) => {
+      ({ is: instance } = Test.use(props));
+      return null;
+    }
+
+    const rendered = create(
+      <TestComponent foo="foo" bar="bar" />
+    );
+
+    expect(instance).toMatchObject({ foo: "foo", bar: "bar" });
+
+    await expect(instance).toUpdate();
+
+    rendered.update(
+      <TestComponent foo="bar" bar="foo" />
+    );
+
+    await expect(instance).not.toUpdate();
   })
 
   it("will apply values per-render", async () => {
