@@ -61,9 +61,9 @@ class Control<T extends Model = any> {
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
-  static afterUpdate = new Set<Callback>();
-  static beforeUpdate = new Set<Callback>();
-  static waiting = new Set<Callback>();
+  static after = new Set<Callback>();
+  static before = new Set<Callback>();
+  static pending = new Set<Callback>();
 
   static add = add;
   static for = control;
@@ -229,12 +229,12 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
 }
 
 function requestUpdateFrame(event: Callback){
-  const { afterUpdate, beforeUpdate, waiting } = Control;
+  const { after, before, pending } = Control;
 
-  if(!waiting.size)
+  if(!pending.size)
     setTimeout(() => {
-      beforeUpdate.forEach(x => x());
-      waiting.forEach(notify => {
+      before.forEach(x => x());
+      pending.forEach(notify => {
         try {
           notify();
         }
@@ -242,16 +242,14 @@ function requestUpdateFrame(event: Callback){
           console.error(err);
         }
       });
-      waiting.clear();
-      afterUpdate.forEach(x => x());
+      pending.clear();
+      after.forEach(x => x());
     }, 0);
 
-  waiting.add(event);
+  pending.add(event);
 }
 
-function setRecursive(
-  on: Control, key: string, value: Model){
-
+function setRecursive(on: Control, key: string, value: Model){
   const set = (next: Model | undefined) => {
     if(next instanceof value.constructor){
       on.state[key] = next;
@@ -276,9 +274,7 @@ function watch<T extends Model>(on: T, cb: Observer): T {
   return on;
 }
 
-function add<T = any>(
-  instruction: Control.Instruction<any>){
-
+function add<T = any>(instruction: Control.Instruction<any>){
   const placeholder = Symbol("instruction");
 
   INSTRUCTION.set(placeholder, (key, onto) => {

@@ -236,8 +236,8 @@ it("will call dispatch callbacks", async () => {
   const didUpdate = jest.fn();
   const willUpdate = jest.fn();
   
-  Control.beforeUpdate.add(willUpdate);
-  Control.afterUpdate.add(didUpdate);
+  Control.before.add(willUpdate);
+  Control.after.add(didUpdate);
 
   class Test extends Model {
     value = 1;
@@ -251,6 +251,6 @@ it("will call dispatch callbacks", async () => {
   expect(willUpdate).toBeCalledTimes(1);
   expect(didUpdate).toBeCalledTimes(1);
 
-  Control.beforeUpdate.delete(willUpdate);
-  Control.afterUpdate.delete(didUpdate);
+  Control.before.delete(willUpdate);
+  Control.after.delete(didUpdate);
 })
