@@ -10,78 +10,50 @@ function useModel <T extends Model> (
 
 function useModel <T extends Model> (
   this: Model.New<T>,
-  watch: Model.Key<T>[],
-  callback?: (instance: T) => void
-): T;
-
-function useModel <T extends Model> (
-  this: Model.New<T>,
   apply: Model.Compat<T>,
-  keys?: Model.Event<T>[]
+  repeat?: boolean
 ): T;
 
 function useModel <T extends Model> (
   this: Model.New<T>,
-  arg1?: ((i: T) => void) | Model.Key<T>[] | Model.Compat<T>,
-  arg2?: ((i: T) => void) | Model.Key<T>[]){
+  arg1?: Model.Compat<T> | ((i: T) => void),
+  arg2?: boolean){
 
   const instance = useMemo(() => {
-    const callback = arg2 || arg1;
     const instance = new this();
 
     Control.for(instance);
 
-    if(typeof callback == "function")
-      callback(instance);
+    if(typeof arg1 == "function")
+      arg1(instance);
 
     return instance;
   }, []);
-
-  usePeerContext(instance);
-
-  if(Array.isArray(arg1)){
-    const update = useState(0)[1];
-
-    useLayoutEffect(() => {  
-      if(arg1.length && instance instanceof Model)
-        instance.on(arg1, () => update(x => x+1));
-
-      return () => {
-        instance.null();
-      }
-    }, []);
-
-    return instance;
-  }
 
   const state = useState(0);
   const local = useMemo(() => {
     let refresh: (() => void) | undefined;
     let done: undefined | boolean;
 
-    const ignore = new Set<string>();
-    const reset = () => ignore.clear();
-    const update = () => {
-      state[1](x => x+1);
-      ignore.clear();
-    }
+    const update = () => state[1](x => x+1);
 
-    const proxy = Control.sub(instance, (key) => (
-      ignore.has(key!) ? reset :
-      done ? null :
-      refresh
-    ));
+    const proxy = Control.sub(instance, () => {
+      return done ? null : refresh
+    });
+
+    let didApply: undefined | boolean;
 
     function apply(values: Model.Compat<T>){
-      const keys =
-        typeof arg2 == "object" ? arg2 :
-        Object.getOwnPropertyNames(instance) as Model.Key<T>[];
-    
-      for(const key of keys)
-        if(key in values){
-          ignore.add(key);
-          instance[key] = values[key]!;
-        }
+      if(arg2 || !didApply){
+        didApply = true;
+        refresh = undefined;
+
+        for(const key in values)
+          if(instance.hasOwnProperty(key))
+            (instance as any)[key] = (values as any)[key];
+
+        instance.on(0).then(() => refresh = update);
+      }
     }
 
     function commit(){
@@ -98,6 +70,8 @@ function useModel <T extends Model> (
       proxy
     };
   }, []);
+
+  usePeerContext(instance);
 
   if(typeof arg1 == "object")
     local.apply(arg1);

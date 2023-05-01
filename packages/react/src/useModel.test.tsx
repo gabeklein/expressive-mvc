@@ -81,7 +81,7 @@ describe("subscription", () => {
     let test!: Test;
 
     const TestComponent = (props: any) => {
-      test = Test.use(props);
+      test = Test.use(props, true);
       didRender(test.value);
       return null;
     }
@@ -104,88 +104,13 @@ describe("subscription", () => {
     expect(didRender).toBeCalledTimes(3);
 
     await act(async () => {
+      await test.on(0);
       test.value = "foo";
-      await expect(test).toUpdate();
+      await test.on(0);
     })
 
     // expect updates re-enabled
     expect(didRender).toBeCalledTimes(4);
-  })
-
-  it.skip("will still refresh if outside value changes", async () => {
-    class Test extends Model {
-      foo = 1;
-      bar = 2;
-    }
-
-    const didRender = jest.fn();
-    let test!: Test;
-
-    const TestComponent = (props: any) => {
-      test = Test.use(props);
-      didRender(test.bar);
-      return null;
-    }
-
-    const element = create(<TestComponent />);
-
-    expect(test.foo).toBe(1);
-
-    await act(async () => {
-      element.update(<TestComponent foo={2} />)
-      test.bar++;
-    })
-
-    expect(didRender).toBeCalledTimes(3);
-  })
-})
-
-describe("specific", () => {
-  class Test extends Model {
-    foo = "foo";
-    bar = "bar";
-  }
-
-  it("will subscribe to only keys specified", async () => {
-    const { result, waitForNextUpdate } = renderHook(() => {
-      const control = Test.use(["foo"]);
-
-      void control.foo;
-      void control.bar;
-
-      return control;
-    });
-
-    expect(result.current.foo).toBe("foo");
-    result.current.foo = "bar";
-
-    await waitForNextUpdate(opts);
-    expect(result.current.foo).toBe("bar");
-
-    result.current.bar = "foo";
-    await expect(waitForNextUpdate(opts)).rejects.toThrowError();
-  })
-
-  it("will run callback after creation", () => {
-    const callback = jest.fn();
-    renderHook(() => Test.use([], callback));
-    expect(callback).toHaveBeenCalledWith(expect.any(Test));
-  })
-
-  it("will destroy on unmount", () => {
-    class Test extends Model {
-      constructor(){
-        super();
-        this.on(() => didDestroy);
-      }
-    }
-
-    const didDestroy = jest.fn();
-    const element = renderHook(() => Test.use());
-
-    element.unmount();
-
-    expect(didDestroy).toBeCalled();
   })
 })
 
@@ -214,7 +139,7 @@ describe("import", () => {
     let instance!: Test;
 
     const TestComponent = (props: any) => {
-      ({ is: instance } = Test.use(props));
+      ({ is: instance } = Test.use(props, true));
       return null;
     }
 

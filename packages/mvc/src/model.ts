@@ -257,9 +257,8 @@ class Model {
     throw Oops.NoAdapter("get");
   }
 
-  static use <I extends Model> (this: Model.Type<I>, watch: Model.Key<I>[], callback?: (instance: I) => void): I;
   static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
-  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, keys?: Model.Event<I>[]): I;
+  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, repeat?: boolean): I;
 
   static use(){
     throw Oops.NoAdapter("use");
