@@ -79,98 +79,96 @@ function set <T> (
   value?: set.Factory<T | Promise<T>> | Promise<T> | T,
   argument?: set.Callback<any> | boolean): any {
 
-  return add(
-    function set(key){
-      const { state, subject } = this;
-      
-      if(typeof value == "function" || value instanceof Promise){
-        const required = argument !== false;
-        let getter: () => any;
-  
-        const init = () => {
-          try {
-            if(typeof value == "function")
-              value = mayRetry(value.bind(subject, key, subject));
-  
-            let pending: Promise<any> | undefined;
-            let error: any;
+  return add((key, control) => {
+    const { state, subject } = control;
+    
+    if(typeof value == "function" || value instanceof Promise){
+      const required = argument !== false;
+      let getter: () => any;
 
-            if(value instanceof Promise){
-              state[key] = undefined;
+      const init = () => {
+        try {
+          if(typeof value == "function")
+            value = mayRetry(value.bind(subject, key, subject));
 
-              pending = value
-                .catch(err => error = err)
-                .then(val => {
-                  state[key] = val;
-                  return val;
-                })
-                .finally(() => {
-                  pending = undefined;
-                  this.update(key);
-                })
-            }
-            else
-              state[key] = value;
+          let pending: Promise<any> | undefined;
+          let error: any;
 
-            const suspend = () => {
-              if(required === false)
-                return undefined;
+          if(value instanceof Promise){
+            state[key] = undefined;
 
-              const issue = Oops.NotReady(subject, key);
-
-              assign(pending!, {
-                message: issue.message,
-                stack: issue.stack
-              });
-
-              throw pending;
-            }
-            
-            getter = () => {
-              if(error)
-                throw error;
-
-              if(pending)
-                return suspend();
-
-              if(key in state)
-                return state[key];
-            }
-
+            pending = value
+              .catch(err => error = err)
+              .then(val => {
+                state[key] = val;
+                return val;
+              })
+              .finally(() => {
+                pending = undefined;
+                control.update(key);
+              })
           }
-          catch(err){
-            Oops.ComputeFailed(subject, key).warn();
-            throw err;
+          else
+            state[key] = value;
+
+          const suspend = () => {
+            if(required === false)
+              return undefined;
+
+            const issue = Oops.NotReady(subject, key);
+
+            assign(pending!, {
+              message: issue.message,
+              stack: issue.stack
+            });
+
+            throw pending;
           }
+          
+          getter = () => {
+            if(error)
+              throw error;
+
+            if(pending)
+              return suspend();
+
+            if(key in state)
+              return state[key];
+          }
+
         }
-
-        if(argument === true)
-          init();
-  
-        return () => {
-          if(!getter)
-            init();
-  
-          return getter();
+        catch(err){
+          Oops.ComputeFailed(subject, key).warn();
+          throw err;
         }
       }
 
-      if(value !== undefined)
-        state[key] = value;
+      if(argument === true)
+        init();
 
-      return {
-        get: () => {
-          if(key in state)
-            return state[key];
-          else
-            throw suspense(this, key);
-        },
-        set: typeof argument == "function"
-          ? createValueEffect(argument)
-          : undefined
+      return () => {
+        if(!getter)
+          init();
+
+        return getter();
       }
     }
-  )
+
+    if(value !== undefined)
+      state[key] = value;
+
+    return {
+      get: () => {
+        if(key in state)
+          return state[key];
+        else
+          throw suspense(control, key);
+      },
+      set: typeof argument == "function"
+        ? createValueEffect(argument)
+        : undefined
+    }
+  })
 }
 
 export { set }

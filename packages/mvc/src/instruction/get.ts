@@ -66,37 +66,35 @@ function get<R, T extends Model>(
   arg0: T | (Model.Type<T> & typeof Model) | get.Factory<R, T>,
   arg1?: get.Function<R, T> | boolean): R {
 
-  return add(
-    function get(key){
-      let { subject } = this;
+  return add((key, control) => {
+    let { subject } = control;
 
-      if(typeof arg0 == "symbol")
-        throw Oops.PeerNotAllowed(subject, key);
+    if(typeof arg0 == "symbol")
+      throw Oops.PeerNotAllowed(subject, key);
 
-      let source: get.Source = cb => cb(subject);
+    let source: get.Source = cb => cb(subject);
 
-      if(arg0 instanceof Model)
-        subject = arg0;
+    if(arg0 instanceof Model)
+      subject = arg0;
 
-      else if(Model.isTypeof(arg0)){
-        const { parent } = this;
+    else if(Model.isTypeof(arg0)){
+      const { parent } = control;
 
-        if(!parent)
-          source = arg0.has(arg1 !== false, subject);
-        else if(!arg0 || parent instanceof arg0)
-          subject = parent;
-        else
-          throw Oops.Unexpected(arg0, subject, parent);
-      }
-
-      else if(typeof arg0 == "function")
-        arg1 = arg0.call(subject, key, subject);
-
-      return typeof arg1 == "function"
-        ? computed(this, key, source, arg1)
-        : recursive(this, key, source, arg1);
+      if(!parent)
+        source = arg0.has(arg1 !== false, subject);
+      else if(!arg0 || parent instanceof arg0)
+        subject = parent;
+      else
+        throw Oops.Unexpected(arg0, subject, parent);
     }
-  )
+
+    else if(typeof arg0 == "function")
+      arg1 = arg0.call(subject, key, subject);
+
+    return typeof arg1 == "function"
+      ? computed(control, key, source, arg1)
+      : recursive(control, key, source, arg1);
+  })
 }
 
 function recursive(

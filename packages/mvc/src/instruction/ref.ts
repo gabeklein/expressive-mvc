@@ -59,32 +59,30 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return add(
-    function ref(key){
-      let value: ref.Object | ref.Proxy<any> = {};
+  return add((key, source) => {
+    let value: ref.Object | ref.Proxy<any> = {};
 
-      this.state[key] = undefined;
+    source.state[key] = undefined;
 
-      if(typeof arg != "object")
-        value = createRef(this, key, arg);
-      else
-        for(const key in control(arg).state){
-          defineProperty(value, key,
-            mapper ? {
-              configurable: true,
-              get(){
-                const out = mapper(key);
-                defineProperty(value, key, { value: out });
-                return out;
-              }
-            } : {
-              value: createRef(this, key)
-            })
-        }
+    if(typeof arg != "object")
+      value = createRef(source, key, arg);
+    else
+      for(const key in control(arg).state){
+        defineProperty(value, key,
+          mapper ? {
+            configurable: true,
+            get(){
+              const out = mapper(key);
+              defineProperty(value, key, { value: out });
+              return out;
+            }
+          } : {
+            value: createRef(source, key)
+          })
+      }
 
-      defineProperty(this.subject, key, { value });
-    }
-  )
+    defineProperty(source.subject, key, { value });
+  })
 }
 
 export { ref }

@@ -48,96 +48,94 @@ function use(
   input?: any,
   argument?: boolean | ((i: {} | undefined) => void)){
 
-  return add(
-    function use(key){
-      const { state, subject } = this;
-      const required = argument !== false;
+  return add((key, source) => {
+    const { state, subject } = source;
+    const required = argument !== false;
 
-      let pending: Promise<any> | undefined;
-      let error: any;
+    let pending: Promise<any> | undefined;
+    let error: any;
 
-      if(typeof input === "function"){
-        if("prototype" in input && input === input.prototype.constructor)
-          input = new input();
-      }
-
-      else if(input && typeof input !== "object")
-        throw Oops.BadArgument(typeof input);
-
-      const onUpdate = (next: Model | undefined) => {
-        state[key] = next;
-
-        if(next){
-          controls(next).parent = subject;
-          control(next);
-        }
-
-        if(typeof argument == "function")
-          argument(next);
-
-        return true;
-      }
-
-      const suspend = () => {
-        if(required === false)
-          return;
-
-        const issue = Oops.NotReady(subject, key);
-
-        assign(pending!, {
-          message: issue.message,
-          stack: issue.stack
-        });
-
-        throw pending;
-      }
-
-      const initialize = () => {
-        const output = typeof input == "function" ?
-          mayRetry(() => input.call(subject, subject)) :
-          input;
-
-        if(output instanceof Promise){
-          pending = output
-            .then(val => {
-              onUpdate(val);
-              return val;
-            })
-            .catch(err => error = err)
-            .finally(() => {
-              pending = undefined;
-              this.update(key);
-            })
-
-          return;
-        }
-
-        onUpdate(output);
-      }
-
-      if(input !== undefined && required)
-        initialize();
-
-      return {
-        set: onUpdate,
-        get(){
-          if(pending)
-            return suspend();
-  
-          if(error)
-            throw error;
-
-          if(!(key in state))
-            initialize();
-  
-          if(pending)
-            return suspend();
-  
-          return state[key];
-        }
-      };
+    if(typeof input === "function"){
+      if("prototype" in input && input === input.prototype.constructor)
+        input = new input();
     }
-  )
+
+    else if(input && typeof input !== "object")
+      throw Oops.BadArgument(typeof input);
+
+    const onUpdate = (next: Model | undefined) => {
+      state[key] = next;
+
+      if(next){
+        controls(next).parent = subject;
+        control(next);
+      }
+
+      if(typeof argument == "function")
+        argument(next);
+
+      return true;
+    }
+
+    const suspend = () => {
+      if(required === false)
+        return;
+
+      const issue = Oops.NotReady(subject, key);
+
+      assign(pending!, {
+        message: issue.message,
+        stack: issue.stack
+      });
+
+      throw pending;
+    }
+
+    const initialize = () => {
+      const output = typeof input == "function" ?
+        mayRetry(() => input.call(subject, subject)) :
+        input;
+
+      if(output instanceof Promise){
+        pending = output
+          .then(val => {
+            onUpdate(val);
+            return val;
+          })
+          .catch(err => error = err)
+          .finally(() => {
+            pending = undefined;
+            source.update(key);
+          })
+
+        return;
+      }
+
+      onUpdate(output);
+    }
+
+    if(input !== undefined && required)
+      initialize();
+
+    return {
+      set: onUpdate,
+      get(){
+        if(pending)
+          return suspend();
+
+        if(error)
+          throw error;
+
+        if(!(key in state))
+          initialize();
+
+        if(pending)
+          return suspend();
+
+        return state[key];
+      }
+    };
+  })
 }
 
 export { use }

@@ -14,9 +14,6 @@ describe("instruction", () => {
         this.didRunGetter(key);
       }
     })
-
-    keyedInstruction = add(function foo(){});
-    namedInstruction = add(() => {}, "foo");
   }
 
   it("will use symbol as placeholder", () => {
@@ -24,21 +21,7 @@ describe("instruction", () => {
     const { description } = property as any;
 
     expect(typeof property).toBe("symbol");
-    expect(description).toBe("pending instruction");
-  })
-
-  it("will give placeholder custom name", () => {
-    const { keyedInstruction } = new Test();
-    const { description } = keyedInstruction as any;
-
-    expect(description).toBe("foo instruction");
-  })
-
-  it("will give placeholder custom name", () => {
-    const { namedInstruction } = new Test();
-    const { description } = namedInstruction as any;
-
-    expect(description).toBe("foo instruction");
+    expect(description).toBe("instruction");
   })
 
   it("will run instruction on create", () => {
