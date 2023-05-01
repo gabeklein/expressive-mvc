@@ -180,41 +180,25 @@ class Model {
       : values();
   }
 
-  set(key: Model.Event<this>): PromiseLike<readonly Model.Event<this>[]>;
-  set<K extends Model.Event<this>>(key: Model.Event<this>, value: Model.ValueOf<this, K>): PromiseLike<readonly Model.Event<this>[]>;
+  set<T extends Model.Compat<this>> (source: T, select?: (keyof T)[]): Promise<Model.Key<T>[]>;
+  set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<readonly Model.Event<this>[]>;
 
-  set<T extends Model.Compat<this>> (source: T, select: (keyof T)[]): PromiseLike<(keyof T)[]>;
-  set<T extends Model.Compat<this>> (source: T, force?: boolean): PromiseLike<(keyof T)[]>;
-
-  set(
-    arg1: Model.Event<this> | Model.Compat<this>,
-    arg2?: boolean | any[]): any {
-
+  set(arg1: Model.Event<this> | Model.Compat<this>, arg2?: any){
     const controller = control(this);
     const { state } = controller;
 
-    if(typeof arg1 == "object"){
-      for(const key in arg1)
-        if(arg2 === true || (arg2 ? arg2.includes(key) : key in state)){
+    if(typeof arg1 == "string"){
+      controller.update(arg1);
+
+      if(1 in arguments && arg1 in state)
+        state[arg1] = arg2;
+    }
+    else if(typeof arg1 == "object")
+      for(const key in state)
+        if(key in arg1 && (!arg2 || arg2.includes(key))){
           state[key] = (arg1 as any)[key];
           controller.update(key);
         }
-    }
-    else if(typeof arg1 == "string"){
-      controller.update(arg1);
-
-      if(1 in arguments){
-        if(arg1 in state)
-          state[arg1] = arg2;
-
-        else if(arg1 in this){
-          const method = (this as any)[arg1];
-
-          if(typeof method == "function")
-            method.call(this, arg2);
-        }
-      }
-    }
 
     return awaitUpdate(this, undefined, 0);
   }

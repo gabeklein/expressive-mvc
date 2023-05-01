@@ -148,23 +148,6 @@ describe("dispatch", () => {
     expect(update).toMatchObject(["bar", "foo"]);
   })
 
-  it("will call function with argument", async () => {
-    const test = Test.new();
-    await test.set("methodString", "foobar");
-    expect(test.methodString).toBeCalledWith("foobar");
-  })
-
-  it.todo("will set value to argument if not a function");
-
-  it("will include caused-by-method updates", async () => {
-    const test = Test.new();
-    const updates = await test.set("methodString", "foobar");
-
-    expect(test.methodString).toBeCalledWith("foobar");
-    expect(test.foo).toBe("foobar");
-    expect(updates).toMatchObject(["methodString", "foo"])
-  })
-
   it("will assign to exotic value", async () => {
     class Test extends Model {
       foo = ref<string>();
@@ -213,25 +196,6 @@ describe("import", () => {
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(1);
-  });
-
-  // TODO: get rid of this feature.
-  it.skip("will force assign values from source", async () => {
-    const test = Test.new();
-    const baz = test.on("baz");
-
-    test.set(values, true);
-
-    await expect(test).toHaveUpdated(["foo", "bar", "baz"]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-
-    // sanity check
-    // we didn't set baz - only dispatched it.
-    expect(test.baz).toBeUndefined();
-
-    await expect(baz).resolves.toBe(3);
   });
 })
 
