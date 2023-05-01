@@ -12,7 +12,7 @@ export const Oops = issues({
 type Observer = Control.OnSync;
 type InstructionRunner = (key: string, controller: Control) => void;
 
-const INSTRUCT = new Map<symbol, InstructionRunner>();
+const INSTRUCTION = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 
@@ -73,10 +73,10 @@ class Control<T extends Model = any> {
 
   add(key: Extract<keyof T, string>){
     const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = INSTRUCT.get(value);
+    const instruction = INSTRUCTION.get(value);
 
     if(typeof instruction == "function"){
-      INSTRUCT.delete(value);
+      INSTRUCTION.delete(value);
       instruction(key, this);
     }
     else if(value instanceof Model)
@@ -190,7 +190,7 @@ class Control<T extends Model = any> {
   }
 }
 
-const WAITING = new WeakMap<Control, Set<Callback>>();
+const PENDING_INIT = new WeakMap<Control, Set<Callback>>();
 
 function controls<T extends Model>(from: T){
   return REGISTER.get(from.is) as Control<T>;
@@ -210,10 +210,10 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
   const control = controls(subject);
 
   if(!control.state){
-    let waiting = WAITING.get(control);
+    let waiting = PENDING_INIT.get(control);
 
     if(!waiting)
-      WAITING.set(control, waiting = new Set());
+      PENDING_INIT.set(control, waiting = new Set());
 
     if(cb){
       let callback: Callback | void;
@@ -287,7 +287,7 @@ function add<T = any>(
 
   const placeholder = Symbol("instruction");
 
-  INSTRUCT.set(placeholder, (key, onto) => {
+  INSTRUCTION.set(placeholder, (key, onto) => {
     delete onto.subject[key];
   
     const output = instruction.call(onto, key, onto);
