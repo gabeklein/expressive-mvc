@@ -149,10 +149,10 @@ class Model {
   get(): Model.Export<this>;
 
   get <P extends Model.Key<this>> (select: P): this[P];
-  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P], changed: P[]) => void): Callback;
-
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
-  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>, changed: P[]) => void): Callback;
+
+  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P]) => void): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void): Callback;
   
   get <P extends Model.Key<this>> (
     arg1?: P | Iterable<P>,
