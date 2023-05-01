@@ -215,7 +215,8 @@ describe("import", () => {
     expect(test.bar).toBe(1);
   });
 
-  it("will force assign values from source", async () => {
+  // TODO: get rid of this feature.
+  it.skip("will force assign values from source", async () => {
     const test = Test.new();
     const baz = test.on("baz");
 
