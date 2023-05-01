@@ -22,7 +22,7 @@ function useModel <T extends Model> (
 
 function useModel <T extends Model> (
   this: Model.New<T>,
-  arg1?: ((i: T) => void) | Model.Event<T>[] | Model.Compat<T>,
+  arg1?: ((i: T) => void) | Model.Key<T>[] | Model.Compat<T>,
   arg2?: ((i: T) => void) | Model.Key<T>[]){
 
   const instance = useMemo(() => {
@@ -66,18 +66,16 @@ function useModel <T extends Model> (
       ignore.clear();
     }
 
-    const proxy = Control.sub(instance, (key) => {
-      if(ignore.has(key!))
-        return reset;
-
-      return done ? null : refresh;
-    });
+    const proxy = Control.sub(instance, (key) => (
+      ignore.has(key!) ? reset :
+      done ? null :
+      refresh
+    ));
 
     function apply(values: Model.Compat<T>){
-      let keys = arg2 as Model.Key<T>[];
-    
-      if(!keys)
-        keys = Object.getOwnPropertyNames(instance) as Model.Key<T>[];
+      const keys =
+        typeof arg2 == "object" ? arg2 :
+        Object.getOwnPropertyNames(instance) as Model.Key<T>[];
     
       for(const key of keys)
         if(key in values){
