@@ -123,18 +123,18 @@ class Model {
   on (): Promise<Model.Event<this>[]>;
   on (timeout?: number): Promise<Model.Event<this>[] | false>;
 
-  on <P extends Model.Event<this>> (keys?: P | Iterable<P> | null, timeout?: number): Promise<P[] | false>;
-  on <P extends Model.Event<this>> (keys: P | Iterable<P> | null, listener: Model.OnCallback<this>, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[] | false>;
+  on <P extends Model.Event<this>> (keys: P | Iterable<P>, listener: Model.OnCallback<this>, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
 
   on <P extends Model.Event<this>> (
-    arg1?: number | P[] | P | null | Model.Effect<this>,
+    arg1?: number | P[] | P | Model.Effect<this>,
     arg2?: number | Model.OnCallback<this>,
     arg3?: boolean){
 
     if(typeof arg1 == "function")
-      return createEffect(this.is, arg1);
+      return createEffect(this, arg1);
 
     if(typeof arg1 == "number"){
       arg2 = arg1;
@@ -142,8 +142,8 @@ class Model {
     }
 
     return typeof arg2 == "function"
-      ? addEventListener(this.is, arg1, arg2, arg3)
-      : awaitUpdate(this.is, arg1, arg2 as number);
+      ? addEventListener(this, arg1, arg2, arg3)
+      : awaitUpdate(this, arg1, arg2);
   }
 
   get(): Model.Export<this>;
@@ -216,7 +216,7 @@ class Model {
       }
     }
 
-    return awaitUpdate(this.is, undefined, 0);
+    return awaitUpdate(this, undefined, 0);
   }
 
   /** Mark this instance for garbage collection. */

@@ -11,9 +11,10 @@ export const Oops = issues({
 })
 
 export function createEffect<T extends Model>(
-  model: T, callback: Model.Effect<T>){
+  source: T, callback: Model.Effect<T>){
 
-  return control(model, self => {
+  return control(source, self => {
+    let { subject } = self;
     let unSet: Callback | Promise<any> | void;
     let busy = false;
 
@@ -25,7 +26,7 @@ export function createEffect<T extends Model>(
         if(typeof unSet == "function")
           unSet();
     
-        unSet = callback.call(model, model);
+        unSet = callback.call(subject, subject);
     
         if(unSet instanceof Promise)
           unSet = undefined;
@@ -42,7 +43,7 @@ export function createEffect<T extends Model>(
 
     let refresh: (() => void) | null;
 
-    model = detect(model, () => refresh);
+    subject = detect(subject, () => refresh);
     self.followers.add(key => (
       key === null || refresh === null ? refresh : undefined
     ));

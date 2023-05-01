@@ -62,7 +62,7 @@ describe("assert", () => {
 })
 
 describe("on single", () => {
-  it('will watch for specified value', async () => {
+  it('will callback for specified value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
@@ -74,7 +74,7 @@ describe("on single", () => {
     expect(callback).toBeCalledWith(["seconds"]);
   })
 
-  it('will watch for computed value', async () => {
+  it('will callback for computed value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
@@ -84,6 +84,17 @@ describe("on single", () => {
     await expect(state).toUpdate();
 
     expect(callback).toBeCalled();
+  })
+
+  it('will callback on null (destoryed)', () => {
+    const state = Subject.new();
+    const callback = jest.fn();
+
+    state.on("seconds", callback);
+
+    state.null();
+
+    expect(callback).toBeCalledWith(null);
   })
 
   it('will compute pending value early', async () => {
@@ -113,17 +124,6 @@ describe("on single", () => {
     await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
-  })
-
-  it('will resolve false if destroyed in once mode', () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on("seconds", callback, true);
-
-    state.null();
-
-    expect(callback).toBeCalledWith(false);
   })
 })
 
@@ -162,32 +162,16 @@ describe("on multiple", () => {
 
     expect(callback).toBeCalledTimes(1);
   })
-
-  it('will callback on destroy if null', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on(null, callback);
-
-    state.seconds = 30;
-    await expect(state).toUpdate();
-
-    expect(callback).not.toBeCalled();
-
-    state.null();
-
-    expect(callback).toBeCalledWith(null);
-  })
 });
 
 describe("on promise", () => {
-  it('will resolve with update value', async () => {
+  it('will resolve on single key', async () => {
     const state = Subject.new();
     const pending = state.on("seconds");
 
     state.seconds = 30;
 
-    await expect(pending).resolves.toBe(30);
+    await expect(pending).resolves.toEqual(["seconds"]);
   })
 
   it('will resolve with updated keys', async () => {
@@ -216,15 +200,6 @@ describe("on promise", () => {
 
     // should this also expect minutes?
     await expect(update).resolves.toEqual(["seconds"]);
-  })
-
-  it('will resolve on destroy', async () => {
-    const state = Subject.new();
-    const update = state.on(null);
-
-    state.null();
-
-    await expect(update).resolves.toEqual(null);
   })
 })
 

@@ -1,5 +1,4 @@
-import { Callback } from '../types';
-import { Control, control } from './control';
+import { control } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 
@@ -9,21 +8,36 @@ export const Oops = issues({
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
-  select: P | P[] | null | undefined,
+  select: P | P[] | undefined,
   callback: (this: T, keys: Model.Event<T>[] | null | false) => void,
   once?: boolean){
 
   return control(source, self => {
-    const removeListener = watch(self, select, key => {
-      if(once)
-        removeListener();
+    const { subject } = self as any;
 
-      if(typeof key == "string")
-        return () => callback.call(source, self.latest!);
+    if(typeof select == "string")
+      select = [ select ];
 
-      else if(key !== undefined)
-        callback.call(source, once ? key : null);
-    })
+    if(select)
+      for(const key of select)
+        try {
+          void subject[key];
+        }
+        catch(e){
+          // TODO: should this be caught?
+        }
+
+    const removeListener = self.addListener(key => {
+      if(key === null)
+        callback.call(subject, null);
+
+      else if(!select || select.includes(key as P)){
+        if(once)
+          removeListener();
+
+        return () => callback.call(subject, self.latest!);
+      }
+    });
 
     return removeListener;
   });
@@ -31,13 +45,13 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
 
 export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   source: T,
-  select?: P | P[] | null,
+  select?: P | P[],
   timeout?: number){
-
-  const self = control(source);
 
   return new Promise<any>((resolve, reject) => {
     if(timeout === 0){
+      const self = control(source);
+
       if(!self.frame.size)
         resolve(false);
       else if(typeof select == "string" && !self.frame.has(select))
@@ -50,48 +64,13 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
       }
     }
     else {
-      const removeListener =
-        watch(self, select, key => {
-          if(key === null)
-            resolve(key);
-          else {
-            removeListener();
-            return () => {
-              resolve(key && select === key ? self.state[key] : self.latest);
-            }
-          }
-        });
+      const remove = addEventListener(source, select, resolve, true);
   
       if(timeout as number > 0)
         setTimeout(() => {
-          removeListener();
+          remove();
           resolve(false);
         }, timeout);
     }
-  });
-}
-
-export function watch<T extends Model, P extends Model.Event<T>>(
-  from: Control,
-  select: P | P[] | null | undefined,
-  callback: (key: undefined | null | false | Model.Event<T>) => Callback | void){
-
-  const keys = typeof select == "string" ? [ select ] : select;
-  const source = from.subject as any;
-
-  if(keys)
-    for(const key of keys)
-      try { void source[key] }
-      catch(e){}
-
-  return from.addListener(key => {
-    if(key === null)
-      return callback(keys === null ? null : false);
-
-    if(keys === null)
-      return;
-
-    if(!keys || !key || keys.includes(key as P))
-      return callback(key);
   });
 }
