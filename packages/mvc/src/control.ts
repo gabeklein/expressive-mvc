@@ -44,6 +44,12 @@ declare namespace Control {
     get?: Getter<T>;
     set?: Setter<T> | false;
   }
+
+  /**
+   * Callback for Controller.for() static method.
+   * Returned callback is forwarded.
+   */
+  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 }
 
 class Control<T extends Model = any> {
@@ -60,8 +66,7 @@ class Control<T extends Model = any> {
   static waiting = new Set<Callback>();
 
   static add = add;
-  static get = controls;
-  static ready = control;
+  static for = control;
   static watch = watch;
 
   constructor(
@@ -192,33 +197,22 @@ class Control<T extends Model = any> {
 
 const PENDING_INIT = new WeakMap<Control, Set<Callback>>();
 
-function controls<T extends Model>(from: T){
-  return REGISTER.get(from.is) as Control<T>;
-}
+function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
+function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
+function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
+  const control = REGISTER.get(subject.is) as Control<T>;
+  const onReady = typeof ready == "function" && ready;
 
-declare namespace control {
-  /**
-   * Callback for Controller.for() static method.
-   * Returned callback is forwarded.
-   */
-  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
-}
-
-function control<T extends Model>(subject: T): Control<T>;
-function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
-function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
-  const control = controls(subject);
-
-  if(!control.state){
+  if(!control.state && ready){
     let waiting = PENDING_INIT.get(control);
 
     if(!waiting)
       PENDING_INIT.set(control, waiting = new Set());
 
-    if(cb){
+    if(onReady){
       let callback: Callback | void;
   
-      waiting.add(() => callback = cb(control));
+      waiting.add(() => callback = onReady(control));
   
       return () => callback && callback();
     }
@@ -231,7 +225,7 @@ function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
     waiting.forEach(cb => cb());
   }
 
-  return cb ? cb(control) : control;
+  return onReady ? onReady(control) : control;
 }
 
 function requestUpdateFrame(event: Callback){
@@ -261,8 +255,8 @@ function setRecursive(
   const set = (next: Model | undefined) => {
     if(next instanceof value.constructor){
       on.state[key] = next;
-      controls(next).parent = on.subject;
-      control(next);
+      control(next).parent = on.subject;
+      control(next, true);
       return true;
     }
 
@@ -310,6 +304,5 @@ export {
   add,
   control,
   Control,
-  controls,
   watch
 }

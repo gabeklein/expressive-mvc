@@ -50,7 +50,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
 
   return new Promise<any>((resolve, reject) => {
     if(timeout === 0){
-      const self = control(source);
+      const self = control(source, true);
 
       if(!self.frame.size)
         resolve(false);

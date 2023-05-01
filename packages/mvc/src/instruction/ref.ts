@@ -66,7 +66,7 @@ function ref<T>(
     if(typeof arg != "object")
       value = createRef(source, key, arg);
     else
-      for(const key in control(arg).state){
+      for(const key in control(arg, true).state){
         defineProperty(value, key,
           mapper ? {
             configurable: true,

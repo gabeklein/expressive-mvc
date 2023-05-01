@@ -1,4 +1,4 @@
-import { Control, controls } from './control';
+import { Control, control } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
 
@@ -10,22 +10,22 @@ const PARENT = "__parent";
 defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
-      return controls(this);
+      return control(this);
     }
   },
   [STATE]: {
     get(this: Model){
-      return { ...controls(this).state };
+      return { ...control(this).state };
     }
   },
   [UPDATE]: {
     get(this: Model){
-      return controls(this).latest;
+      return control(this).latest;
     }
   },
   [PARENT]: {
     get(this: Model){
-      return controls(this).parent;
+      return control(this).parent;
     }
   }
 })

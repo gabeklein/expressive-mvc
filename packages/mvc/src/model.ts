@@ -1,4 +1,4 @@
-import { Control, control, controls } from './control';
+import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
@@ -158,7 +158,7 @@ class Model {
     arg1?: P | Iterable<P>,
     arg2?: Function){
 
-    const { state } = control(this);
+    const { state } = control(this, true);
 
     function values(){
       if(typeof arg1 == "string")
@@ -184,7 +184,7 @@ class Model {
   set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<readonly Model.Event<this>[]>;
 
   set(arg1: Model.Event<this> | Model.Compat<this>, arg2?: any){
-    const controller = control(this);
+    const controller = control(this, true);
     const { state } = controller;
 
     if(typeof arg1 == "string"){
@@ -205,7 +205,7 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
-    control(this).clear();
+    control(this, true).clear();
   }
 
   /**
@@ -219,7 +219,7 @@ class Model {
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
-    control(instance);
+    control(instance, true);
     return instance;
   }
 
@@ -282,7 +282,7 @@ class Model {
 defineProperty(Model.prototype, "toString", {
   configurable: true,
   value(){
-    return `${this.constructor.name}-${controls(this).id}`;
+    return `${this.constructor.name}-${control(this).id}`;
   }
 })
 

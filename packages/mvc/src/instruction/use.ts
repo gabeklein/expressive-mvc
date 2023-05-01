@@ -1,4 +1,4 @@
-import { add, control, controls } from '../control';
+import { add, control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
@@ -66,8 +66,8 @@ function use(
       state[key] = next;
 
       if(next){
-        controls(next).parent = subject;
-        control(next);
+        control(next).parent = subject;
+        control(next, true);
       }
 
       if(typeof argument == "function")
