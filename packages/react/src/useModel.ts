@@ -1,7 +1,7 @@
 import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { Pending, useLookup } from './useContext';
+import { Pending, useLookup } from './context';
 
 function useModel <T extends Model> (
   this: Model.New<T>,

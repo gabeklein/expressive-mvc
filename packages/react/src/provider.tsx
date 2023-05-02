@@ -1,7 +1,7 @@
 import { Control, issues, Model } from '@expressive/mvc';
 import React, { Suspense, useLayoutEffect, useMemo } from 'react';
 
-import { LookupContext, Pending, useLookup } from './useContext';
+import { LookupContext, Pending, useLookup } from './context';
 
 export const Oops = issues({
   NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
