@@ -1,7 +1,7 @@
-import { Context, Control, issues, Model } from '@expressive/mvc';
+import { Control, issues, Model } from '@expressive/mvc';
 import React, { Suspense, useLayoutEffect, useMemo } from 'react';
 
-import { LookupContext, setPeers, useLookup } from './useContext';
+import { LookupContext, Pending, useLookup } from './useContext';
 
 export const Oops = issues({
   NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
@@ -35,22 +35,45 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  const { for: includes, use: assign } = props;
+  let { for: include, use: assign } = props;
 
+  const init = new Set<Model>();
   const ambient = useLookup();
   const context = useMemo(() => {
-    if(includes)
+    if(include)
       return ambient.push();
 
     throw Oops.NoType();
   }, []);
 
-  addTo(context, includes, instance => {
+  if(typeof include == "function" || include instanceof Model)
+    include = { [0]: include };
+
+  for(const key in include){
+    const instance = context.add(include[key], key);
+
+    init.add(instance);
+
     if(assign)
       for(const K in assign)
         if(K in instance)
           (instance as any)[K] = (assign as any)[K];
-  })
+  }
+
+  for(const model of init){
+    const control = Control.for(model, true);
+    const pending = Pending.get(model);
+  
+    if(pending)
+      pending.forEach(cb => cb(context));
+
+    Object.values(control.state).forEach(value => {
+      if(value instanceof Model && Control.for(value).parent === model){
+        context.add(value);
+        init.add(value);
+      }
+    });
+  }
 
   useLayoutEffect(() => () => context.pop(), []);
 
@@ -69,31 +92,3 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 }
 
 export { Provider };
-
-function addTo(
-  context: Context,
-  items: Provider.Item | Provider.Multiple,
-  callback: (model: Model) => void){
-
-  const init = new Set<Model>();
-
-  if(typeof items == "function" || items instanceof Model)
-    items = { [0]: items };
-
-  for(const key in items){
-    const instance = context.add(items[key], key);
-
-    init.add(instance);
-    callback(instance);
-  }
-
-  for(const model of init){
-    setPeers(context, model);
-    Object.values(Control.for(model, true).state).forEach(value => {
-      if(value instanceof Model && Control.for(value).parent === model){
-        context.add(value);
-        init.add(value);
-      }
-    });
-  }
-}
