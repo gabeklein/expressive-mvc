@@ -11,9 +11,9 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 });
 
-const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
+export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
-export function useFromContext <T extends Model> (
+export function useFromContext<T extends Model> (
   this: (typeof Model & Model.Type<T>),
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
@@ -60,26 +60,6 @@ export function hasContext<T extends Model>(
 
     if(callback && got)
       callback(got);
-  }
-}
-
-export function usePeerContext(subject: Model){
-  let didApply: undefined | boolean;
-
-  return () => {
-    if(didApply)
-      useLookup();
-
-    else if(didApply !== false){
-      const pending = Pending.get(subject);
-    
-      if(didApply = !!pending){
-        const local = useLookup();
-
-        pending.forEach(init => init(local));
-        Pending.delete(subject);
-      }
-    }
   }
 }
 

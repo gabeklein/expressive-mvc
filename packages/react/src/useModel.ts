@@ -1,7 +1,7 @@
 import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { usePeerContext } from './useContext';
+import { Pending, useLookup } from './useContext';
 
 function useModel <T extends Model> (
   this: Model.New<T>,
@@ -24,9 +24,9 @@ function useModel <T extends Model> (
     const instance = this.new();
     const proxy = Control.watch(instance, () => refresh);
     const update = () => state[1](x => x+1);
-    const applyPeers = usePeerContext(instance);
 
     let refresh: (() => void) | undefined | null;
+    let applyPeers: undefined | boolean;
     let applyProps = typeof arg1 === "object";
 
     function commit(){
@@ -41,7 +41,19 @@ function useModel <T extends Model> (
       arg1(instance);
 
     return (props: Model.Compat<T>) => {
-      applyPeers();
+      if(applyPeers)
+        useLookup();
+
+      else if(applyPeers !== false){
+        const pending = Pending.get(instance);
+      
+        if(applyPeers = !!pending){
+          const local = useLookup();
+
+          pending.forEach(init => init(local));
+          Pending.delete(instance);
+        }
+      }
 
       if(applyProps){
         refresh = undefined;
