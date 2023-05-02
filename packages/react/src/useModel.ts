@@ -19,7 +19,8 @@ function useModel <T extends Model> (
   arg1?: Model.Compat<T> | ((i: T) => void),
   arg2?: boolean){
 
-  const instance = useMemo(() => {
+  const state = useState(0);
+  const local = useMemo(() => {
     const instance = new this();
 
     Control.for(instance, true);
@@ -27,27 +28,24 @@ function useModel <T extends Model> (
     if(typeof arg1 == "function")
       arg1(instance);
 
-    return instance;
-  }, []);
-
-  const state = useState(0);
-  const local = useMemo(() => {
     const update = () => state[1](x => x+1);
     let refresh: (() => void) | undefined | null;
 
     const memo: {
       apply?: (from: Model.Compat<T>) => void;
       commit: () => () => void;
+      instance: T;
       proxy: T;
     } = {
+      instance,
+      proxy: Control.watch(instance, () => refresh),
       commit(){
         refresh = update;
         return () => {
           refresh = null;
           instance.null();
         }
-      },
-      proxy: Control.watch(instance, () => refresh)
+      }
     };
 
     if(typeof arg1 == "object")
@@ -67,7 +65,7 @@ function useModel <T extends Model> (
     return memo;
   }, []);
 
-  usePeerContext(instance);
+  usePeerContext(local.instance);
 
   if(local.apply)
     local.apply(arg1 as Model.Compat<T>);
