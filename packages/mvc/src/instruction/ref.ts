@@ -1,4 +1,4 @@
-import { add, Control, control } from '../control';
+import { apply, Control, control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
@@ -58,7 +58,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return add((key, source) => {
+  return apply((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     source.state[key] = undefined;

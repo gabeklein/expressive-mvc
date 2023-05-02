@@ -1,4 +1,4 @@
-import { add } from '../control';
+import { apply } from '../control';
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
@@ -79,7 +79,7 @@ function set <T> (
   value?: set.Factory<T | Promise<T>> | Promise<T> | T,
   argument?: set.Callback<any> | boolean): any {
 
-  return add((key, control) => {
+  return apply((key, control) => {
     const { state, subject } = control;
     
     if(typeof value == "function" || value instanceof Promise){

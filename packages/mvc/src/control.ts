@@ -65,8 +65,8 @@ class Control<T extends Model = any> {
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
 
-  static add = add;
   static for = control;
+  static apply = apply;
   static watch = watch;
 
   constructor(
@@ -273,7 +273,7 @@ function watch<T extends Model>(on: T, cb: Observer): T {
   return on;
 }
 
-function add<T = any>(instruction: Control.Instruction<any>){
+function apply<T = any>(instruction: Control.Instruction<any>){
   const placeholder = Symbol("instruction");
 
   INSTRUCTION.set(placeholder, (key, onto) => {
@@ -296,7 +296,7 @@ function random(){
 }
 
 export {
-  add,
+  apply,
   control,
   Control,
   watch

@@ -1,4 +1,4 @@
-import { add, control } from '../control';
+import { apply, control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
@@ -47,7 +47,7 @@ function use(
   input?: any,
   argument?: boolean | ((i: {} | undefined) => void)){
 
-  return add((key, source) => {
+  return apply((key, source) => {
     const { state, subject } = source;
     const required = argument !== false;
 
