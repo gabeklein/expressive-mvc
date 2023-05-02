@@ -5,7 +5,7 @@ import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 
-import type { Callback, Class, Extends, InstanceOf, NoVoid } from '../types';
+import type { Callback } from '../types';
 
 export const Oops = issues({
   NoAdapter: (method) =>
@@ -15,15 +15,20 @@ export const Oops = issues({
     `New ${child} created standalone but requires parent of type ${expects}.`
 });
 
+type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+
+/** Type may not be undefined - instead will be null.  */
+type NoVoid<T> = T extends undefined ? null : T;
+
 declare namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new () => T;
 
-  // TODO: Can this be combined with Type?
-  export type Class<T extends Model> = (abstract new () => T) & typeof Model;
-
   /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
+
+  // TODO: Can this be combined with Type?
+  export type Class<T extends Model> = (abstract new () => T) & typeof Model;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
@@ -33,43 +38,27 @@ declare namespace Model {
     current: T | null;
   }
 
-  /** Properties of T which are methods. */
-  export type Methods<T> = {
-    [K in keyof T]:
-      T[K] extends Ref ? never :
-      T[K] extends Function ? K :
-      never;
-  }[keyof T];
-
-  type BuiltIn = keyof Model | keyof Debug<Model>;
-
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
-   * 
-   * **Note**: This excludes all keys which are not of type `string` (only those are managed).
-   * 
-   * TODO: Should exclude methods
    **/
-  export type Key<T> = Exclude<keyof T, BuiltIn> & string;
+  export type Key<T, U = Model> = Extract<Exclude<keyof T, keyof U | keyof Debug>, string>;
 
-  /**
-   * Including but not limited to `keyof T` which are not methods or defined by base Model.
-   * 
-   * TODO: Should this be supported?
-   **/
-  export type Event<T> = Extends<Key<T>>;
-
-  /** Object containing managed entries found in T. */
-  export type Entries<T> = { [K in Key<T>]: T[K] };
-
-  /** Object comperable to data found in T. */
-  export type Compat<T> = { [K in Key<T>]?: T[K] };
+  /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
+  export type Event<T> = Key<T> | (string & {});
 
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
 
   /** Actual value belonging to a managed property. */
   export type ValueOf<T extends {}, K> = K extends keyof T ? Value<T[K]> : undefined;
+
+  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
+
+  /** Object containing managed entries found in T. */
+  export type Entries<T> = { [K in Key<T>]: T[K] };
+
+  /** Object comperable to data found in T. */
+  export type Compat<T> = { [K in Key<T>]?: T[K] };
 
   /**
    * Values from current state of given controller.
@@ -78,7 +67,11 @@ declare namespace Model {
    */
   export type Get<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
+  /** Promise thrown by something which is not yet ready. */
+  export type Suspense = Promise<void> & Error;
+
+  export type OnCallback<T extends Model> =
+    (this: T, keys: Model.Event<T>[] | null) => void;
 
   export type GetCallback<T extends Model, R> =
     (this: T, model: T, update: ForceUpdate) => R;
@@ -100,11 +93,6 @@ declare namespace Model {
      */
     <T = void>(invoke: () => Promise<T>): Promise<T>
   };
-
-  export type Suspense = Promise<void> & Error;
-
-  export type OnCallback<T extends Model> =
-    (this: T, keys: Model.Event<T>[] | null) => void;
 }
 
 class Model {
@@ -215,7 +203,7 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new<T extends Class>(
+  static new<T extends new (...args: any[]) => any>(
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
