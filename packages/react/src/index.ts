@@ -1,10 +1,10 @@
 import { Model } from '@expressive/mvc';
 
-import { hasContext, useContext } from './useContext';
+import { hasContext, useFromContext } from './useContext';
 import { useModel } from './useModel';
 
 Model.has = hasContext;
-Model.get = useContext;
+Model.get = useFromContext;
 Model.use = useModel;
 
 export {

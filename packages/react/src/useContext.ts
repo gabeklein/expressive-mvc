@@ -1,7 +1,10 @@
-import { issues, Model, Context } from '@expressive/mvc';
+import { Context, issues, Model } from '@expressive/mvc';
+import { createContext, useContext } from 'react';
 
-import { useAmbient } from './provider';
 import { useComputed, useSubscriber } from './useSubscriber';
+
+export const LookupContext = createContext(new Context());
+export const useLookup = () => useContext(LookupContext);
 
 export const Oops = issues({
   AmbientRequired: (requested, requester) =>
@@ -11,7 +14,7 @@ export const Oops = issues({
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 const Applied = new WeakMap<Model, boolean>();
 
-export function useContext <T extends Model> (
+export function useFromContext <T extends Model> (
   this: (typeof Model & Model.Type<T>),
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
@@ -51,7 +54,7 @@ export function hasContext<T extends Model>(
       })
     }
 
-  const context = useAmbient()
+  const context = useLookup()
 
   return (callback?: (got: T) => void) => {
     const got = context.get(this, required);
@@ -64,7 +67,7 @@ export function hasContext<T extends Model>(
 export function usePeerContext(subject: Model){
   if(Applied.has(subject)){
     if(Applied.get(subject))
-      useAmbient();
+      useLookup();
 
     return;
   }
@@ -72,7 +75,7 @@ export function usePeerContext(subject: Model){
   const pending = Pending.get(subject);
 
   if(pending){
-    const local = useAmbient();
+    const local = useLookup();
 
     for(const init of pending)
       init(local);
