@@ -12,8 +12,8 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
   callback: (this: T, keys: Model.Event<T>[] | null) => void,
   once?: boolean){
 
-  return control(source, self => {
-    const { subject } = self as any;
+  return control<any>(source, self => {
+    const { subject } = self;
 
     if(typeof select == "string")
       select = [ select ];

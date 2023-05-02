@@ -167,15 +167,14 @@ class Control<T extends Model = any> {
     for(const k of ["", key]){
       const subs = this.observers.get(k);
 
-      if(subs)
-        for(const cb of subs){
-          const notify = cb(key, this);
-    
-          if(notify === null)
-            subs.delete(cb);
-          else if(notify)
-            requestUpdateFrame(notify);
-        }
+      subs && subs.forEach(cb => {
+        const notify = cb(key, this);
+  
+        if(notify === null)
+          subs.delete(cb);
+        else if(notify)
+          requestUpdateFrame(notify);
+      });
     }
   }
 
