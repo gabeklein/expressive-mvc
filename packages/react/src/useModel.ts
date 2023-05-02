@@ -32,13 +32,15 @@ function useModel <T extends Model> (
     let refresh: (() => void) | undefined | null;
 
     const memo: {
-      apply?: (from: Model.Compat<T>) => void;
+      applyProps?: (from: {}) => void;
+      applyPeers: () => void;
       commit: () => () => void;
       instance: T;
       proxy: T;
     } = {
       instance,
       proxy: Control.watch(instance, () => refresh),
+      applyPeers: usePeerContext(instance),
       commit(){
         refresh = update;
         return () => {
@@ -49,11 +51,11 @@ function useModel <T extends Model> (
     };
 
     if(typeof arg1 == "object")
-      memo.apply = (values: Model.Compat<T>) => {
+      memo.applyProps = (values: Model.Compat<T>) => {
         refresh = undefined;
 
         if(!arg2)
-          memo.apply = undefined;
+          memo.applyProps = undefined;
 
         for(const key in values)
           if(instance.hasOwnProperty(key))
@@ -65,10 +67,10 @@ function useModel <T extends Model> (
     return memo;
   }, []);
 
-  usePeerContext(local.instance);
+  local.applyPeers();
 
-  if(local.apply)
-    local.apply(arg1 as Model.Compat<T>);
+  if(local.applyProps)
+    local.applyProps(arg1 as Model.Compat<T>);
 
   useLayoutEffect(local.commit, []);
 

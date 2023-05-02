@@ -12,7 +12,6 @@ export const Oops = issues({
 });
 
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
-const Applied = new WeakMap<Model, boolean>();
 
 export function useFromContext <T extends Model> (
   this: (typeof Model & Model.Type<T>),
@@ -65,25 +64,23 @@ export function hasContext<T extends Model>(
 }
 
 export function usePeerContext(subject: Model){
-  if(Applied.has(subject)){
-    if(Applied.get(subject))
+  let didApply: undefined | boolean;
+
+  return () => {
+    if(didApply)
       useLookup();
 
-    return;
+    else if(didApply !== false){
+      const pending = Pending.get(subject);
+    
+      if(didApply = !!pending){
+        const local = useLookup();
+
+        pending.forEach(init => init(local));
+        Pending.delete(subject);
+      }
+    }
   }
-
-  const pending = Pending.get(subject);
-
-  if(pending){
-    const local = useLookup();
-
-    for(const init of pending)
-      init(local);
-
-    Pending.delete(subject);
-  }
-
-  Applied.set(subject, !!pending);
 }
 
 export function setPeers(context: Context, onto: Model){
