@@ -20,61 +20,47 @@ function useModel <T extends Model> (
   arg2?: boolean){
 
   const state = useState(0);
-  const local = useMemo(() => {
-    const instance = new this();
+  const render = useMemo(() => {
+    const instance = this.new();
+    const proxy = Control.watch(instance, () => refresh);
+    const update = () => state[1](x => x+1);
+    const applyPeers = usePeerContext(instance);
 
-    Control.for(instance, true);
+    let refresh: (() => void) | undefined | null;
+    let applyProps = typeof arg1 === "object";
+
+    function commit(){
+      refresh = update;
+      return () => {
+        refresh = null;
+        instance.null();
+      }
+    }
 
     if(typeof arg1 == "function")
       arg1(instance);
 
-    const update = () => state[1](x => x+1);
-    let refresh: (() => void) | undefined | null;
+    return (props: Model.Compat<T>) => {
+      applyPeers();
 
-    const memo: {
-      applyProps?: (from: {}) => void;
-      applyPeers: () => void;
-      commit: () => () => void;
-      instance: T;
-      proxy: T;
-    } = {
-      instance,
-      proxy: Control.watch(instance, () => refresh),
-      applyPeers: usePeerContext(instance),
-      commit(){
-        refresh = update;
-        return () => {
-          refresh = null;
-          instance.null();
-        }
-      }
-    };
-
-    if(typeof arg1 == "object")
-      memo.applyProps = (values: Model.Compat<T>) => {
+      if(applyProps){
         refresh = undefined;
+        applyProps = !!arg2;
 
-        if(!arg2)
-          memo.applyProps = undefined;
-
-        for(const key in values)
+        for(const key in props)
           if(instance.hasOwnProperty(key))
-            (instance as any)[key] = (values as any)[key];
-
+            (instance as any)[key] = (props as any)[key];
+    
         instance.on(0).then(() => refresh = update);
       }
 
-    return memo;
+      useLayoutEffect(commit, []);
+
+      return proxy;
+    };
   }, []);
 
-  local.applyPeers();
-
-  if(local.applyProps)
-    local.applyProps(arg1 as Model.Compat<T>);
-
-  useLayoutEffect(local.commit, []);
-
-  return local.proxy;
+  return render(arg1 as Model.Compat<T>);
 }
 
 export { useModel }
