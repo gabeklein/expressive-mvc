@@ -1,8 +1,6 @@
 import { Context, issues, Model } from '@expressive/mvc';
 import { createContext, useContext } from 'react';
 
-import { useComputed, useSubscriber } from './useSubscriber';
-
 export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
 
@@ -12,24 +10,6 @@ export const Oops = issues({
 });
 
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
-
-export function useFromContext<T extends Model> (
-  this: (typeof Model & Model.Type<T>),
-  arg1?: boolean | Model.GetCallback<T, any>,
-  arg2?: boolean){
-
-  const factory = this.has(arg1 !== false);
-
-  if(typeof arg1 == "boolean"){
-    let model!: T;
-    factory($ => model = $);
-    return model;
-  }
-
-  return arg1
-    ? useComputed(factory, arg1, arg2)
-    : useSubscriber(factory);
-}
 
 export function hasContext<T extends Model>(
   this: Model.Type<T>,

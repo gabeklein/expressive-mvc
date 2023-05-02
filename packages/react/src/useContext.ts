@@ -1,6 +1,24 @@
 import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useState } from 'react';
 
+export function useContext<T extends Model> (
+  this: (typeof Model & Model.Type<T>),
+  arg1?: boolean | Model.GetCallback<T, any>,
+  arg2?: boolean){
+
+  const factory = this.has(arg1 !== false);
+
+  if(typeof arg1 == "boolean"){
+    let model!: T;
+    factory($ => model = $);
+    return model;
+  }
+
+  return arg1
+    ? useComputed(factory, arg1, arg2)
+    : useSubscriber(factory);
+}
+
 export function useSubscriber<T extends Model>(
   getInstance: (cb: (got: T) => void) => void){
     
