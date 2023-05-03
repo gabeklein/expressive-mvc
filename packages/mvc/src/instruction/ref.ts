@@ -61,8 +61,6 @@ function ref<T>(
   return apply((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    source.state[key] = undefined;
-
     if(typeof arg != "object")
       value = createRef(source, key, arg);
     else
@@ -77,9 +75,12 @@ function ref<T>(
             }
           } : {
             value: createRef(source, key)
-          })
+          }
+        )
       }
 
+    source.state[key] = undefined;
+    source.observers.set(key, new Set());
     defineProperty(source.subject, key, { value });
   })
 }
