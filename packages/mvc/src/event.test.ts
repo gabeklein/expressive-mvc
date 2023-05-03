@@ -235,8 +235,6 @@ describe("timeout", () => {
 
     await expect(promise).rejects.toThrowError(expected);
   })
-
-  it.todo('will timeout on destroy state');
 })
 
 describe("before ready", () => {
