@@ -6,7 +6,7 @@ export function useContext<T extends Model> (
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
 
-  const factory = this.has(arg1 !== false);
+  const factory = Control.fetch(this, arg1 !== false);
 
   if(typeof arg1 == "boolean"){
     let model!: T;

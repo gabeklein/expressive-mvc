@@ -211,17 +211,6 @@ class Model {
     return instance;
   }
 
-  static has <T extends Model> (this: Model.Type<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
-  static has <T extends Model> (this: Model.Type<T>, required?: false, relativeTo?: Model): (callback: (got: T | undefined) => void) => void;
-
-  static has(required?: false, relativeTo?: Model): any {
-    if(!relativeTo)
-      throw Oops.NoAdapter("has");
-
-    if(required)
-      throw Oops.Required(this, relativeTo.constructor);
-  }
-
   static get <T extends Model> (this: Model.Type<T>): T;
 
   /** Fetch instance of this class in passive mode. Will not subscribe to events. */

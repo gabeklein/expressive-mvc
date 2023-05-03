@@ -1,3 +1,4 @@
+import { Control } from '@expressive/mvc';
 import { act } from '@testing-library/react-hooks';
 import React from 'react';
 
@@ -14,13 +15,18 @@ class Singleton extends Model {
   static new(){
     return this.instance = super.new();
   }
-
-  static has(){
-    return (cb: (found: Model) => void) => {
-      cb(this.instance || this.new());
-    }
-  }
 }
+
+beforeAll(() => {
+  const fetch = Control.fetch;
+
+  Control.fetch = (Type: Model.Class<Singleton>, required) => {
+    if(Singleton.isTypeof(Type))
+      return cb => cb(Type.instance as any || Type.new());
+    
+    return fetch(Type, required);
+  }
+})
 
 it("will refresh for values accessed", async () => {
   class Test extends Singleton {

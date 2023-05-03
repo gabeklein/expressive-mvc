@@ -80,7 +80,7 @@ function get<R, T extends Model>(
       const { parent } = control;
 
       if(!parent)
-        source = arg0.has(arg1 !== false, subject);
+        source = Control.fetch(arg0, arg1 !== false, subject);
       else if(!arg0 || parent instanceof arg0)
         subject = parent;
       else

@@ -6,7 +6,13 @@ import type { Callback } from '../types';
 
 export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
-    `${parent} expected Model of type ${expected} but got ${got}.`
+    `${parent} expected Model of type ${expected} but got ${got}.`,
+
+  NoAdapter: (method) =>
+    `Can't call Model.${method} without an adapter.`,
+
+  Required: (expects, child) => 
+    `New ${child} created standalone but requires parent of type ${expects}.`
 });
 
 type Observer = Control.OnSync;
@@ -68,6 +74,7 @@ class Control<T extends Model = any> {
   static for = control;
   static apply = apply;
   static watch = watch;
+  static fetch = fetch;
 
   constructor(
     public subject: T,
@@ -288,6 +295,18 @@ function apply<T = any>(instruction: Control.Instruction<any>){
   });
 
   return placeholder as unknown as T;
+}
+
+function fetch <T extends Model>(type: Model.Class<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
+function fetch <T extends Model>(type: Model.Class<T>, required?: false, relativeTo?: Model): (callback: (got: T | undefined) => void) => void;
+
+/** Placeholder fetch - overridden by adapter. */
+function fetch(type: Model.Type, required?: boolean, relativeTo?: Model): any {
+  if(!relativeTo)
+    throw Oops.NoAdapter("has");
+
+  if(required)
+    throw Oops.Required(type, relativeTo.constructor);
 }
 
 /** Random alphanumberic of length 6; will always start with a letter. */

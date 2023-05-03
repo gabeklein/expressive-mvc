@@ -1,4 +1,4 @@
-import { issues } from '@expressive/mvc';
+import { Control, issues } from '@expressive/mvc';
 
 type Class = new () => any;
 
@@ -52,7 +52,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const callback = has || get;
 
   if(typeof callback == "function")
-    type.has(!!has)(callback);
+    Control.fetch(type, !!has)(callback);
   else
     throw Oops.BadProps()
 

@@ -1,3 +1,4 @@
+import { Control } from '../control';
 import { mockAsync, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
@@ -588,14 +589,16 @@ describe("replaced source", () => {
   let didUpdate: (got: Source) => void;
   let current: Source;
 
-  class Source extends Model {
-    static has(){
+  beforeAll(() => {
+    Control.fetch = () => {
       return (onSource: (x: Model) => void) => {
         didUpdate = onSource;
         onSource(current);
       }
     }
+  })
 
+  class Source extends Model {
     constructor(public value: string){
       super();
     }
@@ -648,19 +651,18 @@ describe("replaced source", () => {
 })
 
 describe("async", () => {
-  class Test extends Model {
-    /** Override method to simplify tests. */
-    static has(){
-      return (callback: (x: Model) => void) => {
+  beforeAll(() => {
+    Control.fetch = (Type) => {
+      return callback => {
         setTimeout(() => {
-          callback(this.new());
+          callback(Type.new());
         }, 0);
       }
     }
-  }
-  
+  })
+
   it("will suspend if not ready", async () => {
-    class Foo extends Test {}
+    class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
     }
@@ -683,7 +685,7 @@ describe("async", () => {
   })
   
   it("will prevent compute if not ready", async () => {
-    class Foo extends Test {
+    class Foo extends Model {
       value = "foobar";
     }
     class Bar extends Model {

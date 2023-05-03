@@ -11,8 +11,8 @@ export const Oops = issues({
 
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
-export function hasContext<T extends Model>(
-  this: Model.Type<T>,
+export function fetch<T extends Model>(
+  type: Model.Type<T>,
   required?: boolean | undefined,
   relativeTo?: Model
 ): any {
@@ -24,19 +24,19 @@ export function hasContext<T extends Model>(
         Pending.set(relativeTo, pending = []);
     
       pending.push(context => {
-        const got = context.get<T>(this, false);
+        const got = context.get<T>(type, false);
     
         if(got)
           callback(got);
         else if(required)
-          throw Oops.AmbientRequired(this, relativeTo);
+          throw Oops.AmbientRequired(type, relativeTo);
       })
     }
 
   const context = useLookup()
 
   return (callback?: (got: T) => void) => {
-    const got = context.get(this, required);
+    const got = context.get(type, required);
 
     if(callback && got)
       callback(got);
