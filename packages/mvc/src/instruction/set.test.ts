@@ -164,8 +164,6 @@ describe("intercept", () => {
 describe("factory", () => {
   const { warn } = mockConsole();
 
-  jest.setTimeout(60000000)
-
   it("will compute when accessed", () => {
     const factory = jest.fn(() => "Hello World");
 
