@@ -59,14 +59,6 @@ declare namespace Control {
 }
 
 class Control<T extends Model = any> {
-  public state!: { [key: string]: any };
-  public latest?: Model.Event<T>[];
-  public parent?: Model;
-
-  public frame = new Set<string>();
-  public followers = new Set<Observer>();
-  public observers = new Map([["", this.followers]]);
-
   static after = new Set<Callback>();
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
@@ -75,6 +67,16 @@ class Control<T extends Model = any> {
   static apply = apply;
   static watch = watch;
   static fetch = fetch;
+
+  public parent?: Model;
+  public state!: { [key: string]: any };
+
+  // TODO: make Partial this
+  public latest?: Model.Event<T>[];
+
+  public frame = new Set<string>();
+  public followers = new Set<Observer>();
+  public observers = new Map([["", this.followers]]);
 
   constructor(
     public subject: T,
@@ -297,8 +299,17 @@ function apply<T = any>(instruction: Control.Instruction<any>){
   return placeholder as unknown as T;
 }
 
-function fetch <T extends Model>(type: Model.Class<T>, required?: boolean, relativeTo?: Model): (callback: (got: T) => void) => void;
-function fetch <T extends Model>(type: Model.Class<T>, required?: false, relativeTo?: Model): (callback: (got: T | undefined) => void) => void;
+function fetch <T extends Model>(
+  type: Model.Class<T>,
+  required?: false,
+  relativeTo?: Model
+): (callback: (got: T | undefined) => void) => void;
+
+function fetch <T extends Model>(
+  type: Model.Class<T>,
+  required?: boolean,
+  relativeTo?: Model
+): (callback: (got: T) => void) => void;
 
 /** Placeholder fetch - overridden by adapter. */
 function fetch(type: Model.Type, required?: boolean, relativeTo?: Model): any {
