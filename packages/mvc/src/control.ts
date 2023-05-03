@@ -15,23 +15,17 @@ export const Oops = issues({
     `New ${child} created standalone but requires parent of type ${expects}.`
 });
 
-type Observer = Control.OnSync;
-type InstructionRunner = (key: string, controller: Control) => void;
+type Observer<T extends Model = any> =
+  (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
+
+type InstructionRunner<T extends Model = any> =
+  (key: Model.Key<T>, parent: Control<T>) => void;
 
 const INSTRUCTION = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 
 declare namespace Control {
-  /**
-   * Called immediately when any key is changed or emitted.
-   * Returned callback is notified when update is complete.
-   */
-  type OnSync<T = any> = (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
-
-  // TODO: implement value type
-  type OnValue<T = any> = (this: T, value: any) => boolean | void;
-  
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
@@ -135,13 +129,13 @@ class Control<T extends Model = any> {
   }
 
   ref<K extends Model.Key<T>>(
-    key: K, cb?: (this: T, value: T[K]) => boolean | void){
+    key: K, callback?: (this: T, value: T[K]) => boolean | void){
 
     const { state, subject } = this
   
     return (value: any) => {
       if(value !== state[key])
-        switch(cb && cb.call(subject, value)){
+        switch(callback && callback.call(subject, value)){
           case undefined:
             state[key] = value;
           case true:
