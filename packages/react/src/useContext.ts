@@ -1,5 +1,5 @@
 import { Control, Model } from '@expressive/mvc';
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 
 export function useContext<T extends Model> (
   this: (typeof Model & Model.Type<T>),
@@ -21,9 +21,10 @@ export function useContext<T extends Model> (
 
 export function useSubscriber<T extends Model>(
   getInstance: (cb: (got: T) => void) => void){
-    
-  const state = useState(() => {
-    const next = () => state[1]({ commit, proxy });
+
+  const state = useState(0);
+  const render = useMemo(() => {
+    const update = () => state[1](x => x+1);
     let refresh: (() => void) | undefined;
     let proxy!: T;
 
@@ -32,16 +33,17 @@ export function useSubscriber<T extends Model>(
     })
 
     const commit = () => {
-      refresh = next;
+      refresh = update;
       return () => refresh = undefined;
     }
 
-    return { commit, proxy }
-  });
+    return () => {
+      useLayoutEffect(commit, []);
+      return proxy;
+    }
+  }, []);
 
-  useLayoutEffect(state[0].commit, []);
-
-  return state[0].proxy;
+  return render();
 }
 
 export function useComputed<T extends Model, R>(
@@ -49,32 +51,12 @@ export function useComputed<T extends Model, R>(
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const [state, update] = useState(() => {
+  const state = useState(0);
+  const render = useMemo(() => {
+    const update = () => state[1](x => x+1);
     let suspense: (() => void) | undefined;
     let refresh: (() => void) | undefined | null;
     let value: R | undefined;
-
-    let next = (): {
-      commit?: React.EffectCallback;
-      proxy?: R | null;
-    } => ({
-      commit(){
-        return () => {
-          refresh = null;
-        }
-      },
-      get proxy(){
-        if(value !== undefined)
-          return value;
-
-        if(required)
-          throw new Promise<void>(res => {
-            suspense = res;
-          });
-
-        return null;
-      }
-    })
 
     let getValue: (() => R | undefined) | undefined;
     let factory: true | undefined;
@@ -84,12 +66,27 @@ export function useComputed<T extends Model, R>(
       proxy = Control.watch(got, () => factory ? null : refresh);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
+
+      function forceUpdate(): void;
+      function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
+      function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
+        if(typeof passthru == "function")
+          passthru = passthru();
+  
+        if(getValue)
+          didUpdate(getValue());
+        else
+          update();
+  
+        if(passthru)
+          return passthru.finally(update);
+      }
     });
 
     if(value === null){
-      next = () => ({});
-      getValue = undefined;
       refresh = null;
+      getValue = undefined;
+      return () => null;
     }
 
     if(typeof value == "function"){
@@ -101,6 +98,17 @@ export function useComputed<T extends Model, R>(
       compute = () => get();
       value = get();
     }
+
+    const didUpdate = (got: any) => {
+      value = got;
+
+      if(suspense){
+        suspense();
+        suspense = undefined;
+      }
+      else
+        update();
+    };
 
     if(value instanceof Promise){
       refresh = null;
@@ -115,41 +123,26 @@ export function useComputed<T extends Model, R>(
           didUpdate(next);
       };
 
-    function didUpdate(got: any){
-      value = got;
-
-      if(suspense){
-        suspense();
-        suspense = undefined;
-      }
-      else
-        update(next);
+    const commit = () => () => {
+      refresh = null;
     };
 
-    function forceUpdate(): void;
-    function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
-    function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
-      if(typeof passthru == "function")
-        passthru = passthru();
+    return () => {
+      useLayoutEffect(commit, []);
 
-      if(getValue)
-        didUpdate(getValue());
-      else
-        update(next);
+      if(value !== undefined)
+        return value;
 
-      if(passthru)
-        return passthru.finally(() => update(next));
+      if(required)
+        throw new Promise<void>(res => {
+          suspense = res;
+        });
+
+      return null;
     }
+  }, []);
 
-    return next();
-  });
-
-  if(!state.commit)
-    return null;
-
-  useLayoutEffect(state.commit, []);
-
-  return state.proxy;
+  return render();
 }
 
 /** Values are not equal for purposes of a refresh. */

@@ -149,7 +149,7 @@ class Control<T extends Model = any> {
 
     if(frame.has(key))
       return;
-  
+
     if(!frame.size){
       this.latest = undefined;
 
