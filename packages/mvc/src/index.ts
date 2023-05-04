@@ -6,6 +6,6 @@ export { use } from './instruction/use';
 
 export { Model, Model as default } from './model';
 export { Control } from './control';
-export { Debug } from './debug';
 export { Context } from './context';
+export { Debug } from './debug';
 export { issues } from './helper/issues';
