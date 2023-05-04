@@ -203,7 +203,7 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new<T extends new (...args: any[]) => any>(
+  static new <T extends new (...args: any[]) => any> (
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
@@ -214,10 +214,10 @@ class Model {
   static get <T extends Model> (this: Model.Type<T>): T;
 
   /** Fetch instance of this class in passive mode. Will not subscribe to events. */
-  static get<T extends Model>(this: Model.Type<T>, ignoreUpdates?: true): T;
+  static get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 
   /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-  static get<T extends Model>(this: Model.Type<T>, required: boolean): T | undefined;
+  static get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
   static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
   static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
