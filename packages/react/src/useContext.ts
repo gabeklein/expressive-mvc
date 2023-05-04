@@ -20,21 +20,21 @@ export function useContext<T extends Model> (
 }
 
 export function useSubscriber<T extends Model>(
-  getInstance: (cb: (got: T) => void) => void){
+  source: (callback: (got: T) => void) => void){
 
   const state = useState(0);
   const render = useMemo(() => {
-    const update = () => state[1](x => x+1);
-    let refresh: (() => void) | undefined;
+    const refresh = () => state[1](x => x+1);
+    let onUpdate: (() => void) | undefined;
     let proxy!: T;
 
-    getInstance(got => {
-      proxy = Control.watch(got, () => refresh);
+    source(got => {
+      proxy = Control.watch(got, () => onUpdate);
     })
 
     const commit = () => {
-      refresh = update;
-      return () => refresh = undefined;
+      onUpdate = refresh;
+      return () => onUpdate = undefined;
     }
 
     return () => {
@@ -53,9 +53,9 @@ export function useComputed<T extends Model, R>(
 
   const state = useState(0);
   const render = useMemo(() => {
-    const update = () => state[1](x => x+1);
+    const refresh = () => state[1](x => x+1);
     let suspense: (() => void) | undefined;
-    let refresh: (() => void) | undefined | null;
+    let onUpdate: (() => void) | undefined | null;
     let value: R | undefined;
 
     let getValue: (() => R | undefined) | undefined;
@@ -63,7 +63,7 @@ export function useComputed<T extends Model, R>(
     let proxy!: T;
 
     source(got => {
-      proxy = Control.watch(got, () => factory ? null : refresh);
+      proxy = Control.watch(got, () => factory ? null : onUpdate);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
 
@@ -76,15 +76,15 @@ export function useComputed<T extends Model, R>(
         if(getValue)
           didUpdate(getValue());
         else
-          update();
+          refresh();
   
         if(passthru)
-          return passthru.finally(update);
+          return passthru.finally(refresh);
       }
     });
 
     if(value === null){
-      refresh = null;
+      onUpdate = null;
       getValue = undefined;
       return () => null;
     }
@@ -92,7 +92,7 @@ export function useComputed<T extends Model, R>(
     if(typeof value == "function"){
       const get = value;
       
-      Control.watch(proxy, () => refresh);
+      Control.watch(proxy, () => onUpdate);
 
       factory = true;
       compute = () => get();
@@ -107,16 +107,16 @@ export function useComputed<T extends Model, R>(
         suspense = undefined;
       }
       else
-        update();
+        refresh();
     };
 
     if(value instanceof Promise){
-      refresh = null;
+      onUpdate = null;
       value.then(didUpdate);
       value = undefined;
     }
     else
-      refresh = () => {
+      onUpdate = () => {
         const next = getValue!();
 
         if(notEqual(value, next))
@@ -124,7 +124,7 @@ export function useComputed<T extends Model, R>(
       };
 
     const commit = () => () => {
-      refresh = null;
+      onUpdate = null;
     };
 
     return () => {

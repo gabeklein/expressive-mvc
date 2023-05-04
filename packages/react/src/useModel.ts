@@ -22,17 +22,17 @@ function useModel <T extends Model> (
   const state = useState(0);
   const render = useMemo(() => {
     const instance = this.new();
-    const proxy = Control.watch(instance, () => refresh);
-    const update = () => state[1](x => x+1);
+    const proxy = Control.watch(instance, () => onUpdate);
+    const refresh = () => state[1](x => x+1);
 
-    let refresh: (() => void) | undefined | null;
+    let onUpdate: (() => void) | undefined | null;
     let applyPeers: undefined | boolean;
     let applyProps = typeof arg1 === "object";
 
     function commit(){
-      refresh = update;
+      onUpdate = refresh;
       return () => {
-        refresh = null;
+        onUpdate = null;
         instance.null();
       }
     }
@@ -56,14 +56,14 @@ function useModel <T extends Model> (
       }
 
       if(applyProps){
-        refresh = undefined;
+        onUpdate = undefined;
         applyProps = !!arg2;
 
         for(const key in props)
           if(instance.hasOwnProperty(key))
             (instance as any)[key] = (props as any)[key];
     
-        instance.on(0).then(() => refresh = update);
+        instance.on(0).then(() => onUpdate = refresh);
       }
 
       useLayoutEffect(commit, []);
