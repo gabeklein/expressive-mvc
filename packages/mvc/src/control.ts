@@ -92,7 +92,7 @@ class Control<T extends Model = any> {
   static pending = new Set<Callback>();
 
   static getModel: Control.GetHook;
-  static newModel: Control.UseHook;
+  static useModel: Control.UseHook;
   static hasModel: Control.HasHook = fetch;
 
   static for = control;

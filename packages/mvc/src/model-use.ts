@@ -17,7 +17,7 @@ function use <T extends Model> (
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
 
-  return Control.newModel((refresh: () => void) => {
+  return Control.useModel((refresh: () => void) => {
     let onUpdate: (() => void) | undefined | null;
     let applyProps = typeof arg1 === "object";
 

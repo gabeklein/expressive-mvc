@@ -6,7 +6,7 @@ import { useModel } from './useModel';
 
 Control.hasModel = fetch;
 Control.getModel = useContext;
-Control.newModel = useModel;
+Control.useModel = useModel;
 
 export {
   default,
