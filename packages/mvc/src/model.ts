@@ -4,7 +4,7 @@ import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
-import { useComputed, useSubscriber } from './hooks';
+import { useComputed, useModel, useSubscriber } from './hooks';
 
 import type { Callback } from '../types';
 
@@ -253,8 +253,11 @@ class Model {
   static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
   static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, repeat?: boolean): I;
 
-  static use(){
-    throw Oops.NoAdapter("use");
+  static use <T extends Model> (
+    arg1?: Model.Compat<T> | ((instance: T) => void), 
+    arg2?: boolean){
+    
+    return Control.newModel(useModel(this, arg1, arg2), arg1 as any)
   }
 
   /**

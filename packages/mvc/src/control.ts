@@ -59,6 +59,17 @@ declare namespace Control {
   type GetHook = <T> (
     factory: GetAdapter<T>
   ) => T | null;
+
+  type UseAdapter<T extends Model> = (update: () => void) => {
+    instance: T;
+    commit: () => (() => void) | void;
+    render: (props: Model.Compat<T>) => T;
+  }
+
+  type UseHook = <T extends Model>(
+    factory: UseAdapter<T>,
+    props: Model.Compat<T>
+  ) => T;
 }
 
 class Control<T extends Model = any> {
@@ -67,6 +78,7 @@ class Control<T extends Model = any> {
   static pending = new Set<Callback>();
 
   static getModel: Control.GetHook;
+  static newModel: Control.UseHook;
 
   static for = control;
   static apply = apply;

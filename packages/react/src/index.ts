@@ -1,4 +1,4 @@
-import { Control, Model } from '@expressive/mvc';
+import { Control } from '@expressive/mvc';
 
 import { fetch } from './context';
 import { useContext } from './useContext';
@@ -6,7 +6,7 @@ import { useModel } from './useModel';
 
 Control.fetch = fetch;
 Control.getModel = useContext;
-Model.use = useModel;
+Control.newModel = useModel;
 
 export {
   default,
