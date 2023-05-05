@@ -22,9 +22,7 @@ export function useContext<T extends Model> (
 export function useSubscriber<T extends Model>(
   source: (callback: (got: T) => void) => void){
 
-  const state = useState(0);
-  const render = useMemo(() => {
-    const refresh = () => state[1](x => x+1);
+  return useContextHook(refresh => {
     let onUpdate: (() => void) | undefined;
     let proxy!: T;
 
@@ -32,28 +30,23 @@ export function useSubscriber<T extends Model>(
       proxy = Control.watch(got, () => onUpdate);
     })
 
-    const commit = () => {
-      onUpdate = refresh;
-      return () => onUpdate = undefined;
+    return {
+      commit(){
+        onUpdate = refresh;
+        return () =>
+          onUpdate = undefined;
+      },
+      render: () => proxy
     }
-
-    return () => {
-      useLayoutEffect(commit, []);
-      return proxy;
-    }
-  }, []);
-
-  return render();
+  })
 }
 
 export function useComputed<T extends Model, R>(
-  source: ((callback: (got: T) => void) => void),
+  source: (callback: (got: T) => void) => void,
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  const state = useState(0);
-  const render = useMemo(() => {
-    const refresh = () => state[1](x => x+1);
+  return useContextHook(refresh => {
     let suspense: (() => void) | undefined;
     let onUpdate: (() => void) | undefined | null;
     let value: R | undefined;
@@ -81,12 +74,12 @@ export function useComputed<T extends Model, R>(
         if(passthru)
           return passthru.finally(refresh);
       }
-    });
+    })
 
     if(value === null){
-      onUpdate = null;
       getValue = undefined;
-      return () => null;
+      onUpdate = null;
+      return;
     }
 
     if(typeof value == "function"){
@@ -123,26 +116,44 @@ export function useComputed<T extends Model, R>(
           didUpdate(next);
       };
 
-    const commit = () => () => {
-      onUpdate = null;
-    };
-
-    return () => {
-      useLayoutEffect(commit, []);
-
-      if(value !== undefined)
-        return value;
-
-      if(required)
-        throw new Promise<void>(res => {
-          suspense = res;
-        });
-
-      return null;
+    return {
+      commit: () => () => {
+        onUpdate = null;
+      },
+      render: () => {
+        if(value !== undefined)
+          return value;
+  
+        if(required)
+          throw new Promise<void>(res => {
+            suspense = res;
+          });
+  
+        return null;
+      }
     }
+  });
+}
+
+function useContextHook<T extends Model, R>(
+  factory: (update: () => void) => void | {
+    commit: () => (() => void) | void;
+    render: () => R;
+  }){
+
+  const state = useState(0);
+  const hook = useMemo(() => {
+    const result = factory(() => state[1](x => x+1));
+
+    return result
+      ? () => {
+        useLayoutEffect(result.commit, []);
+        return result.render();
+      }
+      : () => null;
   }, []);
 
-  return render();
+  return hook();
 }
 
 /** Values are not equal for purposes of a refresh. */
