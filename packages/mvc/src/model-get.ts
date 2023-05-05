@@ -4,26 +4,26 @@ import { Model } from "./model";
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined ? null : T;
 
-function useContext <T extends Model> (this: Model.Class<T>): T;
+function get <T extends Model> (this: Model.Class<T>): T;
 
 /** Fetch instance of this class in passive mode. Will not subscribe to events. */
-function useContext <T extends Model> (this: Model.Class<T>, ignoreUpdates?: true): T;
+function get <T extends Model> (this: Model.Class<T>, ignoreUpdates?: true): T;
 
 /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-function useContext <T extends Model> (this: Model.Class<T>, required: boolean): T | undefined;
+function get <T extends Model> (this: Model.Class<T>, required: boolean): T | undefined;
 
-function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
-function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
-function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function get <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
+function get <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+function get <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
 
-function useContext <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
-function useContext <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
+function get <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
+function get <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
 
-function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
+function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-function useContext<T extends Model, R>(
+function get<T extends Model, R>(
   this: Model.Class<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
@@ -42,7 +42,7 @@ function useContext<T extends Model, R>(
   )
 }
 
-export { useContext };
+export { get };
 
 function useSubscriber<T extends Model>(
   source: (callback: (got: T) => void) => void){

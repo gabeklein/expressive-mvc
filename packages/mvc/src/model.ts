@@ -4,8 +4,8 @@ import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
-import { useContext } from './useContext';
-import { useModel } from './useModel';
+import { get } from './model-get';
+import { use } from './model-use';
 
 import type { Callback } from '../types';
 
@@ -195,6 +195,9 @@ class Model {
     control(this, true).clear();
   }
 
+  static get = get;
+  static use = use;
+
   /**
    * Creates a new instance of this controller.
    * 
@@ -209,9 +212,6 @@ class Model {
     control(instance, true);
     return instance;
   }
-
-  static get = useContext;
-  static use = useModel;
 
   /**
    * Static equivalent of `x instanceof this`.

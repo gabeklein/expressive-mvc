@@ -1,18 +1,18 @@
 import { Control } from "./control";
 import { Model } from "./model";
 
-function useModel <T extends Model> (
+function use <T extends Model> (
   this: Model.New<T>,
   callback?: (instance: T) => void
 ): T;
 
-function useModel <T extends Model> (
+function use <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Compat<T>,
   repeat?: boolean
 ): T;
 
-function useModel <T extends Model> (
+function use <T extends Model> (
   this: Model.New<T> | (typeof Model),
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
@@ -54,4 +54,4 @@ function useModel <T extends Model> (
   }, arg1 as Model.Compat<T>)
 }
 
-export { useModel }
+export { use }
