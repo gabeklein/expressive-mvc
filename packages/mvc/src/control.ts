@@ -343,7 +343,11 @@ function fetch <T extends Model>(
 ): (callback: (got: T) => void) => void;
 
 /** Placeholder fetch - overridden by adapter. */
-function fetch(type: Model.Type, required?: boolean, relativeTo?: Model): any {
+function fetch(
+  type: Model.Class<any>,
+  required?: boolean,
+  relativeTo?: Model): any {
+
   if(!relativeTo)
     throw Oops.NoAdapter("has");
 

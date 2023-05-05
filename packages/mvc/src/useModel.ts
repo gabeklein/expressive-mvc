@@ -1,8 +1,19 @@
 import { Control } from "./control";
 import { Model } from "./model";
 
-export function useModel <T extends Model> (
-  type: Model.New<T> | (typeof Model),
+function useModel <T extends Model> (
+  this: Model.New<T>,
+  callback?: (instance: T) => void
+): T;
+
+function useModel <T extends Model> (
+  this: Model.New<T>,
+  apply?: Model.Compat<T>,
+  repeat?: boolean
+): T;
+
+function useModel <T extends Model> (
+  this: Model.New<T> | (typeof Model),
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
 
@@ -10,7 +21,7 @@ export function useModel <T extends Model> (
     let onUpdate: (() => void) | undefined | null;
     let applyProps = typeof arg1 === "object";
 
-    const instance = type.new();
+    const instance = this.new();
     const proxy = Control.watch(instance, () => onUpdate);
 
     if(typeof arg1 == "function")
@@ -42,3 +53,5 @@ export function useModel <T extends Model> (
     }
   }, arg1 as Model.Compat<T>)
 }
+
+export { useModel }

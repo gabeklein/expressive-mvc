@@ -1,12 +1,34 @@
 import { Control } from "./control";
 import { Model } from "./model";
 
-export function useContext<T extends Model, R>(
-  type: (typeof Model & Model.Type<T>),
+/** Type may not be undefined - instead will be null.  */
+type NoVoid<T> = T extends undefined ? null : T;
+
+function useContext <T extends Model> (this: Model.Class<T>): T;
+
+/** Fetch instance of this class in passive mode. Will not subscribe to events. */
+function useContext <T extends Model> (this: Model.Class<T>, ignoreUpdates?: true): T;
+
+/** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
+function useContext <T extends Model> (this: Model.Class<T>, required: boolean): T | undefined;
+
+function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
+function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
+function useContext <T extends Model, R extends []> (this: Model.Class<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+
+function useContext <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
+function useContext <T extends Model, R> (this: Model.Class<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
+
+function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
+function useContext <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
+
+function useContext<T extends Model, R>(
+  this: Model.Class<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  const source = Control.hasModel(type, arg1 !== false);
+  const source = Control.hasModel(this, arg1 !== false);
 
   if(typeof arg1 == "boolean"){
     let model!: T;
@@ -19,6 +41,8 @@ export function useContext<T extends Model, R>(
     : useSubscriber(source)
   )
 }
+
+export { useContext };
 
 function useSubscriber<T extends Model>(
   source: (callback: (got: T) => void) => void){

@@ -19,9 +19,6 @@ export const Oops = issues({
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
-/** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined ? null : T;
-
 declare namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new () => T;
@@ -213,42 +210,8 @@ class Model {
     return instance;
   }
 
-  static get <T extends Model> (this: Model.Type<T>): T;
-
-  /** Fetch instance of this class in passive mode. Will not subscribe to events. */
-  static get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
-
-  /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-  static get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
-
-  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
-  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
-  static get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-
-  static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
-  static get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
-
-  static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-  static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-  static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
-
-  static get <T extends Model, R> (
-    this: (typeof Model & Model.Type<T>),
-    arg1?: boolean | Model.GetCallback<T, any>,
-    arg2?: boolean
-  ){
-    return useContext(this, arg1, arg2);
-  }
-
-  static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
-  static use <I extends Model> (this: Model.Type<I>, apply: Model.Compat<I>, repeat?: boolean): I;
-
-  static use <T extends Model> (
-    arg1?: Model.Compat<T> | ((instance: T) => void), 
-    arg2?: boolean){
-    
-    return useModel(this, arg1, arg2);
-  }
+  static get = useContext;
+  static use = useModel;
 
   /**
    * Static equivalent of `x instanceof this`.
