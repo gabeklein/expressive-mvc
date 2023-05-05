@@ -52,7 +52,7 @@ function Consumer<T extends Class>(props: Consumer.Props<T>){
   const callback = has || get;
 
   if(typeof callback == "function")
-    Control.fetch(type, !!has)(callback);
+    Control.hasModel(type, !!has)(callback);
   else
     throw Oops.BadProps()
 

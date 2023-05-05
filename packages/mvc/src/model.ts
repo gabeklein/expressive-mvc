@@ -236,7 +236,7 @@ class Model {
     arg1?: boolean | Model.GetCallback<T, any>,
     arg2?: boolean
   ){
-    const source = Control.fetch(this, arg1 !== false);
+    const source = Control.hasModel(this, arg1 !== false);
   
     if(typeof arg1 == "boolean"){
       let model!: T;

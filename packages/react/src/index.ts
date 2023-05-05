@@ -4,7 +4,7 @@ import { fetch } from './context';
 import { useContext } from './useContext';
 import { useModel } from './useModel';
 
-Control.fetch = fetch;
+Control.hasModel = fetch;
 Control.getModel = useContext;
 Control.newModel = useModel;
 

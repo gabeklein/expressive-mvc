@@ -18,13 +18,13 @@ class Singleton extends Model {
 }
 
 beforeAll(() => {
-  const fetch = Control.fetch;
+  const { hasModel } = Control;
 
-  Control.fetch = (Type: Model.Class<Singleton>, required) => {
+  Control.hasModel = (Type: Model.Class<Singleton>, required) => {
     if(Singleton.isTypeof(Type))
       return cb => cb(Type.instance as any || Type.new());
     
-    return fetch(Type, required);
+    return hasModel(Type, required);
   }
 })
 

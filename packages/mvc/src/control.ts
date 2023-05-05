@@ -70,6 +70,20 @@ declare namespace Control {
     factory: UseAdapter<T>,
     props: Model.Compat<T>
   ) => T;
+
+  type HasHook = {
+    <T extends Model> (
+      type: Model.Class<T>,
+      required?: false,
+      relativeTo?: Model
+    ): (callback: (got: T | undefined) => void) => void;
+    
+    <T extends Model> (
+      type: Model.Class<T>,
+      required?: boolean,
+      relativeTo?: Model
+    ): (callback: (got: T) => void) => void;
+  }
 }
 
 class Control<T extends Model = any> {
@@ -79,11 +93,11 @@ class Control<T extends Model = any> {
 
   static getModel: Control.GetHook;
   static newModel: Control.UseHook;
+  static hasModel: Control.HasHook = fetch;
 
   static for = control;
   static apply = apply;
   static watch = watch;
-  static fetch = fetch;
 
   public parent?: Model;
   public state!: { [key: string]: any };

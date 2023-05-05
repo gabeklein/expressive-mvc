@@ -590,7 +590,7 @@ describe("replaced source", () => {
   let current: Source;
 
   beforeAll(() => {
-    Control.fetch = () => {
+    Control.hasModel = () => {
       return (onSource: (x: Model) => void) => {
         didUpdate = onSource;
         onSource(current);
@@ -652,7 +652,7 @@ describe("replaced source", () => {
 
 describe("async", () => {
   beforeAll(() => {
-    Control.fetch = (Type) => {
+    Control.hasModel = (Type) => {
       return callback => {
         setTimeout(() => {
           callback(Type.new());
