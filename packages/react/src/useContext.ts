@@ -6,23 +6,24 @@ export function useContext<T extends Model> (
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean){
 
-  const factory = Control.fetch(this, arg1 !== false);
+  const source = Control.fetch(this, arg1 !== false);
 
   if(typeof arg1 == "boolean"){
     let model!: T;
-    factory($ => model = $);
+    source($ => model = $);
     return model;
   }
 
-  return arg1
-    ? useComputed(factory, arg1, arg2)
-    : useSubscriber(factory);
+  return useContextHook(arg1
+    ? useComputed(source, arg1, arg2)
+    : useSubscriber(source)
+  )
 }
 
-export function useSubscriber<T extends Model>(
+function useSubscriber<T extends Model>(
   source: (callback: (got: T) => void) => void){
 
-  return useContextHook(refresh => {
+  return (refresh: () => void) => {
     let onUpdate: (() => void) | undefined;
     let proxy!: T;
 
@@ -38,7 +39,7 @@ export function useSubscriber<T extends Model>(
       },
       render: () => proxy
     }
-  })
+  }
 }
 
 export function useComputed<T extends Model, R>(
@@ -46,7 +47,7 @@ export function useComputed<T extends Model, R>(
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  return useContextHook(refresh => {
+  return (refresh: () => void) => {
     let suspense: (() => void) | undefined;
     let onUpdate: (() => void) | undefined | null;
     let value: R | undefined;
@@ -132,7 +133,7 @@ export function useComputed<T extends Model, R>(
         return null;
       }
     }
-  });
+  }
 }
 
 function useContextHook<T extends Model, R>(
