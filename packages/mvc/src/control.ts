@@ -50,12 +50,23 @@ declare namespace Control {
    * Returned callback is forwarded.
    */
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
+
+  type GetAdapter<T> = (update: () => void) => {
+    commit: () => (() => void) | void;
+    render: () => T;
+  } | void;
+
+  type GetHook = <T> (
+    factory: GetAdapter<T>
+  ) => T | null;
 }
 
 class Control<T extends Model = any> {
   static after = new Set<Callback>();
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
+
+  static getModel: Control.GetHook;
 
   static for = control;
   static apply = apply;

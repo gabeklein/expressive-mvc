@@ -4,6 +4,7 @@ import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
+import { useComputed, useSubscriber } from './hooks';
 
 import type { Callback } from '../types';
 
@@ -230,8 +231,23 @@ class Model {
   static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
   static get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-  static get(): never {
-    throw Oops.NoAdapter("get");
+  static get <T extends Model, R> (
+    this: (typeof Model & Model.Type<T>),
+    arg1?: boolean | Model.GetCallback<T, any>,
+    arg2?: boolean
+  ){
+    const source = Control.fetch(this, arg1 !== false);
+  
+    if(typeof arg1 == "boolean"){
+      let model!: T;
+      source($ => model = $);
+      return model;
+    }
+  
+    return Control.getModel(arg1
+      ? useComputed(source, arg1, arg2)
+      : useSubscriber(source)
+    )
   }
 
   static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;

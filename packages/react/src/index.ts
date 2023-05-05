@@ -5,8 +5,7 @@ import { useContext } from './useContext';
 import { useModel } from './useModel';
 
 Control.fetch = fetch;
-
-Model.get = useContext;
+Control.getModel = useContext;
 Model.use = useModel;
 
 export {
