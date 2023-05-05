@@ -4,7 +4,8 @@ import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
 import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
-import { useComputed, useModel, useSubscriber } from './hooks';
+import { useContext } from './useContext';
+import { useModel } from './useModel';
 
 import type { Callback } from '../types';
 
@@ -236,18 +237,7 @@ class Model {
     arg1?: boolean | Model.GetCallback<T, any>,
     arg2?: boolean
   ){
-    const source = Control.hasModel(this, arg1 !== false);
-  
-    if(typeof arg1 == "boolean"){
-      let model!: T;
-      source($ => model = $);
-      return model;
-    }
-  
-    return Control.getModel(arg1
-      ? useComputed(source, arg1, arg2)
-      : useSubscriber(source)
-    )
+    return useContext(this, arg1, arg2);
   }
 
   static use <I extends Model> (this: Model.Type<I>, callback?: (instance: I) => void): I;
@@ -257,7 +247,7 @@ class Model {
     arg1?: Model.Compat<T> | ((instance: T) => void), 
     arg2?: boolean){
     
-    return Control.newModel(useModel(this, arg1, arg2), arg1 as any)
+    return useModel(this, arg1, arg2);
   }
 
   /**
