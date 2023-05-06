@@ -48,7 +48,7 @@ Control.getModel = (_type, adapter) => {
   return getter();
 }
 
-export function renderHook<T>(hook: () => T){
+export function mockHook<T>(hook: () => T){
   let willRender = () => {};
 
   const mock = {

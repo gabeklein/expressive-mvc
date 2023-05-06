@@ -1,6 +1,6 @@
 import { Model, set } from '.';
 import { mockPromise } from './helper/testing';
-import { renderHook } from './helper/mocks';
+import { mockHook } from './helper/mocks';
 
 it("will refresh for values accessed", async () => {
   class Test extends Model {
@@ -8,7 +8,7 @@ it("will refresh for values accessed", async () => {
   }
 
   const test = Test.new();
-  const render = renderHook(() => {
+  const render = mockHook(() => {
     return Test.get().foo;
   });
 
@@ -27,7 +27,7 @@ describe("set factory", () => {
     Test.new();
 
     const promise = mockPromise();
-    const test = renderHook(() => {
+    const test = mockHook(() => {
       void Test.get().value;
     });
   
@@ -53,7 +53,7 @@ describe("set factory", () => {
     Test.new();
 
     const didThrow = mockPromise();
-    const test = renderHook(() => {
+    const test = mockHook(() => {
       try {
         void Test.get().value;
       }
@@ -83,7 +83,7 @@ describe("set factory", () => {
   
     Test.new();
 
-    const test = renderHook(() => {
+    const test = mockHook(() => {
       void Test.get().value;
       didRender.resolve();
     });
@@ -107,7 +107,7 @@ describe("set placeholder", () => {
 
     const instance = Test.new();
 
-    const test = renderHook(() => {
+    const test = mockHook(() => {
       Test.get().foobar;
     })
 
@@ -131,7 +131,7 @@ describe("set placeholder", () => {
 
     instance.foobar = "foo!";
 
-    const test = renderHook(() => {
+    const test = mockHook(() => {
       return Test.get().foobar;
     })
 
@@ -146,7 +146,7 @@ describe("passive mode", () => {
     }
 
     const test = Test.new();
-    const render = renderHook(() => {
+    const render = mockHook(() => {
       return Test.get(true).value;
     });
 
@@ -169,7 +169,7 @@ describe("passive mode", () => {
       expect(() => Test.get()).toThrow("Could not find Test in context.");
     });
     
-    renderHook(useTest);
+    mockHook(useTest);
     expect(useTest).toHaveReturned();
   });
 
@@ -180,7 +180,7 @@ describe("passive mode", () => {
 
     const useTest = jest.fn(() => Test.get(false));
     
-    renderHook(useTest);
+    mockHook(useTest);
     expect(useTest).toHaveReturnedWith(undefined);
   })
 })
@@ -194,7 +194,7 @@ describe("computed", () => {
   it('will select and subscribe to subvalue', async () => {
     const parent = Test.new();
 
-    const hook = renderHook(() => {
+    const hook = mockHook(() => {
       return Test.get(x => x.foo);
     });
 
@@ -208,7 +208,7 @@ describe("computed", () => {
 
   it('will compute output', async () => {
     const parent = Test.new();
-    const hook = renderHook(() => {
+    const hook = mockHook(() => {
       return Test.get(x => x.foo + x.bar);
     });
 
@@ -225,7 +225,7 @@ describe("computed", () => {
     const compute = jest.fn();
     const render = jest.fn();
 
-    const hook = renderHook(() => {
+    const hook = mockHook(() => {
       render();
       return Test.get(x => {
         compute();
@@ -254,7 +254,7 @@ describe("computed", () => {
       return Test.get($ => null);
     })
 
-    const hook = renderHook(didRender);
+    const hook = mockHook(didRender);
 
     expect(didRender).toBeCalledTimes(1);
     expect(hook.current).toBe(null);
@@ -271,7 +271,7 @@ describe("computed", () => {
     const willCompute = jest.fn();
     const willCreate = jest.fn();
 
-    const hook = renderHook(() => {
+    const hook = mockHook(() => {
       return Test.get($ => {
         willCreate();
         void $.foo;
@@ -302,7 +302,7 @@ describe("computed", () => {
     const test = Test.new();
     const willCompute = jest.fn();
 
-    const hook = renderHook(() => {
+    const hook = mockHook(() => {
       return Test.get($ => {
         void $.foo;
   
@@ -342,7 +342,7 @@ describe("computed", () => {
       const didCompute = jest.fn();
       const didRender = jest.fn();
     
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         didRender();
         return Test.get(x => {
           didCompute(x.foo);
@@ -368,7 +368,7 @@ describe("computed", () => {
       const didCompute = jest.fn();
       const didRender = jest.fn();
     
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         didRender();
         return Test.get(x => {
           didCompute();
@@ -398,7 +398,7 @@ describe("computed", () => {
       Test.new();
 
       const promise = mockPromise<string>();
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(() => promise);
       });
 
@@ -413,7 +413,7 @@ describe("computed", () => {
     it('will not subscribe to values', async () => {
       const promise = mockPromise<string>();
       const control = Test.new();
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(async $ => {
           void $.foo;
           return promise;
@@ -443,7 +443,7 @@ describe("computed", () => {
     it('will suspend if value expected', async () => {
       const instance = Test.new();
       const compute = jest.fn();
-      const test = renderHook(() => {
+      const test = mockHook(() => {
         Test.get(state => {
           compute();
 
@@ -474,7 +474,7 @@ describe("computed", () => {
       Test.new();
 
       const promise = mockPromise();
-      const test = renderHook(() => {
+      const test = mockHook(() => {
         return Test.get(() => promise, true);
       })
 
@@ -493,7 +493,7 @@ describe("computed", () => {
     it("will convert to null", () => {
       Test.new();
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(() => undefined);
       });
 
@@ -503,7 +503,7 @@ describe("computed", () => {
     it("will convert to null from factory", () => {
       Test.new();
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(() => () => undefined);
       });
 
@@ -520,7 +520,7 @@ describe("computed", () => {
       const didEvaluate = jest.fn();
       let forceUpdate!: () => void;
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(($, update) => {
           didEvaluate();
           forceUpdate = update;
@@ -540,7 +540,7 @@ describe("computed", () => {
       const didEvaluate = jest.fn();
       let forceUpdate!: () => void;
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(($, update) => {
           didEvaluate();
           forceUpdate = update;
@@ -564,7 +564,7 @@ describe("computed", () => {
 
       let updateValue!: (value: string) => void;
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(($, update) => {
           let value = "foo";
 
@@ -596,7 +596,7 @@ describe("computed", () => {
       
       let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(($, update) => {
           forceUpdate = update;
           return null;
@@ -621,7 +621,7 @@ describe("computed", () => {
       
       let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
-      const hook = renderHook(() => {
+      const hook = mockHook(() => {
         return Test.get(($, update) => {
           forceUpdate = update;
           return null;
