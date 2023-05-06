@@ -1,5 +1,5 @@
 import { Control } from '../control';
-import { mockAsync, mockConsole } from '../helper/testing';
+import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 
@@ -447,7 +447,7 @@ describe("fetch mode", () => {
   
     const foo = Foo.new();
     const mockEffect = jest.fn();
-    let promise = mockAsync();
+    let promise = mockPromise();
     
     expect(foo.bar.foo).toBe(foo);
   
@@ -456,13 +456,13 @@ describe("fetch mode", () => {
       promise.resolve();
     })
   
-    promise = mockAsync();
+    promise = mockPromise();
     foo.value = "bar";
     await promise;
   
     expect(mockEffect).toBeCalledWith("bar");
   
-    promise = mockAsync();
+    promise = mockPromise();
     foo.bar.foo = Foo.new();
     await promise;
   

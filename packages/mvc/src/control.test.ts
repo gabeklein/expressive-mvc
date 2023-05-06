@@ -1,5 +1,5 @@
 import { apply, Control, Oops } from './control';
-import { mockAsync } from './helper/testing';
+import { mockPromise } from './helper/testing';
 import { Model } from './model';
 
 describe("child models", () => {
@@ -21,7 +21,7 @@ describe("child models", () => {
   
     const parent = Parent.new();
     const effect = jest.fn();
-    let promise = mockAsync();
+    let promise = mockPromise();
   
     parent.on(state => {
       const { child } = state;
@@ -34,28 +34,28 @@ describe("child models", () => {
     expect(effect).toBeCalledWith("foo", "bar");
     effect.mockClear();
   
-    promise = mockAsync();
+    promise = mockPromise();
     parent.child.value = "bar";
     await promise;
     
     expect(effect).toBeCalledWith("bar", "bar");
     effect.mockClear();
   
-    promise = mockAsync();
+    promise = mockPromise();
     parent.child = new Child();
     await promise;
     
     expect(effect).toBeCalledWith("foo", "bar");
     effect.mockClear();
   
-    promise = mockAsync();
+    promise = mockPromise();
     parent.child.value = "bar";
     await promise;
     
     expect(effect).toBeCalledWith("bar", "bar");
     effect.mockClear();
   
-    promise = mockAsync();
+    promise = mockPromise();
     parent.child.grandchild.value = "foo";
     await promise;
     

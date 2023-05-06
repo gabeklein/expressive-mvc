@@ -1,4 +1,4 @@
-export function mockAsync<T = void>(){
+export function mockPromise<T = void>(){
   let resolve!: (value?: T | PromiseLike<T>) => void;
   let reject!: (reason?: any) => void;
 

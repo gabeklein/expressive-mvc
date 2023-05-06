@@ -1,5 +1,5 @@
 import { Model, set } from '.';
-import { mockAsync as mockPromise } from './helper/testing';
+import { mockPromise } from './helper/testing';
 import { renderHook } from './helper/mocks';
 
 it("will refresh for values accessed", async () => {

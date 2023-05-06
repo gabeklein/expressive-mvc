@@ -1,5 +1,5 @@
 import { Oops as Effect } from '../effect';
-import { mockAsync, mockConsole } from '../helper/testing';
+import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
@@ -11,7 +11,7 @@ describe("placeholder", () => {
 
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
-    const promise = mockAsync<string>();
+    const promise = mockPromise<string>();
     const mockEffect = jest.fn((state: Test) => {
       promise.resolve(state.foobar);
     });
@@ -235,7 +235,7 @@ describe("factory", () => {
   })
 
   it("will throw suspense-promise resembling an error", () => {
-    const promise = mockAsync();
+    const promise = mockPromise();
 
     class Test extends Model {
       value = set(promise);
@@ -249,7 +249,7 @@ describe("factory", () => {
   })
 
   it("will return undefined if not required", async () => {
-    const promise = mockAsync<string>();
+    const promise = mockPromise<string>();
     const mock = jest.fn();
 
     class Test extends Model {
@@ -283,8 +283,8 @@ describe("factory", () => {
   })
 
   it("will suspend another factory", async () => {
-    const greet = mockAsync<string>();
-    const name = mockAsync<string>();
+    const greet = mockPromise<string>();
+    const name = mockPromise<string>();
 
     const didEvaluate = jest.fn(
       (_key: string, $: Test) => {
@@ -314,8 +314,8 @@ describe("factory", () => {
   })
 
   it("will suspend another factory (async)", async () => {
-    const greet = mockAsync<string>();
-    const name = mockAsync<string>();
+    const greet = mockPromise<string>();
+    const name = mockPromise<string>();
 
     const didEvaluate = jest.fn(
       async (_key: string, $: Test) => {
@@ -358,8 +358,8 @@ describe("factory", () => {
       }
     }
 
-    const promise = mockAsync<string>();
-    const didUpdate = mockAsync<string>();
+    const promise = mockPromise<string>();
+    const didUpdate = mockPromise<string>();
 
     const test = Test.new();
     const effect = jest.fn((state: Test) => {
@@ -389,8 +389,8 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const promise = mockAsync<string>();
-    const didEvaluate = mockAsync<string>();
+    const promise = mockPromise<string>();
+    const didEvaluate = mockPromise<string>();
 
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.value);
@@ -412,7 +412,7 @@ describe("factory", () => {
     class Test extends Model {
       message = set(this.getSum);
       suspend = true;
-      pending = mockAsync();
+      pending = mockPromise();
 
       getSum(){
         didTryToEvaluate()
@@ -425,7 +425,7 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const didEvaluate = mockAsync<string>();
+    const didEvaluate = mockPromise<string>();
     
     const didTryToEvaluate = jest.fn();
     const effect = jest.fn((state: Test) => {
@@ -455,8 +455,8 @@ describe("factory", () => {
   })
 
   it("will squash multiple dependancies", async () => {
-    const promise = mockAsync<number>();
-    const promise2 = mockAsync<number>();
+    const promise = mockPromise<number>();
+    const promise2 = mockPromise<number>();
 
     class Test extends Model {
       a = set(promise);
@@ -472,7 +472,7 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const didEvaluate = mockAsync<string>();
+    const didEvaluate = mockPromise<string>();
 
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.sum);
@@ -492,7 +492,7 @@ describe("factory", () => {
   })
 
   it('will refresh and throw if async rejects', async () => {
-    const promise = mockAsync();
+    const promise = mockPromise();
 
     class Test extends Model {
       value = set(async () => {
