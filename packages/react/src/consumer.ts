@@ -41,21 +41,24 @@ declare namespace Consumer {
   type Props<T extends Model> = HasProps<T> | GetProps<T> | RenderProps<T>
 }
 
+/** Internal props for this component. Saves on assertions. */
+type ConsumerProps<T extends Model> = {
+  for: Model.Class<T>;
+  has?: (value: T) => void;
+  get?: (value: T | undefined) => void;
+  children?: (value: T) => React.ReactElement<any, any> | null;
+}
+
 function Consumer<T extends Model>(props: Consumer.Props<T>){
-  const { children, has, get, for: type } = props as {
-    for: Model.Class<T>;
-    has?: (value: T) => void;
-    get?: (value: T | undefined) => void;
-    children?: (value: T) => React.ReactElement<any, any> | null;
-  };
+  const { children, has, get, for: Type } = props as ConsumerProps<T>;
 
   if(typeof children == "function")
-    return children(type.get());
+    return children(Type.get());
 
   const callback = has || get;
 
   if(typeof callback == "function")
-    callback(type.get(!!has) as T);
+    callback(Type.get(!!has) as T);
   else
     throw Oops.BadProps();
 
