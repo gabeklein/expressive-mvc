@@ -1,42 +1,18 @@
-import { Control } from '@expressive/mvc';
 import { act } from '@testing-library/react-hooks';
 import React from 'react';
 
 import { Model, Provider, set } from '.';
-import { create, mockAsync, mockSuspense, renderHook } from './helper/testing';
-
-/**
- * Bypass context to fascilitate tests.
- */
-class Singleton extends Model {
-  static instance: Singleton;
-
-  static new<T extends Singleton>(this: Model.Type<T>): T;
-  static new(){
-    return this.instance = super.new();
-  }
-}
-
-beforeAll(() => {
-  const { hasModel } = Control;
-
-  Control.hasModel = (Type: Model.Class<Singleton>, required) => {
-    if(Singleton.isTypeof(Type))
-      return cb => cb(Type.instance as any || Type.new());
-    
-    return hasModel(Type, required);
-  }
-})
+import { create, mockAsync, mockHook, mockSuspense, renderHook } from './helper/testing';
 
 it("will refresh for values accessed", async () => {
-  class Test extends Singleton {
+  class Test extends Model {
     foo = "foo";
   }
 
   const test = Test.new();
-  const render = renderHook(() => {
+  const render = mockHook(() => {
     return Test.get().foo;
-  });
+  }, test);
 
   expect(render.result.current).toBe("foo");
   test.foo = "bar";
@@ -46,11 +22,12 @@ it("will refresh for values accessed", async () => {
 
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
-    class Test extends Singleton {
+    class Test extends Model {
       value = set(() => promise.pending());
     }
   
-    const test = mockSuspense();
+    const instance = Test.new();
+    const test = mockSuspense(instance);
     const promise = mockAsync();
     const didRender = mockAsync();
   
@@ -70,14 +47,15 @@ describe("set factory", () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockAsync();
   
-    class Test extends Singleton {
+    class Test extends Model {
       value = set(async () => {
         await promise.pending();
         throw "oh no";
       })
     }
   
-    const test = mockSuspense();
+    const instance = Test.new();
+    const test = mockSuspense(instance);
     const didThrow = mockAsync();
   
     test.renderHook(() => {
@@ -104,11 +82,12 @@ describe("set factory", () => {
   it('will suspend if value is promise', async () => {
     const promise = mockAsync<string>();
   
-    class Test extends Singleton {
+    class Test extends Model {
       value = set(promise.pending());
     }
   
-    const test = mockSuspense();
+    const instance = Test.new();
+    const test = mockSuspense(instance);
     const didRender = mockAsync();
   
     test.renderHook(() => {
@@ -127,13 +106,13 @@ describe("set factory", () => {
 
 describe("set placeholder", () => {
   it('will suspend if value is accessed before put', async () => {
-    class Test extends Singleton {
+    class Test extends Model {
       foobar = set<string>();
     }
 
-    const test = mockSuspense();
-    const promise = mockAsync();
     const instance = Test.new();
+    const test = mockSuspense(instance);
+    const promise = mockAsync();
 
     test.renderHook(() => {
       Test.get().foobar;
@@ -151,18 +130,18 @@ describe("set placeholder", () => {
   })
 
   it('will not suspend if value is defined', async () => {
-    class Test extends Singleton {
+    class Test extends Model {
       foobar = set<string>();
     }
 
-    const test = mockSuspense();
     const instance = Test.new();
+    const test = mockSuspense(instance);
 
     instance.foobar = "foo!";
 
     test.renderHook(() => {
       Test.get().foobar;
-    })
+    });
 
     test.assertDidRender(true);
   })
@@ -170,16 +149,16 @@ describe("set placeholder", () => {
 
 describe("passive mode", () => {
   it("will not subscribe", async () => {
-    class Test extends Singleton {
+    class Test extends Model {
       value = 1;
     }
 
     const test = Test.new();
     const didRender = jest.fn();
 
-    renderHook(() => {
+    mockHook(() => {
       didRender(Test.get(true).value);
-    });
+    }, test);
 
     expect(didRender).toBeCalledWith(1);
 
@@ -219,7 +198,7 @@ describe("passive mode", () => {
 describe("computed", () => {
   const opts = { timeout: 100 };
 
-  class Test extends Singleton {
+  class Test extends Model {
     foo = 1;
     bar = 2;
   }
@@ -227,9 +206,9 @@ describe("computed", () => {
   it('will select and subscribe to subvalue', async () => {
     const parent = Test.new();
 
-    const { result, waitForNextUpdate } = renderHook(() => {
+    const { result, waitForNextUpdate } = mockHook(() => {
       return Test.get(x => x.foo);
-    });
+    }, parent);
 
     expect(result.current).toBe(1);
 
@@ -241,11 +220,11 @@ describe("computed", () => {
 
   it('will compute output', async () => {
     const parent = Test.new();
-    const { result, waitForNextUpdate } = renderHook(() => {
+    const { result, waitForNextUpdate } = mockHook(() => {
       return Test.get(x => {
         return x.foo + x.bar;
       });
-    });
+    }, parent);
 
     expect(result.current).toBe(3);
 
@@ -260,14 +239,14 @@ describe("computed", () => {
     const compute = jest.fn();
     const render = jest.fn();
 
-    const { result } = renderHook(() => {
+    const { result } = mockHook(() => {
       render();
       return Test.get(x => {
         compute();
         void x.foo;
         return x.bar;
       });
-    });
+    }, parent);
 
     expect(result.current).toBe(2);
     expect(compute).toBeCalled();
@@ -289,7 +268,7 @@ describe("computed", () => {
       return Test.get($ => null);
     })
 
-    const { result } = renderHook(didRender);
+    const { result } = mockHook(didRender, instance);
 
     expect(didRender).toBeCalledTimes(1);
     expect(result.current).toBe(null);
@@ -306,7 +285,7 @@ describe("computed", () => {
     const willCompute = jest.fn();
     const willMount = jest.fn();
 
-    const { result, waitForNextUpdate } = renderHook(() => {
+    const { result, waitForNextUpdate } = mockHook(() => {
       return Test.get($ => {
         willMount();
         void $.foo;
@@ -316,7 +295,7 @@ describe("computed", () => {
           return $.foo + $.bar;
         };
       });
-    });
+    }, test);
 
     expect(result.current).toBe(3);
 
@@ -337,7 +316,7 @@ describe("computed", () => {
     const test = Test.new();
     const willCompute = jest.fn();
 
-    const { result, waitForNextUpdate } = renderHook(() => {
+    const { result, waitForNextUpdate } = mockHook(() => {
       return Test.get($ => {
         void $.foo;
   
@@ -346,7 +325,7 @@ describe("computed", () => {
           return $.bar;
         };
       });
-    });
+    }, test);
 
     expect(result.current).toBe(2);
 
@@ -366,7 +345,7 @@ describe("computed", () => {
   })
 
   describe("tuple", () => {
-    class Test extends Singleton {
+    class Test extends Model {
       foo = 1;
       bar = true;
       baz = "foo";
@@ -377,13 +356,13 @@ describe("computed", () => {
       const didCompute = jest.fn();
       const didRender = jest.fn();
     
-      const { result } = renderHook(() => {
+      const { result } = mockHook(() => {
         didRender();
         return Test.get(x => {
           didCompute(x.foo);
           return ["something", x.bar, x.baz];
         });
-      });
+      }, parent);
 
       const returned = result.current;
     
@@ -405,13 +384,13 @@ describe("computed", () => {
       const didCompute = jest.fn();
       const didRender = jest.fn();
     
-      const { result } = renderHook(() => {
+      const { result } = mockHook(() => {
         didRender();
         return Test.get(x => {
           didCompute();
           return [x.foo, x.bar, x.baz];
         });
-      });
+      }, parent);
     
       expect(result.current).toStrictEqual([1, true, "foo"]);
     
@@ -429,16 +408,17 @@ describe("computed", () => {
   })
 
   describe("async", () => {
-    class Test extends Singleton {
+    class Test extends Model {
       foo = "bar";
     };
 
     it('will return null then refresh', async () => {
       const promise = mockAsync<string>();
+      const control = Test.new();
 
-      const { result, waitForNextUpdate } = renderHook(() => {
+      const { result, waitForNextUpdate } = mockHook(() => {
         return Test.get(() => promise.pending());
-      });
+      }, control);
 
       expect(result.current).toBeNull();
 
@@ -452,12 +432,12 @@ describe("computed", () => {
       const promise = mockAsync<string>();
       const control = Test.new();
 
-      const { result, waitForNextUpdate } = renderHook(() => {
+      const { result, waitForNextUpdate } = mockHook(() => {
         return Test.get($ => {
           void $.foo;
           return promise.pending();
         });
-      });
+      }, control);
 
       control.foo = "foo";
       await expect(waitForNextUpdate(opts)).rejects.toThrowError();
@@ -470,14 +450,14 @@ describe("computed", () => {
   })
 
   describe("suspense", () => {
-    class Test extends Singleton {
+    class Test extends Model {
       value?: string = undefined;
     }
 
     it('will suspend if value expected', async () => {
-      const instance = Test.new() as Test;
+      const instance = Test.new();
       const promise = mockAsync();
-      const test = mockSuspense();
+      const test = mockSuspense(instance);
 
       const didRender = jest.fn();
       const didCompute = jest.fn();
@@ -512,8 +492,9 @@ describe("computed", () => {
     })
 
     it('will suspend strict async', async () => {
+      const instance = Test.new();
       const promise = mockAsync();
-      const test = mockSuspense();
+      const test = mockSuspense(instance);
 
       test.renderHook(() => {
         Test.get(() => promise.pending(), true);
@@ -529,20 +510,22 @@ describe("computed", () => {
   })
 
   describe("undefined", () => {
-    class Test extends Singleton {};
+    class Test extends Model {};
 
     it("will convert to null", () => {
-      const { result } = renderHook(() => {
+      const test = Test.new();
+      const { result } = mockHook(() => {
         return Test.get(() => undefined);
-      });
+      }, test);
 
       expect(result.current).toBe(null);
     })
 
     it("will convert to null from factory", () => {
-      const { result } = renderHook(() => {
+      const test = Test.new();
+      const { result } = mockHook(() => {
         return Test.get(() => () => undefined);
-      });
+      }, test);
 
       expect(result.current).toBe(null);
     })
@@ -550,17 +533,18 @@ describe("computed", () => {
 
   describe("update callback", () => {
     it("will force a refresh", () => {
+      const test = Test.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate: () => void;
 
-      const { unmount } = renderHook(() => {
+      const { unmount } = mockHook(() => {
         didRender();
         return Test.get(($, update) => {
           didEvaluate();
           forceUpdate = update;
         });
-      });
+      }, test);
 
       expect(didEvaluate).toHaveBeenCalledTimes(1);
       expect(didRender).toHaveBeenCalledTimes(1);
@@ -576,11 +560,12 @@ describe("computed", () => {
     })
 
     it("will refresh without reevaluating", () => {
+      const test = Test.new();
       const didRender = jest.fn();
       const didEvaluate = jest.fn();
       let forceUpdate!: () => void;
 
-      const { unmount } = renderHook(() => {
+      const { unmount } = mockHook(() => {
         didRender();
         return Test.get(($, update) => {
           didEvaluate();
@@ -588,7 +573,7 @@ describe("computed", () => {
           // return null to stop subscription.
           return null;
         });
-      });
+      }, test);
 
       expect(didEvaluate).toHaveBeenCalledTimes(1);
       expect(didRender).toHaveBeenCalledTimes(1);
@@ -604,12 +589,13 @@ describe("computed", () => {
     })
 
     it("will refresh returned function instead", () => {
+      const test = Test.new();
       const didEvaluate = jest.fn();
       const didEvaluateInner = jest.fn();
 
       let updateValue!: (value: string) => void;
 
-      const { unmount, result } = renderHook(() => {
+      const { unmount, result } = mockHook(() => {
         return Test.get(($, update) => {
           let value = "foo";
 
@@ -624,7 +610,7 @@ describe("computed", () => {
             return value;
           };
         });
-      });
+      }, test);
 
       expect(result.current).toBe("foo");
       expect(didEvaluate).toHaveBeenCalledTimes(1);
@@ -641,18 +627,19 @@ describe("computed", () => {
     })
 
     it("will refresh again after promise", async () => {
+      const test = Test.new();
       const didRender = jest.fn();
       const promise = mockAsync<string>();
       
       let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
-      const { unmount } = renderHook(() => {
+      const { unmount } = mockHook(() => {
         didRender();
         return Test.get(($, update) => {
           forceUpdate = update;
           return null;
         });
-      });
+      }, test);
 
       expect(didRender).toHaveBeenCalledTimes(1);
 
@@ -676,18 +663,19 @@ describe("computed", () => {
     })
 
     it("will invoke async function", async () => {
+      const test = Test.new();
       const didRender = jest.fn();
       const promise = mockAsync();
       
       let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
 
-      const { unmount } = renderHook(() => {
+      const { unmount } = mockHook(() => {
         didRender();
         return Test.get(($, update) => {
           forceUpdate = update;
           return null;
         });
-      });
+      }, test);
 
       expect(didRender).toHaveBeenCalledTimes(1);
 
@@ -724,13 +712,7 @@ describe("in-context", () => {
       value = 1;
     }
     const instance = Test.new();
-    const wrapper: React.FC = ({ children }) => (
-      <Provider for={instance}>
-        {children}
-      </Provider>
-    )
-
-    const render = renderHook(() => Test.get(), { wrapper });
+    const render = mockHook(() => Test.get(), instance);
 
     expect(render.result.current).toBeInstanceOf(Test);
     expect(render.result.current.value).toBe(1);

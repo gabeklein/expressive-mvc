@@ -1,5 +1,10 @@
-import { createElement, Suspense } from 'react';
+import React from "react";
+
+import { Model } from '@expressive/mvc';
+import { renderHook, WrapperComponent } from '@testing-library/react-hooks';
+import { Suspense } from 'react';
 import { create } from 'react-test-renderer';
+import { Provider } from '../provider';
 
 export { renderHook } from '@testing-library/react-hooks';
 export { create } from "react-test-renderer";
@@ -28,7 +33,7 @@ export function mockAsync<T = void>(){
   }
 }
 
-export function mockSuspense(){
+export function mockSuspense(provide?: Model){
   const promise = mockAsync();
 
   let renderHook!: () => void;
@@ -63,12 +68,20 @@ export function mockSuspense(){
     renderHook(fn: () => void){
       renderHook = fn;
 
-      create(
-        createElement(Suspense, {
-          fallback: createElement(Waiting),
-          children: createElement(Component)
-        })
+      let render = (
+        <Suspense fallback={<Waiting />}>
+          <Component />
+        </Suspense>
       )
+
+      if(provide)
+        render = (
+          <Provider for={provide}>
+            {render}
+          </Provider>
+        )
+
+      create(render);
     },
     assertDidRender(yes: boolean){
       expect(didRender).toBe(yes);
@@ -80,4 +93,22 @@ export function mockSuspense(){
       reset();
     }
   }
+}
+
+export function mockHook(
+  callback: (props: {}) => any,
+  provide?: Model){
+
+  const opts = {} as {
+    wrapper?: WrapperComponent<{}> | undefined;
+  };
+
+  if(provide)
+    opts.wrapper = ({ children }) => (
+      <Provider for={provide}>
+        {children}
+      </Provider>
+    )
+
+  return renderHook(callback, opts);
 }
