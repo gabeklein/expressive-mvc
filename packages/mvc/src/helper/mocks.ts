@@ -3,19 +3,21 @@ import { Model } from "../model";
 
 const newModel = Model.new;
 
+type Callback = () => void;
+
 let current: Model | undefined;
-let getter: (() => any) | undefined;
 let mount: (() => typeof unmount) | void;
-let render: (() => void) | undefined;
-let unmount: (() => void) | void;
+let render: Callback | undefined;
+let unmount: Callback | void;
 
 afterEach(() => {
   if(unmount)
     unmount();
 
   current = undefined;
-  getter = undefined;
   render = undefined;
+  renderGet = undefined;
+  renderUse = undefined;
   unmount = undefined;
 })
 
@@ -32,20 +34,35 @@ Control.hasModel = (Type, required) => {
   }
 }
 
+let renderGet: (() => any) | undefined;
+
 Control.getModel = (_type, adapter) => {
-  if(!getter){
+  if(!renderGet){
     const result = adapter(render!, use => use(current as any));
 
     if(!result){
-      getter = () => null;
+      renderGet = () => null;
       return null;
     }
 
-    getter = result.render;
+    renderGet = result.render;
     mount = result.commit;
   }
 
-  return getter();
+  return renderGet();
+}
+
+let renderUse: ((props: any) => any) | undefined;
+
+Control.useModel = (adapter, props) => {
+  if(!renderUse){
+    const result = adapter(render!);
+    
+    mount = result.commit;
+    renderUse = result.render;
+  }
+
+  return renderUse(props);
 }
 
 export function mockHook<T>(hook: () => T){
@@ -55,7 +72,11 @@ export function mockHook<T>(hook: () => T){
     mock: jest.fn(hook),
     current: undefined as T,
     refresh: Promise.resolve(),
-    pending: false
+    pending: false,
+    unmount(){
+      if(unmount)
+        unmount();
+    }
   }
 
   render = () => {
