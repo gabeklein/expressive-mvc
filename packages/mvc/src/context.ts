@@ -3,6 +3,7 @@ import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols
 import { Model } from './model';
 
 export const Oops = issues({
+  // TODO: remove?
   NotFound: (name) =>
     `Could not find ${name} in context.`,
 
@@ -25,9 +26,9 @@ export class Context {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Type<T>, required?: true): T;
-  public get<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, required?: boolean){
+  public get<T extends Model>(Type: Model.Class<T>, required?: true): T;
+  public get<T extends Model>(Type: Model.Class<T>, required?: boolean): T | undefined;
+  public get<T extends Model>(Type: Model.Class<T>, required?: boolean){
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)

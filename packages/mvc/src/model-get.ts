@@ -1,5 +1,10 @@
 import { Control } from "./control";
+import { issues } from "./helper/issues";
 import { Model } from "./model";
+
+export const Oops = issues({
+  NotFound: (name) => `Could not find ${name} in context.`
+})
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined ? null : T;
@@ -28,31 +33,39 @@ function get<T extends Model, R>(
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  const source = Control.hasModel(this, arg1 !== false);
+  if(typeof arg1 == "boolean")
+    return useLazy(this, arg1);
 
-  if(typeof arg1 == "boolean"){
-    let model!: T;
-    source($ => model = $);
-    return model;
-  }
-
-  return Control.getModel(arg1
-    ? useComputed(source, arg1, arg2)
-    : useSubscriber(source)
-  )
+  return arg1
+    ? useComputed(this, arg1, arg2)
+    : useSubscriber(this, arg1 !== false)
 }
 
 export { get };
 
-function useSubscriber<T extends Model>(
-  source: (callback: (got: T) => void) => void){
+function useLazy<T extends Model>(
+  type: Model.Class<T>,
+  required?: boolean){
+  
+  const source = Control.hasModel(type, required !== false);
+  let model!: T;
+  source($ => model = $);
+  return model;
+}
 
-  return (refresh: () => void) => {
+function useSubscriber<T extends Model>(
+  type: Model.Class<T>, required?: boolean){
+
+  return Control.getModel(type, (refresh, context) => {
     let onUpdate: (() => void) | undefined;
     let proxy!: T;
 
-    source(got => {
-      proxy = Control.watch(got, () => onUpdate);
+    context(got => {
+      if(got)
+        proxy = Control.watch(got, () => onUpdate);
+
+      else if(required)
+        throw Oops.NotFound(type);
     })
 
     return {
@@ -63,15 +76,15 @@ function useSubscriber<T extends Model>(
       },
       render: () => proxy
     }
-  }
+  })
 }
 
 function useComputed<T extends Model, R>(
-  source: (callback: (got: T) => void) => void,
+  type: Model.Class<T>,
   compute: Model.GetCallback<T, any>,
   required?: boolean){
 
-  return (refresh: () => void) => {
+  return Control.getModel(type, (refresh, context) => {
     let suspense: (() => void) | undefined;
     let onUpdate: (() => void) | undefined | null;
     let value: R | undefined;
@@ -80,7 +93,10 @@ function useComputed<T extends Model, R>(
     let factory: true | undefined;
     let proxy!: T;
 
-    source(got => {
+    context(got => {
+      if(!got)
+        throw Oops.NotFound(type);
+
       proxy = Control.watch(got, () => factory ? null : onUpdate);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
@@ -157,7 +173,7 @@ function useComputed<T extends Model, R>(
         return null;
       }
     }
-  }
+  });
 }
 
 /** Values are not equal for purposes of a refresh. */
