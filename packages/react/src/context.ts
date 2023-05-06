@@ -12,7 +12,7 @@ export const Oops = issues({
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
 export function fetch<T extends Model>(
-  type: Model.Type<T>,
+  type: Model.Class<T>,
   required?: boolean | undefined,
   relativeTo?: Model
 ): any {

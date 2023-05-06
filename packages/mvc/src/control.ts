@@ -51,7 +51,7 @@ declare namespace Control {
    */
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 
-  type GetAdapter<T extends Model, R> = (
+  type GetAdapter<R, T extends Model> = (
     update: () => void,
     source: (request: (got: T | undefined) => void) => void
   ) => {
@@ -59,9 +59,9 @@ declare namespace Control {
     render: () => R;
   } | void;
 
-  type GetHook = <T extends Model, R> (
+  type GetHook = <R, T extends Model> (
     type: Model.Class<T>,
-    factory: GetAdapter<T, R>
+    factory: GetAdapter<R, T>
   ) => R | null;
 
   type UseAdapter<T extends Model> = (
