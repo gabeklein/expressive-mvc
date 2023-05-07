@@ -2,25 +2,22 @@ import { Control } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { useLookup } from './context';
 
-const useContext: Control.GetHook = (type, factory) => {
+const useContext: Control.GetHook = (type, adapter) => {
   const context = useLookup();
   const state = useState(0);
   const hook = useMemo(() => {
-    const result = factory(
+    return adapter(
       () => state[1](x => x+1),
       cb => cb(context.get(type))
-    );
-
-    if(!result)
-      return () => null;
-
-    return () => {
-      useLayoutEffect(result.mount, []);
-      return result.render();
-    }
+    )
   }, []);
 
-  return hook();   
+  if(!hook)
+    return null;
+
+  useLayoutEffect(hook.mount, []);
+
+  return hook.render();
 }
 
 export { useContext }
