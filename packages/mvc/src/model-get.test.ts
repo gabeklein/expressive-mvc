@@ -8,14 +8,14 @@ it("will refresh for values accessed", async () => {
   }
 
   const test = Test.new();
-  const render = mockHook(() => {
+  const hook = mockHook(() => {
     return Test.get().foo;
   });
 
-  expect(render.current).toBe("foo");
+  expect(hook.current).toBe("foo");
   test.foo = "bar";
 
-  await render.refresh;
+  await hook.refresh;
 })
 
 describe("set factory", () => {
@@ -27,17 +27,17 @@ describe("set factory", () => {
     Test.new();
 
     const promise = mockPromise();
-    const test = mockHook(() => {
+    const hook = mockHook(() => {
       void Test.get().value;
     });
   
-    expect(test.pending).toBe(true);
+    expect(hook.pending).toBe(true);
   
     promise.resolve();
-    await test.refresh;
+    await hook.refresh;
   
-    expect(test.mock).toBeCalledTimes(2);
-    expect(test.mock).toHaveReturnedTimes(1);
+    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook.mock).toHaveReturnedTimes(1);
   })
 
   it('will refresh and throw if async rejects', async () => {
@@ -53,7 +53,7 @@ describe("set factory", () => {
     Test.new();
 
     const didThrow = mockPromise();
-    const test = mockHook(() => {
+    const hook = mockHook(() => {
       try {
         void Test.get().value;
       }
@@ -65,7 +65,7 @@ describe("set factory", () => {
       }
     });
   
-    expect(test.pending).toBe(true);
+    expect(hook.pending).toBe(true);
   
     promise.resolve();
   
@@ -83,19 +83,19 @@ describe("set factory", () => {
   
     Test.new();
 
-    const test = mockHook(() => {
+    const hook = mockHook(() => {
       void Test.get().value;
       didRender.resolve();
     });
 
     const didRender = mockPromise();
   
-    expect(test.pending).toBe(true);
+    expect(hook.pending).toBe(true);
   
     promise.resolve("hello");
     await didRender;
   
-    expect(test.mock).toBeCalledTimes(2);
+    expect(hook.mock).toBeCalledTimes(2);
   })
 });
 
@@ -107,18 +107,18 @@ describe("set placeholder", () => {
 
     const instance = Test.new();
 
-    const test = mockHook(() => {
+    const hook = mockHook(() => {
       Test.get().foobar;
     })
 
-    expect(test.pending).toBe(true);
+    expect(hook.pending).toBe(true);
 
     instance.foobar = "foo!";
 
     // expect refresh caused by update
-    await test.refresh;
+    await hook.refresh;
 
-    expect(test.mock).toBeCalledTimes(2);
+    expect(hook.mock).toBeCalledTimes(2);
 
   })
 
@@ -131,11 +131,11 @@ describe("set placeholder", () => {
 
     instance.foobar = "foo!";
 
-    const test = mockHook(() => {
+    const hook = mockHook(() => {
       return Test.get().foobar;
     })
 
-    expect(test.mock).toHaveReturnedWith("foo!");
+    expect(hook.mock).toHaveReturnedWith("foo!");
   })
 });
 
@@ -146,18 +146,18 @@ describe("passive mode", () => {
     }
 
     const test = Test.new();
-    const render = mockHook(() => {
+    const hook = mockHook(() => {
       return Test.get(true).value;
     });
 
-    expect(render.mock).toBeCalledTimes(1);
-    expect(render.current).toBe(1);
+    expect(hook.mock).toBeCalledTimes(1);
+    expect(hook.current).toBe(1);
 
     test.value++;
 
     await expect(test).toUpdate();
 
-    expect(render.mock).toBeCalledTimes(1);
+    expect(hook.mock).toBeCalledTimes(1);
   });
 
   it("will throw if not found", () => {
@@ -443,7 +443,7 @@ describe("computed", () => {
     it('will suspend if value expected', async () => {
       const instance = Test.new();
       const compute = jest.fn();
-      const test = mockHook(() => {
+      const hook = mockHook(() => {
         Test.get(state => {
           compute();
 
@@ -452,17 +452,17 @@ describe("computed", () => {
         }, true);
       })
 
-      expect(test.pending).toBe(true);
+      expect(hook.pending).toBe(true);
 
-      expect(test.mock).toBeCalledTimes(1);
+      expect(hook.mock).toBeCalledTimes(1);
       instance.value = "foobar";
 
-      await test.refresh
+      await hook.refresh
 
       // 1st - render prior to bailing
       // 2nd - successful render
-      expect(test.mock).toBeCalledTimes(2);
-      expect(test.mock).toHaveReturnedTimes(1);
+      expect(hook.mock).toBeCalledTimes(2);
+      expect(hook.mock).toHaveReturnedTimes(1);
 
       // 1st - initial render fails
       // 2nd - recheck success (permit render again)
@@ -474,16 +474,16 @@ describe("computed", () => {
       Test.new();
 
       const promise = mockPromise();
-      const test = mockHook(() => {
+      const hook = mockHook(() => {
         return Test.get(() => promise, true);
       })
 
-      expect(test.pending).toBe(true);
+      expect(hook.pending).toBe(true);
 
       promise.resolve();
-      await test.refresh;
+      await hook.refresh;
 
-      expect(test.mock).toBeCalledTimes(2);
+      expect(hook.mock).toBeCalledTimes(2);
     })
   })
 

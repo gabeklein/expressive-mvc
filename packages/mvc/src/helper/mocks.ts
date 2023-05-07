@@ -72,11 +72,11 @@ Control.useModel = (adapter, props) => {
   return renderUse(props);
 }
 
-export function mockHook<T>(hook: () => T){
+export function mockHook<T>(fn: () => T){
   let willRender = () => {};
 
-  const mock = {
-    mock: jest.fn(hook),
+  const result = {
+    mock: jest.fn(fn),
     current: undefined as T,
     refresh: Promise.resolve(),
     pending: false,
@@ -88,21 +88,21 @@ export function mockHook<T>(hook: () => T){
 
   render = () => {
     try {
-      mock.pending = false;
+      result.pending = false;
       willRender();
-      mock.current = mock.mock();
+      result.current = result.mock();
     }
     catch(error){
       if(!(error instanceof Promise))
         throw error;
 
-      mock.pending = true;
+      result.pending = true;
       error.then(render).finally(() => {
-        mock.pending = false;
+        result.pending = false;
       });
     }
     finally {
-      mock.refresh = new Promise(res => willRender = res);
+      result.refresh = new Promise(res => willRender = res);
 
       if(mount){
         unmount = mount();
@@ -113,5 +113,5 @@ export function mockHook<T>(hook: () => T){
 
   render();
 
-  return mock;
+  return result;
 }

@@ -6,19 +6,19 @@ class Test extends Model {
 };
 
 it("will create instance given a class", () => {
-  const render = mockHook(() => Test.use());
+  const hook = mockHook(() => Test.use());
 
-  expect(render.current).toBeInstanceOf(Test);
+  expect(hook.current).toBeInstanceOf(Test);
 })
 
 it("will subscribe to instance of controller", async () => {
-  const render = mockHook(() => Test.use());
+  const hook = mockHook(() => Test.use());
 
-  expect(render.current.value).toBe("foo");
-  render.current.value = "bar";
+  expect(hook.current.value).toBe("foo");
+  hook.current.value = "bar";
 
-  await render.refresh;
-  expect(render.current.value).toBe("bar");
+  await hook.refresh;
+  expect(hook.current.value).toBe("bar");
 })
 
 it("will run callback", () => {
@@ -38,25 +38,25 @@ it("will destroy instance of given class", () => {
     }
   }
 
-  const render = mockHook(() => Test.use());
+  const hook = mockHook(() => Test.use());
 
   expect(didDestroy).not.toBeCalled();
-  render.unmount();
+  hook.unmount();
   expect(didDestroy).toBeCalled();
 })
 
 it("will ignore updates after unmount", async () => {
-  const render = mockHook(() => {
+  const hook = mockHook(() => {
     const test = Test.use();
     void test.value;
     return test.is;
   });
 
-  const test = render.current;
+  const test = hook.current;
 
   test.value = "bar";
-  await render.refresh;
+  await hook.refresh;
 
-  render.unmount();
+  hook.unmount();
   test.value = "baz";
 })
