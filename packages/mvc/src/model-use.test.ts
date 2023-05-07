@@ -1,4 +1,4 @@
-import { mockHook } from "./helper/mocks";
+import { render } from "./helper/mocks";
 import { Model } from "./model";
 
 class Test extends Model {
@@ -6,13 +6,13 @@ class Test extends Model {
 };
 
 it("will create instance given a class", () => {
-  const hook = mockHook(() => Test.use());
+  const hook = render(() => Test.use());
 
   expect(hook.current).toBeInstanceOf(Test);
 })
 
 it("will subscribe to instance of controller", async () => {
-  const hook = mockHook(() => Test.use());
+  const hook = render(() => Test.use());
 
   expect(hook.current.value).toBe("foo");
   hook.current.value = "bar";
@@ -24,7 +24,7 @@ it("will subscribe to instance of controller", async () => {
 it("will run callback", () => {
   const callback = jest.fn();
 
-  mockHook(() => Test.use(callback));
+  render(() => Test.use(callback));
   expect(callback).toHaveBeenCalledWith(expect.any(Test));
 })
 
@@ -38,7 +38,7 @@ it("will destroy instance of given class", () => {
     }
   }
 
-  const hook = mockHook(() => Test.use());
+  const hook = render(() => Test.use());
 
   expect(didDestroy).not.toBeCalled();
   hook.unmount();
@@ -46,7 +46,7 @@ it("will destroy instance of given class", () => {
 })
 
 it("will ignore updates after unmount", async () => {
-  const hook = mockHook(() => {
+  const hook = render(() => {
     const test = Test.use();
     void test.value;
     return test.is;

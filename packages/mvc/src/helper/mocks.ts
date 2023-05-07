@@ -7,7 +7,7 @@ type Callback = () => void;
 
 let current: Model | undefined;
 let mount: (() => typeof unmount) | void;
-let render: Callback | undefined;
+let hook: Callback | undefined;
 let unmount: Callback | void;
 
 afterEach(() => {
@@ -15,7 +15,7 @@ afterEach(() => {
     unmount();
 
   current = undefined;
-  render = undefined;
+  hook = undefined;
   renderGet = undefined;
   renderTap = undefined;
   renderUse = undefined;
@@ -45,7 +45,7 @@ let renderGet: (() => any) | undefined;
 
 Control.getModel = (_type, adapter) => {
   if(!renderGet){
-    const result = adapter(render!, use => use(current));
+    const result = adapter(hook!, use => use(current));
 
     if(!result){
       renderGet = () => null;
@@ -63,7 +63,7 @@ let renderUse: ((props: any) => any) | undefined;
 
 Control.useModel = (adapter, props) => {
   if(!renderUse){
-    const result = adapter(render!);
+    const result = adapter(hook!);
     
     mount = result.commit;
     renderUse = result.render;
@@ -72,7 +72,7 @@ Control.useModel = (adapter, props) => {
   return renderUse(props);
 }
 
-export function mockHook<T>(fn: () => T){
+export function render<T>(fn: () => T){
   let willRender = () => {};
 
   const result = {
@@ -86,7 +86,7 @@ export function mockHook<T>(fn: () => T){
     }
   }
 
-  render = () => {
+  hook = () => {
     try {
       result.pending = false;
       willRender();
@@ -97,7 +97,7 @@ export function mockHook<T>(fn: () => T){
         throw error;
 
       result.pending = true;
-      error.then(render).finally(() => {
+      error.then(hook).finally(() => {
         result.pending = false;
       });
     }
@@ -111,7 +111,7 @@ export function mockHook<T>(fn: () => T){
     }
   }
 
-  render();
+  hook();
 
   return result;
 }
