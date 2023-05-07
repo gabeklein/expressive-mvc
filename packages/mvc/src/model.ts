@@ -21,13 +21,10 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
 declare namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
-  export type Type<T extends Model = Model> = abstract new () => T;
+  export type Type<T extends Model = Model> = (abstract new () => T) & typeof Model;
 
   /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
-
-  // TODO: Can this be combined with Type?
-  export type Class<T extends Model> = (abstract new () => T) & typeof Model;
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 

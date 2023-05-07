@@ -22,7 +22,7 @@ export class Context {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Class<T>){
+  public get<T extends Model>(Type: Model.Type<T>){
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)

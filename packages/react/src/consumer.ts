@@ -8,7 +8,7 @@ export const Oops = issues({
 declare namespace Consumer {
   type HasProps<T extends Model> = {
     /** Type of controller to fetch from context. */
-    for: Model.Class<T>;
+    for: Model.Type<T>;
 
     /**
      * Getter function. Is called on every natural render of this component.
@@ -19,7 +19,7 @@ declare namespace Consumer {
 
   type GetProps<T extends Model> = {
     /** Type of controller to fetch from context. */
-    for: Model.Class<T>;
+    for: Model.Type<T>;
 
     /** Getter function. Is called on every natural render of this component. */
     get: (value: T | undefined) => void;
@@ -27,7 +27,7 @@ declare namespace Consumer {
 
   type RenderProps<T extends Model> = {
     /** Type of controller to fetch from context. */
-    for: Model.Class<T>;
+    for: Model.Type<T>;
 
     /**
      * Render function, will receive instance of desired controller.
@@ -43,7 +43,7 @@ declare namespace Consumer {
 
 /** Internal props for this component. Saves on assertions. */
 type ConsumerProps<T extends Model> = {
-  for: Model.Class<T>;
+  for: Model.Type<T>;
   has?: (value: T) => void;
   get?: (value: T | undefined) => void;
   children?: (value: T) => React.ReactElement<any, any> | null;
