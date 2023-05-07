@@ -17,7 +17,7 @@ function use <T extends Model> (
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
 
-  return Control.useModel((refresh: () => void) => {
+  const render = Control.useModel((refresh: () => void) => {
     let onUpdate: (() => void) | undefined | null;
     let applyProps = typeof arg1 === "object";
 
@@ -51,7 +51,9 @@ function use <T extends Model> (
         return proxy;
       }
     }
-  }, arg1 as Model.Compat<T>)
+  });
+
+  return render(arg1 as Model.Compat<T>);
 }
 
 export { use }

@@ -42,15 +42,13 @@ beforeAll(() => {
     return render();
   }
   
-  Control.useModel = (adapter, props) => {
-    const render = useMemo(refresh => {
+  Control.useModel = (adapter) => {
+    return useMemo(refresh => {
       const result = adapter(refresh);
       
       mount = result.mount;
       return result.render;
     });
-    
-    return render(props);
   }
 })
 

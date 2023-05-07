@@ -3,7 +3,6 @@ import { createContext, useContext, useMemo } from 'react';
 
 export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
-
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
 export function fetchRelative<T extends Model>(
@@ -34,4 +33,25 @@ export function setPeers(context: Context, onto: Model){
 
   if(pending)
     pending.forEach(cb => cb(context));
+}
+
+const Applied = new WeakMap<Model, boolean>();
+
+export function usePeerContext(instance: Model){
+  const applyPeers = Applied.get(instance);
+
+  if(applyPeers)
+    useLookup();
+
+  else if(applyPeers === undefined){
+    const pending = Pending.get(instance);
+
+    if(pending){
+      const local = useLookup();
+
+      pending.forEach(init => init(local));
+      Pending.delete(instance);
+      Applied.set(instance, true);
+    }
+  }
 }

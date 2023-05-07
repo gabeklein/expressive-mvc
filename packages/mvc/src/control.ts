@@ -47,7 +47,9 @@ declare namespace Control {
 
   type GetAdapter<T> = (
     update: () => void,
-    source: (request: (got: Model | undefined) => void) => void
+    source: (
+      request: (got: Model | undefined) => void
+    ) => void
   ) => {
     mount: () => (() => void) | void;
     render: () => T;
@@ -55,7 +57,7 @@ declare namespace Control {
 
   type GetHook = <T> (
     type: typeof Model,
-    factory: GetAdapter<T>
+    adapter: GetAdapter<T>
   ) => T | null;
 
   type UseAdapter<T extends Model> = (
@@ -67,9 +69,8 @@ declare namespace Control {
   }
 
   type UseHook = <T extends Model>(
-    factory: UseAdapter<T>,
-    props: Model.Compat<T>
-  ) => T;
+    adapter: UseAdapter<T>
+  ) => (props: Model.Compat<T>) => T;
 
   type HasHook = (
     type: typeof Model,

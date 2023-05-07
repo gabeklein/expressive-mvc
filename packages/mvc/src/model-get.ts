@@ -28,7 +28,7 @@ function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallb
 function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
 function get <T extends Model, R> (this: Model.Class<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-function get<T extends Model, R>(
+function get<T extends Model>(
   this: Model.Class<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
