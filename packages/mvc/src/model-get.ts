@@ -34,7 +34,13 @@ function get<T extends Model, R>(
   arg2?: boolean
 ){
   if(typeof arg1 == "boolean")
-    return useLazy(this, arg1);
+    return Control.tapModel(this, got => {
+      if(got)
+        return got;
+
+      if(arg1)
+        throw Oops.NotFound(this);
+    });
 
   return arg1
     ? useComputed(this, arg1, arg2)
@@ -42,16 +48,6 @@ function get<T extends Model, R>(
 }
 
 export { get };
-
-function useLazy<T extends Model>(
-  type: Model.Class<T>,
-  required?: boolean){
-  
-  const source = Control.hasModel(type, required !== false);
-  let model!: T;
-  source($ => model = $);
-  return model;
-}
 
 function useSubscriber<T extends Model>(
   type: Model.Class<T>, required?: boolean){

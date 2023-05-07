@@ -8,9 +8,6 @@ export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
     `${parent} expected Model of type ${expected} but got ${got}.`,
 
-  NoAdapter: (method) =>
-    `Can't call Model.${method} without an adapter.`,
-
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}.`
 });
@@ -80,16 +77,21 @@ declare namespace Control {
   type HasHook = {
     <T extends Model> (
       type: Model.Class<T>,
-      required?: false,
-      relativeTo?: Model
+      required: false,
+      relativeTo: Model
     ): (callback: (got: T | undefined) => void) => void;
     
     <T extends Model> (
       type: Model.Class<T>,
-      required?: boolean,
-      relativeTo?: Model
+      required: boolean,
+      relativeTo: Model
     ): (callback: (got: T) => void) => void;
   }
+
+  type TapHook = <T extends Model, R>(
+    type: Model.Class<T>,
+    memo: (got: T | undefined) => R
+  ) => R;
 }
 
 class Control<T extends Model = any> {
@@ -100,6 +102,7 @@ class Control<T extends Model = any> {
   static getModel: Control.GetHook;
   static useModel: Control.UseHook;
   static hasModel: Control.HasHook = fetch;
+  static tapModel: Control.TapHook;
 
   static for = control;
   static apply = apply;
@@ -338,24 +341,21 @@ function apply<T = any>(instruction: Control.Instruction<any>){
 
 function fetch <T extends Model>(
   type: Model.Class<T>,
-  required?: false,
-  relativeTo?: Model
+  required: false,
+  relativeTo: Model
 ): (callback: (got: T | undefined) => void) => void;
 
 function fetch <T extends Model>(
   type: Model.Class<T>,
-  required?: boolean,
-  relativeTo?: Model
+  required: boolean,
+  relativeTo: Model
 ): (callback: (got: T) => void) => void;
 
 /** Placeholder fetch - overridden by adapter. */
 function fetch(
   type: Model.Class<any>,
-  required?: boolean,
-  relativeTo?: Model): any {
-
-  if(!relativeTo)
-    throw Oops.NoAdapter("has");
+  required: boolean,
+  relativeTo: Model): any {
 
   if(required)
     throw Oops.Required(type, relativeTo.constructor);

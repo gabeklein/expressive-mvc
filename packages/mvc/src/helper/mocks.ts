@@ -17,12 +17,24 @@ afterEach(() => {
   current = undefined;
   render = undefined;
   renderGet = undefined;
+  renderTap = undefined;
   renderUse = undefined;
   unmount = undefined;
 })
 
 Model.new = function(){
   return current = newModel.call(this);
+}
+
+let renderTap: (() => any) | undefined;
+
+Control.tapModel = (Type, memo) => {
+  if(!renderTap){
+    const value = memo(current as any);
+    renderTap = () => value;
+  }
+
+  return renderTap();
 }
 
 Control.hasModel = (Type, required) => {
