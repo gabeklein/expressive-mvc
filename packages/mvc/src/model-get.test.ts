@@ -1,9 +1,16 @@
 import { Model, set } from '.';
 import { mockPromise } from './helper/testing';
-import { render } from './helper/mocks';
+import { render, context } from './helper/mocks';
+
+class Ambient extends Model {
+  constructor(){
+    super();
+    context.add(this);
+  }
+}
 
 it("will refresh for values accessed", async () => {
-  class Test extends Model {
+  class Test extends Ambient {
     foo = "foo";
   }
 
@@ -20,7 +27,7 @@ it("will refresh for values accessed", async () => {
 
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
-    class Test extends Model {
+    class Test extends Ambient {
       value = set(() => promise);
     }
 
@@ -43,7 +50,7 @@ describe("set factory", () => {
   it('will refresh and throw if async rejects', async () => {
     const promise = mockPromise();
   
-    class Test extends Model {
+    class Test extends Ambient {
       value = set(async () => {
         await promise;
         throw "oh no";
@@ -77,7 +84,7 @@ describe("set factory", () => {
   it('will suspend if value is promise', async () => {
     const promise = mockPromise<string>();
   
-    class Test extends Model {
+    class Test extends Ambient {
       value = set(promise);
     }
   
@@ -101,7 +108,7 @@ describe("set factory", () => {
 
 describe("set placeholder", () => {
   it('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
+    class Test extends Ambient {
       foobar = set<string>();
     }
 
@@ -123,7 +130,7 @@ describe("set placeholder", () => {
   })
 
   it('will not suspend if value is defined', async () => {
-    class Test extends Model {
+    class Test extends Ambient {
       foobar = set<string>();
     }
 
@@ -141,7 +148,7 @@ describe("set placeholder", () => {
 
 describe("passive mode", () => {
   it("will not subscribe", async () => {
-    class Test extends Model {
+    class Test extends Ambient {
       value = 1;
     }
 
@@ -161,7 +168,7 @@ describe("passive mode", () => {
   });
 
   it("will throw if not found", () => {
-    class Test extends Model {
+    class Test extends Ambient {
       value = 1;
     }
 
@@ -174,7 +181,7 @@ describe("passive mode", () => {
   });
 
   it("will return undefined if not requred", () => {
-    class Test extends Model {
+    class Test extends Ambient {
       value = 1;
     }
 
@@ -186,7 +193,7 @@ describe("passive mode", () => {
 })
 
 describe("computed", () => {
-  class Test extends Model {
+  class Test extends Ambient {
     foo = 1;
     bar = 2;
   }
@@ -329,7 +336,7 @@ describe("computed", () => {
   })
 
   describe("tuple", () => {
-    class Test extends Model {
+    class Test extends Ambient {
       foo = 1;
       bar = true;
       baz = "foo";
@@ -388,7 +395,7 @@ describe("computed", () => {
   })
 
   describe("async", () => {
-    class Test extends Model {
+    class Test extends Ambient {
       foo = "bar";
     };
 
@@ -434,7 +441,7 @@ describe("computed", () => {
   })
 
   describe("suspense", () => {
-    class Test extends Model {
+    class Test extends Ambient {
       value?: string = undefined;
     }
 
@@ -486,7 +493,7 @@ describe("computed", () => {
   })
 
   describe("undefined", () => {
-    class Test extends Model {};
+    class Test extends Ambient {};
 
     it("will convert to null", () => {
       Test.new();

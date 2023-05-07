@@ -1,10 +1,10 @@
 import { Context } from "../context";
 import { Control } from "../control";
-import { Model } from "../model";
 
 type Callback = () => void;
 
-const context = new Context();
+export const context = new Context();
+
 let hook: Callback | undefined;
 let memo: any;
 let mount: (() => typeof unmount) | void;
@@ -23,14 +23,6 @@ afterEach(() => {
 
 function useMemo<T>(factory: () => T){
   return memo || (memo = factory());
-}
-
-const newModel = Model.new;
-
-Model.new = function(){
-  const model = newModel.call(this);
-  context.add(model);
-  return model;
 }
 
 Control.tapModel = (Type, memo) => {
