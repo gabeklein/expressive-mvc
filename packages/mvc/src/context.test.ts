@@ -40,17 +40,9 @@ it("will create instance in context", () => {
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
 
-it("will complain if not found", () => {
-  const context = new Context();
-  const expected = Oops.NotFound(Example);
-  const fetch = () => context.get(Example);
-
-  expect(fetch).toThrowError(expected);
-})
-
 it("will return undefined if not found", () => {
   const context = new Context();
-  const got = context.get(Example, false);
+  const got = context.get(Example);
 
   expect(got).toBeUndefined();
 })

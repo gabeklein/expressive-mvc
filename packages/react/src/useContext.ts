@@ -8,7 +8,7 @@ const useContext: Control.GetHook = (type, factory) => {
   const hook = useMemo(() => {
     const result = factory(
       () => state[1](x => x+1),
-      cb => cb(context.get(type, false))
+      cb => cb(context.get(type))
     );
 
     if(!result)

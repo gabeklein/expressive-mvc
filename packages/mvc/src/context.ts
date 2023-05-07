@@ -3,10 +3,6 @@ import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols
 import { Model } from './model';
 
 export const Oops = issues({
-  // TODO: remove?
-  NotFound: (name) =>
-    `Could not find ${name} in context.`,
-
   MultipleExist: (name) =>
     `Did find ${name} in context, but multiple were defined.`
 })
@@ -26,16 +22,11 @@ export class Context {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Class<T>, required?: true): T;
-  public get<T extends Model>(Type: Model.Class<T>, required?: boolean): T | undefined;
-  public get<T extends Model>(Type: Model.Class<T>, required?: boolean){
+  public get<T extends Model>(Type: Model.Class<T>){
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)
       throw Oops.MultipleExist(Type);
-
-    if(!result && required !== false)
-      throw Oops.NotFound(Type);
 
     return result;
   }

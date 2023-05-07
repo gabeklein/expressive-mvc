@@ -17,7 +17,7 @@ export function fetchRelative<T extends Model>(
     Pending.set(relativeTo, pending = []);
 
   pending.push(context => {
-    callback(context.get(type, false));
+    callback(context.get(type));
   })
 }
 
@@ -26,7 +26,7 @@ export function fetchSimple <T extends Model, R>(
   memo: (got: T | undefined) => R
 ){
   const context = useLookup();
-  return useMemo(() => memo(context.get(type, false)), []);
+  return useMemo(() => memo(context.get(type)), []);
 }
 
 export function setPeers(context: Context, onto: Model){
