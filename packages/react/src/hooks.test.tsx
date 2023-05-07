@@ -1,8 +1,7 @@
 import React from 'react';
 
 import { Model, Provider } from '.';
-import { create, mockHook, renderHook } from './helper/testing';
-import { act } from 'react-test-renderer';
+import { act, create, mockHook } from './test';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
@@ -95,7 +94,7 @@ describe("useModel", () => {
   
     const didRender = jest.fn();
   
-    const { result } = renderHook(() => {
+    const { result } = mockHook(() => {
       didRender();
       return Test.use(mockExternal);
     });
@@ -154,7 +153,7 @@ describe("useModel", () => {
       foobar: () => "Goodbye cruel world!"
     }
   
-    const render = renderHook(() => {
+    const render = mockHook(() => {
       return Test.use(mockExternal);
     });
   
@@ -174,7 +173,7 @@ describe("useModel", () => {
       foobar: () => "Goodbye cruel world!"
     }
   
-    const render = renderHook(() => {
+    const render = mockHook(() => {
       return Test.use(mockExternal);
     });
   

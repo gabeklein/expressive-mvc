@@ -2,10 +2,9 @@ import { Model } from '@expressive/mvc';
 import { renderHook, WrapperComponent } from '@testing-library/react-hooks';
 import React from 'react';
 
-import { Provider } from '../provider';
+import { Provider } from './provider';
 
-export { renderHook } from '@testing-library/react-hooks';
-export { create } from "react-test-renderer";
+export { create, act } from "react-test-renderer";
 
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();

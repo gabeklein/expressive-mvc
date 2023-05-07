@@ -1,9 +1,8 @@
 import React, { Suspense } from 'react';
 
-import { Model, set } from '.';
-import { Consumer } from './consumer';
-import { mockAsync, create } from './helper/testing';
+import { Consumer, Model, set } from '.';
 import { Oops, Provider } from './provider';
+import { create, mockAsync } from './test';
 
 class Foo extends Model {
   value?: string = undefined;

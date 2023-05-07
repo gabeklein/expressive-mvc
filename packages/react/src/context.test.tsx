@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Consumer, get, Model, Provider } from '.';
-import { create } from './helper/testing';
+import { create } from './test';
 
 describe("context", () => {
   class Foo extends Model {
