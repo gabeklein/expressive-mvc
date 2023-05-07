@@ -1,16 +1,93 @@
 import React from 'react';
 
-import { Model } from '.';
-import { create, renderHook } from './helper/testing';
+import { Model, Provider } from '.';
+import { create, mockHook, renderHook } from './helper/testing';
 import { act } from 'react-test-renderer';
 
-describe("props", () => {
+describe("useContext", () => {
+  it("will refresh for values accessed", async () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+  
+    const test = Test.new();
+    const render = mockHook(() => {
+      return Test.get().foo;
+    }, test);
+  
+    expect(render.result.current).toBe("foo");
+    test.foo = "bar";
+  
+    await render.waitForNextUpdate();
+  })
+  
+  it("will return instance", () => {
+    class Test extends Model {
+      value = 1;
+    }
+  
+    const instance = Test.new();
+    const render = mockHook(() => Test.get(), instance);
+  
+    expect(render.result.current).toBeInstanceOf(Test);
+    expect(render.result.current.value).toBe(1);
+  })
+  
+  it("will run initial callback syncronously", async () => {
+    class Parent extends Model {
+      values = [] as string[]
+    }
+    
+    type ChildProps = {
+      value: string;
+    }
+  
+    const Child = (props: ChildProps) => {
+      Parent.get($ => {
+        didPushToValues();
+        $.values.push(props.value);
+        $.set("values");
+  
+        return () => null;
+      });
+  
+      return null;
+    }
+  
+    const parent = Parent.new();
+    const didUpdateValues = jest.fn();
+    const didPushToValues = jest.fn();
+  
+    parent.on("values", didUpdateValues);
+  
+    const element = create(
+      <Provider for={parent}>
+        <Child value='foo' />
+        <Child value='bar' />
+        <Child value='baz' />
+      </Provider>
+    )
+  
+    expect(didPushToValues).toBeCalledTimes(3);
+  
+    await expect(parent).toUpdate();
+  
+    expect(parent.values.length).toBe(3);
+  
+    // Expect updates to have bunched up before new frame.
+    expect(didUpdateValues).toBeCalledTimes(1);
+  
+    element.unmount();
+  })
+});
+
+describe("useModel", () => {
   class Test extends Model {
     foo?: string = undefined;
     bar?: string = undefined;
   }
   
-  it("will be applied to model", async () => {
+  it("will apply props to model", async () => {
     const mockExternal = {
       foo: "foo",
       bar: "bar"
@@ -26,7 +103,7 @@ describe("props", () => {
     expect(result.current.is).toMatchObject(mockExternal);
   })
   
-  it("will apply on initial render only by default", async () => {
+  it("will apply props only once by default", async () => {
     let instance!: Test;
   
     const TestComponent = (props: any) => {
@@ -49,7 +126,7 @@ describe("props", () => {
     await expect(instance).not.toUpdate();
   })
   
-  it("will apply values per-render", async () => {
+  it("will apply props per-render", async () => {
     let instance!: Test;
   
     const TestComponent = (props: any) => {
@@ -68,7 +145,7 @@ describe("props", () => {
     await expect(instance).toHaveUpdated(["foo", "bar"]);
   })
   
-  it("will override (untracked) arrow functions", () => {
+  it("will apply props over (untracked) arrow functions", () => {
     class Test extends Model {
       foobar = () => "Hello world!";
     }
@@ -86,7 +163,7 @@ describe("props", () => {
     expect(foobar).toBe(mockExternal.foobar);
   })
   
-  it("will not override prototype methods", () => {
+  it("will not apply props over methods", () => {
     class Test extends Model {
       foobar(){
         return "Hello world!";
@@ -106,7 +183,7 @@ describe("props", () => {
     expect(foobar).not.toBe(mockExternal.foobar);
   })
   
-  it("will ignore updates caused", async () => {
+  it("will ignore updates itself caused", async () => {
     const didRender = jest.fn();
     let test!: Test;
   

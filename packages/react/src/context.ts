@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo } from 'react';
 
 export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
+
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
 export function fetchRelative<T extends Model>(

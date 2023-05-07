@@ -1,8 +1,7 @@
 import { Control } from '@expressive/mvc';
 
 import { fetchRelative, fetchSimple } from './context';
-import { useContext } from './useContext';
-import { useModel } from './useModel';
+import { useContext, useModel } from './hooks';
 
 Control.getModel = useContext;
 Control.useModel = useModel;
