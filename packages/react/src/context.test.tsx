@@ -12,7 +12,7 @@ describe("context", () => {
     value = "bar";
   }
 
-  it("will access while created by provider", () => {
+  it("will attach where created by provider", () => {
     create(
       <Provider for={Bar}>
         <Provider for={Foo}>
@@ -163,7 +163,7 @@ describe("suspense", () => {
     expect(effect).toHaveReturnedTimes(1);
   })
 
-  it("will prevent compute if not resolved", () => {
+  it("will prevent compute if not yet resolved", () => {
     class Foo extends Model {
       value = "foobar";
     }
