@@ -2,9 +2,11 @@ import React from 'react';
 
 import { Consumer, get, Model, Provider } from '.';
 import { create } from './helper/testing';
-import { Oops } from './context';
 
 describe("context", () => {
+  const AmbientRequired = (requested: string, requester: string) =>
+    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
+
   class Foo extends Model {
     bar = get(Bar);
   }
@@ -82,7 +84,7 @@ describe("context", () => {
       bar = get(Bar);
     }
 
-    const expected = Oops.AmbientRequired(Bar, Foo + "-ID");
+    const expected = AmbientRequired("Bar", "Foo-ID");
     const useFoo = () => Foo.use();
 
     const Test = () => {
@@ -102,7 +104,7 @@ describe("context", () => {
       }
     }
 
-    const expected = Oops.AmbientRequired(Bar, Foo + "-ID");
+    const expected = AmbientRequired("Bar", "Foo-ID");
     const useStrictFooBar = () => Foo.use();
 
     const TestComponent = () => {

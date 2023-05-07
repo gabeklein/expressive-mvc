@@ -30,27 +30,22 @@ let renderTap: (() => any) | undefined;
 
 Control.tapModel = (Type, memo) => {
   if(!renderTap){
-    const value = memo(current as any);
+    const value = memo(current);
     renderTap = () => value;
   }
 
   return renderTap();
 }
 
-Control.hasModel = (Type, required) => {
-  return got => {
-    if(current)
-      got(current as any);
-    else if(required !== false)
-      throw new Error(`Could not find ${Type} in context.`)
-  }
+Control.hasModel = (Type, subject, callback) => {
+  callback(current);
 }
 
 let renderGet: (() => any) | undefined;
 
 Control.getModel = (_type, adapter) => {
   if(!renderGet){
-    const result = adapter(render!, use => use(current as any));
+    const result = adapter(render!, use => use(current));
 
     if(!result){
       renderGet = () => null;

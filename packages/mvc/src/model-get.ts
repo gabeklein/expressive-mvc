@@ -58,7 +58,7 @@ function useSubscriber<T extends Model>(
 
     context(got => {
       if(got)
-        proxy = Control.watch(got, () => onUpdate);
+        proxy = Control.watch(got as T, () => onUpdate);
 
       else if(required)
         throw Oops.NotFound(type);
@@ -93,7 +93,7 @@ function useComputed<T extends Model, R>(
       if(!got)
         throw Oops.NotFound(type);
 
-      proxy = Control.watch(got, () => factory ? null : onUpdate);
+      proxy = Control.watch(got as T, () => factory ? null : onUpdate);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
       value = getValue();
 

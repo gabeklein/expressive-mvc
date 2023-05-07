@@ -5,6 +5,12 @@ import { get, Oops } from './get';
 
 it.todo("will add pending compute to frame immediately");
 
+beforeAll(() => {
+  Control.hasModel = (Type, _relative, callback) => {
+    callback(undefined);
+  }
+})
+
 describe("compute mode", () => {
   it('will reevaluate when inputs change', async () => {
     class Subject extends Model {
@@ -488,16 +494,16 @@ describe("fetch mode", () => {
   it("throws when required parent is absent :(", () => {
     class Detatched extends Model {}
     class NonStandalone extends Model {
-      expects = get(Detatched);
+      expects = get(Detatched, true);
     }
   
-    const attempt = () => NonStandalone.new();
-    const error = Oops.Required(Detatched, NonStandalone);
+    const attempt = () => NonStandalone.new("ID");
+    const error = Oops.Required(Detatched, "NonStandalone-ID");
   
     expect(attempt).toThrowError(error);
   })
   
-  it("retuns undefined if set not-required", () => {
+  it("retuns undefined if required is false", () => {
     class MaybeParent extends Model {}
     class StandAlone extends Model {
       maybe = get(MaybeParent, false);
@@ -590,11 +596,9 @@ describe("replaced source", () => {
   let current: Source;
 
   beforeAll(() => {
-    Control.hasModel = () => {
-      return (onSource: (x: Model) => void) => {
-        didUpdate = onSource;
-        onSource(current);
-      }
+    Control.hasModel = (Type, relativeTo, callback) => {
+      didUpdate = callback;
+      callback(current);
     }
   })
 
@@ -652,12 +656,10 @@ describe("replaced source", () => {
 
 describe("async", () => {
   beforeAll(() => {
-    Control.hasModel = (Type) => {
-      return callback => {
-        setTimeout(() => {
-          callback(Type.new());
-        }, 0);
-      }
+    Control.hasModel = (Type, _relative, callback) => {
+      setTimeout(() => {
+        callback(Type.new());
+      }, 0);
     }
   })
 

@@ -17,6 +17,9 @@ export const Oops = issues({
 
   Unexpected: (expects, child, got) =>
     `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
+
+  AmbientRequired: (requested, requester) =>
+    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 });
 
 declare namespace get {
@@ -79,8 +82,19 @@ function get<R, T extends Model>(
     else if(Model.isTypeof(arg0)){
       const { parent } = control;
 
-      if(!parent)
-        source = Control.hasModel(arg0, arg1 !== false, subject);
+      if(!parent){
+        if(arg1 === true)
+          throw Oops.Required(arg0, subject);
+        
+        source = callback => {
+          Control.hasModel(arg0, subject, got => {
+            if(got)
+              callback(got);
+            else if(arg1 !== false)
+              throw Oops.AmbientRequired(arg0, subject);
+          });
+        }
+      }
       else if(!arg0 || parent instanceof arg0)
         subject = parent;
       else

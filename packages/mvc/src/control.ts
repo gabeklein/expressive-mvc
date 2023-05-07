@@ -7,9 +7,6 @@ import type { Callback } from '../types';
 export const Oops = issues({
   BadAssignment: (parent, expected, got) =>
     `${parent} expected Model of type ${expected} but got ${got}.`,
-
-  Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}.`
 });
 
 type Observer<T extends Model = any> =
@@ -48,18 +45,18 @@ declare namespace Control {
    */
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 
-  type GetAdapter<R, T extends Model> = (
+  type GetAdapter<T> = (
     update: () => void,
-    source: (request: (got: T | undefined) => void) => void
+    source: (request: (got: Model | undefined) => void) => void
   ) => {
     commit: () => (() => void) | void;
-    render: () => R;
+    render: () => T;
   } | void;
 
-  type GetHook = <R, T extends Model> (
-    type: Model.Class<T>,
-    factory: GetAdapter<R, T>
-  ) => R | null;
+  type GetHook = <T> (
+    type: typeof Model,
+    factory: GetAdapter<T>
+  ) => T | null;
 
   type UseAdapter<T extends Model> = (
     update: () => void
@@ -74,23 +71,15 @@ declare namespace Control {
     props: Model.Compat<T>
   ) => T;
 
-  type HasHook = {
-    <T extends Model> (
-      type: Model.Class<T>,
-      required: false,
-      relativeTo: Model
-    ): (callback: (got: T | undefined) => void) => void;
-    
-    <T extends Model> (
-      type: Model.Class<T>,
-      required: boolean,
-      relativeTo: Model
-    ): (callback: (got: T) => void) => void;
-  }
+  type HasHook = (
+    type: typeof Model,
+    relativeTo: Model,
+    callback: (got: Model | undefined) => void
+  ) => void;
 
-  type TapHook = <T extends Model, R>(
-    type: Model.Class<T>,
-    memo: (got: T | undefined) => R
+  type TapHook = <R>(
+    type: typeof Model,
+    memo: (got: Model | undefined) => R
   ) => R;
 }
 
@@ -101,7 +90,7 @@ class Control<T extends Model = any> {
 
   static getModel: Control.GetHook;
   static useModel: Control.UseHook;
-  static hasModel: Control.HasHook = fetch;
+  static hasModel: Control.HasHook;
   static tapModel: Control.TapHook;
 
   static for = control;
@@ -337,28 +326,6 @@ function apply<T = any>(instruction: Control.Instruction<any>){
   });
 
   return placeholder as unknown as T;
-}
-
-function fetch <T extends Model>(
-  type: Model.Class<T>,
-  required: false,
-  relativeTo: Model
-): (callback: (got: T | undefined) => void) => void;
-
-function fetch <T extends Model>(
-  type: Model.Class<T>,
-  required: boolean,
-  relativeTo: Model
-): (callback: (got: T) => void) => void;
-
-/** Placeholder fetch - overridden by adapter. */
-function fetch(
-  type: Model.Class<any>,
-  required: boolean,
-  relativeTo: Model): any {
-
-  if(required)
-    throw Oops.Required(type, relativeTo.constructor);
 }
 
 /** Random alphanumberic of length 6; will always start with a letter. */
