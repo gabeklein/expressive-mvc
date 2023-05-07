@@ -1,46 +1,49 @@
+import { Context } from "../context";
 import { Control } from "../control";
 import { Model } from "../model";
 
-const newModel = Model.new;
-
 type Callback = () => void;
 
-let current: Model | undefined;
-let mount: (() => typeof unmount) | void;
+const context = new Context();
 let hook: Callback | undefined;
+let memo: any;
+let mount: (() => typeof unmount) | void;
 let unmount: Callback | void;
 
 afterEach(() => {
   if(unmount)
     unmount();
 
-  current = undefined;
+  context.pop();
+
   hook = undefined;
   memo = undefined;
   unmount = undefined;
 });
 
-let memo: any;
-
 function useMemo<T>(factory: () => T){
   return memo || (memo = factory());
 }
 
+const newModel = Model.new;
+
 Model.new = function(){
-  return current = newModel.call(this);
+  const model = newModel.call(this);
+  context.add(model);
+  return model;
 }
 
 Control.tapModel = (Type, memo) => {
-  return useMemo(() => memo(current));
+  return useMemo(() => memo(context.get(Type)));
 }
 
 Control.hasModel = (Type, subject, callback) => {
-  callback(current);
+  callback(context.get(Type));
 }
 
-Control.getModel = (_type, adapter) => {
+Control.getModel = (Type, adapter) => {
   return useMemo(() => {
-    const result = adapter(hook!, use => use(current));
+    const result = adapter(hook!, use => use(context.get(Type)));
 
     if(!result)
       return () => null
