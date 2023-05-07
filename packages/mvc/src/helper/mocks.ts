@@ -25,12 +25,12 @@ function useMemo<T>(factory: () => T){
   return memo || (memo = factory());
 }
 
-Control.tapModel = (Type, memo) => {
-  return useMemo(() => memo(context.get(Type)));
-}
-
 Control.hasModel = (Type, subject, callback) => {
   callback(context.get(Type));
+}
+
+Control.tapModel = (Type, memo) => {
+  return useMemo(() => memo(context.get(Type)));
 }
 
 Control.getModel = (Type, adapter) => {
