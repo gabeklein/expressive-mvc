@@ -16,60 +16,47 @@ afterEach(() => {
 
   current = undefined;
   hook = undefined;
-  renderGet = undefined;
-  renderTap = undefined;
-  renderUse = undefined;
+  memo = undefined;
   unmount = undefined;
-})
+});
+
+let memo: any;
+
+function useMemo<T>(factory: () => T){
+  return memo || (memo = factory());
+}
 
 Model.new = function(){
   return current = newModel.call(this);
 }
 
-let renderTap: (() => any) | undefined;
-
 Control.tapModel = (Type, memo) => {
-  if(!renderTap){
-    const value = memo(current);
-    renderTap = () => value;
-  }
-
-  return renderTap();
+  return useMemo(() => memo(current));
 }
 
 Control.hasModel = (Type, subject, callback) => {
   callback(current);
 }
 
-let renderGet: (() => any) | undefined;
-
 Control.getModel = (_type, adapter) => {
-  if(!renderGet){
+  return useMemo(() => {
     const result = adapter(hook!, use => use(current));
 
-    if(!result){
-      renderGet = () => null;
-      return null;
-    }
+    if(!result)
+      return () => null
 
-    renderGet = result.render;
     mount = result.commit;
-  }
-
-  return renderGet();
+    return result.render;
+  })();
 }
 
-let renderUse: ((props: any) => any) | undefined;
-
 Control.useModel = (adapter, props) => {
-  if(!renderUse){
+  return useMemo(() => {
     const result = adapter(hook!);
     
     mount = result.commit;
-    renderUse = result.render;
-  }
-
-  return renderUse(props);
+    return result.render;
+  })(props);
 }
 
 export function render<T>(fn: () => T){
