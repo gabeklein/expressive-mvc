@@ -4,9 +4,6 @@ import { Consumer, get, Model, Provider } from '.';
 import { create } from './helper/testing';
 
 describe("context", () => {
-  const AmbientRequired = (requested: string, requester: string) =>
-    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
-
   class Foo extends Model {
     bar = get(Bar);
   }
@@ -14,106 +11,6 @@ describe("context", () => {
   class Bar extends Model {
     value = "bar";
   }
-
-  it("will attach peer from context", () => {
-    const bar = Bar.new();
-
-    const Test = () => {
-      const { bar } = Foo.use();
-      expect(bar).toBe(bar);
-      return null;
-    }
-
-    create(
-      <Provider for={bar}>
-        <Test />
-      </Provider>
-    );
-  })
-
-  it("will subscribe peer from context", async () => {
-    class Foo extends Model {
-      bar = get(Bar);
-    }
-
-    const bar = Bar.new();
-    let foo!: Foo;
-
-    const Child = () => {
-      foo = Foo.use();
-      return null;
-    }
-
-    create(
-      <Provider for={bar}>
-        <Child />
-      </Provider>
-    );
-
-    const mock = jest.fn((effect: Foo) => {
-      void effect.bar.value;
-    })
-
-    foo.on(mock);
-    bar.value = "foo";
-
-    await bar.on(0);
-    expect(mock).toBeCalledTimes(2);
-  })
-
-  it("will return undefined if instance not found", () => {
-    class Foo extends Model {
-      bar = get(Bar, false);
-    }
-
-    const Test = () => {
-      const foo = Foo.use();
-      expect(foo.bar).toBeUndefined();
-      return null;
-    }
-
-    create(<Test />);
-  })
-
-  it("will complain if instance not found", () => {
-    class Foo extends Model {
-      constructor(){
-        super("ID");
-      }
-
-      bar = get(Bar);
-    }
-
-    const expected = AmbientRequired("Bar", "Foo-ID");
-    const useFoo = () => Foo.use();
-
-    const Test = () => {
-      expect(useFoo).toThrowError(expected);
-      return null;
-    }
-
-    create(<Test />);
-  })
-
-  it("will throw if strict get is undefined", () => {
-    class Foo extends Model {
-      bar = get(Bar);
-
-      constructor(){
-        super("ID");
-      }
-    }
-
-    const expected = AmbientRequired("Bar", "Foo-ID");
-    const useStrictFooBar = () => Foo.use();
-
-    const TestComponent = () => {
-      expect(useStrictFooBar).toThrowError(expected);
-      return null;
-    }
-
-    create(<TestComponent />);
-  })
 
   it("will access while created by provider", () => {
     create(
@@ -189,32 +86,6 @@ describe("context", () => {
     );
 
     expect(didRender).toBeCalledTimes(2);
-  })
-
-  it("will prefer parent over context", () => {
-    class Parent extends Model {
-      child = new Child();
-      value = "foo";
-    }
-
-    class Child extends Model {
-      parent = get(Parent);
-    }
-
-    const { is: parent, child } = Parent.new();
-    const standalone = Child.new();
-
-    parent.value = "bar";
-
-    create(
-      <Provider for={Parent}>
-        <Provider for={child} />
-        <Provider for={standalone} />
-      </Provider>
-    );
-
-    expect(child.parent.value).toBe("bar");
-    expect(standalone.parent.value).toBe("foo");
   })
 })
 

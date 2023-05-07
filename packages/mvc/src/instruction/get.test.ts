@@ -1,14 +1,161 @@
 import { Control } from '../control';
+import { render, context } from '../helper/mocks';
 import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 
 it.todo("will add pending compute to frame immediately");
 
-beforeAll(() => {
-  Control.hasModel = (Type, _relative, callback) => {
-    callback(undefined);
-  }
+describe("fetch mode", () => {
+  it("will allow overwrite", async () => {
+    class Foo extends Model {
+      value = "foo";
+      bar = new Bar();
+    }
+  
+    class Bar extends Model {
+      value = "foo";
+      foo = get(Foo);
+    }
+  
+    const foo = Foo.new();
+    const mockEffect = jest.fn();
+    let promise = mockPromise();
+    
+    expect(foo.bar.foo).toBe(foo);
+  
+    foo.on(state => {
+      mockEffect(state.bar.foo.value);
+      promise.resolve();
+    })
+  
+    promise = mockPromise();
+    foo.value = "bar";
+    await promise;
+  
+    expect(mockEffect).toBeCalledWith("bar");
+  
+    promise = mockPromise();
+    foo.bar.foo = Foo.new();
+    await promise;
+  
+    expect(mockEffect).toBeCalledWith("foo");
+    expect(mockEffect).toBeCalledTimes(3);
+  })
+  
+  it("creates parent-child relationship", () => {
+    class Foo extends Model {
+      child = new Bar();
+    }
+    class Bar extends Model {
+      parent = get(Foo);
+    }
+  
+    const foo = Foo.new();
+    const bar = foo.child;
+  
+    expect(bar).toBeInstanceOf(Bar);
+    expect(bar.parent).toBe(foo);
+  })
+
+  it("throws when required parent is absent :(", () => {
+    class Parent extends Model {}
+    class Child extends Model {
+      expects = get(Parent, true);
+    }
+  
+    const attempt = () => Child.new("ID");
+    const error = Oops.Required("Parent", "Child-ID");
+  
+    expect(attempt).toThrowError(error);
+  })
+  
+  it("retuns undefined if required is false", () => {
+    class MaybeParent extends Model {}
+    class StandAlone extends Model {
+      maybe = get(MaybeParent, false);
+    }
+  
+    const instance = StandAlone.new();
+  
+    expect(instance.maybe).toBeUndefined();
+  })
+  
+  it("throws if parent is of incorrect type", () => {
+    class Expected extends Model {}
+    class Unexpected extends Model {
+      child = new Adopted("ID");
+    }
+    class Adopted extends Model {
+      expects = get(Expected);
+    }
+  
+    const attempt = () => Unexpected.new("ID");
+    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
+  
+    expect(attempt).toThrowError(error);
+  })
+
+  it('will track recursively', async () => {
+    class Child extends Model {
+      value = "foo";
+      parent = get(Parent);
+    }
+    
+    class Parent extends Model {
+      value = "foo";
+      child = new Child();
+    }
+  
+    const { child } = Parent.new();
+    const effect = jest.fn((it: Child) => {
+      void it.value;
+      void it.parent.value;
+    })
+  
+    child.on(effect);
+  
+    child.value = "bar";
+    await expect(child).toUpdate();
+    expect(effect).toHaveBeenCalledTimes(2)
+  
+    child.parent.value = "bar";
+    await expect(child.parent).toUpdate();
+    expect(effect).toHaveBeenCalledTimes(3)
+  })
+
+  it('will yeild a computed value', async () => {
+    class Foo extends Model {
+      bar = new Bar();
+      seconds = 0;
+    }
+
+    class Bar extends Model {
+      minutes = get(Foo, state => {
+        return Math.floor(state.seconds / 60);
+      })
+    }
+
+    const { is: foo, bar } = Foo.new();
+  
+    foo.seconds = 30;
+  
+    await expect(foo).toUpdate();
+  
+    expect(foo.seconds).toEqual(30);
+    expect(bar.minutes).toEqual(0);
+  
+    foo.seconds = 60;
+  
+    // make sure both did declare an update
+    await Promise.all([
+      expect(bar).toUpdate(),
+      expect(foo).toUpdate()
+    ])
+  
+    expect(foo.seconds).toEqual(60);
+    expect(bar.minutes).toEqual(1);
+  })
 })
 
 describe("compute mode", () => {
@@ -439,155 +586,95 @@ describe("compute mode", () => {
   })
 })
 
-describe("fetch mode", () => {
-  it("will allow overwrite", async () => {
-    class Foo extends Model {
-      value = "foo";
-      bar = new Bar();
+describe("context", () => {
+  class Foo extends Model {
+    bar = get(Bar);
+  }
+
+  class Bar extends Model {
+    constructor(){
+      super();
+      context.add(this);
     }
-  
-    class Bar extends Model {
-      value = "foo";
-      foo = get(Foo);
-    }
-  
-    const foo = Foo.new();
-    const mockEffect = jest.fn();
-    let promise = mockPromise();
-    
-    expect(foo.bar.foo).toBe(foo);
-  
-    foo.on(state => {
-      mockEffect(state.bar.foo.value);
-      promise.resolve();
-    })
-  
-    promise = mockPromise();
-    foo.value = "bar";
-    await promise;
-  
-    expect(mockEffect).toBeCalledWith("bar");
-  
-    promise = mockPromise();
-    foo.bar.foo = Foo.new();
-    await promise;
-  
-    expect(mockEffect).toBeCalledWith("foo");
-    expect(mockEffect).toBeCalledTimes(3);
-  })
-  
-  it("creates parent-child relationship", () => {
-    class Foo extends Model {
-      child = new Bar();
-    }
-    class Bar extends Model {
-      parent = get(Foo);
-    }
-  
-    const foo = Foo.new();
-    const bar = foo.child;
-  
-    expect(bar).toBeInstanceOf(Bar);
-    expect(bar.parent).toBe(foo);
+
+    value = "bar";
+  }
+
+  it("will attach peer from context", async () => {
+    const bar = Bar.new();
+    const hook = render(() => Foo.use().is.bar);
+
+    expect(hook.current).toBe(bar);
   })
 
-  it("throws when required parent is absent :(", () => {
-    class Detatched extends Model {}
-    class NonStandalone extends Model {
-      expects = get(Detatched, true);
-    }
-  
-    const attempt = () => NonStandalone.new("ID");
-    const error = Oops.Required(Detatched, "NonStandalone-ID");
-  
-    expect(attempt).toThrowError(error);
-  })
-  
-  it("retuns undefined if required is false", () => {
-    class MaybeParent extends Model {}
-    class StandAlone extends Model {
-      maybe = get(MaybeParent, false);
-    }
-  
-    const instance = StandAlone.new();
-  
-    expect(instance.maybe).toBeUndefined();
-  })
-  
-  it("throws if parent is of incorrect type", () => {
-    class Expected extends Model {}
-    class Unexpected extends Model {
-      child = new Adopted("ID");
-    }
-    class Adopted extends Model {
-      expects = get(Expected);
-    }
-  
-    const attempt = () => Unexpected.new("ID");
-    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
-  
-    expect(attempt).toThrowError(error);
+  it("will subscribe peer from context", async () => {
+    const bar = Bar.new();
+    const hook = render(() => Foo.use().bar.value);
+
+    expect(hook.current).toBe("bar");
+
+    bar.value = "foo";
+    await hook.refresh;
+
+    expect(hook.current).toBe("foo");
+    expect(hook.mock).toBeCalledTimes(2);
   })
 
-  it('will track recursively', async () => {
+  it("will return undefined if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar, false);
+    }
+
+    const hook = render(() => Foo.use().bar);
+
+    expect(hook.current).toBeUndefined();
+  })
+
+  it("will throw if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar);
+
+      constructor(){
+        super("ID");
+      }
+    }
+
+    const expected = Oops.AmbientRequired("Bar", "Foo-ID");
+    const tryToRender = () => render(() => Foo.use());
+
+    expect(tryToRender).toThrowError(expected);
+  })
+
+  it("will prefer parent over context", () => {
+    class Parent extends Model {
+      child = new Child();
+      value = "foo";
+    }
+
     class Child extends Model {
-      value = "foo";
       parent = get(Parent);
     }
-    
-    class Parent extends Model {
-      value = "foo";
-      child = new Child();
-    }
-  
-    const { child } = Parent.new();
-    const effect = jest.fn((it: Child) => {
-      void it.value;
-      void it.parent.value;
-    })
-  
-    child.on(effect);
-  
-    child.value = "bar";
-    await expect(child).toUpdate();
-    expect(effect).toHaveBeenCalledTimes(2)
-  
-    child.parent.value = "bar";
-    await expect(child.parent).toUpdate();
-    expect(effect).toHaveBeenCalledTimes(3)
+
+    context.add(Parent.new());
+
+    const hook = render(() => Parent.use().is);
+    const parent = hook.current;
+
+    expect(parent.child.parent).toBe(parent);
   })
 
-  it('will yeild a computed value', async () => {
-    class Foo extends Model {
-      bar = new Bar();
-      seconds = 0;
+  it("will throw if parent required in-context", () => {
+    class Ambient extends Model {}
+    class Child extends Model {
+      expects = get(Ambient, true);
     }
 
-    class Bar extends Model {
-      minutes = get(Foo, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    }
-
-    const { is: foo, bar } = Foo.new();
+    context.add(Ambient.new());
   
-    foo.seconds = 30;
+    const attempt = () => Child.new("ID");
+    const error = Oops.Required("Ambient", "Child-ID");
   
-    await expect(foo).toUpdate();
-  
-    expect(foo.seconds).toEqual(30);
-    expect(bar.minutes).toEqual(0);
-  
-    foo.seconds = 60;
-  
-    // make sure both did declare an update
-    await Promise.all([
-      expect(bar).toUpdate(),
-      expect(foo).toUpdate()
-    ])
-  
-    expect(foo.seconds).toEqual(60);
-    expect(bar.minutes).toEqual(1);
+    expect(attempt).toThrowError(error);
   })
 })
 
