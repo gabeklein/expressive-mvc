@@ -1,14 +1,12 @@
 import { Context } from "../context";
 import { Control } from "../control";
 
-type Callback = () => void;
-
 export const context = new Context();
 
-let hook: Callback | undefined;
+let hook: (() => void) | undefined;
 let memo: any;
 let mount: (() => typeof unmount) | void;
-let unmount: Callback | void;
+let unmount: (() => void) | void;
 
 afterEach(() => {
   if(unmount)
@@ -21,37 +19,45 @@ afterEach(() => {
   unmount = undefined;
 });
 
-function useMemo<T>(factory: () => T){
-  return memo || (memo = factory());
-}
-
-Control.hasModel = (Type, subject, callback) => {
-  callback(context.get(Type));
-}
-
-Control.tapModel = (Type, memo) => {
-  return useMemo(() => memo(context.get(Type)));
-}
-
-Control.getModel = (Type, adapter) => {
-  return useMemo(() => {
-    const result = adapter(hook!, use => use(context.get(Type)));
-
-    if(!result)
-      return () => null
-
-    mount = result.commit;
-    return result.render;
-  })();
-}
-
-Control.useModel = (adapter, props) => {
-  return useMemo(() => {
-    const result = adapter(hook!);
+beforeAll(() => {
+  Control.hasModel = (Type, subject, callback) => {
+    callback(context.get(Type));
+  }
+  
+  Control.tapModel = (Type, memo) => {
+    return useMemo(() => memo(context.get(Type)));
+  }
+  
+  Control.getModel = (Type, adapter) => {
+    const render = useMemo(refresh => {
+      const result = adapter(refresh, use => use(context.get(Type)));
+  
+      if(!result)
+        return () => null
+  
+      mount = result.commit;
+      return result.render;
+    });
     
-    mount = result.commit;
-    return result.render;
-  })(props);
+    return render();
+  }
+  
+  Control.useModel = (adapter, props) => {
+    const render = useMemo(refresh => {
+      const result = adapter(refresh);
+      
+      mount = result.commit;
+      return result.render;
+    });
+    
+    return render(props);
+  }
+})
+
+function useMemo<T>(
+  factory: (refresh: () => void) => T){
+
+  return memo || (memo = factory(hook!));
 }
 
 export function render<T>(fn: () => T){
