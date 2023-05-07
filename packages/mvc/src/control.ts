@@ -49,7 +49,7 @@ declare namespace Control {
     update: () => void,
     source: (request: (got: Model | undefined) => void) => void
   ) => {
-    commit: () => (() => void) | void;
+    mount: () => (() => void) | void;
     render: () => T;
   } | void;
 
@@ -62,7 +62,7 @@ declare namespace Control {
     update: () => void
   ) => {
     instance: T;
-    commit: () => (() => void) | void;
+    mount: () => (() => void) | void;
     render: (props: Model.Compat<T>) => T;
   }
 

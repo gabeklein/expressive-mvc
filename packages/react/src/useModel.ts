@@ -6,7 +6,7 @@ import { Pending, useLookup } from './context';
 export function useModel<T extends Model>(
   factory: (update: () => void) => {
     instance: T;
-    commit: () => (() => void) | void;
+    mount: () => (() => void) | void;
     render: (props: Model.Compat<T>) => T;
   },
   props: Model.Compat<T>
@@ -14,7 +14,7 @@ export function useModel<T extends Model>(
   const state = useState(0);
   const hook = useMemo(() => {
     const refresh = () => state[1](x => x+1);
-    const { commit, instance, render } = factory(refresh);
+    const { mount, instance, render } = factory(refresh);
 
     let applyPeers: undefined | boolean;
 
@@ -33,7 +33,7 @@ export function useModel<T extends Model>(
         }
       }
 
-      useLayoutEffect(commit, []);
+      useLayoutEffect(mount, []);
 
       return render(props);
     }

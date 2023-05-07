@@ -15,7 +15,7 @@ const useContext: Control.GetHook = (type, factory) => {
       return () => null;
 
     return () => {
-      useLayoutEffect(result.commit, []);
+      useLayoutEffect(result.mount, []);
       return result.render();
     }
   }, []);

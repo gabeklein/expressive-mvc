@@ -35,7 +35,7 @@ beforeAll(() => {
       if(!result)
         return () => null
   
-      mount = result.commit;
+      mount = result.mount;
       return result.render;
     });
     
@@ -46,7 +46,7 @@ beforeAll(() => {
     const render = useMemo(refresh => {
       const result = adapter(refresh);
       
-      mount = result.commit;
+      mount = result.mount;
       return result.render;
     });
     

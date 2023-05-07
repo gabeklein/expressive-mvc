@@ -29,7 +29,7 @@ function use <T extends Model> (
 
     return {
       instance,
-      commit(){
+      mount(){
         onUpdate = refresh;
         return () => {
           onUpdate = null;

@@ -65,7 +65,7 @@ function useSubscriber<T extends Model>(
     })
 
     return {
-      commit(){
+      mount(){
         onUpdate = refresh;
         return () =>
           onUpdate = undefined;
@@ -154,7 +154,7 @@ function useComputed<T extends Model, R>(
       };
 
     return {
-      commit: () => () => {
+      mount: () => () => {
         onUpdate = null;
       },
       render: () => {
