@@ -16,7 +16,7 @@ declare namespace set {
   type Callback<T, S = any> = (this: S, argument: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
-  type Factory<T, S = unknown> = (this: S, key: string, thisArg: S) => T;
+  type Factory<T, S = any> = (this: S, key: string, thisArg: S) => Promise<T> | T;
 }
 
 /**
@@ -28,29 +28,11 @@ declare namespace set {
 function set <T = any>(): T;
 
 /**
- * Set property with an async function.
- *
- * Property cannot be accessed until factory resolves, yeilding a result.
- * If accessed while processing, React Suspense will be thrown.
- *
- * - `required: true` (default) -
- *      Run factory immediately upon creation of model instance.
- * - `required: false` -
- *      Run factory only if/when accessed.
- *      Value will always throw suspense at least once - use with caution.
- *
- * @param factory - Callback run to derrive property value.
- * @param required - (default: true) Run factory immediately on creation, otherwise on access.
- */
-function set <T> (factory: set.Factory<Promise<T>>, required: false): T | undefined;
-function set <T, S> (factory: set.Factory<Promise<T>, S>, required: false): T | undefined;
-
-function set <T> (factory: set.Factory<Promise<T>>, required?: boolean): T;
-function set <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T;
-
-/**
  * Set property with a factory function.
  *
+ * If async, poperty cannot be accessed until resolves, yeilding a result.
+ * If accessed while still processing, React Suspense will be thrown.
+ *
  * - `required: true` (default) -
  *      Run factory immediately upon creation of model instance.
  * - `required: false` -
@@ -60,23 +42,14 @@ function set <T, S> (factory: set.Factory<Promise<T>, S>, required?: boolean): T
  * @param factory - Callback run to derrive property value.
  * @param required - (default: true) Run factory immediately on creation, otherwise on access.
  */
-function set <T>(factory: set.Factory<T>, required: false): T | undefined;
-function set <T, S>(factory: set.Factory<T, S>, required: false): T | undefined;
-
-function set <T>(factory: set.Factory<T>, required?: boolean): T;
-function set <T, S>(factory: set.Factory<T, S>, required?: boolean): T;
-
-function set <T> (factory: Promise<T>, required: false): T | undefined;
-function set <T> (factory: Promise<T>, required?: boolean): T;
+function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | undefined;
+function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
 
 function set <T> (value: undefined, onUpdate: set.Callback<T>): T;
-function set <T, S> (value: undefined, onUpdate: set.Callback<T, S>): T;
-
 function set <T> (value: T, onUpdate: set.Callback<T>): T;
-function set <T, S> (value: T, onUpdate: set.Callback<T, S>): T;
 
 function set <T> (
-  value?: set.Factory<T | Promise<T>> | Promise<T> | T,
+  value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean): any {
 
   return apply((key, control) => {

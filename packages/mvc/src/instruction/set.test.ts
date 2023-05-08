@@ -148,7 +148,7 @@ describe("intercept", () => {
 
   it('will block value if callback returns true', async () => {
     class Subject extends Model {
-      test = set("foo", value => true);
+      test = set("foo", () => true);
     }
 
     const state = Subject.new();
