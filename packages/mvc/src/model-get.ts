@@ -98,18 +98,18 @@ function useComputed<T extends Model, R>(
       value = getValue();
 
       function forceUpdate(): void;
-      function forceUpdate<T>(passthru: Promise<T> | (() => Promise<T>)): Promise<T>;
-      function forceUpdate<T>(passthru?: Promise<T> | (() => Promise<T>)){
-        if(typeof passthru == "function")
-          passthru = passthru();
+      function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
+      function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
+        if(typeof action == "function")
+          action = action();
   
         if(getValue)
           didUpdate(getValue());
         else
           refresh();
   
-        if(passthru)
-          return passthru.finally(refresh);
+        if(action)
+          return action.finally(refresh);
       }
     })
 
