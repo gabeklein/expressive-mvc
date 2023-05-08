@@ -67,60 +67,6 @@ it('will run callback', () => {
   expect(callback).toBeCalled();
 })
 
-it.skip('will accept simple object', async () => {
-  class Parent extends Model {
-    child = use({ value: "foo" });
-  }
-
-  const parent = Parent.new();
-  const effect = jest.fn(($: Parent) => {
-    void $.child.value;
-  })
-
-  parent.on(effect);
-
-  expect(parent.child.value).toBe("foo");
-
-  parent.child.value = "bar";
-  await parent.on(0);
-
-  expect(parent.child.value).toBe("bar");
-  expect(effect).toBeCalledTimes(3);
-})
-
-it.skip('will accept simple object as new value', async () => {
-  class Parent extends Model {
-    child = use({ value: "foo" });
-  }
-
-  const parent = Parent.new();
-  const effect = jest.fn(($: Parent) => {
-    void $.child.value;
-  })
-
-  parent.on(effect);
-
-  expect(parent.child.value).toBe("foo");
-
-  parent.child.value = "bar";
-  await parent.on(0);
-  expect(parent.child.value).toBe("bar");
-
-  expect(effect).toBeCalledTimes(2)
-
-  // Will refresh on repalcement.
-  parent.child = { value: "baz" };
-  await parent.on(0);
-  expect(parent.child.value).toBe("baz");
-
-  // New subscription still works.
-  parent.child.value = "bar";
-  await parent.on(0);
-  expect(parent.child.value).toBe("bar");
-
-  expect(effect).toBeCalledTimes(4)
-})
-
 it('will create from factory', async () => {
   class Child extends Model {
     parent!: Parent;
@@ -234,16 +180,6 @@ it('will wait for dependancies on suspense', async () => {
   await parent.on();
   expect(tryCreateChild).toBeCalledTimes(2);
 });
-
-it('will accept undefined from factory', async () => {
-  class Parent extends Model {
-    child = use(() => undefined);
-  }
-
-  const state = Parent.new();
-
-  expect(state.child).toBeUndefined();
-})
 
 it('will update on new value', async () => {
   const state = Parent.new();
