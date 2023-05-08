@@ -13,7 +13,7 @@ function use <T extends Model> (
 ): T;
 
 function use <T extends Model> (
-  this: Model.New<T> | (typeof Model),
+  this: Model.New<T>,
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
 
