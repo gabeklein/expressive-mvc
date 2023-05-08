@@ -28,66 +28,43 @@ function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallba
 function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
 function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
 
-function get<T extends Model>(
+function get<T extends Model, R>(
   this: Model.Type<T>,
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  return Control.getModel(this,
-    typeof arg1 === "function"
-      ? useComputed(this, arg1, arg2)
-      : useSubscriber(this, arg1)
-  )
-}
-
-export { get };
-
-function useSubscriber<T extends Model>(
-  type: Model.Type<T>,
-  required?: boolean
-): Control.GetAdapter<T> {
-
-  return (refresh, context) => {
+  return Control.getModel(this, (refresh, context) => {
     let onUpdate: (() => void) | undefined | null;
-    let proxy!: T;
+    let value: any;
 
-    context(got => {
-      if(got)
-        proxy = required == undefined
-          ? Control.watch(got as T, () => onUpdate)
-          : got as T;
-      else if(required !== false)
-        throw Oops.NotFound(type);
-    })
-
-    return {
-      mount(){
-        onUpdate = refresh;
-        return () => onUpdate = null;
-      },
-      render: () => proxy
+    if(typeof arg1 !== "function"){
+      context(got => {
+        if(got)
+          value = arg1 === undefined
+            ? Control.watch(got, () => onUpdate)
+            : got;
+        else if(arg1 !== false)
+          throw Oops.NotFound(this);
+      })
+  
+      return {
+        mount(){
+          onUpdate = refresh;
+          return () => onUpdate = null;
+        },
+        render: () => value
+      };
     }
-  }
-}
 
-function useComputed<T extends Model, R>(
-  type: Model.Type<T>,
-  compute: Model.GetCallback<T, any>,
-  required?: boolean
-): Control.GetAdapter<R | null> {
-
-  return (refresh, context) => {
+    let compute = arg1;
     let suspense: (() => void) | undefined;
-    let onUpdate: (() => void) | undefined | null;
-    let value: R | undefined;
-
     let getValue: (() => R | undefined) | undefined;
     let factory: true | undefined;
     let proxy!: T;
 
     context(got => {
       if(!got)
-        throw Oops.NotFound(type);
+        throw Oops.NotFound(this);
 
       proxy = Control.watch(got as T, () => factory ? null : onUpdate);
       getValue = () => compute.call(proxy, proxy, forceUpdate);
@@ -157,7 +134,7 @@ function useComputed<T extends Model, R>(
         if(value !== undefined)
           return value;
   
-        if(required)
+        if(arg2)
           throw new Promise<void>(res => {
             suspense = res;
           });
@@ -165,8 +142,10 @@ function useComputed<T extends Model, R>(
         return null;
       }
     }
-  }
+  })
 }
+
+export { get };
 
 /** Values are not equal for purposes of a refresh. */
 const notEqual = <T>(a: T, b: unknown) => (
