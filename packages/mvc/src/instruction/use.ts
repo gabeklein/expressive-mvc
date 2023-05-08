@@ -4,7 +4,6 @@ import { assign } from '../helper/object';
 import { Model } from '../model';
 import { mayRetry } from '../suspense';
 
-
 export const Oops = issues({
   BadArgument: (type) =>
     `Instruction \`use\` cannot accept argument type of ${type}.`,
@@ -13,27 +12,22 @@ export const Oops = issues({
     `Value ${model}.${key} value is not yet available.`
 })
 
-/**
- * Create a placeholder for specified Model type.
- */
+/** Create a placeholder for specified Model type. */
 function use <T extends Model> (): T | undefined;
-function use <T extends Model> (from: () => T, required: false): T | undefined;
-function use <T extends Model> (from: () => T, required: boolean): T;
 
- /**
-  * Create a new child instance of model.
-  */
+/** Assign the result of a factory as a child model. */
+function use <T extends Model> (from: () => Promise<T> | T, required?: true): T;
+
+/** Assign the result of a factory as a child model. */
+function use <T extends Model> (from: () => Promise<T> | T, required: boolean): T | undefined;
+
+/** Create a new child instance of model. */
 function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
 
- /**
-  * Create a managed child from factory function.
-  */
-function use <T extends {}> (from: () => Promise<T>, required: false): T | undefined;
-function use <T extends {}> (from: () => Promise<T>, required: boolean): T;
-function use <T extends {}> (from: () => Promise<T>, callback?: (i: T) => void): T;
-function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
+/** Create a managed child from factory function. */
+function use <T extends Model> (from: () => Promise<T> | T, callback?: (i: T) => void): T;
 
- /**
+/**
   * Create child-instance relationship with provided model.
   *
   * Note: If `peer` is not already initialized before parent is
@@ -41,7 +35,7 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
   * attach this via `parent()` instruction. It will not, however, if
   * already active.
   */
-function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
+function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
 
 function use(
   input?: any,
