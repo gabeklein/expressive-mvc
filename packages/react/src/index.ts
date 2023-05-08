@@ -3,9 +3,9 @@ import { Control } from '@expressive/mvc';
 import { hasModel } from './context';
 import { getModel, useModel } from './hooks';
 
-Control.getModel = getModel;
-Control.useModel = useModel;
-Control.hasModel = hasModel;
+Control.get = getModel;
+Control.use = useModel;
+Control.has = hasModel;
 
 export {
   default,

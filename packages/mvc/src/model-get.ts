@@ -33,7 +33,7 @@ function get<T extends Model, R>(
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  return Control.getModel(this, (refresh, context) => {
+  return Control.get(this, (refresh, context) => {
     let onUpdate: (() => void) | undefined | null;
     let value: any;
 

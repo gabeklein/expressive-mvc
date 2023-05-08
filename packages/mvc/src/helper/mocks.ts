@@ -20,11 +20,11 @@ afterEach(() => {
 });
 
 beforeAll(() => {
-  Control.hasModel = (Type, subject, callback) => {
+  Control.has = (Type, subject, callback) => {
     callback(context.get(Type));
   }
 
-  Control.getModel = (Type, adapter) => {
+  Control.get = (Type, adapter) => {
     const render = useMemo(refresh => {
       const result = adapter(refresh, use => use(context.get(Type)));
   
@@ -38,7 +38,7 @@ beforeAll(() => {
     return render();
   }
   
-  Control.useModel = (adapter) => {
+  Control.use = (adapter) => {
     return useMemo(refresh => {
       const result = adapter(refresh);
       

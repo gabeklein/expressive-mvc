@@ -683,7 +683,7 @@ describe("replaced source", () => {
   let current: Source;
 
   beforeAll(() => {
-    Control.hasModel = (Type, relativeTo, callback) => {
+    Control.has = (Type, relativeTo, callback) => {
       didUpdate = callback;
       callback(current);
     }
@@ -743,7 +743,7 @@ describe("replaced source", () => {
 
 describe("async", () => {
   beforeAll(() => {
-    Control.hasModel = (Type, _relative, callback) => {
+    Control.has = (Type, _relative, callback) => {
       setTimeout(() => {
         callback(Type.new());
       }, 0);

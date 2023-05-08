@@ -86,14 +86,13 @@ function get<R, T extends Model>(
         if(arg1 === true)
           throw Oops.Required(arg0, subject);
         
-        source = callback => {
-          Control.hasModel(arg0, subject, got => {
+        source = callback =>
+          Control.has(arg0, subject, got => {
             if(got)
               callback(got);
             else if(arg1 !== false)
               throw Oops.AmbientRequired(arg0, subject);
           });
-        }
       }
       else if(!arg0 || parent instanceof arg0)
         subject = parent;

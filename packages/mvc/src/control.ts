@@ -84,9 +84,9 @@ class Control<T extends Model = any> {
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
 
-  static getModel: Control.GetHook;
-  static useModel: Control.UseHook;
-  static hasModel: Control.HasHook;
+  static get: Control.GetHook;
+  static use: Control.UseHook;
+  static has: Control.HasHook;
 
   static for = control;
   static apply = apply;
