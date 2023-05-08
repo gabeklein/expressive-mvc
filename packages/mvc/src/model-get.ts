@@ -53,13 +53,12 @@ function useSubscriber<T extends Model>(
   type: Model.Type<T>, required?: boolean){
 
   return Control.getModel(type, (refresh, context) => {
-    let onUpdate: (() => void) | undefined;
+    let onUpdate: (() => void) | undefined | null;
     let proxy!: T;
 
     context(got => {
       if(got)
         proxy = Control.watch(got as T, () => onUpdate);
-
       else if(required)
         throw Oops.NotFound(type);
     })
@@ -67,8 +66,7 @@ function useSubscriber<T extends Model>(
     return {
       mount(){
         onUpdate = refresh;
-        return () =>
-          onUpdate = undefined;
+        return () => onUpdate = null;
       },
       render: () => proxy
     }
