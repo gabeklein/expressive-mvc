@@ -1,5 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext } from 'react';
 
 export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
@@ -19,14 +19,6 @@ export function hasModel<T extends Model>(
   pending.push(context => {
     callback(context.get(type));
   })
-}
-
-export function tapModel <T extends Model, R>(
-  type: Model.Type<T>,
-  memo: (got: T | undefined) => R
-){
-  const context = useLookup();
-  return useMemo(() => memo(context.get(type)), []);
 }
 
 export function setPeers(context: Context, onto: Model){
