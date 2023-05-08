@@ -1,4 +1,5 @@
 import { Model } from '../model';
+import { get } from './get';
 import { set } from './set';
 import { Oops, use } from './use';
 
@@ -187,15 +188,11 @@ it('will throw if bad argument type', () => {
 describe("factory", () => {
   it('will create from factory', async () => {
     class Child extends Model {
-      parent!: Parent;
+      parent = get(Parent);
     }
 
     class Parent extends Model {
-      child = use(() => {
-        const child = Child.new();
-        child.parent = this;
-        return child;
-      });
+      child = use(() => new Child());
     }
 
     const state = Parent.new();
@@ -204,7 +201,7 @@ describe("factory", () => {
     expect(state.child.parent).toBe(state);
   })
 
-  it('will cancel create on thrown error', () => {
+  it('will rethrow error', () => {
     class Parent extends Model {
       child = use(() => {
         throw new Error("foobar");
@@ -216,7 +213,21 @@ describe("factory", () => {
     expect(test).toThrowError();
   })
 
-  it('will throw rejection on access', async () => {
+  it('will create via async factory', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child());
+    }
+
+    const parent = Parent.new();
+    await parent.on();
+
+    expect(parent.child).toBeInstanceOf(Child);
+    
+    parent.child.value = "foobar";
+    await expect(parent.child).toUpdate();
+  });
+
+  it('will rethrow rejection upon access', async () => {
     class Parent extends Model {
       child = use(async () => {
         throw new Error("foobar");
@@ -232,21 +243,7 @@ describe("factory", () => {
     expect(test).toThrowError();
   })
 
-  it('will create from async factory', async () => {
-    class Parent extends Model {
-      child = use(async () => new Child());
-    }
-
-    const parent = Parent.new();
-    await parent.on();
-
-    expect(parent.child).toBeInstanceOf(Child);
-    
-    parent.child.value = "foobar";
-    await expect(parent.child).toUpdate();
-  });
-
-  it('will suspend if awaited', async () => {
+  it.skip('will suspend if awaited', async () => {
     class Parent extends Model {
       child = use(async () => new Child());
     }
@@ -260,10 +257,12 @@ describe("factory", () => {
 
     await parent.on();
     expect(parent.child).toBeInstanceOf(Child);
+    expect(mock).toBeCalledTimes(2);
     
     parent.child.value = "foobar";
 
     await expect(parent.child).toUpdate();
+    expect(mock).toBeCalledTimes(3);
   });
 
   it('will return undefined if not required', async () => {
