@@ -42,24 +42,26 @@ function get<T extends Model>(
         throw Oops.NotFound(this);
     });
 
-  return arg1
+  return Control.getModel(this, arg1
     ? useComputed(this, arg1, arg2)
-    : useSubscriber(this, arg1 !== false)
+    : useSubscriber(this)
+  )
 }
 
 export { get };
 
 function useSubscriber<T extends Model>(
-  type: Model.Type<T>, required?: boolean){
+  type: Model.Type<T>
+): Control.GetAdapter<T> {
 
-  return Control.getModel(type, (refresh, context) => {
+  return (refresh, context) => {
     let onUpdate: (() => void) | undefined | null;
     let proxy!: T;
 
     context(got => {
       if(got)
         proxy = Control.watch(got as T, () => onUpdate);
-      else if(required)
+      else
         throw Oops.NotFound(type);
     })
 
@@ -70,15 +72,16 @@ function useSubscriber<T extends Model>(
       },
       render: () => proxy
     }
-  })
+  }
 }
 
 function useComputed<T extends Model, R>(
   type: Model.Type<T>,
   compute: Model.GetCallback<T, any>,
-  required?: boolean){
+  required?: boolean
+): Control.GetAdapter<R | null> {
 
-  return Control.getModel(type, (refresh, context) => {
+  return (refresh, context) => {
     let suspense: (() => void) | undefined;
     let onUpdate: (() => void) | undefined | null;
     let value: R | undefined;
@@ -167,7 +170,7 @@ function useComputed<T extends Model, R>(
         return null;
       }
     }
-  });
+  }
 }
 
 /** Values are not equal for purposes of a refresh. */
