@@ -1,6 +1,6 @@
 import { ref } from './instruction/ref';
 import { set } from './instruction/set';
-import { Model, Oops } from './model';
+import { Model } from './model';
 
 describe("Model", () => {
   class Subject extends Model {
@@ -290,18 +290,6 @@ describe("get", () => {
 
     expect(didUpdate).toBeCalledTimes(2);
   })
-})
-
-// TODO: fix or remove tests
-describe.skip("adapter", () => {
-  const methods = ["get", "use"] as const;
-
-  it.each(methods)("will throw by default for %p", (method) => {
-    const useMethod = () => Model[method].apply(Model);
-    const expected = Oops.NoAdapter(method);
-
-    expect(useMethod).toThrowError(expected);
-  });
 })
 
 describe("subscriber", () => {

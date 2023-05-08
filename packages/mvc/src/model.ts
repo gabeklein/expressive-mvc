@@ -2,20 +2,11 @@ import { Control, control } from './control';
 import { Debug } from './debug';
 import { createEffect } from './effect';
 import { addEventListener, awaitUpdate } from './event';
-import { issues } from './helper/issues';
 import { defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
 
 import type { Callback } from '../types';
-
-export const Oops = issues({
-  NoAdapter: (method) =>
-    `Can't call Model.${method} without an adapter.`,
-
-  Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}.`
-});
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
