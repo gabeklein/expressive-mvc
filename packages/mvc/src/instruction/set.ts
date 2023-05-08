@@ -105,8 +105,7 @@ function set <T> (
             if(pending)
               return suspend();
 
-            if(key in state)
-              return state[key];
+            return state[key];
           }
 
         }
