@@ -1,12 +1,8 @@
-import { getRecursive, Parent } from '../children';
-import { control } from '../control';
+import { apply, control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
 import { mayRetry } from '../suspense';
-import { add } from './add';
-
 
 export const Oops = issues({
   BadArgument: (type) =>
@@ -16,27 +12,22 @@ export const Oops = issues({
     `Value ${model}.${key} value is not yet available.`
 })
 
-/**
- * Create a placeholder for specified Model type.
- */
+/** Create a placeholder for specified Model type. */
 function use <T extends Model> (): T | undefined;
-function use <T extends Model> (from: () => T, required: false): T | undefined;
-function use <T extends Model> (from: () => T, required: boolean): T;
 
- /**
-  * Create a new child instance of model.
-  */
+/** Create a new child instance of model. */
 function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
 
- /**
-  * Create a managed child from factory function.
-  */
-function use <T extends {}> (from: () => Promise<T>, required: false): T | undefined;
-function use <T extends {}> (from: () => Promise<T>, required: boolean): T;
-function use <T extends {}> (from: () => Promise<T>, callback?: (i: T) => void): T;
-function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
+/** Assign the result of a factory as a child model. */
+function use <T extends Model> (from: () => Promise<T> | T, required?: true): T;
 
- /**
+/** Assign the result of a factory as a child model. */
+function use <T extends Model> (from: () => Promise<T> | T, required: boolean): T | undefined;
+
+/** Create a managed child from factory function. */
+function use <T extends Model> (from: () => Promise<T> | T, callback?: (i: T) => void): T;
+
+/**
   * Create child-instance relationship with provided model.
   *
   * Note: If `peer` is not already initialized before parent is
@@ -44,105 +35,100 @@ function use <T extends {}> (from: () => T, callback?: (i: T) => void): T;
   * attach this via `parent()` instruction. It will not, however, if
   * already active.
   */
-function use <T extends {}> (peer: T, callback?: (i: T) => void): T;
+function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
 
 function use(
   input?: any,
   argument?: boolean | ((i: {} | undefined) => void)){
 
-  return add(
-    function use(key){
-      const { state, subject } = this;
-      const required = argument !== false;
+  return apply((key, source) => {
+    const { state, subject } = source;
+    const required = argument !== false;
 
-      let pending: Promise<any> | undefined;
-      let error: any;
-      let get: (local: Subscriber | undefined) => any =
-        (_local: Subscriber | undefined) => state.get(key);
+    let pending: Promise<any> | undefined;
+    let error: any;
 
-      if(typeof input === "function"){
-        if("prototype" in input && input === input.prototype.constructor)
-          input = new input();
-      }
-
-      else if(input && typeof input !== "object")
-        throw Oops.BadArgument(typeof input);
-
-      const onUpdate = (next: Model | undefined) => {
-        state.set(key, next);
-
-        if(next){
-          get = getRecursive(key, this);
-          Parent.set(next, subject);
-          control(next);
-        }
-
-        if(typeof argument == "function")
-          argument(next);
-
-        return true;
-      }
-
-      const suspend = () => {
-        if(required === false)
-          return;
-
-        const issue = Oops.NotReady(subject, key);
-
-        assign(pending!, {
-          message: issue.message,
-          stack: issue.stack
-        });
-
-        throw pending;
-      }
-
-      const initialize = () => {
-        const output = typeof input == "function" ?
-          mayRetry(() => input.call(subject, subject)) :
-          input;
-
-        if(output instanceof Promise){
-          pending = output
-            .catch(err => error = err)
-            .then(val => {
-              onUpdate(val);
-              return val;
-            })
-            .finally(() => {
-              pending = undefined;
-              this.update(key);
-            })
-
-          return;
-        }
-
-        onUpdate(output);
-      }
-
-      if(input !== undefined && required)
-        initialize();
-
-      return {
-        set: onUpdate,
-        get(local){
-          if(pending)
-            return suspend();
-  
-          if(error)
-            throw error;
-
-          if(!state.has(key))
-            initialize();
-  
-          if(pending)
-            return suspend();
-  
-          return get(local);
-        }
-      };
+    if(typeof input === "function"){
+      if("prototype" in input && input === input.prototype.constructor)
+        input = new input();
     }
-  )
+
+    else if(input && typeof input !== "object")
+      throw Oops.BadArgument(typeof input);
+
+    const onUpdate = (next: Model | undefined) => {
+      state[key] = next;
+
+      if(next){
+        control(next).parent = subject;
+        control(next, true);
+      }
+
+      if(typeof argument == "function")
+        argument(next);
+
+      return true;
+    }
+
+    const suspend = () => {
+      if(required === false)
+        return;
+
+      const issue = Oops.NotReady(subject, key);
+
+      assign(pending!, {
+        message: issue.message,
+        stack: issue.stack
+      });
+
+      throw pending;
+    }
+
+    const initialize = () => {
+      const output = typeof input == "function" ?
+        mayRetry(() => input.call(subject, subject)) :
+        input;
+
+      if(output instanceof Promise){
+        pending = output
+          .then(val => {
+            onUpdate(val);
+            return val;
+          })
+          .catch(err => error = err)
+          .finally(() => {
+            pending = undefined;
+            source.update(key);
+          })
+
+        return;
+      }
+
+      onUpdate(output);
+    }
+
+    if(input !== undefined && required)
+      initialize();
+
+    return {
+      set: onUpdate,
+      get(){
+        if(pending)
+          return suspend();
+
+        if(error)
+          throw error;
+
+        if(!(key in state))
+          initialize();
+
+        if(pending)
+          return suspend();
+
+        return state[key];
+      }
+    };
+  })
 }
 
 export { use }

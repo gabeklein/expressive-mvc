@@ -1,56 +1,105 @@
-import { setRecursive } from './children';
-import { defineProperty, getOwnPropertyDescriptor, random } from './helper/object';
-import { flushComputed } from './instruction/get';
+import { issues } from './helper/issues';
+import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Model } from './model';
-import { subscriber, Subscriber } from './subscriber';
-import { suspend } from './suspense';
 
-import type { Callback } from './helper/types';
-import { setInstruction } from './instruction/add';
+import type { Callback } from '../types';
 
+export const Oops = issues({
+  BadAssignment: (parent, expected, got) =>
+    `${parent} expected Model of type ${expected} but got ${got}.`,
+});
+
+type Observer<T extends Model = any> =
+  (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
+
+type InstructionRunner<T extends Model = any> =
+  (key: Model.Key<T>, parent: Control<T>) => void;
+
+const INSTRUCTION = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
+const OBSERVER = new WeakMap<{}, Observer>();
 
 declare namespace Control {
-  /**
-   * Called immediately when any key is changed or emitted.
-   * Returned callback is notified when update is complete.
-   */
-  type OnSync<T = any> = (key: Model.Event<T> | null, source: Control) => OnAsync<T> | void;
-
-  /** Called at the end of an event frame with all keys affected. */
-  type OnAsync<T = any> = (keys: Model.Event<T>[]) => void;
-
-  // TODO: implement value type
-  type OnValue<T = any> = (this: T, value: any) => boolean | void;
-  
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
-    | Instruction.Getter<T>
-    | Instruction.Descriptor<T>
+    | PropertyDescriptor<T>
+    | Getter<T>
     | void;
 
-  namespace Instruction {
-    type Getter<T> = (within?: Subscriber) => T;
-    type Setter<T> = (value: T) => boolean | void;
+  type Getter<T> = (source: Model) => T;
+  type Setter<T> = (value: T) => boolean | void;
 
-    interface Descriptor<T> {
-      enumerable?: boolean;
-      value?: T;
-      get?: Getter<T>;
-      set?: Setter<T> | false;
-    }
+  type PropertyDescriptor<T = any> = {
+    enumerable?: boolean;
+    value?: T;
+    get?: Getter<T>;
+    set?: Setter<T> | false;
   }
+
+  /**
+   * Callback for Controller.for() static method.
+   * Returned callback is forwarded.
+   */
+  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
+
+  type GetAdapter<T> = (
+    update: () => void,
+    source: (
+      request: (got: Model | undefined) => void
+    ) => void
+  ) => {
+    mount: () => (() => void) | void;
+    render: () => T;
+  } | void;
+
+  type GetHook = <T extends Model, R> (
+    type: Model.Type<T>,
+    adapter: GetAdapter<R>
+  ) => R | null;
+
+  type UseAdapter<T extends Model> = (
+    update: () => void
+  ) => {
+    instance: T;
+    mount: () => (() => void) | void;
+    render: (props: Model.Compat<T>) => T;
+  }
+
+  type UseHook = <T extends Model>(
+    adapter: UseAdapter<T>
+  ) => (props: Model.Compat<T>) => T;
+
+  type HasHook = (
+    type: typeof Model,
+    relativeTo: Model,
+    callback: (got: Model | undefined) => void
+  ) => void;
 }
 
 class Control<T extends Model = any> {
-  public state!: Map<any, any>;
-  public frame = new Set<string>();
-  public waiting = new Set<Control.OnAsync<T>>();
-  public followers = new Set<Control.OnSync>();
+  static after = new Set<Callback>();
+  static before = new Set<Callback>();
+  static pending = new Set<Callback>();
+
+  static get: Control.GetHook;
+  static use: Control.UseHook;
+  static has: Control.HasHook;
+
+  static for = control;
+  static apply = apply;
+  static watch = watch;
+
+  public parent?: Model;
+  public state!: { [key: string]: any };
+
   public latest?: Model.Event<T>[];
+
+  public frame = new Set<string>();
+  public followers = new Set<Observer>();
+  public observers = new Map([["", this.followers]]);
 
   constructor(
     public subject: T,
@@ -59,192 +108,228 @@ class Control<T extends Model = any> {
     REGISTER.set(subject, this);
   }
 
-  watch(key: keyof T & string){
-    const { subject, state } = this;
-    const { value } = getOwnPropertyDescriptor(subject, key)!;
+  add(key: Extract<keyof T, string>){
+    const { value } = getOwnPropertyDescriptor(this.subject, key)!;
+    const instruction = INSTRUCTION.get(value);
 
-    if(typeof value == "function")
-      return;
-
-    let output;
-
-    if(typeof value == "symbol"){
-      output = setInstruction(value, this, key)
-
-      if(!output)
-        return;
+    if(typeof instruction == "function"){
+      INSTRUCTION.delete(value);
+      instruction(key, this);
     }
-
     else if(value instanceof Model)
-      output = setRecursive(this, key, value);
+      setRecursive(this, key, value);
 
-    else 
-      state.set(key, value);
-
-    this.assign(key, output || {});
+    else if(typeof value != "function")
+      this.watch(key, { value });
   }
 
-  assign(
+  watch(
     key: keyof T & string,
-    output: Control.Instruction.Descriptor<any>){
+    output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
+    const { get, set, enumerable } = output;
+
+    const subs = new Set<Observer>();
+    
+    this.observers.set(key, subs);
 
     if("value" in output)
-      state.set(key, output.value);
+      state[key] = output.value;
 
     defineProperty(this.subject, key, {
-      enumerable: output.enumerable,
-      set: (
-        output.set === false
-          ? undefined
-          : this.ref(key as Model.Key<T>, output.set)
-      ),
+      enumerable,
+      set: set === false
+        ? undefined
+        : this.ref(key as Model.Key<T>, set),
       get(this: any){
-        const local = subscriber(this);
+        const event = OBSERVER.get(this);
 
-        if(local)
-          local.follow(key);
+        if(event)
+          subs.add(event);
 
-        return output.get
-          ? output.get(local)
-          : state.get(key)
+        const value = get ? get(this) : state[key];
+
+        return event && value instanceof Model
+          ? watch(value, event)
+          : value;
       }
     });
   }
 
-  /** Throw suspense which resolves when key is set. */
-  waitFor(key: string): never {
-    throw suspend(this, key);
-  }
-
-  addListener(listener: Control.OnSync<T>){
-    this.followers.add(listener);
-    return () => {
-      this.followers.delete(listener)
-    }
-  }
-
   ref<K extends Model.Key<T>>(
-    key: K,
-    handler?: (this: T, value: T[K]) => boolean | void){
-  
-    const { subject, state } = this;
+    key: K, callback?: (this: T, value: T[K]) => boolean | void){
+
+    const { state, subject } = this
   
     return (value: any) => {
-      if(state.get(key) == value)
-        return;
-  
-      if(handler)
-        switch(handler.call(subject, value)){
+      if(value !== state[key])
+        switch(callback && callback.call(subject, value)){
+          case undefined:
+            state[key] = value;
           case true:
             this.update(key);
-          case false:
-            return;
         }
-  
-      state.set(key, value);
-      this.update(key);
     }
   }
 
-  update(key: Model.Key<T>){
-    const { followers, frame, waiting } = this;
-  
+  update(key: string){
+    const { frame } = this;
+
     if(frame.has(key))
       return;
-  
-    else if(!frame.size)
-      setTimeout(() => {
-        flushComputed(this);  
-        const keys = this.latest = Array.from(frame);
-        setTimeout(() => this.latest = undefined, 0);
 
+    if(!frame.size){
+      this.latest = undefined;
+
+      requestUpdateFrame(() => {
+        this.latest = Array.from(frame);
+        this.followers.forEach(cb => {
+          const notify = cb(undefined, this);
+    
+          if(notify)
+            requestUpdateFrame(notify);
+        })
         frame.clear();
-      
-        for(const notify of waiting)
-          try {
-            waiting.delete(notify);
-            notify(keys);
-          }
-          catch(err){
-            console.error(err);
-          }
-      }, 0);
+      })
+    }
   
     frame.add(key);
+
+    for(const k of ["", key]){
+      const subs = this.observers.get(k);
+
+      subs && subs.forEach(cb => {
+        const notify = cb(key, this);
   
-    for(const callback of followers){
-      const event = callback(key, this);
-  
-      if(typeof event == "function")
-        waiting.add(event);
+        if(notify === null)
+          subs.delete(cb);
+        else if(notify)
+          requestUpdateFrame(notify);
+      });
     }
+  }
+
+  addListener(fn: Observer){
+    this.followers.add(fn);
+    return () => this.followers.delete(fn);
   }
 
   clear(){
-    const listeners = [ ...this.followers ];
-
-    this.followers.clear();
-    listeners.forEach(x => x(null, this));
-  }
-
-  static get = controller;
-  static for = control;
-}
-
-function controller<T extends Model>(from: T){
-  if("is" in from)
-    from = from.is;
-
-  return REGISTER.get(from) as Control<T> | undefined;
-}
-
-declare namespace control {
-  /**
-   * Callback for Controller.for() static method.
-   * Returned callback is forwarded.
-   */
-  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
-}
-
-function control<T extends Model>(subject: T): Control<T>;
-function control<T extends Model>(subject: T, cb: control.OnReady<T>): Callback;
-function control<T extends Model>(subject: T, cb?: control.OnReady<T>){
-  const control = controller(subject) || new Control(subject);
-
-  if(!control.state){
-    const { waiting } = control;
-
-    if(cb){
-      let callback: Callback | void;
-
-      waiting.add(() => {
-        callback = cb(control);
+    this.observers.forEach(subs => {
+      subs.forEach(fn => {
+        const cb = fn(null, this);
+        cb && cb();
       });
+    });
+    this.observers.clear();
+  }
+}
 
-      return () => {
-        if(callback)
-          callback();
-      }
+const PENDING_INIT = new WeakMap<Control, Set<Callback>>();
+
+function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
+function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
+function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
+  const control = REGISTER.get(subject.is) as Control<T>;
+  const onReady = typeof ready == "function" && ready;
+
+  if(!control.state && ready){
+    let waiting = PENDING_INIT.get(control);
+
+    if(!waiting)
+      PENDING_INIT.set(control, waiting = new Set());
+
+    if(onReady){
+      let callback: Callback | void;
+  
+      waiting.add(() => callback = onReady(control));
+  
+      return () => callback && callback();
     }
 
-    control.state = new Map();
+    control.state = {};
 
-    for(const key in subject)
-      control.watch(key);
+    for(const key in control.subject)
+      control.add(key);
 
-    control.waiting = new Set();
-
-    for(const cb of waiting)
-      cb([]);
+    waiting.forEach(cb => cb());
   }
 
-  return cb ? cb(control) : control;
+  return onReady ? onReady(control) : control;
+}
+
+function requestUpdateFrame(event: Callback){
+  const { after, before, pending } = Control;
+
+  if(!pending.size)
+    setTimeout(() => {
+      before.forEach(x => x());
+      pending.forEach(notify => {
+        try {
+          notify();
+        }
+        catch(err){
+          console.error(err);
+        }
+      });
+      pending.clear();
+      after.forEach(x => x());
+    }, 0);
+
+  pending.add(event);
+}
+
+function setRecursive(on: Control, key: string, value: Model){
+  const set = (next: Model | undefined) => {
+    if(next instanceof value.constructor){
+      on.state[key] = next;
+      control(next).parent = on.subject;
+      control(next, true);
+      return true;
+    }
+
+    throw Oops.BadAssignment(`${on.subject}.${key}`, value.constructor, next);
+  }
+
+  on.watch(key, { set });
+  set(value);
+}
+
+function watch<T extends Model>(on: T, cb: Observer): T {
+  if(!on.hasOwnProperty("is"))
+    on = defineProperty(create(on), "is", { value: on });
+
+  OBSERVER.set(on, cb);
+
+  return on;
+}
+
+function apply<T = any>(instruction: Control.Instruction<any>){
+  const placeholder = Symbol("instruction");
+
+  INSTRUCTION.set(placeholder, (key, onto) => {
+    delete onto.subject[key];
+  
+    const output = instruction.call(onto, key, onto);
+  
+    if(output)
+      onto.watch(key, 
+        typeof output == "function" ? { get: output } : output
+      );
+  });
+
+  return placeholder as unknown as T;
+}
+
+/** Random alphanumberic of length 6; will always start with a letter. */
+function random(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
-  Control,
+  apply,
   control,
-  controller
+  Control,
+  watch
 }

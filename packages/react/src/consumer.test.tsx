@@ -2,8 +2,8 @@ import React from 'react';
 
 import { Model } from '.';
 import { Consumer } from './consumer';
-import { create } from './helper/testing';
 import { Provider } from './provider';
+import { create } from './test';
 
 class Foo extends Model {
   value?: string = undefined;

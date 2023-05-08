@@ -1,63 +1,54 @@
-import { Control, controller } from './control';
+import { Control, control } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
-import { Subscriber, subscriber } from './subscriber';
 
-const LOCAL = "__local";
 const STATE = "__state";
 const UPDATE = "__update";
 const CONTROL = "__control";
+const PARENT = "__parent";
 
 defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
-      return controller(this);
-    }
-  },
-  [LOCAL]: {
-    get(this: Model){
-      return subscriber(this);
+      return control(this);
     }
   },
   [STATE]: {
     get(this: Model){
-      const { state } = controller(this)!;
-      const output: any = {};
-
-      state.forEach((value, key) => output[key] = value);
-
-      return output;
+      return { ...control(this).state };
     }
   },
   [UPDATE]: {
     get(this: Model){
-      return (subscriber(this) || controller(this))!.latest;
+      return control(this).latest;
+    }
+  },
+  [PARENT]: {
+    get(this: Model){
+      return control(this).parent;
     }
   }
 })
 
 const Debug = {
   CONTROL,
-  LOCAL,
   STATE,
-  UPDATE
+  UPDATE,
+  PARENT
 } as {
-  /** Use to access Model's local Subscriber (if exists). */
-  LOCAL: "__local";
-
   /** Use to access snapshot of Model's current state. */
   STATE: "__state";
 
   /**
    * Use to access snapshot of Model's latest update.
-   * 
-   * Note: If used within a Subscriber, update will be narrowed to the specific keys
-   * which triggered a refresh (if one did).
    */
   UPDATE: "__update";
 
   /** Use to access a Model's controller. */
   CONTROL: "__control";
+
+  /** Use to access a Model's parent, if exists. */
+  PARENT: "__parent";
 }
 
 /**
@@ -65,12 +56,9 @@ const Debug = {
  * 
  * These properties always exist at runtime, however are hidden unless you cast your Model as `Debug<T>`.
  */
-type Debug<T extends Model> = T & {
+type Debug<T extends Model = Model> = T & {
   /** Controller for this instance. */
   [CONTROL]?: Control<T>;
-
-  /** Current subscriber (if present) while used in a live context (e.g. hook or effect). */
-  [LOCAL]?: Subscriber<T>;
 
   /** Current state of this instance. */
   [STATE]?: Model.Export<T>;
@@ -82,6 +70,11 @@ type Debug<T extends Model> = T & {
    * If within a subscribed function, will contain only keys which explicitly caused a refresh.
    */
   [UPDATE]?: readonly Model.Event<T>[];
+
+  /**
+   * Parent currently assigned to parent. Usually the model which this one is a property of.
+   */
+  [PARENT]?: Model;
 }
 
 export { Debug };

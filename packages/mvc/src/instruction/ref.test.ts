@@ -1,4 +1,3 @@
-import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
 import { ref } from './ref';
 
@@ -24,7 +23,7 @@ describe("property", () => {
   
     state.ref1.current = "foobar";
   
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(state.ref1.current).toBe("foobar");
   })
   
@@ -35,7 +34,7 @@ describe("property", () => {
     state.on("ref1", callback, true);
     state.ref1.current = "foobar";
   
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith(["ref1"]);
   })
   
@@ -46,7 +45,7 @@ describe("property", () => {
     state.on("ref1", callback, true);
     state.ref1("foobar");
   
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith(["ref1"]);
   })
   
@@ -60,7 +59,7 @@ describe("property", () => {
     state.ref2.current = targetValue;
     expect(state.didTrigger).toBeCalledWith(targetValue);
   
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith(["ref2"]);
   })
   
@@ -69,11 +68,11 @@ describe("property", () => {
   
     state.ref3.current = 1;
   
-    await state.on();
+    await expect(state).toUpdate();
     expect(state.didTrigger).not.toBeCalled();
     state.ref3.current = 2;
   
-    await state.on();
+    await expect(state).toUpdate();
     expect(state.didTrigger).toBeCalledWith(true);
   })
   
@@ -139,7 +138,7 @@ describe("proxy", () => {
     test.refs.foo("bar");
     test.refs.bar("foo");
 
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
 
     expect(test.foo).toBe("bar");
     expect(test.bar).toBe("foo");

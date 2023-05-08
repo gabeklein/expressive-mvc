@@ -1,9 +1,9 @@
-import { control } from './control';
+import { control, watch } from './control';
 import { issues } from './helper/issues';
-import { Callback } from './helper/types';
 import { Model } from './model';
-import { Subscriber } from './subscriber';
 import { mayRetry } from './suspense';
+
+import type { Callback } from '../types';
 
 export const Oops = issues({
   BadCallback: () =>
@@ -11,11 +11,10 @@ export const Oops = issues({
 })
 
 export function createEffect<T extends Model>(
-  model: T,
-  callback: Model.Effect<T>,
-  keys: Model.Event<T>[]){
+  source: T, callback: Model.Effect<T>){
 
-  return control(model, controller => {
+  return control(source, self => {
+    let { subject } = self;
     let unSet: Callback | Promise<any> | void;
     let busy = false;
 
@@ -27,7 +26,7 @@ export function createEffect<T extends Model>(
         if(typeof unSet == "function")
           unSet();
     
-        unSet = callback.call(model, model);
+        unSet = callback.call(subject, subject);
     
         if(unSet instanceof Promise)
           unSet = undefined;
@@ -42,26 +41,17 @@ export function createEffect<T extends Model>(
       }
     }
 
-    if(Array.isArray(keys)){
-      invoke();
+    let refresh: (() => void) | null;
 
-      return controller.addListener(key => {
-        if(key === null){
-          if(!keys.length)
-            invoke();
-        }
-        else if(keys.includes(key))
-          return invoke;
-      });
-    }
+    subject = watch(subject, () => refresh);
+    self.followers.add(key => (
+      key === null || refresh === null ? refresh : undefined
+    ));
 
-    const sub = new Subscriber(model, () => invoke);
-
-    model = sub.proxy;
     invoke();
-    sub.commit();
+    refresh = invoke;
 
-    return () => sub.release();
+    return () => refresh = null;
   });
 }
 

@@ -1,9 +1,162 @@
-import { assertDidUpdate, mockAsync, mockConsole } from '../helper/testing';
+import { Control } from '../control';
+import { render, context } from '../helper/mocks';
+import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
-import { Oops as Child } from '../children';
 
 it.todo("will add pending compute to frame immediately");
+
+describe("fetch mode", () => {
+  it("will allow overwrite", async () => {
+    class Foo extends Model {
+      value = "foo";
+      bar = new Bar();
+    }
+  
+    class Bar extends Model {
+      value = "foo";
+      foo = get(Foo);
+    }
+  
+    const foo = Foo.new();
+    const mockEffect = jest.fn();
+    let promise = mockPromise();
+    
+    expect(foo.bar.foo).toBe(foo);
+  
+    foo.on(state => {
+      mockEffect(state.bar.foo.value);
+      promise.resolve();
+    })
+  
+    promise = mockPromise();
+    foo.value = "bar";
+    await promise;
+  
+    expect(mockEffect).toBeCalledWith("bar");
+  
+    promise = mockPromise();
+    foo.bar.foo = Foo.new();
+    await promise;
+  
+    expect(mockEffect).toBeCalledWith("foo");
+    expect(mockEffect).toBeCalledTimes(3);
+  })
+  
+  it("creates parent-child relationship", () => {
+    class Foo extends Model {
+      child = new Bar();
+    }
+    class Bar extends Model {
+      parent = get(Foo);
+    }
+  
+    const foo = Foo.new();
+    const bar = foo.child;
+  
+    expect(bar).toBeInstanceOf(Bar);
+    expect(bar.parent).toBe(foo);
+  })
+
+  it("throws when required parent is absent :(", () => {
+    class Parent extends Model {}
+    class Child extends Model {
+      expects = get(Parent, true);
+    }
+  
+    const attempt = () => Child.new("ID");
+    const error = Oops.Required("Parent", "Child-ID");
+  
+    expect(attempt).toThrowError(error);
+  })
+  
+  it("retuns undefined if required is false", () => {
+    class MaybeParent extends Model {}
+    class StandAlone extends Model {
+      maybe = get(MaybeParent, false);
+    }
+  
+    const instance = StandAlone.new();
+  
+    expect(instance.maybe).toBeUndefined();
+  })
+  
+  it("throws if parent is of incorrect type", () => {
+    class Expected extends Model {}
+    class Unexpected extends Model {
+      child = new Adopted("ID");
+    }
+    class Adopted extends Model {
+      expects = get(Expected);
+    }
+  
+    const attempt = () => Unexpected.new("ID");
+    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
+  
+    expect(attempt).toThrowError(error);
+  })
+
+  it('will track recursively', async () => {
+    class Child extends Model {
+      value = "foo";
+      parent = get(Parent);
+    }
+    
+    class Parent extends Model {
+      value = "foo";
+      child = new Child();
+    }
+  
+    const { child } = Parent.new();
+    const effect = jest.fn((it: Child) => {
+      void it.value;
+      void it.parent.value;
+    })
+  
+    child.on(effect);
+  
+    child.value = "bar";
+    await expect(child).toUpdate();
+    expect(effect).toHaveBeenCalledTimes(2)
+  
+    child.parent.value = "bar";
+    await expect(child.parent).toUpdate();
+    expect(effect).toHaveBeenCalledTimes(3)
+  })
+
+  it('will yeild a computed value', async () => {
+    class Foo extends Model {
+      bar = new Bar();
+      seconds = 0;
+    }
+
+    class Bar extends Model {
+      minutes = get(Foo, state => {
+        return Math.floor(state.seconds / 60);
+      })
+    }
+
+    const { is: foo, bar } = Foo.new();
+  
+    foo.seconds = 30;
+  
+    await expect(foo).toUpdate();
+  
+    expect(foo.seconds).toEqual(30);
+    expect(bar.minutes).toEqual(0);
+  
+    foo.seconds = 60;
+  
+    // make sure both did declare an update
+    await Promise.all([
+      expect(bar).toUpdate(),
+      expect(foo).toUpdate()
+    ])
+  
+    expect(foo.seconds).toEqual(60);
+    expect(bar.minutes).toEqual(1);
+  })
+})
 
 describe("compute mode", () => {
   it('will reevaluate when inputs change', async () => {
@@ -19,14 +172,14 @@ describe("compute mode", () => {
   
     subject.seconds = 30;
   
-    await assertDidUpdate(subject);
+    await expect(subject).toUpdate();
   
     expect(subject.seconds).toEqual(30);
     expect(subject.minutes).toEqual(0);
   
     subject.seconds = 60;
   
-    await assertDidUpdate(subject);
+    await expect(subject).toUpdate();
   
     expect(subject.seconds).toEqual(60);
     expect(subject.minutes).toEqual(1);
@@ -55,12 +208,12 @@ describe("compute mode", () => {
     expect(subject.nested).toBe("foo");
   
     subject.child.value = "bar";
-    await assertDidUpdate(subject);
-  
+
+    await expect(subject).toUpdate();
     expect(subject.nested).toBe("bar");
   
     subject.child = new Child();
-    await assertDidUpdate(subject);
+    await expect(subject).toUpdate();
   
     // sanity check
     expect(subject.child.value).toBe("foo");
@@ -125,7 +278,7 @@ describe("compute mode", () => {
     expect(didCompute).not.toBeCalledWith(2)
   
     // does compute eventually
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(didCompute).toBeCalledWith(2)
     expect(test.plusOne).toBe(2);
   
@@ -139,7 +292,7 @@ describe("compute mode", () => {
     expect(didCompute).toBeCalledWith(3);
   
     // update should still occur
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
   })
   
   it('will be squashed with regular updates', async () => {
@@ -174,7 +327,7 @@ describe("compute mode", () => {
     state.b++;
     state.x.value++;
   
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
   
     expect(exec).toBeCalledTimes(2);
     expect(emit).toBeCalledTimes(1);
@@ -247,7 +400,7 @@ describe("compute mode", () => {
     expect(test.greeting).toBe("Hello World!");
   
     test.friend = "Foo";
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
   
     expect(test.greeting).toBe("Hello Foo!");
   })
@@ -289,7 +442,7 @@ describe("compute mode", () => {
       state.on("value");
       state.shouldFail = true;
 
-      await assertDidUpdate(state);
+      await expect(state).toUpdate();
 
       expect(warn).toBeCalledWith(failed.message);
       expect(error).toBeCalled();
@@ -298,6 +451,8 @@ describe("compute mode", () => {
     it('will throw if source is another instruction', () => {
       class Test extends Model {
         peer = get(this, () => "foobar");
+
+        // @ts-ignore
         value = get(this.peer, () => {});
       }
 
@@ -339,7 +494,7 @@ describe("compute mode", () => {
 
       // change upstream value to trigger re-compute
       test.multiplier = 1;
-      await assertDidUpdate(test);
+      await expect(test).toUpdate();
 
       // getter should see current value while producing new one
       expect(test.previous).toBe(initial);
@@ -378,7 +533,7 @@ describe("compute mode", () => {
       expect(test.value).toBe(3);
       expect(didGetOldValue).toBeCalledWith(2);
     
-      await assertDidUpdate(test);
+      await expect(test).toUpdate();
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     })
@@ -401,7 +556,7 @@ describe("compute mode", () => {
 
       test.foo++;
 
-      await assertDidUpdate(test);
+      await expect(test).toUpdate();
       expect(test.bar).toBe(3);
     })
 
@@ -431,168 +586,172 @@ describe("compute mode", () => {
   })
 })
 
-describe("fetch mode", () => {
-  it("will allow overwrite", async () => {
-    class Foo extends Model {
-      value = "foo";
-      bar = new Bar();
+describe("context", () => {
+  class Foo extends Model {
+    bar = get(Bar);
+  }
+
+  class Bar extends Model {
+    constructor(){
+      super();
+      context.add(this);
     }
-  
-    class Bar extends Model {
-      value = "foo";
-      foo = get(Foo);
-    }
-  
-    const foo = Foo.new();
-    const mock = jest.fn();
-    const promise = mockAsync();
-    
-    expect(foo.bar.foo).toBe(foo);
-  
-    foo.on(state => {
-      mock(state.bar.foo.value);
-      promise.resolve();
-    })
-  
-    foo.value = "bar";
-    await promise.pending();
-  
-    expect(mock).toBeCalledWith("bar");
-  
-    foo.bar.foo = Foo.new();
-    await promise.pending();
-  
-    expect(mock).toBeCalledWith("foo");
-    expect(mock).toBeCalledTimes(3);
-  })
-  
-  it("creates parent-child relationship", () => {
-    class Foo extends Model {
-      child = new Bar();
-    }
-    class Bar extends Model {
-      parent = get(Foo);
-    }
-  
-    const foo = Foo.new();
-    const bar = foo.child;
-  
-    expect(bar).toBeInstanceOf(Bar);
-    expect(bar.parent).toBe(foo);
+
+    value = "bar";
+  }
+
+  it("will attach peer from context", async () => {
+    const bar = Bar.new();
+    const hook = render(() => Foo.use().is.bar);
+
+    expect(hook.output).toBe(bar);
   })
 
-  it("throws when required parent is absent :(", () => {
-    class Detatched extends Model {}
-    class NonStandalone extends Model {
-      expects = get(Detatched);
-    }
-  
-    const attempt = () => NonStandalone.new();
-    const error = Oops.Required(Detatched, NonStandalone);
-  
-    expect(attempt).toThrowError(error);
-  })
-  
-  it("retuns undefined if set not-required", () => {
-    class MaybeParent extends Model {}
-    class StandAlone extends Model {
-      maybe = get(MaybeParent, false);
-    }
-  
-    const instance = StandAlone.new();
-  
-    expect(instance.maybe).toBeUndefined();
-  })
-  
-  it("throws if parent is of incorrect type", () => {
-    class Expected extends Model {}
-    class Unexpected extends Model {
-      child = new Adopted("ID");
-    }
-    class Adopted extends Model {
-      expects = get(Expected);
-    }
-  
-    const attempt = () => Unexpected.new("ID");
-    const error = Child.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
-  
-    expect(attempt).toThrowError(error);
+  it("will subscribe peer from context", async () => {
+    const bar = Bar.new();
+    const hook = render(() => Foo.use().bar.value);
+
+    expect(hook.output).toBe("bar");
+
+    bar.value = "foo";
+    await hook.didUpdate();
+
+    expect(hook.output).toBe("foo");
+    expect(hook).toBeCalledTimes(2);
   })
 
-  it('will track recursively', async () => {
+  it("will return undefined if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar, false);
+    }
+
+    const hook = render(() => Foo.use().bar);
+
+    expect(hook.output).toBeUndefined();
+  })
+
+  it("will throw if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar);
+
+      constructor(){
+        super("ID");
+      }
+    }
+
+    const expected = Oops.AmbientRequired("Bar", "Foo-ID");
+    const tryToRender = () => render(() => Foo.use());
+
+    expect(tryToRender).toThrowError(expected);
+  })
+
+  it("will prefer parent over context", () => {
+    class Parent extends Model {
+      child = new Child();
+      value = "foo";
+    }
+
     class Child extends Model {
-      value = "foo";
       parent = get(Parent);
     }
-    
-    class Parent extends Model {
-      value = "foo";
-      child = new Child();
-    }
-  
-    const { child } = Parent.new();
-    const effect = jest.fn((it: Child) => {
-      void it.value;
-      void it.parent.value;
-    })
-  
-    child.on(effect);
-  
-    child.value = "bar";
-    await assertDidUpdate(child);
-    expect(effect).toHaveBeenCalledTimes(2)
-  
-    child.parent.value = "bar";
-    await assertDidUpdate(child.parent);
-    expect(effect).toHaveBeenCalledTimes(3)
+
+    context.add(Parent.new());
+
+    const hook = render(() => Parent.use().is);
+    const parent = hook.output;
+
+    expect(parent.child.parent).toBe(parent);
   })
 
-  it('will yeild a computed value', async () => {
-    class Foo extends Model {
-      bar = new Bar();
-      seconds = 0;
+  it("will throw if parent required in-context", () => {
+    class Ambient extends Model {}
+    class Child extends Model {
+      expects = get(Ambient, true);
     }
 
-    class Bar extends Model {
-      minutes = get(Foo, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    }
+    context.add(Ambient.new());
+  
+    const attempt = () => Child.new("ID");
+    const error = Oops.Required("Ambient", "Child-ID");
+  
+    expect(attempt).toThrowError(error);
+  })
+})
 
-    const { is: foo, bar } = Foo.new();
+describe("replaced source", () => {
+  let didUpdate: (got: Source) => void;
+  let current: Source;
+
+  beforeAll(() => {
+    Control.has = (Type, relativeTo, callback) => {
+      didUpdate = callback;
+      callback(current);
+    }
+  })
+
+  class Source extends Model {
+    constructor(public value: string){
+      super();
+    }
+  }
+
+  class Test extends Model {
+    greeting = get(Source, source => {
+      return `Hello ${source.value}!`;
+    })
+  }
+
+  it("will update", async () => {
+    const test = Test.new();
+    const oldSource = current = Source.new("Foo");
   
-    foo.seconds = 30;
+    expect(test.greeting).toBe("Hello Foo!");
+
+    oldSource.value = "Baz";
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Baz!");
+
+    const newSource = current = Source.new("Bar");
+
+    didUpdate(newSource);
+
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Bar!");
+
+    newSource.value = "Baz";
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Baz!");
+  })
+
+  it("will not update from previous source", async () => {
+    const test = Test.new();
+    const oldSource = current = Source.new("Foo");
   
-    await assertDidUpdate(foo);
-  
-    expect(foo.seconds).toEqual(30);
-    expect(bar.minutes).toEqual(0);
-  
-    foo.seconds = 60;
-  
-    // make sure both did declare an update
-    await Promise.all([
-      assertDidUpdate(bar),
-      assertDidUpdate(foo)
-    ])
-  
-    expect(foo.seconds).toEqual(60);
-    expect(bar.minutes).toEqual(1);
+    expect(test.greeting).toBe("Hello Foo!");
+
+    const newSource = current = Source.new("Bar");
+
+    didUpdate(newSource);
+
+    await expect(test).toUpdate();
+    expect(test.greeting).toBe("Hello Bar!");
+
+    oldSource.value = "Baz";
+    await expect(test).not.toUpdate();
   })
 })
 
 describe("async", () => {
-  class Test extends Model {
-    /** Override method to simplify tests. */
-    static has(callback: (x: Model) => void){
+  beforeAll(() => {
+    Control.has = (Type, _relative, callback) => {
       setTimeout(() => {
-        callback(this.new());
+        callback(Type.new());
       }, 0);
     }
-  }
-  
+  })
+
   it("will suspend if not ready", async () => {
-    class Foo extends Test {}
+    class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
     }
@@ -615,7 +774,7 @@ describe("async", () => {
   })
   
   it("will prevent compute if not ready", async () => {
-    class Foo extends Test {
+    class Foo extends Model {
       value = "foobar";
     }
     class Bar extends Model {

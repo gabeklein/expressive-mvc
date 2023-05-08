@@ -1,6 +1,6 @@
-import { assertDidUpdate } from './helper/testing';
 import { ref } from './instruction/ref';
-import { Model, Oops } from './model';
+import { set } from './instruction/set';
+import { Model } from './model';
 
 describe("Model", () => {
   class Subject extends Model {
@@ -34,7 +34,7 @@ describe("Model", () => {
     expect(state.is.value).toBe(1);
   
     state.value = 2;
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
   
     expect(state.is.value).toBe(2)
   })
@@ -64,7 +64,7 @@ describe("Model", () => {
     expect(state.value).toBe(1);
   
     state.value = 2
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
   
     expect(state.value).toBe(2);
   })
@@ -75,7 +75,7 @@ describe("Model", () => {
     expect(state.value).toBe(1);
   
     state.value = 1
-    await assertDidUpdate(state, false);
+    await expect(state).not.toUpdate();
   })
   
   it('accepts update from within a method', async () => {
@@ -90,7 +90,7 @@ describe("Model", () => {
     const state = Subject.new();
   
     state.setValue(3);
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
   
     expect(state.value).toBe(3)
   })
@@ -148,33 +148,6 @@ describe("dispatch", () => {
     expect(update).toMatchObject(["bar", "foo"]);
   })
 
-  it("will call function with argument", async () => {
-    const test = Test.new();
-    await test.set("methodString", "foobar");
-    expect(test.methodString).toBeCalledWith("foobar");
-  })
-
-  it.todo("will set value to argument if not a function");
-
-  it("will throw if callback is undefined", async () => {
-    const test = Test.new();
-    const attempt = () => {
-      // @ts-ignore
-      test.set("foo").then();
-    }
-
-    expect(attempt).toThrowError();
-  })
-
-  it("will include caused-by-method updates", async () => {
-    const test = Test.new();
-    const updates = await test.set("methodString", "foobar");
-
-    expect(test.methodString).toBeCalledWith("foobar");
-    expect(test.foo).toBe("foobar");
-    expect(updates).toMatchObject(["methodString", "foo"])
-  })
-
   it("will assign to exotic value", async () => {
     class Test extends Model {
       foo = ref<string>();
@@ -206,8 +179,9 @@ describe("import", () => {
     expect(test.foo).toBe(0);
     expect(test.bar).toBe(1);
 
-    const keys = await test.set(values);
-    expect(keys).toEqual(["foo", "bar"]);
+    test.set(values);
+
+    await expect(test).toHaveUpdated(["foo", "bar"]);
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
@@ -215,29 +189,13 @@ describe("import", () => {
 
   it("will assign specific values", async () => {
     const test = Test.new();
-    const keys = await test.set(values, ["foo"]);
+    
+    test.set(values, ["foo"]);
 
-    expect(keys).toEqual(["foo"]);
+    await expect(test).toHaveUpdated(["foo"]);
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(1);
-  });
-
-  it("will force assign values from source", async () => {
-    const test = Test.new();
-    const baz = test.on("baz");
-    const keys = await test.set(values, true);
-
-    expect(keys).toEqual(["foo", "bar", "baz"]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-
-    // sanity check
-    // we didn't set baz - only dispatched it.
-    expect(test.baz).toBeUndefined();
-
-    await expect(baz).resolves.toBe(3);
   });
 })
 
@@ -286,7 +244,7 @@ describe("get", () => {
     expect(test.get("foo")).toBeUndefined();
 
     test.foo("foobar");
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
 
     expect(test.get("foo")).toBe("foobar");
   })
@@ -334,13 +292,85 @@ describe("get", () => {
   })
 })
 
-describe("adapter", () => {
-  const methods = ["has", "get", "use"] as const;
+describe("subscriber", () => {
+  class Subject extends Model {
+    value = 1;
+    value2 = 2;
+  }
 
-  it.each(methods)("will throw by default for %p", (method) => {
-    const useMethod = () => Model[method].apply(Model);
-    const expected = Oops.NoAdapter(method);
+  it('will detect change to properties accessed', async () => {
+    const state = Subject.new();
+    const effect = jest.fn(($: Subject) => {
+      void $.value;
+      void $.value2;
+    })
 
-    expect(useMethod).toThrowError(expected);
+    state.on(effect);
+
+    state.value = 2;
+    await state.on(0);
+
+    state.value2 = 3;
+    await state.on(0);
+
+    expect(effect).toBeCalledTimes(3);
+  })
+
+  it('will ignore change to property not accessed', async () => {
+    const state = Subject.new();
+    const effect = jest.fn(($: Subject) => {
+      void $.value;
+    })
+
+    state.on(effect);
+
+    state.value = 2;
+    await state.on(0);
+
+    state.value2 = 3;
+    await state.on(0);
+
+    /**
+     * we did not access value2 in above accessor,
+     * subscriber assumes we don't care about updates
+     * to this property, so it'l drop relevant events
+     */ 
+    expect(effect).toBeCalledTimes(2);
   });
+
+  it('will ignore properties accessed through get', async () => {
+    const state = Subject.new();
+    const effect = jest.fn(($: Subject) => {
+      void $.value;
+      void $.is.value;
+    })
+
+    state.on(effect);
+
+    state.value = 2;
+    await state.on(0);
+
+    state.value2 = 3;
+    await state.on(0);
+
+    expect(effect).toBeCalledTimes(2);
+  })
+
+  it('will not obstruct set-behavior', () => {
+    class Test extends Model {
+      didSet = jest.fn();
+      value = set("foo", this.didSet);
+    }
+
+    const test = Test.new();
+
+    expect(test.value).toBe("foo");
+
+    test.on(effect => {
+      effect.value = "bar";
+    })
+
+    expect(test.value).toBe("bar");
+    expect(test.didSet).toBeCalledWith("bar", test);
+  })
 })

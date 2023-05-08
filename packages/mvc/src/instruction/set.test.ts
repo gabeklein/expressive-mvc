@@ -1,5 +1,5 @@
 import { Oops as Effect } from '../effect';
-import { assertDidUpdate, mockAsync, mockConsole } from '../helper/testing';
+import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
@@ -11,7 +11,7 @@ describe("placeholder", () => {
 
   it('will suspend if value is accessed before assign', async () => {
     const instance = Test.new();
-    const promise = mockAsync<string>();
+    const promise = mockPromise<string>();
     const mockEffect = jest.fn((state: Test) => {
       promise.resolve(state.foobar);
     });
@@ -22,7 +22,7 @@ describe("placeholder", () => {
 
     instance.foobar = "foo!";
 
-    const result = await promise.pending();
+    const result = await promise;
 
     expect(mockEffect).toBeCalledTimes(2);
     expect(result).toBe("foo!");
@@ -60,7 +60,7 @@ describe("callback", () => {
     state.test = 2;
     expect(callback).toBeCalledWith(3);
 
-    await assertDidUpdate(state)
+    await expect(state).toUpdate()
     expect(event).toBeCalledWith(["test"]);
   })
 
@@ -78,11 +78,11 @@ describe("callback", () => {
 
     state.test = 2;
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).not.toBeCalled();
     state.test = 3;
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith(true);
   })
 
@@ -99,7 +99,7 @@ describe("callback", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await state.on();
+    await expect(state).toUpdate();
     expect(callback).toBeCalledWith("bar");
   })
 
@@ -141,14 +141,14 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await assertDidUpdate(state, false);
+    await expect(state).not.toUpdate();
     expect(callback).toBeCalledWith("bar");
     expect(state.test).toBe("foo");
   })
 
   it('will block value if callback returns true', async () => {
     class Subject extends Model {
-      test = set("foo", value => true);
+      test = set("foo", () => true);
     }
 
     const state = Subject.new();
@@ -156,15 +156,13 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await assertDidUpdate(state);
+    await expect(state).toUpdate();
     expect(state.test).toBe("foo");
   })
 })
 
 describe("factory", () => {
   const { warn } = mockConsole();
-
-  jest.setTimeout(60000000)
 
   it("will compute when accessed", () => {
     const factory = jest.fn(() => "Hello World");
@@ -237,10 +235,10 @@ describe("factory", () => {
   })
 
   it("will throw suspense-promise resembling an error", () => {
-    const promise = mockAsync();
+    const promise = mockPromise();
 
     class Test extends Model {
-      value = set(promise.pending);
+      value = set(promise);
     }
 
     const instance = Test.new();
@@ -251,11 +249,11 @@ describe("factory", () => {
   })
 
   it("will return undefined if not required", async () => {
-    const promise = mockAsync<string>();
+    const promise = mockPromise<string>();
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise.pending, false);
+      value = set(promise, false);
     }
 
     const test = Test.new();
@@ -285,8 +283,8 @@ describe("factory", () => {
   })
 
   it("will suspend another factory", async () => {
-    const greet = mockAsync<string>();
-    const name = mockAsync<string>();
+    const greet = mockPromise<string>();
+    const name = mockPromise<string>();
 
     const didEvaluate = jest.fn(
       (_key: string, $: Test) => {
@@ -295,8 +293,8 @@ describe("factory", () => {
     );
 
     class Test extends Model {
-      greet = set(greet.pending);
-      name = set(name.pending);
+      greet = set(greet);
+      name = set(name);
 
       value = set(didEvaluate);
     }
@@ -316,8 +314,8 @@ describe("factory", () => {
   })
 
   it("will suspend another factory (async)", async () => {
-    const greet = mockAsync<string>();
-    const name = mockAsync<string>();
+    const greet = mockPromise<string>();
+    const name = mockPromise<string>();
 
     const didEvaluate = jest.fn(
       async (_key: string, $: Test) => {
@@ -326,8 +324,8 @@ describe("factory", () => {
     );
 
     class Test extends Model {
-      greet = set(greet.pending);
-      name = set(name.pending);
+      greet = set(greet);
+      name = set(name);
       value = set(didEvaluate);
     }
 
@@ -347,7 +345,7 @@ describe("factory", () => {
 
   it("will nest suspense", async () => {
     class Child extends Model {
-      value = set(promise.pending);
+      value = set(promise);
     }
 
     class Test extends Model {
@@ -360,32 +358,27 @@ describe("factory", () => {
       }
     }
 
-    const promise = mockAsync<string>();
-    const didUpdate = mockAsync<string>();
+    const promise = mockPromise<string>();
+    const didUpdate = mockPromise<string>();
 
     const test = Test.new();
     const effect = jest.fn((state: Test) => {
-      // should suspend here
-      const { childValue } = state;
-
-      didUpdate.resolve(childValue);
+      didUpdate.resolve(state.childValue);
     })
 
     test.on(effect);
 
     expect(effect).toBeCalledTimes(1);
 
-    const pending = didUpdate.pending();
-
     promise.resolve("hello");
 
-    await expect(pending).resolves.toBe("hello world!");
+    await expect(didUpdate).resolves.toBe("hello world!");
     expect(effect).toBeCalledTimes(2);
   })
 
   it("will return undefined on suspense", async () => {
     class Test extends Model {
-      asyncValue = set(() => promise.pending());
+      asyncValue = set(() => promise);
 
       value = get(() => this.getValue);
 
@@ -396,8 +389,8 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const promise = mockAsync<string>();
-    const didEvaluate = mockAsync<string>();
+    const promise = mockPromise<string>();
+    const didEvaluate = mockPromise<string>();
 
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.value);
@@ -410,30 +403,29 @@ describe("factory", () => {
 
     promise.resolve("World");
 
-    await didEvaluate.pending();
+    await didEvaluate;
 
     expect(test.value).toBe("Hello World")
   })
 
   it("will squash repeating suspense", async () => {
-    const promise = mockAsync();
-    let shouldSuspend = true;
-
     class Test extends Model {
       message = set(this.getSum);
+      suspend = true;
+      pending = mockPromise();
 
       getSum(){
         didTryToEvaluate()
 
-        if(shouldSuspend)
-          throw promise.pending();
+        if(this.suspend)
+          throw this.pending;
 
         return `OK I'm unblocked.`;
       }
     }
 
     const test = Test.new();
-    const didEvaluate = mockAsync<string>();
+    const didEvaluate = mockPromise<string>();
     
     const didTryToEvaluate = jest.fn();
     const effect = jest.fn((state: Test) => {
@@ -444,12 +436,17 @@ describe("factory", () => {
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
+    expect(didTryToEvaluate).toBeCalledTimes(1);
 
-    await promise.resolve();
+    test.pending.resolve();
+    await test.on(0);
 
-    shouldSuspend = false;
-    await promise.resolve();
-    await didEvaluate.pending();
+    // expect eval to run again because promise resolved.
+    expect(didTryToEvaluate).toBeCalledTimes(2);
+
+    test.suspend = false;
+    test.pending.resolve();
+    await didEvaluate;
 
     expect(test.message).toBe("OK I'm unblocked.");
     expect(didTryToEvaluate).toBeCalledTimes(3);
@@ -458,12 +455,12 @@ describe("factory", () => {
   })
 
   it("will squash multiple dependancies", async () => {
-    const promise = mockAsync<number>();
-    const promise2 = mockAsync<number>();
+    const promise = mockPromise<number>();
+    const promise2 = mockPromise<number>();
 
     class Test extends Model {
-      a = set(promise.pending());
-      b = set(promise2.pending());
+      a = set(promise);
+      b = set(promise2);
 
       sum = set(this.getSum);
 
@@ -475,7 +472,7 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const didEvaluate = mockAsync<string>();
+    const didEvaluate = mockPromise<string>();
 
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.sum);
@@ -486,20 +483,20 @@ describe("factory", () => {
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
 
-    await promise.resolve(10);
-    await promise2.resolve(20);
+    promise.resolve(10);
+    promise2.resolve(20);
 
-    await didEvaluate.pending();
+    await didEvaluate;
 
     expect(test.sum).toBe("Answer is 30.")
   })
 
   it('will refresh and throw if async rejects', async () => {
-    const promise = mockAsync();
+    const promise = mockPromise();
 
     class Test extends Model {
       value = set(async () => {
-        await promise.pending();
+        await promise;
         throw "oh no";
       })
     }
@@ -518,7 +515,7 @@ describe("factory", () => {
 
     expect(didThrow).toBeInstanceOf(Promise);
 
-    await promise.resolve();
+    promise.resolve();
     await instance.on();
 
     expect(didThrow).toBe("oh no");

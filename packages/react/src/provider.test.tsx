@@ -1,9 +1,8 @@
 import React, { Suspense } from 'react';
 
-import { Model, set } from '.';
-import { Consumer } from './consumer';
-import { mockAsync, create, assertDidUpdate } from './helper/testing';
+import { Consumer, Model, set } from '.';
 import { Oops, Provider } from './provider';
+import { create, mockAsync } from './test';
 
 class Foo extends Model {
   value?: string = undefined;
@@ -21,9 +20,9 @@ it("will create instance of given model", () => {
 it("will destroy instance of given model", async () => {
   const willDestroy = jest.fn();
   class Test extends Model {
-    gc(){
+    null(){
       willDestroy();
-      super.gc();
+      super.null();
     }
   };
 
@@ -53,7 +52,7 @@ it("will destroy created model on unmount", () => {
     <Provider for={{ Test }}>
       <Consumer for={Test} has={i => {
         expect(i).toBeInstanceOf(Test)
-        i.on(() => willDestroy, []);
+        i.on(() => willDestroy);
       }} />
     </Provider>
   );
@@ -71,10 +70,10 @@ it("will destroy multiple created on unmount", () => {
   const rendered = create(
     <Provider for={{ Foo, Bar }}>
       <Consumer for={Foo} has={i => {
-        i.on(() => willDestroy, []);
+        i.on(() => willDestroy);
       }} />
       <Consumer for={Bar} has={i => {
-        i.on(() => willDestroy, []);
+        i.on(() => willDestroy);
       }} />
     </Provider>
   );
@@ -93,7 +92,7 @@ it("will not destroy given instance on unmount", () => {
   const rendered = create(
     <Provider for={{ instance }}>
       <Consumer for={Test} has={i => {
-        i.on(() => didUnmount, []);
+        i.on(() => didUnmount);
       }} />
     </Provider>
   );
@@ -201,7 +200,7 @@ describe("and prop", () => {
       <Provider for={foo} use={{ value: "bar" }} />
     );
 
-    await assertDidUpdate(foo);
+    await expect(foo).toUpdate();
 
     expect(foo.value).toBe("bar");
   })

@@ -1,17 +1,17 @@
-import { Model } from '@expressive/mvc';
+import { Control } from '@expressive/mvc';
 
-import { hasContext, useContext } from './useContext';
-import { useModel } from './useModel';
+import { hasModel } from './context';
+import { getModel, useModel } from './hooks';
 
-Model.has = hasContext;
-Model.get = useContext;
-Model.use = useModel;
+Control.get = getModel;
+Control.use = useModel;
+Control.has = hasModel;
 
 export {
   default,
   Model,
   Debug,
-  add,
+  Control,
   ref,
   run,
   set,

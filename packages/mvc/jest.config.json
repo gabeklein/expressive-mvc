@@ -4,6 +4,9 @@
   "coveragePathIgnorePatterns": [
     "/src/index.ts"
   ],
+  "setupFilesAfterEnv": [
+    "../../jest.setup.ts"
+  ],
   "coverageThreshold": {
     "global": {
       "branches": 100,

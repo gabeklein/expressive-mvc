@@ -1,42 +1,22 @@
-import { Model } from '../model';
 
-export async function assertDidUpdate(
-  model: Model, exists?: boolean){
-
-  const assert = expect(model.on(0)).resolves;
-
-  return exists === false
-    ? assert.toBe(false)
-    : assert.toBeTruthy();
+interface MockPromise<T> extends Promise<T> {
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: any) => void;
 }
 
-export function mockAsync<T = void>(){
-  const pending = new Set<[Function, Function]>();
+export function mockPromise<T = void>(){
+  const methods = {} as MockPromise<T>;
+  const promise = new Promise((res, rej) => {
+    methods.resolve = res;
+    methods.reject = rej;
+  }) as MockPromise<T>;
 
-  const event = () => (
-    new Promise<T>((res, rej) => {
-      pending.add([res, rej]);
-    })
-  );
-
-  const resolve = (value: T) => {
-    const done = event();
-
-    pending.forEach(x => x[0](value));
-    pending.clear();
-
-    return done;
-  }
-
-  return {
-    pending: event,
-    resolve
-  }
+  return Object.assign(promise, methods);
 }
 
 export function mockConsole(){
   const warn = jest
-    .spyOn(global.console, "warn")
+    .spyOn(console, "warn")
     .mockImplementation(() => {});
 
   const error = jest

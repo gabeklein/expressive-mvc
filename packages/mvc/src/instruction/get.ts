@@ -1,10 +1,9 @@
-import { getParent, getRecursive } from '../children';
-import { Control } from '../control';
+import { apply, Control, watch } from '../control';
 import { issues } from '../helper/issues';
-import { Callback } from '../helper/types';
 import { Model } from '../model';
-import { Subscriber } from '../subscriber';
-import { add } from './add';
+import { suspense } from '../suspense';
+
+import type { Callback } from '../../types';
 
 export const Oops = issues({
   PeerNotAllowed: (model, property) =>
@@ -15,6 +14,12 @@ export const Oops = issues({
 
   Required: (expects, child) => 
     `New ${child} created standalone but requires parent of type ${expects}.`,
+
+  Unexpected: (expects, child, got) =>
+    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
+
+  AmbientRequired: (requested, requester) =>
+    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 });
 
 declare namespace get {
@@ -22,11 +27,10 @@ declare namespace get {
 
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
-  type FindFunction<T extends Model = Model> =
-    (type: Model.Class<T>, relativeTo: Model, required: boolean) => Source<T>;
-
   type Source<T extends Model = Model> = (callback: (x: T) => void) => void;
 }
+
+type Type<T extends Model> = Model.Type<T> & typeof Model;
 
 /**
  * Fetches and assigns the controller which spawned this host.
@@ -48,8 +52,8 @@ function get <R, T extends Model> (Type: Model.Type<T>, compute: (this: T, on: T
  * @param source - Source model from which computed value will be a subscriber.
  * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value. Will update automatically as input values change.
  */
-function get <R, T> (source: T, compute: (this: T, on: T) => R): Exclude<R, undefined>;
-function get <R, T> (source: T, compute: (this: T, on: T) => R): R;
+function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): Exclude<R, undefined>;
+function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): R;
 
 /**
  * Implement a computed value; output is returned by function from provided factory.
@@ -60,40 +64,48 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
  
 function get<R, T extends Model>(
-  arg0: get.Factory<R, T> | Model.Class<T> | T,
-  arg1?: get.Function<R, T> | boolean): R {
+  arg0: T | get.Factory<R, T> | Type<T>,
+  arg1?: get.Function<R, T> | boolean){
 
-  return add(
-    function get(key){
-      let { subject } = this;
+  return apply<R>((key, control) => {
+    let { subject } = control;
 
-      if(typeof arg0 == "symbol")
-        throw Oops.PeerNotAllowed(subject, key);
+    if(typeof arg0 == "symbol")
+      throw Oops.PeerNotAllowed(subject, key);
 
-      let source: get.Source = cb => cb(subject);
+    let source: get.Source = cb => cb(subject);
 
-      if(arg0 instanceof Model)
-        subject = arg0;
+    if(arg0 instanceof Model)
+      subject = arg0;
 
-      else if(Model.isTypeof(arg0)){
-        const parent = getParent(subject, arg0);
+    else if(Model.isTypeof(arg0)){
+      const { parent } = control;
 
-        if(parent)
-          subject = parent;
-        else
-          source = callback => {
-            arg0.has(callback, arg1 !== false, subject);
-          }
+      if(!parent){
+        if(arg1 === true)
+          throw Oops.Required(arg0, subject);
+        
+        source = callback =>
+          Control.has(arg0, subject, got => {
+            if(got)
+              callback(got);
+            else if(arg1 !== false)
+              throw Oops.AmbientRequired(arg0, subject);
+          });
       }
-
-      else if(typeof arg0 == "function")
-        arg1 = arg0.call(subject, key, subject);
-
-      return typeof arg1 == "function"
-        ? computed(this, key, source, arg1)
-        : recursive(this, key, source, arg1);
+      else if(!arg0 || parent instanceof arg0)
+        subject = parent;
+      else
+        throw Oops.Unexpected(arg0, subject, parent);
     }
-  )
+
+    else if(typeof arg0 == "function")
+      arg1 = arg0.call(subject, key, subject);
+
+    return typeof arg1 == "function"
+      ? computed(control, key, source, arg1)
+      : recursive(control, key, source, arg1);
+  })
 }
 
 function recursive(
@@ -102,12 +114,11 @@ function recursive(
   source: get.Source | undefined,
   required: boolean | undefined){
 
-  const get = getRecursive(key, parent);
   let waiting: boolean;
 
   if(source)
     source((got) => {
-      parent.state.set(key, got);
+      parent.state[key] = got;
 
       if(waiting)
         parent.update(key);
@@ -115,14 +126,21 @@ function recursive(
 
   waiting = true;
 
-  return (local: Subscriber | undefined) => {
-    if(parent.state.get(key))
-      return get(local);
+  return () => {
+    const value = parent.state[key];
+
+    if(value)
+      return value;
 
     if(required !== false)
-      parent.waitFor(key);
+      throw suspense(parent, key);
   }
 }
+
+const ORDER = new WeakMap<Callback, number>();
+const PENDING = new Set<Callback>();
+
+let OFFSET = 0;
 
 function computed<T>(
   parent: Control,
@@ -132,26 +150,19 @@ function computed<T>(
 
   const { state } = parent;
 
-  let local: Subscriber | undefined;
+  let proxy: any;
   let active: boolean;
   let isAsync: boolean;
-
-  let order = ORDER.get(parent)!;
-  let pending = KEYS.get(parent)!;
-
-  if(!order)
-    ORDER.set(parent, order = new Map());
-
-  if(!pending)
-    KEYS.set(parent, pending = new Set());
-
-  INFO.set(compute, key);
+  let reset: (() => void) | undefined;
 
   function compute(initial?: boolean){
+    if(parent.frame.has(key))
+      return;
+
     let next: T | undefined;
 
     try {
-      next = setter.call(local!.proxy, local!.proxy);
+      next = setter.call(proxy, proxy);
     }
     catch(err){
       Oops.Failed(parent.subject, key, initial).warn();
@@ -162,8 +173,8 @@ function computed<T>(
       console.error(err);
     }
 
-    if(next !== state.get(key)){
-      state.set(key, next);
+    if(next !== state[key]){
+      state[key] = next;
 
       if(!initial || isAsync)
         parent.update(key);
@@ -171,21 +182,28 @@ function computed<T>(
   }
 
   function connect(model: Model){
-    local = new Subscriber(model, (_, control) => {
+    if(reset)
+      reset();
+
+    let done: boolean;
+
+    reset = () => done = true;
+
+    proxy = watch(model, (_, control) => {
+      if(done)
+        return null;
+
       if(control !== parent)
         compute();
       else
-        pending.add(compute);
+        PENDING.add(compute);
     });
-
-    local.watch.set(key, false);
 
     try {
       compute(true);
     }
     finally {
-      local.commit();
-      order.set(compute, order.size);
+      ORDER.set(compute, OFFSET++);
     }
   }
 
@@ -196,47 +214,30 @@ function computed<T>(
       isAsync = true;
     }
     
-    if(!local)
-      parent.waitFor(key);
+    if(!proxy)
+      throw suspense(parent, key);
 
-    if(pending.delete(compute))
+    if(PENDING.delete(compute))
       compute();
 
-    return state.get(key);
+    return state[key];
   }
 }
 
-const INFO = new WeakMap<Callback, string>();
-const KEYS = new WeakMap<Control, Set<Callback>>();
-const ORDER = new WeakMap<Control, Map<Callback, number>>();
-
-function flushComputed(control: Control){
-  const pending = KEYS.get(control);
-
-  if(!pending || !pending.size)
-    return;
-
-  const priority = ORDER.get(control)!;
-
-  while(pending.size){
+function flushComputed(){
+  while(PENDING.size){
     let compute!: Callback;
 
-    for(const item of pending)
-      if(!compute || priority.get(item)! < priority.get(compute)!)
+    for(const item of PENDING)
+      if(!compute || ORDER.get(item)! < ORDER.get(compute)!)
         compute = item;
 
-    pending.delete(compute);
-
-    const key = INFO.get(compute)!;
-
-    if(!control.frame.has(key))
-      compute();
+    PENDING.delete(compute);
+    
+    compute();
   }
-
-  pending.clear();
 }
 
-export {
-  flushComputed,
-  get
-}
+Control.before.add(flushComputed);
+
+export { get };

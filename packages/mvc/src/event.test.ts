@@ -1,5 +1,4 @@
 import { Oops } from './event';
-import { assertDidUpdate } from './helper/testing';
 import { get } from './instruction/get';
 import { Model } from './model';
 
@@ -63,28 +62,39 @@ describe("assert", () => {
 })
 
 describe("on single", () => {
-  it('will watch for specified value', async () => {
+  it('will callback for specified value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
     state.on("seconds", callback);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds"]);
   })
 
-  it('will watch for computed value', async () => {
+  it('will callback for computed value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).toBeCalled();
+  })
+
+  it('will callback on null (destoryed)', () => {
+    const state = Subject.new();
+    const callback = jest.fn();
+
+    state.on("seconds", callback);
+
+    state.null();
+
+    expect(callback).toBeCalledWith(null);
   })
 
   it('will compute pending value early', async () => {
@@ -94,9 +104,9 @@ describe("on single", () => {
     state.on("minutes", callback);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).toBeCalled();
   })
 
   it('will ignore subsequent events in once mode', async () => {
@@ -106,12 +116,12 @@ describe("on single", () => {
     state.on("seconds", callback, true);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds"]);
 
     state.seconds = 45;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
   })
@@ -125,13 +135,13 @@ describe("on multiple", () => {
     state.on(["seconds", "hours"], callback);
 
     state.seconds = 30;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
     expect(callback).toBeCalledWith(["seconds"]);
 
     state.hours = 2;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["hours"]);
   })
@@ -143,41 +153,25 @@ describe("on multiple", () => {
     state.on(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledWith(["seconds", "minutes"]);
 
     state.seconds = 61;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
-  })
-
-  it('will callback on destroy if empty', async () => {
-    const state = Subject.new();
-    const callback = jest.fn();
-
-    state.on([], callback);
-
-    state.seconds = 30;
-    await state.on();
-
-    expect(callback).not.toBeCalled();
-
-    state.gc();
-
-    expect(callback).toBeCalledWith([]);
   })
 });
 
 describe("on promise", () => {
-  it('will resolve with update value', async () => {
+  it('will resolve on single key', async () => {
     const state = Subject.new();
     const pending = state.on("seconds");
 
     state.seconds = 30;
 
-    await expect(pending).resolves.toBe(30);
+    await expect(pending).resolves.toEqual(["seconds"]);
   })
 
   it('will resolve with updated keys', async () => {
@@ -191,33 +185,21 @@ describe("on promise", () => {
 
   it('will resolve any updated', async () => {
     const state = Subject.new();
+    const update = state.on();
 
     state.seconds = 61;
 
-    const update = await state.on();
-
-    // should this also expect minutes?
-    expect(update).toEqual(["seconds"]);
+    await expect(update).resolves.toEqual(["seconds"]);
   })
 
   it('will resolve any updated expected', async () => {
     const state = Subject.new();
+    const update = state.on(["seconds"]);
 
     state.seconds = 61;
 
-    const update = await state.on(0);
-
     // should this also expect minutes?
-    expect(update).toEqual(["seconds"]);
-  })
-
-  it('will resolve on destroy', async () => {
-    const state = Subject.new();
-    const update = state.on([]);
-
-    state.gc();
-
-    await expect(update).resolves.toEqual([]);
+    await expect(update).resolves.toEqual(["seconds"]);
   })
 })
 
@@ -253,22 +235,13 @@ describe("timeout", () => {
 
     await expect(promise).rejects.toThrowError(expected);
   })
-
-  it.todo('will timeout on destroy state');
 })
 
 describe("before ready", () => {
-  class TestValues extends Model {
-    value1 = 1;
-    value2 = 2;
-
-    value3 = get(this, state => {
-      return state.value2 + 1;
-    });
-  }
-
   it('will watch value', async () => {
-    class Test extends TestValues {
+    class Test extends Model {
+      value1 = 1;
+
       constructor(){
         super();
         this.on("value1", mock);
@@ -279,24 +252,30 @@ describe("before ready", () => {
     const state = Test.new();
 
     state.value1++;
-    await state.on();
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
   })
 
   it('will watch computed value', async () => {
-    class Test extends TestValues {
+    class Test extends Model {
+      value1 = 2;
+
+      value2 = get(this, $ => {
+        return $.value1 + 1;
+      });
+      
       constructor(){
         super();
-        this.on("value3", mock);
+        this.on("value2", mock);
       }
     }
 
     const mock = jest.fn();
     const state = Test.new();
 
-    state.value2++;
-    await state.on();
+    state.value1++;
+    await expect(state).toUpdate();
 
     expect(mock).toBeCalled();
   })
@@ -313,17 +292,17 @@ describe("before ready", () => {
     const test = Test.new();
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(1);
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(2);
 
     test.done();
 
     test.value++;
-    await assertDidUpdate(test);
+    await expect(test).toUpdate();
     expect(mock).toBeCalledTimes(2);
   })
 });

@@ -1,11 +1,10 @@
-import { control, Control } from '../control';
+import { apply, Control, control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
-import { add } from './add';
 
 declare namespace ref {
-  type Callback<T, S = any> = (this: S, argument: T) =>
+  type Callback<T> = (argument: T) =>
     ((next: T) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
@@ -53,38 +52,36 @@ function ref <O extends Model, R>
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
-function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 
 function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return add(
-    function ref(key){
-      let value: ref.Object | ref.Proxy<any> = {};
+  return apply((key, source) => {
+    let value: ref.Object | ref.Proxy<any> = {};
 
-      this.state.set(key, undefined);
+    if(typeof arg != "object")
+      value = createRef(source, key, arg);
+    else
+      for(const key in control(arg, true).state){
+        defineProperty(value, key,
+          mapper ? {
+            configurable: true,
+            get(){
+              const out = mapper(key);
+              defineProperty(value, key, { value: out });
+              return out;
+            }
+          } : {
+            value: createRef(source, key)
+          }
+        )
+      }
 
-      if(typeof arg != "object")
-        value = createRef(this, key, arg);
-      else
-        control(arg).state.forEach((_val, key) => {
-          defineProperty(value, key,
-            mapper ? {
-              configurable: true,
-              get(){
-                const out = mapper(key);
-                defineProperty(value, key, { value: out });
-                return out;
-              }
-            } : {
-              value: createRef(this, key)
-            })
-        })
-
-      defineProperty(this.subject, key, { value });
-    }
-  )
+    source.state[key] = undefined;
+    source.observers.set(key, new Set());
+    defineProperty(source.subject, key, { value });
+  })
 }
 
 export { ref }
@@ -99,7 +96,7 @@ function createRef(
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
-    get: () => src.state.get(key)
+    get: () => src.state[key]
   })
 
   return refObjectFunction as ref.Object;

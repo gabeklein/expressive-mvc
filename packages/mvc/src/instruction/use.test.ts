@@ -1,5 +1,5 @@
-import { assertDidUpdate } from '../helper/testing';
 import { Model } from '../model';
+import { get } from './get';
 import { set } from './set';
 import { Oops, use } from './use';
 
@@ -25,11 +25,11 @@ it('will track recursively', async () => {
   parent.on(mock);
 
   parent.value = "bar";
-  await assertDidUpdate(parent);
+  await expect(parent).toUpdate();
   expect(mock).toHaveBeenCalledTimes(2)
 
   parent.child.value = "bar";
-  await assertDidUpdate(parent.child);
+  await expect(parent.child).toUpdate();
   expect(mock).toHaveBeenCalledTimes(3)
 })
 
@@ -50,7 +50,7 @@ it('will accept instance', async () => {
   expect(state.child.value).toBe("foo");
 
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
 
   expect(mock).toBeCalledTimes(2);
   expect(state.child.value).toBe("bar");
@@ -68,184 +68,6 @@ it('will run callback', () => {
   expect(callback).toBeCalled();
 })
 
-it.skip('will accept simple object', async () => {
-  class Parent extends Model {
-    child = use({ value: "foo" });
-  }
-
-  const parent = Parent.new();
-  const effect = jest.fn(($: Parent) => {
-    void $.child.value;
-  })
-
-  parent.on(effect);
-
-  expect(parent.child.value).toBe("foo");
-
-  parent.child.value = "bar";
-  await parent.on(0);
-
-  expect(parent.child.value).toBe("bar");
-  expect(effect).toBeCalledTimes(3);
-})
-
-it.skip('will accept simple object as new value', async () => {
-  class Parent extends Model {
-    child = use({ value: "foo" });
-  }
-
-  const parent = Parent.new();
-  const effect = jest.fn(($: Parent) => {
-    void $.child.value;
-  })
-
-  parent.on(effect);
-
-  expect(parent.child.value).toBe("foo");
-
-  parent.child.value = "bar";
-  await parent.on(0);
-  expect(parent.child.value).toBe("bar");
-
-  expect(effect).toBeCalledTimes(2)
-
-  // Will refresh on repalcement.
-  parent.child = { value: "baz" };
-  await parent.on(0);
-  expect(parent.child.value).toBe("baz");
-
-  // New subscription still works.
-  parent.child.value = "bar";
-  await parent.on(0);
-  expect(parent.child.value).toBe("bar");
-
-  expect(effect).toBeCalledTimes(4)
-})
-
-it('will create from factory', async () => {
-  class Child extends Model {
-    parent!: Parent;
-  }
-
-  class Parent extends Model {
-    child = use(() => {
-      const child = Child.new();
-      child.parent = this;
-      return child;
-    });
-  }
-
-  const state = Parent.new();
-
-  expect(state.child).toBeInstanceOf(Child);
-  expect(state.child.parent).toBe(state);
-})
-
-it('will cancel create on thrown error', () => {
-  class Parent extends Model {
-    child = use(() => {
-      throw new Error("foobar");
-    });
-  }
-
-  const test = () => void Parent.new();
-
-  expect(test).toThrowError();
-})
-
-it('will throw rejection on access', async () => {
-  class Parent extends Model {
-    child = use(async () => {
-      throw new Error("foobar");
-    });
-  }
-
-  const parent = Parent.new();
-
-  await parent.on();
-
-  const test = () => void parent.child;
-
-  expect(test).toThrowError();
-})
-
-it('will create from async factory', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child());
-  }
-
-  const parent = Parent.new();
-  await parent.on();
-
-  expect(parent.child).toBeInstanceOf(Child);
-  
-  parent.child.value = "foobar";
-  await assertDidUpdate(parent.child);
-});
-
-it('will suspend if awaited', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child());
-  }
-
-  const parent = Parent.new();
-  const mock = jest.fn((it: Parent) => {
-    void it.child;
-  });
-
-  parent.on(mock);
-
-  await parent.on();
-  expect(parent.child).toBeInstanceOf(Child);
-  
-  parent.child.value = "foobar";
-
-  await assertDidUpdate(parent.child);
-});
-
-it('will return undefined if not required', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child(), false);
-  }
-
-  const parent = Parent.new();
-
-  expect(parent.child).toBeUndefined();
-
-  await parent.on();
-  expect(parent.child).toBeInstanceOf(Child);
-});
-
-it('will wait for dependancies on suspense', async () => {
-  class Parent extends Model {
-    value = set<string>();
-    child = use(() => {
-      tryCreateChild();
-      void this.value;
-  
-      return new Child();
-    });
-  }
-
-  const tryCreateChild = jest.fn();
-  const parent = Parent.new();
-
-  parent.value = "foo";
-
-  await parent.on();
-  expect(tryCreateChild).toBeCalledTimes(2);
-});
-
-it('will accept undefined from factory', async () => {
-  class Parent extends Model {
-    child = use(() => undefined);
-  }
-
-  const state = Parent.new();
-
-  expect(state.child).toBeUndefined();
-})
-
 it('will update on new value', async () => {
   const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
@@ -259,19 +81,19 @@ it('will update on new value', async () => {
 
   // Will refresh on sub-value change.
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
   expect(state.child.value).toBe("bar");
   expect(mock).toBeCalledTimes(2);
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(state.child.value).toBe("foo");
   expect(mock).toBeCalledTimes(3);
 
   // New subscription still works.
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
   expect(state.child.value).toBe("bar");
   expect(mock).toBeCalledTimes(4);
 })
@@ -293,28 +115,28 @@ it('will reset if value is undefined', async () => {
   state.on(mock);
 
   state.child = new Child();
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(mock).toBeCalledTimes(2)
 
   // Will refresh on sub-value change.
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
   expect(mock).toBeCalledTimes(3);
 
   // Will refresh on undefined.
   state.child = undefined;
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(state.child).toBeUndefined();
   expect(mock).toBeCalledTimes(4);
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(mock).toBeCalledTimes(5);
 
   // New subscription still works.
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
   expect(mock).toBeCalledTimes(6);
 })
 
@@ -337,17 +159,17 @@ it('will still subscribe if initially undefined', async () => {
 
   // Will refresh on repalcement.
   state.child = new Child();
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(mock).toBeCalledTimes(2)
 
   // New subscription does work.
   state.child.value = "bar";
-  await assertDidUpdate(state.child);
+  await expect(state.child).toUpdate();
   expect(mock).toBeCalledTimes(3)
 
   // Will refresh on deletion.
   state.child = undefined;
-  await assertDidUpdate(state);
+  await expect(state).toUpdate();
   expect(mock).toBeCalledTimes(4)
 })
 
@@ -361,4 +183,118 @@ it('will throw if bad argument type', () => {
   const attempt = () => Parent.new();
 
   expect(attempt).toThrowError(expected)
+})
+
+describe("factory", () => {
+  it('will create from factory', async () => {
+    class Child extends Model {
+      parent = get(Parent);
+    }
+
+    class Parent extends Model {
+      child = use(() => new Child());
+    }
+
+    const state = Parent.new();
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(state.child.parent).toBe(state);
+  })
+
+  it('will rethrow error', () => {
+    class Parent extends Model {
+      child = use(() => {
+        throw new Error("foobar");
+      });
+    }
+
+    const test = () => void Parent.new();
+
+    expect(test).toThrowError();
+  })
+
+  it('will create via async factory', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child());
+    }
+
+    const parent = Parent.new();
+    await parent.on();
+
+    expect(parent.child).toBeInstanceOf(Child);
+    
+    parent.child.value = "foobar";
+    await expect(parent.child).toUpdate();
+  });
+
+  it('will rethrow rejection upon access', async () => {
+    class Parent extends Model {
+      child = use(async () => {
+        throw new Error("foobar");
+      });
+    }
+
+    const parent = Parent.new();
+
+    await parent.on();
+
+    const test = () => void parent.child;
+
+    expect(test).toThrowError();
+  })
+
+  it.skip('will suspend if awaited', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child());
+    }
+
+    const parent = Parent.new();
+    const mock = jest.fn((it: Parent) => {
+      void it.child;
+    });
+
+    parent.on(mock);
+
+    await parent.on();
+    expect(parent.child).toBeInstanceOf(Child);
+    expect(mock).toBeCalledTimes(2);
+    
+    parent.child.value = "foobar";
+
+    await expect(parent.child).toUpdate();
+    expect(mock).toBeCalledTimes(3);
+  });
+
+  it('will return undefined if not required', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child(), false);
+    }
+
+    const parent = Parent.new();
+
+    expect(parent.child).toBeUndefined();
+
+    await parent.on();
+    expect(parent.child).toBeInstanceOf(Child);
+  });
+
+  it('will wait for dependancies on suspense', async () => {
+    class Parent extends Model {
+      value = set<string>();
+      child = use(() => {
+        tryCreateChild();
+        void this.value;
+    
+        return new Child();
+      });
+    }
+
+    const tryCreateChild = jest.fn();
+    const parent = Parent.new();
+
+    parent.value = "foo";
+
+    await parent.on();
+    expect(tryCreateChild).toBeCalledTimes(2);
+  });
 })

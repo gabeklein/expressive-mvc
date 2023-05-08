@@ -3,36 +3,41 @@ import { issues } from './helper/issues';
 import { Model } from './model';
 
 export const Oops = issues({
-  KeysExpected: (key) =>
-    `Key "${key}" was expected in current update.`
+  KeysExpected: (key) => `Key "${key}" was expected in current update.`
 });
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
-  arg1: P | P[],
-  arg2: (this: T, keys: Model.Event<T>[]) => void,
-  arg3?: boolean){
+  select: P | P[] | undefined,
+  callback: (this: T, keys: Model.Event<T>[] | null) => void,
+  once?: boolean){
 
-  if(typeof arg1 == "string")
-    arg1 = [arg1];
+  return control<any>(source, self => {
+    const { subject } = self;
 
-  return control(source, controller => {
-    for(const key of arg1)
-      try { void (source as any)[key] }
-      catch(e){}
+    if(typeof select == "string")
+      select = [ select ];
 
-    const removeListener =
-      controller.addListener(key => {
-        if(!key && !arg1.length)
-          arg2.call(source, []);
-          
-        if(arg1.includes(key as P)){
-          if(arg3)
-            removeListener();
-
-          return arg2.bind(source);
+    if(select)
+      for(const key of select)
+        try {
+          void subject[key];
         }
-      });
+        catch(e){
+          // TODO: should this be caught?
+        }
+
+    const removeListener = self.addListener(key => {
+      if(key === null)
+        callback.call(subject, null);
+
+      else if(!select || select.includes(key as P)){
+        if(once)
+          removeListener();
+
+        return () => callback.call(subject, self.latest!);
+      }
+    });
 
     return removeListener;
   });
@@ -40,60 +45,32 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
 
 export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   source: T,
-  arg1?: P | P[],
-  arg2?: number){
-
-  const single = typeof arg1 == "string";
-  const keys =
-    typeof arg1 == "string" ? [ arg1 ] :
-    typeof arg1 == "object" ? arg1 : 
-    undefined;
+  select?: P | P[],
+  timeout?: number){
 
   return new Promise<any>((resolve, reject) => {
-    const removeListener = control(source, controller => {
-      const pending = controller.frame;
+    if(timeout === 0){
+      const self = control(source, true);
 
-      if(arg2 === 0){
-        if(!pending.size){
-          resolve(false);
-          return;
-        }
-        else if(single && !pending.has(arg1)){
-          reject(Oops.KeysExpected(arg1));
-          return;
-        }
-      }
-
-      if(!keys)
-        controller.waiting.add(resolve);
-
-      else if(keys.length)
-        for(const key of keys)
-          if(key in source)
-            try { void source[key as keyof T] }
-            catch(e){}
-
-      return controller.addListener(key => {
-        if(!key){
-          if(keys && !keys.length)
-            resolve([]);
-          else {
-            removeListener();
-            resolve(false);
-          }
-        }
-        else if(!keys || keys.includes(key as P)){
-          removeListener();
-          return keys =>
-            resolve(single ? controller.state.get(key) : keys)
-        }
-      });
-    })
-
-    if(arg2 as number > 0)
-      setTimeout(() => {
-        removeListener();
+      if(!self.frame.size)
         resolve(false);
-      }, arg2);
+      else if(typeof select == "string" && !self.frame.has(select))
+        reject(Oops.KeysExpected(select));
+      else {
+        const remove = self.addListener(() => {
+          remove();
+          return () => resolve(self.latest);
+        });
+      }
+    }
+    else {
+      const remove = addEventListener(source, select, resolve, true);
+  
+      if(timeout as number > 0)
+        setTimeout(() => {
+          remove();
+          resolve(false);
+        }, timeout);
+    }
   });
 }

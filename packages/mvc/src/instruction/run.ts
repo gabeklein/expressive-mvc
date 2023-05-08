@@ -1,7 +1,7 @@
+import { apply } from '../control';
 import { issues } from '../helper/issues';
 import { defineProperty } from '../helper/object';
 import { mayRetry } from '../suspense';
-import { add } from './add';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
 
@@ -24,42 +24,40 @@ function run (action: Async): typeof action & { active: boolean };
 function run <S> (action: Async<S>): typeof action & { active: boolean };
 
 function run<T extends Async>(task: T){
-  return add<T>(
-    function run(key){
-      let pending = false;
+  return apply<T>((key, control) => {
+    let pending = false;
 
-      const invoke = async (...args: any[]) => {
-        if(pending)
-          return Promise.reject(
-            Oops.DuplicatePending(key)
-          )
+    const invoke = async (...args: any[]) => {
+      if(pending)
+        return Promise.reject(
+          Oops.DuplicatePending(key)
+        )
 
-        pending = true;
-        this.update(key);
+      pending = true;
+      control.update(key);
 
-        try {
-          return await mayRetry(() => (
-            task.apply(this.subject, args)
-          ))
-        }
-        finally {
-          pending = false;
-          this.update(key);
-        }
+      try {
+        return await mayRetry(() => (
+          task.apply(control.subject, args)
+        ))
       }
-
-      this.state.set(key, undefined);
-
-      defineProperty(invoke, "active", {
-        get: () => pending
-      })
-
-      return {
-        value: invoke as T,
-        set: false
-      };
+      finally {
+        pending = false;
+        control.update(key);
+      }
     }
-  )
+
+    control.state[key] = undefined;
+
+    defineProperty(invoke, "active", {
+      get: () => pending
+    })
+
+    return {
+      value: invoke as T,
+      set: false
+    };
+  })
 }
 
 export { run }

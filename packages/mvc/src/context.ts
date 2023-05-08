@@ -3,16 +3,13 @@ import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols
 import { Model } from './model';
 
 export const Oops = issues({
-  NotFound: (name) =>
-    `Could not find ${name} in context.`,
-
   MultipleExist: (name) =>
     `Did find ${name} in context, but multiple were defined.`
 })
 
 export class Context {
-  private table = new Map<Model.Type, symbol>();
-  public register!: Map<string | number, Model | Model.Type>;
+  private table = new WeakMap<Model.Type, symbol>();
+  private input = new Map<string | number, Model | Model.Type>();
 
   private has(T: Model.Type){
     let key = this.table.get(T);
@@ -25,16 +22,11 @@ export class Context {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Type<T>, required?: true): T;
-  public get<T extends Model>(Type: Model.Type<T>, required?: boolean): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, required?: boolean){
+  public get<T extends Model>(Type: Model.Type<T>){
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)
       throw Oops.MultipleExist(Type);
-
-    if(!result && required !== false)
-      throw Oops.NotFound(Type);
 
     return result;
   }
@@ -43,7 +35,7 @@ export class Context {
     input: T | Model.New<T>,
     key?: number | string){
 
-    if(key && this.register.get(key) === input)
+    if(key && this.input.get(key) === input)
       return typeof input == "object"
         ? input
         : this[this.has(input)] as T;
@@ -76,14 +68,14 @@ export class Context {
     while(T !== Model);
     
     if(key !== undefined)
-      this.register.set(key, input);
+      this.input.set(key, input);
 
     return I;
   }
 
   public push(){
     const next = create(this) as this;
-    next.register = new Map();
+    next.input = new Map();
     return next;
   }
 
@@ -100,6 +92,8 @@ export class Context {
     }
 
     for(const model of items)
-      model.gc();
+      model.null();
+
+    this.input.clear();
   }
 }
