@@ -604,20 +604,20 @@ describe("context", () => {
     const bar = Bar.new();
     const hook = render(() => Foo.use().is.bar);
 
-    expect(hook.current).toBe(bar);
+    expect(hook.output).toBe(bar);
   })
 
   it("will subscribe peer from context", async () => {
     const bar = Bar.new();
     const hook = render(() => Foo.use().bar.value);
 
-    expect(hook.current).toBe("bar");
+    expect(hook.output).toBe("bar");
 
     bar.value = "foo";
-    await hook.refresh;
+    await hook.didUpdate();
 
-    expect(hook.current).toBe("foo");
-    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook.output).toBe("foo");
+    expect(hook).toBeCalledTimes(2);
   })
 
   it("will return undefined if instance not found", () => {
@@ -627,7 +627,7 @@ describe("context", () => {
 
     const hook = render(() => Foo.use().bar);
 
-    expect(hook.current).toBeUndefined();
+    expect(hook.output).toBeUndefined();
   })
 
   it("will throw if instance not found", () => {
@@ -658,7 +658,7 @@ describe("context", () => {
     context.add(Parent.new());
 
     const hook = render(() => Parent.use().is);
-    const parent = hook.current;
+    const parent = hook.output;
 
     expect(parent.child.parent).toBe(parent);
   })

@@ -17,7 +17,7 @@ it("will target abstract class", () => {
     return Ambient.get(true);
   });
 
-  expect(hook.current).toBe(test);
+  expect(hook.output).toBe(test);
 })
 
 it("will refresh for values accessed", async () => {
@@ -30,10 +30,10 @@ it("will refresh for values accessed", async () => {
     return Test.get().foo;
   });
 
-  expect(hook.current).toBe("foo");
+  expect(hook.output).toBe("foo");
   test.foo = "bar";
 
-  await hook.refresh;
+  await hook.didUpdate();
 })
 
 describe("set factory", () => {
@@ -52,10 +52,10 @@ describe("set factory", () => {
     expect(hook.pending).toBe(true);
   
     promise.resolve();
-    await hook.refresh;
+    await hook.didUpdate();
   
-    expect(hook.mock).toBeCalledTimes(2);
-    expect(hook.mock).toHaveReturnedTimes(1);
+    expect(hook).toBeCalledTimes(2);
+    expect(hook).toHaveReturnedTimes(1);
   })
 
   it('will refresh and throw if async rejects', async () => {
@@ -113,7 +113,7 @@ describe("set factory", () => {
     promise.resolve("hello");
     await didRender;
   
-    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook).toBeCalledTimes(2);
   })
 });
 
@@ -134,9 +134,9 @@ describe("set placeholder", () => {
     instance.foobar = "foo!";
 
     // expect refresh caused by update
-    await hook.refresh;
+    await hook.didUpdate();
 
-    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook).toBeCalledTimes(2);
 
   })
 
@@ -153,7 +153,7 @@ describe("set placeholder", () => {
       return Test.get().foobar;
     })
 
-    expect(hook.mock).toHaveReturnedWith("foo!");
+    expect(hook).toHaveReturnedWith("foo!");
   })
 });
 
@@ -168,14 +168,14 @@ describe("passive mode", () => {
       return Test.get(true).value;
     });
 
-    expect(hook.mock).toBeCalledTimes(1);
-    expect(hook.current).toBe(1);
+    expect(hook).toBeCalledTimes(1);
+    expect(hook.output).toBe(1);
 
     test.value++;
 
     await expect(test).toUpdate();
 
-    expect(hook.mock).toBeCalledTimes(1);
+    expect(hook).toBeCalledTimes(1);
   });
 
   it("will throw if not found", () => {
@@ -216,12 +216,12 @@ describe("computed", () => {
       return Test.get(x => x.foo);
     });
 
-    expect(hook.current).toBe(1);
+    expect(hook.output).toBe(1);
 
     parent.foo = 2;
-    await hook.refresh;
+    await hook.didUpdate();
 
-    expect(hook.current).toBe(2);
+    expect(hook.output).toBe(2);
   })
 
   it('will compute output', async () => {
@@ -230,12 +230,12 @@ describe("computed", () => {
       return Test.get(x => x.foo + x.bar);
     });
 
-    expect(hook.current).toBe(3);
+    expect(hook.output).toBe(3);
 
     parent.foo = 2;
-    await hook.refresh;
+    await hook.didUpdate();
 
-    expect(hook.current).toBe(4);
+    expect(hook.output).toBe(4);
   })
 
   it('will ignore updates with same result', async () => {
@@ -250,7 +250,7 @@ describe("computed", () => {
       });
     });
 
-    expect(hook.current).toBe(2);
+    expect(hook.output).toBe(2);
     expect(compute).toBeCalled();
 
     parent.foo = 2;
@@ -260,8 +260,8 @@ describe("computed", () => {
     expect(compute).toBeCalledTimes(2);
 
     // compute did not trigger a new render
-    expect(hook.mock).toBeCalledTimes(1);
-    expect(hook.current).toBe(2);
+    expect(hook).toBeCalledTimes(1);
+    expect(hook.output).toBe(2);
   })
 
   it("will disable updates if null returned", async () => {
@@ -273,7 +273,7 @@ describe("computed", () => {
     const hook = render(didRender);
 
     expect(didRender).toBeCalledTimes(1);
-    expect(hook.current).toBe(null);
+    expect(hook.output).toBe(null);
 
     instance.foo = 2;
 
@@ -299,19 +299,19 @@ describe("computed", () => {
       });
     });
 
-    expect(hook.current).toBe(3);
+    expect(hook.output).toBe(3);
 
     expect(willCreate).toBeCalledTimes(1);
     expect(willCompute).toBeCalledTimes(1);
 
     test.foo = 2;
 
-    await hook.refresh;
+    await hook.didUpdate();
 
     expect(willCreate).toBeCalledTimes(1);
     expect(willCompute).toBeCalledTimes(2);
 
-    expect(hook.current).toBe(4);
+    expect(hook.output).toBe(4);
   })
 
   it("will not subscribe to keys pulled by factory", async () => {
@@ -329,21 +329,21 @@ describe("computed", () => {
       });
     });
 
-    expect(hook.current).toBe(2);
+    expect(hook.output).toBe(2);
 
     test.foo = 2;
 
     await test.on(0);
 
     expect(willCompute).toBeCalledTimes(1);
-    expect(hook.current).toBe(2);
+    expect(hook.output).toBe(2);
 
     test.bar = 3;
 
-    await hook.refresh;
+    await hook.didUpdate();
 
     expect(willCompute).toBeCalledTimes(2);
-    expect(hook.current).toBe(3);
+    expect(hook.output).toBe(3);
   })
 
   describe("tuple", () => {
@@ -366,7 +366,7 @@ describe("computed", () => {
         });
       });
 
-      const returned = hook.current;
+      const returned = hook.output;
     
       expect(returned).toStrictEqual(["something", true, "foo"]);
     
@@ -376,7 +376,7 @@ describe("computed", () => {
       expect(didRender).toBeCalledTimes(1);
       expect(didCompute).toBeCalledWith(2);
 
-      expect(hook.current).toBe(returned);
+      expect(hook.output).toBe(returned);
     })
 
     it("will update if any value differs", async () => {
@@ -392,7 +392,7 @@ describe("computed", () => {
         });
       });
     
-      expect(hook.current).toStrictEqual([1, true, "foo"]);
+      expect(hook.output).toStrictEqual([1, true, "foo"]);
     
       parent.foo = 2;
       parent.bar = false;
@@ -401,7 +401,7 @@ describe("computed", () => {
       expect(didRender).toBeCalledTimes(2);
       expect(didCompute).toBeCalledTimes(2);
     
-      expect(hook.current).toEqual([2, false, "foo"]);
+      expect(hook.output).toEqual([2, false, "foo"]);
     })
   })
 
@@ -418,12 +418,12 @@ describe("computed", () => {
         return Test.get(() => promise);
       });
 
-      expect(hook.current).toBeNull();
+      expect(hook.output).toBeNull();
 
       promise.resolve("foobar");
-      await hook.refresh;
+      await hook.didUpdate();
 
-      expect(hook.current).toBe("foobar");
+      expect(hook.output).toBe("foobar");
     });
 
     it('will not subscribe to values', async () => {
@@ -436,18 +436,18 @@ describe("computed", () => {
         });
       });
 
-      expect(hook.mock).toBeCalledTimes(1);
+      expect(hook).toBeCalledTimes(1);
 
       promise.resolve("foobar");
-      await hook.refresh;
+      await hook.didUpdate();
 
-      expect(hook.mock).toBeCalledTimes(2);
-      expect(hook.current).toBe("foobar");
+      expect(hook).toBeCalledTimes(2);
+      expect(hook.output).toBe("foobar");
 
       control.foo = "foo";
       await expect(control).toUpdate();
 
-      expect(hook.mock).toBeCalledTimes(2);
+      expect(hook).toBeCalledTimes(2);
     });
   })
 
@@ -470,15 +470,15 @@ describe("computed", () => {
 
       expect(hook.pending).toBe(true);
 
-      expect(hook.mock).toBeCalledTimes(1);
+      expect(hook).toBeCalledTimes(1);
       instance.value = "foobar";
 
-      await hook.refresh
+      await hook.didUpdate();
 
       // 1st - render prior to bailing
       // 2nd - successful render
-      expect(hook.mock).toBeCalledTimes(2);
-      expect(hook.mock).toHaveReturnedTimes(1);
+      expect(hook).toBeCalledTimes(2);
+      expect(hook).toHaveReturnedTimes(1);
 
       // 1st - initial render fails
       // 2nd - recheck success (permit render again)
@@ -497,9 +497,9 @@ describe("computed", () => {
       expect(hook.pending).toBe(true);
 
       promise.resolve();
-      await hook.refresh;
+      await hook.didUpdate();
 
-      expect(hook.mock).toBeCalledTimes(2);
+      expect(hook).toBeCalledTimes(2);
     })
   })
 
@@ -513,7 +513,7 @@ describe("computed", () => {
         return Test.get(() => undefined);
       });
 
-      expect(hook.current).toBe(null);
+      expect(hook.output).toBe(null);
     })
 
     it("will convert to null from factory", () => {
@@ -523,7 +523,7 @@ describe("computed", () => {
         return Test.get(() => () => undefined);
       });
 
-      expect(hook.current).toBe(null);
+      expect(hook.output).toBe(null);
     })
   })
 
@@ -544,12 +544,12 @@ describe("computed", () => {
       });
 
       expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook.mock).toHaveBeenCalledTimes(1);
+      expect(hook).toHaveBeenCalledTimes(1);
       
       forceUpdate();
       
       expect(didEvaluate).toHaveBeenCalledTimes(2);
-      expect(hook.mock).toHaveBeenCalledTimes(2);
+      expect(hook).toHaveBeenCalledTimes(2);
     })
 
     it("will refresh without reevaluating", () => {
@@ -566,12 +566,12 @@ describe("computed", () => {
       });
 
       expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook.mock).toHaveBeenCalledTimes(1);
+      expect(hook).toHaveBeenCalledTimes(1);
       
       forceUpdate();
       
       expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook.mock).toHaveBeenCalledTimes(2);
+      expect(hook).toHaveBeenCalledTimes(2);
     })
 
     it("will refresh returned function instead", () => {
@@ -597,12 +597,12 @@ describe("computed", () => {
         });
       });
 
-      expect(hook.current).toBe("foo");
+      expect(hook.output).toBe("foo");
       expect(didEvaluate).toHaveBeenCalledTimes(1);
       
       updateValue("bar");
       
-      expect(hook.current).toBe("bar");
+      expect(hook.output).toBe("bar");
       expect(didEvaluate).toHaveBeenCalledTimes(1);
       expect(didEvaluateInner).toHaveBeenCalledTimes(2);
     })
@@ -619,17 +619,17 @@ describe("computed", () => {
         });
       });
 
-      expect(hook.mock).toHaveBeenCalledTimes(1);
+      expect(hook).toHaveBeenCalledTimes(1);
 
       const out = forceUpdate(promise);
 
-      expect(hook.mock).toHaveBeenCalledTimes(2);
+      expect(hook).toHaveBeenCalledTimes(2);
 
       promise.resolve("hello");
 
       await expect(out).resolves.toBe("hello");
       
-      expect(hook.mock).toHaveBeenCalledTimes(3);
+      expect(hook).toHaveBeenCalledTimes(3);
     })
 
     it("will invoke async function", async () => {
@@ -644,7 +644,7 @@ describe("computed", () => {
         });
       });
 
-      expect(hook.mock).toHaveBeenCalledTimes(1);
+      expect(hook).toHaveBeenCalledTimes(1);
 
       let pending: boolean | undefined;
 
@@ -655,12 +655,12 @@ describe("computed", () => {
       });
 
       expect(pending).toBe(true);
-      expect(hook.mock).toHaveBeenCalledTimes(2);
+      expect(hook).toHaveBeenCalledTimes(2);
 
       promise.resolve();
       
-      await hook.refresh;
-      expect(hook.mock).toHaveBeenCalledTimes(3);
+      await hook.didUpdate();
+      expect(hook).toHaveBeenCalledTimes(3);
       expect(pending).toBe(false);
     })
   })

@@ -8,17 +8,17 @@ class Test extends Model {
 it("will create instance given a class", () => {
   const hook = render(() => Test.use());
 
-  expect(hook.current).toBeInstanceOf(Test);
+  expect(hook.output).toBeInstanceOf(Test);
 })
 
 it("will subscribe to instance of controller", async () => {
   const hook = render(() => Test.use());
 
-  expect(hook.current.value).toBe("foo");
-  hook.current.value = "bar";
+  expect(hook.output.value).toBe("foo");
+  hook.output.value = "bar";
 
-  await hook.refresh;
-  expect(hook.current.value).toBe("bar");
+  await hook.didUpdate();
+  expect(hook.output.value).toBe("bar");
 })
 
 it("will run callback", () => {
@@ -52,10 +52,10 @@ it("will ignore updates after unmount", async () => {
     return test.is;
   });
 
-  const test = hook.current;
+  const test = hook.output;
 
   test.value = "bar";
-  await hook.refresh;
+  await hook.didUpdate();
 
   hook.unmount();
   test.value = "baz";
@@ -80,7 +80,7 @@ describe("props argument", () => {
       return Test.use(mockExternal);
     });
   
-    expect(hook.current).toMatchObject(mockExternal);
+    expect(hook.output).toMatchObject(mockExternal);
   })
   
   it("will apply props only once by default", async () => {
@@ -88,23 +88,23 @@ describe("props argument", () => {
       return Test.use({ foo: "foo", bar: "bar" });
     });
 
-    expect(hook.current).toMatchObject({ foo: "foo", bar: "bar" });
+    expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
     
     // TODO: Can this update be supressed?
-    await expect(hook.current).toUpdate();
+    await expect(hook.output).toUpdate();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" })
     });
 
-    await expect(hook.current).not.toUpdate();
+    await expect(hook.output).not.toUpdate();
 
-    hook.current.foo = "bar";
+    hook.output.foo = "bar";
 
-    await expect(hook.current).toUpdate();
+    await expect(hook.output).toUpdate();
 
-    expect(hook.current.foo).toBe("bar");
-    expect(hook.mock).toBeCalledTimes(3);
+    expect(hook.output.foo).toBe("bar");
+    expect(hook).toBeCalledTimes(3);
   })
   
   it("will apply props per-render", async () => {
@@ -112,19 +112,19 @@ describe("props argument", () => {
       return Test.use({ foo: "foo", bar: "bar" }, true);
     });
 
-    expect(hook.current).toMatchObject({ foo: "foo", bar: "bar" });
+    expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
     
     // TODO: Can this update be supressed?
-    await expect(hook.current).toUpdate();
+    await expect(hook.output).toUpdate();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" }, true)
     });
 
-    await expect(hook.current).toUpdate();
+    await expect(hook.output).toUpdate();
 
-    expect(hook.current.foo).toBe("bar");
-    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook.output.foo).toBe("bar");
+    expect(hook).toBeCalledTimes(2);
   })
   
   it("will apply props over (untracked) arrow functions", () => {
@@ -140,7 +140,7 @@ describe("props argument", () => {
       return Test.use(mockExternal);
     });
   
-    const { foobar } = hook.current;
+    const { foobar } = hook.output;
   
     expect(foobar).toBe(mockExternal.foobar);
   })
@@ -160,7 +160,7 @@ describe("props argument", () => {
       return Test.use(mockExternal);
     });
   
-    const { foobar } = hook.current;
+    const { foobar } = hook.output;
   
     expect(foobar).not.toBe(mockExternal.foobar);
   })
@@ -174,8 +174,8 @@ describe("props argument", () => {
       return Test.use({ foo: "bar" }, true);
     })
 
-    await expect(hook.current).toUpdate();
+    await expect(hook.output).toUpdate();
 
-    expect(hook.mock).toBeCalledTimes(2);
+    expect(hook).toBeCalledTimes(2);
   })
 })

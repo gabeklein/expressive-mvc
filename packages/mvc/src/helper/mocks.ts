@@ -3,7 +3,7 @@ import { Control } from "../control";
 
 export const context = new Context();
 
-let hook: (() => void) | undefined;
+let invoke: (() => void) | undefined;
 let memo: any;
 let mount: (() => typeof unmount) | void;
 let unmount: (() => void) | void;
@@ -14,8 +14,8 @@ afterEach(() => {
 
   context.pop();
 
-  hook = undefined;
   memo = undefined;
+  invoke = undefined;
   unmount = undefined;
 });
 
@@ -51,45 +51,57 @@ beforeAll(() => {
 function useMemo<T>(
   factory: (refresh: () => void) => T){
 
-  return memo || (memo = factory(hook!));
+  return memo || (memo = factory(invoke!));
 }
 
-export function render<T>(fn: () => T){
+interface MockHook<T> extends jest.Mock<T, []> {
+  output: T;
+  pending: boolean;
+  didUpdate(): Promise<void>;
+  update(next: () => T): Promise<void>;
+  unmount(): void;
+}
+
+export function render<T>(implement: () => T){
   let willRender = () => {};
+  let waiting: Promise<void>;
 
-  const result = {
-    mock: jest.fn(() => fn()),
-    current: undefined as T,
-    refresh: Promise.resolve(),
-    pending: false,
-    update(implementation: () => T){
-      fn = implementation;
-      hook!();
-      return this.refresh;
-    },
-    unmount(){
-      if(unmount)
-        unmount();
+  const mock: MockHook<T> = Object.assign(
+    jest.fn(() => implement()), {
+      output: undefined as T,
+      pending: false,
+      didUpdate(){
+        return waiting;
+      },
+      update(next: () => T){
+        implement = next;
+        invoke!();
+        return waiting;
+      },
+      unmount(){
+        if(unmount)
+          unmount();
+      }
     }
-  }
+  )
 
-  hook = () => {
+  invoke = () => {
     try {
-      result.pending = false;
+      mock.pending = false;
       willRender();
-      result.current = result.mock();
+      mock.output = mock();
     }
     catch(error){
       if(!(error instanceof Promise))
         throw error;
 
-      result.pending = true;
-      error.then(hook).finally(() => {
-        result.pending = false;
+      mock.pending = true;
+      error.then(invoke).finally(() => {
+        mock.pending = false;
       });
     }
     finally {
-      result.refresh = new Promise(res => willRender = res);
+      waiting = new Promise(res => willRender = res);
 
       if(mount){
         unmount = mount();
@@ -98,7 +110,7 @@ export function render<T>(fn: () => T){
     }
   }
 
-  hook();
+  invoke();
 
-  return result;
+  return mock;
 }
