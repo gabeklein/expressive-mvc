@@ -1,13 +1,17 @@
+
+interface MockPromise<T> extends Promise<T> {
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: any) => void;
+}
+
 export function mockPromise<T = void>(){
-  let resolve!: (value?: T | PromiseLike<T>) => void;
-  let reject!: (reason?: any) => void;
+  const methods = {} as MockPromise<T>;
+  const promise = new Promise((res, rej) => {
+    methods.resolve = res;
+    methods.reject = rej;
+  }) as MockPromise<T>;
 
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res as any;
-    reject = rej;
-  });
-
-  return Object.assign(promise, { resolve, reject });
+  return Object.assign(promise, methods);
 }
 
 export function mockConsole(){
