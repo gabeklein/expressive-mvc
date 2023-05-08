@@ -55,10 +55,10 @@ declare namespace Control {
     render: () => T;
   } | void;
 
-  type GetHook = <T> (
-    type: typeof Model,
-    adapter: GetAdapter<T>
-  ) => T | null;
+  type GetHook = <T extends Model, R> (
+    type: Model.Type<T>,
+    adapter: GetAdapter<R>
+  ) => R | null;
 
   type UseAdapter<T extends Model> = (
     update: () => void

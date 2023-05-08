@@ -21,7 +21,7 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
 declare namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
-  export type Type<T extends Model = Model> = (abstract new () => T) & typeof Model;
+  export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
   /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;

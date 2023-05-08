@@ -2,12 +2,23 @@ import { Model, set } from '.';
 import { mockPromise } from './helper/testing';
 import { render, context } from './helper/mocks';
 
-class Ambient extends Model {
+abstract class Ambient extends Model {
   constructor(){
     super();
     context.add(this);
   }
 }
+
+it("will target abstract class", () => {
+  class Test extends Ambient {}
+
+  const test = Test.new();
+  const hook = render(() => {
+    return Ambient.get(true);
+  });
+
+  expect(hook.current).toBe(test);
+})
 
 it("will refresh for values accessed", async () => {
   class Test extends Ambient {
