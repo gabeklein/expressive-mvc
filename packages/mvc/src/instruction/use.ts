@@ -15,14 +15,14 @@ export const Oops = issues({
 /** Create a placeholder for specified Model type. */
 function use <T extends Model> (): T | undefined;
 
+/** Create a new child instance of model. */
+function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
+
 /** Assign the result of a factory as a child model. */
 function use <T extends Model> (from: () => Promise<T> | T, required?: true): T;
 
 /** Assign the result of a factory as a child model. */
 function use <T extends Model> (from: () => Promise<T> | T, required: boolean): T | undefined;
-
-/** Create a new child instance of model. */
-function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
 
 /** Create a managed child from factory function. */
 function use <T extends Model> (from: () => Promise<T> | T, callback?: (i: T) => void): T;

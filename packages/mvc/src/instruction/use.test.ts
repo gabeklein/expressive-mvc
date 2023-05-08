@@ -67,120 +67,6 @@ it('will run callback', () => {
   expect(callback).toBeCalled();
 })
 
-it('will create from factory', async () => {
-  class Child extends Model {
-    parent!: Parent;
-  }
-
-  class Parent extends Model {
-    child = use(() => {
-      const child = Child.new();
-      child.parent = this;
-      return child;
-    });
-  }
-
-  const state = Parent.new();
-
-  expect(state.child).toBeInstanceOf(Child);
-  expect(state.child.parent).toBe(state);
-})
-
-it('will cancel create on thrown error', () => {
-  class Parent extends Model {
-    child = use(() => {
-      throw new Error("foobar");
-    });
-  }
-
-  const test = () => void Parent.new();
-
-  expect(test).toThrowError();
-})
-
-it('will throw rejection on access', async () => {
-  class Parent extends Model {
-    child = use(async () => {
-      throw new Error("foobar");
-    });
-  }
-
-  const parent = Parent.new();
-
-  await parent.on();
-
-  const test = () => void parent.child;
-
-  expect(test).toThrowError();
-})
-
-it('will create from async factory', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child());
-  }
-
-  const parent = Parent.new();
-  await parent.on();
-
-  expect(parent.child).toBeInstanceOf(Child);
-  
-  parent.child.value = "foobar";
-  await expect(parent.child).toUpdate();
-});
-
-it('will suspend if awaited', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child());
-  }
-
-  const parent = Parent.new();
-  const mock = jest.fn((it: Parent) => {
-    void it.child;
-  });
-
-  parent.on(mock);
-
-  await parent.on();
-  expect(parent.child).toBeInstanceOf(Child);
-  
-  parent.child.value = "foobar";
-
-  await expect(parent.child).toUpdate();
-});
-
-it('will return undefined if not required', async () => {
-  class Parent extends Model {
-    child = use(async () => new Child(), false);
-  }
-
-  const parent = Parent.new();
-
-  expect(parent.child).toBeUndefined();
-
-  await parent.on();
-  expect(parent.child).toBeInstanceOf(Child);
-});
-
-it('will wait for dependancies on suspense', async () => {
-  class Parent extends Model {
-    value = set<string>();
-    child = use(() => {
-      tryCreateChild();
-      void this.value;
-  
-      return new Child();
-    });
-  }
-
-  const tryCreateChild = jest.fn();
-  const parent = Parent.new();
-
-  parent.value = "foo";
-
-  await parent.on();
-  expect(tryCreateChild).toBeCalledTimes(2);
-});
-
 it('will update on new value', async () => {
   const state = Parent.new();
   const mock = jest.fn((it: Parent) => {
@@ -296,4 +182,120 @@ it('will throw if bad argument type', () => {
   const attempt = () => Parent.new();
 
   expect(attempt).toThrowError(expected)
+})
+
+describe("factory", () => {
+  it('will create from factory', async () => {
+    class Child extends Model {
+      parent!: Parent;
+    }
+
+    class Parent extends Model {
+      child = use(() => {
+        const child = Child.new();
+        child.parent = this;
+        return child;
+      });
+    }
+
+    const state = Parent.new();
+
+    expect(state.child).toBeInstanceOf(Child);
+    expect(state.child.parent).toBe(state);
+  })
+
+  it('will cancel create on thrown error', () => {
+    class Parent extends Model {
+      child = use(() => {
+        throw new Error("foobar");
+      });
+    }
+
+    const test = () => void Parent.new();
+
+    expect(test).toThrowError();
+  })
+
+  it('will throw rejection on access', async () => {
+    class Parent extends Model {
+      child = use(async () => {
+        throw new Error("foobar");
+      });
+    }
+
+    const parent = Parent.new();
+
+    await parent.on();
+
+    const test = () => void parent.child;
+
+    expect(test).toThrowError();
+  })
+
+  it('will create from async factory', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child());
+    }
+
+    const parent = Parent.new();
+    await parent.on();
+
+    expect(parent.child).toBeInstanceOf(Child);
+    
+    parent.child.value = "foobar";
+    await expect(parent.child).toUpdate();
+  });
+
+  it('will suspend if awaited', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child());
+    }
+
+    const parent = Parent.new();
+    const mock = jest.fn((it: Parent) => {
+      void it.child;
+    });
+
+    parent.on(mock);
+
+    await parent.on();
+    expect(parent.child).toBeInstanceOf(Child);
+    
+    parent.child.value = "foobar";
+
+    await expect(parent.child).toUpdate();
+  });
+
+  it('will return undefined if not required', async () => {
+    class Parent extends Model {
+      child = use(async () => new Child(), false);
+    }
+
+    const parent = Parent.new();
+
+    expect(parent.child).toBeUndefined();
+
+    await parent.on();
+    expect(parent.child).toBeInstanceOf(Child);
+  });
+
+  it('will wait for dependancies on suspense', async () => {
+    class Parent extends Model {
+      value = set<string>();
+      child = use(() => {
+        tryCreateChild();
+        void this.value;
+    
+        return new Child();
+      });
+    }
+
+    const tryCreateChild = jest.fn();
+    const parent = Parent.new();
+
+    parent.value = "foo";
+
+    await parent.on();
+    expect(tryCreateChild).toBeCalledTimes(2);
+  });
 })
