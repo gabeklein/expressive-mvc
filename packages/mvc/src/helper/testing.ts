@@ -16,7 +16,7 @@ export function mockPromise<T = void>(){
 
 export function mockConsole(){
   const warn = jest
-    .spyOn(global.console, "warn")
+    .spyOn(console, "warn")
     .mockImplementation(() => {});
 
   const error = jest
