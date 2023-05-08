@@ -77,11 +77,6 @@ declare namespace Control {
     relativeTo: Model,
     callback: (got: Model | undefined) => void
   ) => void;
-
-  type TapHook = <R>(
-    type: typeof Model,
-    memo: (got: Model | undefined) => R
-  ) => R;
 }
 
 class Control<T extends Model = any> {
@@ -92,7 +87,6 @@ class Control<T extends Model = any> {
   static getModel: Control.GetHook;
   static useModel: Control.UseHook;
   static hasModel: Control.HasHook;
-  static tapModel: Control.TapHook;
 
   static for = control;
   static apply = apply;

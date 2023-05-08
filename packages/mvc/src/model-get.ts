@@ -33,25 +33,18 @@ function get<T extends Model>(
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  if(typeof arg1 == "boolean")
-    return Control.tapModel(this, got => {
-      if(got)
-        return got;
-
-      if(arg1)
-        throw Oops.NotFound(this);
-    });
-
-  return Control.getModel(this, arg1
-    ? useComputed(this, arg1, arg2)
-    : useSubscriber(this)
+  return Control.getModel(this,
+    typeof arg1 === "function"
+      ? useComputed(this, arg1, arg2)
+      : useSubscriber(this, arg1)
   )
 }
 
 export { get };
 
 function useSubscriber<T extends Model>(
-  type: Model.Type<T>
+  type: Model.Type<T>,
+  required?: boolean
 ): Control.GetAdapter<T> {
 
   return (refresh, context) => {
@@ -60,8 +53,10 @@ function useSubscriber<T extends Model>(
 
     context(got => {
       if(got)
-        proxy = Control.watch(got as T, () => onUpdate);
-      else
+        proxy = required == undefined
+          ? Control.watch(got as T, () => onUpdate)
+          : got as T;
+      else if(required !== false)
         throw Oops.NotFound(type);
     })
 

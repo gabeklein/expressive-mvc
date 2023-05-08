@@ -1,4 +1,4 @@
-import { Control, Model } from '@expressive/mvc';
+import { Control } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { useLookup, usePeerContext } from './context';
 
@@ -30,12 +30,4 @@ export const useModel: Control.UseHook = (adapter) => {
   useLayoutEffect(hook.mount, []);
 
   return hook.render;
-}
-
-export function tapModel <T extends Model, R>(
-  type: Model.Type<T>,
-  memo: (got: T | undefined) => R
-){
-  const context = useLookup();
-  return useMemo(() => memo(context.get(type)), []);
 }

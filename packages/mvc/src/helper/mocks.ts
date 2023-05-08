@@ -23,11 +23,7 @@ beforeAll(() => {
   Control.hasModel = (Type, subject, callback) => {
     callback(context.get(Type));
   }
-  
-  Control.tapModel = (Type, memo) => {
-    return useMemo(() => memo(context.get(Type)));
-  }
-  
+
   Control.getModel = (Type, adapter) => {
     const render = useMemo(refresh => {
       const result = adapter(refresh, use => use(context.get(Type)));
