@@ -62,19 +62,19 @@ interface MockHook<T> extends jest.Mock<T, []> {
   unmount(): void;
 }
 
-export function render<T>(implement: () => T){
+export function render<T>(hook: () => T){
   let willRender = () => {};
   let waiting: Promise<void>;
 
   const mock: MockHook<T> = Object.assign(
-    jest.fn(() => implement()), {
+    jest.fn(() => hook()), {
       output: undefined as T,
       pending: false,
       didUpdate(){
         return waiting;
       },
       update(next: () => T){
-        implement = next;
+        hook = next;
         invoke!();
         return waiting;
       },
