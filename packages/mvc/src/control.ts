@@ -95,7 +95,6 @@ class Control<T extends Model = any> {
   public parent?: Model;
   public state!: { [key: string]: any };
 
-  // TODO: make Partial this
   public latest?: Model.Event<T>[];
 
   public frame = new Set<string>();
