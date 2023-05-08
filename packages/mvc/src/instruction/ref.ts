@@ -4,7 +4,7 @@ import { defineProperty } from '../helper/object';
 import { Model } from '../model';
 
 declare namespace ref {
-  type Callback<T, S = any> = (this: S, argument: T) =>
+  type Callback<T> = (argument: T) =>
     ((next: T) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
@@ -52,7 +52,6 @@ function ref <O extends Model, R>
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
-function ref <T, S> (callback?: ref.Callback<T, S>): ref.Object<T>;
 
 function ref<T>(
   arg?: ref.Callback<T> | Model,
