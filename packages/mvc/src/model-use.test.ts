@@ -60,3 +60,122 @@ it("will ignore updates after unmount", async () => {
   hook.unmount();
   test.value = "baz";
 })
+
+describe("props argument", () => {
+  class Test extends Model {
+    foo?: string = undefined;
+    bar?: string = undefined;
+  }
+  
+  it("will apply props to model", async () => {
+    const mockExternal = {
+      foo: "foo",
+      bar: "bar"
+    }
+  
+    const didRender = jest.fn();
+  
+    const hook = render(() => {
+      didRender();
+      return Test.use(mockExternal);
+    });
+  
+    expect(hook.current).toMatchObject(mockExternal);
+  })
+  
+  it("will apply props only once by default", async () => {
+    const hook = render(() => {
+      return Test.use({ foo: "foo", bar: "bar" });
+    });
+
+    expect(hook.current).toMatchObject({ foo: "foo", bar: "bar" });
+    
+    // TODO: Can this update be supressed?
+    await expect(hook.current).toUpdate();
+
+    hook.update(() => {
+      return Test.use({ foo: "bar", bar: "foo" })
+    });
+
+    await expect(hook.current).not.toUpdate();
+
+    hook.current.foo = "bar";
+
+    await expect(hook.current).toUpdate();
+
+    expect(hook.current.foo).toBe("bar");
+    expect(hook.mock).toBeCalledTimes(3);
+  })
+  
+  it("will apply props per-render", async () => {
+    const hook = render(() => {
+      return Test.use({ foo: "foo", bar: "bar" }, true);
+    });
+
+    expect(hook.current).toMatchObject({ foo: "foo", bar: "bar" });
+    
+    // TODO: Can this update be supressed?
+    await expect(hook.current).toUpdate();
+
+    hook.update(() => {
+      return Test.use({ foo: "bar", bar: "foo" }, true)
+    });
+
+    await expect(hook.current).toUpdate();
+
+    expect(hook.current.foo).toBe("bar");
+    expect(hook.mock).toBeCalledTimes(2);
+  })
+  
+  it("will apply props over (untracked) arrow functions", () => {
+    class Test extends Model {
+      foobar = () => "Hello world!";
+    }
+  
+    const mockExternal = {
+      foobar: () => "Goodbye cruel world!"
+    }
+  
+    const hook = render(() => {
+      return Test.use(mockExternal);
+    });
+  
+    const { foobar } = hook.current;
+  
+    expect(foobar).toBe(mockExternal.foobar);
+  })
+  
+  it("will not apply props over methods", () => {
+    class Test extends Model {
+      foobar(){
+        return "Hello world!";
+      };
+    }
+  
+    const mockExternal = {
+      foobar: () => "Goodbye cruel world!"
+    }
+  
+    const hook = render(() => {
+      return Test.use(mockExternal);
+    });
+  
+    const { foobar } = hook.current;
+  
+    expect(foobar).not.toBe(mockExternal.foobar);
+  })
+  
+  it("will ignore updates itself caused", async () => {
+    const hook = render(() => {
+      return Test.use({}, true);
+    })
+
+    hook.update(() => {
+      return Test.use({ foo: "bar" }, true);
+    })
+
+    await expect(hook.current).toUpdate();
+
+    expect(hook.mock).toBeCalledTimes(2);
+  })
+})

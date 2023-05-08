@@ -58,10 +58,15 @@ export function render<T>(fn: () => T){
   let willRender = () => {};
 
   const result = {
-    mock: jest.fn(fn),
+    mock: jest.fn(() => fn()),
     current: undefined as T,
     refresh: Promise.resolve(),
     pending: false,
+    update(implementation: () => T){
+      fn = implementation;
+      hook!();
+      return this.refresh;
+    },
     unmount(){
       if(unmount)
         unmount();
