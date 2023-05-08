@@ -1,12 +1,12 @@
 import { Control } from '@expressive/mvc';
 
-import { fetchRelative, fetchSimple } from './context';
-import { useContext, useModel } from './hooks';
+import { hasModel, tapModel } from './context';
+import { getModel, useModel } from './hooks';
 
-Control.getModel = useContext;
+Control.getModel = getModel;
 Control.useModel = useModel;
-Control.hasModel = fetchRelative;
-Control.tapModel = fetchSimple;
+Control.hasModel = hasModel;
+Control.tapModel = tapModel;
 
 export {
   default,

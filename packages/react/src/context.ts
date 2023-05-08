@@ -6,7 +6,7 @@ export const useLookup = () => useContext(LookupContext);
 
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
-export function fetchRelative<T extends Model>(
+export function hasModel<T extends Model>(
   type: Model.Type<T>,
   relativeTo: Model,
   callback: (got: T | undefined) => void
@@ -21,7 +21,7 @@ export function fetchRelative<T extends Model>(
   })
 }
 
-export function fetchSimple <T extends Model, R>(
+export function tapModel <T extends Model, R>(
   type: Model.Type<T>,
   memo: (got: T | undefined) => R
 ){

@@ -2,7 +2,7 @@ import { Control } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { useLookup, usePeerContext } from './context';
 
-export const useContext: Control.GetHook = (type, adapter) => {
+export const getModel: Control.GetHook = (type, adapter) => {
   const context = useLookup();
   const state = useState(0);
   const hook = useMemo(() => {
