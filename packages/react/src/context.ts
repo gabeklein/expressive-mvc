@@ -21,13 +21,6 @@ export function hasModel<T extends Model>(
   })
 }
 
-export function setPeers(context: Context, onto: Model){
-  const pending = Pending.get(onto);
-
-  if(pending)
-    pending.forEach(cb => cb(context));
-}
-
 const Applied = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
