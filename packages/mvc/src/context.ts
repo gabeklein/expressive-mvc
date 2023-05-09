@@ -5,7 +5,10 @@ import { Model } from './model';
 
 export const Oops = issues({
   MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`
+    `Did find ${name} in context, but multiple were defined.`,
+
+  NewValue: (name) =>
+    `Provider already has already defined '${name}' but got new value. This is not yet supported.`
 })
 
 declare namespace Context {
@@ -43,15 +46,17 @@ class Context {
 
     for(const key in inputs){
       const input = inputs[key];
+      const exists = this.input.get(key);
 
-      if(key)
-        if(this.input.get(key) === input)
-          continue;
+      if(exists)
+        if(exists !== input)
+          throw Oops.NewValue(key);
         else
-          this.input.set(key, input);
+          continue;
 
       const instance = this.add(input);
 
+      this.input.set(key, input)
       init.set(instance, true);
     }
 

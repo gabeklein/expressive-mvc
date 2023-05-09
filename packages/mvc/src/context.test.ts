@@ -113,6 +113,20 @@ describe("include", () => {
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
   })
+
+  // This feature will be introduced later.
+  it("will throw if provided key has changed", () => {
+    const context = new Context();
+    const foo = Foo.new();
+    const bar = Bar.new();
+  
+    context.include({ foo, bar });
+
+    const attempt = () =>
+      context.include({ foo, bar: Bar.new() });
+
+    expect(attempt).toThrowError(Oops.NewValue("bar"));
+  })
   
   it("will register children implicitly", () => {
     const context = new Context();
