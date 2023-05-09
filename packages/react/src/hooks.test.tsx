@@ -1,7 +1,8 @@
 import React from 'react';
+import { create } from 'react-test-renderer';
 
 import { Model, Provider } from '.';
-import { create, mockHook } from './tests';
+import { mockHook } from './tests';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {

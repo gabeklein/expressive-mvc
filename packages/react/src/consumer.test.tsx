@@ -1,9 +1,9 @@
 import React from 'react';
+import { create } from 'react-test-renderer';
 
 import { Model } from '.';
 import { Consumer } from './consumer';
 import { Provider } from './provider';
-import { create } from './tests';
 
 class Foo extends Model {
   value?: string = undefined;

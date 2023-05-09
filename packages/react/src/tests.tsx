@@ -4,8 +4,6 @@ import React from 'react';
 
 import { Provider } from './provider';
 
-export { create } from "react-test-renderer";
-
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();
 
