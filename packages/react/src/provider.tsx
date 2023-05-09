@@ -1,4 +1,4 @@
-import { Control, issues, Model } from '@expressive/mvc';
+import { issues, Model } from '@expressive/mvc';
 import React, { Suspense, useLayoutEffect, useMemo } from 'react';
 
 import { LookupContext, Pending, useLookup } from './context';
@@ -37,7 +37,6 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   let { for: include, use: assign } = props;
 
-  const init = new Set<Model>();
   const ambient = useLookup();
   const context = useMemo(() => {
     if(include)
@@ -49,31 +48,12 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   if(typeof include == "function" || include instanceof Model)
     include = { [0]: include };
 
-  for(const key in include){
-    const instance = context.add(include[key], key);
-
-    init.add(instance);
-
-    if(assign)
-      for(const K in assign)
-        if(K in instance)
-          (instance as any)[K] = (assign as any)[K];
-  }
-
-  for(const model of init){
-    const control = Control.for(model, true);
+  context.include(include, assign).forEach(model => {
     const pending = Pending.get(model);
-  
+
     if(pending)
       pending.forEach(cb => cb(context));
-
-    Object.values(control.state).forEach(value => {
-      if(value instanceof Model && Control.for(value).parent === model){
-        context.add(value);
-        init.add(value);
-      }
-    });
-  }
+  });
 
   useLayoutEffect(() => () => context.pop(), []);
 

@@ -70,24 +70,6 @@ it("will ignore if multiple but same", () => {
   expect(got).toBe(example);
 })
 
-it("will return existing if key/value is same", () => {
-  const context = new Context();
-  const example1 = context.add(Example, "KEY");
-  const example2 = context.add(Example, "KEY");
-
-  expect(example1).toBe(example2);
-})
-
-it("will return existing if key/value is same", () => {
-  const context = new Context();
-  const example = Example.new();
-
-  const example1 = context.add(example, "KEY");
-  const example2 = context.add(example, "KEY");
-
-  expect(example1).toBe(example2);
-})
-
 it("will destroy modules created by layer", () => {
   class Test extends Model {
     didDestroy = jest.fn();

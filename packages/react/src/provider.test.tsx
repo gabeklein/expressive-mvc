@@ -188,23 +188,6 @@ describe("and prop", () => {
     );
   })
 
-  it("will assign every render", async () => {
-    const foo = Foo.new();
-    const element = create(
-      <Provider for={foo} use={{ value: "foo" }} />
-    );
-
-    expect(foo.value).toBe("foo");
-
-    element.update(
-      <Provider for={foo} use={{ value: "bar" }} />
-    );
-
-    await expect(foo).toUpdate();
-
-    expect(foo.value).toBe("bar");
-  })
-
   it("will assign values to muliple", () => {
     class Bar extends Model {
       value = "";

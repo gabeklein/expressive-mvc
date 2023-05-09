@@ -1,3 +1,4 @@
+import { control } from './control';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
@@ -7,7 +8,13 @@ export const Oops = issues({
     `Did find ${name} in context, but multiple were defined.`
 })
 
-export class Context {
+declare namespace Context {
+  type Inputs = {
+    [key: string | number]: Model | Model.New
+  }
+}
+
+class Context {
   private table = new WeakMap<Model.Type, symbol>();
   private input = new Map<string | number, Model | Model.Type>();
 
@@ -31,15 +38,43 @@ export class Context {
     return result;
   }
 
-  public add<T extends Model>(
-    input: T | Model.New<T>,
-    key?: number | string){
+  public include(inputs: Context.Inputs, assign?: {}){
+    const init = new Set<Model>();
 
-    if(key && this.input.get(key) === input)
-      return typeof input == "object"
-        ? input
-        : this[this.has(input)] as T;
+    for(const key in inputs){
+      const input = inputs[key];
 
+      if(key)
+        if(this.input.get(key) === input)
+          continue;
+        else
+          this.input.set(key, input);
+
+      const instance = this.add(input);
+
+      if(assign)
+        for(const K in assign)
+          if(K in instance)
+            (instance as any)[K] = (assign as any)[K];
+      
+      init.add(instance);
+    }
+
+    for(const model of init){
+      const { state } = control(model, true);
+  
+      Object.values(state).forEach(value => {
+        if(value instanceof Model && control(value).parent === model){
+          this.add(value);
+          init.add(value);
+        }
+      });
+    }
+
+    return init;
+  }
+
+  public add<T extends Model>(input: T | Model.New<T>){
     let writable = true;
     let T: Model.New<T>;
     let I: T;
@@ -66,9 +101,6 @@ export class Context {
       T = getPrototypeOf(T);
     }
     while(T !== Model);
-    
-    if(key !== undefined)
-      this.input.set(key, input);
 
     return I;
   }
@@ -97,3 +129,5 @@ export class Context {
     this.input.clear();
   }
 }
+
+export { Context }
