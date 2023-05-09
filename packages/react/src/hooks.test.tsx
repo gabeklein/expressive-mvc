@@ -31,6 +31,15 @@ describe("useContext", () => {
     expect(render.result.current).toBeInstanceOf(Test);
     expect(render.result.current.value).toBe(1);
   })
+
+  it("will return null if factory does", () => {
+    class Test extends Model {}
+  
+    const instance = Test.new();
+    const render = mockHook(() => Test.get(() => null), instance);
+
+    expect(render.result.current).toBe(null);
+  })
   
   it("will run initial callback syncronously", async () => {
     class Parent extends Model {
@@ -79,3 +88,26 @@ describe("useContext", () => {
     element.unmount();
   })
 });
+
+describe("useModel", () => {
+  it("will subscriber to created instance", async () => {
+    class Test extends Model {
+      value = 1;
+    }
+
+    let test!: Test;
+  
+    const render = mockHook(() => {
+      test = Test.use();
+      return test.value;
+    });
+
+    expect(render.result.current).toBe(1);
+
+    test.value = 2;
+
+    await render.waitForNextUpdate();
+
+    expect(render.result.current).toBe(2);
+  })
+})

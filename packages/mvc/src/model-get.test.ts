@@ -224,6 +224,19 @@ describe("computed", () => {
     expect(hook.output).toBe(2);
   })
 
+  it("will throw if instance not found", () => {
+    class Test extends Ambient {
+      value = 1;
+    }
+
+    const useTest = jest.fn(() => {
+      expect(() => Test.get(x => x)).toThrow("Could not find Test in context.");
+    });
+    
+    render(useTest);
+    expect(useTest).toHaveReturned();
+  });
+
   it('will compute output', async () => {
     const parent = Test.new();
     const hook = render(() => {
@@ -528,9 +541,7 @@ describe("computed", () => {
   })
 
   describe("update callback", () => {
-    beforeEach(() => {
-      Test.new();
-    })
+    beforeEach(() => Test.new());
 
     it("will force a refresh", () => {
       const didEvaluate = jest.fn();
