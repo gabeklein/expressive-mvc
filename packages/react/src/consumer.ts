@@ -1,9 +1,4 @@
-import { issues, Model } from '@expressive/mvc';
-
-export const Oops = issues({
-  BadProps: () =>
-    `Provider expects either a render function, 'get' or 'has' props.`
-})
+import { Model } from '@expressive/mvc';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -62,7 +57,7 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
   if(typeof callback == "function")
     callback(Type.get(!!has) as T);
   else
-    throw Oops.BadProps();
+    throw new Error("Provider expects either a render function, 'get' or 'has' props.")
 
   return null;
 }
