@@ -1,4 +1,4 @@
-import { apply, Control, watch } from '../control';
+import { apply, Control, parent, watch } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
@@ -79,9 +79,9 @@ function get<R, T extends Model>(
       subject = arg0;
 
     else if(Model.isTypeof(arg0)){
-      const { parent } = control;
+      const hasParent = parent(subject);
 
-      if(!parent){
+      if(!hasParent){
         if(arg1 === true)
           throw Oops.Required(arg0, subject);
         
@@ -93,10 +93,10 @@ function get<R, T extends Model>(
               throw Oops.AmbientRequired(arg0, subject);
           });
       }
-      else if(!arg0 || parent instanceof arg0)
-        subject = parent;
+      else if(!arg0 || hasParent instanceof arg0)
+        subject = hasParent;
       else
-        throw Oops.Unexpected(arg0, subject, parent);
+        throw Oops.Unexpected(arg0, subject, hasParent);
     }
 
     else if(typeof arg0 == "function")

@@ -18,6 +18,7 @@ type InstructionRunner<T extends Model = any> =
 const INSTRUCTION = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
+const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
   /**
@@ -92,9 +93,7 @@ class Control<T extends Model = any> {
   static apply = apply;
   static watch = watch;
 
-  public parent?: Model;
   public state!: { [key: string]: any };
-
   public latest?: Model.Event<T>[];
 
   public frame = new Set<string>();
@@ -284,7 +283,7 @@ function setRecursive(on: Control, key: string, value: Model){
   const set = (next: Model | undefined) => {
     if(next instanceof value.constructor){
       on.state[key] = next;
-      control(next).parent = on.subject;
+      parent(next, on.subject);
       control(next, true);
       return true;
     }
@@ -294,6 +293,13 @@ function setRecursive(on: Control, key: string, value: Model){
 
   on.watch(key, { set });
   set(value);
+}
+
+function parent(child: unknown, register?: Model){
+  if(!register)
+    return PARENTS.get(child as Model);
+
+  PARENTS.set(child as Model, register);
 }
 
 function watch<T extends Model>(on: T, cb: Observer): T {
@@ -331,5 +337,6 @@ export {
   apply,
   control,
   Control,
+  parent,
   watch
 }

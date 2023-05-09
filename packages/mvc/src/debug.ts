@@ -1,4 +1,4 @@
-import { Control, control } from './control';
+import { Control, control, parent } from './control';
 import { defineProperties } from './helper/object';
 import { Model } from './model';
 
@@ -25,7 +25,7 @@ defineProperties(Model.prototype, {
   },
   [PARENT]: {
     get(this: Model){
-      return control(this).parent;
+      return parent(this);
     }
   }
 })

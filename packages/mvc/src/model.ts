@@ -156,7 +156,7 @@ class Model {
   }
 
   set<T extends Model.Compat<this>> (source: T, select?: (keyof T)[]): Promise<Model.Key<T>[]>;
-  set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<readonly Model.Event<this>[]>;
+  set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
 
   set(arg1: Model.Event<this> | Model.Compat<this>, arg2?: any){
     const controller = control(this, true);
@@ -175,7 +175,7 @@ class Model {
           controller.update(key);
         }
 
-    return awaitUpdate(this, undefined, 0);
+    return this.on(0);
   }
 
   /** Mark this instance for garbage collection. */

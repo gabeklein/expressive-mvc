@@ -1,4 +1,4 @@
-import { apply, control } from '../control';
+import { apply, control, parent } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
@@ -60,7 +60,7 @@ function use(
       state[key] = next;
 
       if(next){
-        control(next).parent = subject;
+        parent(next, subject);
         control(next, true);
       }
 

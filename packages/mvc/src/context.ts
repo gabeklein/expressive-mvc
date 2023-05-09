@@ -1,13 +1,23 @@
+import { control, parent } from './control';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
 
 export const Oops = issues({
   MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`
+    `Did find ${name} in context, but multiple were defined.`,
+
+  NewValue: (name) =>
+    `Provider already has already defined '${name}' but got new value. This is not yet supported.`
 })
 
-export class Context {
+declare namespace Context {
+  type Inputs = {
+    [key: string | number]: Model | Model.New
+  }
+}
+
+class Context {
   private table = new WeakMap<Model.Type, symbol>();
   private input = new Map<string | number, Model | Model.Type>();
 
@@ -31,14 +41,41 @@ export class Context {
     return result;
   }
 
-  public add<T extends Model>(
-    input: T | Model.New<T>,
-    key?: number | string){
+  public include(inputs: Context.Inputs){
+    const init = new Map<Model, boolean>();
 
-    if(key && this.input.get(key) === input)
-      return typeof input == "object"
-        ? input
-        : this[this.has(input)] as T;
+    for(const key in inputs){
+      const input = inputs[key];
+      const exists = this.input.get(key);
+
+      if(exists)
+        if(exists !== input)
+          throw Oops.NewValue(key);
+        else
+          continue;
+
+      const instance = this.add(input);
+
+      this.input.set(key, input)
+      init.set(instance, true);
+    }
+
+    for(const [ model ] of init){
+      const { state } = control(model, true);
+  
+      Object.values(state).forEach(value => {
+        if(parent(value) === model){
+          this.add(value, true);
+          init.set(value, false);
+        }
+      });
+    }
+
+    return init;
+  }
+
+  public add<T extends Model>(
+    input: T | Model.New<T>, implicit?: boolean){
 
     let writable = true;
     let T: Model.New<T>;
@@ -56,19 +93,18 @@ export class Context {
 
     do {
       const key = this.has(T);
+      const value = this.hasOwnProperty(key) ? null : I;
 
-      defineProperty(this, key, {
-        configurable: true,
-        value: this.hasOwnProperty(key) && I !== this[key] ? null : I,
-        writable
-      });
+      if(value || I !== this[key] && !implicit)
+        defineProperty(this, key, {
+          configurable: true,
+          value,
+          writable
+        });
 
       T = getPrototypeOf(T);
     }
     while(T !== Model);
-    
-    if(key !== undefined)
-      this.input.set(key, input);
 
     return I;
   }
@@ -97,3 +133,5 @@ export class Context {
     this.input.clear();
   }
 }
+
+export { Context }

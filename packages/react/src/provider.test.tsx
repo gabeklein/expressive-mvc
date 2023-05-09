@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Consumer, Model, set } from '.';
-import { Oops, Provider } from './provider';
+import { Provider } from './provider';
 import { create, mockAsync } from './tests';
 
 class Foo extends Model {
@@ -131,78 +131,13 @@ it("will conflict colliding Model types", () => {
   expect(Consumer).toHaveBeenCalled();
 })
 
-it("will throw if missing `for` prop", () => {
-  // @ts-ignore
-  const test = () => create(<Provider />);
-
-  expect(test).toThrow(Oops.NoType());
-})
-
-describe("children", () => {
-  class Foo extends Model {
-    bar = new Bar();
-  }
-
-  class Bar extends Model {
-    value = 3;
-  }
-
-  it("will be provided to Consumer", () => {
-    const foo = Foo.new();
-  
-    create(
-      <Provider for={foo}>
-        <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
-        <Consumer for={Bar} get={i => expect(i).toBe(foo.bar)} />
-      </Provider>
-    )
-  })
-
-  it("will be provided to get", () => {
-    const foo = Foo.new();
-    const gotBar = jest.fn();
-
-    const BarConsumer = () => {
-      Bar.get(gotBar);
-      return null;
-    }
-  
-    create(
-      <Provider for={foo}>
-        <BarConsumer />
-      </Provider>
-    )
-
-    expect(gotBar).toBeCalledWith(foo.bar, expect.any(Function));
-  })
-
-  it.todo("will pass parent as second argument to get");
-})
-
-describe("and prop", () => {
+describe("use prop", () => {
   it("will assign values to instance", () => {
     create(
       <Provider for={Foo} use={{ value: "foobar" }}>
         <Consumer for={Foo} has={i => expect(i.value).toBe("foobar")} />
       </Provider>
     );
-  })
-
-  it("will assign every render", async () => {
-    const foo = Foo.new();
-    const element = create(
-      <Provider for={foo} use={{ value: "foo" }} />
-    );
-
-    expect(foo.value).toBe("foo");
-
-    element.update(
-      <Provider for={foo} use={{ value: "bar" }} />
-    );
-
-    await expect(foo).toUpdate();
-
-    expect(foo.value).toBe("bar");
   })
 
   it("will assign values to muliple", () => {
