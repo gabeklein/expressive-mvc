@@ -1,4 +1,4 @@
-import { control } from './control';
+import { control, parent } from './control';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
@@ -64,7 +64,7 @@ class Context {
       const { state } = control(model, true);
   
       Object.values(state).forEach(value => {
-        if(value instanceof Model && control(value).parent === model){
+        if(parent(value) === model){
           this.add(value);
           init.add(value);
         }
