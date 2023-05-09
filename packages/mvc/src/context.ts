@@ -60,7 +60,7 @@ class Context {
   
       Object.values(state).forEach(value => {
         if(parent(value) === model){
-          this.add(value);
+          this.add(value, true);
           init.set(value, false);
         }
       });
@@ -69,7 +69,9 @@ class Context {
     return init;
   }
 
-  public add<T extends Model>(input: T | Model.New<T>){
+  public add<T extends Model>(
+    input: T | Model.New<T>, implicit?: boolean){
+
     let writable = true;
     let T: Model.New<T>;
     let I: T;
@@ -86,12 +88,14 @@ class Context {
 
     do {
       const key = this.has(T);
+      const value = this.hasOwnProperty(key) ? null : I;
 
-      defineProperty(this, key, {
-        configurable: true,
-        value: this.hasOwnProperty(key) && I !== this[key] ? null : I,
-        writable
-      });
+      if(value || I !== this[key] && !implicit)
+        defineProperty(this, key, {
+          configurable: true,
+          value,
+          writable
+        });
 
       T = getPrototypeOf(T);
     }

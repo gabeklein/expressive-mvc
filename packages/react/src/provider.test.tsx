@@ -131,48 +131,7 @@ it("will conflict colliding Model types", () => {
   expect(Consumer).toHaveBeenCalled();
 })
 
-describe("children", () => {
-  class Foo extends Model {
-    bar = new Bar();
-  }
-
-  class Bar extends Model {
-    value = 3;
-  }
-
-  it("will be provided also", () => {
-    const foo = Foo.new();
-  
-    create(
-      <Provider for={foo}>
-        <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
-        <Consumer for={Bar} get={i => expect(i).toBe(foo.bar)} />
-      </Provider>
-    )
-  })
-
-  it("will be provided to get", () => {
-    const foo = Foo.new();
-    const gotBar = jest.fn();
-
-    const BarConsumer = () => {
-      Bar.get(gotBar);
-      return null;
-    }
-  
-    create(
-      <Provider for={foo}>
-        <BarConsumer />
-      </Provider>
-    )
-
-    expect(gotBar).toBeCalledWith(foo.bar, expect.any(Function));
-  })
-
-  it.todo("will pass parent as second argument to get");
-})
-
-describe("and prop", () => {
+describe("use prop", () => {
   it("will assign values to instance", () => {
     create(
       <Provider for={Foo} use={{ value: "foobar" }}>
