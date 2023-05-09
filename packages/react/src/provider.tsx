@@ -1,11 +1,7 @@
-import { issues, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import React, { Suspense, useLayoutEffect, useMemo } from 'react';
 
 import { LookupContext, Pending, useLookup } from './context';
-
-export const Oops = issues({
-  NoType: () => "Provider 'for' prop must be Model, typeof Model or a collection of them."
-})
 
 type Class = new () => any;
 
@@ -35,20 +31,15 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(props: Provider.Props<T>){
-  let { for: include, use: assign } = props;
+  let { for: included, use: assign } = props;
 
   const ambient = useLookup();
-  const context = useMemo(() => {
-    if(include)
-      return ambient.push();
+  const context = useMemo(() => ambient.push(), []);
 
-    throw Oops.NoType();
-  }, []);
+  if(typeof included == "function" || included instanceof Model)
+    included = { [0]: included };
 
-  if(typeof include == "function" || include instanceof Model)
-    include = { [0]: include };
-
-  context.include(include).forEach((explicit, model) => {
+  context.include(included).forEach((explicit, model) => {
     if(assign && explicit)
       for(const K in assign)
         if(K in model)

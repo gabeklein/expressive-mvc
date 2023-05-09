@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 
 import { Consumer, Model, set } from '.';
-import { Oops, Provider } from './provider';
+import { Provider } from './provider';
 import { create, mockAsync } from './tests';
 
 class Foo extends Model {
@@ -131,13 +131,6 @@ it("will conflict colliding Model types", () => {
   expect(Consumer).toHaveBeenCalled();
 })
 
-it("will throw if missing `for` prop", () => {
-  // @ts-ignore
-  const test = () => create(<Provider />);
-
-  expect(test).toThrow(Oops.NoType());
-})
-
 describe("children", () => {
   class Foo extends Model {
     bar = new Bar();
@@ -147,7 +140,7 @@ describe("children", () => {
     value = 3;
   }
 
-  it("will be provided to Consumer", () => {
+  it("will be provided also", () => {
     const foo = Foo.new();
   
     create(
