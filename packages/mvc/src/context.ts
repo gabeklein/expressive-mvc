@@ -38,8 +38,8 @@ class Context {
     return result;
   }
 
-  public include(inputs: Context.Inputs, assign?: {}){
-    const init = new Set<Model>();
+  public include(inputs: Context.Inputs){
+    const init = new Map<Model, boolean>();
 
     for(const key in inputs){
       const input = inputs[key];
@@ -52,21 +52,16 @@ class Context {
 
       const instance = this.add(input);
 
-      if(assign)
-        for(const K in assign)
-          if(K in instance)
-            (instance as any)[K] = (assign as any)[K];
-      
-      init.add(instance);
+      init.set(instance, true);
     }
 
-    for(const model of init){
+    for(const [ model ] of init){
       const { state } = control(model, true);
   
       Object.values(state).forEach(value => {
         if(parent(value) === model){
           this.add(value);
-          init.add(value);
+          init.set(value, false);
         }
       });
     }

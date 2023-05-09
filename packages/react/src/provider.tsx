@@ -48,7 +48,12 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
   if(typeof include == "function" || include instanceof Model)
     include = { [0]: include };
 
-  context.include(include, assign).forEach(model => {
+  context.include(include).forEach((explicit, model) => {
+    if(assign && explicit)
+      for(const K in assign)
+        if(K in model)
+          (model as any)[K] = (assign as any)[K];
+
     const pending = Pending.get(model);
 
     if(pending)
