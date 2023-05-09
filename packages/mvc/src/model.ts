@@ -98,8 +98,8 @@ class Model {
   on (): Promise<Model.Event<this>[]>;
   on (timeout?: number): Promise<Model.Event<this>[] | false>;
 
-  on <P extends Model.Event<this>> (keys?: P | Iterable<P>, timeout?: number): Promise<P[] | false>;
-  on <P extends Model.Event<this>> (keys: P | Iterable<P>, listener: Model.OnCallback<this>, once?: boolean): Callback;
+  on <P extends Model.Event<this>> (keys?: P | P[], timeout?: number): Promise<P[] | false>;
+  on <P extends Model.Event<this>> (keys: P | P[], listener: Model.OnCallback<this>, once?: boolean): Callback;
 
   on (effect: Model.Effect<this>): Callback;
 
@@ -130,7 +130,7 @@ class Model {
   get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void): Callback;
   
   get <P extends Model.Key<this>> (
-    arg1?: P | Iterable<P>,
+    arg1?: P | P[],
     arg2?: Function){
 
     const { state } = control(this, true);
