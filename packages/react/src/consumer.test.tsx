@@ -3,7 +3,7 @@ import React from 'react';
 import { Model } from '.';
 import { Consumer } from './consumer';
 import { Provider } from './provider';
-import { create } from './test';
+import { create } from './tests';
 
 class Foo extends Model {
   value?: string = undefined;

@@ -30,8 +30,8 @@ export function mockAsync<T = void>(){
   }
 }
 
-export function mockHook(
-  callback: (props: {}) => any,
+export function mockHook<T>(
+  callback: (props: {}) => T,
   provide?: Model){
 
   const opts = {} as {
