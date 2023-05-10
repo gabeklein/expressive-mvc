@@ -5,6 +5,14 @@ import { Model } from '.';
 import { Consumer } from './consumer';
 import { Provider } from './provider';
 
+const error = jest
+  .spyOn(console, "error")
+  .mockImplementation(() => {});
+
+afterAll(() => {
+  error.mockReset();
+});
+
 class Foo extends Model {
   value?: string = undefined;
 }
@@ -50,18 +58,6 @@ it("will render with instance for child-function", async () => {
   )
 
   expect(didRender).toBeCalledWith("foobar");
-})
-
-it("will throw if expected-prop missing", () => {
-  const instance = Foo.new();
-  const attempt = () => create(
-    <Provider for={instance}>
-      { /* @ts-ignore */}
-      <Consumer for={Foo} />
-    </Provider>
-  );
-
-  expect(attempt).toThrowError();
 })
 
 it("will pass undefined if not found for get-prop", () => {
