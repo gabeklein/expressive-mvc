@@ -56,8 +56,6 @@ function Consumer<T extends Model>(props: Consumer.Props<T>){
 
   if(typeof callback == "function")
     callback(Type.get(!!has) as T);
-  else
-    throw new Error("Provider expects either a render function, 'get' or 'has' props.")
 
   return null;
 }
