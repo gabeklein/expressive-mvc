@@ -6,21 +6,6 @@ export const useLookup = () => useContext(LookupContext);
 
 export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
 
-export function hasModel<T extends Model>(
-  type: Model.Type<T>,
-  relativeTo: Model,
-  callback: (got: T | undefined) => void
-){
-  let pending = Pending.get(relativeTo);
-    
-  if(!pending)
-    Pending.set(relativeTo, pending = []);
-
-  pending.push(context => {
-    callback(context.get(type));
-  })
-}
-
 const Applied = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
