@@ -4,6 +4,7 @@ import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 
+// is this desirable?
 it.todo("will add pending compute to frame immediately");
 
 describe("fetch mode", () => {

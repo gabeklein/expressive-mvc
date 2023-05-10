@@ -270,5 +270,3 @@ describe("suspense", () => {
 
 it.todo("will apply get instructions to new instances");
 it.todo("will remove replaced instances");
-it.todo("will ignore child if type exists");
-it.todo("will not nullify if conflict has same value");
