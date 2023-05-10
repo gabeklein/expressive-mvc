@@ -27,5 +27,5 @@
     "preversion": "npm run test && npm run build",
     "postversion": "git push & npm publish"
   },
-  "version": "0.21.1"
+  "version": "0.21.2"
 }
