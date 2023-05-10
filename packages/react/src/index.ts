@@ -1,7 +1,9 @@
 import { Control } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { Pending, useLookup, usePeerContext } from './context';
+import { getPeerContext, useLookup, usePeerContext } from './context';
+
+Control.has = getPeerContext;
 
 Control.get = (type, adapter) => {
   const context = useLookup();
@@ -28,15 +30,6 @@ Control.use = (adapter) => {
 
   return hook.render;
 }
-
-Control.has = (type, relativeTo, callback) => {
-  let pending = Pending.get(relativeTo);
-    
-  if(!pending)
-    Pending.set(relativeTo, pending = []);
-
-  pending.push(context => callback(context.get(type)));
-};
 
 export * from '@expressive/mvc';
 
