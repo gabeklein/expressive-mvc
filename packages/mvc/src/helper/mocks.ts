@@ -3,8 +3,8 @@ import { Control } from "../control";
 
 export const context = new Context();
 
-let invoke: (() => void) | undefined;
-let memo: any;
+let attempt: (() => void) | undefined;
+let memoize: any;
 let mount: (() => typeof unmount) | void;
 let unmount: (() => void) | void;
 
@@ -14,8 +14,8 @@ afterEach(() => {
 
   context.pop();
 
-  memo = undefined;
-  invoke = undefined;
+  memoize = undefined;
+  attempt = undefined;
   unmount = undefined;
 });
 
@@ -51,7 +51,7 @@ beforeAll(() => {
 function useMemo<T>(
   factory: (refresh: () => void) => T){
 
-  return memo || (memo = factory(invoke!));
+  return memoize || (memoize = factory(attempt!));
 }
 
 interface MockHook<T> extends jest.Mock<T, []> {
@@ -62,30 +62,21 @@ interface MockHook<T> extends jest.Mock<T, []> {
   unmount(): void;
 }
 
-export function render<T>(hook: () => T){
+export function render<T>(impl: () => T){
   let willRender = () => {};
   let waiting: Promise<void>;
 
-  const mock: MockHook<T> = Object.assign(
-    jest.fn(() => hook()), {
-      output: undefined as T,
-      pending: false,
-      didUpdate(){
-        return waiting;
-      },
-      update(next: () => T){
-        hook = next;
-        invoke!();
-        return waiting;
-      },
-      unmount(){
-        if(unmount)
-          unmount();
-      }
-    }
-  )
+  const mock = jest.fn(() => impl()) as MockHook<T>;
 
-  invoke = () => {
+  mock.didUpdate = () => waiting;
+  mock.unmount = () => unmount && unmount();
+  mock.update = (next) => {
+    impl = next;
+    attempt!();
+    return waiting;
+  }
+
+  attempt = () => {
     try {
       mock.pending = false;
       willRender();
@@ -96,7 +87,7 @@ export function render<T>(hook: () => T){
         throw error;
 
       mock.pending = true;
-      error.then(invoke).finally(() => {
+      error.then(attempt).finally(() => {
         mock.pending = false;
       });
     }
@@ -110,7 +101,7 @@ export function render<T>(hook: () => T){
     }
   }
 
-  invoke();
+  attempt();
 
   return mock;
 }
