@@ -4,6 +4,8 @@ import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
 
+const { warn } = mockConsole();
+
 describe("placeholder", () => {
   class Test extends Model {
     foobar = set<string>();
@@ -162,8 +164,6 @@ describe("intercept", () => {
 })
 
 describe("factory", () => {
-  const { warn } = mockConsole();
-
   it("will compute when accessed", () => {
     const factory = jest.fn(() => "Hello World");
 

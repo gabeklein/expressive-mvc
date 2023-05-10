@@ -4,6 +4,8 @@ import { mockPromise, mockConsole } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 
+const { warn, error } = mockConsole();
+
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
 
@@ -407,8 +409,6 @@ describe("compute mode", () => {
   })
 
   describe("failures", () => {
-    const { warn, error } = mockConsole();
-
     class Subject extends Model {
       never = get(this, () => {
         throw new Error();
