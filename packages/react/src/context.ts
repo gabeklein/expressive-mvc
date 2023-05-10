@@ -24,12 +24,12 @@ export function hasModel<T extends Model>(
 const Applied = new WeakMap<Model, boolean>();
 
 export function usePeerContext(instance: Model){
-  const applyPeers = Applied.get(instance);
+  const applied = Applied.get(instance);
 
-  if(applyPeers)
+  if(applied)
     useLookup();
 
-  else if(applyPeers === undefined){
+  else if(applied === undefined){
     const pending = Pending.get(instance);
 
     if(pending){
