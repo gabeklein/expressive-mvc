@@ -19,7 +19,7 @@ declare namespace Context {
 
 class Context {
   private table = new WeakMap<Model.Type, symbol>();
-  private input = new Map<string | number, Model | Model.Type>();
+  private layer = new Map<string | number, Model | Model.Type>();
 
   private has(T: Model.Type){
     let key = this.table.get(T);
@@ -46,7 +46,7 @@ class Context {
 
     for(const key in inputs){
       const input = inputs[key];
-      const exists = this.input.get(key);
+      const exists = this.layer.get(key);
 
       if(exists)
         if(exists !== input)
@@ -56,7 +56,7 @@ class Context {
 
       const instance = this.add(input);
 
-      this.input.set(key, input)
+      this.layer.set(key, input)
       init.set(instance, true);
     }
 
@@ -111,7 +111,7 @@ class Context {
 
   public push(){
     const next = create(this) as this;
-    next.input = new Map();
+    next.layer = new Map();
     return next;
   }
 
@@ -130,7 +130,7 @@ class Context {
     for(const model of items)
       model.null();
 
-    this.input.clear();
+    this.layer.clear();
   }
 }
 
