@@ -69,7 +69,10 @@ export function render<T>(impl: () => T){
   const mock = jest.fn(() => impl()) as MockHook<T>;
 
   mock.didUpdate = () => waiting;
-  mock.unmount = () => unmount && unmount();
+  mock.unmount = () => {
+    unmount && unmount();
+    unmount = undefined;
+  }
   mock.update = (next) => {
     impl = next;
     attempt!();
