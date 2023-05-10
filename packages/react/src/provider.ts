@@ -1,5 +1,5 @@
 import { Model } from '@expressive/mvc';
-import { createElement as $, ReactNode, Suspense, useLayoutEffect, useMemo } from 'react';
+import { createElement, ReactNode, Suspense, useLayoutEffect, useMemo } from 'react';
 
 import { LookupContext, Pending, useLookup } from './context';
 
@@ -53,10 +53,10 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
   useLayoutEffect(() => () => context.pop(), []);
 
-  return $(LookupContext.Provider, { value: context },
+  return createElement(LookupContext.Provider, { value: context },
     props.fallback == false
       ? props.children
-      : $(Suspense, { fallback: props.fallback || null }, props.children)
+      : createElement(Suspense, { fallback: props.fallback || null }, props.children)
   )
 }
 
