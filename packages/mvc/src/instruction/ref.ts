@@ -57,7 +57,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   mapper?: (key: string) => any){
 
-  return apply((key, source) => {
+  return apply<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(typeof arg != "object")

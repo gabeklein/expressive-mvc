@@ -311,7 +311,7 @@ function watch<T extends Model>(on: T, cb: Observer): T {
   return on;
 }
 
-function apply<T = any>(instruction: Control.Instruction<any>){
+function apply<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
 
   INSTRUCTION.set(placeholder, (key, onto) => {

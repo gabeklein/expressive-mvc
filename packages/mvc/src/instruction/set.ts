@@ -50,9 +50,9 @@ function set <T> (value: T, onUpdate: set.Callback<T>): T;
 
 function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
-  argument?: set.Callback<any> | boolean): any {
+  argument?: set.Callback<any> | boolean){
 
-  return apply((key, control) => {
+  return apply<T>((key, control) => {
     const { state, subject } = control;
     
     if(typeof value == "function" || value instanceof Promise){
