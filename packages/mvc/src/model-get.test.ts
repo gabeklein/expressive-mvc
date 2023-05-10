@@ -33,7 +33,7 @@ it("will refresh for values accessed", async () => {
   expect(hook.output).toBe("foo");
   test.foo = "bar";
 
-  await hook.didUpdate();
+  await hook.update();
 })
 
 describe("set factory", () => {
@@ -52,7 +52,7 @@ describe("set factory", () => {
     expect(hook.pending).toBe(true);
   
     promise.resolve();
-    await hook.didUpdate();
+    await hook.update();
   
     expect(hook).toBeCalledTimes(2);
     expect(hook).toHaveReturnedTimes(1);
@@ -134,7 +134,7 @@ describe("set placeholder", () => {
     instance.foobar = "foo!";
 
     // expect refresh caused by update
-    await hook.didUpdate();
+    await hook.update();
 
     expect(hook).toBeCalledTimes(2);
 
@@ -219,7 +219,7 @@ describe("computed", () => {
     expect(hook.output).toBe(1);
 
     parent.foo = 2;
-    await hook.didUpdate();
+    await hook.update();
 
     expect(hook.output).toBe(2);
   })
@@ -246,7 +246,7 @@ describe("computed", () => {
     expect(hook.output).toBe(3);
 
     parent.foo = 2;
-    await hook.didUpdate();
+    await hook.update();
 
     expect(hook.output).toBe(4);
   })
@@ -319,7 +319,7 @@ describe("computed", () => {
 
     test.foo = 2;
 
-    await hook.didUpdate();
+    await hook.update();
 
     expect(willCreate).toBeCalledTimes(1);
     expect(willCompute).toBeCalledTimes(2);
@@ -353,7 +353,7 @@ describe("computed", () => {
 
     test.bar = 3;
 
-    await hook.didUpdate();
+    await hook.update();
 
     expect(willCompute).toBeCalledTimes(2);
     expect(hook.output).toBe(3);
@@ -434,7 +434,7 @@ describe("computed", () => {
       expect(hook.output).toBeNull();
 
       promise.resolve("foobar");
-      await hook.didUpdate();
+      await hook.update();
 
       expect(hook.output).toBe("foobar");
     });
@@ -452,7 +452,7 @@ describe("computed", () => {
       expect(hook).toBeCalledTimes(1);
 
       promise.resolve("foobar");
-      await hook.didUpdate();
+      await hook.update();
 
       expect(hook).toBeCalledTimes(2);
       expect(hook.output).toBe("foobar");
@@ -486,7 +486,7 @@ describe("computed", () => {
       expect(hook).toBeCalledTimes(1);
       instance.value = "foobar";
 
-      await hook.didUpdate();
+      await hook.update();
 
       // 1st - render prior to bailing
       // 2nd - successful render
@@ -510,7 +510,7 @@ describe("computed", () => {
       expect(hook.pending).toBe(true);
 
       promise.resolve();
-      await hook.didUpdate();
+      await hook.update();
 
       expect(hook).toBeCalledTimes(2);
     })
@@ -670,7 +670,7 @@ describe("computed", () => {
 
       promise.resolve();
       
-      await hook.didUpdate();
+      await hook.update();
       expect(hook).toHaveBeenCalledTimes(3);
       expect(pending).toBe(false);
     })

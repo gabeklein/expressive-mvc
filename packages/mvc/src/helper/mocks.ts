@@ -57,25 +57,25 @@ function useMemo<T>(
 interface MockHook<T> extends jest.Mock<T, []> {
   output: T;
   pending: boolean;
-  didUpdate(): Promise<void>;
-  update(next: () => T): Promise<void>;
+  update(next?: () => T): Promise<void>;
   unmount(): void;
 }
 
 export function render<T>(impl: () => T){
+  const mock = jest.fn(() => impl()) as MockHook<T>;
+
   let willRender = () => {};
   let waiting: Promise<void>;
 
-  const mock = jest.fn(() => impl()) as MockHook<T>;
-
-  mock.didUpdate = () => waiting;
   mock.unmount = () => {
     unmount && unmount();
     unmount = undefined;
   }
   mock.update = (next) => {
-    impl = next;
-    attempt!();
+    if(next){
+      impl = next;
+      attempt!();
+    }
     return waiting;
   }
 

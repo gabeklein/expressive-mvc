@@ -615,7 +615,7 @@ describe("context", () => {
     expect(hook.output).toBe("bar");
 
     bar.value = "foo";
-    await hook.didUpdate();
+    await hook.update();
 
     expect(hook.output).toBe("foo");
     expect(hook).toBeCalledTimes(2);

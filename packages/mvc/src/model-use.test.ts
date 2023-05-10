@@ -17,7 +17,7 @@ it("will subscribe to instance of controller", async () => {
   expect(hook.output.value).toBe("foo");
   hook.output.value = "bar";
 
-  await hook.didUpdate();
+  await hook.update();
   expect(hook.output.value).toBe("bar");
 })
 
@@ -55,7 +55,7 @@ it("will ignore updates after unmount", async () => {
   const test = hook.output;
 
   test.value = "bar";
-  await hook.didUpdate();
+  await hook.update();
 
   hook.unmount();
   test.value = "baz";
