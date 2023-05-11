@@ -8,7 +8,7 @@ export const Oops = issues({
     `Did find ${name} in context, but multiple were defined.`,
 
   NewValue: (name) =>
-    `Provider already has already defined '${name}' but got new value. This is not yet supported.`
+    `Provider already has already defined '${name}' but it now differs. This is not yet supported.`
 })
 
 declare namespace Context {
@@ -50,7 +50,7 @@ class Context {
 
       if(exists)
         if(exists !== input)
-          throw Oops.NewValue(key);
+          throw Oops.NewValue(key == "0" ? exists : key);
         else
           continue;
 
