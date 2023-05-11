@@ -1,4 +1,4 @@
-import { control, parent } from './control';
+import { control, parent, uid } from './control';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model } from './model';
@@ -18,6 +18,9 @@ declare namespace Context {
 }
 
 class Context {
+  /** Use  */
+  public key!: string;
+
   private table = new WeakMap<Model.Type, symbol>();
   private layer = new Map<string | number, Model | Model.Type>();
 
@@ -41,23 +44,21 @@ class Context {
     return result;
   }
 
-  public include(inputs: Context.Inputs){
+  public include(inputs: Context.Inputs): Map<Model, boolean> {
     const init = new Map<Model, boolean>();
 
     for(const key in inputs){
       const input = inputs[key];
       const exists = this.layer.get(key);
 
-      if(exists)
-        if(exists !== input)
-          throw Oops.NewValue(key == "0" ? exists : key);
-        else
-          continue;
-
-      const instance = this.add(input);
-
-      this.layer.set(key, input)
-      init.set(instance, true);
+      if(!exists){
+        const instance = this.add(input);
+  
+        this.layer.set(key, input)
+        init.set(instance, true);
+      }
+      else if(exists !== input)
+        return this.bailout(inputs);
     }
 
     for(const [ model ] of init){
@@ -72,6 +73,13 @@ class Context {
     }
 
     return init;
+  }
+
+  /** Context must force-reset becasue inputs are no longer safe. */
+  private bailout(inputs: Context.Inputs){
+    this.pop();
+    this.key = uid();
+    return this.include(inputs);
   }
 
   public add<T extends Model>(

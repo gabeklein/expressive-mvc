@@ -99,7 +99,7 @@ class Control<T extends Model = any> {
 
   constructor(
     public subject: T,
-    public id: string | number = random()){
+    public id: string | number = uid()){
 
     REGISTER.set(subject, this);
   }
@@ -326,7 +326,7 @@ function apply<T = any>(instruction: Control.Instruction<T>){
 }
 
 /** Random alphanumberic of length 6; will always start with a letter. */
-function random(){
+function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
@@ -335,5 +335,6 @@ export {
   control,
   Control,
   parent,
+  uid,
   watch
 }

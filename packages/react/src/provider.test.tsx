@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
 import { Consumer, Model, set } from '.';
@@ -273,6 +273,40 @@ describe("suspense", () => {
     expect(didRender).toBeCalledWith("hello!");
 
     element.unmount();
+  })
+})
+
+describe("HMR", () => {
+  it("will replace model", () => {
+    let Control = class Control extends Model {
+      value = "foo";
+    }
+
+    const Child = () => (
+      <Fragment>
+        {Control.get().value}
+      </Fragment>
+    )
+
+    const element = create(
+      <Provider for={Control}>
+        <Child />
+      </Provider>
+    )
+
+    expect(element.toJSON()).toBe("foo");
+
+    Control = class Control extends Model {
+      value = "bar";
+    }
+
+    element.update(
+      <Provider for={Control}>
+        <Child />
+      </Provider>
+    )
+
+    expect(element.toJSON()).toBe("bar");
   })
 })
 

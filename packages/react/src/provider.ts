@@ -50,7 +50,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
 
   useLayoutEffect(() => () => context.pop(), []);
 
-  return createElement(LookupContext.Provider, { value: context },
+  return createElement(LookupContext.Provider, { value: context, key: context.key },
     props.fallback == false
       ? props.children
       : createElement(Suspense, { fallback: props.fallback || null }, props.children)
