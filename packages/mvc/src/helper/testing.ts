@@ -13,27 +13,22 @@ export function mockPromise<T = void>(){
   return Object.assign(promise, methods);
 }
 
-export function mockConsole(){
-  const warn = jest
-    .spyOn(console, "warn")
-    .mockImplementation(() => {});
-
+export function mockError(){
   const error = jest
     .spyOn(console, "error")
     .mockImplementation(() => {});
 
-  afterEach(() => {
-    warn.mockReset();
-    error.mockReset();
-  });
+  afterEach(() => error.mockReset());
+  afterAll(() => error.mockRestore());
 
-  afterAll(() => {
-    warn.mockReset();
-    error.mockRestore();
-  });
+  return error;
+}
 
-  return {
-    error,
-    warn
-  }
+export function mockWarn(){
+  const warn = jest.spyOn(console, "warn");
+
+  afterEach(() => warn.mockReset());
+  afterAll(() => warn.mockReset());
+
+  return warn
 }

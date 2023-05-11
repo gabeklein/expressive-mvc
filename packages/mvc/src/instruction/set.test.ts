@@ -1,10 +1,10 @@
 import { Oops as Effect } from '../effect';
-import { mockPromise, mockConsole } from '../helper/testing';
+import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
 
-const { warn } = mockConsole();
+const warn = mockWarn();
 
 describe("placeholder", () => {
   class Test extends Model {

@@ -1,6 +1,6 @@
 import { Debug } from './debug';
 import { Model } from './model';
-import { mockConsole } from './helper/testing';
+import { mockError } from './helper/testing';
 
 describe("isTypeof", () => {
   class Test extends Model {}
@@ -146,7 +146,7 @@ describe("toString", () => {
 })
 
 describe("errors", () => {
-  const { error } = mockConsole();
+  const error = mockError();
 
   it("will log update errors in the console", async () => {
     class Test extends Model {

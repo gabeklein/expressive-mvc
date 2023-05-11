@@ -1,10 +1,11 @@
 import { Control } from '../control';
 import { render, context } from '../helper/mocks';
-import { mockPromise, mockConsole } from '../helper/testing';
+import { mockPromise, mockError, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
 
-const { warn, error } = mockConsole();
+const warn = mockWarn();
+const error = mockError();
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
