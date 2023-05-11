@@ -24,18 +24,16 @@ beforeAll(() => {
     callback(context.get(Type));
   }
 
-  Control.get = (Type, adapter) => {
-    const render = useMemo(refresh => {
-      const result = adapter(refresh, use => use(context.get(Type)));
+  Control.get = (adapter) => {
+    return useMemo(refresh => {
+      const result = adapter(refresh, context);
   
       if(!result)
         return () => null
   
       mount = result.mount;
       return result.render;
-    });
-    
-    return render();
+    })();
   }
   
   Control.use = (adapter) => {
@@ -48,10 +46,19 @@ beforeAll(() => {
   }
 })
 
-function useMemo<T>(
-  factory: (refresh: () => void) => T){
+type DispatchFunction = (next: (tick: number) => number) => void;
 
-  return memoize || (memoize = factory(attempt!));
+function useMemo<T>(factory: (refresh: DispatchFunction) => T){
+  if(!memoize){
+    const refresh = attempt!;
+
+    memoize = factory(dispatch => {
+      dispatch(0);
+      refresh();
+    })
+  }
+
+  return memoize;
 }
 
 interface MockHook<T> extends jest.Mock<T, []> {

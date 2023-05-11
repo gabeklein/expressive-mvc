@@ -17,12 +17,13 @@ function use <T extends Model> (
   arg1?: Model.Compat<T> | ((instance: T) => void),
   arg2?: boolean){
 
-  const render = Control.use((refresh: () => void) => {
-    let onUpdate: (() => void) | undefined | null;
-    let applyProps = typeof arg1 === "object";
-
+  const render = Control.use(dispatch => {
     const instance = this.new();
     const proxy = Control.watch(instance, () => onUpdate);
+    const refresh = () => dispatch(x => x+1);
+
+    let onUpdate: (() => void) | undefined | null;
+    let applyProps = typeof arg1 === "object";
 
     if(typeof arg1 == "function")
       arg1(instance);

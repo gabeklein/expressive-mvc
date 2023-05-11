@@ -1,3 +1,4 @@
+import { Context } from './context';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
 import { Model } from './model';
@@ -46,38 +47,34 @@ declare namespace Control {
    */
   type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
 
-  type GetAdapter<T> = (
-    update: () => void,
-    source: (
-      request: (got: Model | undefined) => void
-    ) => void
-  ) => {
-    mount: () => (() => void) | void;
-    render: () => T;
-  } | void;
-
-  type GetHook = <T extends Model, R> (
-    type: Model.Type<T>,
-    adapter: GetAdapter<R>
-  ) => R | null;
-
-  type UseAdapter<T extends Model> = (
-    update: () => void
-  ) => {
-    instance: T;
-    mount: () => (() => void) | void;
-    render: (props: Model.Compat<T>) => T;
-  }
-
-  type UseHook = <T extends Model>(
-    adapter: UseAdapter<T>
-  ) => (props: Model.Compat<T>) => T;
+  type RequestRefresh = (update: (tick: number) => number) => void;
 
   type HasHook = (
     type: typeof Model,
     relativeTo: Model,
     callback: (got: Model | undefined) => void
   ) => void;
+
+  type GetAdapter<T> = (
+    refresh: RequestRefresh,
+    context: Context
+  ) => {
+    mount: () => (() => void) | void;
+    render: () => T;
+  } | void;
+
+  type GetHook = <T> (adapter: GetAdapter<T>) => T | null;
+
+  type UseAdapter<T extends Model> = (
+    refresh: RequestRefresh
+  ) => {
+    instance: T;
+    mount: () => (() => void) | void;
+    render: (props: Model.Compat<T>) => T;
+  }
+
+  type UseHook = <T extends Model>
+    (adapter: UseAdapter<T>) => (props: Model.Compat<T>) => T;
 }
 
 class Control<T extends Model = any> {

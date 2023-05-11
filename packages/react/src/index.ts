@@ -5,13 +5,10 @@ import { getPeerContext, useLookup, usePeerContext } from './context';
 
 Control.has = getPeerContext;
 
-Control.get = (type, adapter) => {
+Control.get = (adapter) => {
   const context = useLookup();
   const state = useState(0);
-  const hook = useMemo(() => adapter(
-    () => state[1](x => x+1),
-    cb => cb(context.get(type))
-  ), []);
+  const hook = useMemo(() => adapter(state[1], context), []);
 
   if(!hook)
     return null;
@@ -23,7 +20,7 @@ Control.get = (type, adapter) => {
 
 Control.use = (adapter) => {
   const state = useState(0);
-  const hook = useMemo(() => adapter(() => state[1](x => x+1)), []);
+  const hook = useMemo(() => adapter(state[1]), []);
 
   usePeerContext(hook.instance);
   useLayoutEffect(hook.mount, []);
