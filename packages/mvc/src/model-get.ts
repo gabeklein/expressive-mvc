@@ -33,19 +33,20 @@ function get<T extends Model, R>(
   arg1?: boolean | Model.GetCallback<T, any>,
   arg2?: boolean
 ){
-  return Control.get(this, (refresh, context) => {
+  return Control.get((dispatch, context) => {
+    const refresh = () => dispatch(x => x+1);
     let onUpdate: (() => void) | undefined | null;
     let value: any;
 
     if(typeof arg1 !== "function"){
-      context(got => {
-        if(got)
-          value = arg1 === undefined
-            ? Control.watch(got, () => onUpdate)
-            : got;
-        else if(arg1 !== false)
-          throw Oops.NotFound(this);
-      })
+      const got = context.get(this);
+
+      if(got)
+        value = arg1 === undefined
+          ? Control.watch(got, () => onUpdate)
+          : got;
+      else if(arg1 !== false)
+        throw Oops.NotFound(this);
   
       return {
         mount(){
@@ -62,29 +63,29 @@ function get<T extends Model, R>(
     let factory: true | undefined;
     let proxy!: T;
 
-    context(got => {
-      if(!got)
-        throw Oops.NotFound(this);
+    const found = context.get(this);
 
-      proxy = Control.watch(got as T, () => factory ? null : onUpdate);
-      getValue = () => compute.call(proxy, proxy, forceUpdate);
-      value = getValue();
+    if(!found)
+      throw Oops.NotFound(this);
 
-      function forceUpdate(): void;
-      function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
-      function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
-        if(typeof action == "function")
-          action = action();
-  
-        if(getValue)
-          didUpdate(getValue());
-        else
-          refresh();
-  
-        if(action)
-          return action.finally(refresh);
-      }
-    })
+    proxy = Control.watch(found, () => factory ? null : onUpdate);
+    getValue = () => compute.call(proxy, proxy, forceUpdate);
+    value = getValue();
+
+    function forceUpdate(): void;
+    function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
+    function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
+      if(typeof action == "function")
+        action = action();
+
+      if(getValue)
+        didUpdate(getValue());
+      else
+        refresh();
+
+      if(action)
+        return action.finally(refresh);
+    }
 
     if(value === null){
       getValue = undefined;

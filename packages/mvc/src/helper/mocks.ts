@@ -24,18 +24,16 @@ beforeAll(() => {
     callback(context.get(Type));
   }
 
-  Control.get = (Type, adapter) => {
-    const render = useMemo(refresh => {
-      const result = adapter(refresh, use => use(context.get(Type)));
+  Control.get = (adapter) => {
+    return useMemo(refresh => {
+      const result = adapter(refresh, context);
   
       if(!result)
         return () => null
   
       mount = result.mount;
       return result.render;
-    });
-    
-    return render();
+    })();
   }
   
   Control.use = (adapter) => {
