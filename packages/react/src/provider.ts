@@ -1,5 +1,13 @@
-import { Model } from '@expressive/mvc';
-import { createElement, ReactNode, Suspense, useLayoutEffect, useMemo } from 'react';
+import { Context, Model } from '@expressive/mvc';
+import {
+  createElement,
+  FunctionComponentElement,
+  ProviderProps,
+  ReactNode,
+  Suspense,
+  useLayoutEffect,
+  useMemo,
+} from 'react';
 
 import { LookupContext, setPeerContext, useLookup } from './context';
 
@@ -12,7 +20,7 @@ declare namespace Provider {
 
   type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
 
-  type Props<T extends Item> = MultipleProps<T> | NormalProps<T>;
+  type Props<T extends Item = Item> = MultipleProps<T> | NormalProps<T>;
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
@@ -30,7 +38,9 @@ declare namespace Provider {
   }
 }
 
-function Provider<T extends Provider.Item>(props: Provider.Props<T>){
+function Provider<T extends Provider.Item>(
+  props: Provider.Props<T>
+): FunctionComponentElement<ProviderProps<Context>> {
   let { for: included, use: assign } = props;
 
   const ambient = useLookup();
