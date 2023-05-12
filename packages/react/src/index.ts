@@ -28,7 +28,18 @@ Control.use = (adapter) => {
   return hook.render;
 }
 
-export * from '@expressive/mvc';
+export {
+  Context,
+  Control,
+  Debug,
+  default,
+  get,
+  Model,
+  ref,
+  run,
+  set,
+  use,
+} from '@expressive/mvc';
 
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
