@@ -43,7 +43,7 @@ function get<T extends Model, R>(
 
       if(got)
         value = arg1 === undefined
-          ? Control.watch(got, () => onUpdate)
+          ? Control.watch(got, k => k ? onUpdate : undefined)
           : got;
       else if(arg1 !== false)
         throw Oops.NotFound(this);

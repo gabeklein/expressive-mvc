@@ -36,6 +36,21 @@ it("will refresh for values accessed", async () => {
   await hook.update();
 })
 
+it("will not update on death event", async () => {
+  class Test extends Ambient {
+    foo = "foo";
+  }
+
+  const test = Test.new();
+  const hook = render(() => {
+    return Test.get().foo;
+  });
+
+  test.null();
+
+  expect(hook).toBeCalledTimes(1);
+})
+
 describe("set factory", () => {
   it('will suspend if function is async', async () => {
     class Test extends Ambient {
