@@ -1,138 +1,146 @@
-import React, { Suspense } from 'react';
+import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
 import { Consumer, Model, set } from '.';
 import { Provider } from './provider';
 import { mockAsync } from './tests';
 
-class Foo extends Model {
-  value?: string = undefined;
-}
-class Bar extends Model {}
-
-it("will create instance of given model", () => {
-  create(
-    <Provider for={Foo}>
-      <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
-    </Provider>
-  );
-})
-
-it("will destroy instance of given model", async () => {
-  const willDestroy = jest.fn();
-  class Test extends Model {
-    null(){
-      willDestroy();
-      super.null();
-    }
-  };
-
-  const element = create(
-    <Provider for={Test} />
-  );
-
-  element.unmount();
-  expect(willDestroy).toBeCalledTimes(1);
-});
-
-it("will create all models in given object", () => {
-  create(
-    <Provider for={{ Foo, Bar }}>
-      <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
-      <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
-    </Provider>
-  )
-})
-
-it("will destroy created model on unmount", () => {
-  const willDestroy = jest.fn();
-
-  class Test extends Model {}
-
-  const rendered = create(
-    <Provider for={{ Test }}>
-      <Consumer for={Test} has={i => {
-        expect(i).toBeInstanceOf(Test)
-        i.on(() => willDestroy);
-      }} />
-    </Provider>
-  );
-
-  rendered.unmount();
-  expect(willDestroy).toBeCalled();
-})
-
-it("will destroy multiple created on unmount", () => {
-  const willDestroy = jest.fn();
-
-  class Foo extends Model {}
+describe("component", () => {
+  class Foo extends Model {
+    value?: string = undefined;
+  }
   class Bar extends Model {}
-
-  const rendered = create(
-    <Provider for={{ Foo, Bar }}>
-      <Consumer for={Foo} has={i => {
-        i.on(() => willDestroy);
-      }} />
-      <Consumer for={Bar} has={i => {
-        i.on(() => willDestroy);
-      }} />
-    </Provider>
-  );
-
-  rendered.unmount();
-  expect(willDestroy).toBeCalledTimes(2);
-})
-
-it("will not destroy given instance on unmount", () => {
-  const didUnmount = jest.fn();
-
-  class Test extends Model {}
-
-  const instance = Test.new();
-
-  const rendered = create(
-    <Provider for={{ instance }}>
-      <Consumer for={Test} has={i => {
-        i.on(() => didUnmount);
-      }} />
-    </Provider>
-  );
-
-  rendered.unmount();
-  expect(didUnmount).not.toBeCalled();
-})
-
-it("will provide a mix of state and models", () => {
-  const foo = Foo.new();
-
-  create(
-    <Provider for={{ foo, Bar }}>
-      <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
-      <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
-    </Provider>
-  )
-})
-
-it("will conflict colliding Model types", () => {
-  const foo = Foo.new();
-
-  const Consumer: React.FC = jest.fn(() => {
-    expect(() => Foo.get()).toThrowError(
-      "Did find Foo in context, but multiple were defined."
+  
+  it("will create instance of given model", () => {
+    create(
+      <Provider for={Foo}>
+        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+      </Provider>
     );
-    return null;
+  })
+  
+  it("will destroy instance of given model", async () => {
+    const willDestroy = jest.fn();
+  
+    class Test extends Model {
+      null(){
+        willDestroy();
+        super.null();
+      }
+    };
+  
+    const element = create(
+      <Provider for={Test} />
+    );
+  
+    element.unmount();
+    expect(willDestroy).toBeCalledTimes(1);
   });
+  
+  it("will create all models in given object", () => {
+    create(
+      <Provider for={{ Foo, Bar }}>
+        <Consumer for={Foo} get={i => expect(i).toBeInstanceOf(Foo)} />
+        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+      </Provider>
+    )
+  })
+  
+  it("will destroy created model on unmount", () => {
+    const willDestroy = jest.fn();
+  
+    class Test extends Model {}
+  
+    const rendered = create(
+      <Provider for={{ Test }}>
+        <Consumer for={Test} has={i => {
+          expect(i).toBeInstanceOf(Test)
+          i.on(() => willDestroy);
+        }} />
+      </Provider>
+    );
+  
+    rendered.unmount();
+    expect(willDestroy).toBeCalled();
+  })
+  
+  it("will destroy multiple created on unmount", () => {
+    const willDestroy = jest.fn();
+  
+    class Foo extends Model {}
+    class Bar extends Model {}
+  
+    const rendered = create(
+      <Provider for={{ Foo, Bar }}>
+        <Consumer for={Foo} has={i => {
+          i.on(() => willDestroy);
+        }} />
+        <Consumer for={Bar} has={i => {
+          i.on(() => willDestroy);
+        }} />
+      </Provider>
+    );
+  
+    rendered.unmount();
+    expect(willDestroy).toBeCalledTimes(2);
+  })
+  
+  it("will not destroy given instance on unmount", () => {
+    const didUnmount = jest.fn();
+  
+    class Test extends Model {}
+  
+    const instance = Test.new();
+  
+    const rendered = create(
+      <Provider for={{ instance }}>
+        <Consumer for={Test} has={i => {
+          i.on(() => didUnmount);
+        }} />
+      </Provider>
+    );
+  
+    rendered.unmount();
+    expect(didUnmount).not.toBeCalled();
+  })
+  
+  it("will provide a mix of state and models", () => {
+    const foo = Foo.new();
+  
+    create(
+      <Provider for={{ foo, Bar }}>
+        <Consumer for={Foo} get={i => expect(i).toBe(foo)} />
+        <Consumer for={Bar} get={i => expect(i).toBeInstanceOf(Bar)} />
+      </Provider>
+    )
+  })
+  
+  it("will conflict colliding Model types", () => {
+    const foo = Foo.new();
+  
+    const Consumer: React.FC = jest.fn(() => {
+      expect(() => Foo.get()).toThrowError(
+        "Did find Foo in context, but multiple were defined."
+      );
+      return null;
+    });
+  
+    create(
+      <Provider for={{ Foo, foo }}>
+        <Consumer />
+      </Provider>
+    )
+  
+    expect(Consumer).toHaveBeenCalled();
+  })
 
-  create(
-    <Provider for={{ Foo, foo }}>
-      <Consumer />
-    </Provider>
-  )
-
-  expect(Consumer).toHaveBeenCalled();
 })
 
 describe("use prop", () => {
+  class Foo extends Model {
+    value?: string = undefined;
+  }
+
   it("will assign values to instance", () => {
     create(
       <Provider for={Foo} use={{ value: "foobar" }}>
@@ -263,6 +271,42 @@ describe("suspense", () => {
     expect(willRender).toBeCalledTimes(1);
     expect(didSuspend).toBeCalledTimes(1);
     expect(didRender).toBeCalledWith("hello!");
+
+    element.unmount();
+  })
+})
+
+describe("HMR", () => {
+  it("will replace model", () => {
+    let Control = class Control extends Model {
+      value = "foo";
+    }
+
+    const Child = () => (
+      <Fragment>
+        {Control.get().value}
+      </Fragment>
+    )
+
+    const element = create(
+      <Provider for={Control}>
+        <Child />
+      </Provider>
+    )
+
+    expect(element.toJSON()).toBe("foo");
+
+    Control = class Control extends Model {
+      value = "bar";
+    }
+
+    element.update(
+      <Provider for={Control}>
+        <Child />
+      </Provider>
+    )
+
+    expect(element.toJSON()).toBe("bar");
 
     element.unmount();
   })

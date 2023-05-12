@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
-import { createElement as $, ReactNode, Suspense, useLayoutEffect, useMemo } from 'react';
+import { createElement, ReactNode, Suspense, useLayoutEffect, useMemo } from 'react';
 
-import { LookupContext, Pending, useLookup } from './context';
+import { LookupContext, setPeerContext, useLookup } from './context';
 
 type Class = new () => any;
 
@@ -45,18 +45,15 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>){
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    const pending = Pending.get(model);
-
-    if(pending)
-      pending.forEach(cb => cb(context));
+    setPeerContext(model, context);
   });
 
   useLayoutEffect(() => () => context.pop(), []);
 
-  return $(LookupContext.Provider, { value: context },
+  return createElement(LookupContext.Provider, { value: context, key: context.key },
     props.fallback == false
       ? props.children
-      : $(Suspense, { fallback: props.fallback || null }, props.children)
+      : createElement(Suspense, { fallback: props.fallback || null }, props.children)
   )
 }
 

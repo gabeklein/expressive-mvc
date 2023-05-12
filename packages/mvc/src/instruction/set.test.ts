@@ -1,8 +1,10 @@
 import { Oops as Effect } from '../effect';
-import { mockPromise, mockConsole } from '../helper/testing';
+import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
+
+const warn = mockWarn();
 
 describe("placeholder", () => {
   class Test extends Model {
@@ -162,8 +164,6 @@ describe("intercept", () => {
 })
 
 describe("factory", () => {
-  const { warn } = mockConsole();
-
   it("will compute when accessed", () => {
     const factory = jest.fn(() => "Hello World");
 

@@ -1,8 +1,11 @@
 import { Control } from '../control';
 import { render, context } from '../helper/mocks';
-import { mockPromise, mockConsole } from '../helper/testing';
+import { mockPromise, mockError, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
+
+const warn = mockWarn();
+const error = mockError();
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
@@ -407,8 +410,6 @@ describe("compute mode", () => {
   })
 
   describe("failures", () => {
-    const { warn, error } = mockConsole();
-
     class Subject extends Model {
       never = get(this, () => {
         throw new Error();
@@ -615,7 +616,7 @@ describe("context", () => {
     expect(hook.output).toBe("bar");
 
     bar.value = "foo";
-    await hook.didUpdate();
+    await hook.update();
 
     expect(hook.output).toBe("foo");
     expect(hook).toBeCalledTimes(2);
