@@ -307,6 +307,8 @@ describe("HMR", () => {
     )
 
     expect(element.toJSON()).toBe("bar");
+
+    element.unmount();
   })
 })
 

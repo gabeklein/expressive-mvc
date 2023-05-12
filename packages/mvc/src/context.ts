@@ -5,10 +5,7 @@ import { Model } from './model';
 
 export const Oops = issues({
   MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`,
-
-  NewValue: (name) =>
-    `Provider already has already defined '${name}' but it now differs. This is not yet supported.`
+    `Did find ${name} in context, but multiple were defined.`
 })
 
 declare namespace Context {

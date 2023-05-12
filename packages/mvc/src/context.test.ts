@@ -114,18 +114,37 @@ describe("include", () => {
     expect(context.get(Bar)).toBe(bar);
   })
 
-  // This feature will be introduced later.
-  it("will throw if provided key has changed", () => {
+  // This will be made more elegant later.
+  it("will hard-reset if inputs differ", () => {
     const context = new Context();
     const foo = Foo.new();
     const bar = Bar.new();
-  
-    context.include({ foo, bar });
 
-    const attempt = () =>
-      context.include({ foo, bar: Bar.new() });
+    const bazDidNew = jest.fn(() => bazDidDie);
+    const bazDidDie = jest.fn();
 
-    expect(attempt).toThrowError(Oops.NewValue("bar"));
+    class Baz extends Model {
+      constructor(){
+        super();
+        this.on(bazDidNew);
+      }
+    }
+
+    context.include({ foo, bar, Baz });
+
+    const keyPriorUpdate = context.key;
+
+    context.include({ foo, bar: Bar.new() });
+
+    // key should change despite technically same layer.
+    expect(context.key).not.toBe(keyPriorUpdate);
+
+    // expect all instances did get replaced.
+    expect(context.get(Bar)).not.toBe(bar);
+
+    // expect Baz should have been force-replaced.
+    expect(bazDidNew).toBeCalledTimes(2);
+    expect(bazDidDie).toBeCalled();
   })
   
   it("will register children implicitly", () => {
