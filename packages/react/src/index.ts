@@ -1,4 +1,4 @@
-import { Control } from '@expressive/mvc';
+import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 import { getPeerContext, useLookup, usePeerContext } from './context';
@@ -32,14 +32,17 @@ export {
   Context,
   Control,
   Debug,
-  default,
   get,
-  Model,
   ref,
   run,
   set,
   use,
 } from '@expressive/mvc';
+
+export {
+  Model,
+  Model as default
+}
 
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
