@@ -1,4 +1,5 @@
 import { Model } from '@expressive/mvc';
+import { ReactElement } from 'react';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -30,7 +31,7 @@ declare namespace Consumer {
      * Similar to `get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => React.ReactElement<any, any> | null;
+    children: (value: T) => ReactElement<any, any> | null;
   }
 
   type Props<T extends Model> = HasProps<T> | GetProps<T> | RenderProps<T>
@@ -43,10 +44,12 @@ type ConsumerProps<T extends Model> = {
   for: For<T>;
   has?: (value: T) => void;
   get?: (value: T | undefined) => void;
-  children?: (value: T) => React.ReactElement<any, any> | null;
+  children?: (value: T) => ReactElement<any, any> | null;
 }
 
-function Consumer<T extends Model>(props: Consumer.Props<T>){
+function Consumer<T extends Model>(
+  props: Consumer.Props<T>): ReactElement<any, any> | null {
+
   const { children, has, get, for: Type } = props as ConsumerProps<T>;
 
   if(typeof children == "function")
