@@ -26,24 +26,17 @@ export function usePeerContext(instance: Model){
   }
 }
 
-export function getPeerContext<T extends Model>(
-  type: Model.Type<T>,
-  relativeTo: Model,
-  callback: (got?: T) => void
+export function peerContext(
+  model: Model,
+  hasContext: ((has: Context) => void) | Context
 ){
-  let pending = Pending.get(relativeTo);
+  let pending = Pending.get(model);
     
   if(!pending)
-    Pending.set(relativeTo, pending = []);
+    Pending.set(model, pending = []);
 
-  pending.push(context => {
-    callback(context.get(type));
-  })
-}
-
-export function setPeerContext(model: Model, context: Context){
-  const pending = Pending.get(model);
-
-  if(pending)
-    pending.forEach(cb => cb(context));
+  if(typeof hasContext == "function")
+    pending.push(hasContext);
+  else
+    pending.forEach(cb => cb(hasContext));
 }

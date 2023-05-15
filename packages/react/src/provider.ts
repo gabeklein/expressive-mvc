@@ -9,7 +9,7 @@ import {
   useMemo,
 } from 'react';
 
-import { LookupContext, setPeerContext, useLookup } from './context';
+import { LookupContext, peerContext, useLookup } from './context';
 
 type Class = new () => any;
 
@@ -55,7 +55,7 @@ function Provider<T extends Provider.Item>(
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    setPeerContext(model, context);
+    peerContext(model, context);
   });
 
   useLayoutEffect(() => () => context.pop(), []);
