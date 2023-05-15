@@ -1,9 +1,9 @@
 import { Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { peerContext, useLookup, usePeerContext } from './context';
+import { hasContext, useLookup, usePeerContext } from './context';
 
-Control.has = peerContext;
+Control.has = hasContext;
 
 Control.get = (adapter) => {
   const context = useLookup();

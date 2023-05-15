@@ -5,7 +5,7 @@ export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
 
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
-const Applied = new WeakMap<Model, boolean>();
+const Applied = new WeakMap<Model, Context>();
 
 export function usePeerContext(instance: Model){
   const applied = Applied.get(instance);
@@ -20,23 +20,33 @@ export function usePeerContext(instance: Model){
       const local = useLookup();
 
       pending.forEach(init => init(local));
+      Applied.set(instance, local);
       Pending.delete(instance);
-      Applied.set(instance, true);
     }
   }
 }
 
-export function peerContext(
-  model: Model,
-  hasContext: ((has: Context) => void) | Context
-){
+export function setContext(model: Model, has: Context){
   let pending = Pending.get(model);
     
   if(!pending)
     Pending.set(model, pending = []);
 
-  if(typeof hasContext == "function")
-    pending.push(hasContext);
-  else
-    pending.forEach(cb => cb(hasContext));
+  pending.forEach(cb => cb(has));
+}
+
+export function hasContext(model: Model){
+  let pending = Pending.get(model)!;
+
+  if(!pending)
+    Pending.set(model, pending = []);
+
+  return (callback: (got: Context) => void) => {
+    const applied = Applied.get(model);
+
+    if(applied)
+      callback(applied);
+    else
+      pending.push(callback);
+  }
 }

@@ -20,8 +20,8 @@ afterEach(() => {
 });
 
 beforeAll(() => {
-  Control.has = (subject, callback) => {
-    callback(context);
+  Control.has = _subject => got => {
+    got(context);
   }
 
   Control.get = (adapter) => {

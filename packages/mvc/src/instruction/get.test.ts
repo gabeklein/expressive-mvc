@@ -686,9 +686,7 @@ describe.skip("replaced source", () => {
   const context = new Context();
 
   beforeAll(() => {
-    Control.has = (relativeTo, callback) => {
-      callback(context);
-    }
+    Control.has = _model => got => got(context);
   })
 
   class Source extends Model {
@@ -750,8 +748,8 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    Control.has = (_relative, callback) => {
-      setTimeout(() => callback(context), 0);
+    Control.has = _model => got => {
+      setTimeout(() => got(context), 0);
     }
   })
 

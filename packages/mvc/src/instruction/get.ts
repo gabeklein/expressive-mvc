@@ -84,16 +84,19 @@ function get<R, T extends Model>(
       if(!hasParent){
         if(arg1 === true)
           throw Oops.Required(arg0, subject);
-        
-        source = callback =>
-          Control.has(subject, context => {
-            const got = context.get(arg0);
 
-            if(got)
-              callback(got);
+        const fetch = Control.has(subject);
+
+        source = got => {
+          fetch(context => {
+            const model = context.get(arg0);
+
+            if(model)
+              got(model);
             else if(arg1 !== false)
               throw Oops.AmbientRequired(arg0, subject);
           });
+        }
       }
       else if(!arg0 || hasParent instanceof arg0)
         subject = hasParent;
@@ -113,7 +116,7 @@ function get<R, T extends Model>(
 function recursive(
   parent: Control,
   key: string,
-  source: get.Source | undefined,
+  source: get.Source,
   required: boolean | undefined){
 
   let waiting: boolean;

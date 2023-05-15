@@ -183,4 +183,25 @@ describe("suspense", () => {
 
     expect(bar.foo).toBe("foobar");
   })
+
+  it("will compute immediately in context", () => {
+    class Foo extends Model {
+      value = "foobar";
+    }
+    class Bar extends Model {
+      foo = get(Foo, foo => foo.value);
+    }
+
+    const FooBar = () => {
+      return <>{Bar.use().foo}</>
+    }
+
+    const render = create(
+      <Provider for={Foo}>
+        <FooBar />
+      </Provider>
+    );
+
+    expect(render.toJSON()).toBe("foobar");
+  })
 })

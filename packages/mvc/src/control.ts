@@ -49,10 +49,8 @@ declare namespace Control {
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
-  type GetContext = (
-    target: Model,
-    callback: (got: Context) => void
-  ) => void;
+  type GetContext = (target: Model) =>
+    (callback: (got: Context) => void) => void;
 
   type GetAdapter<T> = (
     refresh: RequestRefresh,
