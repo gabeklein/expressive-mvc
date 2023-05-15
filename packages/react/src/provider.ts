@@ -49,8 +49,8 @@ function Provider<T extends Provider.Item>(
   if(typeof included == "function" || included instanceof Model)
     included = { [0]: included };
 
-  context.include(included).forEach((explicit, model) => {
-    if(assign && explicit)
+  context.include(included).forEach((isExplicit, model) => {
+    if(assign && isExplicit)
       for(const K in assign)
         if(K in model)
           (model as any)[K] = (assign as any)[K];
