@@ -49,11 +49,8 @@ declare namespace Control {
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
-  type HasHook = (
-    type: typeof Model,
-    relativeTo: Model,
-    callback: (got: Model | undefined) => void
-  ) => void;
+  type GetContext = (target: Model) =>
+    (callback: (got: Context) => void) => void;
 
   type GetAdapter<T> = (
     refresh: RequestRefresh,
@@ -84,7 +81,7 @@ class Control<T extends Model = any> {
 
   static get: Control.GetHook;
   static use: Control.UseHook;
-  static has: Control.HasHook;
+  static has: Control.GetContext;
 
   static for = control;
   static apply = apply;

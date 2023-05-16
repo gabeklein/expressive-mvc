@@ -1,3 +1,4 @@
+import { Context } from '../context';
 import { Control } from '../control';
 import { render, context } from '../helper/mocks';
 import { mockPromise, mockError, mockWarn } from '../helper/testing';
@@ -680,20 +681,25 @@ describe("context", () => {
   })
 })
 
+// not yet implemented by Context yet; this is a hack.
 describe("replaced source", () => {
-  let didUpdate: (got: Source) => void;
-  let current: Source;
+  const context = new Context();
+  let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.has = (Type, relativeTo, callback) => {
-      didUpdate = callback;
-      callback(current);
-    }
+    Control.has = () => (got) => {
+      gotContext = got;
+      got(context);
+    };
   })
 
   class Source extends Model {
     constructor(public value: string){
       super();
+      context.include({ source: this });
+
+      if(gotContext)
+        gotContext(context);
     }
   }
 
@@ -705,7 +711,7 @@ describe("replaced source", () => {
 
   it("will update", async () => {
     const test = Test.new();
-    const oldSource = current = Source.new("Foo");
+    const oldSource = Source.new("Foo");
   
     expect(test.greeting).toBe("Hello Foo!");
 
@@ -713,9 +719,7 @@ describe("replaced source", () => {
     await expect(test).toUpdate();
     expect(test.greeting).toBe("Hello Baz!");
 
-    const newSource = current = Source.new("Bar");
-
-    didUpdate(newSource);
+    const newSource = Source.new("Bar");
 
     await expect(test).toUpdate();
     expect(test.greeting).toBe("Hello Bar!");
@@ -727,13 +731,11 @@ describe("replaced source", () => {
 
   it("will not update from previous source", async () => {
     const test = Test.new();
-    const oldSource = current = Source.new("Foo");
+    const oldSource = Source.new("Foo");
   
     expect(test.greeting).toBe("Hello Foo!");
 
-    const newSource = current = Source.new("Bar");
-
-    didUpdate(newSource);
+    Source.new("Bar");
 
     await expect(test).toUpdate();
     expect(test.greeting).toBe("Hello Bar!");
@@ -744,16 +746,21 @@ describe("replaced source", () => {
 })
 
 describe("async", () => {
+  class Foo extends Model {
+    value = "foobar";
+  }
+
+  const context = new Context();
+
+  context.add(Foo);
+
   beforeAll(() => {
-    Control.has = (Type, _relative, callback) => {
-      setTimeout(() => {
-        callback(Type.new());
-      }, 0);
+    Control.has = () => (got) => {
+      setTimeout(() => got(context), 0);
     }
   })
 
   it("will suspend if not ready", async () => {
-    class Foo extends Model {}
     class Bar extends Model {
       foo = get(Foo);
     }
@@ -776,9 +783,6 @@ describe("async", () => {
   })
   
   it("will prevent compute if not ready", async () => {
-    class Foo extends Model {
-      value = "foobar";
-    }
     class Bar extends Model {
       foo = get(Foo, foo => foo.value);
     }

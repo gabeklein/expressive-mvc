@@ -5,7 +5,7 @@ export const LookupContext = createContext(new Context());
 export const useLookup = () => useContext(LookupContext);
 
 const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
-const Applied = new WeakMap<Model, boolean>();
+const Applied = new WeakMap<Model, Context>();
 
 export function usePeerContext(instance: Model){
   const applied = Applied.get(instance);
@@ -20,30 +20,33 @@ export function usePeerContext(instance: Model){
       const local = useLookup();
 
       pending.forEach(init => init(local));
+      Applied.set(instance, local);
       Pending.delete(instance);
-      Applied.set(instance, true);
     }
   }
 }
 
-export function getPeerContext<T extends Model>(
-  type: Model.Type<T>,
-  relativeTo: Model,
-  callback: (got?: T) => void
-){
-  let pending = Pending.get(relativeTo);
+export function setContext(model: Model, has: Context){
+  let pending = Pending.get(model);
     
   if(!pending)
-    Pending.set(relativeTo, pending = []);
+    Pending.set(model, pending = []);
 
-  pending.push(context => {
-    callback(context.get(type));
-  })
+  pending.forEach(cb => cb(has));
 }
 
-export function setPeerContext(model: Model, context: Context){
-  const pending = Pending.get(model);
+export function hasContext(model: Model){
+  let pending = Pending.get(model)!;
 
-  if(pending)
-    pending.forEach(cb => cb(context));
+  if(!pending)
+    Pending.set(model, pending = []);
+
+  return (callback: (got: Context) => void) => {
+    const applied = Applied.get(model);
+
+    if(applied)
+      callback(applied);
+    else
+      pending.push(callback);
+  }
 }
