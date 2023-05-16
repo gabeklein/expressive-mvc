@@ -681,18 +681,25 @@ describe("context", () => {
   })
 })
 
-// not yet implemented by Context itself.
-describe.skip("replaced source", () => {
+// not yet implemented by Context yet; this is a hack.
+describe("replaced source", () => {
   const context = new Context();
+  let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.has = () => (got) => got(context);
+    Control.has = () => (got) => {
+      gotContext = got;
+      got(context);
+    };
   })
 
   class Source extends Model {
     constructor(public value: string){
       super();
       context.include({ source: this });
+
+      if(gotContext)
+        gotContext(context);
     }
   }
 
