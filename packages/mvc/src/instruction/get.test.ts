@@ -686,7 +686,7 @@ describe.skip("replaced source", () => {
   const context = new Context();
 
   beforeAll(() => {
-    Control.has = _model => got => got(context);
+    Control.has = () => (got) => got(context);
   })
 
   class Source extends Model {
@@ -748,7 +748,7 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    Control.has = _model => got => {
+    Control.has = () => (got) => {
       setTimeout(() => got(context), 0);
     }
   })

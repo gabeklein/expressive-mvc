@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 beforeAll(() => {
-  Control.has = _subject => got => {
+  Control.has = () => (got) => {
     got(context);
   }
 
