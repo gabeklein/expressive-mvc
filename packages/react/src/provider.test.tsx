@@ -1,7 +1,7 @@
 import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
-import { Consumer, Model, set } from '.';
+import { Consumer, Model, get, set } from '.';
 import { Provider } from './provider';
 import { mockAsync } from './tests';
 
@@ -273,6 +273,86 @@ describe("suspense", () => {
     expect(didRender).toBeCalledWith("hello!");
 
     element.unmount();
+  })
+})
+
+describe("get instruction", () => {
+  class Foo extends Model {
+    bar = get(Bar);
+  }
+
+  class Bar extends Model {
+    value = "bar";
+  }
+
+  it("will attach where created by provider", () => {
+    create(
+      <Provider for={Bar}>
+        <Provider for={Foo}>
+          <Consumer for={Foo} has={i => expect(i.bar).toBeInstanceOf(Bar)} />
+        </Provider>
+      </Provider>
+    );
+  })
+
+  it("will see peers sharing same provider", () => {
+    class Foo extends Model {
+      bar = get(Bar);
+    }
+    class Bar extends Model {
+      foo = get(Foo);
+    }
+
+    create(
+      <Provider for={{ Foo, Bar }}>
+        <Consumer for={Bar} has={i => expect(i.foo.bar).toBe(i)} />
+        <Consumer for={Foo} has={i => expect(i.bar.foo).toBe(i)} />
+      </Provider>
+    );
+  });
+
+  it("will see multiple peers provided", async () => {
+    class Foo extends Model {};
+    class Baz extends Model {
+      bar = get(Bar);
+      foo = get(Foo);
+    };
+
+    const Inner = () => {
+      const { bar, foo } = Baz.use();
+
+      expect(bar).toBeInstanceOf(Bar);
+      expect(foo).toBeInstanceOf(Foo);
+
+      return null;
+    }
+
+    create(
+      <Provider for={{ Foo, Bar }}>
+        <Inner />
+      </Provider>
+    );
+  })
+
+  it("will maintain hook", async () => {
+    const Inner: React.FC = jest.fn(() => {
+      Foo.use();
+      return null;
+    })
+
+    const x = create(
+      <Provider for={Bar}>
+        <Inner />
+      </Provider>
+    );
+
+    x.update(
+      <Provider for={Bar}>
+        <Inner />
+      </Provider>
+    );
+
+    expect(Inner).toBeCalledTimes(2);
   })
 })
 
