@@ -54,7 +54,7 @@ function set <T> (
 
   return apply<T>((key, control) => {
     const { state, subject } = control;
-    
+
     if(typeof value == "function" || value instanceof Promise){
       const required = argument !== false;
       let getter: () => any;
@@ -126,8 +126,23 @@ function set <T> (
       }
     }
 
+    let setter = typeof argument == "function"
+      ? createValueEffect(argument)
+      : undefined;
+
     if(value !== undefined)
       state[key] = value;
+
+    else if(setter){
+      const effect = setter;
+
+      setter = function(this: any, value: any){
+        if(!(key in state))
+          state[key] = undefined;
+
+        return effect.call(this, value);
+      }
+    }
 
     return {
       get: () => {
@@ -136,9 +151,7 @@ function set <T> (
 
         throw suspense(control, key);
       },
-      set: typeof argument == "function"
-        ? createValueEffect(argument)
-        : undefined
+      set: setter
     }
   })
 }

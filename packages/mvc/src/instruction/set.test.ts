@@ -126,6 +126,23 @@ describe("callback", () => {
 
     expect(() => state.property = "bar").toThrow(expected);
   })
+
+  it('will not suspend own property access', () => {
+    class Subject extends Model {
+      property = set<string>(undefined, () => {
+        propertyWas = this.property;
+      });
+    }
+
+    const state = Subject.new();
+    let propertyWas: string | undefined;
+
+    state.property = "bar";
+    expect(propertyWas).toBe(undefined);
+
+    state.property = "foo";
+    expect(propertyWas).toBe("bar");
+  })
 })
 
 describe("intercept", () => {
