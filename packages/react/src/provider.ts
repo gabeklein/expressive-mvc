@@ -11,14 +11,12 @@ import {
 
 import { LookupContext, setContext, useLookup } from './context';
 
-type Class = new () => any;
-
 declare namespace Provider {
   type Item = Model | Model.New;
 
   type Multiple<T extends Item = Item> = { [key: string | number]: T };
 
-  type Instance<E> = E extends Class ? InstanceType<E> : E extends Model ? E : never;
+  type Instance<E> = E extends (new () => any) ? InstanceType<E> : E extends Model ? E : never;
 
   type Props<T extends Item = Item> = MultipleProps<T> | NormalProps<T>;
 
