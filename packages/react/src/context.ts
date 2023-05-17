@@ -27,12 +27,10 @@ export function usePeerContext(instance: Model){
 }
 
 export function setContext(model: Model, has: Context){
-  let pending = Pending.get(model);
+  const pending = Pending.get(model);
     
-  if(!pending)
-    Pending.set(model, pending = []);
-
-  pending.forEach(cb => cb(has));
+  if(pending)
+    pending.forEach(cb => cb(has));
 }
 
 export function hasContext(model: Model){
