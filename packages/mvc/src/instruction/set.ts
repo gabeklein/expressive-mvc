@@ -133,8 +133,8 @@ function set <T> (
       get: () => {
         if(key in state)
           return state[key];
-        else
-          throw suspense(control, key);
+
+        throw suspense(control, key);
       },
       set: typeof argument == "function"
         ? createValueEffect(argument)
