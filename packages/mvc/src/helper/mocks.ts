@@ -79,11 +79,14 @@ export function render<T>(impl: () => T){
     unmount = undefined;
   }
   mock.update = (next) => {
+    const nextUpdate = waiting;
+
     if(next){
       impl = next;
       attempt!();
     }
-    return waiting;
+
+    return nextUpdate;
   }
 
   attempt = () => {
