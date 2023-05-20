@@ -62,16 +62,16 @@ declare namespace Control {
 
   type GetHook = <T> (adapter: GetAdapter<T>) => T | null;
 
-  type UseAdapter<T extends Model> = (
+  type UseAdapter<T extends Model, R> = (
     refresh: RequestRefresh
   ) => {
-    instance: T;
+    local: T;
     mount: () => (() => void) | void;
-    render: (props: Model.Compat<T>) => T;
+    render: R;
   }
 
-  type UseHook = <T extends Model>
-    (adapter: UseAdapter<T>) => (props: Model.Compat<T>) => T;
+  type UseHook = <T extends Model, R>
+    (adapter: UseAdapter<T, R>) => R;
 }
 
 class Control<T extends Model = any> {

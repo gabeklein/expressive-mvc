@@ -22,7 +22,7 @@ Control.use = (adapter) => {
   const state = useState(0);
   const hook = useMemo(() => adapter(state[1]), []);
 
-  usePeerContext(hook.instance);
+  usePeerContext(hook.local.is);
   useLayoutEffect(hook.mount, []);
 
   return hook.render;

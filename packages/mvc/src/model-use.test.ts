@@ -1,5 +1,5 @@
-import { render } from "./helper/mocks";
-import { Model } from "./model";
+import { render } from './helper/mocks';
+import { Model } from './model';
 
 class Test extends Model {
   value = "foo";
@@ -59,6 +59,67 @@ it("will ignore updates after unmount", async () => {
 
   hook.unmount();
   test.value = "baz";
+})
+
+describe("callback argument", () => {
+  class Test extends Model {
+    foo?: string = undefined;
+    bar?: string = undefined;
+  }
+
+  it("will run callback once", async () => {
+    const callback = jest.fn();
+
+    const element = render(() => Test.use(callback));
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    await element.update(() => Test.use(callback));
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(element).toHaveBeenCalledTimes(2);
+  })
+
+  it("will run callback on every render", async () => {
+    const callback = jest.fn();
+
+    const element = render(() => Test.use(callback, true));
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(element).toHaveBeenCalledTimes(1);
+
+    await element.update(() => Test.use(callback, true));
+
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(element).toHaveBeenCalledTimes(2);
+  })
+
+  it("will include updates in callback without reload", async () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 0;
+    };
+  
+    const hook = render(() => {
+      const test = Test.use(test => {
+        test.foo += 1;
+      }, true);
+
+      void test.foo;
+      void test.bar;
+      
+      return test;
+    });
+
+    // does have value change in callback
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(hook.output.foo).toBe(1);
+
+    // does still respond to normal updates
+    hook.output.bar = 2;
+    await hook.update();
+
+    expect(hook).toHaveBeenCalledTimes(2);
+    expect(hook.output.foo).toBe(2);
+  });
 })
 
 describe("props argument", () => {
