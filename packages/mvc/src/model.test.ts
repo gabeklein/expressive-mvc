@@ -15,6 +15,14 @@ describe("Model", () => {
       this.value = to;
     }
   }
+
+  it('will have enumerable properties', () => {
+    const state = Subject.new();
+    const keys = Object.keys(state);
+
+    expect(keys).toContain("value");
+    expect(keys).toContain("setValue");
+  });
   
   it('will instantiate from custom class', () => {
     const state = Subject.new();

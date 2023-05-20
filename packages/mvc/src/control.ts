@@ -121,7 +121,7 @@ class Control<T extends Model = any> {
     output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
-    const { get, set, enumerable } = output;
+    const { get, set, enumerable = true } = output;
 
     const subs = new Set<Observer>();
     
