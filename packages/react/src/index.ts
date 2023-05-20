@@ -1,9 +1,25 @@
-import { Control, Model } from '@expressive/mvc';
+import { Context, Control, Model } from '@expressive/mvc';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { hasContext, useLookup, usePeerContext } from './context';
+import { Pending, useLookup } from './provider';
 
-Control.has = hasContext;
+const Applied = new WeakMap<Model, Context>();
+
+Control.has = (model) => {
+  let pending = Pending.get(model)!;
+
+  if(!pending)
+    Pending.set(model, pending = []);
+
+  return (callback: (got: Context) => void) => {
+    const applied = Applied.get(model);
+
+    if(applied)
+      callback(applied);
+    else
+      pending.push(callback);
+  }
+};
 
 Control.get = (adapter) => {
   const context = useLookup();
@@ -21,8 +37,24 @@ Control.get = (adapter) => {
 Control.use = (adapter) => {
   const state = useState(0);
   const hook = useMemo(() => adapter(state[1]), []);
+  const instance = hook.local.is;
+  const applied = Applied.get(instance);
 
-  usePeerContext(hook.local.is);
+  if(applied)
+    useLookup();
+
+  else if(applied === undefined){
+    const pending = Pending.get(instance);
+
+    if(pending){
+      const local = useLookup();
+
+      pending.forEach(init => init(local));
+      Applied.set(instance, local);
+      Pending.delete(instance);
+    }
+  }
+
   useLayoutEffect(hook.mount, []);
 
   return hook.render;

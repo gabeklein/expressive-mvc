@@ -1,15 +1,19 @@
 import { Context, Model } from '@expressive/mvc';
 import {
+  createContext,
   createElement,
   FunctionComponentElement,
   ProviderProps,
   ReactNode,
   Suspense,
+  useContext,
   useLayoutEffect,
   useMemo,
 } from 'react';
 
-import { LookupContext, setContext, useLookup } from './context';
+export const LookupContext = createContext(new Context());
+export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
+export const useLookup = () => useContext(LookupContext);
 
 declare namespace Provider {
   type Item = Model | Model.New;
@@ -53,7 +57,10 @@ function Provider<T extends Provider.Item>(
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    setContext(model, context);
+    const pending = Pending.get(model);
+
+    if(pending)
+      pending.forEach(cb => cb(context));
   });
 
   useLayoutEffect(() => () => context.pop(), []);
