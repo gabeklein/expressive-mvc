@@ -5,35 +5,6 @@ import { Pending, useLookup } from './provider';
 
 const Applied = new WeakMap<Model, Context>();
 
-Control.has = (model) => {
-  let pending = Pending.get(model)!;
-
-  if(!pending)
-    Pending.set(model, pending = []);
-
-  return (callback: (got: Context) => void) => {
-    const applied = Applied.get(model);
-
-    if(applied)
-      callback(applied);
-    else
-      pending.push(callback);
-  }
-};
-
-Control.get = (adapter) => {
-  const context = useLookup();
-  const state = useState(0);
-  const hook = useMemo(() => adapter(state[1], context), []);
-
-  if(!hook)
-    return null;
-
-  useLayoutEffect(hook.mount, []);
-
-  return hook.render();
-}
-
 Control.use = (adapter) => {
   const state = useState(0);
   const hook = useMemo(() => adapter(state[1]), []);
@@ -59,6 +30,35 @@ Control.use = (adapter) => {
 
   return hook.render;
 }
+
+Control.get = (adapter) => {
+  const context = useLookup();
+  const state = useState(0);
+  const hook = useMemo(() => adapter(state[1], context), []);
+
+  if(!hook)
+    return null;
+
+  useLayoutEffect(hook.mount, []);
+
+  return hook.render();
+}
+
+Control.has = (model) => {
+  let pending = Pending.get(model)!;
+
+  if(!pending)
+    Pending.set(model, pending = []);
+
+  return (callback: (got: Context) => void) => {
+    const applied = Applied.get(model);
+
+    if(applied)
+      callback(applied);
+    else
+      pending.push(callback);
+  }
+};
 
 export * from '@expressive/mvc';
 
