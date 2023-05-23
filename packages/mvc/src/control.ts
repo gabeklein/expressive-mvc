@@ -112,7 +112,7 @@ class Control<T extends Model = any> {
     else if(value instanceof Model)
       setRecursive(this, key, value);
 
-    else if(typeof value != "function")
+    else
       this.watch(key, { value });
   }
 

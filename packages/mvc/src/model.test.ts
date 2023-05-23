@@ -102,6 +102,30 @@ describe("Model", () => {
   
     expect(state.value).toBe(3)
   })
+
+  it('will watch function properties', async () => {
+    const mockFunction = jest.fn();
+    const mockFunction2 = jest.fn();
+    
+    class Test extends Model {
+      fn = mockFunction;
+    }
+
+    const test = Test.new();
+
+    test.on(({ fn }) => {
+      fn();
+    });
+
+    expect(mockFunction).toBeCalled();
+
+    test.fn = mockFunction2;
+
+    await expect(test).toUpdate();
+
+    expect(mockFunction2).toBeCalled();
+    expect(mockFunction).toBeCalledTimes(1);
+  });
 })
 
 describe("dispatch", () => {
