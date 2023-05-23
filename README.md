@@ -105,28 +105,42 @@ Expressive leverages the advantages of classes to make state management simpler.
 <br />
 <br />
 
-### Track any number of values:
+### Track any number, even nested values:
 
 Models use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
 
 ```jsx
-class State extends Model {
+class User extends Model {
+  info = new Info();
   foo = 1;
   bar = 2;
   baz = 3;
 }
 
+class Info extends Model {
+  value1 = 1;
+  value2 = 2;
+}
+
 const MyComponent = () => {
-  const { foo, bar } = State.use();
+  const {
+    foo,
+    bar,
+    info: {
+      value1
+    }
+  } = State.use();
 
   return (
     <ul>
       <li>Foo is {foo}</li>
       <li>Bar is {bar}</li>
+      <li>Info 1 is {value1}</li>
     </ul>
   )
 }
 ```
+<sup><a href="https://codesandbox.io/s/example-nested-ow9opy">View in CodeSandbox</a></sup>
 > Here, **MyComponent** will subscribe to `foo` and `bar` from a new instance of **Test**. You'll note `baz` is not being used however - and so it's ignored.
 
 <br/>
@@ -173,6 +187,7 @@ const MyComponent = () => {
   )
 }
 ```
+<sup><a href="https://codesandbox.io/s/example-async-inmk4">View in CodeSandbox</a></sup>
 > Reserved property `is` loops back to the instance, helpful to update values after having destructured.
 
 <br/>
@@ -218,41 +233,37 @@ const MyComponent = () => {
 }
 ```
 
+<sup><a href="https://codesandbox.io/s/example-fetch-wh4ppg">View in CodeSandbox</a></sup>
+
 </br>
 
 ### Extend to configure:
 Capture shared behavior as reusable classes and extend them as needed. This makes logic reusable and easy to document and share!
 
 ```ts
+import { toQueryString } from "helpers";
+
 abstract class Query extends Model {
   /** This is where you will get the data */
-  abstract url: string;
+  url: string;
 
-  protected query?: { [param: string]: string | number };
+  /** Any query data you want to add. */
+  query?: { [param: string]: string | number };
 
   response = undefined;
   waiting = false;
   error = false;
 
-  private get qs(){
-    if(!this.query)
-      return "";
-
-    const params = Object.entries(obj).map(([key, value]) => {
-      key = encodeURIComponent(key);
-      value = encodeURIComponent(value);
-
-      return `${key}=${value}`;
-    });
-
-    return `?${params.join("&")}`;
-  }
-
   sayHello = async () => {
     this.waiting = true;
 
     try {
-      const res = await fetch(this.url + this.qs);
+      let { url, query } = this;
+
+      if(query)
+        url += toQueryString(query);
+
+      const res = await fetch(url);
       this.response = await res.text();
     }
     catch(e) {
@@ -260,14 +271,39 @@ abstract class Query extends Model {
     }
   }
 }
+```
 
+Now you can extend it in order to use!
+
+```jsx
 class Greetings extends Query {
   url = "http://my.api/hello";
   params = {
     name: "John Doe"
   }
 }
+
+const Greetings = () => {
+  const { error, response, waiting, sayHello } = Greetings.use();
+
+  return <div />
+}
 ```
+
+Or you can just use it directly...
+
+```jsx
+const Greetings = () => {
+  const { error, response, waiting, sayHello } = Query.use({
+    url: "http://my.api/hello",
+    params: { name: "John Doe" }
+  });
+
+  return <div />
+}
+```
+
+> It works either way!
 
 <br/>
 
@@ -321,6 +357,7 @@ const AboutBar = () => {
   )
 }
 ```
+<sup><a href="https://codesandbox.io/s/example-shared-state-5vvtr">View in CodeSandbox</a></sup>
 <br/>
 <br/>
 
