@@ -72,8 +72,8 @@ import Model from "@expressive/react";
 class Counter extends Model {
   current = 1
 
-  increment = () => { this.current++ };
-  decrement = () => { this.current-- };
+  increment = () => { this.current += 1 };
+  decrement = () => { this.current -= 1 };
 }
 ```
 
@@ -151,7 +151,10 @@ const MyComponent = () => {
   const { is: state, foo, bar, baz } = State.use();
 
   useEffect(() => {
-    const ticker = setInterval(() => state.baz++, 1000);
+    const ticker = setInterval(() => {
+      state.baz += 1;
+    }, 1000);
+
     return () => clearInterval(ticker);
   }, [])
 
@@ -221,20 +224,48 @@ const MyComponent = () => {
 Capture shared behavior as reusable classes and extend them as needed. This makes logic reusable and easy to document and share!
 
 ```ts
-abstract class About extends Model {
-  abstract name: string;
-  abstract birthday: Date;
-  abstract wants: any;
+abstract class Query extends Model {
+  /** This is where you will get the data */
+  abstract url: string;
 
-  happyBirthday(){
-    // ...
+  protected query?: { [param: string]: string | number };
+
+  response = undefined;
+  waiting = false;
+  error = false;
+
+  private get qs(){
+    if(!this.query)
+      return "";
+
+    const params = Object.entries(obj).map(([key, value]) => {
+      key = encodeURIComponent(key);
+      value = encodeURIComponent(value);
+
+      return `${key}=${value}`;
+    });
+
+    return `?${params.join("&")}`;
+  }
+
+  sayHello = async () => {
+    this.waiting = true;
+
+    try {
+      const res = await fetch(this.url + this.qs);
+      this.response = await res.text();
+    }
+    catch(e) {
+      this.error = true;
+    }
   }
 }
 
-class AboutJohn extends About {
-  name = "John Doe";
-  birthday = new Date("January 1");
-  wants = "a PS5";
+class Greetings extends Query {
+  url = "http://my.api/hello";
+  params = {
+    name: "John Doe"
+  }
 }
 ```
 
