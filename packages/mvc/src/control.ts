@@ -121,7 +121,7 @@ class Control<T extends Model = any> {
     output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
-    const { get, set, enumerable = true } = output;
+    const { set, enumerable = true } = output;
 
     const subs = new Set<Observer>();
     
@@ -141,7 +141,8 @@ class Control<T extends Model = any> {
         if(event)
           subs.add(event);
 
-        const value = get ? get(this) : state[key];
+        const value = output.get
+          ? output.get(this) : state[key];
 
         return event && value instanceof Model
           ? watch(value, event)

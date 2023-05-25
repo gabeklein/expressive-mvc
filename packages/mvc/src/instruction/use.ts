@@ -45,9 +45,6 @@ function use(
     const { state, subject } = source;
     const required = argument !== false;
 
-    let pending: Promise<any> | undefined;
-    let error: any;
-
     if(typeof input === "function"){
       if("prototype" in input && input === input.prototype.constructor)
         input = new input();
@@ -56,10 +53,10 @@ function use(
     else if(input && typeof input !== "object")
       throw Oops.BadArgument(typeof input);
 
-    const onUpdate = (next: Model | undefined) => {
+    function update(next: Model | undefined){
       state[key] = next;
 
-      if(next){
+      if(next instanceof Model){
         parent(next, subject);
         control(next, true);
       }
@@ -70,64 +67,50 @@ function use(
       return true;
     }
 
-    const suspend = () => {
-      if(required === false)
-        return;
-
-      const issue = Oops.NotReady(subject, key);
-
-      assign(pending!, {
-        message: issue.message,
-        stack: issue.stack
-      });
-
-      throw pending;
-    }
-
-    const initialize = () => {
-      const output = typeof input == "function" ?
+    function init(){
+      const result = typeof input == "function" ?
         mayRetry(() => input.call(subject, subject)) :
         input;
 
-      if(output instanceof Promise){
-        pending = output
-          .then(val => {
-            onUpdate(val);
-            return val;
+      if(result instanceof Promise){
+        const pending = result
+          .then(value => {
+            output.get = undefined;
+            update(value);
+            return value;
           })
-          .catch(err => error = err)
+          .catch(err => {
+            output.get = () => { throw err };
+          })
           .finally(() => {
-            pending = undefined;
             source.update(key);
-          })
+          });
 
-        return;
+        output.get = () => {
+          if(required !== false)
+            throw assign(pending, Oops.NotReady(subject, key));
+        };
       }
-
-      onUpdate(output);
+      else {
+        output.get = undefined;
+        update(result);
+      }
     }
 
-    if(input !== undefined && required)
-      initialize();
+    const output = {
+      get: undefined as undefined | (() => any),
+      set: update
+    }
 
-    return {
-      set: onUpdate,
-      get(){
-        if(pending)
-          return suspend();
-
-        if(error)
-          throw error;
-
-        if(!(key in state))
-          initialize();
-
-        if(pending)
-          return suspend();
-
-        return state[key];
+    if(input && required)
+      init();
+    else
+      output.get = () => {
+        init();
+        return output.get ? output.get() : state[key];
       }
-    };
+
+    return output;
   })
 }
 
