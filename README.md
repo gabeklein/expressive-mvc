@@ -110,14 +110,14 @@ Expressive leverages the advantages of classes to make state management simpler.
 Models use property access to know what needs an update when something changes. This optimization prevents properties you do not "import" to cause a refresh. Plus, it makes clear what's being used!
 
 ```jsx
-class User extends Model {
-  info = new Info();
+class Info extends Model {
+  info = new Extra();
   foo = 1;
   bar = 2;
   baz = 3;
 }
 
-class Info extends Model {
+class Extra extends Model {
   value1 = 1;
   value2 = 2;
 }
@@ -129,7 +129,7 @@ const MyComponent = () => {
     info: {
       value1
     }
-  } = State.use();
+  } = Info.use();
 
   return (
     <ul>
