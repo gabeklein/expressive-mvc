@@ -15,7 +15,6 @@ declare namespace Context {
 }
 
 class Context {
-  /** Use  */
   public key!: string;
 
   private table = new WeakMap<Model.Type, symbol>();
@@ -54,8 +53,12 @@ class Context {
         this.layer.set(key, input)
         init.set(instance, true);
       }
-      else if(exists !== input)
-        return this.bailout(inputs);
+      // Context must force-reset becasue inputs are no longer safe.
+      else if(exists !== input){    
+        this.pop();
+        this.key = uid();
+        return this.include(inputs);
+      }
     }
 
     for(const [ model ] of init){
@@ -70,13 +73,6 @@ class Context {
     }
 
     return init;
-  }
-
-  /** Context must force-reset becasue inputs are no longer safe. */
-  private bailout(inputs: Context.Inputs){
-    this.pop();
-    this.key = uid();
-    return this.include(inputs);
   }
 
   public add<T extends Model>(
