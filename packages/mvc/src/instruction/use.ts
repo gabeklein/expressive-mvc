@@ -1,4 +1,4 @@
-import { apply, control, parent } from '../control';
+import { apply, Control, control, parent } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { Model } from '../model';
@@ -53,7 +53,35 @@ function use(
     else if(input && typeof input !== "object")
       throw Oops.BadArgument(typeof input);
 
-    function update(next: Model | undefined){
+    function init(){
+      const result = typeof input == "function" ?
+        mayRetry(() => input.call(subject, subject)) :
+        input;
+
+      if(result instanceof Promise){
+        const pending = result
+          .then(value => {
+            output.get = undefined;
+            set(value);
+            return value;
+          })
+          .catch(err => {
+            output.get = () => { throw err };
+          })
+          .finally(() => {
+            source.update(key);
+          });
+
+        return () => {
+          if(required !== false)
+            throw assign(pending, Oops.NotReady(subject, key));
+        };
+      }
+      
+      set(result);
+    }
+
+    function set(next: Model | undefined){
       state[key] = next;
 
       if(next instanceof Model){
@@ -67,48 +95,13 @@ function use(
       return true;
     }
 
-    function init(){
-      const result = typeof input == "function" ?
-        mayRetry(() => input.call(subject, subject)) :
-        input;
-
-      if(result instanceof Promise){
-        const pending = result
-          .then(value => {
-            output.get = undefined;
-            update(value);
-            return value;
-          })
-          .catch(err => {
-            output.get = () => { throw err };
-          })
-          .finally(() => {
-            source.update(key);
-          });
-
-        output.get = () => {
-          if(required !== false)
-            throw assign(pending, Oops.NotReady(subject, key));
-        };
+    const output: Control.PropertyDescriptor = {
+      set,
+      get: input && required ? init() : () => {
+        const get = output.get = init();
+        return get ? get() : state[key];
       }
-      else {
-        output.get = undefined;
-        update(result);
-      }
-    }
-
-    const output = {
-      get: undefined as undefined | (() => any),
-      set: update
-    }
-
-    if(input && required)
-      init();
-    else
-      output.get = () => {
-        init();
-        return output.get ? output.get() : state[key];
-      }
+    };
 
     return output;
   })
