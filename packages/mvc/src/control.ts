@@ -14,7 +14,7 @@ type Observer<T extends Model = any> =
   (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
-  (key: Model.Key<T>, parent: Control<T>) => void;
+  (parent: Control<T>, key: Model.Key<T>) => void;
 
 const INSTRUCTION = new Map<symbol, InstructionRunner>();
 const REGISTER = new WeakMap<{}, Control>();
@@ -107,11 +107,10 @@ class Control<T extends Model = any> {
 
     if(typeof instruction == "function"){
       INSTRUCTION.delete(value);
-      instruction(key, this);
+      instruction(this, key);
     }
     else if(value instanceof Model)
       setRecursive(this, key, value);
-
     else
       this.watch(key, { value });
   }
@@ -309,7 +308,7 @@ function watch<T extends Model>(on: T, cb: Observer): T {
 function apply<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
 
-  INSTRUCTION.set(placeholder, (key, onto) => {
+  INSTRUCTION.set(placeholder, (onto, key) => {
     delete onto.subject[key];
   
     const output = instruction.call(onto, key, onto);
