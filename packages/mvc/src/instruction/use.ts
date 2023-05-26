@@ -62,7 +62,7 @@ function use(
         const pending = result
           .then(value => {
             output.get = undefined;
-            set(value);
+            update(value);
             return value;
           })
           .catch(err => {
@@ -72,16 +72,16 @@ function use(
             source.update(key);
           });
 
-        return () => {
-          if(required !== false)
+        if(required !== false)
+          return () => {
             throw assign(pending, Oops.NotReady(subject, key));
-        };
+          };
       }
-      
-      set(result);
+      else
+        update(result);
     }
 
-    function set(next: Model | undefined){
+    function update(next: Model | undefined){
       state[key] = next;
 
       if(next instanceof Model){
@@ -96,11 +96,13 @@ function use(
     }
 
     const output: Control.PropertyDescriptor = {
-      set,
-      get: input && required ? init() : () => {
-        const get = output.get = init();
-        return get ? get() : state[key];
-      }
+      set: update,
+      get: input && required
+        ? init()
+        : () => {
+          const get = output.get = init();
+          return get ? get() : state[key];
+        }
     };
 
     return output;
