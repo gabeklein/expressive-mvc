@@ -61,23 +61,25 @@ declare namespace Model {
     (this: T, keys: Model.Event<T>[] | null) => void;
 
   export type GetCallback<T extends Model, R> =
-    (this: T, model: T, update: typeof ForceUpdate) => R;
+    (this: T, model: T, update: ForceUpdate) => R;
 
-  /** Force an update in current component. */
-  function ForceUpdate(): void;
+  type ForceUpdate = {
+    /** Force an update in current component. */
+    (): void;
+    
+    /**
+     * Force an update and again after promise either resolves or rejects.
+     * Will return a duplicate of given Promise, which resolves after refresh.
+     */
+    <T = void>(passthru: Promise<T>): Promise<T>
 
-  /**
-   * Force an update and again after promise either resolves or rejects.
-   * Will return a duplicate of given Promise, which resolves after refresh.
-   */
-  function ForceUpdate<T = void>(passthru: Promise<T>): Promise<T>
-
-  /**
-   * Force a update while calling async function.
-   * A refresh will occur both before and after given function.
-   * Any actions performed before first `await` will occur before refresh!
-   */
-  function ForceUpdate<T = void>(invoke: () => Promise<T>): Promise<T>
+    /**
+     * Force a update while calling async function.
+     * A refresh will occur both before and after given function.
+     * Any actions performed before first `await` will occur before refresh!
+     */
+    <T = void>(invoke: () => Promise<T>): Promise<T>
+  };
 }
 
 class Model {
@@ -153,7 +155,7 @@ class Model {
       : values();
   }
 
-  set<T extends Model.Compat<this>> (source: T, select?: (keyof T)[]): Promise<Model.Key<T>[]>;
+  set<T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
   set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
 
   set(arg1: Model.Event<this> | Model.Compat<this>, arg2?: any){
