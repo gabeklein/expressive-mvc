@@ -202,18 +202,6 @@ describe("factory", () => {
     expect(state.child.parent).toBe(state);
   })
 
-  it('will rethrow error', () => {
-    class Parent extends Model {
-      child = use(() => {
-        throw new Error("foobar");
-      });
-    }
-
-    const test = () => void Parent.new();
-
-    expect(test).toThrowError();
-  })
-
   it('will create via async factory', async () => {
     class Parent extends Model {
       child = use(async () => new Child());
@@ -227,6 +215,18 @@ describe("factory", () => {
     parent.child.value = "foobar";
     await expect(parent.child).toUpdate();
   });
+
+  it('will rethrow error', () => {
+    class Parent extends Model {
+      child = use(() => {
+        throw new Error("foobar");
+      });
+    }
+
+    const test = () => void Parent.new();
+
+    expect(test).toThrowError();
+  })
 
   it('will rethrow rejection upon access', async () => {
     class Parent extends Model {
