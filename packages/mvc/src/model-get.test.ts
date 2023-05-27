@@ -542,9 +542,7 @@ describe("computed", () => {
         });
       });
 
-      // TODO: there is a catch 22 in overloads.
-      // expect<null>(hook.output).toBe(null);
-      expect(hook.output).toBe(null);
+      expect<null>(hook.output).toBe(null);
       expect(hook).toHaveBeenCalledTimes(1);
 
       const out = forceUpdate(promise);
