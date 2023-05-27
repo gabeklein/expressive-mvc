@@ -518,9 +518,10 @@ describe("computed", () => {
       Test.new();
 
       const promise = mockPromise();
+      const compute = jest.fn(() => promise)
       const hook = render(() => {
-        return Test.get(() => promise, true);
-      })
+        return Test.get(compute);
+      });
 
       expect(hook.pending).toBe(true);
 
@@ -528,6 +529,7 @@ describe("computed", () => {
       await hook.update();
 
       expect(hook).toBeCalledTimes(2);
+      expect(compute).toBeCalledTimes(1);
     })
   })
 
