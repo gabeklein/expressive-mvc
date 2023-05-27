@@ -22,7 +22,9 @@
   "scripts": {
     "build": "rollup --config",
     "watch": "jest --watchAll",
-    "test": "jest --collectCoverage"
+    "test": "jest --collectCoverage",
+    "prebuild": "rm -rf lib/",
+    "preversion": "npm run test && npm run build"
   },
   "version": "0.24.1"
 }
