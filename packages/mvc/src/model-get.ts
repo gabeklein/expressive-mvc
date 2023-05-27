@@ -15,9 +15,6 @@ function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
 function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
-function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | R | Promise<R>>): R;
-function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | null>): R | null;
-
 function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | R | Promise<R>>): NoVoid<R>;
 function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
 
@@ -115,7 +112,7 @@ function get<T extends Model, R>(
       onUpdate = () => {
         const next = getValue!();
 
-        if(notEqual(value, next))
+        if(value !== next)
           didUpdate(next);
       };
 
@@ -139,13 +136,3 @@ function get<T extends Model, R>(
 }
 
 export { get };
-
-/** Values are not equal for purposes of a refresh. */
-const notEqual = <T>(a: T, b: unknown) => (
-  b !== a && (
-    !Array.isArray(a) ||
-    !Array.isArray(b) ||
-    a.length !== b.length ||
-    a.some((x, i) => x !== b[i])
-  )
-)

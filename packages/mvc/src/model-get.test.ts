@@ -374,65 +374,6 @@ describe("computed", () => {
     expect(hook.output).toBe(3);
   })
 
-  describe("tuple", () => {
-    class Test extends Ambient {
-      foo = 1;
-      bar = true;
-      baz = "foo";
-    }
-
-    it("will not update if values are same", async () => {
-      const parent = Test.new();
-      const didCompute = jest.fn();
-      const didRender = jest.fn();
-    
-      const hook = render(() => {
-        didRender();
-        return Test.get(x => {
-          didCompute(x.foo);
-          return ["something", x.bar, x.baz];
-        });
-      });
-
-      const returned = hook.output;
-    
-      expect<[string, boolean, string]>(returned).toStrictEqual(["something", true, "foo"] as const);
-    
-      parent.foo = 2;
-      await expect(parent).toUpdate();
-
-      expect(didRender).toBeCalledTimes(1);
-      expect(didCompute).toBeCalledWith(2);
-
-      expect(hook.output).toBe(returned);
-    })
-
-    it("will update if any value differs", async () => {
-      const parent = Test.new();
-      const didCompute = jest.fn();
-      const didRender = jest.fn();
-    
-      const hook = render(() => {
-        didRender();
-        return Test.get(x => {
-          didCompute();
-          return [x.foo, x.bar, x.baz];
-        });
-      });
-    
-      expect<[number, boolean, string]>(hook.output).toStrictEqual([1, true, "foo"]);
-    
-      parent.foo = 2;
-      parent.bar = false;
-      await expect(parent).toUpdate();
-
-      expect(didRender).toBeCalledTimes(2);
-      expect(didCompute).toBeCalledTimes(2);
-    
-      expect(hook.output).toEqual([2, false, "foo"]);
-    })
-  })
-
   describe("async", () => {
     class Test extends Ambient {
       foo = "bar";
