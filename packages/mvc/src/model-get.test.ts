@@ -438,22 +438,6 @@ describe("computed", () => {
       foo = "bar";
     };
 
-    it('will return null then refresh', async () => {
-      Test.new();
-
-      const promise = mockPromise<string>();
-      const hook = render(() => {
-        return Test.get(() => promise);
-      });
-
-      expect(hook.output).toBeNull();
-
-      promise.resolve("foobar");
-      await hook.update();
-
-      expect(hook.output).toBe("foobar");
-    });
-
     it('will not subscribe to values', async () => {
       const promise = mockPromise<string>();
       const control = Test.new();
@@ -483,36 +467,6 @@ describe("computed", () => {
     class Test extends Ambient {
       value?: string = undefined;
     }
-
-    it('will suspend if value expected', async () => {
-      const instance = Test.new();
-      const compute = jest.fn();
-      const hook = render(() => {
-        Test.get(state => {
-          compute();
-
-          if(state.value == "foobar")
-            return true;
-        }, true);
-      })
-
-      expect(hook.pending).toBe(true);
-
-      expect(hook).toBeCalledTimes(1);
-      instance.value = "foobar";
-
-      await hook.update();
-
-      // 1st - render prior to bailing
-      // 2nd - successful render
-      expect(hook).toBeCalledTimes(2);
-      expect(hook).toHaveReturnedTimes(1);
-
-      // 1st - initial render fails
-      // 2nd - recheck success (permit render again)
-      // 3rd - hook regenerated next render 
-      expect(compute).toBeCalledTimes(2);
-    })
 
     it('will suspend strict async', async () => {
       Test.new();
@@ -647,6 +601,9 @@ describe("computed", () => {
         });
       });
 
+      // TODO: there is a catch 22 in overloads.
+      // expect<null>(hook.output).toBe(null);
+      expect(hook.output).toBe(null);
       expect(hook).toHaveBeenCalledTimes(1);
 
       const out = forceUpdate(promise);

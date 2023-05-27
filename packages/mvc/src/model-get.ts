@@ -9,45 +9,37 @@ export const Oops = issues({
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
-function get <T extends Model> (this: Model.Type<T>): T;
-
-/** Fetch instance of this class in passive mode. Will not subscribe to events. */
+/** Fetch instance of this class from context. */
 function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 
 /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
 function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
-function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, R | (() => R)>, expect?: boolean): R;
-function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | (() => R) | null>, expect?: boolean): R | null;
-function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
+function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | R | Promise<R>>): R;
+function get <T extends Model, R extends []> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | null>): R | null;
 
-function get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, () => R>): NoVoid<R>;
-function get <T extends Model, R> (this: Model.Type<T>, init: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
-
-function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R> | R>, expect: true): Exclude<R, undefined>;
-function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, Promise<R>>, expect?: boolean): NoVoid<R> | null;
-function get <T extends Model, R> (this: Model.Type<T>, compute: Model.GetCallback<T, R>, expect?: boolean): NoVoid<R>;
+function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | R | Promise<R>>): NoVoid<R>;
+function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
 
 function get<T extends Model, R>(
   this: Model.Type<T>,
-  arg1?: boolean | Model.GetCallback<T, any>,
-  arg2?: boolean
+  argument?: boolean | Model.GetCallback<T, any>
 ){
   return Control.get((dispatch, context) => {
     const refresh = () => dispatch(x => x+1);
     let onUpdate: (() => void) | undefined | null;
     let value: any;
 
-    if(typeof arg1 !== "function"){
+    if(typeof argument !== "function"){
       const got = context.get(this);
 
       if(got)
-        value = arg1 === undefined
+        value = argument === undefined
           ? Control.watch(got, k => k ? onUpdate : undefined)
           : got;
-      else if(arg1 !== false)
+      else if(argument !== false)
         throw Oops.NotFound(this);
-  
+
       return {
         mount(){
           onUpdate = refresh;
@@ -57,7 +49,7 @@ function get<T extends Model, R>(
       };
     }
 
-    let compute = arg1;
+    let compute = argument;
     let suspense: (() => void) | undefined;
     let getValue: (() => R | undefined) | undefined;
     let factory: true | undefined;
@@ -135,7 +127,7 @@ function get<T extends Model, R>(
         if(value !== undefined)
           return value;
   
-        if(arg2)
+        if(!onUpdate)
           throw new Promise<void>(res => {
             suspense = res;
           });
