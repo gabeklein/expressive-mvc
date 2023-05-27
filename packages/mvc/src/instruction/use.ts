@@ -51,7 +51,6 @@ function use(
       if("prototype" in input && input === input.prototype.constructor)
         input = new input();
     }
-
     else if(input && typeof input !== "object")
       throw Oops.BadArgument(typeof input);
 
@@ -64,7 +63,7 @@ function use(
         const pending = result
           .then(value => {
             output.get = undefined;
-            update(value);
+            set(value);
             return value;
           })
           .catch(err => {
@@ -75,15 +74,15 @@ function use(
           });
 
         if(required !== false)
-          return () => {
+          output.get = () => {
             throw assign(pending, Oops.NotReady(subject, key));
           };
       }
       else
-        update(result);
+        set(result);
     }
 
-    function update(next: {} | undefined){
+    function set(next: {} | undefined){
       if(next instanceof Model){
         parent(next, subject);
         control(next, true);
@@ -107,15 +106,15 @@ function use(
       return true;
     }
 
-    const output: Control.PropertyDescriptor = {
-      set: update,
-      get: input && required
-        ? init()
-        : () => {
-          const get = output.get = init();
-          return get ? get() : state[key];
-        }
-    };
+    const output: Control.PropertyDescriptor = { set };
+
+    if(required)
+      init();
+    else
+      output.get = () => {
+        init();
+        return state[key];
+      }
 
     return output;
   })
