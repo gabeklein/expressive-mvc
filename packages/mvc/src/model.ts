@@ -61,25 +61,23 @@ declare namespace Model {
     (this: T, keys: Model.Event<T>[] | null) => void;
 
   export type GetCallback<T extends Model, R> =
-    (this: T, model: T, update: ForceUpdate) => R;
+    (this: T, model: T, update: typeof ForceUpdate) => R;
 
-  type ForceUpdate = {
-    /** Force an update in current component. */
-    (): void;
-    
-    /**
-     * Force an update and again after promise either resolves or rejects.
-     * Will return a duplicate of given Promise, which resolves after refresh.
-     */
-    <T = void>(passthru: Promise<T>): Promise<T>
+  /** Force an update in current component. */
+  function ForceUpdate(): void;
 
-    /**
-     * Force a update while calling async function.
-     * A refresh will occur both before and after given function.
-     * Any actions performed before first `await` will occur before refresh!
-     */
-    <T = void>(invoke: () => Promise<T>): Promise<T>
-  };
+  /**
+   * Force an update and again after promise either resolves or rejects.
+   * Will return a duplicate of given Promise, which resolves after refresh.
+   */
+  function ForceUpdate<T = void>(passthru: Promise<T>): Promise<T>
+
+  /**
+   * Force a update while calling async function.
+   * A refresh will occur both before and after given function.
+   * Any actions performed before first `await` will occur before refresh!
+   */
+  function ForceUpdate<T = void>(invoke: () => Promise<T>): Promise<T>
 }
 
 class Model {
