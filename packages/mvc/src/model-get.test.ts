@@ -396,7 +396,7 @@ describe("computed", () => {
 
       const returned = hook.output;
     
-      expect(returned).toStrictEqual(["something", true, "foo"]);
+      expect<[string, boolean, string]>(returned).toStrictEqual(["something", true, "foo"] as const);
     
       parent.foo = 2;
       await expect(parent).toUpdate();
@@ -420,7 +420,7 @@ describe("computed", () => {
         });
       });
     
-      expect(hook.output).toStrictEqual([1, true, "foo"]);
+      expect<[number, boolean, string]>(hook.output).toStrictEqual([1, true, "foo"]);
     
       parent.foo = 2;
       parent.bar = false;
