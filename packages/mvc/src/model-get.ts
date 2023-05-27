@@ -7,7 +7,7 @@ export const Oops = issues({
 })
 
 /** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined ? null : T;
+type NoVoid<T> = T extends undefined | void ? null : T;
 
 function get <T extends Model> (this: Model.Type<T>): T;
 

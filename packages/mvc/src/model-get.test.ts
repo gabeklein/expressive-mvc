@@ -538,7 +538,7 @@ describe("computed", () => {
       Test.new();
 
       const hook = render(() => {
-        return Test.get(() => undefined);
+        return Test.get(() => {});
       });
 
       expect(hook.output).toBe(null);
@@ -548,7 +548,7 @@ describe("computed", () => {
       Test.new();
 
       const hook = render(() => {
-        return Test.get(() => () => undefined);
+        return Test.get(() => () => {});
       });
 
       expect(hook.output).toBe(null);
