@@ -68,10 +68,6 @@ function get<T extends Model, R>(
     if(!found)
       throw Oops.NotFound(this);
 
-    proxy = Control.watch(found, () => factory ? null : onUpdate);
-    getValue = () => compute.call(proxy, proxy, forceUpdate);
-    value = getValue();
-
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
     function forceUpdate<T>(action?: Promise<T> | (() => Promise<T>)){
@@ -86,6 +82,21 @@ function get<T extends Model, R>(
       if(action)
         return action.finally(refresh);
     }
+
+    function didUpdate(got: any){
+      value = got;
+
+      if(suspense){
+        suspense();
+        suspense = undefined;
+      }
+      else
+        refresh();
+    };
+
+    proxy = Control.watch(found, () => factory ? null : onUpdate);
+    getValue = () => compute.call(proxy, proxy, forceUpdate);
+    value = getValue();
 
     if(value === null){
       getValue = undefined;
@@ -102,17 +113,6 @@ function get<T extends Model, R>(
       compute = () => get();
       value = get();
     }
-
-    const didUpdate = (got: any) => {
-      value = got;
-
-      if(suspense){
-        suspense();
-        suspense = undefined;
-      }
-      else
-        refresh();
-    };
 
     if(value instanceof Promise){
       onUpdate = null;
