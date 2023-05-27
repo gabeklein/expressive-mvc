@@ -373,219 +373,217 @@ describe("computed", () => {
     expect(willCompute).toBeCalledTimes(2);
     expect(hook.output).toBe(3);
   })
+})
 
-  describe("async", () => {
-    class Test extends Ambient {
-      foo = "bar";
-    };
+describe("async", () => {
+  class Test extends Ambient {
+    foo = "bar";
+  };
 
-    it('will not subscribe to values', async () => {
-      const promise = mockPromise<string>();
-      const control = Test.new();
-      const hook = render(() => {
-        return Test.get(async $ => {
-          void $.foo;
-          return promise;
-        });
+  it('will not subscribe to values', async () => {
+    const promise = mockPromise<string>();
+    const control = Test.new();
+    const hook = render(() => {
+      return Test.get(async $ => {
+        void $.foo;
+        return promise;
       });
-
-      expect(hook).toBeCalledTimes(1);
-
-      promise.resolve("foobar");
-      await hook.update();
-
-      expect(hook).toBeCalledTimes(2);
-      expect(hook.output).toBe("foobar");
-
-      control.foo = "foo";
-      await expect(control).toUpdate();
-
-      expect(hook).toBeCalledTimes(2);
     });
+
+    expect(hook).toBeCalledTimes(1);
+
+    promise.resolve("foobar");
+    await hook.update();
+
+    expect(hook).toBeCalledTimes(2);
+    expect(hook.output).toBe("foobar");
+
+    control.foo = "foo";
+    await expect(control).toUpdate();
+
+    expect(hook).toBeCalledTimes(2);
+  });
+
+  it('will suspend', async () => {
+    Test.new();
+
+    const promise = mockPromise();
+    const compute = jest.fn(() => promise)
+    const hook = render(() => {
+      return Test.get(compute);
+    });
+
+    expect(hook.pending).toBe(true);
+
+    promise.resolve();
+    await hook.update();
+
+    expect(hook).toBeCalledTimes(2);
+    expect(compute).toBeCalledTimes(1);
+  })
+})
+
+describe("undefined", () => {
+  class Test extends Ambient {};
+
+  it("will convert to null", () => {
+    Test.new();
+
+    const hook = render(() => {
+      return Test.get(() => {});
+    });
+
+    expect(hook.output).toBe(null);
   })
 
-  describe("suspense", () => {
-    class Test extends Ambient {
-      value?: string = undefined;
-    }
+  it("will convert to null from factory", () => {
+    Test.new();
 
-    it('will suspend strict async', async () => {
-      Test.new();
+    const hook = render(() => {
+      return Test.get(() => () => {});
+    });
 
-      const promise = mockPromise();
-      const compute = jest.fn(() => promise)
-      const hook = render(() => {
-        return Test.get(compute);
+    expect(hook.output).toBe(null);
+  })
+})
+
+describe("update callback", () => {
+  class Test extends Ambient {
+    foo = "bar";
+  };
+
+  beforeEach(() => Test.new());
+
+  it("will force a refresh", () => {
+    const didEvaluate = jest.fn();
+    let forceUpdate!: () => void;
+
+    const hook = render(() => {
+      return Test.get(($, update) => {
+        didEvaluate();
+        forceUpdate = update;
       });
+    });
 
-      expect(hook.pending).toBe(true);
-
-      promise.resolve();
-      await hook.update();
-
-      expect(hook).toBeCalledTimes(2);
-      expect(compute).toBeCalledTimes(1);
-    })
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(hook).toHaveBeenCalledTimes(1);
+    
+    forceUpdate();
+    
+    expect(didEvaluate).toHaveBeenCalledTimes(2);
+    expect(hook).toHaveBeenCalledTimes(2);
   })
 
-  describe("undefined", () => {
-    class Test extends Ambient {};
+  it("will refresh without reevaluating", () => {
+    const didEvaluate = jest.fn();
+    let forceUpdate!: () => void;
 
-    it("will convert to null", () => {
-      Test.new();
-
-      const hook = render(() => {
-        return Test.get(() => {});
+    const hook = render(() => {
+      return Test.get(($, update) => {
+        didEvaluate();
+        forceUpdate = update;
+        // return null to stop subscription.
+        return null;
       });
+    });
 
-      expect(hook.output).toBe(null);
-    })
-
-    it("will convert to null from factory", () => {
-      Test.new();
-
-      const hook = render(() => {
-        return Test.get(() => () => {});
-      });
-
-      expect(hook.output).toBe(null);
-    })
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(hook).toHaveBeenCalledTimes(1);
+    
+    forceUpdate();
+    
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(hook).toHaveBeenCalledTimes(2);
   })
 
-  describe("update callback", () => {
-    beforeEach(() => Test.new());
+  it("will refresh returned function instead", () => {
+    const didEvaluate = jest.fn();
+    const didEvaluateInner = jest.fn();
 
-    it("will force a refresh", () => {
-      const didEvaluate = jest.fn();
-      let forceUpdate!: () => void;
+    let updateValue!: (value: string) => void;
 
-      const hook = render(() => {
-        return Test.get(($, update) => {
-          didEvaluate();
-          forceUpdate = update;
-        });
+    const hook = render(() => {
+      return Test.get(($, update) => {
+        let value = "foo";
+
+        didEvaluate();
+        updateValue = (x: string) => {
+          value = x;
+          update();
+        };
+
+        return () => {
+          didEvaluateInner();
+          return value;
+        };
       });
+    });
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook).toHaveBeenCalledTimes(1);
-      
-      forceUpdate();
-      
-      expect(didEvaluate).toHaveBeenCalledTimes(2);
-      expect(hook).toHaveBeenCalledTimes(2);
-    })
+    expect(hook.output).toBe("foo");
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    
+    updateValue("bar");
+    
+    expect(hook.output).toBe("bar");
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
+    expect(didEvaluateInner).toHaveBeenCalledTimes(2);
+  })
 
-    it("will refresh without reevaluating", () => {
-      const didEvaluate = jest.fn();
-      let forceUpdate!: () => void;
+  it("will refresh again after promise", async () => {
+    const promise = mockPromise<string>();
+    
+    let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
 
-      const hook = render(() => {
-        return Test.get(($, update) => {
-          didEvaluate();
-          forceUpdate = update;
-          // return null to stop subscription.
-          return null;
-        });
+    const hook = render(() => {
+      return Test.get(($, update) => {
+        forceUpdate = update;
+        return null;
       });
+    });
 
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook).toHaveBeenCalledTimes(1);
-      
-      forceUpdate();
-      
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(hook).toHaveBeenCalledTimes(2);
-    })
+    expect<null>(hook.output).toBe(null);
+    expect(hook).toHaveBeenCalledTimes(1);
 
-    it("will refresh returned function instead", () => {
-      const didEvaluate = jest.fn();
-      const didEvaluateInner = jest.fn();
+    const out = forceUpdate(promise);
 
-      let updateValue!: (value: string) => void;
+    expect(hook).toHaveBeenCalledTimes(2);
 
-      const hook = render(() => {
-        return Test.get(($, update) => {
-          let value = "foo";
+    promise.resolve("hello");
 
-          didEvaluate();
-          updateValue = (x: string) => {
-            value = x;
-            update();
-          };
+    await expect(out).resolves.toBe("hello");
+    
+    expect(hook).toHaveBeenCalledTimes(3);
+  })
 
-          return () => {
-            didEvaluateInner();
-            return value;
-          };
-        });
+  it("will invoke async function", async () => {
+    const promise = mockPromise();
+    
+    let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
+
+    const hook = render(() => {
+      return Test.get(($, update) => {
+        forceUpdate = update;
+        return null;
       });
+    });
 
-      expect(hook.output).toBe("foo");
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      
-      updateValue("bar");
-      
-      expect(hook.output).toBe("bar");
-      expect(didEvaluate).toHaveBeenCalledTimes(1);
-      expect(didEvaluateInner).toHaveBeenCalledTimes(2);
-    })
+    expect(hook).toHaveBeenCalledTimes(1);
 
-    it("will refresh again after promise", async () => {
-      const promise = mockPromise<string>();
-      
-      let forceUpdate!: <T>(after: Promise<T>) => Promise<T>;
+    let pending: boolean | undefined;
 
-      const hook = render(() => {
-        return Test.get(($, update) => {
-          forceUpdate = update;
-          return null;
-        });
-      });
+    forceUpdate(async () => {
+      pending = true;
+      await promise;
+      pending = false;
+    });
 
-      expect<null>(hook.output).toBe(null);
-      expect(hook).toHaveBeenCalledTimes(1);
+    expect(pending).toBe(true);
+    expect(hook).toHaveBeenCalledTimes(2);
 
-      const out = forceUpdate(promise);
-
-      expect(hook).toHaveBeenCalledTimes(2);
-
-      promise.resolve("hello");
-
-      await expect(out).resolves.toBe("hello");
-      
-      expect(hook).toHaveBeenCalledTimes(3);
-    })
-
-    it("will invoke async function", async () => {
-      const promise = mockPromise();
-      
-      let forceUpdate!: <T>(after: () => Promise<T>) => Promise<T>;
-
-      const hook = render(() => {
-        return Test.get(($, update) => {
-          forceUpdate = update;
-          return null;
-        });
-      });
-
-      expect(hook).toHaveBeenCalledTimes(1);
-
-      let pending: boolean | undefined;
-
-      forceUpdate(async () => {
-        pending = true;
-        await promise;
-        pending = false;
-      });
-
-      expect(pending).toBe(true);
-      expect(hook).toHaveBeenCalledTimes(2);
-
-      promise.resolve();
-      
-      await hook.update();
-      expect(hook).toHaveBeenCalledTimes(3);
-      expect(pending).toBe(false);
-    })
+    promise.resolve();
+    
+    await hook.update();
+    expect(hook).toHaveBeenCalledTimes(3);
+    expect(pending).toBe(false);
   })
 })
