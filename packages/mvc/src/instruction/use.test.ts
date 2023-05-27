@@ -309,3 +309,79 @@ describe("factory", () => {
     expect(tryCreateChild).toBeCalledTimes(2);
   });
 })
+
+describe("object", () => {
+  it("will track object values", async () => {
+    class Test extends Model {
+      info = use({ foo: "foo" });
+    }
+
+    const test = Test.new();
+    const effect = jest.fn((state: Test) => {
+      void state.info.foo;
+    });
+
+    test.on(effect);
+
+    test.info.foo = "bar";
+
+    await new Promise(res => setTimeout(res, 0));
+
+    expect(effect).toBeCalledTimes(2);
+  })
+
+  it("will ignore untracked values", async () => {
+    class Test extends Model {
+      info = use({
+        foo: "foo",
+        bar: "bar"
+      });
+    }
+
+    const test = Test.new();
+    const effect = jest.fn((state: Test) => {
+      void state.info.foo;
+    });
+
+    test.on(effect);
+
+    test.info.bar = "foo";
+
+    await new Promise(res => setTimeout(res, 0));
+
+    expect(effect).toBeCalledTimes(1);
+  })
+
+  it("will update original object", async () => {
+    const data = { foo: "foo" };
+
+    class Test extends Model {
+      info = use(data);
+    }
+
+    const test = Test.new();
+    
+    test.info.foo = "bar";
+
+    expect(data.foo).toBe("bar");
+  })
+
+  it("will passthru original object", async () => {
+    const data = {
+      foo: "foo",
+      action(){
+        this.foo = "bar";
+      }
+    }
+
+    class Test extends Model {
+      info = use(data);
+    }
+
+    const test = Test.new();
+    
+    test.info.action();
+
+    expect(test.info.foo).toBe("bar");
+  })
+})

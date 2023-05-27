@@ -1,6 +1,6 @@
 import { apply, Control, control, parent } from '../control';
 import { issues } from '../helper/issues';
-import { assign } from '../helper/object';
+import { assign, create } from '../helper/object';
 import { Model } from '../model';
 import { mayRetry } from '../suspense';
 
@@ -19,13 +19,15 @@ function use <T extends Model> (): T | undefined;
 function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): T;
 
 /** Assign the result of a factory as a child model. */
-function use <T extends Model> (from: () => Promise<T> | T, required?: true): T;
+function use <T extends {}> (from: () => Promise<T> | T, required?: true): T;
 
 /** Assign the result of a factory as a child model. */
-function use <T extends Model> (from: () => Promise<T> | T, required: boolean): T | undefined;
+function use <T extends {}> (from: () => Promise<T> | T, required: boolean): T | undefined;
 
 /** Create a managed child from factory function. */
-function use <T extends Model> (from: () => Promise<T> | T, callback?: (i: T) => void): T;
+function use <T extends {}> (from: () => Promise<T> | T, callback?: (i: T) => void): T;
+
+function use <T extends {}> (data: T): T;
 
 /**
   * Create child-instance relationship with provided model.
@@ -81,13 +83,23 @@ function use(
         update(result);
     }
 
-    function update(next: Model | undefined){
-      state[key] = next;
-
+    function update(next: {} | undefined){
       if(next instanceof Model){
         parent(next, subject);
         control(next, true);
       }
+      else if(next) {
+        const control = new Control(create(next));
+
+        control.state = next;
+
+        for(const key in next)
+          control.watch(key, {});
+
+        next = control.subject;
+      }
+
+      state[key] = next;
 
       if(typeof argument == "function")
         argument(next);

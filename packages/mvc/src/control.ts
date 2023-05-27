@@ -45,7 +45,7 @@ declare namespace Control {
    * Callback for Controller.for() static method.
    * Returned callback is forwarded.
    */
-  type OnReady<T extends Model> = (control: Control<T>) => Callback | void;
+  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
@@ -74,7 +74,7 @@ declare namespace Control {
     (adapter: UseAdapter<T, R>) => R;
 }
 
-class Control<T extends Model = any> {
+class Control<T extends {} = any> {
   static after = new Set<Callback>();
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
@@ -143,7 +143,7 @@ class Control<T extends Model = any> {
         const value = output.get
           ? output.get(this) : state[key];
 
-        return event && value instanceof Model
+        return event && REGISTER.has(value)
           ? watch(value, event)
           : value;
       }
@@ -296,7 +296,7 @@ function parent(child: unknown, register?: Model){
   PARENTS.set(child as Model, register);
 }
 
-function watch<T extends Model>(on: T, cb: Observer): T {
+function watch<T extends {}>(on: T, cb: Observer): T {
   if(!on.hasOwnProperty("is"))
     on = defineProperty(create(on), "is", { value: on });
 
