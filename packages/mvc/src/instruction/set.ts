@@ -56,7 +56,6 @@ function set <T> (
     const { state, subject } = control;
 
     if(typeof value == "function" || value instanceof Promise){
-      const required = argument !== false;
       const output: Control.PropertyDescriptor = { set };
 
       const init = () => {
@@ -65,8 +64,6 @@ function set <T> (
             value = mayRetry(value.bind(subject, key, subject));
 
           if(value instanceof Promise){
-            state[key] = undefined;
-
             const pending = value
               .then(value => {
                 output.get = undefined;
@@ -80,7 +77,7 @@ function set <T> (
                 control.update(key);
               })
 
-            if(required !== false)
+            if(argument !== false)
               return () => {
                 const { message, stack } = Oops.NotReady(subject, key);
                 throw assign(pending, { message, stack });
