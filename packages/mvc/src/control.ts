@@ -87,6 +87,9 @@ class Control<T extends {} = any> {
   static apply = apply;
   static watch = watch;
 
+  public id: string | number;
+  public subject: T;
+
   public state!: { [key: string]: any };
   public latest?: Model.Event<T>[];
 
@@ -94,9 +97,9 @@ class Control<T extends {} = any> {
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
-  constructor(
-    public subject: T,
-    public id: string | number = uid()){
+  constructor(subject: T, id?: string | number){
+    this.id = typeof id == "undefined" ? uid() : id;
+    this.subject = subject;
 
     REGISTER.set(subject, this);
   }
