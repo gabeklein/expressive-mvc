@@ -16,10 +16,10 @@ type Observer<T extends Model = any> =
 type InstructionRunner<T extends Model = any> =
   (parent: Control<T>, key: Model.Key<T>) => void;
 
-const INSTRUCTION = new Map<symbol, InstructionRunner>();
-const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
+const INSTRUCT = new Map<symbol, InstructionRunner>();
+const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
@@ -111,10 +111,10 @@ class Control<T extends {} = any> {
 
   add(key: Extract<keyof T, string>){
     const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = INSTRUCTION.get(value);
+    const instruction = INSTRUCT.get(value);
 
     if(typeof instruction == "function"){
-      INSTRUCTION.delete(value);
+      INSTRUCT.delete(value);
       instruction(this, key);
     }
     else if(value instanceof Model)
@@ -310,7 +310,7 @@ function watch<T extends {}>(on: T, cb: Observer): T {
 function apply<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
 
-  INSTRUCTION.set(placeholder, (onto, key) => {
+  INSTRUCT.set(placeholder, (onto, key) => {
     delete onto.subject[key];
   
     const output = instruction.call(onto, key, onto);
