@@ -10,26 +10,24 @@ export const Oops = issues({
   Destoryed: () => "Model is destroyed."
 })
 
-export function suspense(
-  source: Control, key: string): Model.Suspense {
-
+export function suspense(source: Control, key: string): Model.Suspense {
   const error = Oops.NotReady(source.subject, key);
-
+  const watch = source.observers.get(key)!;
   const promise = new Promise<void>((resolve, reject) => {
-    const subs = source.observers.get(key)!;
-    const onUpdate = (key: string | null | undefined) => {
+    function onUpdate(key: string | null | undefined){
       if(key)
         return () => {
           if(source.state[key] !== undefined){
-            subs.delete(onUpdate);
+            watch.delete(onUpdate);
             resolve();
           }
         };
 
-      reject(Oops.Destoryed());
+      if(key === null)
+        reject(Oops.Destoryed());
     }
 
-    subs.add(onUpdate)
+    watch.add(onUpdate)
   });
 
   return assign(promise, {
