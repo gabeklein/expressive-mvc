@@ -228,24 +228,24 @@ function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callba
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
   const control = REGISTER.get(subject.is) as Control<T>;
-  const waiting = PENDING.get(control);
+  const pending = PENDING.get(control);
 
   if(typeof ready == "function"){
-    if(!waiting)
+    if(!pending)
       return ready(control);
 
     let done: Callback | void;
-    waiting.add(() => done = ready(control));
+    pending.add(() => done = ready(control));
     return () => done && done();
   }
 
-  if(waiting && ready){
+  if(pending && ready){
     PENDING.delete(control);
 
     for(const key in control.subject)
       control.add(key);
 
-    waiting.forEach(cb => cb());
+    pending.forEach(cb => cb());
   }
 
   return control;
