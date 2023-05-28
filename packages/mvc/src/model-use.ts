@@ -15,8 +15,8 @@ function use <T extends Model> (
 
 function use <T extends Model> (
   this: Model.New<T>,
-  arg1?: Model.Compat<T> | ((instance: T) => void),
-  arg2?: boolean){
+  apply?: Model.Compat<T> | ((instance: T) => void),
+  repeat?: boolean){
 
   const render = Control.use(dispatch => {
     const instance = this.new();
@@ -24,7 +24,7 @@ function use <T extends Model> (
     const refresh = () => dispatch(x => x+1);
 
     let onUpdate: (() => void) | undefined | null;
-    let apply = !!arg1;
+    let shouldApply = !!apply;
 
     return {
       local,
@@ -36,7 +36,7 @@ function use <T extends Model> (
         }
       },
       render(props?: Model.Compat<T> | ((instance: T) => void)){
-        if(apply){
+        if(shouldApply){
           onUpdate = undefined;
 
           if(typeof props == "function")
@@ -47,8 +47,8 @@ function use <T extends Model> (
               if(props.hasOwnProperty(key))
                 (instance as any)[key] = (props as any)[key];
 
-          if(!arg2)
-            apply = false;
+          if(!repeat)
+            shouldApply = false;
 
           instance.on(0).then(() => onUpdate = refresh);
         }
@@ -58,7 +58,7 @@ function use <T extends Model> (
     }
   });
 
-  return render(arg1);
+  return render(apply);
 }
 
 export { use }
