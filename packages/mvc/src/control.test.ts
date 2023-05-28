@@ -254,3 +254,16 @@ it("will call dispatch callbacks", async () => {
   Control.before.delete(willUpdate);
   Control.after.delete(didUpdate);
 })
+
+it("will call create callbacks", () => {
+  class Test extends Model {}
+
+  const didCreate = jest.fn((control: Control) => {
+    expect(control.subject).toBeInstanceOf(Test);
+  });
+
+  Control.ready.add(didCreate);
+  Test.new();
+  
+  expect(didCreate).toBeCalled();
+})

@@ -17,7 +17,7 @@ type InstructionRunner<T extends Model = any> =
   (parent: Control<T>, key: Model.Key<T>) => void;
 
 const INSTRUCTION = new Map<symbol, InstructionRunner>();
-const PENDING = new WeakMap<Control, Set<Callback>>();
+const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const PARENTS = new WeakMap<Model, Model>();
@@ -42,11 +42,13 @@ declare namespace Control {
     set?: Setter<T> | false;
   }
 
+  type Callback = (control: Control) => void;
+
   /**
    * Callback for Controller.for() static method.
    * Returned callback is forwarded.
    */
-  type OnReady<T extends {}> = (control: Control<T>) => Callback | void;
+  type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
@@ -76,6 +78,7 @@ declare namespace Control {
 }
 
 class Control<T extends {} = any> {
+  static ready = new Set<Control.Callback>();
   static after = new Set<Callback>();
   static before = new Set<Callback>();
   static pending = new Set<Callback>();
@@ -103,7 +106,7 @@ class Control<T extends {} = any> {
     this.subject = subject;
 
     REGISTER.set(subject, this);
-    PENDING.set(this, new Set());
+    PENDING.set(this, new Set(Control.ready));
   }
 
   add(key: Extract<keyof T, string>){
@@ -245,7 +248,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
     for(const key in control.subject)
       control.add(key);
 
-    pending.forEach(cb => cb());
+    pending.forEach(cb => cb(control));
   }
 
   return control;
