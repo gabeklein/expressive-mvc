@@ -36,10 +36,10 @@ declare namespace Control {
   type Setter<T> = (value: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
-    enumerable?: boolean;
-    value?: T;
     get?: Getter<T>;
     set?: Setter<T> | false;
+    enumerable?: boolean;
+    value?: T;
   }
 
   type Callback = (control: Control) => void;
