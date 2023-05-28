@@ -124,12 +124,12 @@ function get<T extends Model, R>(
         if(value !== undefined)
           return value;
   
-        if(!onUpdate)
-          throw new Promise<void>(res => {
-            suspense = res;
-          });
-  
-        return null;
+        if(onUpdate)
+          return null;
+
+        throw new Promise<void>(res => {
+          suspense = res;
+        });  
       }
     }
   })
