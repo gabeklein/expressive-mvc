@@ -288,11 +288,11 @@ function setRecursive(on: Control, key: string, value: Model){
   set(value);
 }
 
-function parent(child: unknown, register?: Model){
-  if(!register)
+function parent(child: unknown, assign?: Model){
+  if(!assign)
     return PARENTS.get(child as Model);
 
-  PARENTS.set(child as Model, register);
+  PARENTS.set(child as Model, assign);
 }
 
 function watch<T extends {}>(on: T, cb: Observer): T {
