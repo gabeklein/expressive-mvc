@@ -8,21 +8,20 @@ const Applied = new WeakMap<Model, Context>();
 Control.use = (adapter) => {
   const state = useState(0);
   const hook = useMemo(() => adapter(state[1]), []);
-  const instance = hook.local.is;
-  const applied = Applied.get(instance);
+  const applied = Applied.get(hook.instance);
 
   if(applied)
     useLookup();
 
   else if(applied === undefined){
-    const pending = Pending.get(instance);
+    const pending = Pending.get(hook.instance);
 
     if(pending){
       const local = useLookup();
 
       pending.forEach(init => init(local));
-      Applied.set(instance, local);
-      Pending.delete(instance);
+      Applied.set(hook.instance, local);
+      Pending.delete(hook.instance);
     }
   }
 

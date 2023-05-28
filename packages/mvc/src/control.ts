@@ -68,7 +68,7 @@ declare namespace Control {
   type UseAdapter<T extends Model, R> = (
     refresh: RequestRefresh
   ) => {
-    local: T;
+    instance: T;
     mount: () => (() => void) | void;
     render: R;
   }

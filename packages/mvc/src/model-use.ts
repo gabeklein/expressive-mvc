@@ -27,7 +27,7 @@ function use <T extends Model> (
     let shouldApply = !!apply;
 
     return {
-      local,
+      instance,
       mount(){
         onUpdate = refresh;
         return () => {
