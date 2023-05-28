@@ -17,6 +17,7 @@ type InstructionRunner<T extends Model = any> =
   (parent: Control<T>, key: Model.Key<T>) => void;
 
 const INSTRUCTION = new Map<symbol, InstructionRunner>();
+const PENDING = new WeakMap<Control, Set<Callback>>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
 const PARENTS = new WeakMap<Model, Model>();
@@ -90,7 +91,7 @@ class Control<T extends {} = any> {
   public id: string | number;
   public subject: T;
 
-  public state!: { [key: string]: any };
+  public state: { [key: string]: any } = {};
   public latest?: Model.Event<T>[];
 
   public frame = new Set<string>();
@@ -102,6 +103,7 @@ class Control<T extends {} = any> {
     this.subject = subject;
 
     REGISTER.set(subject, this);
+    PENDING.set(this, new Set());
   }
 
   add(key: Extract<keyof T, string>){
@@ -222,29 +224,23 @@ class Control<T extends {} = any> {
   }
 }
 
-const PENDING_INIT = new WeakMap<Control, Set<Callback>>();
-
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
   const control = REGISTER.get(subject.is) as Control<T>;
-  const onReady = typeof ready == "function" && ready;
+  const waiting = PENDING.get(control);
 
-  if(!control.state && ready){
-    let waiting = PENDING_INIT.get(control);
-
+  if(typeof ready == "function"){
     if(!waiting)
-      PENDING_INIT.set(control, waiting = new Set());
+      return ready(control);
 
-    if(onReady){
-      let callback: Callback | void;
-  
-      waiting.add(() => callback = onReady(control));
-  
-      return () => callback && callback();
-    }
+    let done: Callback | void;
+    waiting.add(() => done = ready(control));
+    return () => done && done();
+  }
 
-    control.state = {};
+  if(waiting && ready){
+    PENDING.delete(control);
 
     for(const key in control.subject)
       control.add(key);
@@ -252,7 +248,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
     waiting.forEach(cb => cb());
   }
 
-  return onReady ? onReady(control) : control;
+  return control;
 }
 
 function requestUpdateFrame(event: Callback){
