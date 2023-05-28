@@ -259,9 +259,9 @@ describe("factory", () => {
     }
 
     const instance = Test.new();
-    const exprected = Oops.NotReady(instance, "value");
+    const expected = Oops.NotReady(instance, "value");
 
-    expect(() => instance.value).toThrowError(exprected);
+    expect(() => instance.value).toThrowError(expected);
     promise.resolve();
   })
 

@@ -1,4 +1,4 @@
-import { apply } from '../control';
+import { Control, apply } from '../control';
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
@@ -57,57 +57,37 @@ function set <T> (
 
     if(typeof value == "function" || value instanceof Promise){
       const required = argument !== false;
-      let getter: () => any;
+      const output: Control.PropertyDescriptor = { set };
 
       const init = () => {
         try {
           if(typeof value == "function")
             value = mayRetry(value.bind(subject, key, subject));
 
-          let pending: Promise<any> | undefined;
-          let error: any;
-
           if(value instanceof Promise){
             state[key] = undefined;
 
-            pending = value
-              .catch(err => error = err)
-              .then(val => {
-                state[key] = val;
-                return val;
+            const pending = value
+              .then(value => {
+                output.get = undefined;
+                state[key] = value;
+                return value;
+              })
+              .catch(err => {
+                output.get = () => { throw err };
               })
               .finally(() => {
-                pending = undefined;
                 control.update(key);
               })
+
+            if(required !== false)
+              return () => {
+                const { message, stack } = Oops.NotReady(subject, key);
+                throw assign(pending, { message, stack });
+              }
           }
           else
             state[key] = value;
-
-          const suspend = () => {
-            if(required === false)
-              return undefined;
-
-            const issue = Oops.NotReady(subject, key);
-
-            assign(pending!, {
-              message: issue.message,
-              stack: issue.stack
-            });
-
-            throw pending;
-          }
-          
-          getter = () => {
-            if(error)
-              throw error;
-
-            if(pending)
-              return suspend();
-
-            return state[key];
-          }
-
         }
         catch(err){
           Oops.ComputeFailed(subject, key).warn();
@@ -115,15 +95,15 @@ function set <T> (
         }
       }
 
-      if(argument === true)
+      if(argument)
         init();
+      else
+        output.get = () => {
+          const get = output.get = init();
+          return get ? get() : state[key];
+        }
 
-      return () => {
-        if(!getter)
-          init();
-
-        return getter();
-      }
+      return output;
     }
 
     let setter = typeof argument == "function"
