@@ -256,11 +256,20 @@ describe("object", () => {
 
       expect<{ foo: string }>(info);
   
-      info.on("foo", gotFoo);
+      const done = info.on("foo", gotFoo);
+
       info.foo = "bar";
-  
-      await new Promise(res => setTimeout(res))
+      await new Promise(res => setTimeout(res));
+
       expect(gotFoo).toHaveBeenCalled();
+
+      /* will unsubscribe when done is called */
+
+      done();
+      info.foo = "baz";
+      await new Promise(res => setTimeout(res));
+
+      expect(gotFoo).toHaveBeenCalledTimes(1);
     })
   
     it("will watch keys added to record", async () => {
