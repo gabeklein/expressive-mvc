@@ -105,33 +105,32 @@ function set <T> (
       return output;
     }
 
-    let setter = typeof argument == "function"
+    const set = typeof argument == "function"
       ? createValueEffect(argument)
       : undefined;
 
-    if(value !== undefined)
+    if(value !== undefined){
       state[key] = value;
-
-    else if(setter){
-      const effect = setter;
-
-      setter = function(this: any, value: any){
-        if(!(key in state))
-          state[key] = undefined;
-
-        return effect.call(this, value);
-      }
+      return { set };
     }
 
-    return {
-      get: () => {
+    const output: Control.PropertyDescriptor = {
+      get(){
         if(key in state)
           return state[key];
 
         throw suspense(control, key);
-      },
-      set: setter
-    }
+      }
+    };
+
+    if(set)
+      output.set = function(this: any, value: any){
+        output.set = set;
+        state[key] = state[key];
+        return set.call(this, value);
+      }
+
+    return output;
   })
 }
 
