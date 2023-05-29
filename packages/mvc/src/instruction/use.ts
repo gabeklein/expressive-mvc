@@ -11,13 +11,18 @@ export const Oops = issues({
     `Value ${model}.${key} value is not yet available.`
 });
 
+type Empty = Record<string, never>;
+
 namespace use {
+  type Key<T extends {}> = Extract<keyof T, string>;
+
   /**
    * Assign value to observable property.
    * 
    * If property is not already observed, it will become so.
    */
-  type SetValue<T extends {}> = <K extends keyof T> (property: K, value: T[K]) => void;
+  type SetValue<T extends {}> =
+    <K extends Key<T>> (property: K, value: T[K]) => void;
   
   /**
    * Observe property for updates.
@@ -25,7 +30,7 @@ namespace use {
    * If property is not already observed, it will become so.
    */
   type OnUpdate<T extends {}> =
-    <K extends keyof T> (
+    <K extends Key<T>> (
       property: K,
       callback: (value: T[K], key: K) => void
     ) => () => void;
@@ -36,33 +41,29 @@ namespace use {
   }
   
   export type Collection<T> = Observable<{ [key: string | number]: T }>;
-  
-  export type Child<T extends {}> = T extends Model ? T : Observable<T>;
 }
 
 /** Create a placeholder for specified Model type. */
 function use <T extends Model> (): T | undefined;
 
 /** Create a new child instance of model. */
-function use <T extends Model> (Type: Model.New<T>, callback?: (i: T) => void): use.Child<T>;
-
-function use <T extends Model> (model: T): T;
-
-/** Create a managed record with observable entries. */
-function use <T = any> (data: Record<string, never>): use.Collection<T>;
-
-/** Create a managed object with observable entries. */
-function use <T extends {}> (data: T): use.Observable<T>;
+function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
 
 /**
-  * Create child-instance relationship with provided model.
-  *
-  * Note: If `peer` is not already initialized before parent is
-  * (created with `new` as opposed to create method), that model will
-  * attach this via `parent()` instruction. It will not, however, if
-  * already active.
-  */
-function use <T extends Model> (peer: T, callback?: (i: T) => void): T;
+ * Use existing model as a child of model assigned to.
+ * 
+ * Note: If `peer` is not already initialized before parent is
+ * (created with `new` as opposed to create method), that model will
+ * attach this via `parent()` instruction. It will not, however, if
+ * already active.
+ **/
+function use <T extends Model> (model: T, ready?: (i: T) => void): T;
+
+/** Create a managed record with observable entries. */
+function use <T = any, C = use.Collection<T>> (record: Empty, ready?: (object: C) => void): C;
+
+/** Create a managed object with observable entries. */
+function use <T extends {}, O = use.Observable<T>> (data: T, ready?: (object: O) => void): O;
 
 function use(
   input?: any,
@@ -98,32 +99,30 @@ function use(
   })
 }
 
-function manage<T extends Record<string, any>>(next: T){
-  const subject = assign(create(next), {
-    on(
-      key: string,
-      callback: (value: any, key: string) => void){
-
+function manage<T extends {}>(next: T){
+  const methods = <use.Observable<T>>{
+    on(key, callback){
       if(!(key in next))
         control.watch(key, { value: subject[key] });
 
       return control.addListener(k => {
         if(k === key)
-          return () => callback(next[k], k);
+          return () => callback(next[key], key);
 
         if(typeof k !== "string")
           return k;
-      });
+      }) as any;
     },
-    set(key: string, value: any){
+    set(key, value){
       if(key in next)
         subject[key] = value;
       else
         control.watch(key, { value });
     }
-  })
+  }
 
-  const control = new Control(subject);
+  const subject = assign(create(next), methods);
+  const control = new Control<T>(subject);
 
   for(const key in control.state = next)
     control.watch(key, {});

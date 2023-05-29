@@ -124,7 +124,7 @@ class Control<T extends {} = any> {
   }
 
   watch(
-    key: keyof T & string,
+    key: Extract<keyof T, string>,
     output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
