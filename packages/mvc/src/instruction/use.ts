@@ -1,15 +1,6 @@
 import { apply, Control, control, parent } from '../control';
-import { issues } from '../helper/issues';
 import { assign, create } from '../helper/object';
 import { Model } from '../model';
-
-export const Oops = issues({
-  BadArgument: (type) =>
-    `Instruction \`use\` cannot accept argument type of ${type}.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
-});
 
 type Empty = Record<string, never>;
 
@@ -74,8 +65,6 @@ function use(
 
     if(typeof input === "function")
       input = new input();
-    else if(input && typeof input !== "object")
-      throw Oops.BadArgument(typeof input);
 
     function set(next: {} | undefined){
       if(next instanceof Model){

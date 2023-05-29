@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { Oops, use } from './use';
+import { use } from './use';
 
 class Child extends Model {
   value = "foo"
@@ -169,18 +169,6 @@ it('will still subscribe if initially undefined', async () => {
   state.child = undefined;
   await expect(state).toUpdate();
   expect(mock).toBeCalledTimes(4)
-})
-
-it('will throw if bad argument type', () => {
-  class Parent extends Model {
-    // @ts-ignore
-    child = use(1);
-  }
-
-  const expected = Oops.BadArgument("number");
-  const attempt = () => Parent.new();
-
-  expect(attempt).toThrowError(expected)
 })
 
 describe("object", () => {
