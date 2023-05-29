@@ -322,7 +322,6 @@ describe("object", () => {
     });
 
     test.on(effect);
-
     test.info.foo = "bar";
 
     await new Promise(res => setTimeout(res, 0));
@@ -383,5 +382,61 @@ describe("object", () => {
     test.info.action();
 
     expect(test.info.foo).toBe("bar");
+  })
+
+  describe("on method", () => {
+    it("will callback on update", async () => {
+      class Test extends Model {
+        info = use({ foo: "foo" });
+      }
+  
+      const { info } = Test.new();
+      const gotFoo = jest.fn();
+
+      expect<{ foo: string }>(info);
+  
+      info.on("foo", gotFoo);
+      info.foo = "bar";
+  
+      await new Promise(res => setTimeout(res))
+      expect(gotFoo).toHaveBeenCalled();
+    })
+  
+    it("will watch keys added to record", async () => {
+      class Test extends Model {
+        info = use<string>({});
+      }
+
+      const { info } = Test.new();
+      const gotFoo = jest.fn();
+
+      expect<Record<string, string>>(info);
+  
+      info.on("foo", gotFoo);
+      info.foo = "bar";
+  
+      await new Promise(res => setTimeout(res))
+      expect(gotFoo).toHaveBeenCalled();
+    })
+  })
+
+  describe("set method", () => {
+    it("will add value to observe", async () => {
+      class Test extends Model {
+        info = use<string>({});
+      }
+  
+      const { info } = Test.new();
+      const gotFoo = jest.fn();
+  
+      info.set("foo", "bar");
+      expect(info.foo).toBe("bar");
+
+      info.on("foo", gotFoo);
+      info.foo = "foo";
+  
+      await new Promise(res => setTimeout(res))
+      expect(gotFoo).toHaveBeenCalled();
+    })
   })
 })
