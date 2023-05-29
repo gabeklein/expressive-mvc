@@ -258,10 +258,12 @@ describe("object", () => {
   
       const done = info.on("foo", gotFoo);
 
+      expect(gotFoo).toHaveBeenCalledTimes(1);
+
       info.foo = "bar";
       await new Promise(res => setTimeout(res));
 
-      expect(gotFoo).toHaveBeenCalled();
+      expect(gotFoo).toHaveBeenCalledTimes(2);
 
       /* will unsubscribe when done is called */
 
@@ -269,7 +271,7 @@ describe("object", () => {
       info.foo = "baz";
       await new Promise(res => setTimeout(res));
 
-      expect(gotFoo).toHaveBeenCalledTimes(1);
+      expect(gotFoo).toHaveBeenCalledTimes(2);
     })
   
     it("will watch keys added to record", async () => {

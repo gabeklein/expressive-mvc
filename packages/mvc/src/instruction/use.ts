@@ -90,13 +90,17 @@ function use(
 
 function manage<T extends {}>(next: T){
   const methods = <use.Observable<T>>{
-    on(key, callback){
+    on(key, event){
+      const callback = () => event(next[key], key);
+
       if(!(key in next))
         control.watch(key, { value: subject[key] });
 
+      callback();
+
       return control.addListener(k => {
         if(k === key)
-          return () => callback(next[key], key);
+          return callback;
 
         if(typeof k !== "string")
           return k;
