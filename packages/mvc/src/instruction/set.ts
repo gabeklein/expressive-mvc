@@ -56,7 +56,7 @@ function set <T> (
     const { state, subject } = control;
 
     if(typeof value == "function" || value instanceof Promise){
-      const output: Control.PropertyDescriptor = { set };
+      const output: Control.PropertyDescriptor = {};
 
       const init = () => {
         try {
@@ -96,7 +96,9 @@ function set <T> (
         init();
       else
         output.get = () => {
-          const get = output.get = init();
+          const get = output.get =
+            key in state ? undefined : init();
+
           return get ? get() : state[key];
         }
 

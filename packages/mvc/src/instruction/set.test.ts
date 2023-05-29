@@ -181,6 +181,22 @@ describe("intercept", () => {
 })
 
 describe("factory", () => {
+  it("will ignore setter if assigned", () => {
+    const getValue = jest.fn(() => "foo");
+    
+    class Test extends Model {
+      value = set(getValue);
+    }
+
+    const test = Test.new();
+
+    test.value = "bar";
+
+    expect(test).toUpdate();
+    expect(test.value).toBe("bar");
+    expect(getValue).not.toBeCalled();
+  })
+
   it("will compute when accessed", () => {
     const factory = jest.fn(() => "Hello World");
 
