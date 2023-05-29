@@ -279,14 +279,30 @@ describe("object", () => {
       await new Promise(res => setTimeout(res))
       expect(gotFoo).toHaveBeenCalled();
     })
+
+    it.todo("will implement promise overload");
   })
 
   describe("set method", () => {
+    it("will assign to property", () => {
+      class Test extends Model {
+        info = use({
+          foo: "foo"
+        });
+      }
+
+      const { info } = Test.new();
+
+      info.set("foo", "bar");
+      
+      expect(info.foo).toBe("bar");
+    })
+
     it("will add value to observe", async () => {
       class Test extends Model {
         info = use<string>({});
       }
-  
+
       const { info } = Test.new();
       const gotFoo = jest.fn();
   
