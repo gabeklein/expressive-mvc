@@ -1,4 +1,3 @@
-import { Oops } from './event';
 import { get } from './instruction/get';
 import { Model } from './model';
 
@@ -174,24 +173,6 @@ describe("on multiple", () => {
 });
 
 describe("on promise", () => {
-  it('will resolve on single key', async () => {
-    const state = Subject.new();
-    const pending = state.on("seconds");
-
-    state.seconds = 30;
-
-    await expect(pending).resolves.toEqual(["seconds"]);
-  })
-
-  it('will resolve with updated keys', async () => {
-    const state = Subject.new();
-    const pending = state.on(["seconds"]);
-
-    state.seconds = 30;
-
-    await expect(pending).resolves.toEqual(["seconds"]);
-  })
-
   it('will resolve any updated', async () => {
     const state = Subject.new();
     const update = state.set();
@@ -201,48 +182,11 @@ describe("on promise", () => {
     await expect(update).resolves.toEqual(["seconds"]);
   })
 
-  it('will resolve any updated expected', async () => {
-    const state = Subject.new();
-    const update = state.on(["seconds"]);
-
-    state.seconds = 61;
-
-    // should this also expect minutes?
-    await expect(update).resolves.toEqual(["seconds"]);
-  })
-})
-
-describe("timeout", () => {
-  it('will resolve false', async () => {
+  it('will resolve false on timeout', async () => {
     const state = Subject.new();
     const promise = state.set(1);
 
     await expect(promise).resolves.toBe(false);
-  })
-
-  it('will resolve false for key', async () => {
-    const state = Subject.new();
-    const promise = state.on("seconds", 1);
-
-    await expect(promise).resolves.toBe(false);
-  })
-
-  it('will resolve for multiple keys', async () => {
-    const state = Subject.new();
-    const promise = state.on(["seconds", "minutes"], 1);
-
-    await expect(promise).resolves.toBe(false);
-  })
-
-  it('will reject on required key', async () => {
-    const state = Subject.new();
-
-    state.hours = 2;
-
-    const promise = state.on("seconds", 0);
-    const expected = Oops.KeysExpected("seconds")
-
-    await expect(promise).rejects.toThrowError(expected);
   })
 })
 
@@ -253,7 +197,7 @@ describe("before ready", () => {
 
       constructor(){
         super();
-        this.on("value1", mock);
+        this.get(state => mock(state.value1));
       }
     }
 
@@ -263,7 +207,7 @@ describe("before ready", () => {
     state.value1++;
     await expect(state).toUpdate();
 
-    expect(mock).toBeCalled();
+    expect(mock).toBeCalledTimes(2);
   })
 
   it('will watch computed value', async () => {
@@ -276,7 +220,7 @@ describe("before ready", () => {
       
       constructor(){
         super();
-        this.on("value2", mock);
+        this.get(state => mock(state.value2));
       }
     }
 
@@ -294,7 +238,7 @@ describe("before ready", () => {
       value = 1;
 
       // assigned during constructor phase.
-      done = this.on("value", mock);
+      done = this.get(state => mock(state.value));
     }
 
     const mock = jest.fn();
@@ -302,16 +246,16 @@ describe("before ready", () => {
 
     test.value++;
     await expect(test).toUpdate();
-    expect(mock).toBeCalledTimes(1);
+    expect(mock).toBeCalledTimes(2);
 
     test.value++;
     await expect(test).toUpdate();
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledTimes(3);
 
     test.done();
 
     test.value++;
     await expect(test).toUpdate();
-    expect(mock).toBeCalledTimes(2);
+    expect(mock).toBeCalledTimes(3);
   })
 });

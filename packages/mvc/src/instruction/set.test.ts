@@ -247,7 +247,7 @@ describe("factory", () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await test.on("value");
+    await test.set();
 
     expect(test.value).toBe("foobar");
   })
@@ -262,7 +262,15 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    await test.on("value");
+    try {
+      void test.value;
+    }
+    catch(error){
+      if(error instanceof Promise)
+        await expect(error).resolves.toBe("Hello World");
+      else
+        throw error;
+    }
 
     expect(() => test.value).not.toThrow();
   })

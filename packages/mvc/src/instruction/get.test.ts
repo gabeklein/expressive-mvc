@@ -225,19 +225,15 @@ describe("compute mode", () => {
     expect(subject.nested).toBe("foo");
   })
   
-  it('will compute immediately if needed', () => {
+  it('will compute immediately if watched', () => {
     const mockFactory = jest.fn(() => "foobar");
   
     class Test extends Model {
       value = get(() => mockFactory);
-  
-      constructor(){
-        super();
-        this.on("value", () => {});
-      }
     }
   
     const test = Test.new();
+    test.get("value", () => {});
   
     expect(mockFactory).toBeCalled();
     expect(test.value).toBe("foobar");
@@ -248,18 +244,16 @@ describe("compute mode", () => {
   
     class Test extends Model {
       value = get(() => mockFactory);
-  
-      constructor(){
-        super();
-        this.on("value", () => {});
-      }
     }
   
     const test = Test.new();
+
+    test.get("value", () => {});
+
     const values = test.get();
   
     expect(mockFactory).toBeCalled();
-    expect(values.value).toBe("foobar");
+    expect(values).toEqual({ value: "foobar" });
   })
   
   it("will compute early if value is accessed", async () => {
@@ -442,7 +436,7 @@ describe("compute mode", () => {
       const state = Test.new();
       const failed = Oops.Failed(state, "value", false);
 
-      state.on("value");
+      void state.value;
       state.shouldFail = true;
 
       await expect(state).toUpdate();
