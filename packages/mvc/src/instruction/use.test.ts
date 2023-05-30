@@ -256,7 +256,7 @@ describe("object", () => {
 
       expect<{ foo: string }>(info);
   
-      const done = info.on("foo", gotFoo);
+      const done = info.get("foo", gotFoo);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
 
@@ -284,7 +284,7 @@ describe("object", () => {
 
       expect<Record<string, string>>(info);
   
-      info.on("foo", gotFoo);
+      info.get("foo", gotFoo);
       info.foo = "bar";
   
       await new Promise(res => setTimeout(res))
@@ -320,7 +320,7 @@ describe("object", () => {
       info.set("foo", "bar");
       expect(info.foo).toBe("bar");
 
-      info.on("foo", gotFoo);
+      info.get("foo", gotFoo);
       info.foo = "foo";
   
       await new Promise(res => setTimeout(res))

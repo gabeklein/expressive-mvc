@@ -20,7 +20,7 @@ namespace use {
    * 
    * If property is not already observed, it will become so.
    */
-  type OnUpdate<T extends {}> =
+  type GetValue<T extends {}> =
     <K extends Key<T>> (
       property: K,
       callback: (value: T[K], key: K) => void
@@ -28,7 +28,7 @@ namespace use {
   
   export type Observable<T extends {}> = T & {
     set: SetValue<T>;
-    on: OnUpdate<T>;
+    get: GetValue<T>;
   }
   
   export type Collection<T> = Observable<{ [key: string | number]: T }>;
@@ -90,7 +90,7 @@ function use(
 
 function manage<T extends {}>(next: T){
   const methods = <use.Observable<T>>{
-    on(key, event){
+    get(key, event){
       const callback = () => event(next[key], key);
 
       if(!(key in next))
