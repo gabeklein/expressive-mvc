@@ -151,8 +151,8 @@ class Model {
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
 
-  set<T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
-  set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
+  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
+  set <K extends Model.Event<this>> (key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
 
   set(
     arg1?: number | Model.Event<this> | Model.Compat<this>,
