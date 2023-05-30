@@ -1,10 +1,5 @@
 import { control } from './control';
-import { issues } from './helper/issues';
 import { Model } from './model';
-
-export const Oops = issues({
-  KeysExpected: (key) => `Key "${key}" was expected in current update.`
-});
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
   source: T,
@@ -28,10 +23,7 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
         }
 
     const removeListener = self.addListener(key => {
-      if(key === null)
-        callback.call(subject, null);
-
-      else if(!select || select.includes(key as P)){
+      if(!select || select.includes(key as P)){
         if(once)
           removeListener();
 
@@ -48,20 +40,18 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
   select?: P | P[],
   timeout?: number){
 
-  return new Promise<any>((resolve, reject) => {
+  return new Promise<any>((resolve) => {
     if(timeout === 0){
       const self = control(source, true);
 
-      if(!self.frame.size)
-        resolve(false);
-      else if(typeof select == "string" && !self.frame.has(select))
-        reject(Oops.KeysExpected(select));
-      else {
+      if(self.frame.size){
         const remove = self.addListener(() => {
           remove();
           return () => resolve(self.latest);
         });
       }
+      else
+        resolve(false);
     }
     else {
       const remove = addEventListener(source, select, resolve, true);
