@@ -2,7 +2,7 @@ import { Model } from "@expressive/mvc";
 
 expect.extend({
   async toUpdate(received: Model){
-    const didUpdate = await received.on(0);
+    const didUpdate = await received.set(0);
 
     return didUpdate ? {
       pass: true,
@@ -14,7 +14,7 @@ expect.extend({
   },
 
   async toHaveUpdated(received: Model, keys: string[]){
-    const didUpdate = await received.on(0);
+    const didUpdate = await received.set(0);
     const equal = JSON.stringify(didUpdate) === JSON.stringify(keys);
 
     return equal ? {

@@ -46,13 +46,13 @@ it("will emit method key before/after activity", async () => {
   expect(test.active).toBe(false);
 
   const result = test("foobar");
-  update = await is.on(0);
+  update = await is.set(0);
 
   expect(test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
-  update = await is.on(0);
+  update = await is.set(0);
 
   expect(test.active).toBe(false);
   expect(update).toContain("test");

@@ -24,10 +24,10 @@ describe("assert", () => {
     const control = Control.new();
 
     control.foo = 2;
-    await control.on();
+    await control.set();
 
     control.bar = 3;
-    await control.on();
+    await control.set();
   })
 
   it("will resolve to keys next update", async () => {
@@ -35,13 +35,13 @@ describe("assert", () => {
 
     control.foo = 2;
 
-    const updated = await control.on(0);
+    const updated = await control.set(0);
     expect(updated).toMatchObject(["foo"]);
   })
 
   it('will resolve immediately when no updates pending', async () => {
     const control = Control.new();
-    const update = await control.on(0);
+    const update = await control.set(0);
 
     expect(update).toBe(false);
   })
@@ -55,7 +55,7 @@ describe("assert", () => {
 
     control.bar = 3;
 
-    const update = await control.on();
+    const update = await control.set();
 
     expect(update).toMatchObject(["bar", "baz"]);
   })
@@ -185,7 +185,7 @@ describe("on promise", () => {
 
   it('will resolve any updated', async () => {
     const state = Subject.new();
-    const update = state.on();
+    const update = state.set();
 
     state.seconds = 61;
 
@@ -206,7 +206,7 @@ describe("on promise", () => {
 describe("timeout", () => {
   it('will resolve false', async () => {
     const state = Subject.new();
-    const promise = state.on(1);
+    const promise = state.set(1);
 
     await expect(promise).resolves.toBe(false);
   })

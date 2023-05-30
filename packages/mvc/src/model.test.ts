@@ -143,7 +143,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foo");
 
-    const update = await test.on(0);
+    const update = await test.set(0);
     expect(update).toContain("foo");
   })
 
@@ -153,7 +153,7 @@ describe("dispatch", () => {
     test.foo = "bar";
     test.set("foo");
 
-    const update = await test.on(0);
+    const update = await test.set(0);
     expect(update).toContain("foo");
   })
 
@@ -161,7 +161,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foobar");
 
-    const update = await test.on(0);
+    const update = await test.set(0);
     expect(update).toContain("foobar");
   })
 
@@ -340,10 +340,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.on(0);
+    await state.set(0);
 
     state.value2 = 3;
-    await state.on(0);
+    await state.set(0);
 
     expect(effect).toBeCalledTimes(3);
   })
@@ -357,10 +357,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.on(0);
+    await state.set(0);
 
     state.value2 = 3;
-    await state.on(0);
+    await state.set(0);
 
     /**
      * we did not access value2 in above accessor,
@@ -380,10 +380,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.on(0);
+    await state.set(0);
 
     state.value2 = 3;
-    await state.on(0);
+    await state.set(0);
 
     expect(effect).toBeCalledTimes(2);
   })

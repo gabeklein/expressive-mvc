@@ -295,7 +295,7 @@ describe("factory", () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.on();
+    await test.set();
 
     expect(mock).toBeCalledWith("foobar");
   })
@@ -337,10 +337,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.on();
+    await test.set();
 
     name.resolve("World");
-    await test.on();
+    await test.set();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(didEvaluate).toHaveReturnedWith("Hello World");
@@ -367,10 +367,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.on();
+    await test.set();
 
     name.resolve("World");
-    await test.on();
+    await test.set();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
@@ -472,7 +472,7 @@ describe("factory", () => {
     expect(didTryToEvaluate).toBeCalledTimes(1);
 
     test.pending.resolve();
-    await test.on(0);
+    await test.set(0);
 
     // expect eval to run again because promise resolved.
     expect(didTryToEvaluate).toBeCalledTimes(2);
@@ -549,7 +549,7 @@ describe("factory", () => {
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.resolve();
-    await instance.on();
+    await instance.set();
 
     expect(didThrow).toBe("oh no");
   })

@@ -108,7 +108,7 @@ it('will squash simultaneous updates', async () => {
   test.value1 = 2;
   test.value2 = 3;
 
-  await test.on()
+  await test.set()
 
   // expect two syncronous groups of updates.
   expect(mock).toBeCalledTimes(2)
@@ -126,7 +126,7 @@ it('will squash simultaneous compute update', async () => {
 
   test.value3 = 4;
 
-  await test.on()
+  await test.set()
 
   // expect two syncronous groups of updates.
   expect(mock).toBeCalledTimes(2)
@@ -317,7 +317,7 @@ it('will squash simultaneous updates', async () => {
   state.value1 = 2;
   state.value2 = 3;
 
-  await state.on()
+  await state.set()
 
   // expect two syncronous groups of updates.
   expect(mock).toBeCalledTimes(2)
@@ -335,7 +335,7 @@ it('will squash simultaneous compute', async () => {
 
   state.value3 = 4;
 
-  await state.on()
+  await state.set()
 
   // expect two syncronous groups of updates.
   expect(mock).toBeCalledTimes(2)

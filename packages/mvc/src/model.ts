@@ -95,21 +95,13 @@ class Model {
     return this;
   }
 
-  on (): Promise<Model.Event<this>[]>;
-  on (timeout?: number): Promise<Model.Event<this>[] | false>;
-
   on <P extends Model.Event<this>> (keys?: P | P[], timeout?: number): Promise<P[] | false>;
   on <P extends Model.Event<this>> (keys: P | P[], listener: Model.OnCallback<this>, once?: boolean): Callback;
 
   on <P extends Model.Event<this>> (
-    arg1?: number | P[] | P,
+    arg1?: P[] | P,
     arg2?: number | Model.OnCallback<this>,
     arg3?: boolean){
-
-    if(typeof arg1 == "number"){
-      arg2 = arg1;
-      arg1 = undefined;
-    }
 
     return typeof arg2 == "function"
       ? addEventListener(this, arg1, arg2, arg3)
@@ -155,27 +147,41 @@ class Model {
       : values();
   }
 
+  set (): Promise<Model.Event<this>[]>;
+  set (timeout: number): Promise<Model.Event<this>[] | false>;
+
   set<T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
   set<K extends Model.Event<this>>(key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
 
-  set(arg1: Model.Event<this> | Model.Compat<this>, arg2?: any){
+  set(
+    arg1?: number | Model.Event<this> | Model.Compat<this>,
+    arg2?: any){
+
     const controller = control(this, true);
     const { state } = controller;
+    let timeout: number | undefined = 0;
 
-    if(typeof arg1 == "string"){
-      controller.update(arg1);
+    switch(typeof arg1){
+      case "string":
+        if(1 in arguments && arg1 in state)
+          state[arg1] = arg2;
 
-      if(1 in arguments && arg1 in state)
-        state[arg1] = arg2;
+        controller.update(arg1);
+      break;
+
+      case "object":
+        for(const key in state)
+          if(key in arg1 && (!arg2 || arg2.includes(key))){
+            state[key] = (arg1 as any)[key];
+            controller.update(key);
+          }
+      break;
+
+      default:
+        timeout = arg1;
     }
-    else if(typeof arg1 == "object")
-      for(const key in state)
-        if(key in arg1 && (!arg2 || arg2.includes(key))){
-          state[key] = (arg1 as any)[key];
-          controller.update(key);
-        }
 
-    return this.on(0);
+    return awaitUpdate(this, undefined, timeout);
   }
 
   /** Mark this instance for garbage collection. */
