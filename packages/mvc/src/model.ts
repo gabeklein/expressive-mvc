@@ -95,19 +95,6 @@ class Model {
     return this;
   }
 
-  on <P extends Model.Event<this>> (keys?: P | P[], timeout?: number): Promise<P[] | false>;
-  on <P extends Model.Event<this>> (keys: P | P[], listener: Model.OnCallback<this>, once?: boolean): Callback;
-
-  on <P extends Model.Event<this>> (
-    arg1?: P[] | P,
-    arg2?: number | Model.OnCallback<this>,
-    arg3?: boolean){
-
-    return typeof arg2 == "function"
-      ? addEventListener(this, arg1, arg2, arg3)
-      : awaitUpdate(this, arg1, arg2);
-  }
-
   get(): Model.Export<this>;
 
   get(effect: Model.Effect<this>): Callback;
