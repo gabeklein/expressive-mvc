@@ -101,15 +101,10 @@ class Model {
   on <P extends Model.Event<this>> (keys?: P | P[], timeout?: number): Promise<P[] | false>;
   on <P extends Model.Event<this>> (keys: P | P[], listener: Model.OnCallback<this>, once?: boolean): Callback;
 
-  on (effect: Model.Effect<this>): Callback;
-
   on <P extends Model.Event<this>> (
-    arg1?: number | P[] | P | Model.Effect<this>,
+    arg1?: number | P[] | P,
     arg2?: number | Model.OnCallback<this>,
     arg3?: boolean){
-
-    if(typeof arg1 == "function")
-      return createEffect(this, arg1);
 
     if(typeof arg1 == "number"){
       arg2 = arg1;
@@ -123,6 +118,8 @@ class Model {
 
   get(): Model.Export<this>;
 
+  get(effect: Model.Effect<this>): Callback;
+
   get <P extends Model.Key<this>> (select: P): this[P];
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
 
@@ -130,8 +127,11 @@ class Model {
   get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void): Callback;
   
   get <P extends Model.Key<this>> (
-    arg1?: P | P[],
+    arg1?: P | P[] | Model.Effect<this>,
     arg2?: Function){
+
+    if(typeof arg1 == "function")
+      return createEffect(this, arg1);
 
     const { state } = control(this, true);
 
@@ -144,7 +144,7 @@ class Model {
   
       const output = {} as any;
   
-      for(const key of arg1)
+      for(const key of arg1 as P[])
         output[key] = state[key];
   
       return output;

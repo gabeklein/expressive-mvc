@@ -113,8 +113,8 @@ describe("Model", () => {
 
     const test = Test.new();
 
-    test.on(({ fn }) => {
-      fn();
+    test.get(state => {
+      state.fn();
     });
 
     expect(mockFunction).toBeCalled();
@@ -337,7 +337,7 @@ describe("subscriber", () => {
       void $.value2;
     })
 
-    state.on(effect);
+    state.get(effect);
 
     state.value = 2;
     await state.on(0);
@@ -354,7 +354,7 @@ describe("subscriber", () => {
       void $.value;
     })
 
-    state.on(effect);
+    state.get(effect);
 
     state.value = 2;
     await state.on(0);
@@ -377,7 +377,7 @@ describe("subscriber", () => {
       void $.is.value;
     })
 
-    state.on(effect);
+    state.get(effect);
 
     state.value = 2;
     await state.on(0);
@@ -398,7 +398,7 @@ describe("subscriber", () => {
 
     expect(test.value).toBe("foo");
 
-    test.on(effect => {
+    test.get(effect => {
       effect.value = "bar";
     })
 

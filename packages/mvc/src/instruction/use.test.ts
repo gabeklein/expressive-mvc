@@ -20,7 +20,7 @@ it('will track recursively', async () => {
   expect(parent.value).toBe("foo");
   expect(parent.child.value).toBe("foo");
 
-  parent.on(mock);
+  parent.get(mock);
 
   parent.value = "bar";
   await expect(parent).toUpdate();
@@ -43,7 +43,7 @@ it('will accept instance', async () => {
     void it.child.value;
   })
 
-  state.on(mock);
+  state.get(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -73,7 +73,7 @@ it('will update on new value', async () => {
     void it.child.value;
   })
 
-  state.on(mock);
+  state.get(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -110,7 +110,7 @@ it('will reset if value is undefined', async () => {
       void it.child.value;
   })
 
-  state.on(mock);
+  state.get(mock);
 
   state.child = new Child();
   await expect(state).toUpdate();
@@ -152,7 +152,7 @@ it('will still subscribe if initially undefined', async () => {
       void it.child.value;
   })
 
-  state.on(mock);
+  state.get(mock);
   expect(state.child).toBeUndefined();
 
   // Will refresh on repalcement.
@@ -182,7 +182,7 @@ describe("object", () => {
       void state.info.foo;
     });
 
-    test.on(effect);
+    test.get(effect);
     test.info.foo = "bar";
 
     await new Promise(res => setTimeout(res, 0));
@@ -203,7 +203,7 @@ describe("object", () => {
       void state.info.foo;
     });
 
-    test.on(effect);
+    test.get(effect);
 
     test.info.bar = "foo";
 

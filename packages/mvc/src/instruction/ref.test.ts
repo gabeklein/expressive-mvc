@@ -96,7 +96,7 @@ describe("property", () => {
   it('will be accessible from a proxy', () => {
     const test = Subject.new();
   
-    test.on(state => {
+    test.get(state => {
       expect(state.ref1).not.toBeUndefined();
     })
   })

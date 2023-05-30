@@ -88,7 +88,7 @@ describe("UPDATE", () => {
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
 
-    test.on(state => {
+    test.get(state => {
       void state.value1;
       void state.value3;
 

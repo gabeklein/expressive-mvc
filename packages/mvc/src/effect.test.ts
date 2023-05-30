@@ -14,7 +14,7 @@ it('will watch values', async () => {
   const test = Test.new();
   const mock = jest.fn();
 
-  test.on(state => {
+  test.get(state => {
     void state.value1;
     void state.value2;
     void state.value3;
@@ -51,7 +51,7 @@ it("will update for nested values", async () => {
     void state.nested.value;
   });
 
-  test.on(effect);
+  test.get(effect);
 
   expect(effect).toBeCalledTimes(1);
   test.nested.value = "bar";
@@ -75,7 +75,7 @@ it.skip("will not update for removed children", async() => {
     void state.nested.value;
   });
 
-  test.on(effect);
+  test.get(effect);
   expect(effect).toBeCalledTimes(1);
 
   test.nested.value++;
@@ -99,7 +99,7 @@ it('will squash simultaneous updates', async () => {
   const test = Test.new();
   const mock = jest.fn();
 
-  test.on(state => {
+  test.get(state => {
     void state.value1;
     void state.value2;
     mock();
@@ -118,7 +118,7 @@ it('will squash simultaneous compute update', async () => {
   const test = Test.new();
   const mock = jest.fn();
 
-  test.on(state => {
+  test.get(state => {
     void state.value3;
     void state.value4;
     mock();
@@ -145,7 +145,7 @@ it("will call return-function on subsequent update", async () => {
   const state = Test.new();
   const mock = jest.fn();
 
-  state.on(state.testEffect);
+  state.get(state.testEffect);
 
   expect(mock).not.toBeCalled();
 
@@ -159,7 +159,7 @@ it('will register before ready', async () => {
   class Test2 extends Test {
     constructor(){
       super();
-      this.on(state => {
+      this.get(state => {
         void state.value1;
         void state.value3;
         mock();
@@ -188,7 +188,7 @@ it('will call immediately', async () => {
   const didCreate = jest.fn();
   const test = Test.new();
 
-  test.on(didCreate);
+  test.get(didCreate);
 
   expect(didCreate).toBeCalled();
 })
@@ -203,7 +203,7 @@ it("will bind to model called upon", () => {
   const didCreate = jest.fn();
   const test = Test.new();
 
-  test.on(testEffect);
+  test.get(testEffect);
 
   expect(didCreate).toBeCalledWith(test);
 })
@@ -214,7 +214,7 @@ it('will callback on willDestroy by default', async () => {
   const willDestroy = jest.fn();
   const test = Test.new();
 
-  test.on(() => willDestroy);
+  test.get(() => willDestroy);
   test.null();
 
   expect(willDestroy).toBeCalled();
@@ -230,7 +230,7 @@ it('will cancel effect on callback', async () => {
     void test.value;
   });
 
-  const done = test.on(didEffect);
+  const done = test.get(didEffect);
 
   test.value += 1;
 
@@ -249,7 +249,7 @@ it('will watch values via arrow function', async () => {
   const state = Test.new();
   const mock = jest.fn();
 
-  state.on(self => {
+  state.get(self => {
     // destructure values to indicate access.
     const { value1, value2, value3 } = self;
     void value1, value2, value3;
@@ -289,7 +289,7 @@ it('will watch values from method', async () => {
 
   }
 
-  state.on(testEffect);
+  state.get(testEffect);
 
   state.value1 = 2;
   await expect(state).toUpdate();
@@ -308,7 +308,7 @@ it('will squash simultaneous updates', async () => {
   const state = Test.new();
   const mock = jest.fn();
 
-  state.on(self => {
+  state.get(self => {
     void self.value1
     void self.value2;
     mock();
@@ -327,7 +327,7 @@ it('will squash simultaneous compute', async () => {
   const state = Test.new();
   const mock = jest.fn();
 
-  state.on(self => {
+  state.get(self => {
     void self.value3;
     void self.value4;
     mock();
@@ -345,7 +345,7 @@ it('will register before ready', async () => {
   class Test2 extends Test {
     constructor(){
       super();
-      this.on(this.test);
+      this.get(this.test);
     }
 
     test(){
@@ -372,12 +372,12 @@ it('will register before ready', async () => {
   expect(mock).toBeCalledTimes(3);
 })
 
-it("will throw if.on returns non-function", () => {
+it("will throw if state.get returns non-function", () => {
   const state = Test.new();
   const expected = Oops.BadCallback();
   const attempt = () => {
     // @ts-ignore
-    state.on(() => "foobar");
+    state.get(() => "foobar");
   }
 
   expect(attempt).toThrowError(expected);
@@ -386,7 +386,7 @@ it("will throw if.on returns non-function", () => {
 it("will not throw if.on returns promise", () => {
   const state = Test.new();
   const attempt = () => {
-    state.on(async () => {});
+    state.get(async () => {});
   }
 
   expect(attempt).not.toThrowError();
@@ -403,7 +403,7 @@ describe("suspense", () => {
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.on($ => {
+    test.get($ => {
       didTry();
       didInvoke($.value);
     });
@@ -422,7 +422,7 @@ describe("suspense", () => {
     const didTry = jest.fn();
     const didInvoke = jest.fn();
 
-    test.on($ => {
+    test.get($ => {
       didTry();
       didInvoke($.value);
     });
@@ -444,7 +444,7 @@ describe("suspense", () => {
     const willUpdate = jest.fn();
     const didUpdate = jest.fn();
 
-    test.on(state => {
+    test.get(state => {
       willUpdate();
       void state.value;
       void state.other;

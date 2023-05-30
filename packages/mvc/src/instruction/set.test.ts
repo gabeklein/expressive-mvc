@@ -18,7 +18,7 @@ describe("placeholder", () => {
       promise.resolve(state.foobar);
     });
 
-    instance.on(mockEffect);
+    instance.get(mockEffect);
 
     expect(mockEffect).toBeCalledTimes(1);
 
@@ -39,7 +39,7 @@ describe("placeholder", () => {
       expect(state.foobar).toBe("bar!");
     });
 
-    instance.on(mockEffect);
+    instance.get(mockEffect);
     expect(mockEffect).toBeCalledTimes(1);
   })
 })
@@ -291,7 +291,7 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.on(state => mock(state.value));
+    test.get(state => mock(state.value));
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
@@ -334,7 +334,7 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.on($ => void $.value);
+    test.get($ => void $.value);
 
     greet.resolve("Hello");
     await test.on();
@@ -364,7 +364,7 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.on($ => void $.value);
+    test.get($ => void $.value);
 
     greet.resolve("Hello");
     await test.on();
@@ -399,7 +399,7 @@ describe("factory", () => {
       didUpdate.resolve(state.childValue);
     })
 
-    test.on(effect);
+    test.get(effect);
 
     expect(effect).toBeCalledTimes(1);
 
@@ -429,7 +429,7 @@ describe("factory", () => {
       didEvaluate.resolve(state.value);
     });
 
-    test.on(effect);
+    test.get(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
@@ -465,7 +465,7 @@ describe("factory", () => {
       didEvaluate.resolve(state.message);
     });
 
-    test.on(effect);
+    test.get(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
@@ -511,7 +511,7 @@ describe("factory", () => {
       didEvaluate.resolve(state.sum);
     });
 
-    test.on(effect);
+    test.get(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
@@ -537,7 +537,7 @@ describe("factory", () => {
     const instance = Test.new();
     let didThrow: Error | undefined;
     
-    instance.on(state => {
+    instance.get(state => {
       try {
         void state.value;
       }
