@@ -115,35 +115,36 @@ class Model {
   get <P extends Model.Key<this>> (select: P): this[P];
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
 
-  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P]) => void): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void): Callback;
+  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P]) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void, once?: boolean): Callback;
   
   get <P extends Model.Key<this>> (
-    arg1?: P | P[] | Model.Effect<this>,
-    arg2?: Function){
+    argument?: P | P[] | Model.Effect<this>,
+    callback?: Function,
+    once?: boolean){
 
-    if(typeof arg1 == "function")
-      return createEffect(this, arg1);
+    if(typeof argument == "function")
+      return createEffect(this, argument);
 
     const { state } = control(this, true);
 
     function values(){
-      if(typeof arg1 == "string")
-        return state[arg1];
+      if(typeof argument == "string")
+        return state[argument];
 
-      if(!arg1)
+      if(!argument)
         return { ...state };
   
       const output = {} as any;
   
-      for(const key of arg1 as P[])
+      for(const key of argument as P[])
         output[key] = state[key];
   
       return output;
     }
 
-    return typeof arg2 == "function"
-      ? this.on(arg1!, () => arg2(values()))
+    return typeof callback == "function"
+      ? addEventListener(this, argument, () => callback(values()), once)
       : values();
   }
 
