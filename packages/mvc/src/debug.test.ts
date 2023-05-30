@@ -156,7 +156,7 @@ describe("errors", () => {
     const expected = new Error("Goodbye cruel world!")
     const test = Test.new();
 
-    test.on("value", () => {
+    test.get("value", () => {
       throw expected;
     });
 

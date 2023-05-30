@@ -326,7 +326,7 @@ describe("compute mode", () => {
     expect(state.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.on("c", emit);
+    state.get("c", emit);
   
     state.a++;
     state.b++;

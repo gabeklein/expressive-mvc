@@ -67,7 +67,7 @@ describe("useContext", () => {
     const didUpdateValues = jest.fn();
     const didPushToValues = jest.fn();
   
-    parent.on("values", didUpdateValues);
+    parent.get("values", didUpdateValues);
   
     const element = create(
       <Provider for={parent}>

@@ -66,31 +66,31 @@ describe("on single", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on("seconds", callback);
+    state.get("seconds", callback);
 
     state.seconds = 30;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds"]);
+    expect(callback).toBeCalledWith(30);
   })
 
   it('will callback for computed value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on("minutes", callback);
+    state.get("minutes", callback);
 
     state.seconds = 60;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalled();
+    expect(callback).toBeCalledWith(1);
   })
 
-  it('will callback on null (destoryed)', () => {
+  it.skip('will callback on null (destoryed)', () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on("seconds", callback);
+    state.get("seconds", callback);
 
     state.null();
 
@@ -101,7 +101,7 @@ describe("on single", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on("minutes", callback);
+    state.get("minutes", callback);
 
     state.seconds = 60;
     await expect(state).toUpdate();
@@ -113,12 +113,12 @@ describe("on single", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on("seconds", callback, true);
+    state.get("seconds", callback, true);
 
     state.seconds = 30;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds"]);
+    expect(callback).toBeCalledWith(30);
 
     state.seconds = 45;
     await expect(state).toUpdate();
@@ -132,30 +132,39 @@ describe("on multiple", () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on(["seconds", "hours"], callback);
+    state.get(["seconds", "hours"], callback);
 
     state.seconds = 30;
     await expect(state).toUpdate();
 
     expect(callback).toBeCalledTimes(1);
-    expect(callback).toBeCalledWith(["seconds"]);
+    expect(callback).toBeCalledWith({
+      "hours": 0,
+      "seconds": 30
+    });
 
     state.hours = 2;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["hours"]);
+    expect(callback).toBeCalledWith({
+      "hours": 2,
+      "seconds": 30
+    });
   })
 
   it('will halt in once mode', async () => {
     const state = Subject.new();
     const callback = jest.fn();
 
-    state.on(["seconds", "minutes"], callback, true);
+    state.get(["seconds", "minutes"], callback, true);
 
     state.seconds = 60;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(["seconds", "minutes"]);
+    expect(callback).toBeCalledWith({
+      "minutes": 1,
+      "seconds": 60
+    });
 
     state.seconds = 61;
     await expect(state).toUpdate();

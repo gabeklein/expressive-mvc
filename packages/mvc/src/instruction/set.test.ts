@@ -57,13 +57,13 @@ describe("callback", () => {
     const event = jest.fn();
 
     expect(callback).not.toBeCalled();
-    state.on("test", event, true);
+    state.get("test", event, true);
 
     state.test = 2;
     expect(callback).toBeCalledWith(3);
 
     await expect(state).toUpdate()
-    expect(event).toBeCalledWith(["test"]);
+    expect(event).toBeCalledWith(2);
   })
 
   it('will invoke return-callback on overwrite', async () => {
