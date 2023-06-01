@@ -1,10 +1,9 @@
 import { Control, control } from './control';
 import { Debug } from './debug';
-import { createEffect } from './effect';
-import { addEventListener, awaitUpdate } from './event';
-import { defineProperty } from './helper/object';
+import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
+import { getMethod, Observable, setMethod } from './observable';
 
 import type { Callback } from '../types';
 
@@ -58,6 +57,8 @@ declare namespace Model {
   export type Suspense = Promise<void> & Error;
 }
 
+interface Model extends Observable {}
+
 class Model {
   constructor(id?: string | number){
     new Control(this, id);
@@ -69,83 +70,6 @@ class Model {
    */
   get is(){
     return this;
-  }
-
-  get(): Model.Export<this>;
-
-  get(effect: Model.Effect<this>): Callback;
-
-  get <P extends Model.Key<this>> (select: P): this[P];
-  get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
-
-  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P]) => void, once?: boolean): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void, once?: boolean): Callback;
-  
-  get <P extends Model.Key<this>> (
-    argument?: P | P[] | Model.Effect<this>,
-    callback?: Function,
-    once?: boolean){
-
-    if(typeof argument == "function")
-      return createEffect(this, argument);
-
-    const { state } = control(this, true);
-
-    function values(){
-      if(typeof argument == "string")
-        return state[argument];
-
-      if(!argument)
-        return { ...state };
-  
-      const output = {} as any;
-  
-      for(const key of argument as P[])
-        output[key] = state[key];
-  
-      return output;
-    }
-
-    return typeof callback == "function"
-      ? addEventListener(this, argument, () => callback(values()), once)
-      : values();
-  }
-
-  set (): Promise<Model.Event<this>[]>;
-  set (timeout: number): Promise<Model.Event<this>[] | false>;
-
-  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
-  set <K extends Model.Event<this>> (key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
-
-  set(
-    arg1?: number | Model.Event<this> | Model.Compat<this>,
-    arg2?: any){
-
-    const controller = control(this, true);
-    const { state } = controller;
-    let timeout: number | undefined = 0;
-
-    switch(typeof arg1){
-      case "string":
-        if(1 in arguments && arg1 in state)
-          state[arg1] = arg2;
-
-        controller.update(arg1);
-      break;
-
-      case "object":
-        for(const key in state)
-          if(key in arg1 && (!arg2 || arg2.includes(key))){
-            state[key] = (arg1 as any)[key];
-            controller.update(key);
-          }
-      break;
-
-      default:
-        timeout = arg1;
-    }
-
-    return awaitUpdate(controller, timeout);
   }
 
   /** Mark this instance for garbage collection. */
@@ -186,10 +110,14 @@ class Model {
   }
 }
 
-defineProperty(Model.prototype, "toString", {
-  configurable: true,
-  value(){
-    return `${this.constructor.name}-${control(this).id}`;
+defineProperties(Model.prototype, {
+  get: { value: getMethod },
+  set: { value: setMethod },
+  toString: {
+    configurable: true,
+    value(){
+      return `${this.constructor.name}-${control(this).id}`;
+    }
   }
 })
 
