@@ -1,4 +1,4 @@
-import { control } from './control';
+import { Control, control } from './control';
 import { Model } from './model';
 
 export function addEventListener<T extends Model, P extends Model.Event<T>> (
@@ -35,15 +35,11 @@ export function addEventListener<T extends Model, P extends Model.Event<T>> (
   });
 }
 
-export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
-  source: T,
-  select?: P | P[],
-  timeout?: number){
+export function awaitUpdate<T extends Model>(
+  self: Control<T>, timeout?: number){
 
   return new Promise<any>((resolve) => {
     if(timeout === 0){
-      const self = control(source, true);
-
       if(self.frame.size){
         const remove = self.addListener(() => {
           remove();
@@ -54,7 +50,7 @@ export function awaitUpdate<T extends Model, P extends Model.Event<T>>(
         resolve(false);
     }
     else {
-      const remove = addEventListener(source, select, resolve, true);
+      const remove = addEventListener(self.subject, undefined, resolve, true);
   
       if(timeout as number > 0)
         setTimeout(() => {

@@ -169,7 +169,7 @@ class Model {
         timeout = arg1;
     }
 
-    return awaitUpdate(this, undefined, timeout);
+    return awaitUpdate(controller, timeout);
   }
 
   /** Mark this instance for garbage collection. */
