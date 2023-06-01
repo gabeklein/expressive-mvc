@@ -9,18 +9,39 @@ export const Oops = issues({
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
+type ForceUpdate = {
+  /** Force an update in current component. */
+  (): void;
+  
+  /**
+   * Force an update and again after promise either resolves or rejects.
+   * Will return a duplicate of given Promise, which resolves after refresh.
+   */
+  <T = void>(passthru: Promise<T>): Promise<T>
+
+  /**
+   * Force a update while calling async function.
+   * A refresh will occur both before and after given function.
+   * Any actions performed before first `await` will occur before refresh!
+   */
+  <T = void>(invoke: () => Promise<T>): Promise<T>
+};
+
+type Factory<T extends Model, R> =
+  (this: T, current: T, update: ForceUpdate) => R;
+
 /** Fetch instance of this class from context. */
 function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 
 /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
 function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
-function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | R | Promise<R>>): NoVoid<R>;
-function get <T extends Model, R> (this: Model.Type<T>, factory: Model.GetCallback<T, (() => R) | null>): NoVoid<R> | null;
+function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | R | Promise<R>>): NoVoid<R>;
+function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | null>): NoVoid<R> | null;
 
 function get<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.GetCallback<T, any>
+  argument?: boolean | Factory<T, any>
 ){
   return Control.get((dispatch, context) => {
     const refresh = () => dispatch(x => x+1);
