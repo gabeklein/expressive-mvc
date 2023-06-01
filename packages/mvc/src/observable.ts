@@ -55,7 +55,10 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
   if(select)
     for(const key of select)
       try {
-        void self.subject[key];
+        const value = self.subject[key];
+
+        if(!(key in self.state))
+          self.watch(key, { value });
       }
       catch(e){
         // TODO: should this be caught?
@@ -84,8 +87,11 @@ export function setMethod <T extends Model>(
 
   switch(typeof arg1){
     case "string":
-      if(1 in arguments && arg1 in state)
-        state[arg1] = arg2;
+      if(1 in arguments)
+        if(arg1 in state)
+          state[arg1] = arg2;
+        else
+          self.watch(arg1, { value: arg2 });
 
       self.update(arg1);
     break;

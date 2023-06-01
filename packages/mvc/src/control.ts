@@ -91,7 +91,7 @@ class Control<T extends {} = any> {
   static apply = apply;
   static watch = watch;
 
-  public id: string | number;
+  public id?: string | number;
   public subject: T;
 
   public state: { [key: string]: any } = {};
@@ -101,12 +101,14 @@ class Control<T extends {} = any> {
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
-  constructor(subject: T, id?: string | number){
-    this.id = typeof id == "undefined" ? uid() : id;
+  constructor(subject: T, id?: string | number | false){
     this.subject = subject;
-
     REGISTER.set(subject, this);
-    PENDING.set(this, new Set(Control.ready));
+
+    if(id !== false){
+      this.id = id === undefined ? uid() : id;
+      PENDING.set(this, new Set(Control.ready));
+    }
   }
 
   add(key: Extract<keyof T, string>){
@@ -124,7 +126,7 @@ class Control<T extends {} = any> {
   }
 
   watch(
-    key: Extract<keyof T, string>,
+    key: string,
     output: Control.PropertyDescriptor<any>){
 
     const { state } = this;
@@ -230,7 +232,10 @@ class Control<T extends {} = any> {
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  const control = REGISTER.get(subject.is) as Control<T>;
+  if(subject instanceof Model)
+    subject = subject.is as T;
+
+  const control = REGISTER.get(subject) as Control<T>;
   const pending = PENDING.get(control);
 
   if(typeof ready == "function"){

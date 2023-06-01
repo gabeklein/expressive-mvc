@@ -185,7 +185,7 @@ describe("object", () => {
     test.get(effect);
     test.info.foo = "bar";
 
-    await new Promise(res => setTimeout(res, 0));
+    await test.info.set(0);
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -207,7 +207,7 @@ describe("object", () => {
 
     test.info.bar = "foo";
 
-    await new Promise(res => setTimeout(res, 0));
+    await test.info.set(0);
 
     expect(effect).toBeCalledTimes(1);
   })
@@ -258,20 +258,18 @@ describe("object", () => {
   
       const done = info.get("foo", gotFoo);
 
-      expect(gotFoo).toHaveBeenCalledTimes(1);
-
       info.foo = "bar";
-      await new Promise(res => setTimeout(res));
+      await info.set(0);
 
-      expect(gotFoo).toHaveBeenCalledTimes(2);
+      expect(gotFoo).toHaveBeenCalledTimes(1);
 
       /* will unsubscribe when done is called */
 
       done();
       info.foo = "baz";
-      await new Promise(res => setTimeout(res));
+      await info.set(0);
 
-      expect(gotFoo).toHaveBeenCalledTimes(2);
+      expect(gotFoo).toHaveBeenCalledTimes(1);
     })
   
     it("will watch keys added to record", async () => {
@@ -287,11 +285,9 @@ describe("object", () => {
       info.get("foo", gotFoo);
       info.foo = "bar";
   
-      await new Promise(res => setTimeout(res))
+      await info.set(0);
       expect(gotFoo).toHaveBeenCalled();
     })
-
-    it.todo("will implement promise overload");
   })
 
   describe("set method", () => {
@@ -317,13 +313,13 @@ describe("object", () => {
       const { info } = Test.new();
       const gotFoo = jest.fn();
   
-      info.set("foo", "bar");
+      await info.set("foo", "bar");
       expect(info.foo).toBe("bar");
 
       info.get("foo", gotFoo);
       info.foo = "foo";
   
-      await new Promise(res => setTimeout(res))
+      await info.set(0);
       expect(gotFoo).toHaveBeenCalled();
     })
   })

@@ -1,37 +1,13 @@
 import { apply, Control, control, parent } from '../control';
 import { assign, create } from '../helper/object';
 import { Model } from '../model';
+import { getMethod, Observable, setMethod } from '../observable';
 
 type Empty = Record<string, never>;
 
 namespace use {
-  type Key<T extends {}> = Extract<keyof T, string>;
-
-  /**
-   * Assign value to observable property.
-   * 
-   * If property is not already observed, it will become so.
-   */
-  type SetValue<T extends {}> =
-    <K extends Key<T>> (property: K, value: T[K]) => void;
-  
-  /**
-   * Observe property for updates.
-   * 
-   * If property is not already observed, it will become so.
-   */
-  type GetValue<T extends {}> =
-    <K extends Key<T>> (
-      property: K,
-      callback: (value: T[K], key: K) => void
-    ) => () => void;
-  
-  export type Observable<T extends {}> = T & {
-    set: SetValue<T>;
-    get: GetValue<T>;
-  }
-  
-  export type Collection<T> = Observable<{ [key: string | number]: T }>;
+  export type Record<T> = { [key: string | number]: T } & Observable;
+  export type Object<T extends {}> = T & Observable;
 }
 
 /** Create a placeholder for specified Model type. */
@@ -51,10 +27,10 @@ function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
 function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 
 /** Create a managed record with observable entries. */
-function use <T = any, C = use.Collection<T>> (record: Empty, ready?: (object: C) => void): C;
+function use <T = any, C = use.Record<T>> (record: Empty, ready?: (object: C) => void): C;
 
 /** Create a managed object with observable entries. */
-function use <T extends {}, O = use.Observable<T>> (data: T, ready?: (object: O) => void): O;
+function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
 
 function use(
   input?: any,
@@ -89,38 +65,17 @@ function use(
 }
 
 function manage<T extends {}>(next: T){
-  const methods = <use.Observable<T>>{
-    get(key, event){
-      const callback = () => event(next[key], key);
+  const subject = assign(create(next), {
+    get: getMethod,
+    set: setMethod
+  });
 
-      if(!(key in next))
-        control.watch(key, { value: subject[key] });
-
-      callback();
-
-      return control.addListener(k => {
-        if(k === key)
-          return callback;
-
-        if(typeof k !== "string")
-          return k;
-      }) as any;
-    },
-    set(key, value){
-      if(key in next)
-        subject[key] = value;
-      else
-        control.watch(key, { value });
-    }
-  }
-
-  const subject = assign(create(next), methods);
-  const control = new Control<T>(subject);
+  const control = new Control<T>(subject, false);
 
   for(const key in control.state = next)
     control.watch(key, {});
 
-  return subject;
+  return subject as T & Observable;
 }
 
 export { use }
