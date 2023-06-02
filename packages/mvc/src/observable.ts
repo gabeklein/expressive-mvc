@@ -11,14 +11,16 @@ export interface Observable {
   get <P extends Model.Key<this>> (select: P): this[P];
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
 
-  get <P extends Model.Key<this>> (select: P, onUpdate: (this: this, value: this[P], updated: Model.Event<this>) => void, once?: boolean): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Get<this, P>, updated: Model.Event<this>) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: P, onUpdate: (this: this, value: this[P], updated: Model.Event<this>[]) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Get<this, P>, updated: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
 
-  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Event<T>[]>;
-  set <K extends Model.Event<this>> (key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
+  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+
+  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
+  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[] | false>;
 }
 
 export function getMethod <T extends Model, P extends Model.Key<T>> (
