@@ -70,7 +70,7 @@ describe("on single", () => {
     state.seconds = 30;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(30);
+    expect(callback).toBeCalledWith(30, ["seconds"]);
   })
 
   it('will callback for computed value', async () => {
@@ -82,7 +82,7 @@ describe("on single", () => {
     state.seconds = 60;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(1);
+    expect(callback).toBeCalledWith(1, ["seconds", "minutes"]);
   })
 
   it.skip('will callback on null (destoryed)', () => {
@@ -117,7 +117,7 @@ describe("on single", () => {
     state.seconds = 30;
     await expect(state).toUpdate();
 
-    expect(callback).toBeCalledWith(30);
+    expect(callback).toBeCalledWith(30, ["seconds"]);
 
     state.seconds = 45;
     await expect(state).toUpdate();
@@ -140,7 +140,7 @@ describe("on multiple", () => {
     expect(callback).toBeCalledWith({
       "hours": 0,
       "seconds": 30
-    });
+    }, ["seconds"]);
 
     state.hours = 2;
     await expect(state).toUpdate();
@@ -148,7 +148,7 @@ describe("on multiple", () => {
     expect(callback).toBeCalledWith({
       "hours": 2,
       "seconds": 30
-    });
+    }, ["hours"]);
   })
 
   it('will halt in once mode', async () => {
@@ -163,7 +163,10 @@ describe("on multiple", () => {
     expect(callback).toBeCalledWith({
       "minutes": 1,
       "seconds": 60
-    });
+    }, [
+      "seconds",
+      "minutes"
+    ]);
 
     state.seconds = 61;
     await expect(state).toUpdate();

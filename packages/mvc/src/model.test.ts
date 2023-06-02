@@ -288,11 +288,11 @@ describe("get", () => {
     
     await test.set("foo", "foobar");
 
-    expect(didUpdate).toBeCalledWith("foobar");
+    expect(didUpdate).toBeCalledWith("foobar", ["foo"]);
     
     await test.set("foo", "foobarbaz");
 
-    expect(didUpdate).toBeCalledWith("foobarbaz");
+    expect(didUpdate).toBeCalledWith("foobarbaz", ["foo"]);
     expect(didUpdate).toBeCalledTimes(2);
 
     cancel();
@@ -309,11 +309,11 @@ describe("get", () => {
     
     await test.set("foo", "foobar");
 
-    expect(didUpdate).toBeCalledWith({ foo: "foobar" });
+    expect(didUpdate).toBeCalledWith({ foo: "foobar" }, ["foo"]);
     
     await test.set("foo", "foobarbaz");
 
-    expect(didUpdate).toBeCalledWith({ foo: "foobarbaz" });
+    expect(didUpdate).toBeCalledWith({ foo: "foobarbaz" }, ["foo"]);
     expect(didUpdate).toBeCalledTimes(2);
 
     cancel();

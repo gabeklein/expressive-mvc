@@ -35,7 +35,7 @@ describe("property", () => {
     state.ref1.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar");
+    expect(callback).toBeCalledWith("foobar", ["ref1"]);
   })
   
   it('will update "current" when property invoked', async () => {
@@ -46,7 +46,7 @@ describe("property", () => {
     state.ref1("foobar");
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar");
+    expect(callback).toBeCalledWith("foobar", ["ref1"]);
   })
   
   it('will invoke callback if exists', async () => {
@@ -60,7 +60,7 @@ describe("property", () => {
     expect(state.didTrigger).toBeCalledWith(targetValue);
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith(targetValue);
+    expect(callback).toBeCalledWith(targetValue, ["ref2"]);
   })
   
   it('will invoke return-callback on overwrite', async () => {

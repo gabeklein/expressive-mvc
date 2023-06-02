@@ -11,13 +11,13 @@ export interface Observable {
   get <P extends Model.Key<this>> (select: P): this[P];
   get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
 
-  get <P extends Model.Key<this>> (select: P, listener: (this: this, value: this[P]) => void, once?: boolean): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, listener: (this: this, value: Model.Get<this, P>) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: P, onUpdate: (this: this, value: this[P], updated: Model.Event<this>) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Get<this, P>, updated: Model.Event<this>) => void, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
 
-  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Key<T>[]>;
+  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Event<T>[]>;
   set <K extends Model.Event<this>> (key: K, value?: Model.ValueOf<this, K>): Promise<Model.Event<this>[] | false>;
 }
 
@@ -69,7 +69,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
       if(once)
         remove();
 
-      return () => callback(get());
+      return () => callback(get(), self.latest);
     }
   });
 

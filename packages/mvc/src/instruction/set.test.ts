@@ -63,7 +63,7 @@ describe("callback", () => {
     expect(callback).toBeCalledWith(3);
 
     await expect(state).toUpdate()
-    expect(event).toBeCalledWith(2);
+    expect(event).toBeCalledWith(2, ["test"]);
   })
 
   it('will invoke return-callback on overwrite', async () => {
