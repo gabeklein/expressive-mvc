@@ -22,6 +22,8 @@ export const Oops = issues({
     `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
 });
 
+type Type<T extends Model> = Model.Type<T> & typeof Model;
+
 declare namespace get {
   type Function<T, S = any> = (this: S, on: S) => T;
 
@@ -29,8 +31,6 @@ declare namespace get {
 
   type Source<T extends Model = Model> = (callback: (x: T) => void) => void;
 }
-
-type Type<T extends Model> = Model.Type<T> & typeof Model;
 
 /**
  * Fetches and assigns the controller which spawned this host.
