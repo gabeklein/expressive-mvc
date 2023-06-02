@@ -1,5 +1,4 @@
 import { Control, control } from './control';
-import { Debug } from './debug';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
@@ -27,7 +26,7 @@ declare namespace Model {
   /**
    * Subset of `keyof T` which are not methods or defined by base Model U.
    **/
-  export type Key<T, U = Model> = Extract<Exclude<keyof T, keyof U | keyof Debug>, string>;
+  export type Key<T, U = Model> = Extract<Exclude<keyof T, keyof U>, string>;
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
   export type Event<T> = Key<T> | (string & {});
