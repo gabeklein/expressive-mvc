@@ -69,6 +69,7 @@ class Model {
    * Use to obtain full reference from a destructure.
    */
   get is(){
+    // debugger
     return this;
   }
 
@@ -113,6 +114,14 @@ class Model {
 defineProperties(Model.prototype, {
   get: { value: getMethod },
   set: { value: setMethod },
+  on: {
+    configurable: true,
+    writable: true,
+    value(){
+      // TODO: Remove this method on 1.0
+      throw new Error("Model.on() is deprecated. Use Model.get or Model.set instead.")
+    }
+  },
   toString: {
     configurable: true,
     value(){

@@ -126,6 +126,13 @@ describe("Model", () => {
     expect(mockFunction2).toBeCalled();
     expect(mockFunction).toBeCalledTimes(1);
   });
+
+  it('will throw if Model.on is called', () => {
+    const state = Subject.new();
+
+    // @ts-ignore
+    expect(() => state.on()).toThrow();
+  })
 })
 
 describe("dispatch", () => {
