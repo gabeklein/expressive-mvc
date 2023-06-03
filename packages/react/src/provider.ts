@@ -28,7 +28,7 @@ declare namespace Provider {
     for: E;
     fallback?: ReactNode;
     children?: ReactNode | ((instance: I) => ReactNode);
-    use?: Model.Compat<I>;
+    use?: Model.Values<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
@@ -36,7 +36,7 @@ declare namespace Provider {
     for: Multiple<T>;
     fallback?: ReactNode;
     children?: ReactNode;
-    use?: Model.Compat<Instance<T>>;
+    use?: Model.Values<Instance<T>>;
   }
 }
 
