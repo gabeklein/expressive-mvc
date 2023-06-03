@@ -10,6 +10,17 @@ it("will create instance given a class", () => {
 
   expect(hook.output).toBeInstanceOf(Test);
 })
+  
+it('will assign is as a circular reference', async () => {
+  const { output } = render(() => Test.use());
+
+  expect(output.is.value).toBe("foo");
+
+  output.value = "bar";
+  await expect(output).toUpdate();
+
+  expect(output.is.value).toBe("bar")
+})
 
 it("will subscribe to instance of controller", async () => {
   const hook = render(() => Test.use());

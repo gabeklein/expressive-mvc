@@ -5,13 +5,13 @@ function use <T extends Model> (
   this: Model.New<T>,
   callback?: (instance: T) => void,
   repeat?: boolean
-): T;
+): Model.Focus<T>;
 
 function use <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Compat<T>,
   repeat?: boolean
-): T;
+): Model.Focus<T>;
 
 function use <T extends Model> (
   this: Model.New<T>,

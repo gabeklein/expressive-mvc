@@ -35,18 +35,7 @@ describe("Model", () => {
   
     expect(state.value).toBe(3);
   })
-  
-  it('will assign is as a circular reference', async () => {
-    const state = Subject.new();
-  
-    expect(state.is.value).toBe(1);
-  
-    state.value = 2;
-    await expect(state).toUpdate();
-  
-    expect(state.is.value).toBe(2)
-  })
-  
+
   it("will ignore getters and setters", () => {
     class Test extends Model {
       foo = "foo";
@@ -132,6 +121,13 @@ describe("Model", () => {
 
     // @ts-ignore
     expect(() => state.on()).toThrow();
+  })
+
+  it('will throw if Model.is is accessed', () => {
+    const state = Subject.new();
+
+    // @ts-ignore
+    expect(() => state.is).toThrow();
   })
 })
 
@@ -376,24 +372,6 @@ describe("subscriber", () => {
      */ 
     expect(effect).toBeCalledTimes(2);
   });
-
-  it('will ignore properties accessed through get', async () => {
-    const state = Subject.new();
-    const effect = jest.fn(($: Subject) => {
-      void $.value;
-      void $.is.value;
-    })
-
-    state.get(effect);
-
-    state.value = 2;
-    await state.set(0);
-
-    state.value2 = 3;
-    await state.set(0);
-
-    expect(effect).toBeCalledTimes(2);
-  })
 
   it('will not obstruct set-behavior', () => {
     class Test extends Model {

@@ -87,7 +87,7 @@ class Context {
       I = new input();
     }
     else {
-      I = input.is;
+      I = control(input).subject;
       T = I.constructor as Model.New<T>;
       writable = false;
     }

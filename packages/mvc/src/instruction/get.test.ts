@@ -141,25 +141,25 @@ describe("fetch mode", () => {
       })
     }
 
-    const { is: foo, bar } = Foo.new();
+    const foo = Foo.new();
   
     foo.seconds = 30;
   
     await expect(foo).toUpdate();
   
     expect(foo.seconds).toEqual(30);
-    expect(bar.minutes).toEqual(0);
+    expect(foo.bar.minutes).toEqual(0);
   
     foo.seconds = 60;
   
     // make sure both did declare an update
     await Promise.all([
-      expect(bar).toUpdate(),
+      expect(foo.bar).toUpdate(),
       expect(foo).toUpdate()
     ])
   
     expect(foo.seconds).toEqual(60);
-    expect(bar.minutes).toEqual(1);
+    expect(foo.bar.minutes).toEqual(1);
   })
 })
 
@@ -589,12 +589,12 @@ describe("context", () => {
   }
 
   class Bar extends Model {
+    value = "bar";
+
     constructor(){
       super();
       context.add(this);
     }
-
-    value = "bar";
   }
 
   it("will attach peer from context", async () => {
@@ -654,10 +654,9 @@ describe("context", () => {
 
     context.add(Parent.new());
 
-    const hook = render(() => Parent.use().is);
-    const parent = hook.output;
+    const { output } = render(() => Parent.use().is);
 
-    expect(parent.child.parent).toBe(parent);
+    expect(output.child.parent).toBe(output);
   })
 
   it("will throw if parent required in-context", () => {

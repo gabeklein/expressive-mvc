@@ -232,9 +232,6 @@ class Control<T extends {} = any> {
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  if(subject instanceof Model)
-    subject = subject.is as T;
-
   const control = REGISTER.get(subject) as Control<T>;
   const pending = PENDING.get(control);
 
@@ -303,13 +300,18 @@ function parent(child: unknown, assign?: Model){
   PARENTS.set(child as Model, assign);
 }
 
-function watch<T extends {}>(on: T, cb: Observer): T {
-  if(!on.hasOwnProperty("is"))
-    on = defineProperty(create(on), "is", { value: on });
+type Focus<T extends {}> = T & { is: T };
 
-  OBSERVER.set(on, cb);
+function watch<T extends {}>(value: T, cb: Observer){
+  if(!OBSERVER.has(value)){
+    const control = REGISTER.get(value);
+    value = defineProperty(create(value), "is", { value });
+    REGISTER.set(value, control!);
+  }
 
-  return on;
+  OBSERVER.set(value, cb);
+
+  return value as Focus<T>;
 }
 
 function apply<T = any>(instruction: Control.Instruction<T>){

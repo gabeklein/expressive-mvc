@@ -54,6 +54,12 @@ declare namespace Model {
 
   /** Promise thrown by something which is not yet ready. */
   export type Suspense = Promise<void> & Error;
+
+  /**
+   * Reference to `this` without a subscription.
+   * Use to obtain full reference from a destructure.
+   */
+  export type Focus<T> = T & { is: T };
 }
 
 interface Model extends Observable {}
@@ -61,15 +67,6 @@ interface Model extends Observable {}
 class Model {
   constructor(id?: string | number){
     new Control(this, id);
-  }
-
-  /**
-   * Reference to `this` without a subscription.
-   * Use to obtain full reference from a destructure.
-   */
-  get is(){
-    // debugger
-    return this;
   }
 
   /** Mark this instance for garbage collection. */
@@ -113,6 +110,13 @@ class Model {
 defineProperties(Model.prototype, {
   get: { value: getMethod },
   set: { value: setMethod },
+  is: {
+    configurable: true,
+    get(){
+      // TODO: Remove this method on 1.0
+      throw new Error("Model.is property is now is only available from a hook.")
+    }
+  },
   on: {
     configurable: true,
     writable: true,

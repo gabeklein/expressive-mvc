@@ -41,20 +41,20 @@ it("will set active to true for run-duration", async () => {
 
 it("will emit method key before/after activity", async () => {
   let update: readonly string[] | false;
-  const { test, is } = Test.new();
+  const is = Test.new();
 
-  expect(test.active).toBe(false);
+  expect(is.test.active).toBe(false);
 
-  const result = test("foobar");
+  const result = is.test("foobar");
   update = await is.set(0);
 
-  expect(test.active).toBe(true);
+  expect(is.test.active).toBe(true);
   expect(update).toContain("test");
 
   const output = await result;
   update = await is.set(0);
 
-  expect(test.active).toBe(false);
+  expect(is.test.active).toBe(false);
   expect(update).toContain("test");
   expect(output).toBe("foobar");
 })
@@ -68,17 +68,17 @@ it("will throw immediately if already in-progress", () => {
 })
 
 it("will throw and reset if action fails", async () => {
-  const { nope, is: test } = Test.new();
+  const test = Test.new();
 
-  expect(nope.active).toBe(false);
+  expect(test.nope.active).toBe(false);
 
-  const result = nope();
+  const result = test.nope();
 
   await expect(test).toUpdate();
-  expect(nope.active).toBe(true);
+  expect(test.nope.active).toBe(true);
 
   await expect(result).rejects.toThrowError();
-  expect(nope.active).toBe(false);
+  expect(test.nope.active).toBe(false);
 })
 
 it("will complain if property is redefined", () => {
