@@ -10,7 +10,7 @@ class Subject extends Model {
   })
 }
 
-describe("assert", () => {
+describe("set method", () => {
   class Control extends Model {
     foo = 1;
     bar = 2;
@@ -60,7 +60,7 @@ describe("assert", () => {
   })
 })
 
-describe("on single", () => {
+describe("get single", () => {
   it('will callback for specified value', async () => {
     const state = Subject.new();
     const callback = jest.fn();
@@ -126,7 +126,7 @@ describe("on single", () => {
   })
 })
 
-describe("on multiple", () => {
+describe("get multiple", () => {
   it('will watch multiple keys', async () => {
     const state = Subject.new();
     const callback = jest.fn();
@@ -175,7 +175,7 @@ describe("on multiple", () => {
   })
 });
 
-describe("on promise", () => {
+describe("set promise", () => {
   it('will resolve any updated', async () => {
     const state = Subject.new();
     const update = state.set();
