@@ -34,23 +34,15 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> = R extends Ref<infer T> ? T : R;
 
-  /** Actual value belonging to a managed property. */
-  export type ValueOf<T extends {}, K> = K extends keyof T ? Value<T[K]> : undefined;
-
-  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
-
-  /** Object containing managed entries found in T. */
-  export type Entries<T> = { [K in Key<T>]: T[K] };
-
   /** Object comperable to data found in T. */
-  export type Compat<T> = { [K in Key<T>]?: T[K] };
+  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
   /**
    * Values from current state of given controller.
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Get<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
+  export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
   /** Promise thrown by something which is not yet ready. */
   export type Suspense = Promise<void> & Error;

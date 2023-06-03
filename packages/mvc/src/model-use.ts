@@ -9,13 +9,13 @@ function use <T extends Model> (
 
 function use <T extends Model> (
   this: Model.New<T>,
-  apply?: Model.Compat<T>,
+  apply?: Model.Values<T>,
   repeat?: boolean
 ): Model.Focus<T>;
 
 function use <T extends Model> (
   this: Model.New<T>,
-  apply?: Model.Compat<T> | ((instance: T) => void),
+  apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
   const render = Control.use(dispatch => {
@@ -35,7 +35,7 @@ function use <T extends Model> (
           instance.null();
         }
       },
-      render(props?: Model.Compat<T> | ((instance: T) => void)){
+      render(props?: Model.Values<T> | ((instance: T) => void)){
         if(shouldApply){
           onUpdate = undefined;
 

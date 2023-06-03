@@ -9,15 +9,15 @@ export interface Observable {
   get(effect: Model.Effect<this>): Callback;
 
   get <P extends Model.Key<this>> (select: P): this[P];
-  get <P extends Model.Key<this>> (select: Iterable<P>): Model.Get<this, P>;
+  get <P extends Model.Key<this>> (select: Iterable<P>): Model.Export<this, P>;
 
   get <P extends Model.Key<this>> (select: P, onUpdate: (this: this, value: this[P], updated: Model.Event<this>[]) => void, once?: boolean): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Get<this, P>, updated: Model.Event<this>[]) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Export<this, P>, updated: Model.Event<this>[]) => void, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
 
-  set <T extends Model.Compat<this>> (source: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+  set <T extends Model.Values<this>> (source: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
 
   set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[] | false>;
@@ -80,7 +80,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
 
 export function setMethod <T extends Model>(
   this: T,
-  arg1?: number | Model.Event<T> | Model.Compat<T>,
+  arg1?: number | Model.Event<T> | Model.Values<T>,
   arg2?: any){
 
   const self = control(this, true);
