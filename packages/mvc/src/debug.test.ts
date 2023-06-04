@@ -2,20 +2,25 @@ import { Debug } from './debug';
 import { Model } from './model';
 import { mockError } from './helper/testing';
 
-describe("isTypeof", () => {
+describe("is", () => {
   class Test extends Model {}
 
   it("will assert if Model extends another", () => {
     class Test2 extends Test {}
 
-    expect(Test.isTypeof(Test2)).toBe(true);
+    expect(Test.is(Test2)).toBe(true);
   })
 
   it("will be falsy if not super", () => {
     class NotATest extends Model {}
 
-    expect(Model.isTypeof(NotATest)).toBe(true);
-    expect(Test.isTypeof(NotATest)).toBe(false);
+    expect(Model.is(NotATest)).toBe(true);
+    expect(Test.is(NotATest)).toBe(false);
+  })
+
+  it("will throw if called as isTypeof", () => {
+    // @ts-ignore
+    expect(() => Model.isTypeof).toThrow();
   })
 })
 

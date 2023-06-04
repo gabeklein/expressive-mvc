@@ -78,7 +78,7 @@ function get<R, T extends Model>(
     if(arg0 instanceof Model)
       subject = arg0;
 
-    else if(Model.isTypeof(arg0)){
+    else if(Model.is(arg0)){
       const hasParent = parent(subject);
 
       if(!hasParent){

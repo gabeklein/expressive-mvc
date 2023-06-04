@@ -92,7 +92,7 @@ class Model {
    * 
    * Will determine if provided class is a subtype of this one. 
    */
-  static isTypeof<T extends Model.Type>(
+  static is<T extends Model.Type>(
     this: T, maybe: any): maybe is T {
 
     return (
@@ -119,7 +119,16 @@ defineProperties(Model.prototype, {
   }
 });
 
-// TODO: Remove these on 1.0.0 release.
+export { Model }
+
+/* TODO: Remove below on 1.0.0 release. */
+
+defineProperty(Model, "isTypeof", {
+  get(){
+    throw new Error("Model.isTypeof method was renamed. Use Model.is instead.")
+  }
+})
+
 defineProperties(Model.prototype, {
   is: {
     configurable: true,
@@ -135,5 +144,3 @@ defineProperties(Model.prototype, {
     }
   }
 });
-
-export { Model }
