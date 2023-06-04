@@ -75,7 +75,7 @@ describe("get single", () => {
 
   it('will callback for computed value', async () => {
     const state = Subject.new();
-    const callback = jest.fn();
+    const callback = jest.fn<void, [number]>();
 
     state.get("minutes", callback);
 
@@ -98,7 +98,7 @@ describe("get single", () => {
 
   it('will compute pending value early', async () => {
     const state = Subject.new();
-    const callback = jest.fn();
+    const callback = jest.fn<void, [number]>();
 
     state.get("minutes", callback);
 
@@ -110,7 +110,7 @@ describe("get single", () => {
 
   it('will ignore subsequent events in once mode', async () => {
     const state = Subject.new();
-    const callback = jest.fn();
+    const callback = jest.fn<void, [number]>();
 
     state.get("seconds", callback, true);
 
@@ -129,7 +129,10 @@ describe("get single", () => {
 describe("get multiple", () => {
   it('will watch multiple keys', async () => {
     const state = Subject.new();
-    const callback = jest.fn();
+    const callback = jest.fn<void, [{
+      hours: number;
+      seconds: number;
+    }]>();
 
     state.get(["seconds", "hours"], callback);
 
