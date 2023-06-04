@@ -32,7 +32,10 @@ declare namespace Model {
   export type Event<T> = Key<T> | (string & {});
 
   /** Actual value stored in state. */
-  export type Value<R> = R extends Ref<infer T> ? T : R;
+  export type Value<R> =
+    R extends Ref<infer T> ? T :
+    R extends Observable ? Export<R> :
+    R;
 
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };

@@ -2,6 +2,7 @@ import { Model } from "./model";
 import { control } from "./control";
 import { createEffect } from "./effect";
 import { Callback } from "../types";
+import { keys } from "./helper/object";
 
 type OnValue<T, P extends Model.Key<T>> = (this: T, value: T[P], updated: Model.Event<T>[]) => void;
 type OnValues<T, P extends Model.Key<T>> = (this: T, value: Model.Export<T, P>, updated: Model.Event<T>[]) => void;
@@ -37,23 +38,24 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
 
   const self = control(this, true);
 
-  function get(){
-    if(typeof argument == "string")
-      return self.state[argument];
-
-    if(!argument)
-      return { ...self.state };
-
-    const output = {} as any;
-
-    for(const key of argument as P[])
-      output[key] = self.state[key];
-
-    return output;
+  function get(key: P){
+    const value = self.state[key];
+    return value instanceof Model ? value.get() : value;
   }
 
+  const extract = typeof argument == "string"
+    ? () => get(argument)
+    : () => {
+      const output = {} as any;
+
+      for(const key of argument || keys(self.state))
+        output[key] = get(key as P);
+
+      return output;
+    };
+
   if(typeof callback != "function")
-    return get();
+    return extract();
 
   const select = typeof argument == "string" ? [argument] : argument;
 
@@ -74,7 +76,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
       if(once)
         remove();
 
-      return () => callback(get(), self.latest);
+      return () => callback(extract(), self.latest);
     }
   });
 

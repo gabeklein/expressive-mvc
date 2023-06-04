@@ -1,5 +1,6 @@
-import { ref } from './instruction/ref';
 import { get } from './instruction/get';
+import { ref } from './instruction/ref';
+import { use } from './instruction/use';
 import { Model } from './model';
 
 class Subject extends Model {
@@ -59,6 +60,39 @@ describe("get", () => {
       expect(values).toEqual({
         foo: "foo",
         bar: "bar"
+      })
+    })
+
+    it("will export values recursively", () => {
+      class Nested extends Model {
+        foo = 1;
+        bar = 2;
+        baz = 3;
+      }
+      
+      class Test extends Model {
+        foo = "foo";
+        bar = "bar";
+        baz = "baz";
+
+        nested = use(Nested);
+      }
+
+      const test = Test.new();
+      const exported = test.get();
+
+      // We want a copy, not the original.
+      expect(exported.nested).not.toBeInstanceOf(Nested);
+
+      expect(exported).toEqual({
+        foo: "foo",
+        bar: "bar",
+        baz: "baz",
+        nested: {
+          foo: 1,
+          bar: 2,
+          baz: 3
+        }
       })
     })
   })
