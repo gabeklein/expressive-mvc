@@ -465,3 +465,73 @@ describe("suspense", () => {
     expect(willUpdate).toBeCalledTimes(2);
   })
 })
+
+describe("before ready", () => {
+  it('will watch value', async () => {
+    class Test extends Model {
+      value1 = 1;
+
+      constructor(){
+        super();
+        this.get(state => mock(state.value1));
+      }
+    }
+
+    const mock = jest.fn();
+    const state = Test.new();
+
+    state.value1++;
+    await expect(state).toUpdate();
+
+    expect(mock).toBeCalledTimes(2);
+  })
+
+  it('will watch computed value', async () => {
+    class Test extends Model {
+      value1 = 2;
+
+      value2 = get(this, $ => {
+        return $.value1 + 1;
+      });
+      
+      constructor(){
+        super();
+        this.get(state => mock(state.value2));
+      }
+    }
+
+    const mock = jest.fn();
+    const state = Test.new();
+
+    state.value1++;
+    await expect(state).toUpdate();
+
+    expect(mock).toBeCalled();
+  })
+
+  it('will remove listener on callback', async () => {
+    class Test extends Model {
+      value = 1;
+
+      // assigned during constructor phase.
+      done = this.get(state => mock(state.value));
+    }
+
+    const mock = jest.fn();
+    const test = Test.new();
+
+    test.value++;
+    await expect(test).toUpdate();
+    expect(mock).toBeCalledTimes(2);
+
+    test.value++;
+    await expect(test).toUpdate();
+    expect(mock).toBeCalledTimes(3);
+
+    test.done();
+
+    test.value++;
+    await expect(test).toUpdate();
+    expect(mock).toBeCalledTimes(3);
+  })
+});
