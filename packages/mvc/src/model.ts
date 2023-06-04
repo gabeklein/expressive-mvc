@@ -99,13 +99,28 @@ class Model {
   }
 }
 
+defineProperty(Model, "toString", {
+  value(){
+    return this.name;
+  }
+});
+
 defineProperties(Model.prototype, {
   get: { value: getMethod },
   set: { value: setMethod },
+  toString: {
+    configurable: true,
+    value(){
+      return `${this.constructor.name}-${control(this).id}`;
+    }
+  }
+});
+
+// TODO: Remove these on 1.0.0 release.
+defineProperties(Model.prototype, {
   is: {
     configurable: true,
     get(){
-      // TODO: Remove this method on 1.0
       throw new Error("Model.is property is now is only available from a hook.")
     }
   },
@@ -113,22 +128,9 @@ defineProperties(Model.prototype, {
     configurable: true,
     writable: true,
     value(){
-      // TODO: Remove this method on 1.0
       throw new Error("Model.on() is deprecated. Use Model.get or Model.set instead.")
     }
-  },
-  toString: {
-    configurable: true,
-    value(){
-      return `${this.constructor.name}-${control(this).id}`;
-    }
   }
-})
-
-defineProperty(Model, "toString", {
-  value(){
-    return this.name;
-  }
-})
+});
 
 export { Model }
