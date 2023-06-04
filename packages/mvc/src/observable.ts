@@ -3,16 +3,19 @@ import { control } from "./control";
 import { createEffect } from "./effect";
 import { Callback } from "../types";
 
+type OnValue<T, P extends Model.Key<T>> = (this: T, value: T[P], updated: Model.Event<T>[]) => void;
+type OnValues<T, P extends Model.Key<T>> = (this: T, value: Model.Export<T, P>, updated: Model.Event<T>[]) => void;
+
 export interface Observable {
   get(): Model.Export<this>;
 
   get(effect: Model.Effect<this>): Callback;
 
   get <P extends Model.Key<this>> (select: P): this[P];
-  get <P extends Model.Key<this>> (select: Iterable<P>): Model.Export<this, P>;
+  get <P extends Model.Key<this>> (select: P, onUpdate: OnValue<this, P>, once?: boolean): Callback;
 
-  get <P extends Model.Key<this>> (select: P, onUpdate: (this: this, value: this[P], updated: Model.Event<this>[]) => void, once?: boolean): Callback;
-  get <P extends Model.Key<this>> (select: Iterable<P>, onUpdate: (this: this, value: Model.Export<this, P>, updated: Model.Event<this>[]) => void, once?: boolean): Callback;
+  get <P extends Model.Key<this>> (select: P[]): Model.Export<this, P>;
+  get <P extends Model.Key<this>> (select: P[], onUpdate: OnValues<this, P>, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
