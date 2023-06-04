@@ -47,10 +47,21 @@ function Provider<T extends Provider.Item>(
 
   const ambient = useLookup();
   const context = useMemo(() => ambient.push(), []);
+  const reject = (value: any) => {
+    throw new Error(`Provider expects a Model instance or class but got ${value}.`);
+  }
+
+  if(!included)
+    reject(included);
 
   if(typeof included == "function" || included instanceof Model)
     included = { [0]: included };
 
+  Object.entries(included).forEach(([K, V]) => {
+    if(!(Model.is(V) || V instanceof Model))
+      reject(`${V} as ${K}`);
+  })
+  
   context.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
       for(const K in assign)
