@@ -2,102 +2,108 @@ import { Model } from '../model';
 import { ref } from './ref';
 
 describe("property", () => {
-  class Subject extends Model {
-    didTrigger = jest.fn();
-  
-    ref1 = ref<string>();
-  
-    ref2 = ref<symbol>(value => {
-      this.didTrigger(value);
-    })
-  
-    ref3 = ref<number>(() => {
-      return () => {
-        this.didTrigger(true);
-      }
-    })
-  }
-  
   it('will fetch value from ref-object', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
     const state = Subject.new();
   
-    state.ref1.current = "foobar";
+    state.ref.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(state.ref1.current).toBe("foobar");
+    expect(state.ref.current).toBe("foobar");
   })
   
   it('will watch "current" of property', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
     const state = Subject.new();
     const callback = jest.fn()
   
-    state.get("ref1", callback, true);
-    state.ref1.current = "foobar";
+    state.get("ref", callback, true);
+    state.ref.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref1"]);
+    expect(callback).toBeCalledWith("foobar", ["ref"]);
   })
   
   it('will update "current" when property invoked', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
     const state = Subject.new();
     const callback = jest.fn()
   
-    state.get("ref1", callback, true);
-    state.ref1("foobar");
+    state.get("ref", callback, true);
+    state.ref("foobar");
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref1"]);
+    expect(callback).toBeCalledWith("foobar", ["ref"]);
   })
   
-  it('will invoke callback if exists', async () => {
+  it('will invoke callback', async () => {
+    const didTrigger = jest.fn();
+    const didUpdate = jest.fn();
+
+    class Subject extends Model {
+      ref = ref<string>(didTrigger);
+    }
+
     const state = Subject.new();
-    const targetValue = Symbol("inserted object");
-    const callback = jest.fn();
   
-    expect(state.didTrigger).not.toBeCalled();
-    state.get("ref2", callback, true);
-    state.ref2.current = targetValue;
-    expect(state.didTrigger).toBeCalledWith(targetValue);
+    expect(didTrigger).not.toBeCalled();
+    state.get("ref", didUpdate, true);
+    state.ref.current = "foobar";
+    expect(didTrigger).toBeCalledWith("foobar", {});
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith(targetValue, ["ref2"]);
+    expect(didUpdate).toBeCalledWith("foobar", ["ref"]);
   })
   
   it('will invoke return-callback on overwrite', async () => {
+    class Subject extends Model {
+      ref = ref<number>(() => didTrigger);
+    }
+
     const state = Subject.new();
+    const didTrigger = jest.fn();
   
-    state.ref3.current = 1;
-  
-    await expect(state).toUpdate();
-    expect(state.didTrigger).not.toBeCalled();
-    state.ref3.current = 2;
+    state.ref.current = 1;
   
     await expect(state).toUpdate();
-    expect(state.didTrigger).toBeCalledWith(true);
+    expect(didTrigger).not.toBeCalled();
+    state.ref.current = 2;
+  
+    await expect(state).toUpdate();
+    expect(didTrigger).toBeCalled();
   })
   
   it('will export value of ref-properties', () => {
-    const test = Subject.new();
-    const values = {
-      ref1: "foobar",
-      ref2: Symbol("foobar"),
-      ref3: 69420
+    class Subject extends Model {
+      ref = ref<string>();
     }
+
+    const test = Subject.new();
+    const values = { ref: "foobar" }
   
-    test.ref1(values.ref1);
-    test.ref2(values.ref2);
-    test.ref3(values.ref3);
+    test.ref(values.ref);
   
-    const state = test.get();
-  
-    expect(state).toMatchObject(values);
+    expect(test.get()).toMatchObject(values);
   })
   
   it('will be accessible from a proxy', () => {
+    class Subject extends Model {
+      ref = ref<string>()
+    }
+
     const test = Subject.new();
   
     test.get(state => {
-      expect(state.ref1).not.toBeUndefined();
+      expect(state.ref).not.toBeUndefined();
     })
   })
 })
