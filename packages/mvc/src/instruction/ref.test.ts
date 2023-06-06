@@ -81,7 +81,33 @@ describe("property", () => {
     await expect(state).toUpdate();
     expect(didTrigger).toBeCalled();
   })
-  
+
+  it('will not callback when gets null', async () => {
+    const callback = jest.fn()
+
+    class Subject extends Model {
+      ref = ref<string>(callback);
+    }
+
+    const state = Subject.new();
+
+    state.ref(null);
+    expect(callback).not.toBeCalled();
+  });
+
+  it('will callback when on null if ignore false', async () => {
+    const callback = jest.fn()
+
+    class Subject extends Model {
+      ref = ref<string>(callback, false);
+    }
+
+    const state = Subject.new();
+
+    state.ref(null);
+    expect(callback).toBeCalledWith(null);
+  });
+
   it('will export value of ref-properties', () => {
     class Subject extends Model {
       ref = ref<string>();

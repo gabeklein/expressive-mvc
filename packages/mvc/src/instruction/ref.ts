@@ -53,19 +53,28 @@ function ref <O extends Model, R>
  */
 function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
 
+/**
+ * Creates a ref-compatible property.
+ * Will persist value, and updates to this are made part of controller event-stream.
+ *
+ * *Output is simultaneously a ref-function and ref-object, use as needed.*
+ *
+ * @param callback - Optional callback to synchronously fire when reference is first set or does update.
+ * @param ignoreNull - Default `true`. If `false`, will still callback with `null`.
+ */
+function ref <T = HTMLElement> (callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
+
 function ref<T>(
   arg?: ref.Callback<T> | Model,
-  mapper?: (key: string) => any){
+  mapper?: ((key: string) => any) | boolean){
 
   return apply<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg != "object")
-      value = createRef(source, key, arg);
-    else
+    if(typeof arg == "object")
       for(const key in control(arg, true).state){
         defineProperty(value, key,
-          mapper ? {
+          typeof mapper == "function" ? {
             configurable: true,
             get(){
               const out = mapper(key);
@@ -77,6 +86,12 @@ function ref<T>(
           }
         )
       }
+    else
+      value = createRef(source, key,
+        arg && mapper !== false
+          ? (x: T) => x !== null ? arg(x) : undefined
+          : arg  
+      );
 
     source.state[key] = undefined;
     source.observers.set(key, new Set());
