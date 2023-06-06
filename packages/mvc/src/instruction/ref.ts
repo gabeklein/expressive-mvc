@@ -5,10 +5,10 @@ import { Model } from '../model';
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
-    ((next: T) => void) | Promise<void> | void | boolean;
+    ((next: T | null) => void) | Promise<void> | void | boolean;
 
   interface Object<T = any> {
-    (next: T): void;
+    (next: T | null): void;
     current: T | null;
   }
 
