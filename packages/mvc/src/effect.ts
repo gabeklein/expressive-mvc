@@ -60,13 +60,17 @@ export type AssignCallback<T> =
     ((next: T) => void) | Promise<any> | void | boolean;
 
 export function createValueEffect<T = any>(
-  callback: AssignCallback<T>){
+  callback: AssignCallback<T>,
+  ignoreNull?: boolean){
 
   let unSet: ((next: T) => void) | undefined;
 
   return function(this: any, value: any){
     if(typeof unSet == "function")
-      unSet(value);
+      unSet = void unSet(value);
+
+    if(value === null && ignoreNull)
+      return;
 
     const out = callback.call(this, value);
 

@@ -66,18 +66,18 @@ function ref <T = HTMLElement> (callback: ref.Callback<T | null>, ignoreNull: bo
 
 function ref<T>(
   arg?: ref.Callback<T> | Model,
-  mapper?: ((key: string) => any) | boolean){
+  arg2?: ((key: string) => any) | boolean){
 
   return apply<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(typeof arg == "object")
-      for(const key in control(arg, true).state){
+      for(const key in control(arg, true).state)
         defineProperty(value, key,
-          typeof mapper == "function" ? {
+          typeof arg2 == "function" ? {
             configurable: true,
             get(){
-              const out = mapper(key);
+              const out = arg2(key);
               defineProperty(value, key, { value: out });
               return out;
             }
@@ -85,12 +85,9 @@ function ref<T>(
             value: createRef(source, key)
           }
         )
-      }
     else
       value = createRef(source, key,
-        arg && mapper !== false
-          ? (x: T) => x !== null ? arg(x) : undefined
-          : arg  
+        arg && createValueEffect(arg, arg2 !== false)
       );
 
     source.state[key] = undefined;
@@ -104,10 +101,9 @@ export { ref }
 function createRef(
   src: Control,
   key: string,
-  cb?: ref.Callback<any>){
+  cb?: (x: any) => boolean | void){
 
-  const refObjectFunction =
-    src.ref(key, cb && createValueEffect(cb));
+  const refObjectFunction = src.ref(key, cb);
 
   defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
