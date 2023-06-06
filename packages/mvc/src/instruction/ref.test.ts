@@ -58,7 +58,7 @@ describe("property", () => {
     expect(didTrigger).not.toBeCalled();
     state.get("ref", didUpdate, true);
     state.ref.current = "foobar";
-    expect(didTrigger).toBeCalledWith("foobar", {});
+    expect(didTrigger).toBeCalledWith("foobar");
   
     await expect(state).toUpdate();
     expect(didUpdate).toBeCalledWith("foobar", ["ref"]);

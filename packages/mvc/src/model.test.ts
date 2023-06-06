@@ -248,6 +248,6 @@ describe("subscriber", () => {
     })
 
     expect(test.value).toBe("bar");
-    expect(test.didSet).toBeCalledWith("bar", test);
+    expect(test.didSet).toBeCalledWith("bar");
   })
 })

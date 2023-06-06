@@ -56,7 +56,7 @@ export function createEffect<T extends Model>(
 }
 
 export type AssignCallback<T> =
-  (this: any, argument: T, thisArg: any) =>
+  (this: any, argument: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
 export function createValueEffect<T = any>(
@@ -68,7 +68,7 @@ export function createValueEffect<T = any>(
     if(typeof unSet == "function")
       unSet(value);
 
-    const out = callback.call(this, value, this);
+    const out = callback.call(this, value);
 
     if(typeof out == "boolean")
       return out;
