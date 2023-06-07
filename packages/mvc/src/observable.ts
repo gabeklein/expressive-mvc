@@ -4,19 +4,25 @@ import { createEffect } from "./effect";
 import { Callback } from "../types";
 import { keys } from "./helper/object";
 
-type OnValue<T, P extends Model.Key<T>> = (this: T, value: T[P], updated: Model.Event<T>[]) => void;
-type OnValues<T, P extends Model.Key<T>> = (this: T, value: Model.Export<T, P>, updated: Model.Event<T>[]) => void;
+type SelectOne<T, K extends Model.Key<T>> = K;
+type SelectFew<T, K extends Model.Key<T>> = K[];
+
+type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
+
+type Export<T, S> =
+  S extends SelectOne<T, infer P> ? T[P] : 
+  S extends SelectFew<T, infer P> ? Model.Export<T, P> :
+  never;
+
+type OnUpdate<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
 
 export interface Observable {
   get(): Model.Export<this>;
 
+  get <P extends Select<this>> (select: P): Export<this, P>;
+  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, once?: boolean): Callback;
+
   get(effect: Model.Effect<this>): Callback;
-
-  get <P extends Model.Key<this>> (select: P): this[P];
-  get <P extends Model.Key<this>> (select: P, onUpdate: OnValue<this, P>, once?: boolean): Callback;
-
-  get <P extends Model.Key<this>> (select: P[]): Model.Export<this, P>;
-  get <P extends Model.Key<this>> (select: P[], onUpdate: OnValues<this, P>, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]>;
   set (timeout: number): Promise<Model.Event<this>[] | false>;
