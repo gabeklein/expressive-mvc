@@ -17,19 +17,19 @@ declare namespace Model {
 
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
 
+  /**
+   * Subset of `keyof T` which are not methods or defined by base Model U.
+   **/
+  export type Key<T, U = Observable> = Extract<Exclude<keyof T, keyof U>, string>;
+
+  /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
+  export type Event<T> = Key<T> | (string & {});
+
   /** Exotic value, actual value is contained. */
   export type Ref<T = any> = {
     (next: T): void;
     current: T | null;
   }
-
-  /**
-   * Subset of `keyof T` which are not methods or defined by base Model U.
-   **/
-  export type Key<T, U = Model> = Extract<Exclude<keyof T, keyof U>, string>;
-
-  /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
-  export type Event<T> = Key<T> | (string & {});
 
   /** Actual value stored in state. */
   export type Value<R> =
@@ -37,15 +37,15 @@ declare namespace Model {
     R extends Observable ? Export<R> :
     R;
 
-  /** Object comperable to data found in T. */
-  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
-
   /**
    * Values from current state of given controller.
    * 
    * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
    */
   export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
+
+  /** Object comperable to data found in T. */
+  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
   /** Promise thrown by something which is not yet ready. */
   export type Suspense = Promise<void> & Error;
