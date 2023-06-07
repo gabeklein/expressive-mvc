@@ -141,6 +141,6 @@ defineProperties(Model.prototype, {
 });
 
 /** Random alphanumberic of length 6. Will always start with a letter. */
-function uid(){
+export function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
