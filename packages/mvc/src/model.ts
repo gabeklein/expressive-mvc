@@ -61,7 +61,7 @@ interface Model extends Observable {}
 
 class Model {
   constructor(id?: string | number){
-    new Control(this, id);
+    new Control(this, id === undefined ? uid() : id);
   }
 
   /** Mark this instance for garbage collection. */
@@ -144,3 +144,8 @@ defineProperties(Model.prototype, {
     }
   }
 });
+
+/** Random alphanumberic of length 6. Will always start with a letter. */
+function uid(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+}

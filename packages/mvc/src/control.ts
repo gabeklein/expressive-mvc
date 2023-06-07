@@ -91,7 +91,7 @@ class Control<T extends {} = any> {
   static apply = apply;
   static watch = watch;
 
-  public id?: string | number;
+  public id: string | number | false;
   public subject: T;
 
   public state: { [key: string]: any } = {};
@@ -101,14 +101,13 @@ class Control<T extends {} = any> {
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
-  constructor(subject: T, id?: string | number | false){
+  constructor(subject: T, id: string | number | false){
+    this.id = id;
     this.subject = subject;
     REGISTER.set(subject, this);
 
-    if(id !== false){
-      this.id = id === undefined ? uid() : id;
+    if(id !== false)
       PENDING.set(this, new Set(Control.ready));
-    }
   }
 
   add(key: Extract<keyof T, string>){
@@ -331,16 +330,10 @@ function apply<T = any>(instruction: Control.Instruction<T>){
   return placeholder as unknown as T;
 }
 
-/** Random alphanumberic of length 6; will always start with a letter. */
-function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
-}
-
 export {
   apply,
   control,
   Control,
   parent,
-  uid,
   watch
 }
