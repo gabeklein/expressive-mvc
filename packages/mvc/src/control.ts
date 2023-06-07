@@ -110,7 +110,7 @@ class Control<T extends {} = any> {
       PENDING.set(this, new Set(Control.ready));
   }
 
-  add(key: Extract<keyof T, string>){
+  add(key: string){
     const { value } = getOwnPropertyDescriptor(this.subject, key)!;
     const instruction = INSTRUCT.get(value);
 
