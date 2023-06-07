@@ -759,7 +759,7 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Model.Suspense;
+    let suspense: Promise<unknown>;
 
     try {
       void bar.foo;
@@ -767,7 +767,7 @@ describe("async", () => {
     }
     catch(err){
       expect(err).toBeInstanceOf(Promise);
-      suspense = err as Model.Suspense;
+      suspense = err as Promise<unknown>;
     }
 
     await suspense;
@@ -781,7 +781,7 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Model.Suspense;
+    let suspense: Promise<unknown>;
 
     try {
       void bar.foo;
@@ -789,7 +789,7 @@ describe("async", () => {
     }
     catch(err){
       expect(err).toBeInstanceOf(Promise);
-      suspense = err as Model.Suspense;
+      suspense = err as Promise<unknown>;
     }
 
     await suspense;

@@ -46,9 +46,6 @@ declare namespace Model {
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
-  /** Promise thrown by something which is not yet ready. */
-  export type Suspense = Promise<void> & Error;
-
   /**
    * Reference to `this` without a subscription.
    * Use to obtain full reference from a destructure.

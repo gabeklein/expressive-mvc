@@ -1,7 +1,6 @@
 import { Control } from './control';
 import { issues } from './helper/issues';
 import { assign } from './helper/object';
-import { Model } from './model';
 
 export const Oops = issues({
   NotReady: (model, key) =>
@@ -10,7 +9,7 @@ export const Oops = issues({
   Destoryed: () => "Model is destroyed."
 })
 
-export function suspense(source: Control, key: string): Model.Suspense {
+export function suspense(source: Control, key: string): Promise<void> & Error {
   const error = Oops.NotReady(source.subject, key);
   const watch = source.observers.get(key)!;
   const promise = new Promise<void>((resolve, reject) => {
