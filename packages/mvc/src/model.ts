@@ -24,6 +24,21 @@ declare namespace Model {
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
   export type Event<T> = Key<T> | (string & {});
 
+  /** Object comperable to data found in T. */
+  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
+
+  /**
+   * Values from current state of given controller.
+   * Differs from `Values` as values here will drill into "real" values held by exotics like ref.
+   */
+  export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
+
+  /**
+   * Reference to `this` without a subscription.
+   * Use to obtain full reference from a destructure.
+   */
+  export type Focus<T> = T & { is: T };
+
   /** Exotic value, actual value is contained. */
   export type Ref<T = any> = {
     (next: T): void;
@@ -35,22 +50,6 @@ declare namespace Model {
     R extends Ref<infer T> ? T :
     R extends Observable ? Export<R> :
     R;
-
-  /**
-   * Values from current state of given controller.
-   * 
-   * Differs from `Entries` as values here will drill into "real" values held by exotics like ref.
-   */
-  export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
-
-  /** Object comperable to data found in T. */
-  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
-
-  /**
-   * Reference to `this` without a subscription.
-   * Use to obtain full reference from a destructure.
-   */
-  export type Focus<T> = T & { is: T };
 }
 
 interface Model extends Observable {}
