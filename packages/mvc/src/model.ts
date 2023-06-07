@@ -15,11 +15,10 @@ declare namespace Model {
   /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
 
-  export type Effect<T> = (this: T, argument: T) => Callback | Promise<any> | void;
+  /** A callback function which is subscribed to parent and updates when values change. */
+  export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
-  /**
-   * Subset of `keyof T` which are not methods or defined by base Model U.
-   **/
+  /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   export type Key<T, U = Observable> = Extract<Exclude<keyof T, keyof U>, string>;
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */

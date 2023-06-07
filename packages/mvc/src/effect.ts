@@ -15,7 +15,7 @@ export function createEffect<T extends Model>(
 
   return control(source, self => {
     let { subject } = self;
-    let unSet: Callback | Promise<any> | void;
+    let unSet: Callback | Promise<void> | void;
     let busy = false;
 
     function invoke(){
