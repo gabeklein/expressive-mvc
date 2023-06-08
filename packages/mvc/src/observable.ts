@@ -20,7 +20,8 @@ export interface Observable {
   get(): Model.Export<this>;
 
   get <P extends Select<this>> (select: P): Export<this, P>;
-  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, once?: boolean): Callback;
+  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, once?: true): Callback;
+  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, initial?: false): Callback;
 
   get(effect: Model.Effect<this>): Callback;
 
@@ -64,6 +65,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
     return extract();
 
   const select = typeof argument == "string" ? [argument] : argument;
+  const invoke = () => callback(extract(), self.latest || []);
 
   if(select)
     for(const key of select)
@@ -77,12 +79,15 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
         // TODO: should this be caught?
       }
 
+    if(once === undefined)
+      invoke();
+
   const remove = self.addListener(key => {
     if(!select || select.includes(key as P)){
       if(once)
         remove();
 
-      return () => callback(extract(), self.latest);
+      return invoke;
     }
   });
 
