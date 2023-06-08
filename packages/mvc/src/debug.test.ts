@@ -163,7 +163,7 @@ describe("errors", () => {
 
     test.get("value", () => {
       throw expected;
-    });
+    }, false);
 
     test.value = 2;
 
