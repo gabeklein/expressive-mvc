@@ -256,7 +256,7 @@ describe("object", () => {
 
       expect<{ foo: string }>(info);
   
-      const done = info.get("foo", gotFoo);
+      const done = info.get("foo", gotFoo, false);
 
       info.foo = "bar";
       await info.set(0);
