@@ -1,5 +1,9 @@
 .DS_Store
-coverage/
-lib/
-node_modules/
+coverage
+lib
+node_modules
+package-lock.json
+pnpm-lock.yaml
 README_OLD.md
+yarn-error.log
+yarn.lock
