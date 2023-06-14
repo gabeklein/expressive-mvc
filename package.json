@@ -1,13 +1,16 @@
 {
 	"name": "expressive-mvc",
 	"license": "MIT",
+	"private": true,
 	"workspaces": [
-		"packages/*"
+		"packages/*",
+		"docs"
 	],
 	"scripts": {
 		"test": "lerna run test",
 		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
-		"push": "lerna publish"
+		"push": "lerna publish",
+		"docs": "npm --prefix docs run dev"
 	},
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^22.0.0",

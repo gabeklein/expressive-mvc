@@ -1,8 +1,8 @@
 .DS_Store
+.next
 coverage
 lib
 node_modules
-package-lock.json
 pnpm-lock.yaml
 README_OLD.md
 yarn-error.log
