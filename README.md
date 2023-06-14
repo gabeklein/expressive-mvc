@@ -1,7 +1,7 @@
 <br/>
 
 <p align="center">
-  <img height="90" src="./assets/logo.svg" alt="Expressive Logo"/>
+  <img height="90" src=".github/logo.svg" alt="Expressive Logo"/>
   <h1 align="center">
     Expressive MVC
   </h1>
