@@ -9,14 +9,18 @@
     "start": "next start"
   },
   "dependencies": {
+    "@expressive/css": "^1.0.0",
     "next": "^13.4.5",
-    "nextra": "latest",
-    "nextra-theme-docs": "latest",
+    "nextra": "^2.7.1",
+    "nextra-theme-docs": "^2.7.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.22.5",
+    "@expressive/babel-preset-react": "^1.0.2",
     "@types/node": "20.3.1",
+    "babel-loader": "^9.1.2",
     "typescript": "^5.1.3"
   }
 }
