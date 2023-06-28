@@ -26,5 +26,5 @@
     "prebuild": "rm -rf lib/",
     "preversion": "npm run test && npm run build"
   },
-  "version": "0.30.0"
+  "version": "0.31.0"
 }
