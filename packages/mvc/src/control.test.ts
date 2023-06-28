@@ -266,4 +266,28 @@ it("will call create callbacks", () => {
   Test.new();
   
   expect(didCreate).toBeCalled();
+
+  Control.ready.delete(didCreate);
+})
+
+it("will run effect after properties", () => {
+  const mock = jest.fn();
+
+  class Test extends Model {
+    property = does((_key, control) => {
+      this.get(() => {
+        mock(control.state);
+      })
+    })
+
+    foo = 1;
+    bar = 2;
+  }
+
+  Test.new();
+
+  expect(mock).toBeCalledWith({
+    foo: 1,
+    bar: 2
+  });
 })

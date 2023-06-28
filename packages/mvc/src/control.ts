@@ -244,11 +244,10 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   }
 
   if(pending && ready){
-    PENDING.delete(control);
-
     for(const key in control.subject)
       control.add(key);
 
+    PENDING.delete(control);
     pending.forEach(cb => cb(control));
   }
 
