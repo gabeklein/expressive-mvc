@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { ref } from './ref';
+import { ref, Oops } from './ref';
 
 describe("property", () => {
   it('will fetch value from ref-object', async () => {
@@ -217,5 +217,17 @@ describe("mapped", () => {
     expect(fields.foo).toBe("foo");
 
     expect(generateRef).toBeCalledTimes(1);
+  })
+
+  it("will throw if object is not this", () => {
+    class Test extends Model {
+      foo = "foo";
+      bar = "bar";
+      
+      // @ts-expect-error
+      fields = ref({});
+    }
+
+    expect(() => Test.new()).toThrowError(Oops.BadRefObject());
   })
 })
