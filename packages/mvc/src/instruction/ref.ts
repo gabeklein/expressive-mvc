@@ -1,4 +1,4 @@
-import { apply, Control, control } from '../control';
+import { does, Control, control } from '../control';
 import { createValueEffect } from '../effect';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
@@ -68,7 +68,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  return apply<T>((key, source) => {
+  return does<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(typeof arg == "object")

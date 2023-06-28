@@ -1,4 +1,4 @@
-import { apply, Control, parent, watch } from '../control';
+import { does, Control, parent, watch } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
@@ -67,7 +67,7 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return apply<R>((key, control) => {
+  return does<R>((key, control) => {
     let { subject } = control;
 
     if(typeof arg0 == "symbol")

@@ -1,4 +1,4 @@
-import { apply, Control, control, parent } from '../control';
+import { does, Control, control, parent } from '../control';
 import { assign, create } from '../helper/object';
 import { Model } from '../model';
 import { getMethod, Observable, setMethod } from '../observable';
@@ -36,7 +36,7 @@ function use(
   input?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
-  return apply((key, source) => {
+  return does((key, source) => {
     const { state, subject } = source;
 
     if(typeof input === "function")
