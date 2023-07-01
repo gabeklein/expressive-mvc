@@ -1,17 +1,19 @@
-const nextra = require('nextra')({
+import Nextra from 'nextra'
+
+const nextra = Nextra({
   theme: 'nextra-theme-docs',
   themeConfig: './theme.config.tsx',
 });
 
 const withNextra = nextra();
 
-module.exports = {
+export default {
   ...withNextra,
   webpack: (config, options) => {
     config = withNextra.webpack(config, options);
 
     config.module.rules.push({
-      test: /\.js$/,
+      test: /\.jsx?$/,
       exclude: /node_modules/,
       use: [
         options.defaultLoaders.babel,
@@ -20,7 +22,9 @@ module.exports = {
           options: {
             presets: [
               "@babel/preset-typescript",
-              "@expressive/babel-preset-react"
+              ["@expressive/babel-preset-react", {
+
+              }]
             ]
           }
         },
