@@ -3,7 +3,7 @@ import ExpressivePlugin from '@expressive/webpack-plugin';
 
 const nextra = Nextra({
   theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.tsx',
+  themeConfig: './common/Theme.tsx',
 });
 
 export default nextra({
