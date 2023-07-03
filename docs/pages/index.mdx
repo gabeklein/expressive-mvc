@@ -1,11 +1,82 @@
-# Introduction
- 
-Welcome to Nextra! This is a basic docs template. You can use it as a starting point for your own project :)
+import { Tabs, Tab,  } from 'nextra-theme-docs';
 
-## What is Nextra?
+import Link from 'next/link'
+import CounterExample from 'common/Counter';
 
-A **simple**, **powerful** and **flexible** site generation framework with everything you love from Next.js.
+## Overview
 
-## Documentation
+Classes which extend `Model` can manage behavior for components. Models are easy to extend, use and even provide via context. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, typescript controllers instead.
 
-The documentation is available at [https://nextra.site](https://nextra.site).
+## Getting Started
+
+Install with your preferred package manager
+
+<Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
+  <Tab>
+    ```bash copy
+    npm i @expressive/react
+    ```
+  </Tab>
+  <Tab>
+    ```bash copy
+    yarn add @expressive/react
+    ```
+  </Tab>
+  <Tab>
+    ```bash copy
+    pnpm install @expressive/react
+    ```
+  </Tab>
+</Tabs>
+
+#### Then within your apps:
+
+1. Create a class. Fill it with the values, getters, and methods you'll need.
+2. Extend `Model` (or any derivative, for that matter), making it reactive.
+3. Within a component, use built-in methods as you would normal hooks.
+4. Destructure out the values used by a component, to implicitly subscribe.
+5. Update those values on demand. Components will stay synced automagically ✨
+
+
+### A basic example
+
+{/* <CounterExample /> */}
+
+```js
+/* Step 1:
+  Import Model - This is a univeral container for your state.
+*/
+import Model from "@expressive/react";
+
+/* Step 2:
+  Create a class and fill it with values and methods of any kind. 
+*/
+class Counter extends Model {
+  current = 1
+
+  increment = () => { this.current += 1 };
+  decrement = () => { this.current -= 1 };
+}
+
+/* Step 3:
+  Simply use it in a component; built-in method `use()` is a hook.
+  It makes the component stateful as it subscribes to a given model!
+*/
+const KitchenCounter = () => {
+  const { current, increment, decrement } = Counter.use();
+
+  return (
+    <div>
+      <button onClick={decrement}>{"-"}</button>
+      <pre>{current}</pre>
+      <button onClick={increment}>{"+"}</button>
+    </div>
+  )
+}
+````
+
+[View in codesandbox](https://codesandbox.io/s/example-counter-th8xl) 🚀 — You've already got something usable!
+
+Click <Link href="/about">here</Link> to read more.
+
+<br/>
