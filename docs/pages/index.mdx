@@ -1,4 +1,4 @@
-import { Tabs, Tab,  } from 'nextra-theme-docs';
+import { Tabs, Tab, Steps } from 'nextra-theme-docs';
 
 import Link from 'next/link'
 import CounterExample from 'common/Counter';
@@ -9,74 +9,71 @@ Classes which extend `Model` can manage behavior for components. Models are easy
 
 ## Getting Started
 
-Install with your preferred package manager
+<Steps>
+  ### Install `@expressive/react`
 
-<Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
-  <Tab>
-    ```bash copy
-    npm i @expressive/react
-    ```
-  </Tab>
-  <Tab>
-    ```bash copy
-    yarn add @expressive/react
-    ```
-  </Tab>
-  <Tab>
-    ```bash copy
-    pnpm install @expressive/react
-    ```
-  </Tab>
-</Tabs>
+  <Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
+    <Tab>
+      ```bash copy
+      npm i @expressive/react
+      ```
+    </Tab>
+    <Tab>
+      ```bash copy
+      yarn add @expressive/react
+      ```
+    </Tab>
+    <Tab>
+      ```bash copy
+      pnpm install @expressive/react
+      ```
+    </Tab>
+  </Tabs>
 
-#### Then within your apps:
+  ### Import and extend `Model`
 
-1. Create a class. Fill it with the values, getters, and methods you'll need.
-2. Extend `Model` (or any derivative, for that matter), making it reactive.
-3. Within a component, use built-in methods as you would normal hooks.
-4. Destructure out the values used by a component, to implicitly subscribe.
-5. Update those values on demand. Components will stay synced automagically ✨
+  `Model` class is designed to be extended with whatever state and logic you choose.
+  It facilitates a reactive, observable state container for your components but that it.
+  The rest is up to you.
 
+  ```js
+    import Model from "@expressive/react";
 
-### A basic example
+    class Controller extends Model {
+      current = 1
 
-{/* <CounterExample /> */}
+      increment = () => { this.current += 1 };
+      decrement = () => { this.current -= 1 };
+    }
+  ```
 
-```js
-/* Step 1:
-  Import Model - This is a univeral container for your state.
-*/
-import Model from "@expressive/react";
+  > Here we'll also define some methods. This isolates the logic for incrementing
+  > and decrementing the counter, so it doesn't need to live in the component.
 
-/* Step 2:
-  Create a class and fill it with values and methods of any kind. 
-*/
-class Counter extends Model {
-  current = 1
+  ### Use `Controller` as a hook
 
-  increment = () => { this.current += 1 };
-  decrement = () => { this.current -= 1 };
-}
+  Here the `use()` method (inherited from `Model`) is hook which will create,
+  memoize and subscribe to all state used by this component.
 
-/* Step 3:
-  Simply use it in a component; built-in method `use()` is a hook.
-  It makes the component stateful as it subscribes to a given model!
-*/
-const KitchenCounter = () => {
-  const { current, increment, decrement } = Counter.use();
+  ```js
+    function Counter(){
+      const { current, increment, decrement } = Controller.use();
 
-  return (
-    <div>
-      <button onClick={decrement}>{"-"}</button>
-      <pre>{current}</pre>
-      <button onClick={increment}>{"+"}</button>
-    </div>
-  )
-}
-````
+      return (
+        <div>
+          <button onClick={decrement}>{"-"}</button>
+          <pre>{current}</pre>
+          <button onClick={increment}>{"+"}</button>
+        </div>
+      )
+    }
+  ```
 
-[View in codesandbox](https://codesandbox.io/s/example-counter-th8xl) 🚀 — You've already got something usable!
+  ### Play with it!
 
-Click <Link href="/about">here</Link> to read more.
+  <CounterExample />
 
-<br/>
+  Done already? Apparently we have something usable. 🚀 <br />
+  [View in codesandbox](https://codesandbox.io/s/example-counter-th8xl)
+
+</Steps>

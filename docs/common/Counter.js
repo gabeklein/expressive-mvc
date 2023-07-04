@@ -11,6 +11,8 @@ const Example = () => {
   const { current, increment, decrement } = Counter.use();
 
   div: {
+    userSelect: none;
+    WebkitUserSelect: none;
     fontSize: 50;
     display: flex;
     alignItems: center;
@@ -28,9 +30,11 @@ const Example = () => {
     width: 50;
     height: 50;
     display: block;
-    background: 0xf3f3f3;
-    border: 1, solid, 0xddd;
-    borderRadius: 5;
+    background: $shikiTokenComment;
+    border: 0xeee;
+    borderRadius: 99;
+    verticalAlign: middle;
+    color: $shikiColorAnsiBrightWhite;
   }
 
   <div>
