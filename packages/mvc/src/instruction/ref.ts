@@ -1,7 +1,13 @@
-import { apply, Control, control } from '../control';
+import { apply, Control } from '../control';
 import { createValueEffect } from '../effect';
+import { issues } from '../helper/issues';
 import { defineProperty } from '../helper/object';
 import { Model } from '../model';
+
+export const Oops = issues({
+  BadRefObject: () =>
+    `ref instruction does not support object which is not 'this'`
+})
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -71,8 +77,15 @@ function ref<T>(
   return apply<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg == "object")
-      for(const key in control(arg, true).state)
+    if(typeof arg != "object")
+      value = createRef(source, key,
+        arg && createValueEffect(arg, arg2 !== false)
+      );
+
+    else if(arg !== source.subject)
+      throw Oops.BadRefObject();
+    else
+      for(const key in source.state)
         defineProperty(value, key,
           typeof arg2 == "function" ? {
             configurable: true,
@@ -85,10 +98,6 @@ function ref<T>(
             value: createRef(source, key)
           }
         )
-    else
-      value = createRef(source, key,
-        arg && createValueEffect(arg, arg2 !== false)
-      );
 
     source.state[key] = undefined;
     source.observers.set(key, new Set());
