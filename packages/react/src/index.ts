@@ -1,5 +1,5 @@
 import { Context, Control, Model } from '@expressive/mvc';
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Pending, useLookup } from './provider';
 
@@ -25,7 +25,7 @@ Control.use = (adapter) => {
     }
   }
 
-  useLayoutEffect(hook.mount, []);
+  useEffect(hook.mount, []);
 
   return hook.render;
 }
@@ -38,7 +38,7 @@ Control.get = (adapter) => {
   if(!hook)
     return null;
 
-  useLayoutEffect(hook.mount, []);
+  useEffect(hook.mount, []);
 
   return hook.render();
 }
