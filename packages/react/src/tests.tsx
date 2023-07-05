@@ -1,5 +1,7 @@
+import '@testing-library/jest-dom'
+
 import { Model } from '@expressive/mvc';
-import { renderHook, WrapperComponent } from '@testing-library/react-hooks';
+import { render } from '@testing-library/react';
 import React from 'react';
 
 import { Provider } from './provider';
@@ -33,8 +35,13 @@ export function mockHook<T>(
   provide?: Model){
 
   const opts = {} as {
-    wrapper?: WrapperComponent<{}> | undefined;
+    wrapper?: React.FC<{}> | undefined;
   };
+
+  const Component = () => {
+    const value = callback({});
+    return <>{value}</>;
+  }
 
   if(provide)
     opts.wrapper = ({ children }) => (
@@ -43,5 +50,5 @@ export function mockHook<T>(
       </Provider>
     )
 
-  return renderHook(callback, opts);
+  return render(<Component />, opts);
 }
