@@ -1,14 +1,9 @@
 {
-  "index": "Introduction",
-  "another": "Another Page",
-  "about": {
-    "title": "About",
-    "type": "page"
-  },
-  "contact": {
-    "title": "Contact ↗",
-    "type": "page",
-    "href": "https://twitter.com/justGabeK",
-    "newWindow": true
-  }
+  "index": "What is Expressive?",
+  "quickstart": "Getting Started",
+  "concepts": "Concepts",
+  "examples": "Examples",
+  "model": "Model API",
+  "react": "React API",
+  "instructions": "Instructions"
 }

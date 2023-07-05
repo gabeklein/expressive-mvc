@@ -1,0 +1,9 @@
+{
+  "super": "constructor",
+  "get": "Model.get",
+  "set": "Model.set",
+  "null": "Model.null",
+  "is": "Model.is",
+  "static_new": "Model.new (static)",
+  "static_is": "Model.is (static)"
+}

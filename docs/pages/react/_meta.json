@@ -1,0 +1,6 @@
+{
+  "static_use": "Model.use (static)",
+  "static_get": "Model.get (static)",
+  "provider": "Provider",
+  "consumer": "Consumer"
+}

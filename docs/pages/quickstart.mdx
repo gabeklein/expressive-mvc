@@ -3,14 +3,17 @@ import { Tabs, Tab, Steps } from 'nextra-theme-docs';
 import Link from 'next/link'
 import CounterExample from 'common/Counter';
 
-## Overview
+## 0 to 100 real quick.
 
-Classes which extend `Model` can manage behavior for components. Models are easy to extend, use and even provide via context. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, typescript controllers instead.
-
-## Getting Started
+Expressive MVC is architected to be as simple as possible. It's comes with very few opinions.
+The main export `Model` is an (almost) empty class to handle state and reactivity under the hood.
+It's designed to be extended with whatever state and logic you choose, so most actual behavior
+is up to you.
 
 <Steps>
   ### Install `@expressive/react`
+
+  This installs `@expressive/mvc` and reexports it with a react compatibility layer.
 
   <Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
     <Tab>
@@ -39,7 +42,7 @@ Classes which extend `Model` can manage behavior for components. Models are easy
   ```js
     import Model from "@expressive/react";
 
-    class Controller extends Model {
+    class Counter extends Model {
       current = 1
 
       increment = () => { this.current += 1 };
@@ -50,14 +53,14 @@ Classes which extend `Model` can manage behavior for components. Models are easy
   > Here we'll also define some methods. This isolates the logic for incrementing
   > and decrementing the counter, so it doesn't need to live in the component.
 
-  ### Use `Controller` as a hook
+  ### Use `Counter` as a hook
 
   Here the `use()` method (inherited from `Model`) is hook which will create,
   memoize and subscribe to all state used by this component.
 
   ```js
     function Counter(){
-      const { current, increment, decrement } = Controller.use();
+      const { current, increment, decrement } = Counter.use();
 
       return (
         <div>
@@ -75,5 +78,4 @@ Classes which extend `Model` can manage behavior for components. Models are easy
 
   Done already? Apparently we have something usable. 🚀 <br />
   [View in codesandbox](https://codesandbox.io/s/example-counter-th8xl)
-
 </Steps>
