@@ -1,5 +1,5 @@
 import { Model } from '@expressive/mvc';
-import { renderHook, WrapperComponent } from '@testing-library/react-hooks';
+import { act, create } from 'react-test-renderer';
 import React from 'react';
 
 import { Provider } from './provider';
@@ -32,16 +32,52 @@ export function mockHook<T>(
   callback: (props: {}) => T,
   provide?: Model){
 
-  const opts = {} as {
-    wrapper?: WrapperComponent<{}> | undefined;
-  };
+  let value: T;
+  let waiting: (value: T) => void;
+
+  const Component = () => {
+    value = callback({});
+
+    if(waiting)
+      waiting(value);
+
+    return null;
+  }
+
+  let element = <Component />;
 
   if(provide)
-    opts.wrapper = ({ children }) => (
+    element = (
       <Provider for={provide}>
-        {children}
+        {element}
       </Provider>
-    )
+    );
 
-  return renderHook(callback, opts);
+  create(element);
+
+  async function waitFor(fn: () => void | Promise<void>){
+    return act(async () => {
+      const pending = new Promise(res => waiting = res);
+      await fn();
+      await pending;
+    })
+  }
+
+  return {
+    get current(){
+      return value
+    },
+    waitFor
+  }
+}
+
+export async function mockAsyncHook<T>(
+  callback: (props: {}) => T,
+  provide?: Model){
+
+  const render = mockHook(callback, provide);
+
+  await new Promise(res => setTimeout(res, 0));
+  
+  return render;
 }
