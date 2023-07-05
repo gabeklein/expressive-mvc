@@ -2,7 +2,7 @@ import React from 'react';
 import { create } from 'react-test-renderer';
 
 import { Model, Provider, get } from '.';
-import { mockHook } from './tests';
+import { mockAsyncHook, mockHook } from './tests';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
@@ -11,14 +11,13 @@ describe("useContext", () => {
     }
   
     const test = Test.new();
-    const render = mockHook(() => {
-      return Test.get().foo;
-    }, test);
+    const render = await mockAsyncHook(() => Test.get().foo, test);
   
-    expect(render.result.current).toBe("foo");
-    test.foo = "bar";
-  
-    await render.waitForNextUpdate();
+    expect(render.current).toBe("foo");
+
+    await render.waitFor(() => {
+      test.foo = "bar"
+    });
   })
   
   it("will return instance", () => {
@@ -29,8 +28,8 @@ describe("useContext", () => {
     const instance = Test.new();
     const render = mockHook(() => Test.get(), instance);
   
-    expect(render.result.current).toBeInstanceOf(Test);
-    expect(render.result.current.value).toBe(1);
+    expect(render.current).toBeInstanceOf(Test);
+    expect(render.current.value).toBe(1);
   })
 
   it("will return null if factory does", () => {
@@ -39,7 +38,7 @@ describe("useContext", () => {
     const instance = Test.new();
     const render = mockHook(() => Test.get(() => null), instance);
 
-    expect(render.result.current).toBe(null);
+    expect(render.current).toBe(null);
   })
   
   it("will run initial callback syncronously", async () => {
@@ -91,25 +90,25 @@ describe("useContext", () => {
 });
 
 describe("useModel", () => {
-  it("will subscriber to created instance", async () => {
+  it("will subscribe to created instance", async () => {
     class Test extends Model {
       value = 1;
     }
 
     let test!: Test;
   
-    const render = mockHook(() => {
+    const render = await mockAsyncHook(() => {
       test = Test.use();
       return test.value;
     });
 
-    expect(render.result.current).toBe(1);
+    expect(render.current).toBe(1);
 
-    test.value = 2;
+    await render.waitFor(() => {
+      test.value = 2;
+    });
 
-    await render.waitForNextUpdate();
-
-    expect(render.result.current).toBe(2);
+    expect(render.current).toBe(2);
   })
 })
 
