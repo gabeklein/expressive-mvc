@@ -10,7 +10,7 @@ describe("component", () => {
     value?: string = undefined;
   }
   class Bar extends Model {}
-  
+
   it("will create instance of given model", () => {
     create(
       <Provider for={Foo}>
@@ -133,6 +133,12 @@ describe("component", () => {
   
     expect(Consumer).toHaveBeenCalled();
   })
+
+  const error = jest
+    .spyOn(console, "error")
+    .mockImplementation(() => {});
+
+  afterAll(() => error.mockRestore());
 
   it("will throw on bad for prop", () => {
     const render = () => create(
