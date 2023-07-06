@@ -7,7 +7,7 @@ import {
   ReactNode,
   Suspense,
   useContext,
-  useLayoutEffect,
+  useEffect,
   useMemo,
 } from 'react';
 
@@ -74,7 +74,7 @@ function Provider<T extends Provider.Item>(
       pending.forEach(cb => cb(context));
   });
 
-  useLayoutEffect(() => () => context.pop(), []);
+  useEffect(() => () => context.pop(), []);
 
   return createElement(LookupContext.Provider, { value: context, key: context.key },
     fallback === false ? children : createElement(Suspense, { fallback }, children)
