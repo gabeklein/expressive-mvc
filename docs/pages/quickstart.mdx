@@ -3,17 +3,14 @@ import { Tabs, Tab, Steps } from 'nextra-theme-docs';
 import Link from 'next/link'
 import CounterExample from 'common/Counter';
 
-## 0 to 100 real quick.
+## Starting from scratch
 
-Expressive MVC is architected to be as simple as possible. It's comes with very few opinions.
-The main export `Model` is an (almost) empty class to handle state and reactivity under the hood.
-It's designed to be extended with whatever state and logic you choose, so most actual behavior
-is up to you.
+Expressive MVC is architected to be as simple as possible, and needs little to no setup.
+`Model`, an (almost) empty class, handles reactivity under the hook to can accomplish most tasks.
+It's designed to be extended with your own state and logic, so actual behavior can be up to you.
 
 <Steps>
   ### Install `@expressive/react`
-
-  This installs `@expressive/mvc` and reexports it with a react compatibility layer.
 
   <Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
     <Tab>
@@ -35,9 +32,7 @@ is up to you.
 
   ### Import and extend `Model`
 
-  `Model` class is designed to be extended with whatever state and logic you choose.
-  It facilitates a reactive, observable state container for your components but that it.
-  The rest is up to you.
+  Define any values you wish to track within a given component.
 
   ```js
     import Model from "@expressive/react";
@@ -55,11 +50,11 @@ is up to you.
 
   ### Use `Counter` as a hook
 
-  Here the `use()` method (inherited from `Model`) is hook which will create,
+ Static method `use()` (inherited from `Model`) is hook which will create,
   memoize and subscribe to all state used by this component.
 
   ```js
-    function Counter(){
+    function MyCounter(){
       const { current, increment, decrement } = Counter.use();
 
       return (
@@ -79,3 +74,103 @@ is up to you.
   Done already? Apparently we have something usable. 🚀 <br />
   [View in codesandbox](https://codesandbox.io/s/example-counter-th8xl)
 </Steps>
+<hr />
+
+## Migrating from `useState`
+
+Now that we have a base, let's leverage models to improve upon some example code.
+
+### Consolidating state
+
+`useState` is pretty straightforward as hooks go, but it does not scale well.
+Often there's repetition and not *immediately* clear what is intended behavior.
+Lot of closures being created too, which can harm performance if the
+component renders often.
+
+```js
+  function Component(){
+    const [foo, setFoo] = useState(0);
+    const [bar, setBar] = useState(0);
+    const [baz, setBaz] = useState(0);
+
+    return (
+      <div>
+        <button onClick={() => setFoo(x => x+1)}>Foo is {foo}</button>
+        <button onClick={() => setBar(x => x+1)}>Bar is {bar}</button>
+        <button onClick={() => setBaz(x => x+1)}>Baz is {baz}</button>
+      </div>
+    )
+  }
+```
+
+First combine `foo`, `bar` and `baz` into a single hook using Model.
+The built-in [`is` property](/model/is) will help here. It's added to any observable
+(model) when accessed by a subscriber (component). Just a reference to the
+original instance, it allows for assignment after destructuring.
+
+```js {9, 17-19}
+  class Control extends Model {
+    foo = 0;
+    bar = 0;
+    baz = 0;
+  }
+
+  function Component(){
+    const {
+      is: control,
+      foo,
+      bar,
+      baz
+    } = Control.use();
+
+    return (
+      <div>
+        <button onClick={() => control.foo++}>Foo is {foo}</button>
+        <button onClick={() => control.bar++}>Bar is {bar}</button>
+        <button onClick={() => control.baz++}>Baz is {baz}</button>
+      </div>
+    )
+  }
+```
+
+> Because we're assigning directly to `control`, the values will always be
+> up-to-date; we never need to worry about dispatch functions or stale closures.
+
+### Fancy onClick handlers
+
+Just for style-points, we can make our this even cleaner, for which the [`ref` instruction](/instructions/ref) is handy.
+By passing in `this` and a factory function, we can map over our properties and create a handler for each one.
+
+```js {1, 8-10, 18-20}
+  import Model, { ref } from "@expressive/react";
+
+  class Control extends Model {
+    foo = 0;
+    bar = 0;
+    baz = 0;
+
+    plusOne = ref(this, property => {
+      return () => this[property] += 1;
+    })
+  }
+
+  function Component(){
+    const { foo, bar, baz, plusOne } = Control.use();
+
+    return (
+      <div>
+        <button onClick={plusOne.foo}>Foo is {foo}</button>
+        <button onClick={plusOne.bar}>Bar is {bar}</button>
+        <button onClick={plusOne.baz}>Baz is {baz}</button>
+      </div>
+    )
+  }
+```
+
+> `plusOne` inherits all properties from `this`, so whatever exists there is included.
+> This applies to typescript as well as runtime - means no need to repeat similar logic.
+> To implement a change, you only need to update the model.
+
+With this our component officially "dumb" - now entirely managed and only containing display logic.
+It more readible, replacable and efficient. We have a single hook, don't  need to pass a reference to control,
+and even avoid spawning closures for every render (for `onClick`).
