@@ -27,7 +27,7 @@ declare namespace Provider {
   type NormalProps<E, I = Instance<E>> = {
     for: E;
     fallback?: ReactNode;
-    children?: ReactNode | ((instance: I) => ReactNode);
+    children?: ReactNode;
     use?: Model.Values<I>;
   }
 
@@ -43,7 +43,7 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(
   props: Provider.Props<T>
 ): FunctionComponentElement<ProviderProps<Context>> {
-  let { for: included, use: assign } = props;
+  let { for: included, use: assign, children, fallback } = props;
 
   const ambient = useLookup();
   const context = useMemo(() => ambient.push(), []);
@@ -77,10 +77,8 @@ function Provider<T extends Provider.Item>(
   useLayoutEffect(() => () => context.pop(), []);
 
   return createElement(LookupContext.Provider, { value: context, key: context.key },
-    props.fallback == false
-      ? props.children
-      : createElement(Suspense, { fallback: props.fallback || null }, props.children)
-  )
+    fallback === false ? children : createElement(Suspense, { fallback }, children)
+  );
 }
 
 export { Provider };
