@@ -114,7 +114,7 @@ class Control<T extends {} = any> {
     const { value } = getOwnPropertyDescriptor(this.subject, key)!;
     const instruction = INSTRUCT.get(value);
 
-    if(typeof instruction == "function"){
+    if(instruction){
       INSTRUCT.delete(value);
       instruction(this, key);
     }
@@ -276,7 +276,7 @@ function requestUpdateFrame(event: Callback){
 }
 
 function setRecursive(on: Control, key: string, value: Model){
-  const set = (next: Model | undefined) => {
+  function set(next: Model | undefined){
     if(next instanceof value.constructor){
       on.state[key] = next;
       parent(next, on.subject);
