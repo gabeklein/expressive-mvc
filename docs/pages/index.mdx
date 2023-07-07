@@ -1,79 +1,94 @@
-import { Tabs, Tab, Steps } from 'nextra-theme-docs';
-
-import Link from 'next/link'
-import CounterExample from 'common/Counter';
-
 ## Overview
 
-Classes which extend `Model` can manage behavior for components. Models are easy to extend, use and even provide via context. While hooks are great, state and logic are not a part of well-formed JSX. Models help wrap that stuff in robust, typescript controllers instead.
+Expressive MVC is a state-management library for React, built around javascript classes.
+It's an ergonomic alternative to reducer-style managers like [Redux](https://redux.js.org), and is inspired in-part by [MobX](https://mobx.js.org/README.html).
+It comes with built-in support for Context, Suspense, and React Hooks.
 
-## Getting Started
+Expressive works primarily through it's default export [`Model`](/apis/model), a class intended to be extended by you.
+A custom model can contain any number of properties, methods, and instructions, which represent the shape of state managed.
+All updates happen by assigning to properties whereby all subscribers (e.g. components) are notified and refresh automatically.
 
-<Steps>
-  ### Install `@expressive/react`
+{/* > Also, it is good to know that Expressive MVC is not mutually exclusive to an existing solution.
+> While it can easily meet all of your app's needs, is it easy to migrate or used alongside what you already are.
+> It is up to you when and where to replace what works. */}
 
-  <Tabs items={['npm', 'yarn', 'pnpm']} storageKey="selected-pkg-manager">
-    <Tab>
-      ```bash copy
-      npm i @expressive/react
-      ```
-    </Tab>
-    <Tab>
-      ```bash copy
-      yarn add @expressive/react
-      ```
-    </Tab>
-    <Tab>
-      ```bash copy
-      pnpm install @expressive/react
-      ```
-    </Tab>
-  </Tabs>
+## MVC Pattern
 
-  ### Import and extend `Model`
+Like the name suggests, Expressive MVC is based loosely on the [Model-View-Controller](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) style of development.
 
-  `Model` class is designed to be extended with whatever state and logic you choose.
-  It facilitates a reactive, observable state container for your components but that it.
-  The rest is up to you.
+**With this pattern:**
 
-  ```js
-    import Model from "@expressive/react";
+- **Model** will be any class (to extend `Model` naturally) which defines the shape of your state. Think of it like a contract.
+- **View** is a React component that renders the state of one or more Models. Ideally, these would be "stateless components" containing nothing but display logic.
+- **Controller** is an instance of any given Model, managing state and reactivity for one or more components under the hood.
 
-    class Controller extends Model {
-      current = 1
+The key advantage of Expressive is that it is **declarative**.
 
-      increment = () => { this.current += 1 };
-      decrement = () => { this.current -= 1 };
-    }
-  ```
+- You do not need to write code to subscribe to a model, neither to update it.
+- It scales - models can manage just one component or many, using context.
+- It's instanced - models, just like components, are reusable. A model can exist in
+  multiple places, but a controller will only affect components assigned to it.
 
-  > Here we'll also define some methods. This isolates the logic for incrementing
-  > and decrementing the counter, so it doesn't need to live in the component.
+## Models at a glance
 
-  ### Use `Controller` as a hook
+The simplest possible Model is a class with one property, managing one component.
 
-  Here the `use()` method (inherited from `Model`) is hook which will create,
-  memoize and subscribe to all state used by this component.
+```js
+import Model from 'expressive-mvc';
 
-  ```js
-    function Counter(){
-      const { current, increment, decrement } = Controller.use();
+class Control extends Model {
+  current = 0;
+}
+```
 
-      return (
-        <div>
-          <button onClick={decrement}>{"-"}</button>
-          <pre>{current}</pre>
-          <button onClick={increment}>{"+"}</button>
-        </div>
-      )
-    }
-  ```
+All models inherit the static property `use` which returns a local instance of that type.
+Itself a hook, it will both memoize and reduce updates which overlap properties accessed on first render.
 
-  ### Place it in your app
+```jsx
+function Counter() {
+  const control = Control.use();
 
-  <CounterExample />
+  return (
+    <div>
+      <button onClick={() => control.current--}>-</button>
+      <span>{control.current}</span>
+      <button onClick={() => control.current++}>+</button>
+    </div>
+  );
+}
+```
 
-  Done already? Apparently we have something usable. 🚀 <br />
-  [View in codesandbox](https://codesandbox.io/s/example-counter-th8xl)
+> Here, any change to `current` will result in a refresh as you would expect with a `useState`.
 
-</Steps>
+### Managing multiple properties
+
+Most of the time, using a Model is ideal when you want to manage multiple values at once.
+This is easily done by adding more properties to the class.
+
+```js
+  class Control extends Model {
+    foo = 1;
+    bar = 2;
+    baz = 3;
+  }
+```
+
+When using `Control` in a component, unlike the previous example, it is recommended you destruct the properties you need.
+For assignment (having destructured) the provided `is` property is a reference to the original instance.
+
+```jsx
+function Counter() {
+  const { is: control, foo } = Control.use();
+
+  return (
+    <div>
+      <button onClick={() => control.foo--}>-</button>
+      <span>{foo}</span>
+      <button onClick={() => control.foo++}>+</button>
+    </div>
+  );
+}
+```
+
+> In this example, while `bar` and `baz` do exist, if their value change the component will **not** refresh. This is
+becasue only properties accessed are tracked for changes - others are reasonably ignored.
