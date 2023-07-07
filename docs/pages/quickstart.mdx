@@ -84,7 +84,7 @@ Now that we have a base, let's leverage models to improve upon some example code
 
 `useState` is pretty straightforward as hooks go, but it does not scale well.
 Often there's repetition and not *immediately* clear what is intended behavior.
-Lot of closures being created too, which can harm performance if the
+Lot of closures being created here too, which can harm performance if the
 component renders often.
 
 ```js
@@ -104,11 +104,12 @@ component renders often.
 ```
 
 First combine `foo`, `bar` and `baz` into a single hook using Model.
-The built-in [`is` property](/model/is) will help here. It's added to any observable
-(model) when accessed by a subscriber (component). Just a reference to the
-original instance, it allows for assignment after destructuring.
+The built-in [`is` property](/model/is) will help with assignment.
+It's added to any observable (model) when accessed by a subscriber
+(component). Just a reference to the original instance, it allows for
+assignment after destructuring.
 
-```js {9, 17-19}
+```js {8, 12-14}
   class Control extends Model {
     foo = 0;
     bar = 0;
@@ -116,12 +117,7 @@ original instance, it allows for assignment after destructuring.
   }
 
   function Component(){
-    const {
-      is: control,
-      foo,
-      bar,
-      baz
-    } = Control.use();
+    const { is: control, foo, bar, baz } = Control.use();
 
     return (
       <div>
@@ -138,8 +134,8 @@ original instance, it allows for assignment after destructuring.
 
 ### Fancy onClick handlers
 
-Just for style-points, we can make this even cleaner, for which the [`ref` instruction](/instructions/ref) is handy.
-By passing in `this` and a factory function, we can map over our properties and create a handler for each one.
+Just for style-points, we can make this even cleaner, for which the [`ref` instruction](/instructions/ref) will come in handy.
+By passing `this` and a factory function, we can map over our properties and create a handler for each one.
 
 ```js {1, 8-10, 18-20}
   import Model, { ref } from "@expressive/react";
