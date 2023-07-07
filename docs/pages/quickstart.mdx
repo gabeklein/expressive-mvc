@@ -170,3 +170,12 @@ By passing `this` and a factory function, we can map over our properties and cre
 With this our component officially dumb, which is a good thing! Now, it's entirely managed and only contains display logic.
 It's more readible, replacable and efficient. We have a single hook, don't need to pass a reference to control,
 we avoid making new closures on every render (for `onClick`).
+
+## Migrating from `useCallback`
+
+The often overlooked `useCallback` hook is a great way to avoid unnecessary renders caused by the unnecessary creation of new function-objects.
+
+## Migrating from `useEffect`
+
+TBD
+
