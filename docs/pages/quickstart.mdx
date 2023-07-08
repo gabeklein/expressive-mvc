@@ -6,8 +6,8 @@ import CounterExample from 'common/Counter';
 ## Starting from scratch
 
 Expressive MVC is architected to be as simple as possible, and needs little to no setup.
-`Model`, an (almost) empty class, handles reactivity under the hook to can accomplish most tasks.
-It's designed to be extended with your own state and logic, so actual behavior can be up to you.
+`Model` handles reactivity "under the hook" to accomplish most tasks.
+It's designed to be extended with your own state and logic, so any opinions are your own.
 
 <Steps>
   ### Install `@expressive/react`
@@ -76,7 +76,7 @@ It's designed to be extended with your own state and logic, so actual behavior c
 </Steps>
 <hr />
 
-## Migrating from `useState`
+## Migrating `useState`
 
 Now that we have a base, let's leverage models to improve upon some example code.
 
@@ -167,15 +167,15 @@ By passing `this` and a factory function, we can map over our properties and cre
 > This applies to typescript as well as runtime - means no need to repeat similar logic.
 > To implement a change, you only need to update the model.
 
-With this our component officially dumb, which is a good thing! Now, it's entirely managed and only contains display logic.
+With this our component officially dumb, which is smart! Now, it's entirely managed and only contains display logic.
 It's more readible, replacable and efficient. We have a single hook, don't need to pass a reference to control,
 we avoid making new closures on every render (for `onClick`).
 
-## Migrating from `useCallback`
+## Migrating `useCallback`
 
-The often overlooked `useCallback` hook is a great way to avoid unnecessary renders caused by the unnecessary creation of new function-objects.
+The often overlooked `useCallback` hook is a great way to avoid unnecessary renders caused by new closures.
 
-## Migrating from `useEffect`
+## Migrating `useEffect`
 
 TBD
 
