@@ -1,0 +1,42 @@
+## Ref Instruction
+
+TBD
+
+### Fancy onClick handlers
+
+Just for style-points, we can make this even cleaner, for which the [`ref` instruction](/instructions/ref) can help.
+By passing `this` and a factory function, we can map over our properties and create a handler for each one.
+
+```js {1, 8-10, 18-20}
+  import Model, { ref } from "@expressive/react";
+
+  class Control extends Model {
+    foo = 0;
+    bar = 0;
+    baz = 0;
+
+    plusOne = ref(this, property => {
+      return () => this[property] += 1;
+    })
+  }
+
+  function Component(){
+    const { foo, bar, baz, plusOne } = Control.use();
+
+    return (
+      <div>
+        <button onClick={plusOne.foo}>Foo is {foo}</button>
+        <button onClick={plusOne.bar}>Bar is {bar}</button>
+        <button onClick={plusOne.baz}>Baz is {baz}</button>
+      </div>
+    )
+  }
+```
+
+> `plusOne` inherits all properties from `this`, so whatever exists there is included.
+> This applies to typescript as well as runtime - means no need to repeat similar logic.
+> To implement a change, you only need to update the model.
+
+With this our component officially dumb, which is smart! Now, it's entirely managed and only contains display logic.
+It's more readible, replacable and efficient. We have a single hook, don't need to pass a reference to control,
+we avoid making new closures on every render (for `onClick`).

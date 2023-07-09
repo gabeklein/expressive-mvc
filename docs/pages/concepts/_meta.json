@@ -1,8 +1,7 @@
 {
-  "classes": "Why Classes?",
-  "isolation": "State Isolation",
-  "subscription": "Subscription",
-  "context": "Context",
-  "global": "Global State",
-  "instructions": "Instructions"
+  "using_model": "Models",
+  "using_context": "Context",
+  "using_instructions": "Instructions",
+  "composition": "Composition",
+  "subscription": "Subscription"
 }

@@ -16,7 +16,7 @@ All updates happen by assigning to properties, where by subscribers (e.g. compon
 
 Like the name suggests, Expressive MVC is based loosely on the [Model-View-Controller](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller) style of development.
 
-With this pattern:
+In this pattern:
 
 - **Model** - any class (extending `Model` naturally) to define the shape of your state. Think of it like a contract.
 - **View** - react component whitch renders the state from one or more models. <br />
@@ -36,239 +36,40 @@ The key advantages of this architecture:
 
 ## Models at a glance
 
-The simplest possible Model is a class with one property, to manage one component.
+To define a model is as simple as extending `Model` and adding some properties.
+This can be in either typescript or javascript, but typescript is recommended.
 
-```js
-import Model from 'expressive-mvc';
+```ts
+import Model from "@expressive/react";
 
 class Control extends Model {
-  current = 0;
+  current = 1
+
+  increment = () => { this.current += 1 };
+  decrement = () => { this.current -= 1 };
 }
 ```
 
-All models inherit a  static property `use` which returns a local instance of that type.
+All models inherit a static property `use` which returns a local instance of that type.
 Itself a hook, it will both memoize and refresh for updates which overlap property access of the first render.
 
 ```jsx
-function Counter() {
-  const control = Control.use();
+function Counter(){
+  const { current, increment, decrement } = Control.use();
 
   return (
     <div>
-      <button onClick={() => control.current--}>-</button>
-      <span>{control.current}</span>
-      <button onClick={() => control.current++}>+</button>
+      <button onClick={decrement}>{"-"}</button>
+      <pre>{current}</pre>
+      <button onClick={increment}>{"+"}</button>
     </div>
-  );
-}
-```
-
-> Here, any change to `current` will result in a refresh as you would expect with `useState`.
-
-<br /><br /><hr />
-
-### Multiple properties
-
-A Model is ideal when you want to manage multiple values at once.
-
-```js
-  class Control extends Model {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-  }
-```
-
-Working with multiple values, unlike in the previous example, it is recommended you destructure.
-This ensures dependancies are accessed, even if only conditionally.
-
-For assignment (having destructured) the `is` property will get you back the original instance.
-
-```jsx {2, 7}
-function Counter() {
-  const { is: control, foo } = Control.use();
-
-  return (
-    <div>
-      <button onClick={() => control.foo--}>-</button>
-      <span>Foo is {foo}</span>
-      <button onClick={() => control.foo++}>+</button>
-    </div>
-  );
-}
-```
-
-> In this example, while `bar` and `baz` do exist, if their value change the component will **not** refresh. This is
-becasue only values accessed are tracked for changes - others are ignored.
-
-<br /><br /><hr />
-
-### Internal updates
-
-While you can update from the component, but what about the model itself? 
-Since state is on the same instance, just add methods and assign to `this`.
-
-```js
-  class Control extends Model {
-    foo = 1;
-    bar = 2;
-    baz = 3;
-
-    incrementAll = () => {
-      this.foo += 1;
-      this.bar += 2;
-      this.baz += 3;
-    }
-  }
-```
-
-Now, from in the component, call a method instead and all properties will update.
-Notice though, we implement `incrementAll` as an arrow-function to ensure `this` is bound when passed to `onClick`.
-
-```jsx
-function Counter() {
-  const { foo, bar, baz, incrementAll } = Control.use();
-
-  return (
-    <div>
-      <span>Foo is {foo}</span>
-      <span>Bar is {bar}</span>
-      <span>Baz is {baz}</span>
-      <button onClick={incrementAll}>
-        Add one to foo, bar and baz!
-      </button>
-    </div>
-  );
-}
-```
-
-<br /><hr />
-
-### Async control
-
-Since events come from assignment, it's not a huge leap that async stuff is pretty easy.
-Let's do something practical, like say hellow to our API and await a response. We only need to
-track three things - the response, whether we're waiting, and if there was an error.
-
-```jsx showLineNumbers
-class Service extends Model {
-  response = undefined;
-  waiting = false;
-  error = false;
-
-  sayHello = async () => {
-    this.waiting = true;
-
-    try {
-      const res = await fetch("http://service.com/hello");
-      this.response = await res.text();
-    }
-    catch(e) {
-      this.error = true;
-    }
-  }
-}
-
-function HelloWorld(){
-  const { error, response, waiting, sayHello } = Service.use();
-
-  if(response)
-    return <p>Server said: {response}</p>
-
-  if(error)
-    return <p>There was an error saying hello.</p>
-
-  if(waiting)
-    return <p>Sent! Waiting on response...</p>
-
-  return (
-    <a onClick={sayHello}>Say hello to server!</a>
   )
 }
 ```
 
-> If this were all we needed, installing an entire library like 
-[SWR](https://swr.vercel.app/docs/getting-started) (263 kB) or
-[react-query](https://tanstack.com/query/v3/) (2.26 MB),
-would be *massive* overkill. We can do it ourselves with just a few lines of code!
->
-> For reference, all of `@expressive/react` is a hair under 100 kB. 👀
+In this example, all properties in the model are accessed, but this doesn't have to be the case.
+`Model.use` will intelligently refresh only for properties accessed and ignore others.
 
-<br /><hr />
+## Why use classes?
 
-### Reusable Models
-
-Custom models, being classes, can be futher extended as *your own* reusable models.
-When using purpose-built libraries, the main benefit is abstraction.
-Our previous example does its own fetching, and great as a one-off, but to do that
-in multiple places we should make it more generic.
-
-We can rebuild it, we have the typescript. 🦾🤖
-
-```ts filename="Query.ts" {4,6,9, 16-24}
-import { toQueryString } from "helpers";
-import { User } from "types";
-
-abstract class Query<T = any> extends Model {
-  /* instead of hard-coding this, let's make it a parameter */
-  abstract url: string;
-
-  /* Let's add a query feature to our example. */
-  query?: { [param: string]: string | number };
-
-  error?: Error = undefined;
-  response?: T = undefined;
-  waiting = false;
-
-  /* This too could be overridden, to override or format response. */
-  protected async request(): Promise<T> {
-    let { url, query } = this;
-
-    if(query)
-      url += toQueryString(query);
-
-    const res = fetch(url);
-    return await res.json();
-  }
-
-  fetch = async () => {
-    this.waiting = true;
-
-    this.request()
-      .then(res => this.response = res)
-      .catch(e => this.error = e)
-      .finally(() => this.waiting = false);
-  }
-}
-```
-
-With an abstract `Query` meant to be extended, `Users` can be customized using only two properties.
-We can also override `request` to format the response, or change how the request is made.
-Typescript will even warn if we forget something!
-
-```jsx filename="User.ts"
-class Users extends Query {
-  url = "http://service.com/getUsers";
-  query = {
-    name: "John",
-    age: 25
-  };
-}
-
-function UserList(){
-  const { error, response, waiting, fetch } = Users.use();
-
-  if(response)
-    return <p>Users: {response}</p>
-
-  if(error)
-    return <p>There was an error fetching users.</p>
-
-  if(waiting)
-    return <p>Waiting for users...</p>
-
-  return (
-    <a onClick={fetch}>Get users!</a>
-  )
-}
-```
+TBD
