@@ -17,6 +17,6 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@expressive/webpack-plugin": "^1.2.1"
+    "@expressive/webpack-plugin": "^1.2.3"
   }
 }
