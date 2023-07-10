@@ -1,5 +1,6 @@
 .DS_Store
 .next
+.vercel
 coverage
 lib
 node_modules
