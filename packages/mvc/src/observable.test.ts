@@ -300,7 +300,7 @@ describe("set", () => {
       });
     }
   
-    it("will resolve update after assignment", async () => {
+    it("will resolve promise made after assignment", async () => {
       const control = Control.new();
   
       control.foo = 2;
@@ -310,7 +310,7 @@ describe("set", () => {
       await control.set();
     })
   
-    it("will resolve update before assignment", async () => {
+    it("will resolve promise made before assignment", async () => {
       const control = Control.new();
       const update = control.set();
   
