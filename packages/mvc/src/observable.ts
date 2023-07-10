@@ -20,18 +20,40 @@ export interface Observable {
   get(): Model.Export<this>;
 
   get <P extends Select<this>> (select: P): Export<this, P>;
-  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, once?: true): Callback;
-  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, initial?: false): Callback;
+  get <P extends Select<this>> (select: P, callback: OnUpdate<this, P>): Callback;
 
-  get(effect: Model.Effect<this>): Callback;
+  // /** @deprecated use `on` instead */
+  // get <P extends Select<this>> (select: P, callback: OnUpdate<this, P>, once?: true): Callback;
+  // /** @deprecated use `on` instead */
+  // get <P extends Select<this>> (select: P, callback: OnUpdate<this, P>, initial?: false): Callback;
+  // /** @deprecated use `on` instead */
+  // get(effect: Model.Effect<this>): Callback;
 
-  set (): Promise<Model.Event<this>[]>;
-  set (timeout: number): Promise<Model.Event<this>[] | false>;
+  on(effect: Model.Effect<this>): Callback;
 
-  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+  on <P extends Select<this>> (select: P): Promise<Export<this, P>>;
+  on <P extends Select<this>> (select: P, callback: OnUpdate<this, P>, once?: boolean): Callback;
 
-  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
-  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[] | false>;
+  set (timeout?: number): Promise<Model.Event<this>[]>;
+
+  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[]> | false;
+
+  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[]> | false;
+  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]> | false;
+}
+
+export function onMethod <T extends Model, P extends Select<T>> (
+  this: T,
+  argument: P | Model.Effect<T>,
+  callback?: Function,
+  once?: boolean){
+
+  if(typeof argument == "function")
+    return createEffect(this, argument);
+
+  return control(this, self => {
+
+  })
 }
 
 export function getMethod <T extends Model, P extends Model.Key<T>> (
