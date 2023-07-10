@@ -241,6 +241,29 @@ describe("get", () => {
 })
 
 describe("set", () => {
+  it("will force update", async () => {
+    class Subject extends Model {
+      foo = 0;
+    }
+
+    const state = Subject.new();
+
+    state.set("foo");
+
+    await expect(state).toUpdate();
+    expect(state.foo).toBe(0);
+  })
+
+  it("will emit arbitrary event", async () => {
+    class Subject extends Model {}
+
+    const state = Subject.new();
+
+    state.set("something");
+
+    await expect(state).toHaveUpdated(["something"]);
+  })
+
   describe("assign", () => {
     class Test extends Model {
       foo = 0;
