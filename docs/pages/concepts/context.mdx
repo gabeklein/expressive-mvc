@@ -25,7 +25,7 @@ It then makes that model available to all components which access with static [`
 > Note: [`Model.is`](/apis/model/#method-is) here is a reference to the original state, used to update a model.
 
 ```jsx
-const AboutFoo = () => {
+const Foo = () => {
   // Like with `use` we retain types and autocomplete!
   const { is: shared, foo } = FooBar.get();
 
@@ -33,20 +33,20 @@ const AboutFoo = () => {
     <div>
       Shared value foo is: {foo}!
       <button onClick={() => shared.bar++}>
-        Plus one to bar
+        Click increments bar
       </button>
     </div>
   )
 }
 
-const AboutBar = () => {
+const Bar = () => {
   const { is: shared, bar } = FooBar.get();
 
   return (
     <div>
       Shared value bar is: {bar}!
       <button onClick={() => shared.foo++}>
-        Plus one to foo
+        Click increments foo
       </button>
     </div>
   )

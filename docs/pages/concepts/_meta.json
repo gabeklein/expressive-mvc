@@ -1,7 +1,6 @@
 {
-  "using_model": "Models",
-  "using_context": "Context",
-  "using_instructions": "Instructions",
-  "composition": "Composition",
-  "subscription": "Subscription"
+  "models": "Models",
+  "context": "Context",
+  "instructions": "Instructions",
+  "composition": "Composition"
 }
