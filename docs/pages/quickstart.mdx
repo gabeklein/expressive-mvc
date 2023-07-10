@@ -77,14 +77,9 @@ It's designed to be extended with your own state and logic, so any opinions are 
 
 ## Migrating `useState`
 
-Now that we have a base, let's leverage models to improve upon some example code.
-
-### Consolidating state
-
 `useState` is pretty straightforward as hooks go, but it does not scale well.
 Often there's repetition and not *immediately* clear what is intended behavior.
-Lot of closures being created here too, which can harm performance if the
-component renders often.
+Lot of closures get created too, which hurts performance if the component renders often.
 
 ```js
   function Component(){
