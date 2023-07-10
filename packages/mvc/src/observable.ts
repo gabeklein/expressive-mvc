@@ -25,13 +25,13 @@ export interface Observable {
 
   get(effect: Model.Effect<this>): Callback;
 
-  set (): Promise<Model.Event<this>[]>;
-  set (timeout: number): Promise<Model.Event<this>[] | false>;
+  set (timeout: 0): Promise<Model.Event<this>[]> | false;
+  set (timeout?: number): Promise<Model.Event<this>[]>;
 
-  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[]>;
 
-  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
-  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[] | false>;
+  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[]>;
+  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
 }
 
 export function getMethod <T extends Model, P extends Model.Key<T>> (
@@ -126,10 +126,10 @@ export function setMethod <T extends Model>(
       timeout = arg1;
   }
 
-  return new Promise<any>((resolve) => {
-    if(!self.frame.size && timeout === 0)
-      resolve(false);
-      
+  if(!self.frame.size && timeout === 0)
+    return false;
+
+  return new Promise<any>((resolve, reject) => {
     const remove = self.addListener(() => {
       remove();
       return () => resolve(self.latest);
@@ -138,7 +138,7 @@ export function setMethod <T extends Model>(
     if(timeout as number > 0)
       setTimeout(() => {
         remove();
-        resolve(false);
+        reject(timeout);
       }, timeout);
   });
 }

@@ -328,18 +328,18 @@ describe("set", () => {
       expect(updated).toMatchObject(["foo"]);
     })
   
-    it('will resolve false if not pending', async () => {
+    it('will be false if not pending', async () => {
       const control = Control.new();
-      const update = await control.set(0);
+      const update = control.set(0);
   
       expect(update).toBe(false);
     })
   
-    it('will resolve false on timeout', async () => {
+    it('will reject on timeout', async () => {
       const state = Model.new();
-      const update = await state.set(1);
+      const update = state.set(1);
   
-      expect(update).toBe(false);
+      await expect(update).rejects.toBe(1);
     })
   
     it("will include getters in batch which trigger them", async () => {
