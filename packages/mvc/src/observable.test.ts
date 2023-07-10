@@ -312,6 +312,20 @@ describe("set", () => {
       await test.set("foo", "bar");
       expect(test.foo.current).toBe("bar");
     })
+
+    it("will return false if update is noop", () => {
+      const test = Test.new();
+      const didAssign = test.set("foo", 0);
+
+      expect(didAssign).toBe(false);
+    })
+
+    it("will return false if assign is noop", () => {
+      const test = Test.new();
+      const didAssign = test.set({ foo: 0, bar: 1 });
+
+      expect(didAssign).toBe(false);
+    })
   })
   
   describe("detect", () => {

@@ -103,11 +103,20 @@ export function setMethod <T extends Model>(
   const { state } = self;
   let timeout: number | undefined = 0;
 
+  const set = (key: string, value: any) => {
+    if(state[key] != value){
+      state[key] = value;
+      self.update(key);
+    }
+  }
+
   switch(typeof arg1){
     case "string":
       if(1 in arguments)
-        if(arg1 in state)
-          state[arg1] = arg2;
+        if(arg1 in state){
+          set(arg1, arg2);
+          break;
+        }
         else
           self.watch(arg1, { value: arg2 });
 
@@ -116,10 +125,8 @@ export function setMethod <T extends Model>(
 
     case "object":
       for(const key in state)
-        if(key in arg1 && (!arg2 || arg2.includes(key))){
-          state[key] = (arg1 as any)[key];
-          self.update(key);
-        }
+        if(key in arg1 && (!arg2 || arg2.includes(key)))
+          set(key, (arg1 as any)[key]);
     break;
 
     default:
