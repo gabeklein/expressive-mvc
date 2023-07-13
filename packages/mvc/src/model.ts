@@ -129,7 +129,7 @@ defineProperties(Model.prototype, {
   is: {
     configurable: true,
     get(){
-      throw new Error("Model.is property is now is only available from a hook.")
+      throw new Error("Model.is property is only available from a hook.")
     }
   }
 });
