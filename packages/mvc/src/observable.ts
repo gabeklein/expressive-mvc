@@ -24,22 +24,12 @@ export interface Observable {
   get <P extends Select<this>> (select: P): Export<this, P>;
   get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
 
-  // /** @deprecated use `on` instead */
-  // get <P extends Select<this>> (select: P, callback: GetCallback<this, P>, once: true): Callback;
-  // /** @deprecated use `on` instead */
-  // get <P extends Select<this>> (select: P, callback: GetCallback<this, P>, initial: false): Callback;
-
   on(effect: Model.Effect<this>): Callback;
 
   on (timeout?: number): Promise<Model.Event<this>[]>;
 
   on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
   on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
-
-  // /** @deprecated use `on` instead */
-  // set (timeout: 0): Promise<Model.Event<this>[]>;
-  // /** @deprecated use `on` instead */
-  // set (timeout?: number): Promise<Model.Event<this>[]>;
 
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
   set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
@@ -90,8 +80,7 @@ export function onMethod <T extends Model> (
 export function getMethod <T extends Model, P extends Model.Key<T>> (
   this: T,
   argument?: P | P[] | Model.Effect<T>,
-  callback?: Function,
-  once?: boolean){
+  callback?: Function){
 
   if(typeof argument == "function")
     throw new Error("This overload is deprecated - use `on` instead");
@@ -132,19 +121,13 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
         // TODO: should this be caught?
       }
 
-    if(once === undefined)
-      invoke();
+  invoke();
 
-  const remove = self.addListener(key => {
+  return self.addListener(key => {
     if(!select || select.includes(key as P)){
-      if(once)
-        remove();
-
       return invoke;
     }
   });
-
-  return remove;
 }
 
 export function setMethod <T extends Model>(
