@@ -282,7 +282,7 @@ describe("computed", () => {
     expect(compute).toBeCalled();
 
     parent.foo = 2;
-    await parent.set();
+    await parent.on();
 
     // did attempt a second compute
     expect(compute).toBeCalledTimes(2);
@@ -361,7 +361,7 @@ describe("computed", () => {
 
     test.foo = 2;
 
-    await test.set(0);
+    await test.on(0);
 
     expect(willCompute).toBeCalledTimes(1);
     expect(hook.output).toBe(2);

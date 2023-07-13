@@ -8,30 +8,83 @@ type SelectOne<T, K extends Model.Key<T>> = K;
 type SelectFew<T, K extends Model.Key<T>> = K[];
 
 type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
+type Event<T> = Model.Event<T> | (Model.Event<T>)[];
 
 type Export<T, S> =
   S extends SelectOne<T, infer P> ? T[P] : 
   S extends SelectFew<T, infer P> ? Model.Export<T, P> :
   never;
 
-type OnUpdate<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
+type GetCallback<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
+type OnCallback<T> = (this: T, updated: Model.Event<T>[]) => void;
 
 export interface Observable {
   get(): Model.Export<this>;
 
   get <P extends Select<this>> (select: P): Export<this, P>;
-  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, once?: true): Callback;
-  get <P extends Select<this>> (select: P, onUpdate: OnUpdate<this, P>, initial?: false): Callback;
+  get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
 
-  get(effect: Model.Effect<this>): Callback;
+  // /** @deprecated use `on` instead */
+  // get <P extends Select<this>> (select: P, callback: GetCallback<this, P>, once: true): Callback;
+  // /** @deprecated use `on` instead */
+  // get <P extends Select<this>> (select: P, callback: GetCallback<this, P>, initial: false): Callback;
 
-  set (timeout: 0): Promise<Model.Event<this>[]> | false;
-  set (timeout?: number): Promise<Model.Event<this>[]>;
+  on(effect: Model.Effect<this>): Callback;
 
-  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[]>;
+  on (timeout?: number): Promise<Model.Event<this>[]>;
 
-  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[]>;
+  on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
+  on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
+
+  // /** @deprecated use `on` instead */
+  // set (timeout: 0): Promise<Model.Event<this>[]>;
+  // /** @deprecated use `on` instead */
+  // set (timeout?: number): Promise<Model.Event<this>[]>;
+
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
+  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
+
+  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+}
+
+export function onMethod <T extends Model> (
+  this: T,
+  arg?: number | Event<T> | Model.Effect<T>,
+  arg2?: Function | number,
+  once?: boolean){
+
+  if(typeof arg == "function")
+    return createEffect(this, arg);
+
+  if(typeof arg2 == "function")
+    return control(this, self => {
+      const select =
+        typeof arg == "string" ? [arg] :
+        typeof arg == "object" ? arg : undefined;
+
+      const remove = self.addListener(key => {
+        if(select && !select.includes(key!))
+          return;
+
+        if(once)
+          remove();
+
+        return () => arg2.call(this, self.latest);
+      });   
+      
+      return remove;
+    })
+
+  return new Promise((res, rej) => {
+    const timeout = typeof arg == "number" ? arg : arg2 as number;
+    const remove = onMethod.call(this, arg, res, true) as Callback;
+
+    if(typeof timeout == "number")
+      setTimeout(() => {
+        remove();
+        rej(timeout);
+      }, timeout);
+  })
 }
 
 export function getMethod <T extends Model, P extends Model.Key<T>> (
@@ -41,7 +94,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
   once?: boolean){
 
   if(typeof argument == "function")
-    return createEffect(this, argument);
+    throw new Error("This overload is deprecated - use `on` instead");
 
   const self = control(this, true);
 
@@ -96,7 +149,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
 
 export function setMethod <T extends Model>(
   this: T,
-  arg1?: number | Model.Event<T> | Model.Values<T>,
+  arg1?: Model.Event<T> | Model.Values<T>,
   arg2?: any){
 
   const self = control(this, true);
@@ -133,10 +186,10 @@ export function setMethod <T extends Model>(
       timeout = arg1;
   }
 
-  if(!self.frame.size && timeout === 0)
-    return false;
-
   return new Promise<any>((resolve, reject) => {
+    if(!self.frame.size && timeout === 0)
+      return resolve(false);
+
     const remove = self.addListener(() => {
       remove();
       return () => resolve(self.latest);

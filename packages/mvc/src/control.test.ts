@@ -23,7 +23,7 @@ describe("child models", () => {
     const effect = jest.fn();
     let promise = mockPromise();
   
-    parent.get(state => {
+    parent.on(state => {
       const { child } = state;
       const { grandchild } = child;
   
@@ -119,7 +119,7 @@ describe("instruction", () => {
     const instance = Test.new();
     const ran = instance.didRunGetter;
 
-    instance.get(x => void x.property);
+    instance.on(x => void x.property);
 
     expect(ran).toBeCalledWith("property");
 
@@ -224,7 +224,7 @@ describe("instruction", () => {
 
     const state = Test.new();
 
-    state.get(own => {
+    state.on(own => {
       void own.property;
     });
 
@@ -275,7 +275,7 @@ it("will run effect after properties", () => {
 
   class Test extends Model {
     property = apply((_key, control) => {
-      this.get(() => {
+      this.on(() => {
         mock(control.state);
       })
     })

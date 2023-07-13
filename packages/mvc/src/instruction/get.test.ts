@@ -29,7 +29,7 @@ describe("fetch mode", () => {
     
     expect(foo.bar.foo).toBe(foo);
   
-    foo.get(state => {
+    foo.on(state => {
       mockEffect(state.bar.foo.value);
       promise.resolve();
     })
@@ -118,7 +118,7 @@ describe("fetch mode", () => {
       void it.parent.value;
     })
   
-    child.get(effect);
+    child.on(effect);
   
     child.value = "bar";
     await expect(child).toUpdate();
@@ -320,7 +320,7 @@ describe("compute mode", () => {
     expect(state.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.get("c", emit, false);
+    state.on("c", emit, false);
   
     state.a++;
     state.b++;
@@ -376,7 +376,7 @@ describe("compute mode", () => {
   
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.set(0);
+    const updated = await test.on(0);
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -517,7 +517,7 @@ describe("compute mode", () => {
     
       const test = Test.new();
     
-      test.get(state => {
+      test.on(state => {
         didGetNewValue(state.value);
       })
     

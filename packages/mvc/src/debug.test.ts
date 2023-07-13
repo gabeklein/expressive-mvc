@@ -78,7 +78,7 @@ describe("UPDATE", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    const update = await test.set();
+    const update = await test.on();
     const updated = test[Debug.UPDATE];
 
     expect(update).toStrictEqual(updated);
@@ -93,7 +93,7 @@ describe("UPDATE", () => {
     let update: readonly string[] | undefined;
     let fullUpdate: readonly string[] | false;
 
-    test.get(state => {
+    test.on(state => {
       void state.value1;
       void state.value3;
 
@@ -105,7 +105,7 @@ describe("UPDATE", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    fullUpdate = await test.set();
+    fullUpdate = await test.on();
 
     // sanity check
     expect(update).not.toStrictEqual(fullUpdate);
@@ -116,7 +116,7 @@ describe("UPDATE", () => {
 
     test.value3 = 4;
 
-    fullUpdate = await test.set();
+    fullUpdate = await test.on();
 
     // sanity check
     expect(fullUpdate).not.toContain("value1");
@@ -161,13 +161,13 @@ describe("errors", () => {
     const expected = new Error("Goodbye cruel world!")
     const test = Test.new();
 
-    test.get("value", () => {
+    test.on("value", () => {
       throw expected;
     }, false);
 
     test.value = 2;
 
-    await test.set();
+    await test.on();
 
     expect(error).toBeCalledWith(expected);
   });

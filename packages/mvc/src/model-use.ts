@@ -50,7 +50,7 @@ function use <T extends Model> (
           if(!repeat)
             shouldApply = false;
 
-          instance.set(0).then(() => onUpdate = refresh);
+          instance.on(0).then(() => onUpdate = refresh);
         }
 
         return local;

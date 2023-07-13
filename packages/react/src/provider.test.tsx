@@ -5,6 +5,8 @@ import { Consumer, Model, get, set } from '.';
 import { Provider } from './provider';
 import { mockAsync } from './tests';
 
+const timeout = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 describe("component", () => {
   class Foo extends Model {
     value?: string = undefined;
@@ -34,6 +36,7 @@ describe("component", () => {
     );
   
     element.unmount();
+    await timeout(0);
     expect(willDestroy).toBeCalledTimes(1);
   });
   
@@ -46,7 +49,7 @@ describe("component", () => {
     )
   })
   
-  it("will destroy created model on unmount", () => {
+  it("will destroy created model on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Test extends Model {}
@@ -55,16 +58,17 @@ describe("component", () => {
       <Provider for={{ Test }}>
         <Consumer for={Test} has={i => {
           expect(i).toBeInstanceOf(Test)
-          i.get(() => willDestroy);
+          i.on(() => willDestroy);
         }} />
       </Provider>
     );
   
     rendered.unmount();
+    await timeout(0);
     expect(willDestroy).toBeCalled();
   })
   
-  it("will destroy multiple created on unmount", () => {
+  it("will destroy multiple created on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Foo extends Model {}
@@ -73,19 +77,20 @@ describe("component", () => {
     const rendered = create(
       <Provider for={{ Foo, Bar }}>
         <Consumer for={Foo} has={i => {
-          i.get(() => willDestroy);
+          i.on(() => willDestroy);
         }} />
         <Consumer for={Bar} has={i => {
-          i.get(() => willDestroy);
+          i.on(() => willDestroy);
         }} />
       </Provider>
     );
   
     rendered.unmount();
+    await timeout(0);
     expect(willDestroy).toBeCalledTimes(2);
   })
   
-  it("will not destroy given instance on unmount", () => {
+  it("will not destroy given instance on unmount", async () => {
     const didUnmount = jest.fn();
   
     class Test extends Model {}
@@ -95,12 +100,13 @@ describe("component", () => {
     const rendered = create(
       <Provider for={{ instance }}>
         <Consumer for={Test} has={i => {
-          i.get(() => didUnmount);
+          i.on(() => didUnmount);
         }} />
       </Provider>
     );
   
     rendered.unmount();
+    await timeout(0);
     expect(didUnmount).not.toBeCalled();
   })
   

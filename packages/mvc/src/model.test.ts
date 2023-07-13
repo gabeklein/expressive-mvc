@@ -106,7 +106,7 @@ it('will watch function properties', async () => {
 
   const test = Test.new();
 
-  test.get(state => {
+  test.on(state => {
     state.fn();
   });
 
@@ -119,13 +119,6 @@ it('will watch function properties', async () => {
   expect(mockFunction2).toBeCalled();
   expect(mockFunction).toBeCalledTimes(1);
 });
-
-it('will throw if Model.on is called', () => {
-  const state = Subject.new();
-
-  // @ts-ignore
-  expect(() => state.on()).toThrow();
-})
 
 it('will throw if Model.is is accessed', () => {
   const state = Subject.new();
@@ -149,7 +142,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foo");
 
-    const update = await test.set(0);
+    const update = await test.on(0);
     expect(update).toContain("foo");
   })
 
@@ -159,7 +152,7 @@ describe("dispatch", () => {
     test.foo = "bar";
     test.set("foo");
 
-    const update = await test.set(0);
+    const update = await test.on(0);
     expect(update).toContain("foo");
   })
 
@@ -167,7 +160,7 @@ describe("dispatch", () => {
     const test = Test.new();
     test.set("foobar");
 
-    const update = await test.set(0);
+    const update = await test.on(0);
     expect(update).toContain("foobar");
   })
 
@@ -200,13 +193,13 @@ describe("subscriber", () => {
       void $.value2;
     })
 
-    state.get(effect);
+    state.on(effect);
 
     state.value = 2;
-    await state.set(0);
+    await state.on(0);
 
     state.value2 = 3;
-    await state.set(0);
+    await state.on(0);
 
     expect(effect).toBeCalledTimes(3);
   })
@@ -217,13 +210,13 @@ describe("subscriber", () => {
       void $.value;
     })
 
-    state.get(effect);
+    state.on(effect);
 
     state.value = 2;
-    await state.set(0);
+    await state.on(0);
 
     state.value2 = 3;
-    await state.set(0);
+    await state.on(0);
 
     /**
      * we did not access value2 in above accessor,
@@ -243,7 +236,7 @@ describe("subscriber", () => {
 
     expect(test.value).toBe("foo");
 
-    test.get(effect => {
+    test.on(effect => {
       effect.value = "bar";
     })
 

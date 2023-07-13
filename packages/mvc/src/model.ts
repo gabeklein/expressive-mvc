@@ -2,7 +2,7 @@ import { Control, control } from './control';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
-import { getMethod, Observable, setMethod } from './observable';
+import { getMethod, Observable, onMethod, setMethod } from './observable';
 
 import type { Callback } from '../types';
 
@@ -106,6 +106,7 @@ defineProperty(Model, "toString", {
 defineProperties(Model.prototype, {
   get: { value: getMethod },
   set: { value: setMethod },
+  on: { value: onMethod },
   toString: {
     configurable: true,
     value(){
@@ -129,13 +130,6 @@ defineProperties(Model.prototype, {
     configurable: true,
     get(){
       throw new Error("Model.is property is now is only available from a hook.")
-    }
-  },
-  on: {
-    configurable: true,
-    writable: true,
-    value(){
-      throw new Error("Model.on() is deprecated. Use Model.get or Model.set instead.")
     }
   }
 });

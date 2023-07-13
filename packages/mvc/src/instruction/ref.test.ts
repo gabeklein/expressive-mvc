@@ -23,11 +23,11 @@ describe("property", () => {
     const state = Subject.new();
     const callback = jest.fn()
   
-    state.get("ref", callback, true);
+    state.on("ref", callback, true);
     state.ref.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref"]);
+    expect(callback).toBeCalledWith(["ref"]);
   })
   
   it('will update "current" when property invoked', async () => {
@@ -38,11 +38,11 @@ describe("property", () => {
     const state = Subject.new();
     const callback = jest.fn()
   
-    state.get("ref", callback, true);
+    state.on("ref", callback, true);
     state.ref("foobar");
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref"]);
+    expect(callback).toBeCalledWith(["ref"]);
   })
   
   it('will invoke callback', async () => {
@@ -56,12 +56,12 @@ describe("property", () => {
     const state = Subject.new();
   
     expect(didTrigger).not.toBeCalled();
-    state.get("ref", didUpdate, true);
+    state.on("ref", didUpdate, true);
     state.ref.current = "foobar";
     expect(didTrigger).toBeCalledWith("foobar");
   
     await expect(state).toUpdate();
-    expect(didUpdate).toBeCalledWith("foobar", ["ref"]);
+    expect(didUpdate).toBeCalledWith(["ref"]);
   })
   
   it('will invoke return-callback on overwrite', async () => {
@@ -128,7 +128,7 @@ describe("property", () => {
 
     const test = Subject.new();
   
-    test.get(state => {
+    test.on(state => {
       expect(state.ref).not.toBeUndefined();
     })
   })

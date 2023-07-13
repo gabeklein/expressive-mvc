@@ -20,7 +20,7 @@ it('will track recursively', async () => {
   expect(parent.value).toBe("foo");
   expect(parent.child.value).toBe("foo");
 
-  parent.get(mock);
+  parent.on(mock);
 
   parent.value = "bar";
   await expect(parent).toUpdate();
@@ -43,7 +43,7 @@ it('will accept instance', async () => {
     void it.child.value;
   })
 
-  state.get(mock);
+  state.on(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -73,7 +73,7 @@ it('will update on new value', async () => {
     void it.child.value;
   })
 
-  state.get(mock);
+  state.on(mock);
 
   expect(state.child.value).toBe("foo");
 
@@ -110,7 +110,7 @@ it('will reset if value is undefined', async () => {
       void it.child.value;
   })
 
-  state.get(mock);
+  state.on(mock);
 
   state.child = new Child();
   await expect(state).toUpdate();
@@ -152,7 +152,7 @@ it('will still subscribe if initially undefined', async () => {
       void it.child.value;
   })
 
-  state.get(mock);
+  state.on(mock);
   expect(state.child).toBeUndefined();
 
   // Will refresh on repalcement.
@@ -182,10 +182,10 @@ describe("object", () => {
       void state.info.foo;
     });
 
-    test.get(effect);
+    test.on(effect);
     test.info.foo = "bar";
 
-    await test.info.set(0);
+    await test.info.on(0);
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -203,11 +203,11 @@ describe("object", () => {
       void state.info.foo;
     });
 
-    test.get(effect);
+    test.on(effect);
 
     test.info.bar = "foo";
 
-    await test.info.set(0);
+    await test.info.on(0);
 
     expect(effect).toBeCalledTimes(1);
   })
@@ -256,10 +256,10 @@ describe("object", () => {
 
       expect<{ foo: string }>(info);
   
-      const done = info.get("foo", gotFoo, false);
+      const done = info.on("foo", gotFoo, false);
 
       info.foo = "bar";
-      await info.set(0);
+      await info.on(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
 
@@ -267,7 +267,7 @@ describe("object", () => {
 
       done();
       info.foo = "baz";
-      await info.set(0);
+      await info.on(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
     })
@@ -285,7 +285,7 @@ describe("object", () => {
       info.get("foo", gotFoo);
       info.foo = "bar";
   
-      await info.set(0);
+      await info.on(0);
       expect(gotFoo).toHaveBeenCalled();
     })
   })
@@ -319,7 +319,7 @@ describe("object", () => {
       info.get("foo", gotFoo);
       info.foo = "foo";
   
-      await info.set(0);
+      await info.on(0);
       expect(gotFoo).toHaveBeenCalled();
     })
   })

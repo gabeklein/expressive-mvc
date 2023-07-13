@@ -66,7 +66,7 @@ describe("useContext", () => {
     const didUpdateValues = jest.fn();
     const didPushToValues = jest.fn();
   
-    parent.get("values", didUpdateValues, false);
+    parent.on("values", didUpdateValues, false);
   
     const element = create(
       <Provider for={parent}>
@@ -169,7 +169,7 @@ describe("suspense", () => {
     const bar = Bar.new();
     const effect = jest.fn(bar => void bar.foo);
 
-    bar.get(effect);
+    bar.on(effect);
 
     expect(effect).toHaveBeenCalled();
     expect(effect).not.toHaveReturned();
@@ -180,7 +180,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await bar.set();
+    await bar.on();
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);

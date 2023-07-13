@@ -126,7 +126,7 @@ describe("include", () => {
     class Baz extends Model {
       constructor(){
         super();
-        this.get(bazDidNew);
+        this.on(bazDidNew);
       }
     }
 

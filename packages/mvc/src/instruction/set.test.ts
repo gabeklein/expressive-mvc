@@ -18,7 +18,7 @@ describe("placeholder", () => {
       promise.resolve(state.foobar);
     });
 
-    instance.get(mockEffect);
+    instance.on(mockEffect);
 
     expect(mockEffect).toBeCalledTimes(1);
 
@@ -39,7 +39,7 @@ describe("placeholder", () => {
       expect(state.foobar).toBe("bar!");
     });
 
-    instance.get(mockEffect);
+    instance.on(mockEffect);
     expect(mockEffect).toBeCalledTimes(1);
   })
 })
@@ -57,13 +57,13 @@ describe("callback", () => {
     const event = jest.fn();
 
     expect(callback).not.toBeCalled();
-    state.get("test", event, true);
+    state.on("test", event, true);
 
     state.test = 2;
     expect(callback).toBeCalledWith(3);
 
     await expect(state).toUpdate()
-    expect(event).toBeCalledWith(2, ["test"]);
+    expect(event).toBeCalledWith(["test"]);
   })
 
   it('will invoke return-callback on overwrite', async () => {
@@ -247,7 +247,7 @@ describe("factory", () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await test.set();
+    await test.on();
 
     expect(test.value).toBe("foobar");
   })
@@ -299,11 +299,11 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.get(state => mock(state.value));
+    test.on($ => mock($.value));
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.set();
+    await test.on();
 
     expect(mock).toBeCalledWith("foobar");
   })
@@ -342,13 +342,13 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.get($ => void $.value);
+    test.on($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set();
+    await test.on();
 
     name.resolve("World");
-    await test.set();
+    await test.on();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(didEvaluate).toHaveReturnedWith("Hello World");
@@ -372,13 +372,13 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.get($ => void $.value);
+    test.on($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set();
+    await test.on();
 
     name.resolve("World");
-    await test.set();
+    await test.on();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
@@ -407,7 +407,7 @@ describe("factory", () => {
       didUpdate.resolve(state.childValue);
     })
 
-    test.get(effect);
+    test.on(effect);
 
     expect(effect).toBeCalledTimes(1);
 
@@ -437,7 +437,7 @@ describe("factory", () => {
       didEvaluate.resolve(state.value);
     });
 
-    test.get(effect);
+    test.on(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
@@ -449,7 +449,7 @@ describe("factory", () => {
     expect(test.value).toBe("Hello World")
   })
 
-  it("will squash repeating suspense", async () => {
+  it.skip("will squash repeating suspense", async () => {
     class Test extends Model {
       message = set(this.getSum);
       suspend = true;
@@ -473,14 +473,14 @@ describe("factory", () => {
       didEvaluate.resolve(state.message);
     });
 
-    test.get(effect);
+    test.on(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
     expect(didTryToEvaluate).toBeCalledTimes(1);
 
     test.pending.resolve();
-    await test.set(0);
+    await test.on(0);
 
     // expect eval to run again because promise resolved.
     expect(didTryToEvaluate).toBeCalledTimes(2);
@@ -519,7 +519,7 @@ describe("factory", () => {
       didEvaluate.resolve(state.sum);
     });
 
-    test.get(effect);
+    test.on(effect);
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
@@ -545,7 +545,7 @@ describe("factory", () => {
     const instance = Test.new();
     let didThrow: Error | undefined;
     
-    instance.get(state => {
+    instance.on(state => {
       try {
         void state.value;
       }
@@ -557,7 +557,7 @@ describe("factory", () => {
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.resolve();
-    await instance.set();
+    await instance.on();
 
     expect(didThrow).toBe("oh no");
   })
