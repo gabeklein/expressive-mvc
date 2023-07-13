@@ -47,8 +47,17 @@ function use(
         parent(next, subject);
         control(next, true);
       }
-      else if(next)
-        next = manage(next);
+      else if(next){
+        const subject = create(next);
+        const control = new Control(subject, false);
+
+        makeObservable(next as Observable);
+
+        for(const key in control.state = next)
+          control.watch(key, {});
+
+        next = subject;
+      }
 
       state[key] = next;
 
@@ -62,18 +71,6 @@ function use(
 
     return { set };
   })
-}
-
-function manage<T extends {}>(next: T){
-  const subject = create(next);
-  const control = new Control<T>(subject, false);
-
-  makeObservable(subject);
-
-  for(const key in control.state = next)
-    control.watch(key, {});
-
-  return subject as T & Observable;
 }
 
 export { use }
