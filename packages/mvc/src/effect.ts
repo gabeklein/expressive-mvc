@@ -1,4 +1,4 @@
-import { control, watch } from './control';
+import { control, subscribe } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 import { mayRetry } from './suspense';
@@ -43,7 +43,7 @@ export function createEffect<T extends Model>(
 
     let refresh: (() => void) | null;
 
-    subject = watch(subject, () => refresh);
+    subject = subscribe(subject, () => refresh);
     self.followers.add(key => (
       key === null || refresh === null ? refresh : undefined
     ));
