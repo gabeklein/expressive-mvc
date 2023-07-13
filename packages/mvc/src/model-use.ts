@@ -1,4 +1,4 @@
-import { Control } from "./control";
+import { Control, control, subscribe } from "./control";
 import { Model } from "./model";
 
 function use <T extends Model> (
@@ -19,8 +19,9 @@ function use <T extends Model> (
   repeat?: boolean){
 
   const render = Control.use(dispatch => {
+    // const instance = new this();
     const instance = this.new();
-    const local = Control.watch(instance, () => onUpdate);
+    const local = subscribe(instance, () => onUpdate);
     const refresh = () => dispatch(x => x+1);
 
     let onUpdate: (() => void) | undefined | null;
@@ -29,6 +30,7 @@ function use <T extends Model> (
     return {
       instance,
       mount(){
+        control(instance, true);
         onUpdate = refresh;
         return () => {
           onUpdate = null;

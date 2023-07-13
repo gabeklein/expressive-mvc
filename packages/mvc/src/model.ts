@@ -61,7 +61,7 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
-    control(this, true).clear();
+    control(this).clear();
   }
 
   static get = get;
@@ -78,7 +78,7 @@ class Model {
     this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
 
     const instance = new this(...args);
-    control(instance, true);
+    control(instance, true)();
     return instance;
   }
 

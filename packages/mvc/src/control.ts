@@ -89,7 +89,6 @@ class Control<T extends {} = any> {
 
   static for = control;
   static apply = apply;
-  static watch = watch;
 
   public id: string | number | false;
   public subject: T;
@@ -153,7 +152,7 @@ class Control<T extends {} = any> {
           ? output.get(this) : state[key];
 
         return event && REGISTER.has(value)
-          ? watch(value, event)
+          ? subscribe(value, event)
           : value;
       }
     });
@@ -228,8 +227,9 @@ class Control<T extends {} = any> {
   }
 }
 
+function control<T extends Model>(subject: T): Control<T>;
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
-function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
+function control<T extends Model>(subject: T, ready: boolean): Callback;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
   const control = REGISTER.get(subject) as Control<T>;
   const pending = PENDING.get(control);
@@ -247,8 +247,10 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
     for(const key in control.subject)
       control.add(key);
 
-    PENDING.delete(control);
-    pending.forEach(cb => cb(control));
+    return () => {
+      PENDING.delete(control);
+      pending.forEach(cb => cb(control));
+    }
   }
 
   return control;
@@ -300,7 +302,7 @@ function parent(child: unknown, assign?: Model){
 
 type Focus<T extends {}> = T & { is: T };
 
-function watch<T extends {}>(value: T, cb: Observer){
+function subscribe<T extends {}>(value: T, cb: Observer){
   if(!OBSERVER.has(value)){
     const control = REGISTER.get(value);
     value = defineProperty(create(value), "is", { value });
@@ -334,5 +336,5 @@ export {
   control,
   Control,
   parent,
-  watch
+  subscribe
 }
