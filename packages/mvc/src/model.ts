@@ -2,7 +2,7 @@ import { Control, control } from './control';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
-import { getMethod, Observable, onMethod, setMethod } from './observable';
+import { makeObservable, Observable } from './observable';
 
 import type { Callback } from '../types';
 
@@ -103,17 +103,7 @@ defineProperty(Model, "toString", {
   }
 });
 
-defineProperties(Model.prototype, {
-  get: { value: getMethod },
-  set: { value: setMethod },
-  on: { value: onMethod },
-  toString: {
-    configurable: true,
-    value(){
-      return `${this.constructor.name}-${control(this).id}`;
-    }
-  }
-});
+makeObservable(Model.prototype);
 
 export { Model }
 

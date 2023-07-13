@@ -2,7 +2,7 @@ import { Model } from "./model";
 import { control } from "./control";
 import { createEffect } from "./effect";
 import { Callback } from "../types";
-import { keys } from "./helper/object";
+import { defineProperties, keys } from "./helper/object";
 
 type SelectOne<T, K extends Model.Key<T>> = K;
 type SelectFew<T, K extends Model.Key<T>> = K[];
@@ -17,6 +17,20 @@ type Export<T, S> =
 
 type GetCallback<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
 type OnCallback<T> = (this: T, updated: Model.Event<T>[]) => void;
+
+export function makeObservable(to: Observable){
+  defineProperties(to, {
+    on: { value: onMethod },
+    get: { value: getMethod },
+    set: { value: setMethod },
+    toString: {
+      configurable: true,
+      value(){
+        return `${this.constructor.name}-${control(this).id}`;
+      }
+    }
+  });
+}
 
 export interface Observable {
   get(): Model.Export<this>;
@@ -37,7 +51,7 @@ export interface Observable {
   set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
 }
 
-export function onMethod <T extends Model> (
+function onMethod <T extends Model> (
   this: T,
   arg?: number | Event<T> | Model.Effect<T>,
   arg2?: Function | number,
@@ -77,7 +91,7 @@ export function onMethod <T extends Model> (
   })
 }
 
-export function getMethod <T extends Model, P extends Model.Key<T>> (
+function getMethod <T extends Model, P extends Model.Key<T>> (
   this: T,
   argument?: P | P[] | Model.Effect<T>,
   callback?: Function){
@@ -130,7 +144,7 @@ export function getMethod <T extends Model, P extends Model.Key<T>> (
   });
 }
 
-export function setMethod <T extends Model>(
+function setMethod <T extends Model>(
   this: T,
   arg1?: Model.Event<T> | Model.Values<T>,
   arg2?: any){

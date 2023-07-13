@@ -1,7 +1,7 @@
 import { apply, Control, control, parent } from '../control';
-import { assign, create } from '../helper/object';
+import { create } from '../helper/object';
 import { Model } from '../model';
-import { getMethod, Observable, onMethod, setMethod } from '../observable';
+import { makeObservable, Observable } from '../observable';
 
 type Empty = Record<string, never>;
 
@@ -65,13 +65,10 @@ function use(
 }
 
 function manage<T extends {}>(next: T){
-  const subject = assign(create(next), {
-    get: getMethod,
-    set: setMethod,
-    on: onMethod
-  });
-
+  const subject = create(next);
   const control = new Control<T>(subject, false);
+
+  makeObservable(subject);
 
   for(const key in control.state = next)
     control.watch(key, {});
