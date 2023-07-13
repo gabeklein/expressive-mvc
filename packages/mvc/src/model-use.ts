@@ -1,17 +1,8 @@
 import { Control, subscribe } from "./control";
 import { Model } from "./model";
 
-function use <T extends Model> (
-  this: Model.New<T>,
-  callback?: (instance: T) => void,
-  repeat?: boolean
-): Model.Focus<T>;
-
-function use <T extends Model> (
-  this: Model.New<T>,
-  apply?: Model.Values<T>,
-  repeat?: boolean
-): Model.Focus<T>;
+function use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): Model.Focus<T>;
+function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): Model.Focus<T>;
 
 function use <T extends Model> (
   this: Model.New<T>,
@@ -26,15 +17,17 @@ function use <T extends Model> (
     let onUpdate: (() => void) | undefined | null;
     let shouldApply = !!apply;
 
+    function mount(){
+      onUpdate = refresh;
+      return () => {
+        onUpdate = null;
+        instance.null();
+      }
+    }
+
     return {
       instance,
-      mount(){
-        onUpdate = refresh;
-        return () => {
-          onUpdate = null;
-          instance.null();
-        }
-      },
+      mount,
       render(props?: Model.Values<T> | ((instance: T) => void)){
         if(shouldApply){
           onUpdate = undefined;
@@ -50,7 +43,7 @@ function use <T extends Model> (
           if(!repeat)
             shouldApply = false;
 
-          instance.on(0).then(() => onUpdate = refresh);
+          instance.on(0).then(mount);
         }
 
         return local;
