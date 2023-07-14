@@ -35,10 +35,10 @@ export function makeObservable(to: Observable){
 export interface Observable {
   get(): Model.Export<this>;
 
+  get(effect: Model.Effect<this>): Callback;
+
   get <P extends Select<this>> (select: P): Export<this, P>;
   get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
-
-  on(effect: Model.Effect<this>): Callback;
 
   on (timeout?: number): Promise<Model.Event<this>[]>;
 
@@ -53,12 +53,9 @@ export interface Observable {
 
 function onMethod <T extends Model> (
   this: T,
-  arg?: number | Event<T> | Model.Effect<T>,
+  arg?: number | Event<T>,
   arg2?: Function | number,
   once?: boolean){
-
-  if(typeof arg == "function")
-    return createEffect(this, arg);
 
   if(typeof arg2 == "function")
     return control(this, self => {
@@ -97,7 +94,7 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   callback?: Function){
 
   if(typeof argument == "function")
-    throw new Error("This overload is deprecated - use `on` instead");
+      return createEffect(this, argument);
 
   const self = control(this, true);
 

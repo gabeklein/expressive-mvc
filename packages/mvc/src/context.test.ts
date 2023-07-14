@@ -120,13 +120,13 @@ describe("include", () => {
     const foo = Foo.new();
     const bar = Bar.new();
 
-    const bazDidNew = jest.fn(() => bazDidDie);
+    const bazEffect = jest.fn(() => bazDidDie);
     const bazDidDie = jest.fn();
 
     class Baz extends Model {
       constructor(){
         super();
-        this.on(bazDidNew);
+        this.get(bazEffect);
       }
     }
 
@@ -143,7 +143,7 @@ describe("include", () => {
     expect(context.get(Bar)).not.toBe(bar);
 
     // expect Baz should have been force-replaced.
-    expect(bazDidNew).toBeCalledTimes(2);
+    expect(bazEffect).toBeCalledTimes(2);
     expect(bazDidDie).toBeCalled();
   })
   

@@ -128,7 +128,7 @@ describe("property", () => {
 
     const test = Subject.new();
   
-    test.on(state => {
+    test.get(state => {
       expect(state.ref).not.toBeUndefined();
     })
   })

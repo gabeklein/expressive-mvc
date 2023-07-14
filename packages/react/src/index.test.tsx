@@ -169,7 +169,7 @@ describe("suspense", () => {
     const bar = Bar.new();
     const effect = jest.fn(bar => void bar.foo);
 
-    bar.on(effect);
+    bar.get(effect);
 
     expect(effect).toHaveBeenCalled();
     expect(effect).not.toHaveReturned();

@@ -29,7 +29,7 @@ describe("fetch mode", () => {
     
     expect(foo.bar.foo).toBe(foo);
   
-    foo.on(state => {
+    foo.get(state => {
       mockEffect(state.bar.foo.value);
       promise.resolve();
     })
@@ -118,7 +118,7 @@ describe("fetch mode", () => {
       void it.parent.value;
     })
   
-    child.on(effect);
+    child.get(effect);
   
     child.value = "bar";
     await expect(child).toUpdate();
@@ -517,7 +517,7 @@ describe("compute mode", () => {
     
       const test = Test.new();
     
-      test.on(state => {
+      test.get(state => {
         didGetNewValue(state.value);
       })
     
