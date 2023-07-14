@@ -117,7 +117,7 @@ describe("callback", () => {
 
   it('will throw on bad effect return', () => {
     class Subject extends Model {
-      // @ts-ignore
+      // @ts-expect-error
       property = set<any>(undefined, () => 3);
     }
 

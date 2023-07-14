@@ -191,10 +191,10 @@ describe("use prop", () => {
 
   it("will not assign foreign values", () => {
     create(
-      /// @ts-ignore - type-checking warns against this
+      // @ts-expect-error - type-checking warns against this
       <Provider for={Foo} use={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
-          // @ts-ignore
+          // @ts-expect-error
           expect(i.nonValue).toBeUndefined();
         }} />
       </Provider>

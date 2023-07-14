@@ -19,7 +19,7 @@ describe("is", () => {
   })
 
   it("will throw if called as isTypeof", () => {
-    // @ts-ignore
+    // @ts-expect-error
     expect(() => Model.isTypeof).toThrow();
   })
 })

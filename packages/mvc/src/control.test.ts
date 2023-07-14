@@ -79,7 +79,7 @@ describe("child models", () => {
     );
   
     expect(() => {
-      // @ts-ignore
+      // @ts-expect-error
       parent.child = undefined;
     }).toThrowError(
       Oops.BadAssignment(`Parent-ID.child`, `Child`, `undefined`)

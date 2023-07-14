@@ -123,7 +123,7 @@ it('will watch function properties', async () => {
 it('will throw if Model.is is accessed', () => {
   const state = Subject.new();
 
-  // @ts-ignore
+  // @ts-expect-error
   expect(() => state.is).toThrow();
 })
 

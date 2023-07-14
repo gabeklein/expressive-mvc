@@ -449,7 +449,7 @@ describe("compute mode", () => {
       class Test extends Model {
         peer = get(this, () => "foobar");
 
-        // @ts-ignore
+        // @ts-expect-error
         value = get(this.peer, () => {});
       }
 
@@ -572,7 +572,7 @@ describe("compute mode", () => {
     it("will provide property key to factory", () => {
       class Test extends Model {
         // TODO: why is key not implicit?
-        // @ts-ignore
+        // @ts-expect-error
         fooBar = get((key) => () => key);
       }
 

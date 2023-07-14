@@ -376,7 +376,7 @@ it("will throw if state.get returns non-function", () => {
   const state = Test.new();
   const expected = Oops.BadCallback();
   const attempt = () => {
-    // @ts-ignore
+    // @ts-expect-error
     state.on(() => "foobar");
   }
 
