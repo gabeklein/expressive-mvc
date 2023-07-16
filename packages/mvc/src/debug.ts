@@ -61,7 +61,7 @@ type Debug<T extends Model = Model> = T & {
   [CONTROL]?: Control<T>;
 
   /** Current state of this instance. */
-  [STATE]?: Model.Export<T>;
+  [STATE]?: Model.Values<T>;
 
   /**
    * Last update causing a refresh to subscribers.
