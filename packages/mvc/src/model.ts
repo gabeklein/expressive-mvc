@@ -48,7 +48,7 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> =
     R extends Ref<infer T> ? T :
-    R extends Observable ? Export<R> :
+    R extends Observable ? Values<R> :
     R;
 }
 

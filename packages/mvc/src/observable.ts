@@ -33,7 +33,7 @@ export function makeObservable(to: Observable){
 }
 
 export interface Observable {
-  get(): Model.Export<this>;
+  get(): Model.Values<this>;
 
   get(effect: Model.Effect<this>): Callback;
 
