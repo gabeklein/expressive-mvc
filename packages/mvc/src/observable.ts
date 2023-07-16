@@ -51,6 +51,30 @@ export interface Observable {
   set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
 }
 
+type SetTest<T extends Observable2> = (key: Model.Event<T>, value: any) => boolean;
+type SetIntercept<T extends Observable2> = (key: Model.Event<T>, value: any) => boolean | OnCallback<T>;
+
+export interface Observable2 {
+  get(): Model.Values<this>;
+
+  get <T extends Model.Values<this>> (template: T): T;
+
+  get(effect: Model.Effect<this>): Callback;
+
+  /** Expect update in progress, throws if none exists. */
+  set(): Promise<Model.Event<this>[]> | false;
+
+  /** Expect update within a specified timeout. */
+  set(timeout: number, test?: SetTest<this>): Promise<Model.Event<this>[]>;
+
+  set(callback: SetIntercept<this>): Callback;
+
+  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
+  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
+
+  set <T extends Model.Values<this>> (from: T, template?: T): Promise<Model.Event<T>[] | false>;
+}
+
 function onMethod <T extends Model> (
   this: T,
   arg?: number | Event<T>,
@@ -94,7 +118,7 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   callback?: Function){
 
   if(typeof argument == "function")
-      return createEffect(this, argument);
+    return createEffect(this, argument);
 
   const self = control(this, true);
 
