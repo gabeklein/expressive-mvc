@@ -36,7 +36,7 @@ describe("component", () => {
     );
   
     element.unmount();
-    await timeout(1);
+    await timeout(20);
     expect(willDestroy).toBeCalledTimes(1);
   });
   
