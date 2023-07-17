@@ -109,18 +109,22 @@ class Control<T extends {} = any> {
       PENDING.set(this, new Set(Control.ready));
   }
 
-  add(key: string){
-    const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = INSTRUCT.get(value);
+  init(){
+    for(const key in this.subject){  
+      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
+      const instruction = INSTRUCT.get(value);
 
-    if(instruction){
-      INSTRUCT.delete(value);
-      instruction(this, key);
+      if(instruction){
+        INSTRUCT.delete(value);
+        instruction(this, key);
+      }
+      else if(value instanceof Model)
+        setRecursive(this, key, value);
+      else
+        this.watch(key, { value });
     }
-    else if(value instanceof Model)
-      setRecursive(this, key, value);
-    else
-      this.watch(key, { value });
+
+    PENDING.delete(this);
   }
 
   watch(
@@ -243,10 +247,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   }
 
   if(pending && ready){
-    for(const key in control.subject)
-      control.add(key);
-
-    PENDING.delete(control);
+    control.init();
     pending.forEach(cb => cb(control));
   }
 
