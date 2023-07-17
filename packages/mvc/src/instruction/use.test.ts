@@ -185,7 +185,7 @@ describe("object", () => {
     test.get(effect);
     test.info.foo = "bar";
 
-    await test.info.on(0);
+    await test.info.set(0);
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -207,7 +207,7 @@ describe("object", () => {
 
     test.info.bar = "foo";
 
-    await test.info.on(0);
+    await test.info.set(0);
 
     expect(effect).toBeCalledTimes(1);
   })
@@ -259,7 +259,7 @@ describe("object", () => {
       const done = info.on("foo", gotFoo, false);
 
       info.foo = "bar";
-      await info.on(0);
+      await info.set(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
 
@@ -267,7 +267,7 @@ describe("object", () => {
 
       done();
       info.foo = "baz";
-      await info.on(0);
+      await info.set(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
     })
@@ -285,7 +285,7 @@ describe("object", () => {
       info.get("foo", gotFoo);
       info.foo = "bar";
   
-      await info.on(0);
+      await info.set(0);
       expect(gotFoo).toHaveBeenCalled();
     })
   })
@@ -319,7 +319,7 @@ describe("object", () => {
       info.get("foo", gotFoo);
       info.foo = "foo";
   
-      await info.on(0);
+      await info.set(0);
       expect(gotFoo).toHaveBeenCalled();
     })
   })

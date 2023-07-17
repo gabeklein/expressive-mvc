@@ -266,15 +266,15 @@ describe("on method", () => {
     const control = Control.new();
 
     control.foo = 2;
-    await control.on();
+    await control.set(0);
 
     control.bar = 3;
-    await control.on();
+    await control.set(0);
   })
 
   it("will resolve promise made before assignment", async () => {
     const control = Control.new();
-    const update = control.on();
+    const update = control.set(0);
 
     control.foo = 2;
 
@@ -286,20 +286,20 @@ describe("on method", () => {
 
     control.foo = 2;
 
-    const updated = await control.on(0);
+    const updated = await control.set(0);
     expect(updated).toMatchObject(["foo"]);
   })
 
   it('will reject if not pending', async () => {
     const control = Control.new();
-    const update = control.on(0);
+    const update = control.set(0);
 
     await expect(update).rejects.toBe(0);
   })
 
   it('will reject on timeout', async () => {
     const state = Model.new();
-    const update = state.on(1);
+    const update = state.set(1);
 
     await expect(update).rejects.toBe(1);
   })
@@ -313,7 +313,7 @@ describe("on method", () => {
 
     control.bar = 3;
 
-    const update = await control.on();
+    const update = await control.set(0);
 
     expect(update).toMatchObject(["bar", "baz"]);
   })

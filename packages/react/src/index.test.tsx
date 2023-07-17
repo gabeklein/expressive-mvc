@@ -180,7 +180,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await bar.on();
+    await bar.set(0);
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);

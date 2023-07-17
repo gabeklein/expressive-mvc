@@ -40,10 +40,11 @@ export interface Observable {
   get <P extends Select<this>> (select: P): Export<this, P>;
   get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
 
-  on (timeout?: number): Promise<Model.Event<this>[]>;
-
   on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
   on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
+
+  set (): Promise<Model.Event<this>[]> | false;
+  set (timeout?: number): Promise<Model.Event<this>[]>;
 
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
   set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
@@ -148,7 +149,7 @@ function setMethod <T extends Model>(
 
   const self = control(this, true);
   const { state } = self;
-  let timeout: number | undefined = 0;
+  let timeout: number | undefined;
 
   const set = (key: string, value: any) => {
     if(state[key] != value){
@@ -181,7 +182,7 @@ function setMethod <T extends Model>(
   }
 
   return new Promise<any>((resolve, reject) => {
-    if(!self.frame.size && timeout === 0)
+    if(!self.frame.size && timeout === undefined)
       return resolve(false);
 
     const remove = self.addListener(() => {
@@ -189,10 +190,12 @@ function setMethod <T extends Model>(
       return () => resolve(self.latest);
     });
 
-    if(timeout as number > 0)
+    if(typeof timeout == "number")
       setTimeout(() => {
-        remove();
-        reject(timeout);
+        if(!self.frame.size){
+          remove();
+          reject(timeout);
+        }
       }, timeout);
   });
 }

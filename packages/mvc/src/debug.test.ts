@@ -78,7 +78,7 @@ describe("UPDATE", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    const update = await test.on();
+    const update = await test.set(0);
     const updated = test[Debug.UPDATE];
 
     expect(update).toStrictEqual(updated);
@@ -105,7 +105,7 @@ describe("UPDATE", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    fullUpdate = await test.on();
+    fullUpdate = await test.set(0);
 
     // sanity check
     expect(update).not.toStrictEqual(fullUpdate);
@@ -116,7 +116,7 @@ describe("UPDATE", () => {
 
     test.value3 = 4;
 
-    fullUpdate = await test.on();
+    fullUpdate = await test.set(0);
 
     // sanity check
     expect(fullUpdate).not.toContain("value1");
@@ -167,7 +167,7 @@ describe("errors", () => {
 
     test.value = 2;
 
-    await test.on();
+    await test.set(0);
 
     expect(error).toBeCalledWith(expected);
   });
