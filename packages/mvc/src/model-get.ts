@@ -1,4 +1,4 @@
-import { Control, subscribe } from "./control";
+import { Control, watch } from "./control";
 import { issues } from "./helper/issues";
 import { Model } from "./model";
 
@@ -53,7 +53,7 @@ function get<T extends Model, R>(
 
       if(got)
         value = argument === undefined
-          ? subscribe(got, k => k ? onUpdate : undefined)
+          ? watch(got, k => k ? onUpdate : undefined)
           : got;
       else if(argument !== false)
         throw Oops.NotFound(this);
@@ -104,7 +104,7 @@ function get<T extends Model, R>(
         refresh();
     };
 
-    proxy = subscribe(found, () => factory ? null : onUpdate);
+    proxy = watch(found, () => factory ? null : onUpdate);
     getValue = () => compute.call(proxy, proxy, forceUpdate);
     value = getValue();
 
@@ -117,7 +117,7 @@ function get<T extends Model, R>(
     if(typeof value == "function"){
       const get = value;
       
-      subscribe(proxy, () => onUpdate);
+      watch(proxy, () => onUpdate);
 
       factory = true;
       compute = () => get();

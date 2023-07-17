@@ -1,4 +1,4 @@
-import { apply, Control, parent, subscribe } from '../control';
+import { apply, Control, parent, watch } from '../control';
 import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
@@ -194,7 +194,7 @@ function computed<T>(
 
     reset = () => done = true;
 
-    proxy = subscribe(model, (_, control) => {
+    proxy = watch(model, (_, control) => {
       if(done)
         return null;
 

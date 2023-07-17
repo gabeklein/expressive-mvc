@@ -152,7 +152,7 @@ class Control<T extends {} = any> {
           ? output.get(this) : state[key];
 
         return event && REGISTER.has(value)
-          ? subscribe(value, event)
+          ? watch(value, event)
           : value;
       }
     });
@@ -299,7 +299,7 @@ function parent(child: unknown, assign?: Model){
 
 type Focus<T extends {}> = T & { is: T };
 
-function subscribe<T extends {}>(value: T, cb: Observer){
+function watch<T extends {}>(value: T, cb: Observer){
   if(!OBSERVER.has(value)){
     const control = REGISTER.get(value);
     value = defineProperty(create(value), "is", { value });
@@ -333,5 +333,5 @@ export {
   control,
   Control,
   parent,
-  subscribe
+  watch
 }
