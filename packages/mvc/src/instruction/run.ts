@@ -1,4 +1,4 @@
-import { apply } from '../control';
+import { add } from '../control';
 import { issues } from '../helper/issues';
 import { defineProperty } from '../helper/object';
 import { mayRetry } from '../suspense';
@@ -24,7 +24,7 @@ function run (action: Async): typeof action & { active: boolean };
 function run <S> (action: Async<S>): typeof action & { active: boolean };
 
 function run<T extends Async>(task: T){
-  return apply<T>((key, control) => {
+  return add<T>((key, control) => {
     let pending = false;
 
     const invoke = async (...args: any[]) => {

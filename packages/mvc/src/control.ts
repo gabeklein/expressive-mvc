@@ -88,7 +88,7 @@ class Control<T extends {} = any> {
   static has: Control.GetContext;
 
   static for = control;
-  static apply = apply;
+  static add = add;
 
   public id: string | number | false;
   public subject: T;
@@ -311,7 +311,7 @@ function watch<T extends {}>(value: T, cb: Observer){
   return value as Focus<T>;
 }
 
-function apply<T = any>(instruction: Control.Instruction<T>){
+function add<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
 
   INSTRUCT.set(placeholder, (onto, key) => {
@@ -329,7 +329,7 @@ function apply<T = any>(instruction: Control.Instruction<T>){
 }
 
 export {
-  apply,
+  add,
   control,
   Control,
   parent,

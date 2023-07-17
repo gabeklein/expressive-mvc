@@ -1,4 +1,4 @@
-import { apply, Control, Oops } from './control';
+import { add, Control, Oops } from './control';
 import { mockPromise } from './helper/testing';
 import { Model } from './model';
 
@@ -92,7 +92,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = apply((key) => {
+    property = add((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -145,7 +145,7 @@ describe("instruction", () => {
     });
 
     class Test extends Model {
-      property = apply(() => {
+      property = add(() => {
         return {
           value: "foobar",
           set: didSetValue
@@ -172,7 +172,7 @@ describe("instruction", () => {
     let shouldUpdate = true;
 
     class Test extends Model {
-      property = apply((key, control) => {
+      property = add((key, control) => {
         return {
           value: 0,
           set: (value: any) => {
@@ -202,7 +202,7 @@ describe("instruction", () => {
     const mockApply = jest.fn((_key) => mockAccess);
 
     class Test extends Model {
-      property = apply(mockApply);
+      property = add(mockApply);
     }
 
     const instance = Test.new();
@@ -219,7 +219,7 @@ describe("instruction", () => {
     const didGetValue = jest.fn();
 
     class Test extends Model {
-      property = apply(() => didGetValue)
+      property = add(() => didGetValue)
     }
 
     const state = Test.new();
@@ -274,7 +274,7 @@ it("will run effect after properties", () => {
   const mock = jest.fn();
 
   class Test extends Model {
-    property = apply((_key, control) => {
+    property = add((_key, control) => {
       this.get(() => {
         mock(control.state);
       })
