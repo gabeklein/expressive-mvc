@@ -119,7 +119,7 @@ class Control<T extends {} = any> {
         instruction(this, key);
       }
       else if(value instanceof Model)
-        setRecursive(this, key, value);
+        recursive(this, key, value);
       else
         this.watch(key, { value });
     }
@@ -275,7 +275,7 @@ function requestUpdateFrame(event: Callback){
   pending.add(event);
 }
 
-function setRecursive(on: Control, key: string, value: Model){
+function recursive(on: Control, key: string, value: Model){
   function set(next: Model | undefined){
     if(next instanceof value.constructor){
       on.state[key] = next;
