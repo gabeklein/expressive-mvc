@@ -201,18 +201,18 @@ class Control<T extends {} = any> {
   
     frame.add(key);
 
-    for(const k of [key, ""]){
-      const subs = this.observers.get(k);
+    const subs = new Set(this.observers.get(key));
 
-      subs && subs.forEach(cb => {
-        const notify = cb(key, this);
-  
-        if(notify === null)
-          subs.delete(cb);
-        else if(notify)
-          requestUpdateFrame(notify);
-      });
-    }
+    this.followers.forEach(subs.add, subs);
+
+    subs.forEach(cb => {
+      const notify = cb(key, this);
+
+      if(notify === null)
+        subs.delete(cb);
+      else if(notify)
+        requestUpdateFrame(notify);
+    });
   }
 
   addListener(fn: Observer){
