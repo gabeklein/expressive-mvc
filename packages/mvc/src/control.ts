@@ -153,7 +153,8 @@ class Control<T extends {} = any> {
           subs.add(event);
 
         const value = output.get
-          ? output.get(this) : state[key];
+          ? output.get(this)
+          : state[key];
 
         return event && REGISTER.has(value)
           ? watch(value, event)
