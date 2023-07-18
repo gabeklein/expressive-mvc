@@ -221,12 +221,13 @@ class Control<T extends {} = any> {
   }
 
   clear(){
+    const callback = new Set<Callback | null | void>();
     this.observers.forEach(subs => {
       subs.forEach(fn => {
-        const cb = fn(null, this);
-        cb && cb();
+        callback.add(fn(null, this));
       });
     });
+    callback.forEach(x => x && x())
     this.observers.clear();
   }
 }
@@ -298,8 +299,6 @@ function parent(child: unknown, assign?: Model){
   PARENTS.set(child as Model, assign);
 }
 
-type Focus<T extends {}> = T & { is: T };
-
 function watch<T extends {}>(value: T, cb: Observer){
   if(!OBSERVER.has(value)){
     const control = REGISTER.get(value);
@@ -309,7 +308,7 @@ function watch<T extends {}>(value: T, cb: Observer){
 
   OBSERVER.set(value, cb);
 
-  return value as Focus<T>;
+  return value as T & { is: T };
 }
 
 function add<T = any>(instruction: Control.Instruction<T>){
