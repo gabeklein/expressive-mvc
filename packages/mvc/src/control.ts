@@ -146,7 +146,7 @@ class Control<T extends {} = any> {
       set: set === false
         ? undefined
         : this.ref(key as Model.Key<T>, set),
-      get(this: any){
+      get(this: Model){
         const event = OBSERVER.get(this);
 
         if(event)
