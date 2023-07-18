@@ -11,22 +11,23 @@ export const Oops = issues({
 
 export function suspense(source: Control, key: string): Promise<void> & Error {
   const error = Oops.NotReady(source.subject, key);
-  const watch = source.observers.get(key)!;
   const promise = new Promise<void>((resolve, reject) => {
-    function onUpdate(key: string | null | undefined){
-      if(key)
-        return () => {
-          if(source.state[key] !== undefined){
-            watch.delete(onUpdate);
-            resolve();
-          }
-        };
+    function check(){
+      if(source.state[key] !== undefined){
+        source.followers.delete(onUpdate);
+        resolve();
+      }
+    }
 
-      if(key === null)
+    function onUpdate(k: string | null | undefined){
+      if(k === key)
+        return check;
+
+      if(k === null)
         reject(Oops.Destoryed());
     }
 
-    watch.add(onUpdate)
+    source.followers.add(onUpdate)
   });
 
   return assign(promise, {
