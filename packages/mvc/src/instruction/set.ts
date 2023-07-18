@@ -54,11 +54,10 @@ function set <T> (
 
   return add<T>((key, control) => {
     const { state, subject } = control;
+    const output: Control.PropertyDescriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
-      const output: Control.PropertyDescriptor = {};
-
-      const init = () => {
+      function init(){
         try {
           if(typeof value == "function")
             value = mayRetry(value.bind(subject, key, subject));
@@ -101,34 +100,31 @@ function set <T> (
 
           return get ? get() : state[key];
         }
-
-      return output;
     }
+    else {
+      const set = typeof argument == "function"
+        ? createValueEffect(argument)
+        : undefined;
+  
+      if(value !== undefined){
+        state[key] = value;
+        return { set };
+      }
 
-    const set = typeof argument == "function"
-      ? createValueEffect(argument)
-      : undefined;
+      if(set)
+        output.set = function(this: any, value: any){
+          output.set = set;
+          state[key] = state[key];
+          return set.call(this, value);
+        }
 
-    if(value !== undefined){
-      state[key] = value;
-      return { set };
-    }
-
-    const output: Control.PropertyDescriptor = {
-      get(){
+      output.get = () => {
         if(key in state)
           return state[key];
 
         throw suspense(control, key);
       }
-    };
-
-    if(set)
-      output.set = function(this: any, value: any){
-        output.set = set;
-        state[key] = state[key];
-        return set.call(this, value);
-      }
+    }
 
     return output;
   })
