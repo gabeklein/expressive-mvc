@@ -201,7 +201,7 @@ class Control<T extends {} = any> {
   
     frame.add(key);
 
-    for(const k of ["", key]){
+    for(const k of [key, ""]){
       const subs = this.observers.get(k);
 
       subs && subs.forEach(cb => {
