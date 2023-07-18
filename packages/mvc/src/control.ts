@@ -221,13 +221,15 @@ class Control<T extends {} = any> {
   }
 
   clear(){
+    const done = new Set<Observer>();
     this.observers.forEach(subs => {
-      subs.forEach(fn => {
-        const cb = fn(null, this);
-        cb && cb();
-      });
+      subs.forEach(done.add, done);
     });
     this.observers.clear();
+    done.forEach(fn => {
+      const cb = fn(null, this);
+      cb && cb();
+    });
   }
 }
 
