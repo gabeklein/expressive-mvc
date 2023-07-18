@@ -44,7 +44,7 @@ export function createEffect<T extends Model>(
     let refresh: (() => void) | null;
 
     subject = watch(subject, () => refresh);
-    self.followers.add(key => (
+    self.addListener(key => (
       key === null || refresh === null ? refresh : undefined
     ));
 
