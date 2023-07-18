@@ -32,6 +32,10 @@ export function makeObservable(to: Observable){
   });
 }
 
+export declare namespace Observable {
+  type OnEvent = (key: string, value: unknown) => boolean | void;
+}
+
 export interface Observable {
   get(): Model.Export<this>;
 
@@ -44,7 +48,9 @@ export interface Observable {
   on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]> | false;
-  set (timeout?: number): Promise<Model.Event<this>[]>;
+  set (timeout: number, test?: Observable.OnEvent): Promise<Model.Event<this>[]>;
+
+  set (callback: Observable.OnEvent): Callback;
 
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
   set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
