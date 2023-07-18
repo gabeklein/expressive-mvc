@@ -14,20 +14,18 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
       if(source.state[key] !== undefined){
-        source.followers.delete(onUpdate);
+        remove();
         resolve();
       }
     }
 
-    function onUpdate(k: string | null | undefined){
+    const remove = source.addListener(k => {
       if(k === key)
         return check;
 
       if(k === null)
         reject(Oops.Destoryed());
-    }
-
-    source.followers.add(onUpdate)
+    });
   });
 
   return assign(promise, {
