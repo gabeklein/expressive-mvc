@@ -181,13 +181,13 @@ class Control<T extends {} = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      requestUpdateFrame(() => {
+      enqueue(() => {
         this.latest = Array.from(frame);
         followers.forEach(cb => {
           const notify = cb(undefined, this);
 
           if(notify)
-            requestUpdateFrame(notify);
+            enqueue(notify);
         })
         frame.clear();
       })
@@ -205,7 +205,7 @@ class Control<T extends {} = any> {
         if(notify === null)
           subs.delete(cb);
         else if(notify)
-          requestUpdateFrame(notify);
+          enqueue(notify);
       });
   }
 
@@ -248,7 +248,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   return control;
 }
 
-function requestUpdateFrame(event: Callback){
+function enqueue(event: Callback){
   const { after, before, pending } = Control;
 
   if(!pending.size)
