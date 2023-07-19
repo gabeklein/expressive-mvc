@@ -123,8 +123,6 @@ class Control<T extends {} = any> {
       else
         this.watch(key, { value });
     }
-
-    PENDING.delete(this);
   }
 
   watch(
@@ -242,6 +240,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
 
   if(pending && ready){
     control.init();
+    PENDING.delete(control);
     pending.forEach(cb => cb(control));
   }
 
