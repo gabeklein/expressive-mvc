@@ -147,13 +147,17 @@ class Control<T extends {} = any> {
         ? undefined
         : this.ref(key as Model.Key<T>, set),
       get(this: Model){
-        const extend = watch(this, key);
+        let value = state[key];
 
-        const value = output.get
-          ? output.get(this)
-          : state[key];
+        try {
+          if(output.get)
+            value = output.get(this);
+        }
+        finally {
+          value = watch(this, key, value);
+        }
 
-        return extend(value);
+        return value;
       }
     });
   }
@@ -294,33 +298,33 @@ function parent(child: unknown, assign?: Model){
 
 type Focus<T extends {}> = T & { is: T };
 
-function watch<T extends {}>(target: T, key: string): (value: unknown) => any;
 function watch<T extends {}>(target: T, callback: Observer): Focus<T>;
-function watch<T extends {}>(value: T, argument: Observer | string){
-  const observer = OBSERVER.get(value);
-  const control = REGISTER.get(value)!;
+function watch<T extends {}>(target: T, key: string, value: unknown): any;
+function watch<T extends {}>(target: T, argument: Observer | string, value?: any){
+  const observer = OBSERVER.get(target);
+  const control = REGISTER.get(target)!;
 
   if(typeof argument == "string"){
     const subs = control.observers.get(argument)!;
 
-    if(observer)
+    if(observer){
       subs.add(observer);
 
-    return (value: {}): any => (
-      observer && REGISTER.has(value)
-        ? watch(value, observer)
-        : value
-    )
+      if(REGISTER.has(value))
+        return watch(value, observer);
+    }
+
+    return value;
   }
 
   if(!observer){
-    value = defineProperty(create(value), "is", { value });
-    REGISTER.set(value, control!);
+    target = defineProperty(create(target), "is", { value: target });
+    REGISTER.set(target, control!);
   }
 
-  OBSERVER.set(value, argument);
+  OBSERVER.set(target, argument);
 
-  return value as Focus<T>;
+  return target as Focus<T>;
 }
 
 function add<T = any>(instruction: Control.Instruction<T>){
