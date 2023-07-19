@@ -166,13 +166,11 @@ class Control<T extends {} = any> {
   ref<K extends Model.Key<T>>(
     key: K, callback?: (this: T, value: T[K]) => boolean | void){
 
-    const { state, subject } = this
-  
     return (value: any) => {
-      if(value !== state[key])
-        switch(callback && callback.call(subject, value)){
+      if(value !== this.state[key])
+        switch(callback && callback.call(this.subject, value)){
           case undefined:
-            state[key] = value;
+            this.state[key] = value;
           case true:
             this.update(key);
         }
