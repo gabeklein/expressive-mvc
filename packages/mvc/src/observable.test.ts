@@ -192,65 +192,6 @@ describe("set", () => {
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
   });
-
-  it("will assign specific values", async () => {
-    const test = Test.new();
-    
-    test.set(values, ["foo"]);
-
-    await expect(test).toHaveUpdated(["foo"]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(1);
-  });
-
-  it("will assign to exotic value", async () => {
-    class Test extends Model {
-      foo = ref<string>();
-    }
-
-    const test = Test.new();
-
-    await test.set("foo", "bar");
-    expect(test.foo.current).toBe("bar");
-  })
-
-  it("will return false if update is noop", async () => {
-    const test = Test.new();
-    const didAssign = test.set("foo", 0);
-
-    await expect(didAssign).resolves.toBe(false);
-  })
-
-  it("will return false if assign is noop", async () => {
-    const test = Test.new();
-    const didAssign = test.set({ foo: 0, bar: 1 });
-
-    await expect(didAssign).resolves.toBe(false);
-  })
-
-  it("will force update", async () => {
-    class Subject extends Model {
-      foo = 0;
-    }
-
-    const state = Subject.new();
-
-    state.set("foo");
-
-    await expect(state).toUpdate();
-    expect(state.foo).toBe(0);
-  })
-
-  it("will emit arbitrary event", async () => {
-    class Subject extends Model {}
-
-    const state = Subject.new();
-
-    state.set("something");
-
-    await expect(state).toHaveUpdated(["something"]);
-  })
 })
 
 describe("on method", () => {

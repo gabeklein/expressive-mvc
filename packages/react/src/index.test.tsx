@@ -53,9 +53,7 @@ describe("useContext", () => {
     const Child = (props: ChildProps) => {
       Parent.get($ => {
         didPushToValues();
-        $.values.push(props.value);
-        $.set("values");
-  
+        $.values = [...$.values, props.value];
         return () => null;
       });
   
@@ -65,8 +63,10 @@ describe("useContext", () => {
     const parent = Parent.new();
     const didUpdateValues = jest.fn();
     const didPushToValues = jest.fn();
-  
-    parent.on("values", didUpdateValues, false);
+
+    parent.get(state => {
+      didUpdateValues(state.values.length);
+    })
   
     const element = create(
       <Provider for={parent}>
@@ -80,10 +80,9 @@ describe("useContext", () => {
   
     await expect(parent).toUpdate();
   
-    expect(parent.values.length).toBe(3);
-  
     // Expect updates to have bunched up before new frame.
-    expect(didUpdateValues).toBeCalledTimes(1);
+    expect(didUpdateValues).toBeCalledTimes(2);
+    expect(didUpdateValues).toBeCalledWith(3);
   
     element.unmount();
   })
