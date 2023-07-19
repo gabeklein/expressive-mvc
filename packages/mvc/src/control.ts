@@ -10,7 +10,7 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`,
 });
 
-type Observer<T extends Model = any> =
+type Observer<T extends {} = any> =
   (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
@@ -147,7 +147,7 @@ class Control<T extends {} = any> {
         ? undefined
         : this.ref(key as Model.Key<T>, set),
       get(this: Model){
-        const event = OBSERVER.get(this);
+        const event = watch(this);
 
         if(event)
           subs.add(event);
@@ -301,7 +301,12 @@ function parent(child: unknown, assign?: Model){
 
 type Focus<T extends {}> = T & { is: T };
 
-function watch<T extends {}>(value: T, cb: Observer){
+function watch<T extends {}>(value: T): Observer<any> | undefined;
+function watch<T extends {}>(value: T, cb: Observer): Focus<T>;
+function watch<T extends {}>(value: T, cb?: Observer){
+  if(!cb)
+    return OBSERVER.get(value);
+
   if(!OBSERVER.has(value)){
     const control = REGISTER.get(value);
     value = defineProperty(create(value), "is", { value });
