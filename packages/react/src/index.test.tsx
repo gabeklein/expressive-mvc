@@ -50,15 +50,13 @@ describe("useContext", () => {
       value: string;
     }
   
-    const Child = (props: ChildProps) => {
+    const Child = (props: ChildProps) => (
       Parent.get($ => {
         didPushToValues();
         $.values = [...$.values, props.value];
-        return () => null;
-      });
-  
-      return null;
-    }
+        return null;
+      })
+    )
   
     const parent = Parent.new();
     const didUpdateValues = jest.fn();
