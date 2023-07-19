@@ -47,6 +47,7 @@ export interface Observable {
   set (timeout: number): Promise<Model.Event<this>[]>;
 
   set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
+  // set <T extends Model.Values<this>> (from: T, test?: Test<T>): Promise<Model.Event<T>[] | false>;
 }
 
 function onMethod <T extends Model> (
