@@ -10,7 +10,7 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`,
 });
 
-type Observer<T extends Model = any> =
+type Observer<T extends {} = any> =
   (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
@@ -109,18 +109,20 @@ class Control<T extends {} = any> {
       PENDING.set(this, new Set(Control.ready));
   }
 
-  add(key: string){
-    const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = INSTRUCT.get(value);
+  init(){
+    for(const key in this.subject){  
+      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
+      const instruction = INSTRUCT.get(value);
 
-    if(instruction){
-      INSTRUCT.delete(value);
-      instruction(this, key);
+      if(instruction){
+        INSTRUCT.delete(value);
+        instruction(this, key);
+      }
+      else if(value instanceof Model)
+        recursive(this, key, value);
+      else
+        this.watch(key, { value });
     }
-    else if(value instanceof Model)
-      setRecursive(this, key, value);
-    else
-      this.watch(key, { value });
   }
 
   watch(
@@ -142,18 +144,14 @@ class Control<T extends {} = any> {
       set: set === false
         ? undefined
         : this.ref(key as Model.Key<T>, set),
-      get(this: any){
-        const event = OBSERVER.get(this);
-
-        if(event)
-          subs.add(event);
+      get(this: Model){
+        const extend = watch(this, key);
 
         const value = output.get
-          ? output.get(this) : state[key];
+          ? output.get(this)
+          : state[key];
 
-        return event && REGISTER.has(value)
-          ? watch(value, event)
-          : value;
+        return extend(value);
       }
     });
   }
@@ -161,13 +159,11 @@ class Control<T extends {} = any> {
   ref<K extends Model.Key<T>>(
     key: K, callback?: (this: T, value: T[K]) => boolean | void){
 
-    const { state, subject } = this
-  
     return (value: any) => {
-      if(value !== state[key])
-        switch(callback && callback.call(subject, value)){
+      if(value !== this.state[key])
+        switch(callback && callback.call(this.subject, value)){
           case undefined:
-            state[key] = value;
+            this.state[key] = value;
           case true:
             this.update(key);
         }
@@ -175,7 +171,7 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
-    const { frame } = this;
+    const { frame, followers } = this;
 
     if(frame.has(key))
       return;
@@ -183,13 +179,13 @@ class Control<T extends {} = any> {
     if(!frame.size){
       this.latest = undefined;
 
-      requestUpdateFrame(() => {
+      enqueue(() => {
         this.latest = Array.from(frame);
-        this.followers.forEach(cb => {
+        followers.forEach(cb => {
           const notify = cb(undefined, this);
-    
+
           if(notify)
-            requestUpdateFrame(notify);
+            enqueue(notify);
         })
         frame.clear();
       })
@@ -197,18 +193,18 @@ class Control<T extends {} = any> {
   
     frame.add(key);
 
-    for(const k of ["", key]){
-      const subs = this.observers.get(k);
-
+    for(const subs of [
+      this.observers.get(key),
+      this.followers
+    ])
       subs && subs.forEach(cb => {
         const notify = cb(key, this);
   
         if(notify === null)
           subs.delete(cb);
         else if(notify)
-          requestUpdateFrame(notify);
+          enqueue(notify);
       });
-    }
   }
 
   addListener(fn: Observer){
@@ -243,9 +239,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   }
 
   if(pending && ready){
-    for(const key in control.subject)
-      control.add(key);
-
+    control.init();
     PENDING.delete(control);
     pending.forEach(cb => cb(control));
   }
@@ -253,7 +247,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   return control;
 }
 
-function requestUpdateFrame(event: Callback){
+function enqueue(event: Callback){
   const { after, before, pending } = Control;
 
   if(!pending.size)
@@ -274,7 +268,7 @@ function requestUpdateFrame(event: Callback){
   pending.add(event);
 }
 
-function setRecursive(on: Control, key: string, value: Model){
+function recursive(on: Control, key: string, value: Model){
   function set(next: Model | undefined){
     if(next instanceof value.constructor){
       on.state[key] = next;
@@ -299,14 +293,31 @@ function parent(child: unknown, assign?: Model){
 
 type Focus<T extends {}> = T & { is: T };
 
-function watch<T extends {}>(value: T, cb: Observer){
-  if(!OBSERVER.has(value)){
-    const control = REGISTER.get(value);
+function watch<T extends {}>(target: T, key: string): (value: unknown) => any;
+function watch<T extends {}>(target: T, callback: Observer): Focus<T>;
+function watch<T extends {}>(value: T, argument: Observer | string){
+  const observer = OBSERVER.get(value);
+  const control = REGISTER.get(value)!;
+
+  if(typeof argument == "string"){
+    const subs = control.observers.get(argument)!;
+
+    if(observer)
+      subs.add(observer);
+
+    return (value: {}): any => (
+      observer && REGISTER.has(value)
+        ? watch(value, observer)
+        : value
+    )
+  }
+
+  if(!observer){
     value = defineProperty(create(value), "is", { value });
     REGISTER.set(value, control!);
   }
 
-  OBSERVER.set(value, cb);
+  OBSERVER.set(value, argument);
 
   return value as Focus<T>;
 }

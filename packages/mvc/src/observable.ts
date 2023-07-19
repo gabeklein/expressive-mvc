@@ -44,7 +44,7 @@ export interface Observable {
   on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
 
   set (): Promise<Model.Event<this>[]> | false;
-  set (timeout?: number): Promise<Model.Event<this>[]>;
+  set (timeout: number): Promise<Model.Event<this>[]>;
 
   set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
   set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
@@ -144,7 +144,7 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
 
 function setMethod <T extends Model>(
   this: T,
-  arg1?: Model.Event<T> | Model.Values<T>,
+  arg1?: number | Model.Event<T> | Model.Values<T>,
   arg2?: any){
 
   const self = control(this, true);

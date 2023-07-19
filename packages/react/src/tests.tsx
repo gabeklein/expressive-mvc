@@ -58,6 +58,7 @@ export function mockHook<T>(
   async function waitFor(fn: () => void | Promise<void>){
     return act(async () => {
       const pending = new Promise(res => waiting = res);
+      await new Promise(res => setTimeout(res, 10));
       await fn();
       await pending;
     })

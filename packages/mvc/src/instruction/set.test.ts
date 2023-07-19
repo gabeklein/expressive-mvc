@@ -289,6 +289,19 @@ describe("factory", () => {
     promise.resolve();
   })
 
+  it("will suspend required-compute while still pending", () => {
+    const promise = mockPromise();
+
+    class Test extends Model {
+      value = set(promise, true);
+    }
+
+    const instance = Test.new();
+
+    expect(() => instance.value).toThrow(expect.any(Promise));
+    promise.resolve();
+  })
+
   it("will return undefined if not required", async () => {
     const promise = mockPromise<string>();
     const mock = jest.fn();

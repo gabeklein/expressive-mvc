@@ -54,11 +54,10 @@ function set <T> (
 
   return add<T>((key, control) => {
     const { state, subject } = control;
+    const output: Control.PropertyDescriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
-      const output: Control.PropertyDescriptor = {};
-
-      const init = () => {
+      function init(){
         try {
           if(typeof value == "function")
             value = mayRetry(value.bind(subject, key, subject));
@@ -67,8 +66,7 @@ function set <T> (
             const pending = value
               .then(value => {
                 output.get = undefined;
-                state[key] = value;
-                return value;
+                return state[key] = value;
               })
               .catch(err => {
                 output.get = () => { throw err };
@@ -78,12 +76,12 @@ function set <T> (
               })
 
             if(argument !== false)
-              return () => {
+              return output.get = () => {
                 const { message, stack } = Oops.NotReady(subject, key);
                 throw assign(pending, { message, stack });
               }
           }
-          else
+          else 
             state[key] = value;
         }
         catch(err){
@@ -96,39 +94,34 @@ function set <T> (
         init();
       else
         output.get = () => {
-          const get = output.get =
-            key in state ? undefined : init();
-
+          const get = key in state ? null : init();
           return get ? get() : state[key];
         }
-
-      return output;
     }
+    else {
+      const set = typeof argument == "function"
+        ? createValueEffect(argument)
+        : undefined;
+  
+      if(value !== undefined){
+        state[key] = value;
+        return { set };
+      }
 
-    const set = typeof argument == "function"
-      ? createValueEffect(argument)
-      : undefined;
+      if(set)
+        output.set = function(this: any, value: any){
+          output.set = set;
+          state[key] = state[key];
+          return set.call(this, value);
+        }
 
-    if(value !== undefined){
-      state[key] = value;
-      return { set };
-    }
-
-    const output: Control.PropertyDescriptor = {
-      get(){
+      output.get = () => {
         if(key in state)
           return state[key];
 
         throw suspense(control, key);
       }
-    };
-
-    if(set)
-      output.set = function(this: any, value: any){
-        output.set = set;
-        state[key] = state[key];
-        return set.call(this, value);
-      }
+    }
 
     return output;
   })
