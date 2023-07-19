@@ -46,10 +46,7 @@ export interface Observable {
   set (): Promise<Model.Event<this>[]> | false;
   set (timeout: number): Promise<Model.Event<this>[]>;
 
-  set <K extends Model.Event<this>> (key: K): Promise<Model.Event<this>[]>;
-  set <K extends Model.Key<this>> (key: K, value: Model.Value<this[K]>): Promise<Model.Event<this>[] | false>;
-
-  set <T extends Model.Values<this>> (from: T, only?: (keyof T)[]): Promise<Model.Event<T>[] | false>;
+  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
 }
 
 function onMethod <T extends Model> (
@@ -144,42 +141,28 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
 
 function setMethod <T extends Model>(
   this: T,
-  arg1?: number | Model.Event<T> | Model.Values<T>,
+  arg1?: number | Model.Values<T>,
   arg2?: any){
 
+  let timeout: number | undefined;
   const self = control(this, true);
   const { state } = self;
-  let timeout: number | undefined;
 
-  const set = (key: string, value: any) => {
-    if(state[key] != value){
-      state[key] = value;
-      self.update(key);
-    }
-  }
+  if(typeof arg1 !== "object")
+    timeout = arg1; 
+  else 
+    for(const key in arg1){
+      const value = (arg1 as any)[key];
 
-  switch(typeof arg1){
-    case "string":
-      if(1 in arguments)
-        if(arg1 in state){
-          set(arg1, arg2);
-          break;
+      if(key in state){
+        if(state[key] != value){
+          state[key] = value;
+          self.update(key);
         }
-        else
-          self.watch(arg1, { value: arg2 });
-
-      self.update(arg1);
-    break;
-
-    case "object":
-      for(const key in state)
-        if(key in arg1 && (!arg2 || arg2.includes(key)))
-          set(key, (arg1 as any)[key]);
-    break;
-
-    default:
-      timeout = arg1;
-  }
+      }
+      else if(arg2)
+        self.watch(key, { value });
+    }
 
   return new Promise<any>((resolve, reject) => {
     if(!self.frame.size && timeout === undefined)

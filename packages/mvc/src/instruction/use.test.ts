@@ -300,7 +300,7 @@ describe("object", () => {
 
       const { info } = Test.new();
 
-      info.set("foo", "bar");
+      info.set({ foo: "bar" });
       
       expect(info.foo).toBe("bar");
     })
@@ -313,7 +313,7 @@ describe("object", () => {
       const { info } = Test.new();
       const gotFoo = jest.fn();
   
-      await info.set("foo", "bar");
+      await info.set({ foo: "bar" }, true);
       expect(info.foo).toBe("bar");
 
       info.get("foo", gotFoo);
