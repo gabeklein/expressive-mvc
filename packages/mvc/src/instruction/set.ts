@@ -77,7 +77,7 @@ function set <T> (
               })
 
             if(argument !== false)
-              return () => {
+              return output.get = () => {
                 const { message, stack } = Oops.NotReady(subject, key);
                 throw assign(pending, { message, stack });
               }
@@ -95,8 +95,7 @@ function set <T> (
         init();
       else
         output.get = () => {
-          const get = output.get =
-            key in state ? undefined : init();
+          const get = !(key in state) && init();
 
           return get ? get() : state[key];
         }
