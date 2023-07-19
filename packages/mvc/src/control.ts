@@ -180,7 +180,7 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
-    const { frame } = this;
+    const { frame, followers } = this;
 
     if(frame.has(key))
       return;
@@ -190,9 +190,9 @@ class Control<T extends {} = any> {
 
       requestUpdateFrame(() => {
         this.latest = Array.from(frame);
-        this.followers.forEach(cb => {
+        followers.forEach(cb => {
           const notify = cb(undefined, this);
-    
+
           if(notify)
             requestUpdateFrame(notify);
         })
@@ -202,18 +202,18 @@ class Control<T extends {} = any> {
   
     frame.add(key);
 
-    const subs = new Set(this.observers.get(key));
-
-    this.followers.forEach(subs.add, subs);
-
-    subs.forEach(cb => {
-      const notify = cb(key, this);
-
-      if(notify === null)
-        subs.delete(cb);
-      else if(notify)
-        requestUpdateFrame(notify);
-    });
+    for(const subs of [
+      this.observers.get(key),
+      this.followers
+    ])
+      subs && subs.forEach(cb => {
+        const notify = cb(key, this);
+  
+        if(notify === null)
+          subs.delete(cb);
+        else if(notify)
+          requestUpdateFrame(notify);
+      });
   }
 
   addListener(fn: Observer){
