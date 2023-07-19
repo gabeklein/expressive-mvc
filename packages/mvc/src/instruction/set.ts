@@ -54,33 +54,30 @@ function set <T> (
 
   return add<T>((key, control) => {
     const { state, subject } = control;
-    const output: Control.PropertyDescriptor = {};
+
+    let get: Control.Getter<T> | undefined;
+    let set: false | Control.Setter<T> | undefined;
 
     if(typeof value == "function" || value instanceof Promise){
+      let pending: Promise<void | T> | undefined;
+
       function init(){
         try {
           if(typeof value == "function")
             value = mayRetry(value.bind(subject, key, subject));
 
           if(value instanceof Promise){
-            const pending = value
+            pending = value
               .then(value => {
-                output.get = undefined;
-                state[key] = value;
-                return value;
+                get = () => state[key];
+                return state[key] = value;
               })
               .catch(err => {
-                output.get = () => { throw err };
+                get = () => { throw err };
               })
               .finally(() => {
                 control.update(key);
-              })
-
-            if(argument !== false)
-              return () => {
-                const { message, stack } = Oops.NotReady(subject, key);
-                throw assign(pending, { message, stack });
-              }
+              });
           }
           else
             state[key] = value;
@@ -94,31 +91,36 @@ function set <T> (
       if(argument)
         init();
       else
-        output.get = () => {
-          const get = output.get =
-            key in state ? undefined : init();
+        get = () => {
+          if(!(key in state))
+            init();
 
-          return get ? get() : state[key];
+          if(pending && argument !== false){
+            const { message, stack } = Oops.NotReady(subject, key);
+            throw assign(pending, { message, stack });
+          }
+
+          return state[key];
         }
     }
     else {
-      const set = typeof argument == "function"
+      const setter = typeof argument == "function"
         ? createValueEffect(argument)
         : undefined;
   
       if(value !== undefined){
         state[key] = value;
-        return { set };
+        set = setter;
       }
 
-      if(set)
-        output.set = function(this: any, value: any){
-          output.set = set;
+      if(setter)
+        set = function(this: any, value: any){
+          set = setter;
           state[key] = state[key];
-          return set.call(this, value);
+          return setter.call(this, value);
         }
 
-      output.get = () => {
+      get = () => {
         if(key in state)
           return state[key];
 
@@ -126,7 +128,10 @@ function set <T> (
       }
     }
 
-    return output;
+    return <Control.PropertyDescriptor>{
+      get: x => get && get(x),
+      set: x => set && set(x)
+    };
   })
 }
 
