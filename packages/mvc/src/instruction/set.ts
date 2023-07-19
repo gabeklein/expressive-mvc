@@ -66,8 +66,7 @@ function set <T> (
             const pending = value
               .then(value => {
                 output.get = undefined;
-                state[key] = value;
-                return value;
+                return state[key] = value;
               })
               .catch(err => {
                 output.get = () => { throw err };
@@ -82,7 +81,7 @@ function set <T> (
                 throw assign(pending, { message, stack });
               }
           }
-          else
+          else 
             state[key] = value;
         }
         catch(err){
@@ -95,8 +94,7 @@ function set <T> (
         init();
       else
         output.get = () => {
-          const get = !(key in state) && init();
-
+          const get = key in state ? null : init();
           return get ? get() : state[key];
         }
     }
