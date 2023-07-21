@@ -173,9 +173,6 @@ class Control<T extends {} = any> {
   update(key: string){
     const { frame, followers } = this;
 
-    if(frame.has(key))
-      return;
-
     if(!frame.size){
       this.latest = undefined;
 
