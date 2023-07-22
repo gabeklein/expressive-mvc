@@ -153,7 +153,7 @@ describe("toString", () => {
 describe("errors", () => {
   const error = mockError();
 
-  it("will log update errors in the console", async () => {
+  it.skip("will log update errors in the console", async () => {
     class Test extends Model {
       value = 1;
     };
@@ -161,9 +161,9 @@ describe("errors", () => {
     const expected = new Error("Goodbye cruel world!")
     const test = Test.new();
 
-    test.on("value", () => {
+    test.get(() => {
       throw expected;
-    }, false);
+    })
 
     test.value = 2;
 

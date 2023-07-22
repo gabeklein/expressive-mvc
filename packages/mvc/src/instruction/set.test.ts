@@ -48,22 +48,26 @@ describe("callback", () => {
   it('will invoke callback on property put', async () => {
     class Subject extends Model {
       test = set<number>(1, value => {
-        callback(value + 1);
+        didAssign(value + 1);
       });
     }
 
     const state = Subject.new();
-    const callback = jest.fn()
-    const event = jest.fn();
+    const didAssign = jest.fn()
+    const didUpdate = jest.fn();
 
-    expect(callback).not.toBeCalled();
-    state.on("test", event, true);
+    expect(didAssign).not.toBeCalled();
+
+    state.set((key, value) => {
+      if(key == "test")
+        didUpdate(value);
+    });
 
     state.test = 2;
-    expect(callback).toBeCalledWith(3);
+    expect(didAssign).toBeCalledWith(3);
 
     await expect(state).toUpdate()
-    expect(event).toBeCalledWith(["test"]);
+    expect(didUpdate).toBeCalledWith(2);
   })
 
   it('will invoke return-callback on overwrite', async () => {

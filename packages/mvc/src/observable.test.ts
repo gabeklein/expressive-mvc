@@ -4,6 +4,8 @@ import { use } from './instruction/use';
 import { Model } from './model';
 
 describe("get", () => {
+  it.todo("will handle recursive get");
+
   describe("export", () => {
     class Test extends Model {
       foo = "foo"
@@ -192,47 +194,46 @@ describe("set", () => {
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
   });
-})
 
-describe("on method", () => {
-  class Control extends Model {
-    foo = 1;
-    bar = 2;
-    baz = get(this, state => {
-      return state.bar + 1;
-    });
-  }
+  it('will call every update', async () => {
+    const test = Test.new();
+    const mock = jest.fn();
 
-  it("will resolve promise made after assignment", async () => {
-    const control = Control.new();
+    const done = test.set(mock);
 
-    control.foo = 2;
-    await control.set(0);
+    test.foo = 1;
+    test.foo = 2;
+    test.bar = 2;
 
-    control.bar = 3;
-    await control.set(0);
+    expect(mock).toBeCalledWith("foo", 1);
+    expect(mock).toBeCalledWith("foo", 2);
+    expect(mock).toBeCalledWith("bar", 2);
+
+    done();
   })
 
-  it("will resolve promise made before assignment", async () => {
-    const control = Control.new();
-    const update = control.set(0);
+  it("will callback after frame", async () => {
+    const test = Test.new();
+    const didUpdate = jest.fn<any, [string, unknown]>(() => didUpdateAsync);
+    const didUpdateAsync = jest.fn<void, [string[]]>();
+    
+    const done = test.set(didUpdate);
 
-    control.foo = 2;
+    test.foo = 1;
+    test.bar = 2;
 
-    await expect(update).resolves.toEqual(["foo"]);
-  })
+    expect(didUpdate).toBeCalledTimes(2);
+    expect(didUpdateAsync).not.toBeCalled();
 
-  it("will resolve to keys next update", async () => {
-    const control = Control.new();
+    await expect(test).toUpdate();
 
-    control.foo = 2;
+    expect(didUpdateAsync).toBeCalledTimes(1);
 
-    const updated = await control.set(0);
-    expect(updated).toMatchObject(["foo"]);
+    done();
   })
 
   it('will reject if not pending', async () => {
-    const control = Control.new();
+    const control = Model.new();
     const update = control.set(0);
 
     await expect(update).rejects.toBe(0);
@@ -245,84 +246,22 @@ describe("on method", () => {
     await expect(update).rejects.toBe(1);
   })
 
-  it("will include getters in batch which trigger them", async () => {
-    const control = Control.new();
+  it("will resolve promise made after assignment", async () => {
+    const control = Test.new();
 
-    // we must evaluate baz because it can't be
-    // subscribed to without this happening atleast once. 
-    expect(control.baz).toBe(3);
+    control.foo = 2;
+    await control.set(0);
 
     control.bar = 3;
-
-    const update = await control.set(0);
-
-    expect(update).toMatchObject(["bar", "baz"]);
+    await control.set(0);
   })
 
-  describe("callbacks", () => {
-    it('will not call immediately if initial is false', async () => {
-      class Subject extends Model {
-        seconds = 0;
-      }
+  it("will resolve promise made before assignment", async () => {
+    const control = Test.new();
+    const update = control.set(0);
 
-      const state = Subject.new();
-      const callback = jest.fn<void, [string[]]>();
+    control.foo = 2;
 
-      state.on("seconds", callback);
-
-      expect(callback).not.toBeCalled();
-
-      state.seconds = 30;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(["seconds"]);
-      expect(callback).toBeCalledTimes(1);
-    })
-
-    it('will ignore subsequent in once mode', async () => {
-      class Subject extends Model {
-        seconds = 0;
-      }
-
-      const state = Subject.new();
-      const callback = jest.fn<void, [string[]]>();
-
-      state.on("seconds", callback, true);
-
-      expect(callback).not.toBeCalled();
-
-      state.seconds = 30;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(["seconds"]);
-
-      state.seconds = 45;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledTimes(1);
-    })
-
-    it('will watch multiple values', async () => {
-      class Subject extends Model {
-        seconds = 0;
-        hours = 0;
-      }
-
-      const state = Subject.new();
-      const callback = jest.fn<void, [string[]]>();
-
-      state.on(["seconds", "hours"], callback, false);
-
-      state.seconds = 30;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledTimes(1);
-      expect(callback).toBeCalledWith(["seconds"]);
-
-      state.hours = 2;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(["hours"]);
-    })
+    await expect(update).resolves.toEqual(["foo"]);
   })
 })

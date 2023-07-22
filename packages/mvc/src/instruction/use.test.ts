@@ -245,51 +245,7 @@ describe("object", () => {
     expect(test.info.foo).toBe("bar");
   })
 
-  describe("on method", () => {
-    it("will callback on update", async () => {
-      class Test extends Model {
-        info = use({ foo: "foo" });
-      }
-  
-      const { info } = Test.new();
-      const gotFoo = jest.fn();
-
-      expect<{ foo: string }>(info);
-  
-      const done = info.on("foo", gotFoo, false);
-
-      info.foo = "bar";
-      await info.set(0);
-
-      expect(gotFoo).toHaveBeenCalledTimes(1);
-
-      /* will unsubscribe when done is called */
-
-      done();
-      info.foo = "baz";
-      await info.set(0);
-
-      expect(gotFoo).toHaveBeenCalledTimes(1);
-    })
-  
-    it("will watch keys added to record", async () => {
-      class Test extends Model {
-        info = use<string>({});
-      }
-
-      const { info } = Test.new();
-      const gotFoo = jest.fn();
-
-      expect<Record<string, string>>(info);
-  
-      info.get("foo", gotFoo);
-      info.foo = "bar";
-  
-      await info.set(0);
-      expect(gotFoo).toHaveBeenCalled();
-    })
-  })
-
+  // TODO: inspect this behavior
   describe("set method", () => {
     it("will assign to property", () => {
       class Test extends Model {
@@ -318,6 +274,52 @@ describe("object", () => {
 
       info.get("foo", gotFoo);
       info.foo = "foo";
+  
+      await info.set(0);
+      expect(gotFoo).toHaveBeenCalled();
+    })
+
+    it("will callback on update", async () => {
+      class Test extends Model {
+        info = use({ foo: "foo" });
+      }
+  
+      const { info } = Test.new();
+      const gotFoo = jest.fn();
+
+      expect<{ foo: string }>(info);
+
+      const done = info.set(key => {
+        if(key == "foo")
+          gotFoo();
+      });
+
+      info.foo = "bar";
+      await info.set(0);
+
+      expect(gotFoo).toHaveBeenCalledTimes(1);
+
+      /* will unsubscribe when done is called */
+
+      done();
+      info.foo = "baz";
+      await info.set(0);
+
+      expect(gotFoo).toHaveBeenCalledTimes(1);
+    })
+  
+    it("will watch keys added to record", async () => {
+      class Test extends Model {
+        info = use<string>({});
+      }
+
+      const { info } = Test.new();
+      const gotFoo = jest.fn();
+
+      expect<Record<string, string>>(info);
+  
+      info.get("foo", gotFoo);
+      info.foo = "bar";
   
       await info.set(0);
       expect(gotFoo).toHaveBeenCalled();

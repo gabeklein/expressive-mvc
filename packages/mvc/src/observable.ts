@@ -16,7 +16,6 @@ type Export<T, S> =
   never;
 
 type GetCallback<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
-type OnCallback<T> = (this: T, updated: Model.Event<T>[]) => void;
 
 export function makeObservable(to: Observable){
   defineProperties(to, {
@@ -40,10 +39,10 @@ export interface Observable {
   get <P extends Select<this>> (select: P): Export<this, P>;
   get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
 
-  on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
-  on (select: Event<this>, callback: OnCallback<this>, once?: boolean): Callback;
+  // on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
 
   set (): Promise<Model.Event<this>[]> | false;
+  set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
   set (timeout: number): Promise<Model.Event<this>[]>;
 
   set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
@@ -141,14 +140,16 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
 
 function setMethod <T extends Model>(
   this: T,
-  arg1?: number | Model.Values<T>,
+  arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
   arg2?: any){
 
   let timeout: number | undefined;
   const self = control(this, true);
   const { state } = self;
 
-  if(typeof arg1 !== "object")
+  if(typeof arg1 === "function")
+    return self.addListener(k => k && arg1(k, state[k]));
+  else if(typeof arg1 !== "object")
     timeout = arg1; 
   else 
     for(const key in arg1){
