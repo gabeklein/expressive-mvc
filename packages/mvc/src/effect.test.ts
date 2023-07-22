@@ -383,7 +383,7 @@ it("will throw if state.get returns non-function", () => {
   expect(attempt).toThrowError(expected);
 })
 
-it("will not throw if.on returns promise", () => {
+it("will not throw if.get returns promise", () => {
   const state = Test.new();
   const attempt = () => {
     state.get(async () => {});

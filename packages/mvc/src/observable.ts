@@ -8,7 +8,6 @@ type SelectOne<T, K extends Model.Key<T>> = K;
 type SelectFew<T, K extends Model.Key<T>> = K[];
 
 type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
-type Event<T> = Model.Event<T> | (Model.Event<T>)[];
 
 type Export<T, S> =
   S extends SelectOne<T, infer P> ? T[P] : 
@@ -19,7 +18,6 @@ type GetCallback<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[
 
 export function makeObservable(to: Observable){
   defineProperties(to, {
-    on: { value: onMethod },
     get: { value: getMethod },
     set: { value: setMethod },
     toString: {
@@ -39,50 +37,11 @@ export interface Observable {
   get <P extends Select<this>> (select: P): Export<this, P>;
   get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
 
-  // on (select: Event<this>, timeout?: number): Promise<Model.Event<this>[]>;
-
   set (): Promise<Model.Event<this>[]> | false;
   set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
   set (timeout: number): Promise<Model.Event<this>[]>;
 
   set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
-}
-
-function onMethod <T extends Model> (
-  this: T,
-  arg?: number | Event<T>,
-  arg2?: Function | number,
-  once?: boolean){
-
-  if(typeof arg2 == "function")
-    return control(this, self => {
-      const select =
-        typeof arg == "string" ? [arg] :
-        typeof arg == "object" ? arg : undefined;
-
-      const remove = self.addListener(key => {
-        if(select && !select.includes(key!))
-          return;
-
-        if(once)
-          remove();
-
-        return () => arg2.call(this, self.latest);
-      });   
-      
-      return remove;
-    })
-
-  return new Promise((res, rej) => {
-    const timeout = typeof arg == "number" ? arg : arg2 as number;
-    const remove = onMethod.call(this, arg, res, true) as Callback;
-
-    if(typeof timeout == "number")
-      setTimeout(() => {
-        remove();
-        rej(timeout);
-      }, timeout);
-  })
 }
 
 function getMethod <T extends Model, P extends Model.Key<T>> (
