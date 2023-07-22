@@ -108,9 +108,7 @@ function setMethod <T extends Model>(
 
   if(typeof arg1 === "function")
     return self.addListener(k => k && arg1(k, state[k]));
-  else if(typeof arg1 !== "object")
-    timeout = arg1; 
-  else 
+  else if(typeof arg1 == "object") 
     for(const key in arg1){
       const value = (arg1 as any)[key];
 
@@ -123,6 +121,8 @@ function setMethod <T extends Model>(
       else if(arg2)
         self.watch(key, { value });
     }
+  else
+    timeout = arg1; 
 
   return new Promise<any>((resolve, reject) => {
     if(!self.frame.size && timeout === undefined)
