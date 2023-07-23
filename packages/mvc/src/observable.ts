@@ -39,7 +39,7 @@ export interface Observable {
 
   set (): Promise<Model.Event<this>[]> | false;
   set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
-  set (timeout: number): Promise<Model.Event<this>[]>;
+  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
 
   set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
 }
@@ -100,15 +100,15 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
 function setMethod <T extends Model>(
   this: T,
   arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
-  arg2?: any){
+  arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
 
-  let timeout: number | undefined;
   const self = control(this, true);
   const { state } = self;
 
   if(typeof arg1 === "function")
     return self.addListener(k => k && arg1(k, state[k]));
-  else if(typeof arg1 == "object") 
+
+  if(typeof arg1 == "object") 
     for(const key in arg1){
       const value = (arg1 as any)[key];
 
@@ -118,27 +118,32 @@ function setMethod <T extends Model>(
           self.update(key);
         }
       }
-      else if(arg2)
+      else if(arg2 === true)
         self.watch(key, { value });
     }
-  else
-    timeout = arg1; 
 
   return new Promise<any>((resolve, reject) => {
-    if(!self.frame.size && timeout === undefined)
+    if(!self.frame.size && typeof arg1 != "number")
       return resolve(false);
 
-    const remove = self.addListener(() => {
-      remove();
-      return () => resolve(self.latest);
+    const didUpdate = () => resolve(self.latest);
+
+    const remove = self.addListener((key) => {
+      if(typeof arg2 !== "function" || (
+        key && arg2(key, state[key]) === true
+      )){
+        remove();
+
+        if(timeout)
+          clearTimeout(timeout);
+
+        return didUpdate;
+      }
     });
 
-    if(typeof timeout == "number")
-      setTimeout(() => {
-        if(!self.frame.size){
-          remove();
-          reject(timeout);
-        }
-      }, timeout);
+    const timeout = typeof arg1 == "number" && setTimeout(() => {
+      remove();
+      reject(arg1);
+    }, arg1);
   });
 }

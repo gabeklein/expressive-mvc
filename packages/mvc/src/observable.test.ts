@@ -264,4 +264,37 @@ describe("set", () => {
 
     await expect(update).resolves.toEqual(["foo"]);
   })
+
+  it("will not call test on update if satisfied", async () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+      baz = 2;
+    }
+
+    const control = Test.new();
+    const test = jest.fn((key: string) => key === "bar");
+    const update = control.set(0, test);
+
+    control.foo = 2;
+    control.bar = 3;
+    control.baz = 4;
+
+    expect(test).toBeCalledWith("foo", 2);
+    expect(test).toBeCalledWith("bar", 3);
+    expect(test).not.toBeCalledWith("baz", 4);
+
+    await expect(update).resolves.toEqual(["foo", "bar", "baz"]);
+  })
+
+  it("will still timeout if test returns false", async () => {
+    const control = Test.new();
+    const test = jest.fn(() => false);
+    const update = control.set(0, test);
+
+    control.foo = 2;
+
+    expect(test).toBeCalledWith("foo", 2);
+    await expect(update).rejects.toBe(0);
+  })
 })
