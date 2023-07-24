@@ -131,21 +131,6 @@ describe("get", () => {
       expect(callback).toBeCalledTimes(2);
     })
 
-    it.skip('will callback when destroyed', () => {
-      class Subject extends Model {
-        seconds = 0;
-      }
-  
-      const state = Subject.new();
-      const callback = jest.fn();
-
-      state.get("seconds", callback);
-
-      state.null();
-
-      expect(callback).toBeCalledWith(null);
-    })
-
     it('will compute pending value early', async () => {
       class Subject extends Model {
         seconds = 0;
@@ -164,6 +149,160 @@ describe("get", () => {
 
       expect(callback).toBeCalledWith(1, ["seconds", "minutes"]);
       expect(callback).toBeCalledTimes(2);
+    })
+  })
+})
+
+describe("set", () => {
+  it("will assign values", async () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+      baz?: number;
+    }
+    
+    const values = {
+      foo: 1,
+      bar: 2,
+      baz: 3
+    }
+
+    const test = Test.new();
+
+    expect(test.foo).toBe(0);
+    expect(test.bar).toBe(1);
+
+    test.set(values);
+
+    await expect(test).toHaveUpdated(["foo", "bar"]);
+
+    expect(test.foo).toBe(1);
+    expect(test.bar).toBe(2);
+  });
+
+  describe("timeout", () => {
+    it('will reject if not pending', async () => {
+      const control = Model.new();
+      const update = control.set(0);
+
+      await expect(update).rejects.toBe(0);
+    })
+
+    it('will reject on timeout', async () => {
+      const state = Model.new();
+      const update = state.set(1);
+
+      await expect(update).rejects.toBe(1);
+    })
+
+    it("will resolve promise made after assignment", async () => {
+      class Test extends Model {
+        foo = 0;
+        bar = 1;
+      }
+    
+      const control = Test.new();
+
+      control.foo = 2;
+      await control.set(0);
+
+      control.bar = 3;
+      await control.set(0);
+    })
+
+    it("will resolve promise made before assignment", async () => {
+      class Test extends Model {
+        foo = 0;
+      }
+
+      const control = Test.new();
+      const update = control.set(0);
+
+      control.foo = 2;
+
+      await expect(update).resolves.toEqual(["foo"]);
+    })
+
+    it("will not call test on update if satisfied", async () => {
+      class Test extends Model {
+        foo = 0;
+        bar = 1;
+        baz = 2;
+      }
+
+      const control = Test.new();
+      const test = jest.fn((key: string) => key === "bar");
+      const update = control.set(0, test);
+
+      control.foo = 2;
+      control.bar = 3;
+      control.baz = 4;
+
+      expect(test).toBeCalledWith("foo", 2);
+      expect(test).toBeCalledWith("bar", 3);
+      expect(test).not.toBeCalledWith("baz", 4);
+
+      await expect(update).resolves.toEqual(["foo", "bar", "baz"]);
+    })
+
+    it("will still timeout if test returns false", async () => {
+      class Test extends Model {
+        foo = 0;
+      }
+
+      const control = Test.new();
+      const test = jest.fn(() => false);
+      const update = control.set(0, test);
+
+      control.foo = 2;
+
+      expect(test).toBeCalledWith("foo", 2);
+      await expect(update).rejects.toBe(0);
+    })
+  })
+
+  describe("effect", () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+      baz = 2;
+    }
+
+    it('will call every update', async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      const done = test.set(mock);
+
+      test.foo = 1;
+      test.foo = 2;
+      test.bar = 2;
+
+      expect(mock).toBeCalledWith("foo", 1);
+      expect(mock).toBeCalledWith("foo", 2);
+      expect(mock).toBeCalledWith("bar", 2);
+
+      done();
+    })
+
+    it("will callback after frame", async () => {
+      const test = Test.new();
+      const didUpdate = jest.fn<any, [string, unknown]>(() => didUpdateAsync);
+      const didUpdateAsync = jest.fn<void, [string[]]>();
+      
+      const done = test.set(didUpdate);
+
+      test.foo = 1;
+      test.bar = 2;
+
+      expect(didUpdate).toBeCalledTimes(2);
+      expect(didUpdateAsync).not.toBeCalled();
+
+      await expect(test).toUpdate();
+
+      expect(didUpdateAsync).toBeCalledTimes(1);
+
+      done();
     })
 
     it('will not activate Model prematurely', () => {
@@ -187,136 +326,5 @@ describe("get", () => {
 
       expect(callback).toBeCalledWith("bar", 2);
     })
-  })
-})
-
-describe("set", () => {
-  class Test extends Model {
-    foo = 0;
-    bar = 1;
-    baz?: number;
-  }
-  
-  const values = {
-    foo: 1,
-    bar: 2,
-    baz: 3
-  }
-  
-  it("will assign values", async () => {
-    const test = Test.new();
-
-    expect(test.foo).toBe(0);
-    expect(test.bar).toBe(1);
-
-    test.set(values);
-
-    await expect(test).toHaveUpdated(["foo", "bar"]);
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-  });
-
-  it('will call every update', async () => {
-    const test = Test.new();
-    const mock = jest.fn();
-
-    const done = test.set(mock);
-
-    test.foo = 1;
-    test.foo = 2;
-    test.bar = 2;
-
-    expect(mock).toBeCalledWith("foo", 1);
-    expect(mock).toBeCalledWith("foo", 2);
-    expect(mock).toBeCalledWith("bar", 2);
-
-    done();
-  })
-
-  it("will callback after frame", async () => {
-    const test = Test.new();
-    const didUpdate = jest.fn<any, [string, unknown]>(() => didUpdateAsync);
-    const didUpdateAsync = jest.fn<void, [string[]]>();
-    
-    const done = test.set(didUpdate);
-
-    test.foo = 1;
-    test.bar = 2;
-
-    expect(didUpdate).toBeCalledTimes(2);
-    expect(didUpdateAsync).not.toBeCalled();
-
-    await expect(test).toUpdate();
-
-    expect(didUpdateAsync).toBeCalledTimes(1);
-
-    done();
-  })
-
-  it('will reject if not pending', async () => {
-    const control = Model.new();
-    const update = control.set(0);
-
-    await expect(update).rejects.toBe(0);
-  })
-
-  it('will reject on timeout', async () => {
-    const state = Model.new();
-    const update = state.set(1);
-
-    await expect(update).rejects.toBe(1);
-  })
-
-  it("will resolve promise made after assignment", async () => {
-    const control = Test.new();
-
-    control.foo = 2;
-    await control.set(0);
-
-    control.bar = 3;
-    await control.set(0);
-  })
-
-  it("will resolve promise made before assignment", async () => {
-    const control = Test.new();
-    const update = control.set(0);
-
-    control.foo = 2;
-
-    await expect(update).resolves.toEqual(["foo"]);
-  })
-
-  it("will not call test on update if satisfied", async () => {
-    class Test extends Model {
-      foo = 0;
-      bar = 1;
-      baz = 2;
-    }
-
-    const control = Test.new();
-    const test = jest.fn((key: string) => key === "bar");
-    const update = control.set(0, test);
-
-    control.foo = 2;
-    control.bar = 3;
-    control.baz = 4;
-
-    expect(test).toBeCalledWith("foo", 2);
-    expect(test).toBeCalledWith("bar", 3);
-    expect(test).not.toBeCalledWith("baz", 4);
-
-    await expect(update).resolves.toEqual(["foo", "bar", "baz"]);
-  })
-
-  it("will still timeout if test returns false", async () => {
-    const control = Test.new();
-    const test = jest.fn(() => false);
-    const update = control.set(0, test);
-
-    control.foo = 2;
-
-    expect(test).toBeCalledWith("foo", 2);
-    await expect(update).rejects.toBe(0);
   })
 })
