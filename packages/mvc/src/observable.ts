@@ -50,7 +50,7 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   callback?: Function){
 
   if(typeof argument == "function")
-      return createEffect(this, argument);
+    return createEffect(this, argument);
 
   const self = control(this, true);
 
@@ -102,11 +102,13 @@ function setMethod <T extends Model>(
   arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
   arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
 
+  if(typeof arg1 === "function")
+    return control(this, self => (
+      self.addListener(k => k && arg1(k, self.state[k]))
+    ))
+
   const self = control(this, true);
   const { state } = self;
-
-  if(typeof arg1 === "function")
-    return self.addListener(k => k && arg1(k, state[k]));
 
   if(typeof arg1 == "object") 
     for(const key in arg1){
@@ -129,9 +131,7 @@ function setMethod <T extends Model>(
     const didUpdate = () => resolve(self.latest);
 
     const remove = self.addListener((key) => {
-      if(typeof arg2 !== "function" || (
-        key && arg2(key, state[key]) === true
-      )){
+      if(typeof arg2 !== "function" || key && arg2(key, state[key]) === true){
         remove();
 
         if(timeout)

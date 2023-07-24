@@ -165,6 +165,28 @@ describe("get", () => {
       expect(callback).toBeCalledWith(1, ["seconds", "minutes"]);
       expect(callback).toBeCalledTimes(2);
     })
+
+    it('will not activate Model prematurely', () => {
+      class Test extends Model {
+        foo = 0;
+
+        constructor(){
+          super();
+          this.set(callback)
+        }
+      }
+
+      class Subject extends Test {
+        bar = 1;
+      }
+
+      const callback = jest.fn();
+      const subject = Subject.new();
+
+      subject.bar = 2;
+
+      expect(callback).toBeCalledWith("bar", 2);
+    })
   })
 })
 
