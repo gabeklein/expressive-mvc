@@ -117,7 +117,7 @@ function setMethod <T extends Model>(
         return;
       }
   
-      const didUpdate = () => resolve(self.latest);
+      const callback = () => resolve(self.latest);
   
       const remove = self.addListener((key) => {
         if(typeof arg2 !== "function" || key && arg2(key, self.state[key]) === true){
@@ -126,7 +126,7 @@ function setMethod <T extends Model>(
           if(timeout)
             clearTimeout(timeout);
   
-          return didUpdate;
+          return callback;
         }
       });
   
