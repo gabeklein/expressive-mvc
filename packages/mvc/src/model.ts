@@ -2,7 +2,7 @@ import { Control, control } from './control';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
-import { makeObservable, Observable } from './observable';
+import { makeObservable } from './observable';
 
 import type { Callback } from '../types';
 
@@ -50,9 +50,41 @@ declare namespace Model {
     R extends Ref<infer T> ? T :
     R extends Observable ? Export<R> :
     R;
+
+  type SelectOne<T, K extends Model.Key<T>> = K;
+  type SelectFew<T, K extends Model.Key<T>> = K[];
+
+  type Exports<T, S> =
+    S extends SelectOne<T, infer P> ? T[P] : 
+    S extends SelectFew<T, infer P> ? Model.Export<T, P> :
+    never;
+
+  type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
+
+  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Model.Event<T>[]) => void;
+
+  export interface Observable {
+    get(): Export<this>;
+
+    get(effect: Effect<this>): Callback;
+
+    get <P extends Select<this>> (select: P): Exports<this, P>;
+
+    get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
+
+    /** Assert update is in progress. Returns a promise which resolves updated keys. */
+    set (): Promise<Event<this>[]> | false;
+
+    /** Detect and/or modify updates to state. */
+    set (event: (key: string, value: unknown) => void | ((keys: Key<this>[]) => void)): Callback;
+
+    set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Event<this>[]>;
+
+    set <T extends Values<this>> (from: T, append?: boolean): Promise<Event<T>[] | false>;
+  }
 }
 
-interface Model extends Observable {}
+interface Model extends Model.Observable {}
 
 class Model {
   constructor(id?: string | number){

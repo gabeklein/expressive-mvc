@@ -1,13 +1,13 @@
 import { add, Control, control, parent } from '../control';
 import { create } from '../helper/object';
 import { Model } from '../model';
-import { makeObservable, Observable } from '../observable';
+import { makeObservable } from '../observable';
 
 type Empty = Record<string, never>;
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T } & Observable;
-  export type Object<T extends {}> = T & Observable;
+  export type Record<T> = { [key: string | number]: T } & Model.Observable;
+  export type Object<T extends {}> = T & Model.Observable;
 }
 
 /** Create a placeholder for specified Model type. */
@@ -51,7 +51,7 @@ function use(
         const subject = create(next);
         const control = new Control(subject, false);
 
-        makeObservable(next as Observable);
+        makeObservable(next as Model.Observable);
 
         for(const key in control.state = next)
           control.watch(key, {});

@@ -1,22 +1,9 @@
-import { Callback } from '../types';
 import { Control, control } from './control';
 import { createEffect } from './effect';
 import { defineProperties, keys } from './helper/object';
 import { Model } from './model';
 
-type SelectOne<T, K extends Model.Key<T>> = K;
-type SelectFew<T, K extends Model.Key<T>> = K[];
-
-type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
-
-type Export<T, S> =
-  S extends SelectOne<T, infer P> ? T[P] : 
-  S extends SelectFew<T, infer P> ? Model.Export<T, P> :
-  never;
-
-type GetCallback<T, S> = (this: T, value: Export<T, S>, updated: Model.Event<T>[]) => void;
-
-export function makeObservable(to: Observable){
+export function makeObservable(to: Model.Observable){
   defineProperties(to, {
     get: { value: getMethod },
     set: { value: setMethod },
@@ -27,21 +14,6 @@ export function makeObservable(to: Observable){
       }
     }
   });
-}
-
-export interface Observable {
-  get(): Model.Export<this>;
-
-  get(effect: Model.Effect<this>): Callback;
-
-  get <P extends Select<this>> (select: P): Export<this, P>;
-  get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
-
-  set (): Promise<Model.Event<this>[]> | false;
-  set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
-  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
-
-  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
 }
 
 function getMethod <T extends Model, P extends Model.Key<T>> (
