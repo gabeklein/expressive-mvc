@@ -1,8 +1,8 @@
-import { Model } from "./model";
-import { control } from "./control";
-import { createEffect } from "./effect";
-import { Callback } from "../types";
-import { defineProperties, keys } from "./helper/object";
+import { Callback } from '../types';
+import { Control, control } from './control';
+import { createEffect } from './effect';
+import { defineProperties, keys } from './helper/object';
+import { Model } from './model';
 
 type SelectOne<T, K extends Model.Key<T>> = K;
 type SelectFew<T, K extends Model.Key<T>> = K[];
@@ -107,43 +107,54 @@ function setMethod <T extends Model>(
       self.addListener(k => k && arg1(k, self.state[k]))
     ))
 
-  const self = control(this, true);
-  const { state } = self;
-
-  if(typeof arg1 == "object") 
-    for(const key in arg1){
-      const value = (arg1 as any)[key];
-
-      if(key in state){
-        if(state[key] != value){
-          state[key] = value;
-          self.update(key);
-        }
-      }
-      else if(arg2 === true)
-        self.watch(key, { value });
-    }
-
   return new Promise<any>((resolve, reject) => {
-    if(!self.frame.size && typeof arg1 != "number")
-      return resolve(false);
+    control(this, self => {
+      if(typeof arg1 == "object")
+        merge(self, arg1, arg2 === true);
 
-    const didUpdate = () => resolve(self.latest);
-
-    const remove = self.addListener((key) => {
-      if(typeof arg2 !== "function" || key && arg2(key, state[key]) === true){
-        remove();
-
-        if(timeout)
-          clearTimeout(timeout);
-
-        return didUpdate;
+      if(!self.frame.size && typeof arg1 != "number"){
+        resolve(false);
+        return;
       }
-    });
-
-    const timeout = typeof arg1 == "number" && setTimeout(() => {
-      remove();
-      reject(arg1);
-    }, arg1);
+  
+      const didUpdate = () => resolve(self.latest);
+  
+      const remove = self.addListener((key) => {
+        if(typeof arg2 !== "function" || key && arg2(key, self.state[key]) === true){
+          remove();
+  
+          if(timeout)
+            clearTimeout(timeout);
+  
+          return didUpdate;
+        }
+      });
+  
+      const timeout = typeof arg1 == "number" && setTimeout(() => {
+        remove();
+        reject(arg1);
+      }, arg1);
+    })
   });
+}
+
+function merge<T extends Model>(
+  into: Control<T>,
+  data: Model.Values<T>,
+  append?: boolean){
+
+  const { state } = into;
+
+  for(const key in data){
+    const value = (data as any)[key];
+
+    if(key in state){
+      if(state[key] != value){
+        state[key] = value;
+        into.update(key);
+      }
+    }
+    else if(append)
+      into.watch(key, { value });
+  }
 }
