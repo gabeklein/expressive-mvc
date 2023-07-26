@@ -19,7 +19,7 @@ declare namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null">, string>;
+  export type Key<T> = Exclude<keyof T, "set" | "get" | "null">
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
   export type Event<T> = Key<T> | (string & {});

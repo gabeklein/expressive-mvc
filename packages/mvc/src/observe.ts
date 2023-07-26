@@ -8,27 +8,29 @@ export function extract <T extends Model, P extends Model.Key<T>> (
   callback?: Function){
 
   const self = control(target, true);
+  const select =
+    argument === undefined ? keys(self.state) as P[] :
+    typeof argument === "object" ? argument : [argument];
 
   function get(key: P){
     const value = self.state[key];
     return value instanceof Model ? value.get() : value;
   }
 
-  const extract = typeof argument == "string"
-    ? () => get(argument)
-    : () => {
+  const extract = typeof argument == "object" || argument === undefined
+    ? () => {
       const output = {} as any;
 
-      for(const key of argument || keys(self.state))
+      for(const key of select)
         output[key] = get(key as P);
 
       return output;
-    };
+    }
+    : () => get(argument);
 
   if(typeof callback != "function")
     return extract();
 
-  const select = typeof argument == "string" ? [argument] : argument;
   const invoke = () => callback(extract(), self.latest || []);
 
   if(select)

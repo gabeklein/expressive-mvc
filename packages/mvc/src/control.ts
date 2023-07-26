@@ -103,7 +103,7 @@ class Control<T extends {} = any> {
   public id: string | number | false;
   public subject: T;
 
-  public state: { [property: string]: unknown } = {};
+  public state: { [property: string | number | symbol]: unknown } = {};
   public latest?: string[];
 
   public frame = new Set<string>();
@@ -150,7 +150,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  watch(key: string, output: Control.PropertyDescriptor<any>){
+  watch(key: Model.Key<T>, output: Control.PropertyDescriptor<any>){
     const { state } = this;
     const { set, enumerable = true } = output;
 
