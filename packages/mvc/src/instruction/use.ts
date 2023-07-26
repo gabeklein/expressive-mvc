@@ -5,8 +5,8 @@ import { Model } from '../model';
 type Empty = Record<string, never>;
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T } & Model.Observable;
-  export type Object<T extends {}> = T & Model.Observable;
+  export type Record<T> = { [key: string | number]: T };
+  export type Object<T extends {}> = T;
 }
 
 /** Create a placeholder for specified Model type. */
