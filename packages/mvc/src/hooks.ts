@@ -50,7 +50,7 @@ function use <T extends Model> (
           else if(props)
             for(const key in instance)
               if(props.hasOwnProperty(key))
-                (instance as any)[key] = (props as any)[key];
+                instance[key] = (props as any)[key];
 
           if(!repeat)
             shouldApply = false;
