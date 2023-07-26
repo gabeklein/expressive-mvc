@@ -147,7 +147,7 @@ defineProperties(Model.prototype, {
   toString: {
     configurable: true,
     value(){
-      return `${this.constructor.name}-${control(this).id}`;
+      return `${this.constructor}-${control(this).id}`;
     }
   }
 });
