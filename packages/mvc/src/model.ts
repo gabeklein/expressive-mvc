@@ -34,12 +34,6 @@ declare namespace Model {
    */
   export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  /**
-   * Reference to `this` without a subscription.
-   * Use to obtain full reference from a destructure.
-   */
-  export type Focus<T> = T & { is: T };
-
   /** Exotic value, actual value is contained. */
   export type Ref<T = any> = {
     (next: T): void;
@@ -66,7 +60,10 @@ declare namespace Model {
 }
 
 class Model {
+  is!: this;
+
   constructor(id?: string | number){
+    defineProperty(this, "is", { value: this });
     new Control(this, id);
   }
 
@@ -146,7 +143,6 @@ class Model {
   }
 }
 
-
 defineProperties(Model.prototype, {
   toString: {
     configurable: true,
@@ -169,15 +165,6 @@ export { Model }
 defineProperty(Model, "isTypeof", {
   get(){
     throw new Error("Model.isTypeof method was renamed. Use Model.is instead.")
-  }
-})
-
-defineProperties(Model.prototype, {
-  is: {
-    configurable: true,
-    get(){
-      throw new Error("Model.is property is only available from a hook.")
-    }
   }
 });
 

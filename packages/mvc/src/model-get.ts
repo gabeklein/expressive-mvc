@@ -31,10 +31,10 @@ type Factory<T extends Model, R> =
   (this: T, current: T, update: ForceUpdate) => R;
 
 /** Fetch instance of this class from context. */
-function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): Model.Focus<T>;
+function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 
 /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-function get <T extends Model> (this: Model.Type<T>, required: boolean): Model.Focus<T> | undefined;
+function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
 function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | R | Promise<R>>): NoVoid<R>;
 function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | null>): NoVoid<R> | null;

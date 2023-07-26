@@ -120,13 +120,6 @@ it('will watch function properties', async () => {
   expect(mockFunction).toBeCalledTimes(1);
 });
 
-it('will throw if Model.is is accessed', () => {
-  const state = Subject.new();
-
-  // @ts-expect-error
-  expect(() => state.is).toThrow();
-})
-
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;

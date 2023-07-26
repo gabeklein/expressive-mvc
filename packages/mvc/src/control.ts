@@ -290,10 +290,8 @@ function parent(child: unknown, assign?: Model){
   PARENTS.set(child as Model, assign);
 }
 
-type Focus<T extends {}> = T & { is: T };
-
 function watch<T extends {}>(target: T, key: string): (value: unknown) => any;
-function watch<T extends {}>(target: T, callback: Observer): Focus<T>;
+function watch<T extends {}>(target: T, callback: Observer): T;
 function watch<T extends {}>(value: T, argument: Observer | string){
   const observer = OBSERVER.get(value);
   const control = REGISTER.get(value)!;
@@ -311,14 +309,12 @@ function watch<T extends {}>(value: T, argument: Observer | string){
     )
   }
 
-  if(!observer){
-    value = defineProperty(create(value), "is", { value });
-    REGISTER.set(value, control!);
-  }
+  if(!observer)
+    REGISTER.set(value = create(value), control!);
 
   OBSERVER.set(value, argument);
 
-  return value as Focus<T>;
+  return value;
 }
 
 function add<T = any>(instruction: Control.Instruction<T>){
