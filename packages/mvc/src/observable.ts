@@ -21,10 +21,17 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   argument?: P | P[] | Model.Effect<T>,
   callback?: Function){
 
-  if(typeof argument == "function")
-    return createEffect(this, argument);
+  return typeof argument == "function"
+    ? createEffect(this, argument)
+    : extract(this, argument, callback);
+}
 
-  const self = control(this, true);
+function extract <T extends Model, P extends Model.Key<T>> (
+  target: T,
+  argument?: P | P[],
+  callback?: Function){
+
+  const self = control(target, true);
 
   function get(key: P){
     const value = self.state[key];
@@ -74,13 +81,20 @@ function setMethod <T extends Model>(
   arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
   arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
 
-  if(typeof arg1 === "function")
-    return control(this, self => (
+  return typeof arg1 == "function"
+    ? control(this, self => (
       self.addListener(k => k && arg1(k, self.state[k]))
     ))
+    : update(this, arg1, arg2);
+}
+
+function update<T extends Model>(
+  target: T,
+  arg1?: number | Model.Values<T>,
+  arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
 
   return new Promise<any>((resolve, reject) => {
-    control(this, self => {
+    control(target, self => {
       if(typeof arg1 == "object")
         merge(self, arg1, arg2 === true);
 
@@ -109,6 +123,7 @@ function setMethod <T extends Model>(
     })
   });
 }
+
 
 function merge<T extends Model>(
   into: Control<T>,
