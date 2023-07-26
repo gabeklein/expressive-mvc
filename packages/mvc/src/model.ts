@@ -55,7 +55,7 @@ declare namespace Model {
     S extends SelectFew<T, infer P> ? Export<T, P> :
     never;
 
-  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Event<T>[]) => void;
+  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Key<T>[]) => void;
 }
 
 class Model {
@@ -84,14 +84,14 @@ class Model {
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
-  set (): Promise<Model.Event<this>[]> | false;
+  set (): Promise<Model.Key<this>[]> | false;
 
   /** Detect and/or modify updates to state. */
   set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
 
-  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
+  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Key<this>[]>;
 
-  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
+  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Key<T>[] | false>;
 
   set(
     arg1?: number | Model.Values<this> | ((key: string, value: unknown) => any),

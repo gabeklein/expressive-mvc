@@ -11,7 +11,7 @@ export const Oops = issues({
 });
 
 type Observer<T extends {} = any> =
-  (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
+  (key: Model.Key<T> | null | undefined, source: Control) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
   (parent: Control<T>, key: Model.Key<T>) => void;
@@ -21,6 +21,13 @@ const OBSERVER = new WeakMap<{}, Observer>();
 const INSTRUCT = new Map<symbol, InstructionRunner>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
+
+const LIFECYCLE = {
+  ready: new Set<Control.Callback>(),
+  dispatch: new Set<Callback>(),
+  update: new Set<Callback>(),
+  didUpdate: new Set<Callback>(),
+}
 
 declare namespace Control {
   /**
@@ -77,13 +84,6 @@ declare namespace Control {
     (adapter: UseAdapter<T, R>) => R;
 }
 
-const LIFECYCLE = {
-  ready: new Set<Control.Callback>(),
-  dispatch: new Set<Callback>(),
-  update: new Set<Callback>(),
-  didUpdate: new Set<Callback>(),
-}
-
 class Control<T extends {} = any> {
   static on(event: "ready", callback: Control.Callback): Callback;
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
@@ -103,7 +103,7 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [key: string]: any } = {};
-  public latest?: Model.Event<T>[];
+  public latest?: Model.Key<T>[];
 
   public frame = new Set<string>();
   public followers = new Set<Observer>();
@@ -201,7 +201,7 @@ class Control<T extends {} = any> {
       this.latest = undefined;
 
       enqueue(() => {
-        this.latest = Array.from(frame);
+        this.latest = Array.from(frame) as Model.Key<T>[];
         followers.forEach(cb => {
           const notify = cb(undefined, this);
 
