@@ -68,7 +68,7 @@ type Debug<T extends Model = Model> = T & {
    * If accessed directly, will contain all keys from last push.
    * If within a subscribed function, will contain only keys which explicitly caused a refresh.
    */
-  [UPDATE]?: readonly Model.Event<T>[];
+  [UPDATE]?: readonly Model.Key<T>[];
 
   /**
    * Parent currently assigned to parent. Usually the model which this one is a property of.

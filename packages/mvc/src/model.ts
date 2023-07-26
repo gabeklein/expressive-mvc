@@ -20,7 +20,7 @@ declare namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Extract<Exclude<keyof T, "set" | "get">, string>;
+  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null">, string>;
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
   export type Event<T> = Key<T> | (string & {});
@@ -89,9 +89,9 @@ class Model {
   /** Detect and/or modify updates to state. */
   set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
 
-  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
+  set <T extends Model.Key<this>> (timeout: number, test?: (key: T, value: this[T]) => boolean | void): Promise<T[]>;
 
-  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
+  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Key<T>[] | false>;
 
   set(
     arg1?: number | Model.Values<this> | ((key: string, value: unknown) => any),
