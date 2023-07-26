@@ -1,22 +1,10 @@
 import { Control, control } from './control';
 import { createEffect } from './effect';
-import { defineProperties, keys } from './helper/object';
+import { keys } from './helper/object';
 import { Model } from './model';
 
-export function makeObservable(to: Model.Observable){
-  defineProperties(to, {
-    get: { value: getMethod },
-    set: { value: setMethod },
-    toString: {
-      configurable: true,
-      value(){
-        return `${this.constructor.name}-${control(this).id}`;
-      }
-    }
-  });
-}
 
-function getMethod <T extends Model, P extends Model.Key<T>> (
+export function getMethod <T extends Model, P extends Model.Key<T>> (
   this: T,
   argument?: P | P[] | Model.Effect<T>,
   callback?: Function){
@@ -69,7 +57,7 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   });
 }
 
-function setMethod <T extends Model>(
+export function setMethod <T extends Model>(
   this: T,
   arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
   arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
