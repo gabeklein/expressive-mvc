@@ -17,11 +17,6 @@ describe("is", () => {
     expect(Model.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
   })
-
-  it("will throw if called as isTypeof", () => {
-    // @ts-expect-error
-    expect(() => Model.isTypeof).toThrow();
-  })
 })
 
 describe("Symbols", () => {

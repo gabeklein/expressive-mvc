@@ -157,14 +157,6 @@ define(Model, "toString", {
 
 export { Model }
 
-/* TODO: Remove below on 1.0.0 release. */
-
-define(Model, "isTypeof", {
-  get(){
-    throw new Error("Model.isTypeof method was renamed. Use Model.is instead.")
-  }
-});
-
 /** Random alphanumberic of length 6. Will always start with a letter. */
 export function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
