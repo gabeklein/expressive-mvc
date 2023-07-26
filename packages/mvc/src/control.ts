@@ -84,19 +84,21 @@ const LIFECYCLE = {
 }
 
 class Control<T extends {} = any> {
-  static on(event: "ready", callback: Control.Callback): Callback;
-  static on(event: "update" | "didUpdate", callback: Callback): Callback;
-  static on(event: "ready" | "update" | "didUpdate", callback: any){
-    LIFECYCLE[event].add(callback);
-    return () => LIFECYCLE[event].delete(callback);
-  }
-
   static get: Control.GetHook;
   static use: Control.UseHook;
   static has: Control.GetContext;
 
   static for = control;
   static add = add;
+
+  static on(event: "ready", callback: Control.Callback): Callback;
+  static on(event: "update" | "didUpdate", callback: Callback): Callback;
+  static on(event: "ready" | "update" | "didUpdate", callback: any){
+    LIFECYCLE[event].add(callback);
+    return () => {
+      LIFECYCLE[event].delete(callback);
+    }
+  }
 
   public id: string | number | false;
   public subject: T;
