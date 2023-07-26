@@ -113,9 +113,6 @@ class Model {
     control(this, true).clear();
   }
 
-  static get = get;
-  static use = use;
-
   /**
    * Creates a new instance of this controller.
    * 
@@ -130,6 +127,9 @@ class Model {
     control(instance, true);
     return instance;
   }
+
+  static get = get;
+  static use = use;
 
   /**
    * Static equivalent of `x instanceof this`.
