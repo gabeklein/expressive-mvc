@@ -66,8 +66,8 @@ class Context {
   
       Object.values(state).forEach(value => {
         if(parent(value) === model){
-          this.add(value, true);
-          init.set(value, false);
+          this.add(value as Model, true);
+          init.set(value as Model, false);
         }
       });
     }
