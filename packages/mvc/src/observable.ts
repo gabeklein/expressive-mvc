@@ -1,30 +1,13 @@
 import { Control, control } from './control';
-import { createEffect } from './effect';
-import { defineProperties, keys } from './helper/object';
+import { keys } from './helper/object';
 import { Model } from './model';
 
-export function makeObservable(to: Model.Observable){
-  defineProperties(to, {
-    get: { value: getMethod },
-    set: { value: setMethod },
-    toString: {
-      configurable: true,
-      value(){
-        return `${this.constructor.name}-${control(this).id}`;
-      }
-    }
-  });
-}
-
-function getMethod <T extends Model, P extends Model.Key<T>> (
-  this: T,
-  argument?: P | P[] | Model.Effect<T>,
+export function extract <T extends Model, P extends Model.Key<T>> (
+  target: T,
+  argument?: P | P[],
   callback?: Function){
 
-  if(typeof argument == "function")
-    return createEffect(this, argument);
-
-  const self = control(this, true);
+  const self = control(target, true);
 
   function get(key: P){
     const value = self.state[key];
@@ -69,18 +52,13 @@ function getMethod <T extends Model, P extends Model.Key<T>> (
   });
 }
 
-function setMethod <T extends Model>(
-  this: T,
-  arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
+export function update<T extends Model>(
+  target: T,
+  arg1?: number | Model.Values<T>,
   arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
 
-  if(typeof arg1 === "function")
-    return control(this, self => (
-      self.addListener(k => k && arg1(k, self.state[k]))
-    ))
-
   return new Promise<any>((resolve, reject) => {
-    control(this, self => {
+    control(target, self => {
       if(typeof arg1 == "object")
         merge(self, arg1, arg2 === true);
 

@@ -5,8 +5,8 @@ import { Model } from '../model';
 type Empty = Record<string, never>;
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T } & Model.Observable;
-  export type Object<T extends {}> = T & Model.Observable;
+  export type Record<T> = { [key: string | number]: T };
+  export type Object<T extends {}> = T;
 }
 
 /** Create a placeholder for specified Model type. */
@@ -29,7 +29,7 @@ function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 function use <T = any, C = use.Record<T>> (record: Empty, ready?: (object: C) => void): C;
 
 /** Create a managed object with observable entries. */
-function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
+function use <T extends {}> (data: T, ready?: (object: T) => void): T;
 
 function use(
   input?: any,
