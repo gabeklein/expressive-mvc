@@ -1,8 +1,9 @@
 import { Control, control } from './control';
+import { createEffect } from './effect';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
-import { makeObservable } from './observable';
+import { extract, update } from './observable';
 
 import type { Callback } from '../types';
 
@@ -19,7 +20,7 @@ declare namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T, U = Observable> = Extract<Exclude<keyof T, keyof U>, string>;
+  export type Key<T> = Extract<Exclude<keyof T, "set" | "get">, string>;
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
   export type Event<T> = Key<T> | (string & {});
@@ -48,48 +49,64 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> =
     R extends Ref<infer T> ? T :
-    R extends Observable ? Export<R> :
+    R extends Model ? Export<R> :
     R;
 
-  type SelectOne<T, K extends Model.Key<T>> = K;
-  type SelectFew<T, K extends Model.Key<T>> = K[];
+  type SelectOne<T, K extends Key<T>> = K;
+  type SelectFew<T, K extends Key<T>> = K[];
 
   type Exports<T, S> =
     S extends SelectOne<T, infer P> ? T[P] : 
-    S extends SelectFew<T, infer P> ? Model.Export<T, P> :
+    S extends SelectFew<T, infer P> ? Export<T, P> :
     never;
 
-  type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
+  type Select<T, K extends Key<T> = Key<T>> = K | K[];
 
-  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Model.Event<T>[]) => void;
-
-  export interface Observable {
-    get(): Export<this>;
-
-    get(effect: Effect<this>): Callback;
-
-    get <P extends Select<this>> (select: P): Exports<this, P>;
-
-    get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
-
-    /** Assert update is in progress. Returns a promise which resolves updated keys. */
-    set (): Promise<Event<this>[]> | false;
-
-    /** Detect and/or modify updates to state. */
-    set (event: (key: string, value: unknown) => void | ((keys: Key<this>[]) => void)): Callback;
-
-    set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Event<this>[]>;
-
-    set <T extends Values<this>> (from: T, append?: boolean): Promise<Event<T>[] | false>;
-  }
+  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Event<T>[]) => void;
 }
-
-interface Model extends Model.Observable {}
 
 class Model {
   constructor(id?: string | number){
     new Control(this, id === undefined ? uid() : id);
   }
+
+  get(): Model.Export<this>;
+
+  get(effect: Model.Effect<this>): Callback;
+
+  get <P extends Model.Select<this>> (select: P): Model.Exports<this, P>;
+
+  get <P extends Model.Select<this>> (select: P, callback: Model.GetCallback<this, P>): Callback;
+
+  get <P extends Model.Key<this>> (
+    arg1?: P | P[] | Model.Effect<this>,
+    arg2?: Function){
+
+    return typeof arg1 == "function"
+      ? createEffect(this, arg1)
+      : extract(this, arg1, arg2);
+  }
+
+  /** Assert update is in progress. Returns a promise which resolves updated keys. */
+  set (): Promise<Model.Event<this>[]> | false;
+
+  /** Detect and/or modify updates to state. */
+  set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
+
+  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
+
+  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Event<T>[] | false>;
+
+  set(
+    arg1?: number | Model.Values<this> | ((key: string, value: unknown) => any),
+    arg2?: boolean | ((key: string, value: unknown) => boolean | void)): any {
+
+    return typeof arg1 == "function"
+      ? control(this, self => (
+        self.addListener(k => k && arg1(k, self.state[k]))
+      ))
+      : update(this, arg1, arg2);
+    }
 
   /** Mark this instance for garbage collection. */
   null(){
@@ -129,13 +146,21 @@ class Model {
   }
 }
 
+
+defineProperties(Model.prototype, {
+  toString: {
+    configurable: true,
+    value(){
+      return `${this.constructor.name}-${control(this).id}`;
+    }
+  }
+});
+
 defineProperty(Model, "toString", {
   value(){
     return this.name;
   }
 });
-
-makeObservable(Model.prototype);
 
 export { Model }
 

@@ -1,32 +1,8 @@
 import { Control, control } from './control';
-import { createEffect } from './effect';
-import { defineProperties, keys } from './helper/object';
+import { keys } from './helper/object';
 import { Model } from './model';
 
-export function makeObservable(to: Model.Observable){
-  defineProperties(to, {
-    get: { value: getMethod },
-    set: { value: setMethod },
-    toString: {
-      configurable: true,
-      value(){
-        return `${this.constructor.name}-${control(this).id}`;
-      }
-    }
-  });
-}
-
-function getMethod <T extends Model, P extends Model.Key<T>> (
-  this: T,
-  argument?: P | P[] | Model.Effect<T>,
-  callback?: Function){
-
-  return typeof argument == "function"
-    ? createEffect(this, argument)
-    : extract(this, argument, callback);
-}
-
-function extract <T extends Model, P extends Model.Key<T>> (
+export function extract <T extends Model, P extends Model.Key<T>> (
   target: T,
   argument?: P | P[],
   callback?: Function){
@@ -76,19 +52,7 @@ function extract <T extends Model, P extends Model.Key<T>> (
   });
 }
 
-function setMethod <T extends Model>(
-  this: T,
-  arg1?: number | Model.Values<T> | ((key: string, value: unknown) => any),
-  arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
-
-  return typeof arg1 == "function"
-    ? control(this, self => (
-      self.addListener(k => k && arg1(k, self.state[k]))
-    ))
-    : update(this, arg1, arg2);
-}
-
-function update<T extends Model>(
+export function update<T extends Model>(
   target: T,
   arg1?: number | Model.Values<T>,
   arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
@@ -123,7 +87,6 @@ function update<T extends Model>(
     })
   });
 }
-
 
 function merge<T extends Model>(
   into: Control<T>,
