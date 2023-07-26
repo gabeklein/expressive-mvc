@@ -6,6 +6,66 @@ export const Oops = issues({
   NotFound: (name) => `Could not find ${name} in context.`
 })
 
+function use <T extends Model> (
+  this: Model.New<T>,
+  callback?: (instance: T) => void,
+  repeat?: boolean
+): T;
+
+function use <T extends Model> (
+  this: Model.New<T>,
+  apply?: Model.Values<T>,
+  repeat?: boolean
+): T;
+
+function use <T extends Model> (
+  this: Model.New<T>,
+  apply?: Model.Values<T> | ((instance: T) => void),
+  repeat?: boolean){
+
+  const render = Control.use(dispatch => {
+    const instance = this.new();
+    const local = watch(instance, () => onUpdate);
+    const refresh = () => dispatch(x => x+1);
+
+    let onUpdate: (() => void) | undefined | null;
+    let shouldApply = !!apply;
+
+    return {
+      instance,
+      mount(){
+        onUpdate = refresh;
+        return () => {
+          onUpdate = null;
+          instance.null();
+        }
+      },
+      render(props?: Model.Values<T> | ((instance: T) => void)){
+        if(shouldApply){
+          onUpdate = undefined;
+
+          if(typeof props == "function")
+            props(instance);
+
+          else if(props)
+            for(const key in instance)
+              if(props.hasOwnProperty(key))
+                (instance as any)[key] = (props as any)[key];
+
+          if(!repeat)
+            shouldApply = false;
+
+          instance.set(0).then(() => onUpdate = refresh);
+        }
+
+        return local;
+      }
+    }
+  });
+
+  return render(apply);
+}
+
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
 
@@ -27,8 +87,7 @@ type ForceUpdate = {
   <T = void>(invoke: () => Promise<T>): Promise<T>
 };
 
-type Factory<T extends Model, R> =
-  (this: T, current: T, update: ForceUpdate) => R;
+type Factory<T extends Model, R> = (this: T, current: T, update: ForceUpdate) => R;
 
 /** Fetch instance of this class from context. */
 function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
@@ -156,4 +215,4 @@ function get<T extends Model, R>(
   })
 }
 
-export { get };
+export { use, get }

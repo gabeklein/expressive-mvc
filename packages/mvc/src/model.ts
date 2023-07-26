@@ -1,8 +1,7 @@
 import { Control, control } from './control';
 import { createEffect } from './effect';
 import { define } from './helper/object';
-import { get } from './model-get';
-import { use } from './model-use';
+import { use, get } from './hooks';
 import { extract, update } from './observable';
 
 import type { Callback } from '../types';
