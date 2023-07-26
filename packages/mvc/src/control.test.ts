@@ -236,8 +236,8 @@ it("will call dispatch callbacks", async () => {
   const didUpdate = jest.fn();
   const willUpdate = jest.fn();
   
-  Control.before.add(willUpdate);
-  Control.after.add(didUpdate);
+  const remove = Control.on("update", willUpdate);
+  const removeDid = Control.on("didUpdate", didUpdate);
 
   class Test extends Model {
     value = 1;
@@ -251,8 +251,8 @@ it("will call dispatch callbacks", async () => {
   expect(willUpdate).toBeCalledTimes(1);
   expect(didUpdate).toBeCalledTimes(1);
 
-  Control.before.delete(willUpdate);
-  Control.after.delete(didUpdate);
+  remove();
+  removeDid();
 })
 
 it("will call create callbacks", () => {
@@ -262,12 +262,13 @@ it("will call create callbacks", () => {
     expect(control.subject).toBeInstanceOf(Test);
   });
 
-  Control.ready.add(didCreate);
+  const remove = Control.on("ready", didCreate);
+
   Test.new();
   
   expect(didCreate).toBeCalled();
 
-  Control.ready.delete(didCreate);
+  remove();
 })
 
 it("will run effect after properties", () => {

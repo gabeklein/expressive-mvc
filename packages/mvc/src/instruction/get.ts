@@ -243,6 +243,6 @@ function flushComputed(){
   }
 }
 
-Control.before.add(flushComputed);
+Control.on("update", flushComputed);
 
 export { get };

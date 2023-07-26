@@ -77,11 +77,20 @@ declare namespace Control {
     (adapter: UseAdapter<T, R>) => R;
 }
 
+const LIFECYCLE = {
+  ready: new Set<Control.Callback>(),
+  dispatch: new Set<Callback>(),
+  update: new Set<Callback>(),
+  didUpdate: new Set<Callback>(),
+}
+
 class Control<T extends {} = any> {
-  static ready = new Set<Control.Callback>();
-  static after = new Set<Callback>();
-  static before = new Set<Callback>();
-  static pending = new Set<Callback>();
+  static on(event: "ready", callback: Control.Callback): Callback;
+  static on(event: "update" | "didUpdate", callback: Callback): Callback;
+  static on(event: "ready" | "update" | "didUpdate", callback: any){
+    LIFECYCLE[event].add(callback);
+    return () => LIFECYCLE[event].delete(callback);
+  }
 
   static get: Control.GetHook;
   static use: Control.UseHook;
@@ -107,7 +116,7 @@ class Control<T extends {} = any> {
     REGISTER.set(subject, this);
 
     if(id !== false)
-      PENDING.set(this, new Set(Control.ready));
+      PENDING.set(this, new Set(LIFECYCLE.ready));
   }
 
   init(){
@@ -261,31 +270,31 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
 }
 
 function enqueue(event: Callback){
-  const { after, before, pending } = Control;
+  const { update, didUpdate, dispatch } = LIFECYCLE;
 
-  if(!pending.size)
+  if(!dispatch.size)
     setTimeout(() => {
-      before.forEach(x => x());
-      pending.forEach(notify => {
+      update.forEach(x => x());
+      dispatch.forEach(event => {
         try {
-          notify();
+          event();
         }
         catch(err){
           console.error(err);
         }
       });
-      pending.clear();
-      after.forEach(x => x());
+      dispatch.clear();
+      didUpdate.forEach(x => x());
     }, 0);
 
-  pending.add(event);
+  dispatch.add(event);
 }
 
-function parent(child: unknown, assign?: Model){
+function parent(child: unknown, assign?: {}){
   if(!assign)
     return PARENTS.get(child as Model);
 
-  PARENTS.set(child as Model, assign);
+  PARENTS.set(child as Model, assign as Model);
 }
 
 function watch<T extends {}>(target: T, key: string): (value: unknown) => any;
