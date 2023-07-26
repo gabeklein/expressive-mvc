@@ -1,3 +1,4 @@
+import { mockAsync, timeout } from '../helper/testing';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -178,14 +179,14 @@ describe("object", () => {
     }
 
     const test = Test.new();
-    const effect = jest.fn((state: Test) => {
+    const effect = mockAsync((state: Test) => {
       void state.info.foo;
     });
 
     test.get(effect);
     test.info.foo = "bar";
 
-    await test.info.set(0);
+    await effect.next();
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -205,9 +206,11 @@ describe("object", () => {
 
     test.get(effect);
 
+    expect(effect).toBeCalledTimes(1);
+
     test.info.bar = "foo";
 
-    await test.info.set(0);
+    await timeout(0);
 
     expect(effect).toBeCalledTimes(1);
   })
@@ -285,17 +288,13 @@ describe("object", () => {
       }
   
       const { info } = Test.new();
-      const gotFoo = jest.fn();
+      const gotFoo = mockAsync();
 
       expect<{ foo: string }>(info);
 
-      const done = info.set(key => {
-        if(key == "foo")
-          gotFoo();
-      });
+      const done = info.set(gotFoo);
 
       info.foo = "bar";
-      await info.set(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
 
@@ -303,7 +302,6 @@ describe("object", () => {
 
       done();
       info.foo = "baz";
-      await info.set(0);
 
       expect(gotFoo).toHaveBeenCalledTimes(1);
     })
