@@ -2,7 +2,7 @@ import { Control, control } from './control';
 import { createEffect } from './effect';
 import { define } from './helper/object';
 import { use, get } from './hooks';
-import { extract, update } from './observable';
+import { extract, update } from './observe';
 
 import type { Callback } from '../types';
 
