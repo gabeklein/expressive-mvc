@@ -228,12 +228,13 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   const pending = PENDING.get(control);
 
   if(typeof ready == "function"){
-    if(!pending)
-      return ready(control);
+    if(pending){
+      let done: Callback | void;
+      pending.add(() => done = ready(control));
+      return () => done && done();
+    }
 
-    let done: Callback | void;
-    pending.add(() => done = ready(control));
-    return () => done && done();
+    return ready(control);
   }
 
   if(pending && ready){
