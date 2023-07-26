@@ -111,16 +111,30 @@ class Control<T extends {} = any> {
   }
 
   init(){
-    for(const key in this.subject){  
-      const { value } = getOwnPropertyDescriptor(this.subject, key)!;
+    const { state, subject } = this;
+
+    for(const key in subject){  
+      const { value } = getOwnPropertyDescriptor(subject, key)!;
       const instruction = INSTRUCT.get(value);
 
       if(instruction){
         INSTRUCT.delete(value);
         instruction(this, key);
       }
-      else if(value instanceof Model)
-        recursive(this, key, value);
+      else if(value instanceof Model){
+        const set = (next: Model | undefined) => {
+          if(!(next instanceof value.constructor))
+            throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
+
+          state[key] = next;
+          parent(next, subject);
+          control(next, true);
+          return true;
+        }
+
+        this.watch(key, { set });
+        set(value);
+      }
       else
         this.watch(key, { value });
     }
@@ -265,22 +279,6 @@ function enqueue(event: Callback){
     }, 0);
 
   pending.add(event);
-}
-
-function recursive(on: Control, key: string, value: Model){
-  function set(next: Model | undefined){
-    if(next instanceof value.constructor){
-      on.state[key] = next;
-      parent(next, on.subject);
-      control(next, true);
-      return true;
-    }
-
-    throw Oops.BadAssignment(`${on.subject}.${key}`, value.constructor, next);
-  }
-
-  on.watch(key, { set });
-  set(value);
 }
 
 function parent(child: unknown, assign?: Model){
