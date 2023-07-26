@@ -1,7 +1,6 @@
 import { add, Control, control, parent } from '../control';
 import { create } from '../helper/object';
 import { Model } from '../model';
-import { makeObservable } from '../observable';
 
 type Empty = Record<string, never>;
 
@@ -50,8 +49,6 @@ function use(
       else if(next){
         const subject = create(next);
         const control = new Control(subject, false);
-
-        makeObservable(next as Model.Observable);
 
         for(const key in control.state = next)
           control.watch(key, {});
