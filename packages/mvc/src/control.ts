@@ -1,7 +1,7 @@
 import { Context } from './context';
 import { issues } from './helper/issues';
 import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
-import { Model } from './model';
+import { Model, uid } from './model';
 
 import type { Callback } from '../types';
 
@@ -100,9 +100,10 @@ class Control<T extends {} = any> {
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
-  constructor(subject: T, id: string | number | false){
-    this.id = id;
+  constructor(subject: T, id?: string | number | false){
     this.subject = subject;
+    this.id = id === undefined ? uid() : id;
+
     REGISTER.set(subject, this);
 
     if(id !== false)

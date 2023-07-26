@@ -67,7 +67,7 @@ declare namespace Model {
 
 class Model {
   constructor(id?: string | number){
-    new Control(this, id === undefined ? uid() : id);
+    new Control(this, id);
   }
 
   get(): Model.Export<this>;
