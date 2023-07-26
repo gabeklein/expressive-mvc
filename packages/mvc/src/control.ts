@@ -10,11 +10,10 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`,
 });
 
-type Observer<T extends {} = any> =
-  (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
+type Observer = (key: string | null | undefined, source: Control) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
-  (parent: Control<T>, key: Model.Key<T>) => void;
+  (parent: Control<T>, key: string) => void;
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
@@ -102,8 +101,8 @@ class Control<T extends {} = any> {
   public id: string | number | false;
   public subject: T;
 
-  public state: { [key: string]: any } = {};
-  public latest?: Model.Event<T>[];
+  public state: { [property: string]: unknown } = {};
+  public latest?: string[];
 
   public frame = new Set<string>();
   public followers = new Set<Observer>();
@@ -149,10 +148,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  watch(
-    key: string,
-    output: Control.PropertyDescriptor<any>){
-
+  watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state } = this;
     const { set, enumerable = true } = output;
 
@@ -167,7 +163,7 @@ class Control<T extends {} = any> {
       enumerable,
       set: set === false
         ? undefined
-        : this.ref(key as Model.Key<T>, set),
+        : this.ref(key, set),
       get(this: Model){
         const extend = watch(this, key);
 
@@ -180,9 +176,7 @@ class Control<T extends {} = any> {
     });
   }
 
-  ref<K extends Model.Key<T>>(
-    key: K, callback?: (this: T, value: T[K]) => boolean | void){
-
+  ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
     return (value: any) => {
       if(value !== this.state[key])
         switch(callback && callback.call(this.subject, value)){
