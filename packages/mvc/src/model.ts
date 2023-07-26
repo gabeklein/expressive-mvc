@@ -2,7 +2,7 @@ import { Control, control } from './control';
 import { defineProperties, defineProperty } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
-import { makeObservable } from './observable';
+import { getMethod, setMethod } from './observable';
 
 import type { Callback } from '../types';
 
@@ -18,20 +18,22 @@ declare namespace Model {
   /** A callback function which is subscribed to parent and updates when values change. */
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
+  type BuiltIn = "get" | "set" | "is";
+
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T, U = Observable> = Extract<Exclude<keyof T, keyof U>, string>;
+  export type Key<T extends Model> = Extract<Exclude<keyof T, BuiltIn>, string>;
 
   /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
-  export type Event<T> = Key<T> | (string & {});
+  export type Event<T extends Model> = Key<T> | (string & {});
 
   /** Object comperable to data found in T. */
-  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
+  export type Values<T extends Model> = { [P in Key<T>]?: Value<T[P]> };
 
   /**
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
+  export type Export<T extends Model, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
   /**
    * Reference to `this` without a subscription.
@@ -48,43 +50,41 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> =
     R extends Ref<infer T> ? T :
-    R extends Observable ? Export<R> :
+    R extends Model ? Export<R> :
     R;
 
-  type SelectOne<T, K extends Model.Key<T>> = K;
-  type SelectFew<T, K extends Model.Key<T>> = K[];
+  type SelectOne<T extends Model, K extends Model.Key<T>> = K;
+  type SelectFew<T extends Model, K extends Model.Key<T>> = K[];
 
-  type Exports<T, S> =
+  type Exports<T extends Model, S> =
     S extends SelectOne<T, infer P> ? T[P] : 
     S extends SelectFew<T, infer P> ? Model.Export<T, P> :
     never;
 
-  type Select<T, K extends Model.Key<T> = Model.Key<T>> = K | K[];
+  type Select<T extends Model, K extends Model.Key<T> = Model.Key<T>> = K | K[];
 
-  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Model.Event<T>[]) => void;
-
-  export interface Observable {
-    get(): Export<this>;
-
-    get(effect: Effect<this>): Callback;
-
-    get <P extends Select<this>> (select: P): Exports<this, P>;
-
-    get <P extends Select<this>> (select: P, callback: GetCallback<this, P>): Callback;
-
-    /** Assert update is in progress. Returns a promise which resolves updated keys. */
-    set (): Promise<Event<this>[]> | false;
-
-    /** Detect and/or modify updates to state. */
-    set (event: (key: string, value: unknown) => void | ((keys: Key<this>[]) => void)): Callback;
-
-    set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Event<this>[]>;
-
-    set <T extends Values<this>> (from: T, append?: boolean): Promise<Event<T>[] | false>;
-  }
+  type GetCallback<T extends Model, S> = (this: T, value: Exports<T, S>, updated: Model.Event<T>[]) => void;
 }
 
-interface Model extends Model.Observable {}
+interface Model {
+  get(): Model.Export<this>;
+
+  get(effect: Model.Effect<this>): Callback;
+
+  get <P extends Model.Select<this>> (select: P): Model.Exports<this, P>;
+
+  get <P extends Model.Select<this>> (select: P, callback: Model.GetCallback<this, P>): Callback;
+
+  /** Assert update is in progress. Returns a promise which resolves updated keys. */
+  set (): Promise<Model.Event<this>[]> | false;
+
+  /** Detect and/or modify updates to state. */
+  set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
+
+  set (timeout: number, test?: (key: string, value: unknown) => boolean | void): Promise<Model.Event<this>[]>;
+
+  set (from: Model.Values<this>, append?: boolean): Promise<Model.Event<this>[] | false>;
+}
 
 class Model {
   constructor(id?: string | number){
@@ -135,7 +135,16 @@ defineProperty(Model, "toString", {
   }
 });
 
-makeObservable(Model.prototype);
+defineProperties(Model.prototype, {
+  get: { value: getMethod },
+  set: { value: setMethod },
+  toString: {
+    configurable: true,
+    value(){
+      return `${this.constructor.name}-${control(this).id}`;
+    }
+  }
+});
 
 export { Model }
 
