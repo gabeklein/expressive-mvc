@@ -1,6 +1,6 @@
 import { add } from '../control';
 import { issues } from '../helper/issues';
-import { defineProperty } from '../helper/object';
+import { define } from '../helper/object';
 import { mayRetry } from '../suspense';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
@@ -49,7 +49,7 @@ function run<T extends Async>(task: T){
 
     control.state[key] = undefined;
 
-    defineProperty(invoke, "active", {
+    define(invoke, "active", {
       get: () => pending
     })
 

@@ -1,6 +1,6 @@
 import { control, parent } from './control';
 import { issues } from './helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
+import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
 import { Model, uid } from './model';
 
 export const Oops = issues({
@@ -97,7 +97,7 @@ class Context {
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || I !== this[key] && !implicit)
-        defineProperty(this, key, {
+        define(this, key, {
           configurable: true,
           value,
           writable

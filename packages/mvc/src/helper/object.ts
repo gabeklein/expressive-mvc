@@ -1,7 +1,6 @@
 const {
   assign,
   create,
-  defineProperties,
   defineProperty,
   entries,
   keys,
@@ -14,8 +13,7 @@ const {
 export {
   assign,
   create,
-  defineProperties,
-  defineProperty,
+  defineProperty as define,
   entries,
   keys,
   getPrototypeOf,

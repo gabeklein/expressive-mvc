@@ -1,7 +1,7 @@
 import { add, Control } from '../control';
 import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
-import { defineProperty } from '../helper/object';
+import { define } from '../helper/object';
 import { Model } from '../model';
 
 export const Oops = issues({
@@ -86,12 +86,12 @@ function ref<T>(
       throw Oops.BadRefObject();
     else
       for(const key in source.state)
-        defineProperty(value, key,
+        define(value, key,
           typeof arg2 == "function" ? {
             configurable: true,
             get(){
               const out = arg2(key);
-              defineProperty(value, key, { value: out });
+              define(value, key, { value: out });
               return out;
             }
           } : {
@@ -101,7 +101,7 @@ function ref<T>(
 
     source.state[key] = undefined;
     source.observers.set(key, new Set());
-    defineProperty(source.subject, key, { value });
+    define(source.subject, key, { value });
   })
 }
 
@@ -114,7 +114,7 @@ function createRef(
 
   const refObjectFunction = src.ref(key, cb);
 
-  defineProperty(refObjectFunction, "current", {
+  define(refObjectFunction, "current", {
     set: refObjectFunction,
     get: () => src.state[key]
   })

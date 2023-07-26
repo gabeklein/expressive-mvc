@@ -1,5 +1,4 @@
 import { Control, control, parent } from './control';
-import { defineProperties } from './helper/object';
 import { Model } from './model';
 
 const STATE = "__state";
@@ -7,7 +6,7 @@ const UPDATE = "__update";
 const CONTROL = "__control";
 const PARENT = "__parent";
 
-defineProperties(Model.prototype, {
+Object.defineProperties(Model.prototype, {
   [CONTROL]: {
     get(this: Model){
       return control(this);

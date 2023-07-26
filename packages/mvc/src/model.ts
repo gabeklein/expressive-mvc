@@ -1,6 +1,6 @@
 import { Control, control } from './control';
 import { createEffect } from './effect';
-import { defineProperties, defineProperty } from './helper/object';
+import { define } from './helper/object';
 import { get } from './model-get';
 import { use } from './model-use';
 import { extract, update } from './observable';
@@ -62,7 +62,7 @@ class Model {
   is!: this;
 
   constructor(id?: string | number){
-    defineProperty(this, "is", { value: this });
+    define(this, "is", { value: this });
     new Control(this, id);
   }
 
@@ -142,16 +142,14 @@ class Model {
   }
 }
 
-defineProperties(Model.prototype, {
-  toString: {
-    configurable: true,
-    value(){
-      return `${this.constructor}-${control(this).id}`;
-    }
+define(Model.prototype, "toString", {
+  configurable: true,
+  value(){
+    return `${this.constructor}-${control(this).id}`;
   }
 });
 
-defineProperty(Model, "toString", {
+define(Model, "toString", {
   value(){
     return this.name;
   }
@@ -161,7 +159,7 @@ export { Model }
 
 /* TODO: Remove below on 1.0.0 release. */
 
-defineProperty(Model, "isTypeof", {
+define(Model, "isTypeof", {
   get(){
     throw new Error("Model.isTypeof method was renamed. Use Model.is instead.")
   }

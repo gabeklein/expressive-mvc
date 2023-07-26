@@ -1,6 +1,6 @@
 import { Context } from './context';
 import { issues } from './helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
+import { create, define, getOwnPropertyDescriptor } from './helper/object';
 import { Model, uid } from './model';
 
 import type { Callback } from '../types';
@@ -140,7 +140,7 @@ class Control<T extends {} = any> {
     if("value" in output)
       state[key] = output.value;
 
-    defineProperty(this.subject, key, {
+    define(this.subject, key, {
       enumerable,
       set: set === false
         ? undefined
