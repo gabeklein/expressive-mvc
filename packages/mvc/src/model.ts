@@ -34,7 +34,7 @@ declare namespace Model {
    */
   export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  /** Exotic value, actual value is contained. */
+  /** Exotic value, where actual value is contained within. */
   export type Ref<T = any> = {
     (next: T): void;
     current: T | null;
@@ -46,6 +46,7 @@ declare namespace Model {
     R extends Model ? Export<R> :
     R;
 
+  type Select<T, K extends Key<T> = Key<T>> = K | K[];
   type SelectOne<T, K extends Key<T>> = K;
   type SelectFew<T, K extends Key<T>> = K[];
 
@@ -53,8 +54,6 @@ declare namespace Model {
     S extends SelectOne<T, infer P> ? T[P] : 
     S extends SelectFew<T, infer P> ? Export<T, P> :
     never;
-
-  type Select<T, K extends Key<T> = Key<T>> = K | K[];
 
   type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Event<T>[]) => void;
 }
