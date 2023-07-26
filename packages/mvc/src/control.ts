@@ -317,7 +317,7 @@ function watch<T extends {}>(value: T, argument: Observer | string){
   }
 
   if(!observer)
-    REGISTER.set(value = create(value), control!);
+    REGISTER.set(value = create(value), control);
 
   OBSERVER.set(value, argument);
 
