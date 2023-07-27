@@ -1,7 +1,7 @@
 import { Context } from './context';
 import { issues } from './helper/issues';
 import { create, define, getOwnPropertyDescriptor } from './helper/object';
-import { Model, uid } from './model';
+import { Model } from './model';
 
 import type { Callback } from '../types';
 
@@ -328,10 +328,16 @@ function add<T = any>(instruction: Control.Instruction<T>){
   return placeholder as unknown as T;
 }
 
+/** Random alphanumberic of length 6. Will always start with a letter. */
+function uid(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+}
+
 export {
   add,
   control,
   Control,
   parent,
+  uid,
   watch
 }

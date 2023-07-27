@@ -1,7 +1,7 @@
-import { control, parent } from './control';
+import { control, parent, uid } from './control';
 import { issues } from './helper/issues';
 import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
-import { Model, uid } from './model';
+import { Model } from './model';
 
 export const Oops = issues({
   MultipleExist: (name) =>
