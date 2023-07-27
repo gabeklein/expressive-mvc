@@ -52,6 +52,10 @@ declare namespace Model {
     never;
 
   type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
+
+  type SetCallback<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => Callback | void;
+
+  type Predicate<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => boolean | void;
 }
 
 class Model {
@@ -83,15 +87,15 @@ class Model {
   set (): Promise<Model.Values<this>> | false;
 
   /** Detect and/or modify updates to state. */
-  set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
+  set (event: Model.SetCallback<this>): Callback;
 
-  set <T extends Model.Key<this>> (timeout: number, test?: (key: T, value: this[T]) => boolean | void): Promise<Model.Values<this>>;
+  set (timeout: number, predicate?: Model.Predicate<this>): Promise<Model.Values<this>>;
 
   set (from: Model.Values<this>, append?: boolean): Promise<Model.Values<this>[] | false>;
 
   set(
-    arg1?: number | Model.Values<this> | ((key: string, value: unknown) => any),
-    arg2?: boolean | ((key: string, value: unknown) => boolean | void)): any {
+    arg1?: number | Model.Values<this> | Model.SetCallback<any>,
+    arg2?: boolean | Model.Predicate<any>): any {
 
     return typeof arg1 == "function"
       ? control(this, self => (

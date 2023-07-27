@@ -10,7 +10,8 @@ export const Oops = issues({
     `${parent} expected Model of type ${expected} but got ${got}.`,
 });
 
-type Observer = (key: string | null | undefined, source: Control) => Callback | null | void;
+type Observer<T extends {} = any> =
+  (key: Model.Key<T> | null | undefined, source: Control<T>) => Callback | null | void;
 
 type InstructionRunner<T extends Model = any> =
   (parent: Control<T>, key: string) => void;
@@ -217,7 +218,7 @@ class Control<T extends {} = any> {
       });
   }
 
-  addListener(fn: Observer){
+  addListener(fn: Observer<T>){
     this.followers.add(fn);
     return () => this.followers.delete(fn);
   }

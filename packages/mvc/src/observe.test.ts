@@ -288,7 +288,7 @@ describe("set", () => {
     it("will callback after frame", async () => {
       const test = Test.new();
       const didUpdate = jest.fn<any, [string, unknown]>(() => didUpdateAsync);
-      const didUpdateAsync = jest.fn<void, [string[]]>();
+      const didUpdateAsync = jest.fn();
       
       const done = test.set(didUpdate);
 

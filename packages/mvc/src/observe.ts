@@ -55,7 +55,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
 export function update<T extends Model>(
   target: T,
   arg1?: number | Model.Values<T>,
-  arg2?: boolean | ((key: string, value: unknown) => boolean | void)){
+  arg2?: boolean | Model.Predicate<any>){
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {
