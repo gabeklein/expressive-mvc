@@ -20,29 +20,31 @@ afterEach(() => {
 });
 
 beforeAll(() => {
-  Control.has = () => (got) => {
-    got(context);
-  }
-
-  Control.get = (adapter) => {
-    return useMemo(refresh => {
-      const result = adapter(refresh, context);
-  
-      if(!result)
-        return () => null
-  
-      mount = result.mount;
-      return result.render;
-    })();
-  }
-  
-  Control.use = (adapter) => {
-    return useMemo(refresh => {
-      const result = adapter(refresh);
-      
-      mount = result.mount;
-      return result.render;
-    });
+  Control.hooks = {
+    has(){
+      return (got) => {
+        got(context);
+      }
+    },
+    get(adapter){
+      return useMemo(refresh => {
+        const result = adapter(refresh, context);
+    
+        if(!result)
+          return () => null
+    
+        mount = result.mount;
+        return result.render;
+      })();
+    },
+    use(adapter){
+      return useMemo(refresh => {
+        const result = adapter(refresh);
+        
+        mount = result.mount;
+        return result.render;
+      });
+    }
   }
 })
 

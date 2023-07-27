@@ -684,10 +684,16 @@ describe("replaced source", () => {
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.has = () => (got) => {
-      gotContext = got;
-      got(context);
-    };
+    Control.hooks = {
+      get(): any {},
+      use(): any {},
+      has(){
+        return (got) => {
+          gotContext = got;
+          got(context);
+        }
+      }
+    }
   })
 
   class Source extends Model {
@@ -752,8 +758,14 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    Control.has = () => (got) => {
-      setTimeout(() => got(context), 0);
+    Control.hooks = {
+      get(): any {},
+      use(): any {},
+      has(){
+        return (got) => {
+          setTimeout(() => got(context), 0);
+        }
+      }
     }
   })
 

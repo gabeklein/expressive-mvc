@@ -85,7 +85,7 @@ function get<R, T extends Model>(
         if(arg1 === true)
           throw Oops.Required(arg0, subject);
 
-        const fetch = Control.has(subject);
+        const fetch = Control.hooks.has(subject);
 
         source = got => {
           fetch(context => {

@@ -11,7 +11,7 @@ function use <T extends Model> (
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
-  const render = Control.use(dispatch => {
+  const render = Control.hooks.use(dispatch => {
     const instance = model.new();
     const local = watch(instance, () => onUpdate);
     const refresh = () => dispatch(x => x+1);
@@ -83,7 +83,7 @@ function get<T extends Model, R>(
   model: Model.Type<T>,
   argument?: boolean | get.Factory<T, any>
 ){
-  return Control.get((dispatch, context) => {
+  return Control.hooks.get((dispatch, context) => {
     const refresh = () => dispatch(x => x+1);
     let onUpdate: (() => void) | undefined | null;
     let value: any;

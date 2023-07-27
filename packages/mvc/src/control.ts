@@ -51,29 +51,22 @@ declare namespace Control {
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
-  type GetContext = (target: Model) =>
-    (callback: (got: Context) => void) => void;
-
-  type GetAdapter<T> = (
-    refresh: RequestRefresh,
-    context: Context
-  ) => {
+  type GetAdapter<T> = (refresh: RequestRefresh, context: Context) => {
     mount: () => (() => void) | void;
     render: () => T;
   } | void;
 
-  type GetHook = <T> (adapter: GetAdapter<T>) => T | null;
-
-  type UseAdapter<T extends Model, R> = (
-    refresh: RequestRefresh
-  ) => {
+  type UseAdapter<T extends Model, R> = (refresh: RequestRefresh) => {
     instance: T;
     mount: () => (() => void) | void;
     render: R;
   }
 
-  type UseHook = <T extends Model, R>
-    (adapter: UseAdapter<T, R>) => R;
+  interface Hooks {
+    get: <T> (adapter: GetAdapter<T>) => T | null;
+    use: <T extends Model, R>(adapter: UseAdapter<T, R>) => R;
+    has: (target: Model) => (callback: (got: Context) => void) => void;
+  }
 }
 
 const LIFECYCLE = {
@@ -84,9 +77,7 @@ const LIFECYCLE = {
 }
 
 class Control<T extends {} = any> {
-  static get: Control.GetHook;
-  static use: Control.UseHook;
-  static has: Control.GetContext;
+  static hooks: Control.Hooks;
 
   static for = control;
   static add = add;
