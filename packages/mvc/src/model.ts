@@ -183,7 +183,6 @@ class Model {
 }
 
 define(Model.prototype, "toString", {
-  configurable: true,
   value(){
     return `${this.constructor}-${control(this).id}`;
   }
