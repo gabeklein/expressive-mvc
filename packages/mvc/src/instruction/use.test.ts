@@ -6,6 +6,12 @@ class Child extends Model {
   value = "foo"
 }
 
+const child = Child.new();
+
+child.set((key, value) => {
+  
+})
+
 class Parent extends Model {
   value = "foo";
   child = use(Child);

@@ -62,7 +62,7 @@ export function update<T extends Model>(
       if(typeof arg1 == "object")
         merge(self, arg1, arg2 === true);
 
-      if(!self.frame.size && typeof arg1 != "number"){
+      if(!keys(self.frame).length && typeof arg1 != "number"){
         resolve(false);
         return;
       }
@@ -70,7 +70,7 @@ export function update<T extends Model>(
       const callback = () => resolve(self.latest);
   
       const remove = self.addListener((key) => {
-        if(typeof arg2 !== "function" || key && arg2(key, self.state[key]) === true){
+        if(typeof arg2 !== "function" || key && arg2(key, self.frame) === true){
           remove();
   
           if(timeout)

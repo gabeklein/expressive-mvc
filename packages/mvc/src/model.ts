@@ -54,9 +54,9 @@ namespace Model {
 
   export type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
 
-  export type SetCallback<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => Callback | void;
+  export type SetCallback<T extends Model> = (key: string, update: Model.Values<T>) => Callback | void;
 
-  export type Predicate<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => boolean | void;
+  export type Predicate<T extends Model> = (key: string, update: Model.Values<T>) => boolean | void;
 }
 
 class Model {
@@ -100,7 +100,7 @@ class Model {
 
     return typeof arg1 == "function"
       ? control(this, self => (
-        self.addListener(k => k && arg1(k, self.state[k]))
+        self.addListener(k => k && arg1(k, self.frame))
       ))
       : update(this, arg1, arg2);
     }

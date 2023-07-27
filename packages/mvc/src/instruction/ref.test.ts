@@ -23,9 +23,9 @@ describe("property", () => {
     const state = Subject.new();
     const didCallback = jest.fn();
 
-    state.set((key, value) => {
+    state.set((key, update) => {
       if(key == "ref")
-        didCallback(value);
+        didCallback(update[key]);
     })
 
     state.ref.current = "foobar";
@@ -42,9 +42,9 @@ describe("property", () => {
     const state = Subject.new();
     const didUpdate = jest.fn();
 
-    state.set((key, value) => {
+    state.set((key, update) => {
       if(key == "ref")
-        didUpdate(value);
+        didUpdate(update[key]);
     })
 
     state.ref("foobar");
@@ -65,9 +65,9 @@ describe("property", () => {
   
     expect(didTrigger).not.toBeCalled();
 
-    state.set((key, value) => {
+    state.set((key, update) => {
       if(key == "ref")
-        didUpdate(value);
+        didUpdate(update[key]);
     })
 
     state.ref.current = "foobar";

@@ -58,9 +58,9 @@ describe("callback", () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set((key, value) => {
+    state.set((key, update) => {
       if(key == "test")
-        didUpdate(value);
+        didUpdate(update[key]);
     });
 
     state.test = 2;
