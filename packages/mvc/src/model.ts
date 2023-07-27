@@ -8,7 +8,7 @@ import type { Callback } from '../types';
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
-declare namespace Model {
+namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
@@ -42,20 +42,21 @@ declare namespace Model {
     R extends Model ? Export<R> :
     R;
 
-  type Select<T, K extends Key<T> = Key<T>> = K | K[];
+  export type Select<T, K extends Key<T> = Key<T>> = K | K[];
+
   type SelectOne<T, K extends Key<T>> = K;
   type SelectFew<T, K extends Key<T>> = K[];
 
-  type Exports<T, S> =
+  export type Exports<T, S> =
     S extends SelectOne<T, infer P> ? T[P] : 
     S extends SelectFew<T, infer P> ? Export<T, P> :
     never;
 
-  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
+  export type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
 
-  type SetCallback<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => Callback | void;
+  export type SetCallback<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => Callback | void;
 
-  type Predicate<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => boolean | void;
+  export type Predicate<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => boolean | void;
 }
 
 class Model {
