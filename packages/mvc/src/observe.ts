@@ -29,7 +29,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
     return extract();
 
   const select = typeof argument == "string" ? [argument] : argument;
-  const invoke = () => callback(extract(), self.latest || []);
+  const invoke = () => callback(extract(), self.latest || {});
 
   if(select)
     for(const key of select)

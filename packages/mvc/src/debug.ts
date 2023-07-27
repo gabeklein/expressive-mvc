@@ -63,12 +63,9 @@ type Debug<T extends Model = Model> = T & {
   [STATE]?: Model.Export<T>;
 
   /**
-   * Last update causing a refresh to subscribers.
-   * 
-   * If accessed directly, will contain all keys from last push.
-   * If within a subscribed function, will contain only keys which explicitly caused a refresh.
+   * Last update causing a refresh to subscribers, will contain all new values from last push.
    */
-  [UPDATE]?: readonly Model.Key<T>[];
+  [UPDATE]?: readonly Model.Values<T>[];
 
   /**
    * Parent currently assigned to parent. Usually the model which this one is a property of.

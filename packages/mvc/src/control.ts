@@ -104,7 +104,7 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [property: string]: unknown } = {};
-  public latest?: string[];
+  public latest?: { [property: string]: unknown };
 
   public frame = new Set<string>();
   public followers = new Set<Observer>();
@@ -197,7 +197,13 @@ class Control<T extends {} = any> {
       this.latest = undefined;
 
       enqueue(() => {
-        this.latest = Array.from(frame);
+        this.latest = Array.from(frame)
+          .reduce((update, key) => {
+            const value = this.state[key];
+            update[key] = value instanceof Model ? value.get() : value;
+            return update;
+          }, {} as any);
+
         followers.forEach(cb => {
           const notify = cb(undefined, this);
 

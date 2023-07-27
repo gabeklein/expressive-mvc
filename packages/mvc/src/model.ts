@@ -65,9 +65,9 @@ class Model {
     new Control(this, id);
   }
 
-  get(): Model.Export<this>;
+  get (): Model.Export<this>;
 
-  get(effect: Model.Effect<this>): Callback;
+  get (effect: Model.Effect<this>): Callback;
 
   get <P extends Model.Select<this>> (select: P): Model.Exports<this, P>;
 
@@ -101,7 +101,7 @@ class Model {
         self.addListener(k => k && arg1(k, self.state[k]))
       ))
       : update(this, arg1, arg2);
-    }
+  }
 
   /** Mark this instance for garbage collection. */
   null(){
