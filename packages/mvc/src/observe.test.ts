@@ -107,7 +107,7 @@ describe("get", () => {
       state.seconds = 30;
       await expect(state).toUpdate();
 
-      expect(callback).toBeCalledWith(30, ["seconds"]);
+      expect(callback).toBeCalledWith(30, { seconds: 30 });
       expect(callback).toBeCalledTimes(2);
     })
 
@@ -127,7 +127,7 @@ describe("get", () => {
       state.seconds = 60;
       await expect(state).toUpdate();
 
-      expect(callback).toBeCalledWith(1, ["seconds", "minutes"]);
+      expect(callback).toBeCalledWith(1, { seconds: 60, minutes: 1 });
       expect(callback).toBeCalledTimes(2);
     })
 
@@ -147,7 +147,7 @@ describe("get", () => {
       state.seconds = 60;
       await expect(state).toUpdate();
 
-      expect(callback).toBeCalledWith(1, ["seconds", "minutes"]);
+      expect(callback).toBeCalledWith(1, { seconds: 60, minutes: 1 });
       expect(callback).toBeCalledTimes(2);
     })
   })
@@ -174,7 +174,7 @@ describe("set", () => {
 
     test.set(values);
 
-    await expect(test).toHaveUpdated(["foo", "bar"]);
+    await expect(test).toHaveUpdated("foo", "bar");
 
     expect(test.foo).toBe(1);
     expect(test.bar).toBe(2);
@@ -220,7 +220,7 @@ describe("set", () => {
 
       control.foo = 2;
 
-      await expect(update).resolves.toEqual(["foo"]);
+      await expect(update).resolves.toEqual({ foo: 2 });
     })
 
     it("will not call test on update if satisfied", async () => {
@@ -242,7 +242,7 @@ describe("set", () => {
       expect(test).toBeCalledWith("bar", 3);
       expect(test).not.toBeCalledWith("baz", 4);
 
-      await expect(update).resolves.toEqual(["foo", "bar", "baz"]);
+      await expect(update).resolves.toEqual({ foo: 2, bar: 3, baz: 4 });
     })
 
     it("will still timeout if test returns false", async () => {

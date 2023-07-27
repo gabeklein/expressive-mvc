@@ -21,9 +21,6 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null">, string>;
 
-  /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
-  export type Event<T> = Key<T> | (string & {});
-
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
@@ -54,7 +51,7 @@ declare namespace Model {
     S extends SelectFew<T, infer P> ? Export<T, P> :
     never;
 
-  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Event<T>[]) => void;
+  type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
 }
 
 class Model {
@@ -83,14 +80,14 @@ class Model {
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
-  set (): Promise<Model.Event<this>[]> | false;
+  set (): Promise<Model.Values<this>> | false;
 
   /** Detect and/or modify updates to state. */
   set (event: (key: string, value: unknown) => void | ((keys: Model.Key<this>[]) => void)): Callback;
 
-  set <T extends Model.Key<this>> (timeout: number, test?: (key: T, value: this[T]) => boolean | void): Promise<T[]>;
+  set <T extends Model.Key<this>> (timeout: number, test?: (key: T, value: this[T]) => boolean | void): Promise<Model.Values<this>>;
 
-  set <T extends Model.Values<this>> (from: T, append?: boolean): Promise<Model.Key<T>[] | false>;
+  set (from: Model.Values<this>, append?: boolean): Promise<Model.Values<this>[] | false>;
 
   set(
     arg1?: number | Model.Values<this> | ((key: string, value: unknown) => any),

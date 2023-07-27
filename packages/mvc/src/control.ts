@@ -78,7 +78,6 @@ const LIFECYCLE = {
 
 class Control<T extends {} = any> {
   static hooks: Control.Hooks;
-
   static for = control;
   static add = add;
 
@@ -95,9 +94,9 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [property: string]: unknown } = {};
-  public latest?: string[];
+  public latest?: { [property: string]: unknown };
 
-  public frame = new Set<string>();
+  public frame = new Map<string, unknown>();
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
@@ -188,7 +187,10 @@ class Control<T extends {} = any> {
       this.latest = undefined;
 
       enqueue(() => {
-        this.latest = Array.from(frame);
+        const update = this.latest = {} as Record<string, unknown>;
+
+        frame.forEach((value, key) => update[key] = value);
+
         followers.forEach(cb => {
           const notify = cb(undefined, this);
 
@@ -199,7 +201,7 @@ class Control<T extends {} = any> {
       })
     }
   
-    frame.add(key);
+    frame.set(key, this.state[key]);
 
     for(const subs of [
       this.observers.get(key),
@@ -284,7 +286,7 @@ function parent(child: unknown, assign?: {}){
   PARENTS.set(child as Model, assign as Model);
 }
 
-function watch<T extends {}>(target: T, key: string): (value: unknown) => any;
+function watch<T extends {}>(target: T, key: string): (value: any) => any;
 function watch<T extends {}>(target: T, callback: Observer): T;
 function watch<T extends {}>(value: T, argument: Observer | string){
   const observer = OBSERVER.get(value);

@@ -76,17 +76,15 @@ describe("UPDATE", () => {
     const update = await test.set(0);
     const updated = test[Debug.UPDATE];
 
-    expect(update).toStrictEqual(updated);
-
-    expect(updated).toContain("value1");
-    expect(updated).toContain("value2");
+    expect(update).toBe(updated);
+    expect(updated).toEqual({ value1: 2, value2: 3 });
   })
 
   it.skip("will reveal cause for update", async () => {
     const test = Test.new() as Debug<Test>;
 
-    let update: readonly string[] | undefined;
-    let fullUpdate: readonly string[] | false;
+    let update: Model.Values<Test> | undefined;
+    let fullUpdate: Model.Values<Test> | false;
 
     test.get(state => {
       void state.value1;
