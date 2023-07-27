@@ -7,24 +7,12 @@ export const Oops = issues({
 })
 
 function use <T extends Model> (
-  this: Model.New<T>,
-  callback?: (instance: T) => void,
-  repeat?: boolean
-): T;
-
-function use <T extends Model> (
-  this: Model.New<T>,
-  apply?: Model.Values<T>,
-  repeat?: boolean
-): T;
-
-function use <T extends Model> (
-  this: Model.New<T>,
+  model: Model.New<T>,
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
   const render = Control.use(dispatch => {
-    const instance = this.new();
+    const instance = model.new();
     const local = watch(instance, () => onUpdate);
     const refresh = () => dispatch(x => x+1);
 
@@ -66,41 +54,34 @@ function use <T extends Model> (
   return render(apply);
 }
 
-/** Type may not be undefined - instead will be null.  */
-type NoVoid<T> = T extends undefined | void ? null : T;
+declare namespace get {
+  /** Type may not be undefined - instead will be null.  */
+  type NoVoid<T> = T extends undefined | void ? null : T;
 
-type ForceUpdate = {
-  /** Force an update in current component. */
-  (): void;
-  
-  /**
-   * Force an update and again after promise either resolves or rejects.
-   * Will return a duplicate of given Promise, which resolves after refresh.
-   */
-  <T = void>(passthru: Promise<T>): Promise<T>
+  type Factory<T extends Model, R> = (this: T, current: T, update: ForceUpdate) => R;
 
-  /**
-   * Force a update while calling async function.
-   * A refresh will occur both before and after given function.
-   * Any actions performed before first `await` will occur before refresh!
-   */
-  <T = void>(invoke: () => Promise<T>): Promise<T>
-};
+  type ForceUpdate = {
+    /** Force an update in current component. */
+    (): void;
+    
+    /**
+     * Force an update and again after promise either resolves or rejects.
+     * Will return a duplicate of given Promise, which resolves after refresh.
+     */
+    <T = void>(passthru: Promise<T>): Promise<T>
 
-type Factory<T extends Model, R> = (this: T, current: T, update: ForceUpdate) => R;
-
-/** Fetch instance of this class from context. */
-function get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
-
-/** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
-
-function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | R | Promise<R>>): NoVoid<R>;
-function get <T extends Model, R> (this: Model.Type<T>, factory: Factory<T, (() => R) | null>): NoVoid<R> | null;
+    /**
+     * Force a update while calling async function.
+     * A refresh will occur both before and after given function.
+     * Any actions performed before first `await` will occur before refresh!
+     */
+    <T = void>(invoke: () => Promise<T>): Promise<T>
+  };
+}
 
 function get<T extends Model, R>(
-  this: Model.Type<T>,
-  argument?: boolean | Factory<T, any>
+  model: Model.Type<T>,
+  argument?: boolean | get.Factory<T, any>
 ){
   return Control.get((dispatch, context) => {
     const refresh = () => dispatch(x => x+1);
@@ -108,14 +89,14 @@ function get<T extends Model, R>(
     let value: any;
 
     if(typeof argument !== "function"){
-      const got = context.get(this);
+      const got = context.get(model);
 
       if(got)
         value = argument === undefined
           ? watch(got, k => k ? onUpdate : undefined)
           : got;
       else if(argument !== false)
-        throw Oops.NotFound(this);
+        throw Oops.NotFound(model);
 
       return {
         mount(){
@@ -132,10 +113,10 @@ function get<T extends Model, R>(
     let factory: true | undefined;
     let proxy!: T;
 
-    const found = context.get(this);
+    const found = context.get(model);
 
     if(!found)
-      throw Oops.NotFound(this);
+      throw Oops.NotFound(model);
 
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;

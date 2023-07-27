@@ -123,17 +123,58 @@ class Model {
     return instance;
   }
 
-  static get = get;
-  static use = use;
+  static use <T extends Model> (
+    this: Model.New<T>,
+    callback?: (instance: T) => void,
+    repeat?: boolean
+  ): T;
+
+  static use <T extends Model> (
+    this: Model.New<T>,
+    apply?: Model.Values<T>,
+    repeat?: boolean
+  ): T;
+
+  static use(apply: any, repeat?: boolean){
+    return use(this, apply, repeat);
+  }
+
+  /** Fetch instance of this class from context. */
+  static get <T extends Model> (
+    this: Model.Type<T>,
+    ignoreUpdates?: true
+  ): T;
+
+  /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
+  static get <T extends Model> (
+    this: Model.Type<T>,
+    required: boolean
+  ): T | undefined;
+
+  static get <T extends Model, R> (
+    this: Model.Type<T>,
+    factory: get.Factory<T, (() => R) | R | Promise<R>>
+  ): get.NoVoid<R>;
+
+  static get <T extends Model, R> (
+    this: Model.Type<T>,
+    factory: get.Factory<T, (() => R) | null>
+  ): get.NoVoid<R> | null;
+
+  static get(
+    this: Model.Type,
+    argument?: boolean | get.Factory<any, any>
+  ){
+    return get(this, argument);
+  }
 
   /**
    * Static equivalent of `x instanceof this`.
-   * 
-   * Will determine if provided class is a subtype of this one. 
+   * Determines if provided class is a subtype of this one.
+   * If so, language server will make available all static
+   * methods and properties of this class.
    */
-  static is<T extends Model.Type>(
-    this: T, maybe: any): maybe is T {
-
+  static is<T extends Model.Type>(this: T, maybe: any): maybe is T {
     return (
       typeof maybe == "function" &&
       maybe.prototype instanceof this
