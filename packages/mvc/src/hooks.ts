@@ -188,9 +188,7 @@ function get<T extends Model, R>(
         if(onUpdate)
           return null;
 
-        throw new Promise<void>(res => {
-          suspense = res;
-        });  
+        throw new Promise<void>(res => suspense = res);  
       }
     }
   })

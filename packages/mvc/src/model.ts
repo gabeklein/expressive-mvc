@@ -125,48 +125,25 @@ class Model {
     return instance;
   }
 
-  static use <T extends Model> (
-    this: Model.New<T>,
-    callback?: (instance: T) => void,
-    repeat?: boolean
-  ): T;
+  static use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): T;
 
-  static use <T extends Model> (
-    this: Model.New<T>,
-    apply?: Model.Values<T>,
-    repeat?: boolean
-  ): T;
+  static use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
   static use(apply: any, repeat?: boolean){
     return use(this, apply, repeat);
   }
 
   /** Fetch instance of this class from context. */
-  static get <T extends Model> (
-    this: Model.Type<T>,
-    ignoreUpdates?: true
-  ): T;
+  static get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
 
   /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-  static get <T extends Model> (
-    this: Model.Type<T>,
-    required: boolean
-  ): T | undefined;
+  static get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
 
-  static get <T extends Model, R> (
-    this: Model.Type<T>,
-    factory: get.Factory<T, (() => R) | R | Promise<R>>
-  ): get.NoVoid<R>;
+  static get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | Promise<R> | R>): get.NoVoid<R>;
 
-  static get <T extends Model, R> (
-    this: Model.Type<T>,
-    factory: get.Factory<T, (() => R) | null>
-  ): get.NoVoid<R> | null;
+  static get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | null>): get.NoVoid<R> | null;
 
-  static get(
-    this: Model.Type,
-    argument?: boolean | get.Factory<any, any>
-  ){
+  static get(this: Model.Type, argument?: boolean | get.Factory<any, any>){
     return get(this, argument);
   }
 

@@ -86,18 +86,17 @@ class Control<T extends {} = any> {
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
   static on(event: "ready" | "update" | "didUpdate", callback: any){
     LIFECYCLE[event].add(callback);
-    return () => {
+    return () =>
       LIFECYCLE[event].delete(callback);
-    }
   }
 
   public id: string | number | false;
   public subject: T;
 
   public state: { [property: string]: unknown } = {};
+  public frame: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
-  public frame: { [property: string]: unknown } = {};
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
@@ -203,18 +202,16 @@ class Control<T extends {} = any> {
 
     frame[key] = this.state[key];
 
-    for(const subs of [
-      this.observers.get(key),
-      this.followers
-    ])
-      subs && subs.forEach(cb => {
-        const notify = cb(key, this);
-  
-        if(notify === null)
-          subs.delete(cb);
-        else if(notify)
-          enqueue(notify);
-      });
+    for(const subs of [this.observers.get(key), followers])
+      if(subs)
+        for(const cb of subs){
+          const notify = cb(key, this);
+    
+          if(notify === null)
+            subs.delete(cb);
+          else if(notify)
+            enqueue(notify);
+        }
   }
 
   addListener(fn: Observer<T>){
@@ -298,11 +295,8 @@ function watch<T extends {}>(value: T, argument: Observer | string){
     if(observer)
       subs.add(observer);
 
-    return (value: {}): any => (
-      observer && REGISTER.has(value)
-        ? watch(value, observer)
-        : value
-    )
+    return (value: {}) =>
+      observer && REGISTER.has(value) ? watch(value, observer) : value
   }
 
   if(!observer)
@@ -319,12 +313,10 @@ function add<T = any>(instruction: Control.Instruction<T>){
   INSTRUCT.set(placeholder, (onto, key) => {
     delete onto.subject[key];
   
-    const output = instruction.call(onto, key, onto);
+    const get = instruction.call(onto, key, onto);
   
-    if(output)
-      onto.watch(key, 
-        typeof output == "function" ? { get: output } : output
-      );
+    if(get)
+      onto.watch(key, typeof get == "object" ? get : { get });
   });
 
   return placeholder as unknown as T;
