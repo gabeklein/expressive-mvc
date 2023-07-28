@@ -79,44 +79,6 @@ describe("UPDATE", () => {
     expect(update).toBe(updated);
     expect(updated).toEqual({ value1: 2, value2: 3 });
   })
-
-  it.skip("will reveal cause for update", async () => {
-    const test = Test.new() as Debug<Test>;
-
-    let update: Model.Values<Test> | undefined;
-    let fullUpdate: Model.Values<Test> | false;
-
-    test.get(state => {
-      void state.value1;
-      void state.value3;
-
-      update = state[Debug.UPDATE];
-    })
-
-    expect(update).toBeUndefined();
-
-    test.value1 = 2;
-    test.value2 = 3;
-
-    fullUpdate = await test.set(0);
-
-    // sanity check
-    expect(update).not.toStrictEqual(fullUpdate);
-    expect(fullUpdate).toContain("value2");
-
-    expect(update).toContain("value1");
-    expect(update).not.toContain("value2");
-
-    test.value3 = 4;
-
-    fullUpdate = await test.set(0);
-
-    // sanity check
-    expect(fullUpdate).not.toContain("value1");
-
-    expect(update).toContain("value3");
-    expect(fullUpdate).toContain("value3");
-  })
 })
 
 describe("toString", () => {
