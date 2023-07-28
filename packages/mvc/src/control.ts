@@ -140,17 +140,17 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
-    const { state } = this;
+    const { state, observers, subject } = this;
     const { set, enumerable = true } = output;
 
     const subs = new Set<Observer>();
     
-    this.observers.set(key, subs);
+    observers.set(key, subs);
 
     if("value" in output)
       state[key] = output.value;
 
-    define(this.subject, key, {
+    define(subject, key, {
       enumerable,
       set: set === false
         ? undefined
