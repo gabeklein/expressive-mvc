@@ -97,9 +97,7 @@ class Model {
     arg2?: Model.Predicate): any {
 
     return typeof arg1 == "function"
-      ? control(this, self => (
-        self.addListener(k => k && arg1(k))
-      ))
+      ? control(this, self => self.addListener(k => k && arg1(k)))
       : update(this, arg1, arg2);
     }
 

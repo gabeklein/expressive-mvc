@@ -37,9 +37,7 @@ function run<T extends Async>(task: T){
       control.update(key);
 
       try {
-        return await mayRetry(() => (
-          task.apply(control.subject, args)
-        ))
+        return await mayRetry(() => task.apply(control.subject, args))
       }
       finally {
         pending = false;

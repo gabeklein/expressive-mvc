@@ -44,9 +44,9 @@ export function createEffect<T extends Model>(
     let refresh: (() => void) | null;
 
     subject = watch(subject, () => refresh);
-    self.addListener(key => (
+    self.addListener(key => 
       key === null || refresh === null ? refresh : undefined
-    ));
+    );
 
     invoke();
     refresh = invoke;

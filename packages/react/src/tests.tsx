@@ -7,11 +7,8 @@ import { Provider } from './provider';
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();
 
-  const event = () => (
-    new Promise<T>((res, rej) => {
-      pending.add([res, rej]);
-    })
-  );
+  const event = () =>
+    new Promise<T>((res, rej) => pending.add([res, rej]))
 
   const resolve = (value: T) => {
     const done = event();
