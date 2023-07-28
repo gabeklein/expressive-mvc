@@ -38,24 +38,22 @@ export function extract <T extends Model, P extends Model.Key<T>> (
   if(typeof callback != "function")
     return extract();
 
-  const select = typeof argument == "string" ? [argument] : argument;
+  const select = typeof argument == "string" ? [argument] : argument!;
   const invoke = () => callback(extract(), self.latest || {});
 
-  if(select)
-    for(const key of select)
-      try {
-        self.subject[key];
-      }
-      catch(e){
-        // TODO: should this be caught?
-      }
+  for(const key of select)
+    try {
+      self.subject[key];
+    }
+    catch(e){
+      // TODO: should this be caught?
+    }
 
   invoke();
 
   return self.addListener(key => {
-    if(!select || select.includes(key as P)){
+    if(select.includes(key as P))
       return invoke;
-    }
   });
 }
 
