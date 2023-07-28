@@ -97,8 +97,7 @@ class Control<T extends {} = any> {
   public frame: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
-  public followers = new Set<Observer>();
-  public observers = new Map([["", this.followers]]);
+  public observers = new Map([["", new Set<Observer>()]]);
 
   constructor(subject: T, id?: string | number | false){
     this.subject = subject;
@@ -181,7 +180,12 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
-    const { frame, followers } = this;
+    const any = this.observers.get("")!;
+
+    if(!any)
+      return;
+
+    const { frame } = this;
 
     if(!frame.size){
       this.latest = undefined;
@@ -189,7 +193,7 @@ class Control<T extends {} = any> {
       enqueue(() => {
         this.latest = { ...frame };
 
-        followers.forEach(cb => {
+        any.forEach(cb => {
           const notify = cb(undefined, this);
 
           if(notify)
@@ -202,7 +206,7 @@ class Control<T extends {} = any> {
 
     frame[key] = this.state[key];
 
-    for(const subs of [this.observers.get(key), followers])
+    for(const subs of [this.observers.get(key), any])
       if(subs)
         for(const cb of subs){
           const notify = cb(key, this);
@@ -215,8 +219,9 @@ class Control<T extends {} = any> {
   }
 
   addListener(fn: Observer<T>){
-    this.followers.add(fn);
-    return () => this.followers.delete(fn);
+    const any = this.observers.get("")!;
+    any.add(fn);
+    return () => any.delete(fn);
   }
 
   clear(){
