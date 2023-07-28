@@ -29,7 +29,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
     return extract();
 
   const select = typeof argument == "string" ? [argument] : argument;
-  const invoke = () => callback(extract(), self.latest || []);
+  const invoke = () => callback(extract(), self.latest || {});
 
   if(select)
     for(const key of select)
@@ -62,7 +62,7 @@ export function update<T extends Model>(
       if(typeof arg1 == "object")
         merge(self, arg1, arg2 === true);
 
-      if(!self.frame.size && typeof arg1 != "number"){
+      if(!keys(self.frame).length && typeof arg1 != "number"){
         resolve(false);
         return;
       }

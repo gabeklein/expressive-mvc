@@ -161,7 +161,7 @@ function computed<T>(
   let reset: (() => void) | undefined;
 
   function compute(initial?: boolean){
-    if(parent.frame.has(key))
+    if(key in parent.frame)
       return;
 
     let next: T | undefined;

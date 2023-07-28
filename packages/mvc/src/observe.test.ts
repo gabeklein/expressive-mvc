@@ -102,7 +102,7 @@ describe("get", () => {
       state.get("seconds", callback);
 
       // will call back immediately with current value
-      expect(callback).toBeCalledWith(0, []);
+      expect(callback).toBeCalledWith(0, {});
 
       state.seconds = 30;
       await expect(state).toUpdate();
@@ -122,7 +122,7 @@ describe("get", () => {
 
       state.get("minutes", callback);
 
-      expect(callback).toBeCalledWith(0, []);
+      expect(callback).toBeCalledWith(0, {});
 
       state.seconds = 60;
       await expect(state).toUpdate();
@@ -142,7 +142,7 @@ describe("get", () => {
 
       state.get("minutes", callback);
 
-      expect(callback).toBeCalledWith(0, []);
+      expect(callback).toBeCalledWith(0, {});
 
       state.seconds = 60;
       await expect(state).toUpdate();

@@ -97,7 +97,7 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
-  public frame = new Map<string, unknown>();
+  public frame: { [property: string]: unknown } = {};
   public followers = new Set<Observer>();
   public observers = new Map([["", this.followers]]);
 
@@ -188,21 +188,20 @@ class Control<T extends {} = any> {
       this.latest = undefined;
 
       enqueue(() => {
-        const update = this.latest = {} as Record<string, unknown>;
-
-        frame.forEach((value, key) => update[key] = value);
+        this.latest = { ...frame };
 
         followers.forEach(cb => {
           const notify = cb(undefined, this);
 
           if(notify)
             enqueue(notify);
-        })
-        frame.clear();
+        });
+
+        this.frame = {};
       })
     }
-  
-    frame.set(key, this.state[key]);
+
+    this.frame[key] = this.state[key];
 
     for(const subs of [
       this.observers.get(key),
