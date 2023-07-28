@@ -1,4 +1,4 @@
-import { Control, control } from './control';
+import { control } from './control';
 import { entries, keys } from './helper/object';
 import { Model } from './model';
 
@@ -64,14 +64,11 @@ export function extract <T extends Model, P extends Model.Key<T>> (
 
 export function update<T extends Model>(
   target: T,
-  arg1?: number | Model.Values<T>,
-  arg2?: boolean | Model.Predicate){
+  arg1?: number,
+  arg2?: Model.Predicate){
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {
-      if(typeof arg1 == "object")
-        merge(self, arg1, arg2 === true);
-
       if(!keys(self.frame).length && typeof arg1 != "number"){
         resolve(false);
         return;
@@ -96,25 +93,4 @@ export function update<T extends Model>(
       }, arg1);
     })
   });
-}
-
-function merge<T extends Model>(
-  into: Control<T>,
-  data: Model.Values<T>,
-  append?: boolean){
-
-  const { state } = into;
-
-  for(const key in data){
-    const value = (data as any)[key];
-
-    if(key in state){
-      if(state[key] != value){
-        state[key] = value;
-        into.update(key);
-      }
-    }
-    else if(append)
-      into.watch(key, { value });
-  }
 }

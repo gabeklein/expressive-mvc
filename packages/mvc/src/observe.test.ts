@@ -171,32 +171,6 @@ describe("get", () => {
 })
 
 describe("set", () => {
-  it("will assign values", async () => {
-    class Test extends Model {
-      foo = 0;
-      bar = 1;
-      baz?: number;
-    }
-    
-    const values = {
-      foo: 1,
-      bar: 2,
-      baz: 3
-    }
-
-    const test = Test.new();
-
-    expect(test.foo).toBe(0);
-    expect(test.bar).toBe(1);
-
-    test.set(values);
-
-    await expect(test).toHaveUpdated("foo", "bar");
-
-    expect(test.foo).toBe(1);
-    expect(test.bar).toBe(2);
-  });
-
   describe("timeout", () => {
     it('will reject if not pending', async () => {
       const control = Model.new();

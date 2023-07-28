@@ -92,11 +92,9 @@ class Model {
 
   set (timeout: number, predicate?: Model.Predicate): Promise<Model.Values<this>>;
 
-  set (from: Model.Values<this>, append?: boolean): Promise<Model.Values<this>[] | false>;
-
   set(
-    arg1?: number | Model.Values<this> | Model.SetCallback,
-    arg2?: boolean | Model.Predicate): any {
+    arg1?: number | Model.SetCallback,
+    arg2?: Model.Predicate): any {
 
     return typeof arg1 == "function"
       ? control(this, self => (
