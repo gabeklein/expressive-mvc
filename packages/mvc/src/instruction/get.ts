@@ -229,7 +229,7 @@ function computed<T>(
   }
 }
 
-function flushComputed(){
+Control.on("update", () => {
   while(PENDING.size){
     let compute!: Callback;
 
@@ -241,8 +241,6 @@ function flushComputed(){
     
     compute();
   }
-}
-
-Control.on("update", flushComputed);
+});
 
 export { get };

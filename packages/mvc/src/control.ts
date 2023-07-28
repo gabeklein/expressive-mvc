@@ -112,7 +112,7 @@ class Control<T extends {} = any> {
   }
 
   init(){
-    const { state, subject } = this;
+    const { subject } = this;
 
     for(const key in subject){  
       const { value } = getOwnPropertyDescriptor(subject, key)!;
@@ -127,7 +127,7 @@ class Control<T extends {} = any> {
           if(!(next instanceof value.constructor))
             throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
 
-          state[key] = next;
+          this.state[key] = next;
           parent(next, subject);
           control(next, true);
           return true;
