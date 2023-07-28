@@ -58,16 +58,15 @@ describe("callback", () => {
 
     expect(didAssign).not.toBeCalled();
 
-    state.set((key, value) => {
+    state.set((key) => {
       if(key == "test")
-        didUpdate(value);
+        didUpdate();
     });
 
     state.test = 2;
-    expect(didAssign).toBeCalledWith(3);
 
-    await expect(state).toUpdate()
-    expect(didUpdate).toBeCalledWith(2);
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didAssign).toBeCalledWith(3);
   })
 
   it('will invoke return-callback on overwrite', async () => {

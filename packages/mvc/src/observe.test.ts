@@ -238,9 +238,9 @@ describe("set", () => {
       control.bar = 3;
       control.baz = 4;
 
-      expect(test).toBeCalledWith("foo", 2);
-      expect(test).toBeCalledWith("bar", 3);
-      expect(test).not.toBeCalledWith("baz", 4);
+      expect(test).toBeCalledWith("foo");
+      expect(test).toBeCalledWith("bar");
+      expect(test).not.toBeCalledWith("baz");
 
       await expect(update).resolves.toEqual({ foo: 2, bar: 3, baz: 4 });
     })
@@ -256,7 +256,7 @@ describe("set", () => {
 
       control.foo = 2;
 
-      expect(test).toBeCalledWith("foo", 2);
+      expect(test).toBeCalledWith("foo");
       await expect(update).rejects.toBe(0);
     })
   })
@@ -278,16 +278,16 @@ describe("set", () => {
       test.foo = 2;
       test.bar = 2;
 
-      expect(mock).toBeCalledWith("foo", 1);
-      expect(mock).toBeCalledWith("foo", 2);
-      expect(mock).toBeCalledWith("bar", 2);
+      expect(mock).toBeCalledWith("foo");
+      expect(mock).toBeCalledWith("foo");
+      expect(mock).toBeCalledWith("bar");
 
       done();
     })
 
     it("will callback after frame", async () => {
       const test = Test.new();
-      const didUpdate = jest.fn<any, [string, unknown]>(() => didUpdateAsync);
+      const didUpdate = jest.fn<any, [string]>(() => didUpdateAsync);
       const didUpdateAsync = jest.fn();
       
       const done = test.set(didUpdate);
@@ -324,7 +324,7 @@ describe("set", () => {
 
       subject.bar = 2;
 
-      expect(callback).toBeCalledWith("bar", 2);
+      expect(callback).toBeCalledWith("bar");
     })
   })
 })

@@ -320,9 +320,9 @@ describe("compute mode", () => {
     expect(state.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.set((key, value) => {
+    state.set((key) => {
       if(key === "c")
-        emit(value);
+        emit();
     })
   
     state.a++;

@@ -54,9 +54,9 @@ namespace Model {
 
   export type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
 
-  export type SetCallback<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => Callback | void;
+  export type SetCallback = (key: string) => Callback | void;
 
-  export type Predicate<T extends Model> = <K extends Model.Key<T>>(key: K, value: T[K]) => boolean | void;
+  export type Predicate = (key: string) => boolean | void;
 }
 
 class Model {
@@ -88,19 +88,19 @@ class Model {
   set (): Promise<Model.Values<this>> | false;
 
   /** Detect and/or modify updates to state. */
-  set (event: Model.SetCallback<this>): Callback;
+  set (event: Model.SetCallback): Callback;
 
-  set (timeout: number, predicate?: Model.Predicate<this>): Promise<Model.Values<this>>;
+  set (timeout: number, predicate?: Model.Predicate): Promise<Model.Values<this>>;
 
   set (from: Model.Values<this>, append?: boolean): Promise<Model.Values<this>[] | false>;
 
   set(
-    arg1?: number | Model.Values<this> | Model.SetCallback<any>,
-    arg2?: boolean | Model.Predicate<any>): any {
+    arg1?: number | Model.Values<this> | Model.SetCallback,
+    arg2?: boolean | Model.Predicate): any {
 
     return typeof arg1 == "function"
       ? control(this, self => (
-        self.addListener(k => k && arg1(k, self.state[k]))
+        self.addListener(k => k && arg1(k))
       ))
       : update(this, arg1, arg2);
     }

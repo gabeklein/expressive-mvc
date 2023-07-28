@@ -23,15 +23,15 @@ describe("property", () => {
     const state = Subject.new();
     const didCallback = jest.fn();
 
-    state.set((key, value) => {
+    state.set((key) => {
       if(key == "ref")
-        didCallback(value);
+        didCallback();
     })
 
     state.ref.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(didCallback).toBeCalledWith("foobar");
+    expect(didCallback).toBeCalledWith();
   })
   
   it('will update "current" when property invoked', async () => {
@@ -42,15 +42,15 @@ describe("property", () => {
     const state = Subject.new();
     const didUpdate = jest.fn();
 
-    state.set((key, value) => {
+    state.set((key) => {
       if(key == "ref")
-        didUpdate(value);
+        didUpdate();
     })
 
     state.ref("foobar");
   
     await expect(state).toUpdate();
-    expect(didUpdate).toBeCalledWith("foobar");
+    expect(didUpdate).toBeCalledWith();
   })
   
   it('will invoke callback', async () => {
@@ -65,16 +65,16 @@ describe("property", () => {
   
     expect(didTrigger).not.toBeCalled();
 
-    state.set((key, value) => {
+    state.set((key, ) => {
       if(key == "ref")
-        didUpdate(value);
+        didUpdate();
     })
 
     state.ref.current = "foobar";
     expect(didTrigger).toBeCalledWith("foobar");
   
     await expect(state).toUpdate();
-    expect(didUpdate).toBeCalledWith("foobar");
+    expect(didUpdate).toBeCalledWith();
   })
   
   it('will invoke return-callback on overwrite', async () => {

@@ -55,7 +55,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
 export function update<T extends Model>(
   target: T,
   arg1?: number | Model.Values<T>,
-  arg2?: boolean | Model.Predicate<any>){
+  arg2?: boolean | Model.Predicate){
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {
@@ -70,7 +70,7 @@ export function update<T extends Model>(
       const callback = () => resolve(self.latest);
   
       const remove = self.addListener((key) => {
-        if(typeof arg2 !== "function" || key && arg2(key, self.state[key]) === true){
+        if(typeof arg2 !== "function" || key && arg2(key) === true){
           remove();
   
           if(timeout)
