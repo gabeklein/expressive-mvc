@@ -112,7 +112,7 @@ class Control<T extends {} = any> {
   init(){
     const { subject } = this;
 
-    for(const key in subject){  
+    for(const key in subject){
       const { value } = getOwnPropertyDescriptor(subject, key)!;
       const instruction = INSTRUCT.get(value);
 

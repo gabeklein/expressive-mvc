@@ -150,7 +150,7 @@ class Model {
    * methods and properties of this class.
    */
   static is<T extends Model.Type>(this: T, maybe: any): maybe is T {
-    return typeof maybe == "function" && maybe.prototype instanceof this
+    return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 }
 
