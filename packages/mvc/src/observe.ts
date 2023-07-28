@@ -44,10 +44,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
   if(select)
     for(const key of select)
       try {
-        const value = self.subject[key];
-
-        if(!(key in self.state))
-          self.watch(key, { value });
+        self.subject[key];
       }
       catch(e){
         // TODO: should this be caught?
