@@ -108,16 +108,36 @@ describe("toString", () => {
 describe("errors", () => {
   const error = mockError();
 
-  it("will log update errors in the console", async () => {
+  it("will log sync error to the console", async () => {
     class Test extends Model {
       value = 1;
     };
 
-    const expected = new Error("Goodbye cruel world!")
+    const expected = new Error("sync error")
     const test = Test.new();
 
     test.set(() => {
       throw expected;
+    })
+
+    test.value = 2;
+
+    await test.set(0);
+
+    expect(error).toBeCalledWith(expected);
+  });
+
+  it("will log async error to the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const expected = new Error("async error")
+    const test = Test.new();
+
+    test.get($ => {
+      if($.value == 2)
+        throw expected;
     })
 
     test.value = 2;
