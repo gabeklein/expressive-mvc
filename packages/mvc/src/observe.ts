@@ -1,5 +1,5 @@
 import { Control, control } from './control';
-import { keys } from './helper/object';
+import { entries, keys } from './helper/object';
 import { Model } from './model';
 
 export function extract <T extends Model, P extends Model.Key<T>> (
@@ -7,23 +7,33 @@ export function extract <T extends Model, P extends Model.Key<T>> (
   argument?: P | P[],
   callback?: Function){
 
+  const cache = new Map<unknown, any>();
   const self = control(target, true);
 
-  function get(key: P){
-    const value = self.state[key];
-    return value instanceof Model ? value.get() : value;
+  function get(value: unknown, select?: string[]){
+    if(value instanceof Model){
+      let flat = cache.get(value);
+
+      if(!flat){
+        cache.set(value, flat = {});
+
+        const { state } = control(value);
+        
+        entries(state).forEach(([key, value]) => {
+          if(!select || select.includes(key))
+            flat[key] = get(value);
+        })
+      }
+
+      return flat;
+    }
+
+    return value;
   }
 
   const extract = typeof argument == "string"
-    ? () => get(argument)
-    : () => {
-      const output = {} as any;
-
-      for(const key of argument || keys(self.state))
-        output[key] = get(key as P);
-
-      return output;
-    };
+    ? () => get(self.state[argument])
+    : () => get(self.subject, argument);
 
   if(typeof callback != "function")
     return extract();

@@ -201,7 +201,7 @@ class Control<T extends {} = any> {
       })
     }
 
-    this.frame[key] = this.state[key];
+    frame[key] = this.state[key];
 
     for(const subs of [
       this.observers.get(key),

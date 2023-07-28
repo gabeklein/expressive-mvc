@@ -88,6 +88,23 @@ describe("get", () => {
         }
       })
     })
+
+    it("will export infinite loop", () => {
+      class Parent extends Model {
+        child = use(Child);
+        foo = "foo";
+      }
+
+      class Child extends Model {
+        parent = get(Parent);
+        bar = "bar";
+      }
+
+      const parent = Parent.new();
+      const exported = parent.get();
+
+      expect(exported.child.parent).toBe(exported);
+    })
   })
 
   describe("listener", () => {
