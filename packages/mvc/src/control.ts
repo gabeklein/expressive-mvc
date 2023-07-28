@@ -208,14 +208,18 @@ class Control<T extends {} = any> {
 
     for(const subs of [this.observers.get(key), any])
       if(subs)
-        for(const cb of subs){
-          const notify = cb(key, this);
-    
-          if(notify === null)
-            subs.delete(cb);
-          else if(notify)
-            enqueue(notify);
-        }
+        for(const cb of subs)
+          try {
+            const notify = cb(key, this);
+      
+            if(notify === null)
+              subs.delete(cb);
+            else if(notify)
+              enqueue(notify);
+          }
+          catch(err){
+            console.error(err);
+          }
   }
 
   addListener(fn: Observer<T>){
