@@ -167,18 +167,6 @@ class Control<T extends {} = any> {
     });
   }
 
-  ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
-    return (value: any) => {
-      if(value !== this.state[key])
-        switch(callback && callback.call(this.subject, value)){
-          case undefined:
-            this.state[key] = value;
-          case true:
-            this.update(key);
-        }
-    }
-  }
-
   update(key: string){
     const any = this.observers.get("")!;
 
@@ -220,6 +208,18 @@ class Control<T extends {} = any> {
           catch(err){
             console.error(err);
           }
+  }
+
+  ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
+    return (value: any) => {
+      if(value !== this.state[key])
+        switch(callback && callback.call(this.subject, value)){
+          case undefined:
+            this.state[key] = value;
+          case true:
+            this.update(key);
+        }
+    }
   }
 
   addListener(fn: Observer<T>){
