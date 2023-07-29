@@ -1,4 +1,4 @@
-import { control } from './control';
+import { addListener, control } from './control';
 import { entries, keys } from './helper/object';
 import { Model } from './model';
 
@@ -51,7 +51,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
 
   invoke();
 
-  return self.addListener(key => {
+  return addListener(target, key => {
     if(select.includes(key as P))
       return invoke;
   });
@@ -71,7 +71,7 @@ export function update<T extends Model>(
   
       const callback = () => resolve(self.latest);
   
-      const remove = self.addListener((key) => {
+      const remove = addListener(target, (key) => {
         if(typeof arg2 !== "function" || key && arg2(key) === true){
           remove();
   

@@ -77,6 +77,8 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>(),
 }
 
+const OBSERVERS = new WeakMap<{}, Set<Observer>>();
+
 class Control<T extends {} = any> {
   static hooks: Control.Hooks;
   static for = control;
@@ -97,13 +99,18 @@ class Control<T extends {} = any> {
   public frame: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
-  public observers = new Map([["", new Set<Observer>()]]);
+  public observers = new Map<string, Set<Observer>>();
 
   constructor(subject: T, id?: string | number | false){
     this.subject = subject;
     this.id = id === undefined ? uid() : id;
 
+    const followers = new Set<Observer>();
+
+    OBSERVERS.set(subject, followers);
     REGISTER.set(subject, this);
+
+    this.observers.set("", followers);
 
     if(id !== false)
       PENDING.set(this, new Set(LIFECYCLE.ready));
@@ -189,12 +196,12 @@ class Control<T extends {} = any> {
         }
     }
   }
+}
 
-  addListener(fn: Observer<T>){
-    const any = this.observers.get("")!;
-    any.add(fn);
-    return () => any.delete(fn);
-  }
+function addListener<T extends Model>(subject: T, fn: Observer<T>){
+  const any = OBSERVERS.get(subject.is)!;
+  any.add(fn);
+  return () => any.delete(fn);
 }
 
 function clear(subject: Model){
@@ -213,7 +220,7 @@ function clear(subject: Model){
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  const self = REGISTER.get(subject) as Control<T>;
+  const self = REGISTER.get(subject.is) as Control<T>;
   const pending = PENDING.get(self);
 
   if(typeof ready == "function"){
@@ -332,6 +339,7 @@ function uid(){
 
 export {
   add,
+  addListener,
   clear,
   control,
   Control,

@@ -1,4 +1,4 @@
-import { control, watch } from './control';
+import { addListener, control, watch } from './control';
 import { issues } from './helper/issues';
 import { Model } from './model';
 import { mayRetry } from './suspense';
@@ -43,7 +43,7 @@ export function createEffect<T extends Model>(
     let refresh: (() => void) | null;
 
     source = watch(source, () => refresh);
-    self.addListener(key => 
+    addListener(source, key => 
       key === null || refresh === null ? refresh : undefined
     );
 

@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { Control, addListener } from './control';
 import { issues } from './helper/issues';
 import { assign } from './helper/object';
 
@@ -19,7 +19,7 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
       }
     }
 
-    const remove = source.addListener(k => {
+    const remove = addListener(source.subject, k => {
       if(k === key)
         return check;
 
