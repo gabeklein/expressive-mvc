@@ -4,8 +4,6 @@ import { use } from './instruction/use';
 import { Model } from './model';
 
 describe("get", () => {
-  it.todo("will handle recursive get");
-
   describe("export", () => {
     class Test extends Model {
       foo = "foo"
