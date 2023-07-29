@@ -109,36 +109,6 @@ class Control<T extends {} = any> {
       PENDING.set(this, new Set(LIFECYCLE.ready));
   }
 
-  init(){
-    const { subject } = this;
-
-    for(const key in subject){
-      const { value } = getOwnPropertyDescriptor(subject, key)!;
-      const instruction = INSTRUCT.get(value);
-
-      if(instruction){
-        INSTRUCT.delete(value);
-        instruction(this, key);
-      }
-      else if(value instanceof Model){
-        const set = (next: Model | undefined) => {
-          if(!(next instanceof value.constructor))
-            throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
-
-          this.state[key] = next;
-          parent(next, subject);
-          control(next, true);
-          return true;
-        }
-
-        this.watch(key, { set });
-        set(value);
-      }
-      else
-        this.watch(key, { value });
-    }
-  }
-
   watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state, observers, subject } = this;
     const { set, enumerable = true } = output;
@@ -244,26 +214,51 @@ function clear(subject: Model){
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  const control = REGISTER.get(subject) as Control<T>;
-  const pending = PENDING.get(control);
+  const self = REGISTER.get(subject) as Control<T>;
+  const pending = PENDING.get(self);
 
   if(typeof ready == "function"){
     if(pending){
       let done: Callback | void;
-      pending.add(() => done = ready(control));
+      pending.add(() => done = ready(self));
       return () => done && done();
     }
 
-    return ready(control);
+    return ready(self);
   }
 
   if(pending && ready){
-    control.init();
-    PENDING.delete(control);
-    pending.forEach(cb => cb(control));
+    for(const key in subject){
+      const { value } = getOwnPropertyDescriptor(subject, key)!;
+      const instruction = INSTRUCT.get(value);
+
+      if(instruction){
+        INSTRUCT.delete(value);
+        instruction(self, key);
+      }
+      else if(value instanceof Model){
+        const set = (next: Model | undefined) => {
+          if(!(next instanceof value.constructor))
+            throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
+
+          self.state[key] = next;
+          parent(next, subject);
+          control(next, true);
+          return true;
+        }
+
+        self.watch(key, { set });
+        set(value);
+      }
+      else
+        self.watch(key, { value });
+    }
+    
+    PENDING.delete(self);
+    pending.forEach(cb => cb(self));
   }
 
-  return control;
+  return self;
 }
 
 function enqueue(event: Callback){
@@ -340,6 +335,7 @@ function uid(){
 
 export {
   add,
+  clear,
   control,
   Control,
   parent,
