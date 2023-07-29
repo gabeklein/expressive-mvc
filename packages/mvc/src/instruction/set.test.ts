@@ -465,26 +465,24 @@ describe("factory", () => {
     expect(test.value).toBe("Hello World")
   })
 
-  it.skip("will squash repeating suspense", async () => {
+  it("will squash repeating suspense", async () => {
+    let pending = mockPromise();
+    let suspend = true;
+
+    const compute = jest.fn(() => {
+      if(suspend)
+        throw pending;
+
+      return `OK I'm unblocked.`;
+    });
+
     class Test extends Model {
-      message = set(this.getSum);
-      suspend = true;
-      pending = mockPromise();
-
-      getSum(){
-        didTryToEvaluate()
-
-        if(this.suspend)
-          throw this.pending;
-
-        return `OK I'm unblocked.`;
-      }
+      message = set(compute);
     }
 
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
     
-    const didTryToEvaluate = jest.fn();
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.message);
     });
@@ -493,20 +491,23 @@ describe("factory", () => {
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
-    expect(didTryToEvaluate).toBeCalledTimes(1);
+    expect(compute).toBeCalledTimes(1);
 
-    test.pending.resolve();
-    await test.set(0);
+    pending.resolve();
+    pending = mockPromise();
+
+    // TODO: why does this not work when `.set(0)` is used?
+    await test.set();
 
     // expect eval to run again because promise resolved.
-    expect(didTryToEvaluate).toBeCalledTimes(2);
+    expect(compute).toBeCalledTimes(2);
 
-    test.suspend = false;
-    test.pending.resolve();
+    suspend = false;
+    pending.resolve();
     await didEvaluate;
 
     expect(test.message).toBe("OK I'm unblocked.");
-    expect(didTryToEvaluate).toBeCalledTimes(3);
+    expect(compute).toBeCalledTimes(3);
     expect(effect).toBeCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
   })
