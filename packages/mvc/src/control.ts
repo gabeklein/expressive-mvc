@@ -113,9 +113,7 @@ class Control<T extends {} = any> {
     const { state, observers, subject } = this;
     const { set, enumerable = true } = output;
 
-    const subs = new Set<Observer>();
-    
-    observers.set(key, subs);
+    observers.set(key, new Set<Observer>());
 
     if("value" in output)
       state[key] = output.value;
@@ -241,13 +239,11 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
           if(!(next instanceof value.constructor))
             throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
 
-          self.state[key] = next;
           parent(next, subject);
           control(next, true);
-          return true;
         }
 
-        self.watch(key, { set });
+        self.watch(key, { value, set });
         set(value);
       }
       else

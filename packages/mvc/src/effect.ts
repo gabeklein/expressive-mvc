@@ -14,7 +14,6 @@ export function createEffect<T extends Model>(
   source: T, callback: Model.Effect<T>){
 
   return control(source, self => {
-    let { subject } = self;
     let unSet: Callback | Promise<void> | void;
     let busy = false;
 
@@ -26,7 +25,7 @@ export function createEffect<T extends Model>(
         if(typeof unSet == "function")
           unSet();
     
-        unSet = callback.call(subject, subject);
+        unSet = callback.call(source, source);
     
         if(unSet instanceof Promise)
           unSet = undefined;
@@ -43,7 +42,7 @@ export function createEffect<T extends Model>(
 
     let refresh: (() => void) | null;
 
-    subject = watch(subject, () => refresh);
+    source = watch(source, () => refresh);
     self.addListener(key => 
       key === null || refresh === null ? refresh : undefined
     );

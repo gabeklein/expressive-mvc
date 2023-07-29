@@ -1,6 +1,6 @@
 import { control, parent, uid } from './control';
 import { issues } from './helper/issues';
-import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
+import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './helper/object';
 import { Model } from './model';
 
 export const Oops = issues({
@@ -61,16 +61,13 @@ class Context {
       }
     }
 
-    for(const [ model ] of init){
-      const { state } = control(model, true);
-  
-      Object.values(state).forEach(value => {
+    for(const [ model ] of init)
+      values(control(model, true).state).forEach(value => {
         if(parent(value) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
         }
       });
-    }
 
     return init;
   }
@@ -87,7 +84,7 @@ class Context {
       I = new input();
     }
     else {
-      I = control(input).subject;
+      I = input;
       T = I.constructor as Model.New<T>;
       writable = false;
     }

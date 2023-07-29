@@ -81,10 +81,7 @@ function ref<T>(
       value = createRef(source, key,
         arg && createValueEffect(arg, arg2 !== false)
       );
-
-    else if(arg !== source.subject)
-      throw Oops.BadRefObject();
-    else
+    else if(arg === source.subject)
       for(const key in source.state)
         define(value, key,
           typeof arg2 == "function" ? {
@@ -98,6 +95,8 @@ function ref<T>(
             value: createRef(source, key)
           }
         )
+    else
+      throw Oops.BadRefObject();
 
     source.state[key] = undefined;
     source.observers.set(key, new Set());
