@@ -199,13 +199,14 @@ class Control<T extends {} = any> {
 
 function clear(subject: Model){
   const self = REGISTER.get(subject)!;
-
-  self.observers.forEach(subs => {
+  const notify = (subs: Set<Observer>) => {
     subs.forEach(fn => {
       const cb = fn(null, self);
       cb && cb();
     });
-  });
+  }
+
+  self.observers.forEach(notify);
   self.observers.clear();
 }
 
