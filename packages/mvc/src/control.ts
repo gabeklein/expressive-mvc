@@ -227,16 +227,18 @@ class Control<T extends {} = any> {
     any.add(fn);
     return () => any.delete(fn);
   }
+}
 
-  clear(){
-    this.observers.forEach(subs => {
-      subs.forEach(fn => {
-        const cb = fn(null, this);
-        cb && cb();
-      });
+function clear(subject: Model){
+  const self = REGISTER.get(subject)!;
+
+  self.observers.forEach(subs => {
+    subs.forEach(fn => {
+      const cb = fn(null, self);
+      cb && cb();
     });
-    this.observers.clear();
-  }
+  });
+  self.observers.clear();
 }
 
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;

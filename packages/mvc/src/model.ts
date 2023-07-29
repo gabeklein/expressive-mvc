@@ -1,7 +1,7 @@
-import { Control, control } from './control';
+import { clear, Control, control } from './control';
 import { createEffect } from './effect';
 import { define } from './helper/object';
-import { use, get } from './hooks';
+import { get, use } from './hooks';
 import { extract, update } from './observe';
 
 import type { Callback } from '../types';
@@ -103,7 +103,7 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
-    control(this, true).clear();
+    clear(this);
   }
 
   /**
