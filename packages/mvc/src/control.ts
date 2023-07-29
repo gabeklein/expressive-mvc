@@ -120,7 +120,9 @@ class Control<T extends {} = any> {
     const { state, observers, subject } = this;
     const { set, enumerable = true } = output;
 
-    observers.set(key, new Set<Observer>());
+    const subs = new Set<Observer>();
+
+    observers.set(key, subs);
 
     if("value" in output)
       state[key] = output.value;
@@ -131,13 +133,18 @@ class Control<T extends {} = any> {
         ? undefined
         : this.ref(key, set),
       get(this: Model){
-        const extend = watch(this, key);
+        const observer = OBSERVER.get(this);
+
+        if(observer)
+          subs.add(observer);
 
         const value = output.get
           ? output.get(this)
           : state[key];
 
-        return extend(value);
+        return observer && REGISTER.has(value)
+          ? watch(value, observer)
+          : value;
       }
     });
   }
@@ -293,21 +300,9 @@ function parent(child: unknown, assign?: {}){
   PARENTS.set(child as Model, assign as Model);
 }
 
-function watch<T extends {}>(target: T, key: string): (value: any) => any;
-function watch<T extends {}>(target: T, callback: Observer): T;
-function watch<T extends {}>(value: T, argument: Observer | string){
+function watch<T extends {}>(value: T, argument: Observer){
   const observer = OBSERVER.get(value);
   const control = REGISTER.get(value)!;
-
-  if(typeof argument == "string"){
-    const subs = control.observers.get(argument)!;
-
-    if(observer)
-      subs.add(observer);
-
-    return (value: {}) =>
-      observer && REGISTER.has(value) ? watch(value, observer) : value
-  }
 
   if(!observer)
     REGISTER.set(value = create(value), control);
