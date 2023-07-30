@@ -100,10 +100,10 @@ class Control<T extends {} = any> {
 
     const followers = new Set<Control.OnUpdate>();
 
+    this.observers.set("", followers);
+
     OBSERVERS.set(subject, followers);
     REGISTER.set(subject, this);
-
-    this.observers.set("", followers);
 
     if(id !== false)
       PENDING.set(this, new Set(LIFECYCLE.ready));
@@ -143,20 +143,19 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
+    const { frame, observers, state } = this;
     const any = this.observers.get("");
 
     if(!any)
       return;
 
-    const own = this.observers.get(key);
+    const own = observers.get(key);
 
     if(!own){
-      this.state[key] = undefined;
-      this.observers.set(key, new Set());
+      state[key] = undefined;
+      observers.set(key, new Set());
       return;
     }
-
-    const { frame } = this;
 
     if(!keys(frame).length){
       this.latest = undefined;
@@ -175,7 +174,7 @@ class Control<T extends {} = any> {
       })
     }
 
-    frame[key] = this.state[key];
+    frame[key] = state[key];
 
     for(const subs of [own, any])
       for(const cb of subs){
@@ -250,12 +249,10 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
         INSTRUCT.delete(value);
         delete subject[key];
 
-        const output = instruction.call(self, key, self);
+        const desc = instruction.call(self, key, self);
       
-        if(output)
-          self.watch(key, 
-            typeof output == "object" ? output : { get: output }
-          );
+        if(desc)
+          self.watch(key, typeof desc == "object" ? desc : { get: desc });
       }
       else
         self.watch(key, { value });
