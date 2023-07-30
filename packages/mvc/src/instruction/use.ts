@@ -60,8 +60,6 @@ function use(
 
       if(typeof argument == "function")
         argument(next);
-
-      return true;
     }
 
     set(input);

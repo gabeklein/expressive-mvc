@@ -124,11 +124,16 @@ class Control<T extends {} = any> {
     if("value" in output)
       state[key] = output.value;
 
+    if(typeof set == "function")
+      subs.add(() => {
+        set(state[key]);
+      });
+
     define(subject, key, {
       enumerable,
       set: set === false
         ? undefined
-        : this.ref(key, set),
+        : this.ref(key),
       get(this: Model){
         const observer = OBSERVER.get(this);
 
@@ -175,29 +180,31 @@ class Control<T extends {} = any> {
 
     for(const subs of [this.observers.get(key), any])
       if(subs)
-        for(const cb of subs)
-          try {
-            const notify = cb(key, this);
-      
-            if(notify === null)
-              subs.delete(cb);
-            else if(notify)
-              enqueue(notify);
-          }
-          catch(err){
-            console.error(err);
-          }
+        for(const cb of subs){
+          const notify = cb(key, this);
+    
+          if(notify === null)
+            subs.delete(cb);
+          else if(notify)
+            enqueue(notify);
+        }
   }
 
   ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
     return (value: any) => {
-      if(value !== this.state[key])
-        switch(callback && callback.call(this.subject, value)){
+      // if(callback && 1)
+      //   throw new Error("sdasd");
+
+      if(value !== this.state[key]){
+        const x = callback && callback.call(this.subject, value);
+      
+        switch(x){
           case undefined:
             this.state[key] = value;
           case true:
             this.update(key);
         }
+      }
     }
   }
 }
