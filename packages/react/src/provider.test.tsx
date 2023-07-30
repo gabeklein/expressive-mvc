@@ -64,7 +64,7 @@ describe("component", () => {
     );
   
     rendered.unmount();
-    await timeout(0);
+    await timeout(1);
     expect(willDestroy).toBeCalled();
   })
   
@@ -86,7 +86,7 @@ describe("component", () => {
     );
   
     rendered.unmount();
-    await timeout(0);
+    await timeout(1);
     expect(willDestroy).toBeCalledTimes(2);
   })
   
@@ -106,7 +106,7 @@ describe("component", () => {
     );
   
     rendered.unmount();
-    await timeout(0);
+    await timeout(1);
     expect(didUnmount).not.toBeCalled();
   })
   

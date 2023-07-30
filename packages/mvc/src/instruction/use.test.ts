@@ -291,7 +291,7 @@ describe("object", () => {
 
     test.info.bar = "foo";
 
-    await timeout(0);
+    await timeout(1);
 
     expect(effect).toBeCalledTimes(1);
   })
