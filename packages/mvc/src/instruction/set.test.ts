@@ -3,6 +3,7 @@ import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
 import { Oops, set } from './set';
+import { use } from './use';
 
 const warn = mockWarn();
 
@@ -406,7 +407,7 @@ describe("factory", () => {
     }
 
     class Test extends Model {
-      child = new Child();
+      child = use(Child);
       
       childValue = get(() => this.getChildValue);
 

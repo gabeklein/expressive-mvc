@@ -1,14 +1,8 @@
 import { Context } from './context';
-import { issues } from './helper/issues';
 import { create, define, getOwnPropertyDescriptor } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
-
-export const Oops = issues({
-  BadAssignment: (parent, expected, got) =>
-    `${parent} expected Model of type ${expected} but got ${got}.`,
-});
 
 type Observer<T extends {} = any> =
   (key: Model.Key<T> | null | undefined, source: Control<T>) => Callback | null | void;
@@ -249,19 +243,9 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
         const output = instruction.call(self, key, self);
       
         if(output)
-          self.watch(key, typeof output == "object" ? output : { get: output });
-      }
-      else if(value instanceof Model){
-        const set = (next: Model | undefined) => {
-          if(!(next instanceof value.constructor))
-            throw Oops.BadAssignment(`${subject}.${key}`, value.constructor, next);
-
-          parent(next, subject);
-          control(next, true);
-        }
-
-        self.watch(key, { value, set });
-        set(value);
+          self.watch(key, 
+            typeof output == "object" ? output : { get: output }
+          );
       }
       else
         self.watch(key, { value });

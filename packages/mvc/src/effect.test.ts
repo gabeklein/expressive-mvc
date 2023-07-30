@@ -1,6 +1,7 @@
 import { Oops } from './effect';
 import { get } from './instruction/get';
 import { set } from './instruction/set';
+import { use } from './instruction/use';
 import { Model } from './model';
 
 class Test extends Model {
@@ -43,7 +44,7 @@ it("will update for nested values", async () => {
   }
 
   class Test extends Model {
-    nested = new Nested();
+    nested = use(Nested);
   }
 
   const test = Test.new();
@@ -67,7 +68,7 @@ it.skip("will not update for removed children", async() => {
   }
 
   class Test extends Model {
-    nested = new Nested();
+    nested = use(Nested);
   }
 
   const test = Test.new();

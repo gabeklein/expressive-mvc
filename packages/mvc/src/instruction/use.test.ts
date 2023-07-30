@@ -1,6 +1,6 @@
-import { mockAsync, timeout } from '../helper/testing';
+import { mockAsync, mockPromise, timeout } from '../helper/testing';
 import { Model } from '../model';
-import { use } from './use';
+import { Oops, use } from './use';
 
 class Child extends Model {
   value = "foo"
@@ -11,7 +11,7 @@ class Parent extends Model {
   child = use(Child);
 }
 
-it('will track recursively', async () => {
+it('will subscribe recursively', async () => {
   const parent = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
@@ -32,11 +32,69 @@ it('will track recursively', async () => {
   expect(mock).toHaveBeenCalledTimes(3)
 })
 
-it('will accept instance', async () => {
-  const child = Child.new();
-
+it('will subscribe deeply', async () => {
   class Parent extends Model {
-    child = use(child);
+    value = "foo";
+    empty = undefined;
+    child = use(Child);
+  }
+
+  class Child extends Model {
+    value = "foo"
+    grandchild = use(GrandChild);
+  }
+
+  class GrandChild extends Model {
+    value = "bar"
+  }
+
+  const parent = Parent.new();
+  const effect = jest.fn();
+  let promise = mockPromise();
+
+  parent.get(state => {
+    const { child } = state;
+    const { grandchild } = child;
+
+    effect(child.value, grandchild.value);
+    promise.resolve();
+  })
+
+  expect(effect).toBeCalledWith("foo", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.value = "bar";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child = new Child();
+  await promise;
+  
+  expect(effect).toBeCalledWith("foo", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.value = "bar";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.grandchild.value = "foo";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "foo");
+  effect.mockClear();
+});
+
+it('will accept instance', async () => {
+  class Parent extends Model {
+    child = use(new Child());
   }
 
   const state = Parent.new();
@@ -172,6 +230,29 @@ it('will still subscribe if initially undefined', async () => {
   expect(mock).toBeCalledTimes(4)
 })
 
+it('will only reassign a matching model', () => {
+  class Child extends Model {}
+  class Unrelated extends Model {};
+  class Parent extends Model {
+    child = use(Child);
+  }
+
+  const parent = Parent.new("ID");
+
+  expect(() => {
+    parent.child = Unrelated.new("ID");
+  }).toThrowError(
+    Oops.BadAssignment(`Parent-ID.child`, `Child`, "Unrelated-ID")
+  );
+
+  expect(() => {
+    // @ts-expect-error
+    parent.child = undefined;
+  }).toThrowError(
+    Oops.BadAssignment(`Parent-ID.child`, `Child`, `undefined`)
+  );
+})
+
 describe("object", () => {
   it("will track object values", async () => {
     class Test extends Model {
@@ -247,4 +328,6 @@ describe("object", () => {
 
     expect(test.info.foo).toBe("bar");
   })
+
+  it.todo("will assign new object")
 })

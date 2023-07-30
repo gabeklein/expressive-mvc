@@ -1,6 +1,7 @@
 import { Debug } from './debug';
-import { Model } from './model';
 import { mockError } from './helper/testing';
+import { use } from './instruction/use';
+import { Model } from './model';
 
 describe("is", () => {
   class Test extends Model {}
@@ -50,7 +51,7 @@ describe("PARENT", () => {
   it("will return immediate parent of Model", () => {
     class Child extends Model {}
     class Parent extends Model {
-      child = new Child();
+      child = use(Child);
     }
 
     const parent = Parent.new();

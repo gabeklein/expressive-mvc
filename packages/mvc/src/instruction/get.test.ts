@@ -1,9 +1,10 @@
 import { Context } from '../context';
 import { Control } from '../control';
-import { render, context } from '../helper/mocks';
-import { mockPromise, mockError, mockWarn } from '../helper/testing';
+import { context, render } from '../helper/mocks';
+import { mockError, mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get, Oops } from './get';
+import { use } from './use';
 
 const warn = mockWarn();
 const error = mockError();
@@ -15,7 +16,7 @@ describe("fetch mode", () => {
   it("will allow overwrite", async () => {
     class Foo extends Model {
       value = "foo";
-      bar = new Bar();
+      bar = use(Bar);
     }
   
     class Bar extends Model {
@@ -50,7 +51,7 @@ describe("fetch mode", () => {
   
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = new Bar();
+      child = use(Bar);
     }
     class Bar extends Model {
       parent = get(Foo);
@@ -89,7 +90,7 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = new Adopted("ID");
+      child = use(new Adopted("ID"));
     }
     class Adopted extends Model {
       expects = get(Expected);
@@ -109,7 +110,7 @@ describe("fetch mode", () => {
     
     class Parent extends Model {
       value = "foo";
-      child = new Child();
+      child = use(Child);
     }
   
     const { child } = Parent.new();
@@ -131,7 +132,7 @@ describe("fetch mode", () => {
 
   it('will yeild a computed value', async () => {
     class Foo extends Model {
-      bar = new Bar();
+      bar = use(Bar);
       seconds = 0;
     }
 
@@ -192,7 +193,7 @@ describe("compute mode", () => {
   
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
-      child = new Child();
+      child = use(Child);
       seconds = 0;
     
       minutes = get(this, state => {
@@ -312,7 +313,7 @@ describe("compute mode", () => {
       })
   
       // sanity check; multi-source updates do work
-      x = new Inner();
+      x = use(Inner);
     }
   
     const state = Test.new();
@@ -647,7 +648,7 @@ describe("context", () => {
 
   it("will prefer parent over context", () => {
     class Parent extends Model {
-      child = new Child();
+      child = use(Child);
       value = "foo";
     }
 
