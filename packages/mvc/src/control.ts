@@ -148,7 +148,7 @@ class Control<T extends {} = any> {
 
     const { frame } = this;
 
-    if(!frame.size){
+    if(!keys(frame).length){
       this.latest = undefined;
 
       enqueue(() => {
