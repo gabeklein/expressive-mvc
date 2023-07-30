@@ -45,8 +45,6 @@ function run<T extends Async>(task: T){
       }
     }
 
-    control.state[key] = undefined;
-
     define(invoke, "active", {
       get: () => pending
     })
