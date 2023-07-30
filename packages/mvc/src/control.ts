@@ -13,12 +13,9 @@ export const Oops = issues({
 type Observer<T extends {} = any> =
   (key: Model.Key<T> | null | undefined, source: Control<T>) => Callback | null | void;
 
-type InstructionRunner<T extends Model = any> =
-  (parent: Control<T>, key: string) => void;
-
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Observer>();
-const INSTRUCT = new Map<symbol, InstructionRunner>();
+const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
@@ -247,7 +244,12 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
 
       if(instruction){
         INSTRUCT.delete(value);
-        instruction(self, key);
+        delete subject[key];
+
+        const output = instruction.call(self, key, self);
+      
+        if(output)
+          self.watch(key, typeof output == "object" ? output : { get: output });
       }
       else if(value instanceof Model){
         const set = (next: Model | undefined) => {
@@ -314,16 +316,7 @@ function watch<T extends {}>(value: T, argument: Observer){
 
 function add<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
-
-  INSTRUCT.set(placeholder, (onto, key) => {
-    delete onto.subject[key];
-  
-    const get = instruction.call(onto, key, onto);
-  
-    if(get)
-      onto.watch(key, typeof get == "object" ? get : { get });
-  });
-
+  INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;
 }
 
