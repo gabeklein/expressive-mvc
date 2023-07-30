@@ -30,6 +30,8 @@ declare namespace Control {
     value?: T;
   }
 
+  type Callback = (control: Control) => void;
+
   /**
    * Callback for Controller.for() static method.
    * Returned callback is forwarded.
@@ -60,7 +62,7 @@ declare namespace Control {
 }
 
 const LIFECYCLE = {
-  ready: new Set<(control: Control) => void>(),
+  ready: new Set<Control.Callback>(),
   dispatch: new Set<Callback>(),
   update: new Set<Callback>(),
   didUpdate: new Set<Callback>(),
@@ -73,7 +75,7 @@ class Control<T extends {} = any> {
   static for = control;
   static add = add;
 
-  static on(event: "ready", callback: (control: Control) => void): Callback;
+  static on(event: "ready", callback: Control.Callback): Callback;
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
   static on(event: "ready" | "update" | "didUpdate", callback: any){
     LIFECYCLE[event].add(callback);

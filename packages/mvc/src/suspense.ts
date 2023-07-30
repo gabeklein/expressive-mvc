@@ -1,6 +1,7 @@
 import { Control, addListener } from './control';
 import { issues } from './helper/issues';
 import { assign } from './helper/object';
+import { Model } from './model';
 
 export const Oops = issues({
   NotReady: (model, key) =>
@@ -9,8 +10,8 @@ export const Oops = issues({
   Destoryed: () => "Model is destroyed."
 })
 
-export function suspense(source: Control, key: string): Promise<void> & Error {
-  const error = Oops.NotReady(source.subject, key);
+export function suspense(subject: Model, key: string): Promise<void> & Error {
+  const error = Oops.NotReady(subject, key);
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
       if(source.state[key] !== undefined){
@@ -19,7 +20,7 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
       }
     }
 
-    const remove = addListener(source.subject, k => {
+    const remove = addListener(subject, k => {
       if(k === key)
         return check;
 
