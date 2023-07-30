@@ -287,10 +287,9 @@ function parent(child: unknown, assign?: {}){
 }
 
 function watch<T extends {}>(value: T, argument: Observer){
-  const observer = OBSERVER.get(value);
   const control = REGISTER.get(value)!;
 
-  if(!observer)
+  if(!OBSERVER.has(value))
     REGISTER.set(value = create(value), control);
 
   OBSERVER.set(value, argument);
