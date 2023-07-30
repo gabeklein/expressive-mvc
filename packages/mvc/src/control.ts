@@ -4,7 +4,6 @@ import { Model } from './model';
 
 import type { Callback } from '../types';
 
-const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
@@ -36,7 +35,7 @@ declare namespace Control {
    * Callback for Controller.for() static method.
    * Returned callback is forwarded.
    */
-  type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
+  type OnReady<T extends {}> = (model: Model) => (() => void) | void;
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
@@ -58,7 +57,7 @@ declare namespace Control {
   }
 
   type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | undefined, source: Control<T>) => (() => void) | null | void;
+    (key: Model.Key<T> | null | undefined, source: {}) => (() => void) | null | void;
 
   type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
@@ -70,9 +69,14 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>(),
 }
 
-const OBSERVERS = new WeakMap<{}, Set<Control.OnUpdate>>();
+const LISTENER = new WeakMap<{}, Set<Control.OnUpdate>>();
+const OBSERVERS = new WeakMap<{}, Map<string, Set<Control.OnUpdate>>>();
+const STATE = new WeakMap<{}, { [key: string]: unknown }>();
+const FRAME = new WeakMap<{}, { [key: string]: unknown }>();
+const LATEST = new WeakMap<{}, { [key: string]: unknown }>();
+const ID = new WeakMap<{}, string | number | false>();
 
-class Control<T extends {} = any> {
+class Control {
   static hooks: Control.Hooks;
   static for = control;
   static add = add;
@@ -84,151 +88,151 @@ class Control<T extends {} = any> {
     return () =>
       LIFECYCLE[event].delete(callback);
   }
+}
 
-  public id: string | number | false;
-  public subject: T;
+function init(subject: {}, id?: string | number | false){
+  const followers = new Set<Control.OnUpdate>();
+  const observers = new Map<string, Set<Control.OnUpdate>>();
 
-  public state: { [property: string]: unknown } = {};
-  public frame: { [property: string]: unknown } = {};
-  public latest?: { [property: string]: unknown };
+  observers.set("", followers);
 
-  public observers = new Map<string, Set<Control.OnUpdate>>();
+  ID.set(subject, id === undefined ? uid() : id);
+  OBSERVERS.set(subject, observers);
+  LISTENER.set(subject, followers);
 
-  constructor(subject: T, id?: string | number | false){
-    this.subject = subject;
-    this.id = id === undefined ? uid() : id;
+  if(id !== false)
+    PENDING.set(subject, new Set(LIFECYCLE.ready));
+}
 
-    const followers = new Set<Control.OnUpdate>();
+function update(subject: Model, key: string){
+  const state = STATE.get(subject)!;
+  const frame = FRAME.get(subject)!;
 
-    this.observers.set("", followers);
+  const any = LISTENER.get(subject)!;
+  const observers = OBSERVERS.get(subject)!;
 
-    OBSERVERS.set(subject, followers);
-    REGISTER.set(subject, this);
+  if(!any)
+    return;
 
-    if(id !== false)
-      PENDING.set(this, new Set(LIFECYCLE.ready));
+  const own = observers.get(key);
+
+  if(!own){
+    state[key] = undefined;
+    observers.set(key, new Set());
+    return;
   }
 
-  watch(key: string, output: Control.PropertyDescriptor<any>){
-    const { state } = this;
-    const { set, enumerable = true } = output;
+  if(!keys(frame).length){
+    LATEST.delete(subject);
 
-    const subs = new Set<Control.OnUpdate>();
+    enqueue(() => {
+      LATEST.set(subject, { ...frame });
 
-    this.observers.set(key, subs);
+      any.forEach(cb => {
+        const notify = cb(undefined, subject);
 
-    if("value" in output)
-      state[key] = output.value;
-
-    define(this.subject, key, {
-      enumerable,
-      set: set === false
-        ? undefined
-        : this.ref(key, set),
-      get(this: Model){
-        const observer = OBSERVER.get(this);
-
-        if(observer)
-          subs.add(observer);
-
-        const value = output.get
-          ? output.get(this)
-          : state[key];
-
-        return observer && REGISTER.has(value)
-          ? watch(value, observer)
-          : value;
-      }
-    });
-  }
-
-  update(key: string){
-    const { frame, observers, state } = this;
-    const any = this.observers.get("");
-
-    if(!any)
-      return;
-
-    const own = observers.get(key);
-
-    if(!own){
-      state[key] = undefined;
-      observers.set(key, new Set());
-      return;
-    }
-
-    if(!keys(frame).length){
-      this.latest = undefined;
-
-      enqueue(() => {
-        this.latest = { ...frame };
-
-        any.forEach(cb => {
-          const notify = cb(undefined, this);
-
-          if(notify)
-            enqueue(notify);
-        });
-
-        this.frame = {};
-      })
-    }
-
-    frame[key] = state[key];
-
-    for(const subs of [own, any])
-      for(const cb of subs){
-        const notify = cb(key, this);
-    
-        if(notify === null)
-          subs.delete(cb);
-        else if(notify)
+        if(notify)
           enqueue(notify);
-      }
+      });
+
+      FRAME.delete(subject);
+    })
   }
 
-  ref(key: string, callback?: Control.OnChange){
-    return (next: any) => {
-      const previous = this.state[key];
+  frame[key] = state[key];
 
-      switch(
-        next !== previous &&
-        callback &&
-        callback.call(this.subject, next, previous)
-      ){
-        case undefined:
-          this.state[key] = next;
-        case true:
-          this.update(key);
-      }
+  for(const subs of [own, any])
+    for(const cb of subs){
+      const notify = cb(key, subject);
+  
+      if(notify === null)
+        subs.delete(cb);
+      else if(notify)
+        enqueue(notify);
+    }
+}
+
+function ref(subject: Model, key: string, callback?: Control.OnChange){
+  const state = STATE.get(subject)!;
+
+  return (next: any) => {
+    const previous = state[key];
+
+    switch(
+      next !== previous &&
+      callback &&
+      callback.call(subject, next, previous)
+    ){
+      case undefined:
+        state[key] = next;
+      case true:
+        update(subject, key);
     }
   }
 }
 
+function register(subject: Model, key: string, output: Control.PropertyDescriptor<any>){
+  const { set, enumerable = true } = output;
+
+  const state = STATE.get(subject)!;
+  const subs = new Set<Control.OnUpdate>();
+
+  OBSERVERS.get(subject)!.set(key, subs);
+
+  if("value" in output)
+    state[key] = output.value;
+
+  define(subject, key, {
+    enumerable,
+    set: set === false
+      ? undefined
+      : ref(subject, key, set),
+    get(this: Model){
+      const observer = OBSERVER.get(this);
+
+      if(observer)
+        subs.add(observer);
+
+      const value = output.get
+        ? output.get(this)
+        : state[key];
+
+      return observer && ID.has(value)
+        ? watch(value, observer)
+        : value;
+    }
+  });
+}
+
 function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
-  const any = OBSERVERS.get(subject.is)!;
+  const any = LISTENER.get(subject.is)!;
   any.add(fn);
   return () => any.delete(fn);
 }
 
 function clear(subject: Model){
-  const self = REGISTER.get(subject)!;
+  subject = subject.is;
+
+  const observers = OBSERVERS.get(subject)!;
   const notify = (subs: Set<Control.OnUpdate>) => {
     subs.forEach(fn => {
-      const cb = fn(null, self);
+      const cb = fn(null, subject);
       cb && cb();
     });
   }
 
-  self.observers.forEach(notify);
-  self.observers.clear();
+  LISTENER.delete(subject);
+  observers.forEach(notify);
+  observers.clear();
 }
 
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  const self = REGISTER.get(subject.is) as Control<T>;
-  const pending = PENDING.get(self);
+  subject = subject.is;
+  
+  const self = REGISTER.get(subject) as Control<T>;
+  const pending = PENDING.get(subject);
 
   if(typeof ready == "function"){
     if(pending){
@@ -252,13 +256,13 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
         const desc = instruction.call(self, key, self);
       
         if(desc)
-          self.watch(key, typeof desc == "object" ? desc : { get: desc });
+          register(subject, key, typeof desc == "object" ? desc : { get: desc });
       }
       else
-        self.watch(key, { value });
+        register(subject, key, { value });
     }
     
-    PENDING.delete(self);
+    PENDING.delete(subject);
     pending.forEach(cb => cb(self));
   }
 
