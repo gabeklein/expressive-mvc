@@ -118,7 +118,7 @@ class Control<T extends {} = any> {
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state, observers, subject } = this;
-    const { set, enumerable = true } = output;
+    const { get, set, enumerable = true } = output;
 
     const subs = new Set<Observer>();
 
@@ -138,9 +138,7 @@ class Control<T extends {} = any> {
         if(observer)
           subs.add(observer);
 
-        const value = output.get
-          ? output.get(this)
-          : state[key];
+        const value = get ? get(this) : state[key];
 
         return observer && REGISTER.has(value)
           ? watch(value, observer)
