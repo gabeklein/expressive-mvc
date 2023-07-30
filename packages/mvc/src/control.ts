@@ -4,11 +4,8 @@ import { Model } from './model';
 
 import type { Callback } from '../types';
 
-type Observer<T extends {} = any> =
-  (key: Model.Key<T> | null | undefined, source: Control<T>) => Callback | null | void;
-
 const REGISTER = new WeakMap<{}, Control>();
-const OBSERVER = new WeakMap<{}, Observer>();
+const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
@@ -32,8 +29,6 @@ declare namespace Control {
     enumerable?: boolean;
     value?: T;
   }
-
-  type Callback = (control: Control) => void;
 
   /**
    * Callback for Controller.for() static method.
@@ -59,23 +54,26 @@ declare namespace Control {
     use: <T extends Model, R>(adapter: UseAdapter<T, R>) => R;
     has: (target: Model) => (callback: (got: Context) => void) => void;
   }
+
+  type OnUpdate<T extends {} = any> =
+    (key: Model.Key<T> | null | undefined, source: Control<T>) => (() => void) | null | void;
 }
 
 const LIFECYCLE = {
-  ready: new Set<Control.Callback>(),
+  ready: new Set<(control: Control) => void>(),
   dispatch: new Set<Callback>(),
   update: new Set<Callback>(),
   didUpdate: new Set<Callback>(),
 }
 
-const OBSERVERS = new WeakMap<{}, Set<Observer>>();
+const OBSERVERS = new WeakMap<{}, Set<Control.OnUpdate>>();
 
 class Control<T extends {} = any> {
   static hooks: Control.Hooks;
   static for = control;
   static add = add;
 
-  static on(event: "ready", callback: Control.Callback): Callback;
+  static on(event: "ready", callback: (control: Control) => void): Callback;
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
   static on(event: "ready" | "update" | "didUpdate", callback: any){
     LIFECYCLE[event].add(callback);
@@ -90,13 +88,13 @@ class Control<T extends {} = any> {
   public frame: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
-  public observers = new Map<string, Set<Observer>>();
+  public observers = new Map<string, Set<Control.OnUpdate>>();
 
   constructor(subject: T, id?: string | number | false){
     this.subject = subject;
     this.id = id === undefined ? uid() : id;
 
-    const followers = new Set<Observer>();
+    const followers = new Set<Control.OnUpdate>();
 
     OBSERVERS.set(subject, followers);
     REGISTER.set(subject, this);
@@ -111,7 +109,7 @@ class Control<T extends {} = any> {
     const { state, observers, subject } = this;
     const { set, enumerable = true } = output;
 
-    const subs = new Set<Observer>();
+    const subs = new Set<Control.OnUpdate>();
 
     observers.set(key, subs);
 
@@ -199,7 +197,7 @@ class Control<T extends {} = any> {
   }
 }
 
-function addListener<T extends Model>(subject: T, fn: Observer<T>){
+function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
   const any = OBSERVERS.get(subject.is)!;
   any.add(fn);
   return () => any.delete(fn);
@@ -207,7 +205,7 @@ function addListener<T extends Model>(subject: T, fn: Observer<T>){
 
 function clear(subject: Model){
   const self = REGISTER.get(subject)!;
-  const notify = (subs: Set<Observer>) => {
+  const notify = (subs: Set<Control.OnUpdate>) => {
     subs.forEach(fn => {
       const cb = fn(null, self);
       cb && cb();
@@ -289,7 +287,7 @@ function parent(child: unknown, assign?: {}){
   PARENTS.set(child as Model, assign as Model);
 }
 
-function watch<T extends {}>(value: T, argument: Observer){
+function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   const control = REGISTER.get(value)!;
 
   if(!OBSERVER.has(value))
