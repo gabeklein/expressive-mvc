@@ -109,7 +109,7 @@ describe("toString", () => {
 describe("errors", () => {
   const error = mockError();
 
-  it("will log sync error to the console", async () => {
+  it("will throw sync error to the console", async () => {
     class Test extends Model {
       value = 1;
     };
@@ -117,15 +117,9 @@ describe("errors", () => {
     const expected = new Error("sync error")
     const test = Test.new();
 
-    test.set(() => {
-      throw expected;
-    })
+    test.set(() => { throw expected });
 
-    test.value = 2;
-
-    await test.set(0);
-
-    expect(error).toBeCalledWith(expected);
+    expect(() => { test.value = 2 }).toThrowError(expected);
   });
 
   it("will log async error to the console", async () => {
