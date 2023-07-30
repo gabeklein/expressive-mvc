@@ -71,6 +71,7 @@ const LIFECYCLE = {
 }
 
 const OBSERVERS = new WeakMap<{}, Set<Control.OnUpdate>>();
+export const ID = new WeakMap<{}, string | number | false>();
 
 class Control<T extends {} = any> {
   static hooks: Control.Hooks;
@@ -85,7 +86,6 @@ class Control<T extends {} = any> {
       LIFECYCLE[event].delete(callback);
   }
 
-  public id: string | number | false;
   public subject: T;
 
   public state: { [property: string]: unknown } = {};
@@ -95,12 +95,12 @@ class Control<T extends {} = any> {
   public observers = new Map<string, Set<Control.OnUpdate>>();
 
   constructor(subject: T, id?: string | number | false){
-    this.subject = subject;
-    this.id = id === undefined ? uid() : id;
-
     const followers = new Set<Control.OnUpdate>();
 
+    this.subject = subject;
     this.observers.set("", followers);
+
+    ID.set(subject, id === undefined ? uid() : id);
 
     OBSERVERS.set(subject, followers);
     REGISTER.set(subject, this);
@@ -144,7 +144,7 @@ class Control<T extends {} = any> {
 
   update(key: string){
     const { frame, observers, state } = this;
-    const any = this.observers.get("");
+    const any = observers.get("");
 
     if(!any)
       return;

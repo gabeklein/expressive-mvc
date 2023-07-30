@@ -1,4 +1,4 @@
-import { addListener, clear, Control, control } from './control';
+import { addListener, clear, Control, control, ID } from './control';
 import { createEffect } from './effect';
 import { define } from './helper/object';
 import { get, use } from './hooks';
@@ -156,7 +156,7 @@ class Model {
 
 define(Model.prototype, "toString", {
   value(){
-    return `${this.constructor}-${control(this).id}`;
+    return `${this.constructor}-${ID.get(this)}`;
   }
 });
 
