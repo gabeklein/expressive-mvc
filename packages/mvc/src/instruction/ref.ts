@@ -98,8 +98,7 @@ function ref<T>(
     else
       throw Oops.BadRefObject();
 
-    source.state[key] = undefined;
-    source.observers.set(key, new Set());
+    source.update(key);
     define(source.subject, key, { value });
   })
 }

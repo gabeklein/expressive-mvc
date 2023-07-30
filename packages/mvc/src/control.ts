@@ -1,5 +1,5 @@
 import { Context } from './context';
-import { create, define, getOwnPropertyDescriptor } from './helper/object';
+import { create, define, getOwnPropertyDescriptor, keys } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -141,10 +141,18 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
-    const any = this.observers.get("")!;
+    const any = this.observers.get("");
 
     if(!any)
       return;
+
+    const own = this.observers.get(key);
+
+    if(!own){
+      this.state[key] = undefined;
+      this.observers.set(key, new Set());
+      return;
+    }
 
     const { frame } = this;
 
@@ -167,16 +175,15 @@ class Control<T extends {} = any> {
 
     frame[key] = this.state[key];
 
-    for(const subs of [this.observers.get(key), any])
-      if(subs)
-        for(const cb of subs){
-          const notify = cb(key, this);
-      
-          if(notify === null)
-            subs.delete(cb);
-          else if(notify)
-            enqueue(notify);
-        }
+    for(const subs of [own, any])
+      for(const cb of subs){
+        const notify = cb(key, this);
+    
+        if(notify === null)
+          subs.delete(cb);
+        else if(notify)
+          enqueue(notify);
+      }
   }
 
   ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
