@@ -72,12 +72,12 @@ describe("instruction", () => {
     expect(test.property).toBe("foobar");
 
     test.property = "test";
-    expect(didSetValue).toBeCalledWith("test");
+    expect(didSetValue).toBeCalledWith("test", "foobar");
     expect(test.property).toBe("test");
     await expect(test).toUpdate();
 
     test.property = "ignore";
-    expect(didSetValue).toBeCalledWith("ignore");
+    expect(didSetValue).toBeCalledWith("ignore", "test");
     expect(test.property).toBe("test");
     await expect(test).not.toUpdate();
   })

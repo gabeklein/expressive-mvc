@@ -59,6 +59,8 @@ declare namespace Control {
 
   type OnUpdate<T extends {} = any> =
     (key: Model.Key<T> | null | undefined, source: Control<T>) => (() => void) | null | void;
+
+  type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
 
 const LIFECYCLE = {
@@ -108,17 +110,17 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
-    const { state, observers, subject } = this;
+    const { state } = this;
     const { set, enumerable = true } = output;
 
     const subs = new Set<Control.OnUpdate>();
 
-    observers.set(key, subs);
+    this.observers.set(key, subs);
 
     if("value" in output)
       state[key] = output.value;
 
-    define(subject, key, {
+    define(this.subject, key, {
       enumerable,
       set: set === false
         ? undefined
@@ -186,15 +188,20 @@ class Control<T extends {} = any> {
       }
   }
 
-  ref(key: string, callback?: (this: {}, value: unknown) => boolean | void){
-    return (value: any) => {
-      if(value !== this.state[key])
-        switch(callback && callback.call(this.subject, value)){
-          case undefined:
-            this.state[key] = value;
-          case true:
-            this.update(key);
-        }
+  ref(key: string, callback?: Control.OnChange){
+    return (next: any) => {
+      const previous = this.state[key];
+
+      switch(
+        next !== previous &&
+        callback &&
+        callback.call(this.subject, next, previous)
+      ){
+        case undefined:
+          this.state[key] = next;
+        case true:
+          this.update(key);
+      }
     }
   }
 }
