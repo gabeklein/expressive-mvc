@@ -42,7 +42,7 @@ function use(
   argument?: any[] | ((i: {} | undefined) => void)){
 
   return add((key, source) => {
-    const { state, subject } = source;
+    const { subject } = source;
 
     if(typeof input === "function")
       input = new input();
@@ -65,12 +65,12 @@ function use(
         next = subject;
       }
 
-      state[key] = next;
+      source.update(key, next);
 
       if(typeof argument == "function")
         argument(next);
 
-      return true;
+      return false;
     }
 
     set(input);

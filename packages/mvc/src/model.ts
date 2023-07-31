@@ -1,8 +1,7 @@
 import { addListener, clear, Control, control, ID } from './control';
-import { createEffect } from './effect';
 import { define } from './helper/object';
 import { get, use } from './hooks';
-import { extract, update } from './observe';
+import { extract, update, effect } from './observe';
 
 import type { Callback } from '../types';
 
@@ -80,7 +79,7 @@ class Model {
     arg2?: Function){
 
     return typeof arg1 == "function"
-      ? createEffect(this, arg1)
+      ? effect(this, arg1)
       : extract(this, arg1, arg2);
   }
 

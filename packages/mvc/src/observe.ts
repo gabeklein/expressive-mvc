@@ -1,6 +1,8 @@
-import { addListener, control } from './control';
+import { Callback } from '../types';
+import { addListener, control, watch } from './control';
 import { entries, keys } from './helper/object';
 import { Model } from './model';
+import { mayRetry } from './suspense';
 
 export function extract <T extends Model, P extends Model.Key<T>> (
   target: T,
@@ -87,5 +89,46 @@ export function update<T extends Model>(
         reject(arg1);
       }, arg1);
     })
+  });
+}
+
+export function effect<T extends Model>(
+  source: T, callback: Model.Effect<T>){
+
+  return control(source, () => {
+    let unSet: Callback | Promise<void> | void;
+    let busy = false;
+
+    function invoke(){
+      if(busy)
+        return;
+
+      const output = mayRetry(() => {
+        if(typeof unSet == "function")
+          unSet();
+    
+        unSet = callback.call(source, source);
+    
+        if(typeof unSet !== "function")
+          unSet = undefined;
+      })
+
+      if(output instanceof Promise){
+        output.finally(() => busy = false);
+        busy = true;
+      }
+    }
+
+    let refresh: (() => void) | null;
+
+    source = watch(source, () => refresh);
+    addListener(source, key => 
+      key === null || refresh === null ? refresh : undefined
+    );
+
+    invoke();
+    refresh = invoke;
+
+    return () => refresh = null;
   });
 }
