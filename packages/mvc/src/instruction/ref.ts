@@ -87,22 +87,22 @@ function ref<T>(
         }
       );
     }
-    else if(arg === source.subject)
-      for(const key in source.state)
-        define(value, key,
-          typeof arg2 == "function" ? {
-            configurable: true,
-            get(){
-              const out = arg2(key);
-              define(value, key, { value: out });
-              return out;
-            }
-          } : {
-            value: createRef(source, key)
-          }
-        )
-    else
+    else if(arg !== source.subject)
       throw new Error("ref instruction does not support object which is not 'this'")
+
+    for(const key in source.state)
+      define(value, key,
+        typeof arg2 == "function" ? {
+          configurable: true,
+          get(){
+            const out = arg2(key);
+            define(value, key, { value: out });
+            return out;
+          }
+        } : {
+          value: createRef(source, key)
+        }
+      )
 
     source.update(key);
     define(source.subject, key, { value });
