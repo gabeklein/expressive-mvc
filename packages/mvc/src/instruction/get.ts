@@ -68,7 +68,7 @@ function get<R, T extends Model>(
   arg1?: get.Function<R, T> | boolean){
 
   return add((key, control) => {
-    let { subject } = control;
+    let { subject, state } = control;
 
     if(typeof arg0 == "symbol")
       throw Oops.PeerNotAllowed(subject, key);
@@ -107,39 +107,30 @@ function get<R, T extends Model>(
     else if(typeof arg0 == "function")
       arg1 = arg0.call(subject, key, subject);
 
-    return typeof arg1 == "function"
-      ? computed(control, key, source, arg1)
-      : recursive(control, key, source, arg1);
-  })
-}
+    if(typeof arg1 == "function")
+      return compute(control, key, source, arg1);
 
-function recursive(
-  parent: Control,
-  key: string,
-  source: get.Source,
-  required: boolean | undefined){
+    let waiting: boolean;
 
-  let waiting: boolean;
-
-  if(source)
     source((got) => {
-      parent.state[key] = got;
+      state[key] = got;
 
       if(waiting)
-        parent.update(key);
+        control.update(key);
     });
 
-  waiting = true;
+    waiting = true;
 
-  return () => {
-    const value = parent.state[key];
+    return () => {
+      const value = state[key];
 
-    if(value)
-      return value;
+      if(value)
+        return value;
 
-    if(required !== false)
-      throw suspense(parent, key);
-  }
+      if(arg1 !== false)
+        throw suspense(control, key);
+    }
+  })
 }
 
 const ORDER = new WeakMap<Callback, number>();
@@ -147,13 +138,13 @@ const PENDING = new Set<Callback>();
 
 let OFFSET = 0;
 
-function computed<T>(
+function compute<T>(
   parent: Control,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
 
-  const { state } = parent;
+  const { state, subject } = parent;
 
   let proxy: any;
   let active: boolean;
@@ -170,7 +161,7 @@ function computed<T>(
       next = setter.call(proxy, proxy);
     }
     catch(err){
-      Oops.Failed(parent.subject, key, initial).warn();
+      Oops.Failed(subject, key, initial).warn();
 
       if(initial)
         throw err;
