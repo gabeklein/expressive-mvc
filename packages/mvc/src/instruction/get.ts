@@ -110,16 +110,9 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    let waiting: boolean;
-
     source((got) => {
-      state[key] = got;
-
-      if(waiting)
-        control.update(key);
+      control.update(key, got);
     });
-
-    waiting = true;
 
     return () => {
       const value = state[key];

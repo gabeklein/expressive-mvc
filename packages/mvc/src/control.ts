@@ -142,7 +142,7 @@ class Control<T extends {} = any> {
     });
   }
 
-  update(key: string){
+  update(key: string, value?: unknown){
     const { frame, observers, state } = this;
     const any = observers.get("");
 
@@ -152,7 +152,7 @@ class Control<T extends {} = any> {
     const own = observers.get(key);
 
     if(!own){
-      state[key] = undefined;
+      state[key] = value;
       observers.set(key, new Set());
       return;
     }
@@ -174,6 +174,9 @@ class Control<T extends {} = any> {
       })
     }
 
+    if(1 in arguments)
+      state[key] = value;
+    
     frame[key] = state[key];
 
     for(const subs of [own, any])
