@@ -43,7 +43,6 @@ declare namespace get {
 function get <T extends Model> (Type: Model.Type<T>, required?: true): T;
 function get <T extends Model> (Type: Model.Type<T>, required: boolean): T | undefined;
 
-function get <R, T extends Model> (Type: Model.Type<T>, compute: (this: T, on: T) => R): Exclude<R, undefined>;
 function get <R, T extends Model> (Type: Model.Type<T>, compute: (this: T, on: T) => R): R;
 
 /**
@@ -52,7 +51,6 @@ function get <R, T extends Model> (Type: Model.Type<T>, compute: (this: T, on: T
  * @param source - Source model from which computed value will be a subscriber.
  * @param compute - Compute function. Bound to a subscriber-proxy of source, returns output value. Will update automatically as input values change.
  */
-function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): Exclude<R, undefined>;
 function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): R;
 
 /**
@@ -60,7 +58,6 @@ function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): R
  *
  * @param compute - Factory function to generate a getter to subscribe dependancies.
  */
-function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): Exclude<R, undefined>;
 function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
  
 function get<R, T extends Model>(
