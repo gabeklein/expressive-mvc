@@ -220,7 +220,7 @@ function computed<T>(
     }
     
     if(!proxy)
-      throw suspense(parent, key);
+      throw suspense(subject, key);
 
     if(PENDING.delete(compute))
       compute();
