@@ -3,7 +3,7 @@ import { Control } from '../control';
 import { context, render } from '../helper/mocks';
 import { mockError, mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
-import { get, Oops } from './get';
+import { get } from './get';
 import { use } from './use';
 
 const warn = mockWarn();
@@ -71,9 +71,8 @@ describe("fetch mode", () => {
     }
   
     const attempt = () => Child.new("ID");
-    const error = Oops.Required("Parent", "Child-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Parent.`);
   })
   
   it("retuns undefined if required is false", () => {
@@ -97,9 +96,8 @@ describe("fetch mode", () => {
     }
   
     const attempt = () => Unexpected.new("ID");
-    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Adopted-ID created as child of Unexpected-ID, but must be instanceof Expected.`);
   })
 
   it('will track recursively', async () => {
@@ -419,10 +417,8 @@ describe("compute mode", () => {
       const state = Subject.new();
       const attempt = () => state.never;
 
-      const failed = Oops.Failed(state, "never", true);
-
       expect(attempt).toThrowError();
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while initializing ${state}.never.`);
     })
 
     it('will warn if throws on update', async () => {
@@ -438,14 +434,13 @@ describe("compute mode", () => {
       }
 
       const state = Test.new();
-      const failed = Oops.Failed(state, "value", false);
 
       void state.value;
       state.shouldFail = true;
 
       await expect(state).toUpdate();
 
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while refreshing ${state}.value.`);
       expect(error).toBeCalled();
     })
 
@@ -457,9 +452,7 @@ describe("compute mode", () => {
         value = get(this.peer, () => {});
       }
 
-      const expected = Oops.PeerNotAllowed("Test-ID", "value");
-
-      expect(() => Test.new("ID")).toThrow(expected);
+      expect(() => Test.new("ID")).toThrowError(`Attempted to use an instruction result (probably use or get) as computed source for Test-ID.value. This is not allowed.`);
     })
   })
 
@@ -640,10 +633,9 @@ describe("context", () => {
       }
     }
 
-    const expected = Oops.AmbientRequired("Bar", "Foo-ID");
     const tryToRender = () => render(() => Foo.use());
 
-    expect(tryToRender).toThrowError(expected);
+    expect(tryToRender).toThrowError(`Attempted to find an instance of Bar in context. It is required by Foo-ID, but one could not be found.`);
   })
 
   it("will prefer parent over context", () => {
@@ -672,9 +664,8 @@ describe("context", () => {
     context.add(Ambient.new());
   
     const attempt = () => Child.new("ID");
-    const error = Oops.Required("Ambient", "Child-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Ambient.`);
   })
 })
 

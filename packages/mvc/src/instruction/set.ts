@@ -1,15 +1,6 @@
 import { add, Control } from '../control';
-import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { mayRetry, suspense } from '../suspense';
-
-export const Oops = issues({
-  ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
-});
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, argument: T) =>
@@ -76,15 +67,17 @@ function set <T> (
 
             if(argument !== false)
               return output.get = () => {
-                const { message, stack } = Oops.NotReady(subject, key);
-                throw assign(pending, { message, stack });
+                throw assign(pending, {
+                  message: `${subject}.${key} is not yet available.`,
+                  stack: new Error().stack
+                });
               }
           }
           else 
             state[key] = value;
         }
         catch(err){
-          Oops.ComputeFailed(subject, key).warn();
+          console.warn(`Generating initial value for ${subject}.${key} failed.`);
           throw err;
         }
       }

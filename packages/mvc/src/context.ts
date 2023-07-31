@@ -1,12 +1,6 @@
 import { control, parent, uid } from './control';
-import { issues } from './helper/issues';
 import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './helper/object';
 import { Model } from './model';
-
-export const Oops = issues({
-  MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`
-})
 
 declare namespace Context {
   type Inputs = {
@@ -35,7 +29,7 @@ class Context {
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)
-      throw Oops.MultipleExist(Type);
+      throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
     return result;
   }

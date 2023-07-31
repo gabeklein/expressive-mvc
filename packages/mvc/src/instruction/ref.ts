@@ -1,12 +1,6 @@
 import { add, Control } from '../control';
-import { issues } from '../helper/issues';
 import { define } from '../helper/object';
 import { Model } from '../model';
-
-export const Oops = issues({
-  BadRefObject: () =>
-    `ref instruction does not support object which is not 'this'`
-})
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -108,7 +102,7 @@ function ref<T>(
           }
         )
     else
-      throw Oops.BadRefObject();
+      throw new Error("ref instruction does not support object which is not 'this'")
 
     source.update(key);
     define(source.subject, key, { value });

@@ -1,7 +1,7 @@
 import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
-import { Oops, set } from './set';
+import { set } from './set';
 import { use } from './use';
 
 const warn = mockWarn();
@@ -273,10 +273,9 @@ describe("factory", () => {
       value = set(promise);
     }
 
-    const instance = Test.new();
-    const expected = Oops.NotReady(instance, "value");
+    const instance = Test.new("ID");
 
-    expect(() => instance.value).toThrowError(expected);
+    expect(() => instance.value).toThrowError(`Test-ID.value is not yet available.`);
     promise.resolve();
   })
 
@@ -321,10 +320,10 @@ describe("factory", () => {
       }
     }
 
-    const failed = Oops.ComputeFailed("Test-ID", "memoized");
+    const attempt = () => Test.new("ID");
 
-    expect(() => Test.new("ID")).toThrowError("Foobar");
-    expect(warn).toBeCalledWith(failed.message);
+    expect(attempt).toThrowError("Foobar");
+    expect(warn).toBeCalledWith(`Generating initial value for Test-ID.memoized failed.`);
   })
 
   it("will suspend another factory", async () => {

@@ -1,26 +1,8 @@
 import { add, Control, parent, watch } from '../control';
-import { issues } from '../helper/issues';
 import { Model } from '../model';
 import { suspense } from '../suspense';
 
 import type { Callback } from '../../types';
-
-export const Oops = issues({
-  PeerNotAllowed: (model, property) =>
-    `Attempted to use an instruction result (probably use or get) as computed source for ${model}.${property}. This is not allowed.`,
-
-  Failed: (parent, property, initial) =>
-    `An exception was thrown while ${initial ? "initializing" : "refreshing"} ${parent}.${property}.`,
-
-  Required: (expects, child) => 
-    `New ${child} created standalone but requires parent of type ${expects}.`,
-
-  Unexpected: (expects, child, got) =>
-    `New ${child} created as child of ${got}, but must be instanceof ${expects}.`,
-
-  AmbientRequired: (requested, requester) =>
-    `Attempted to find an instance of ${requested} in context. It is required by ${requester}, but one could not be found.`
-});
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
@@ -84,7 +66,7 @@ function get<R, T extends Model>(
     let { subject, state } = control;
 
     if(typeof arg0 == "symbol")
-      throw Oops.PeerNotAllowed(subject, key);
+      throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`)
 
     let source: get.Source = cb => cb(subject);
 
@@ -96,7 +78,7 @@ function get<R, T extends Model>(
 
       if(!hasParent){
         if(arg1 === true)
-          throw Oops.Required(arg0, subject);
+          throw new Error(`New ${subject} created standalone but requires parent of type ${arg0}.`)
 
         const fetch = Control.hooks.has(subject);
 
@@ -107,14 +89,14 @@ function get<R, T extends Model>(
             if(model)
               got(model);
             else if(arg1 !== false)
-              throw Oops.AmbientRequired(arg0, subject);
+              throw new Error(`Attempted to find an instance of ${arg0} in context. It is required by ${subject}, but one could not be found.`)
           });
         }
       }
       else if(!arg0 || hasParent instanceof arg0)
         subject = hasParent;
       else
-        throw Oops.Unexpected(arg0, subject, hasParent);
+        throw new Error(`New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
     }
 
     else if(typeof arg0 == "function")
@@ -167,7 +149,7 @@ function compute<T>(
       next = setter.call(proxy, proxy);
     }
     catch(err){
-      Oops.Failed(subject, key, initial).warn();
+      console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
 
       if(initial)
         throw err;

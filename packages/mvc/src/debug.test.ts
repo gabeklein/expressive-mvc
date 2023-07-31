@@ -114,12 +114,15 @@ describe("errors", () => {
       value = 1;
     };
 
-    const expected = new Error("sync error")
     const test = Test.new();
 
-    test.set(() => { throw expected });
+    test.set(() => {
+      throw new Error("sync error");
+    });
 
-    expect(() => { test.value = 2 }).toThrowError(expected);
+    const attempt = () => test.value = 2;
+
+    expect(attempt).toThrowError(`sync error`);
   });
 
   it("will log async error to the console", async () => {

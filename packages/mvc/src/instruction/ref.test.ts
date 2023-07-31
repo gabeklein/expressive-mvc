@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { ref, Oops } from './ref';
+import { ref } from './ref';
 
 describe("property", () => {
   it('will fetch value from ref-object', async () => {
@@ -241,6 +241,6 @@ describe("mapped", () => {
       fields = ref({});
     }
 
-    expect(() => Test.new()).toThrowError(Oops.BadRefObject());
+    expect(() => Test.new()).toThrowError(`ref instruction does not support object which is not 'this'`);
   })
 })

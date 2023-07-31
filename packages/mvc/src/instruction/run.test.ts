@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { Oops, run } from './run';
+import { run } from './run';
 import { set } from './set';
 
 class Test extends Model {
@@ -61,10 +61,9 @@ it("will emit method key before/after activity", async () => {
 
 it("will throw immediately if already in-progress", () => {
   const { test } = Test.new();
-  const expected = Oops.DuplicatePending("test");
 
   test();
-  expect(() => test()).rejects.toThrowError(expected);
+  expect(() => test()).rejects.toThrowError(`Invoked action test but one is already active.`);
 })
 
 it("will throw and reset if action fails", async () => {

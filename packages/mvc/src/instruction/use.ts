@@ -1,13 +1,6 @@
 import { add, Control, control, parent } from '../control';
-import { issues } from '../helper/issues';
 import { create } from '../helper/object';
 import { Model } from '../model';
-
-export const Oops = issues({
-  BadAssignment: (parent, expected, got) =>
-    `${parent} expected Model of type ${expected} but got ${got}.`,
-});
-
 type Empty = Record<string, never>;
 
 namespace use {
@@ -49,7 +42,7 @@ function use(
 
     function set(next: {} | undefined){
       if(input instanceof Model && !(next instanceof input.constructor))
-        throw Oops.BadAssignment(`${subject}.${key}`, input.constructor, next);
+        throw new Error(`${subject}.${key} expected Model of type ${input.constructor} but got ${next}.`)
 
       if(next instanceof Model){
         parent(next, subject);

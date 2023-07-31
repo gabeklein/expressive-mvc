@@ -1,14 +1,12 @@
 import { set } from './instruction/set';
 import { Model } from './model';
-import { Oops as Suspense } from './suspense';
 
 it("will seem to throw error outside react", () => {
   class Test extends Model {
     value = set<never>();
   }
 
-  const instance = Test.new();
-  const expected = Suspense.NotReady(instance, "value");
+  const instance = Test.new("ID");
   let didThrow: Error | undefined;
 
   try {
@@ -18,7 +16,7 @@ it("will seem to throw error outside react", () => {
     didThrow = err;
   }
 
-  expect(String(didThrow)).toBe(String(expected));
+  expect(String(didThrow)).toMatchInlineSnapshot(`"Error: Test-ID.value is not yet available."`);
 })
 
 it("will reject if model destroyed before resolved", async () => {
@@ -26,8 +24,7 @@ it("will reject if model destroyed before resolved", async () => {
     value = set<never>();
   }
 
-  const instance = Test.new();
-  const expected = Suspense.Destoryed();
+  const instance = Test.new("ID");
   let didThrow: Promise<any> | undefined;
 
   try {
@@ -39,5 +36,5 @@ it("will reject if model destroyed before resolved", async () => {
 
   instance.null();
 
-  await expect(didThrow).rejects.toThrow(expected);
+  await expect(didThrow).rejects.toThrowError(`Test-ID is destroyed.`);
 })

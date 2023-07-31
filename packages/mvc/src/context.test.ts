@@ -1,4 +1,4 @@
-import { Context, Oops } from './context';
+import { Context } from './context';
 import { use } from './instruction/use';
 import { Model } from './model';
 
@@ -50,13 +50,12 @@ it("will return undefined if not found", () => {
 
 it("will complain if multiple registered", () => {
   const context = new Context();
-  const expected = Oops.MultipleExist(Example);
   const fetch = () => context.get(Example);
 
   context.add(Example);
   context.add(Example);
 
-  expect(fetch).toThrowError(expected);
+  expect(fetch).toThrowError(`Did find Example in context, but multiple were defined.`);
 })
 
 it("will ignore if multiple but same", () => {

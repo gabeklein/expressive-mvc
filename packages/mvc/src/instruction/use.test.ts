@@ -1,6 +1,6 @@
 import { mockAsync, mockPromise, timeout } from '../helper/testing';
 import { Model } from '../model';
-import { Oops, use } from './use';
+import { use } from './use';
 
 class Child extends Model {
   value = "foo"
@@ -240,17 +240,13 @@ it('will only reassign a matching model', () => {
   const parent = Parent.new("ID");
 
   expect(() => {
-    parent.child = Unrelated.new("ID");
-  }).toThrowError(
-    Oops.BadAssignment(`Parent-ID.child`, `Child`, "Unrelated-ID")
-  );
+  parent.child = Unrelated.new("ID");
+}).toThrowError(`Parent-ID.child expected Model of type Child but got Unrelated-ID.`)
 
   expect(() => {
-    // @ts-expect-error
-    parent.child = undefined;
-  }).toThrowError(
-    Oops.BadAssignment(`Parent-ID.child`, `Child`, `undefined`)
-  );
+  // @ts-expect-error
+  parent.child = undefined;
+}).toThrowError(`Parent-ID.child expected Model of type Child but got undefined.`)
 })
 
 describe("object", () => {

@@ -1,16 +1,8 @@
 import { Control, addListener } from './control';
-import { issues } from './helper/issues';
 import { assign } from './helper/object';
 
-export const Oops = issues({
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`,
-
-  Destoryed: () => "Model is destroyed."
-})
-
 export function suspense(source: Control, key: string): Promise<void> & Error {
-  const error = Oops.NotReady(source.subject, key);
+  const error = new Error(`${source.subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
       if(source.state[key] !== undefined){
@@ -24,7 +16,7 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
         return check;
 
       if(k === null)
-        reject(Oops.Destoryed());
+        reject(new Error(`${source.subject} is destroyed.`));
     });
   });
 

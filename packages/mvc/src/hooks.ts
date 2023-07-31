@@ -1,10 +1,5 @@
 import { Control, watch } from "./control";
-import { issues } from "./helper/issues";
 import { Model } from "./model";
-
-export const Oops = issues({
-  NotFound: (name) => `Could not find ${name} in context.`
-})
 
 function use <T extends Model> (
   model: Model.New<T>,
@@ -84,6 +79,7 @@ function get<T extends Model, R>(
   argument?: boolean | get.Factory<T, any>
 ){
   return Control.hooks.get((dispatch, context) => {
+    const notFound = () => new Error(`Could not find ${model} in context.`);
     const refresh = () => dispatch(x => x+1);
     let onUpdate: (() => void) | undefined | null;
     let value: any;
@@ -96,7 +92,7 @@ function get<T extends Model, R>(
           ? watch(got, k => k ? onUpdate : undefined)
           : got;
       else if(argument !== false)
-        throw Oops.NotFound(model);
+        throw notFound();
 
       return {
         mount(){
@@ -116,7 +112,7 @@ function get<T extends Model, R>(
     const found = context.get(model);
 
     if(!found)
-      throw Oops.NotFound(model);
+      throw notFound();
 
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
