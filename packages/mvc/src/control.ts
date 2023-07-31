@@ -90,7 +90,12 @@ class Control<T extends {} = any> {
 
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = {};
-  public latest?: { [property: string]: unknown };
+  // public latest?: { [property: string]: unknown };
+
+  get latest(){
+    // if(isFrozen(this.frame))
+      return this.frame;
+  }
 
   public observers = new Map<string, Set<Control.OnUpdate>>();
 
@@ -143,7 +148,7 @@ class Control<T extends {} = any> {
   }
 
   update(key: string){
-    const { frame, observers, state } = this;
+    let { frame, observers, state } = this;
     const any = observers.get("");
 
     if(!any)
@@ -158,10 +163,10 @@ class Control<T extends {} = any> {
     }
 
     if(!keys(frame).length){
-      this.latest = undefined;
+      // this.latest = undefined;
 
       enqueue(() => {
-        this.latest = { ...frame };
+        // this.latest = { ...frame };
 
         any.forEach(cb => {
           const notify = cb(undefined, this);
