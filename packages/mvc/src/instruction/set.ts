@@ -119,7 +119,7 @@ function set <T> (
         if(key in state)
           return state[key];
 
-        throw suspense(control, key);
+        throw suspense(subject, key);
       }
     }
 
