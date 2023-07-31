@@ -28,7 +28,7 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
   });
 }
 
-export function mayRetry(fn: () => any): any {
+export function attempt(fn: () => any): any {
   const retry = (err: unknown) => {
     if(err instanceof Promise)
       return err.then(compute);

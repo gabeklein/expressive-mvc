@@ -2,7 +2,7 @@ import { Callback } from '../types';
 import { addListener, control, watch } from './control';
 import { entries, keys } from './helper/object';
 import { Model } from './model';
-import { mayRetry } from './suspense';
+import { attempt } from './suspense';
 
 export function extract <T extends Model, P extends Model.Key<T>> (
   target: T,
@@ -103,7 +103,7 @@ export function effect<T extends Model>(
       if(busy)
         return;
 
-      const output = mayRetry(() => {
+      const output = attempt(() => {
         if(typeof unSet == "function")
           unSet();
     

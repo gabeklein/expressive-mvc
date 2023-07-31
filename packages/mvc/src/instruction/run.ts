@@ -1,6 +1,6 @@
 import { add } from '../control';
 import { define } from '../helper/object';
-import { mayRetry } from '../suspense';
+import { attempt } from '../suspense';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
 
@@ -31,7 +31,7 @@ function run<T extends Async>(task: T){
       control.update(key);
 
       try {
-        return await mayRetry(() => task.apply(control.subject, args))
+        return await attempt(() => task.apply(control.subject, args))
       }
       finally {
         pending = false;

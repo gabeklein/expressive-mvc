@@ -1,6 +1,6 @@
 import { add, Control } from '../control';
 import { assign } from '../helper/object';
-import { mayRetry, suspense } from '../suspense';
+import { attempt, suspense } from '../suspense';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, argument: T) =>
@@ -50,7 +50,7 @@ function set <T> (
       function init(){
         try {
           if(typeof value == "function")
-            value = mayRetry(value.bind(subject, key, subject));
+            value = attempt(value.bind(subject, key, subject));
 
           if(value instanceof Promise){
             const pending = value
@@ -97,7 +97,7 @@ function set <T> (
           if(key in state)
             return state[key];
     
-          throw suspense(control, key);
+          throw suspense(subject, key);
         }
 
       if(typeof argument == "function"){
