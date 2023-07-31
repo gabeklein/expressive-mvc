@@ -763,7 +763,9 @@ describe("async", () => {
       use(): any {},
       has(){
         return (got) => {
-          setTimeout(() => got(context), 0);
+          setTimeout(() => {
+            got(context);
+          }, 0);
         }
       }
     }
