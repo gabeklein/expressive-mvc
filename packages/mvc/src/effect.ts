@@ -1,14 +1,8 @@
 import { addListener, control, watch } from './control';
-import { issues } from './helper/issues';
 import { Model } from './model';
 import { mayRetry } from './suspense';
 
 import type { Callback } from '../types';
-
-export const Oops = issues({
-  BadCallback: () =>
-    `Callback for effect-callback may only return a function.`
-})
 
 export function createEffect<T extends Model>(
   source: T, callback: Model.Effect<T>){
@@ -27,11 +21,8 @@ export function createEffect<T extends Model>(
     
         unSet = callback.call(source, source);
     
-        if(unSet instanceof Promise)
+        if(typeof unSet !== "function")
           unSet = undefined;
-    
-        if(unSet && typeof unSet !== "function")
-          throw Oops.BadCallback()
       })
 
       if(output instanceof Promise){
@@ -52,36 +43,4 @@ export function createEffect<T extends Model>(
 
     return () => refresh = null;
   });
-}
-
-export type AssignCallback<T> =
-  (this: any, argument: T) =>
-    ((next: T) => void) | Promise<any> | void | boolean;
-
-export function createValueEffect<T = any>(
-  callback: AssignCallback<T>,
-  ignoreNull?: boolean){
-
-  let unSet: ((next: T) => void) | undefined;
-
-  return function(this: any, value: any){
-    if(typeof unSet == "function")
-      unSet = void unSet(value);
-
-    if(value === null && ignoreNull)
-      return;
-
-    const out = callback.call(this, value);
-
-    if(typeof out == "boolean")
-      return out;
-
-    if(!out || out instanceof Promise)
-      return;
-
-    if(typeof out == "function")
-      unSet = out;
-    else
-      throw Oops.BadCallback()
-  }
 }

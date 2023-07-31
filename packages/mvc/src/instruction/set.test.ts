@@ -1,4 +1,3 @@
-import { Oops as Effect } from '../effect';
 import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
@@ -117,18 +116,6 @@ describe("callback", () => {
     const state = Subject.new();
 
     expect(() => state.property = "bar").not.toThrow();
-  })
-
-  it('will throw on bad effect return', () => {
-    class Subject extends Model {
-      // @ts-expect-error
-      property = set<any>(undefined, () => 3);
-    }
-
-    const expected = Effect.BadCallback();
-    const state = Subject.new();
-
-    expect(() => state.property = "bar").toThrow(expected);
   })
 
   it('will not suspend own property access', () => {

@@ -1,4 +1,3 @@
-import { Oops } from './effect';
 import { get } from './instruction/get';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
@@ -373,18 +372,17 @@ it('will register before ready', async () => {
   expect(mock).toBeCalledTimes(3);
 })
 
-it("will throw if state.get returns non-function", () => {
+it("will ignore if get returns non-function", () => {
   const state = Test.new();
-  const expected = Oops.BadCallback();
   const attempt = () => {
     // @ts-expect-error
     state.get(() => "foobar");
   }
 
-  expect(attempt).toThrowError(expected);
+  expect(attempt).not.toThrowError();
 })
 
-it("will not throw if.get returns promise", () => {
+it("will not throw if get returns promise", () => {
   const state = Test.new();
   const attempt = () => {
     state.get(async () => {});

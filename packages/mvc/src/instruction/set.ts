@@ -1,5 +1,4 @@
-import { Control, add } from '../control';
-import { createValueEffect } from '../effect';
+import { add, Control } from '../control';
 import { issues } from '../helper/issues';
 import { assign } from '../helper/object';
 import { mayRetry, suspense } from '../suspense';
@@ -99,27 +98,33 @@ function set <T> (
         }
     }
     else {
-      const set = typeof argument == "function"
-        ? createValueEffect(argument)
-        : undefined;
-  
-      if(value !== undefined){
+      if(value !== undefined)
         state[key] = value;
-        return { set };
-      }
-
-      if(set)
-        output.set = function(this: any, value: any){
-          output.set = set;
-          state[key] = state[key];
-          return set.call(this, value);
+      else
+        output.get = () => {
+          if(key in state)
+            return state[key];
+    
+          throw suspense(control, key);
         }
 
-      output.get = () => {
-        if(key in state)
-          return state[key];
+      if(typeof argument == "function"){
+        let unSet: ((next: T) => void) | undefined;
 
-        throw suspense(control, key);
+        output.set = function(this: any, value: any){
+          if(typeof unSet == "function")
+            unSet = void unSet(value);
+
+          state[key] = state[key];
+      
+          const out = argument.call(this, value);
+      
+          if(typeof out == "boolean")
+            return out;
+      
+          if(typeof out == "function")
+            unSet = out;
+        }
       }
     }
 

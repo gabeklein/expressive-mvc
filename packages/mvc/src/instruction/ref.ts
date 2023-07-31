@@ -1,5 +1,4 @@
 import { add, Control } from '../control';
-import { createValueEffect } from '../effect';
 import { issues } from '../helper/issues';
 import { define } from '../helper/object';
 import { Model } from '../model';
@@ -77,10 +76,23 @@ function ref<T>(
   return add<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg != "object")
-      value = createRef(source, key,
-        arg && createValueEffect(arg, arg2 !== false)
+    if(typeof arg != "object"){
+      let unSet: ((next: T) => void) | undefined;
+
+      value = createRef(source, key, arg &&
+        function(this: any, value: any){
+          if(unSet)
+            unSet = void unSet(value);
+      
+          if(value !== null || arg2 === false){  
+            const out = arg.call(this, value);
+        
+            if(typeof out == "function")
+              unSet = out;
+          }
+        }
       );
+    }
     else if(arg === source.subject)
       for(const key in source.state)
         define(value, key,
