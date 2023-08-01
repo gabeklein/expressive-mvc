@@ -261,18 +261,18 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
     for(const key in subject){
       const { value } = getOwnPropertyDescriptor(subject, key)!;
       const instruction = INSTRUCT.get(value);
+      let desc: Control.PropertyDescriptor<unknown> | void = { value };
 
       if(instruction){
         INSTRUCT.delete(value);
         delete subject[key];
 
-        const desc = instruction.call(self, key, self);
-      
-        if(desc)
-          self.watch(key, typeof desc == "object" ? desc : { get: desc });
+        const out = instruction.call(self, key, self);
+        desc = typeof out == "function" ? { get: out } : out;
       }
-      else
-        self.watch(key, { value });
+
+      if(desc)
+        self.watch(key, desc);
     }
     
     PENDING.delete(self);
