@@ -62,8 +62,6 @@ function use(
 
       if(typeof argument == "function")
         argument(next);
-
-      return false;
     }
 
     set(input);

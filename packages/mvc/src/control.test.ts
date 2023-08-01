@@ -82,7 +82,7 @@ describe("instruction", () => {
     await expect(test).not.toUpdate();
   })
 
-  it("will delegate value if returns boolean", async () => {
+  it("will revert update if setter returns false", async () => {
     let shouldUpdate = true;
 
     class Test extends Model {
@@ -107,7 +107,7 @@ describe("instruction", () => {
 
     shouldUpdate = false;
     instance.property = 0;
-    expect(instance.property).toBe(10);
+    expect(instance.property).toBe(20);
     await expect(instance).not.toUpdate();
   })
 

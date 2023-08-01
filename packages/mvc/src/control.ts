@@ -21,7 +21,7 @@ declare namespace Control {
     | void;
 
   type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T) => boolean | void;
+  type Setter<T> = (value: T, previous: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
     get?: Getter<T>;
@@ -193,19 +193,22 @@ class Control<T extends {} = any> {
   }
 
   ref(key: string, callback?: Control.OnChange){
-    return (next: any) => {
-      const previous = this.state[key];
+    const { state, subject } = this;
 
-      switch(
-        next !== previous &&
-        callback &&
-        callback.call(this.subject, next, previous)
-      ){
-        case undefined:
-          this.state[key] = next;
-        case true:
-          this.update(key);
+    return (next: any) => {
+      const previous = state[key];
+
+      if(next === previous)
+        return;
+
+      state[key] = next;
+
+      if(callback && callback.call(subject, next, previous) === false){
+        state[key] = previous;
+        return;
       }
+
+      this.update(key);
     }
   }
 }

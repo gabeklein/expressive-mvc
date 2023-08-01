@@ -120,8 +120,8 @@ describe("callback", () => {
 
   it('will not suspend own property access', () => {
     class Subject extends Model {
-      property = set<string>(undefined, () => {
-        propertyWas = this.property;
+      property = set<string>(undefined, (_, previous) => {
+        propertyWas = previous;
       });
     }
 
@@ -156,18 +156,36 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
   })
 
-  it('will block value if callback returns true', async () => {
-    class Subject extends Model {
-      test = set("foo", () => true);
+  it('will not call prior cleanup if supressed', async () => {
+    const cleanup = jest.fn();
+    const setter = jest.fn(value => {
+      return value === 3 ? false : cleanup;
+    });
+    
+    class Test extends Model {
+      value = set(1, setter);
     }
 
-    const state = Subject.new();
+    const subject = Test.new();
 
-    expect(state.test).toBe("foo");
-    state.test = "bar";
+    subject.value = 2;
 
-    await expect(state).toUpdate();
-    expect(state.test).toBe("foo");
+    expect(setter).toBeCalledWith(2, 1);
+    await expect(subject).toUpdate();
+    expect(subject.value).toBe(2);
+
+    // this update will be supressed by setter
+    subject.value = 3;
+
+    expect(setter).toBeCalledWith(3, 2);
+    await expect(subject).not.toUpdate();
+    expect(cleanup).not.toBeCalled();
+
+    subject.value = 4;
+
+    expect(setter).toBeCalledWith(4, 2);
+    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toBeCalledWith(4);
   })
 })
 

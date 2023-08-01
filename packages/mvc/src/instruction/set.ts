@@ -3,7 +3,7 @@ import { assign } from '../helper/object';
 import { attempt, suspense } from '../suspense';
 
 declare namespace set {
-  type Callback<T, S = any> = (this: S, argument: T) =>
+  type Callback<T, S = any> = (this: S, next: T, previous: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
   type Factory<T, S = any> = (this: S, key: string, thisArg: S) => Promise<T> | T;
@@ -103,13 +103,13 @@ function set <T> (
       if(typeof argument == "function"){
         let unSet: ((next: T) => void) | undefined;
 
-        output.set = function(this: any, value: any){
-          if(typeof unSet == "function")
-            unSet = void unSet(value);
-
+        output.set = function(this: any, value: any, previous: any){
           state[key] = state[key];
       
-          const out = argument.call(this, value);
+          const out = argument.call(this, value, previous);
+
+          if(out !== false && typeof unSet == "function")
+            unSet = void unSet(value);
       
           if(typeof out == "boolean")
             return out;

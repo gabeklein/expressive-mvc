@@ -181,6 +181,6 @@ describe("subscriber", () => {
     })
 
     expect(test.value).toBe("bar");
-    expect(test.didSet).toBeCalledWith("bar");
+    expect(test.didSet).toBeCalledWith("bar", "foo");
   })
 })
