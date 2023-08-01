@@ -338,7 +338,6 @@ export {
   clear,
   control,
   Control,
-  createRef,
   getState,
   parent,
   uid,
