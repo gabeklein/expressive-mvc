@@ -52,63 +52,112 @@ describe("instruction", () => {
     expect(typeof test.value).toBe("symbol");
   })
 
-  it("will prevent update if instruction returns false", async () => {
-    const didSetValue = jest.fn((newValue) => {
-      if(newValue == "ignore")
-        return false;
-    });
-
-    class Test extends Model {
-      property = add(() => {
-        return {
-          value: "foobar",
-          set: didSetValue
-        }
-      })
-    }
-
-    const test = Test.new();
-
-    expect(test.property).toBe("foobar");
-
-    test.property = "test";
-    expect(didSetValue).toBeCalledWith("test", "foobar");
-    expect(test.property).toBe("test");
-    await expect(test).toUpdate();
-
-    test.property = "ignore";
-    expect(didSetValue).toBeCalledWith("ignore", "test");
-    expect(test.property).toBe("test");
-    await expect(test).not.toUpdate();
-  })
-
-  it("will revert update if setter returns false", async () => {
-    let shouldUpdate = true;
-
-    class Test extends Model {
-      property = add((key, control) => {
-        return {
-          value: 0,
-          set: (value: any) => {
-            control.state[key] = value + 10;
-            return shouldUpdate;
+  describe("set", () => {
+    it("will prevent update if returns false", async () => {
+      const didSetValue = jest.fn((newValue) => {
+        if(newValue == "ignore")
+          return false;
+      });
+  
+      class Test extends Model {
+        property = add(() => {
+          return {
+            value: "foobar",
+            set: didSetValue
           }
-        }
-      })
-    }
+        })
+      }
+  
+      const test = Test.new();
+  
+      expect(test.property).toBe("foobar");
+  
+      test.property = "test";
+      expect(didSetValue).toBeCalledWith("test", "foobar");
+      expect(test.property).toBe("test");
+      await expect(test).toUpdate();
+  
+      test.property = "ignore";
+      expect(didSetValue).toBeCalledWith("ignore", "test");
+      expect(test.property).toBe("test");
+      await expect(test).not.toUpdate();
+    })
+  
+    // duplicate test?
+    it("will revert update if returns false", async () => {
+      let shouldUpdate = true;
+  
+      class Test extends Model {
+        property = add((key, control) => {
+          return {
+            value: 0,
+            set: (value: any) => {
+              control.state[key] = value + 10;
+              return shouldUpdate;
+            }
+          }
+        })
+      }
+  
+      const instance = Test.new();
+  
+      expect(instance.property).toBe(0);
+  
+      instance.property = 10;
+      expect(instance.property).toBe(20);
+      await expect(instance).toUpdate();
+  
+      shouldUpdate = false;
+      instance.property = 0;
+      expect(instance.property).toBe(20);
+      await expect(instance).not.toUpdate();
+    })
 
-    const instance = Test.new();
+    it("will not duplicate explicit update", () => {
+      class Test extends Model {
+        property = add<string>((key, control) => ({
+          value: "foobar",
+          set(value: any){
+            control.update(key, value + "!");
+          }
+        }))
+      }
 
-    expect(instance.property).toBe(0);
+      const test = Test.new();
+      const didUpdate = jest.fn();
 
-    instance.property = 10;
-    expect(instance.property).toBe(20);
-    await expect(instance).toUpdate();
+      test.set(didUpdate);
 
-    shouldUpdate = false;
-    instance.property = 0;
-    expect(instance.property).toBe(20);
-    await expect(instance).not.toUpdate();
+      expect(test.property).toBe("foobar");
+
+      test.property = "test";
+
+      expect(test.property).toBe("test!");
+      expect(didUpdate).toBeCalledTimes(1);
+    })
+
+    it.skip("will not update on reassignment", () => {
+      class Test extends Model {
+        property = add<string>((key) => ({
+          value: "foobar",
+          set: (value: any) => {
+            (this as any)[key] = value + "!";
+          }
+        }))
+      }
+
+      const test = Test.new();
+      const didUpdate = jest.fn();
+
+      test.set(didUpdate);
+
+      expect(test.property).toBe("foobar");
+
+      test.property = "test";
+
+      expect(test.property).toBe("test!");
+      expect(didUpdate).toBeCalledTimes(1);
+    })
   })
 
   it("will run getter upon access", () => {

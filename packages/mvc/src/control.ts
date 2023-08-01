@@ -178,6 +178,9 @@ class Control<T extends {} = any> {
 
     if(1 in arguments)
       state[key] = value;
+
+    else if(key in frame)
+      return;
     
     frame[key] = state[key];
 
@@ -333,6 +336,7 @@ export {
   clear,
   control,
   Control,
+  createRef,
   getState,
   parent,
   uid,
