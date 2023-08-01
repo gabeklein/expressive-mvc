@@ -58,7 +58,7 @@ declare namespace Control {
   }
 
   type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | undefined, source: Control<T>) => (() => void) | null | void;
+    (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
 
   type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
@@ -143,7 +143,7 @@ class Control<T extends {} = any> {
   }
 
   update(key: string, value?: unknown){
-    const { frame, observers, state } = this;
+    const { frame, observers, state, subject } = this;
     const any = observers.get("");
 
     if(!any)
@@ -164,7 +164,7 @@ class Control<T extends {} = any> {
         this.latest = { ...frame };
 
         any.forEach(cb => {
-          const notify = cb(undefined, this);
+          const notify = cb(undefined, subject);
 
           if(notify)
             enqueue(notify);
@@ -181,7 +181,7 @@ class Control<T extends {} = any> {
 
     for(const subs of [own, any])
       for(const cb of subs){
-        const notify = cb(key, this);
+        const notify = cb(key, subject);
     
         if(notify === null)
           subs.delete(cb);

@@ -173,11 +173,11 @@ function compute<T>(
 
     reset = () => done = true;
 
-    proxy = watch(model, (_, control) => {
+    proxy = watch(model, (_, source) => {
       if(done)
         return null;
 
-      if(control !== parent)
+      if(source !== subject)
         compute();
       else
         PENDING.add(compute);
