@@ -84,7 +84,7 @@ class Model {
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
-  set (): Promise<Model.Values<this>> | false;
+  set (): Promise<Model.Values<this> | false>;
 
   /** Detect and/or modify updates to state. */
   set (event: Model.SetCallback): Callback;
