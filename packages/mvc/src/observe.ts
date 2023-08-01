@@ -1,6 +1,6 @@
 import { Callback } from '../types';
 import { addListener, control, watch } from './control';
-import { entries, keys } from './helper/object';
+import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
 import { attempt } from './suspense';
 
@@ -41,7 +41,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
     return extract();
 
   const select = typeof argument == "string" ? [argument] : argument!;
-  const invoke = () => callback(extract(), self.latest || {});
+  const invoke = () => callback(extract(), self.frame);
 
   for(const key of select)
     try {
@@ -66,12 +66,12 @@ export function update<T extends Model>(
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {
-      if(!keys(self.frame).length && typeof arg1 != "number"){
+      if(isFrozen(self.frame) && typeof arg1 != "number"){
         resolve(false);
         return;
       }
   
-      const callback = () => resolve(self.latest);
+      const callback = () => resolve(self.frame);
   
       const remove = addListener(target, (key) => {
         if(typeof arg2 !== "function" || key && arg2(key) === true){

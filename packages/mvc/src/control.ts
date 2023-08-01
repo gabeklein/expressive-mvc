@@ -1,5 +1,5 @@
 import { Context } from './context';
-import { create, define, getOwnPropertyDescriptor, keys } from './helper/object';
+import { create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -90,8 +90,7 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [property: string]: unknown };
-  public frame: { [property: string]: unknown } = {};
-  public latest?: { [property: string]: unknown };
+  public frame: { [property: string]: unknown } = freeze({});
 
   public observers = new Map<string, Set<Control.OnUpdate>>();
 
@@ -145,7 +144,7 @@ class Control<T extends {} = any> {
   }
 
   update(key: string, value?: unknown){
-    const { frame, observers, state, subject } = this;
+    let { frame, observers, state, subject } = this;
     const any = observers.get("");
 
     if(!any)
@@ -159,11 +158,11 @@ class Control<T extends {} = any> {
       return;
     }
 
-    if(!keys(frame).length){
-      this.latest = undefined;
+    if(isFrozen(frame)){
+      frame = this.frame = {};
 
       enqueue(() => {
-        this.latest = { ...frame };
+        freeze(frame);
 
         any.forEach(cb => {
           const notify = cb(undefined, subject);
@@ -171,8 +170,6 @@ class Control<T extends {} = any> {
           if(notify)
             enqueue(notify);
         });
-
-        this.frame = {};
       })
     }
 

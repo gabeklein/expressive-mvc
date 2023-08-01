@@ -19,7 +19,7 @@ Object.defineProperties(Model.prototype, {
   },
   [UPDATE]: {
     get(this: Model){
-      return control(this).latest;
+      return control(this).frame;
     }
   },
   [PARENT]: {
