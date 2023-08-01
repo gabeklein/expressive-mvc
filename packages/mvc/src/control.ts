@@ -70,8 +70,10 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>(),
 }
 
-const OBSERVERS = new WeakMap<{}, Set<Control.OnUpdate>>();
+const OBSERVERS = new WeakMap<{}, Map<string, Set<Control.OnUpdate>>>();
+const FOLLOWERS = new WeakMap<{}, Set<Control.OnUpdate>>();
 const STATE = new WeakMap<{}, { [key: string]: unknown }>();
+const FRAME = new WeakMap<{}, { [key: string]: unknown }>();
 export const ID = new WeakMap<{}, string | number | false>();
 
 class Control<T extends {} = any> {
@@ -90,21 +92,24 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [property: string]: unknown };
-  public frame: { [property: string]: unknown } = freeze({});
+  public frame: { [property: string]: unknown };
 
-  public observers = new Map<string, Set<Control.OnUpdate>>();
+  public observers: Map<string, Set<Control.OnUpdate>>;
 
   constructor(subject: T, id?: string | number | false){
     const followers = new Set<Control.OnUpdate>();
 
-    this.subject = subject;
-    this.observers.set("", followers);
 
     ID.set(subject, id === undefined ? uid() : id);
     STATE.set(subject, this.state = {});
+    FRAME.set(subject, this.frame = freeze({}));
 
-    OBSERVERS.set(subject, followers);
+    FOLLOWERS.set(subject, followers);
+    OBSERVERS.set(subject, this.observers = new Map());
     REGISTER.set(subject, this);
+
+    this.subject = subject;
+    this.observers.set("", followers);
 
     if(id !== false)
       PENDING.set(this, new Set(LIFECYCLE.ready));
@@ -214,7 +219,7 @@ class Control<T extends {} = any> {
 }
 
 function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
-  const any = OBSERVERS.get(subject.is)!;
+  const any = FOLLOWERS.get(subject.is)!;
   any.add(fn);
   return () => any.delete(fn);
 }
