@@ -8,17 +8,6 @@ let memoize: any;
 let mount: (() => typeof unmount) | void;
 let unmount: (() => void) | void;
 
-afterEach(() => {
-  if(unmount)
-    unmount();
-
-  context.pop();
-
-  memoize = undefined;
-  attempt = undefined;
-  unmount = undefined;
-});
-
 beforeAll(() => {
   Control.hooks = {
     has(){
@@ -47,6 +36,17 @@ beforeAll(() => {
     }
   }
 })
+
+afterEach(() => {
+  if(unmount)
+    unmount();
+
+  context.pop();
+
+  memoize = undefined;
+  attempt = undefined;
+  unmount = undefined;
+});
 
 type DispatchFunction = (next: (tick: number) => number) => void;
 
