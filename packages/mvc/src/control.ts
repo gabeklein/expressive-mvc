@@ -71,6 +71,7 @@ const LIFECYCLE = {
 }
 
 const OBSERVERS = new WeakMap<{}, Set<Control.OnUpdate>>();
+const STATE = new WeakMap<{}, { [key: string]: unknown }>();
 export const ID = new WeakMap<{}, string | number | false>();
 
 class Control<T extends {} = any> {
@@ -88,7 +89,7 @@ class Control<T extends {} = any> {
 
   public subject: T;
 
-  public state: { [property: string]: unknown } = {};
+  public state: { [property: string]: unknown };
   public frame: { [property: string]: unknown } = {};
   public latest?: { [property: string]: unknown };
 
@@ -101,6 +102,7 @@ class Control<T extends {} = any> {
     this.observers.set("", followers);
 
     ID.set(subject, id === undefined ? uid() : id);
+    STATE.set(subject, this.state = {});
 
     OBSERVERS.set(subject, followers);
     REGISTER.set(subject, this);
@@ -227,6 +229,10 @@ function clear(subject: Model){
   self.observers.clear();
 }
 
+function getState(subject: Model){
+  return STATE.get(subject.is)!;
+}
+
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
@@ -324,6 +330,7 @@ export {
   clear,
   control,
   Control,
+  getState,
   parent,
   uid,
   watch

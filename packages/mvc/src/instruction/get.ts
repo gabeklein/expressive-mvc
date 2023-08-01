@@ -116,7 +116,7 @@ function get<R, T extends Model>(
         return value;
 
       if(arg1 !== false)
-        throw suspense(control, key);
+        throw suspense(subject, key);
     }
   })
 }
@@ -199,7 +199,7 @@ function compute<T>(
     }
     
     if(!proxy)
-      throw suspense(parent, key);
+      throw suspense(subject, key);
 
     if(PENDING.delete(compute))
       compute();

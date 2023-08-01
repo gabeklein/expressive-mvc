@@ -1,22 +1,24 @@
-import { Control, addListener } from './control';
+import { addListener, getState } from './control';
 import { assign } from './helper/object';
+import { Model } from './model';
 
-export function suspense(source: Control, key: string): Promise<void> & Error {
-  const error = new Error(`${source.subject}.${key} is not yet available.`);
+export function suspense(subject: Model, key: string): Promise<void> & Error {
+  const state = getState(subject);
+  const error = new Error(`${subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
-      if(source.state[key] !== undefined){
+      if(state[key] !== undefined){
         remove();
         resolve();
       }
     }
 
-    const remove = addListener(source.subject, k => {
+    const remove = addListener(subject, k => {
       if(k === key)
         return check;
 
       if(k === null)
-        reject(new Error(`${source.subject} is destroyed.`));
+        reject(new Error(`${subject} is destroyed.`));
     });
   });
 
