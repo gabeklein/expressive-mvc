@@ -10,7 +10,8 @@
 		"test": "lerna run test",
 		"clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
 		"push": "lerna publish",
-		"docs": "npm --prefix website run dev"
+		"docs": "npm --prefix website run dev",
+		"docs:build": "npm --prefix website run build"
 	},
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^22.0.0",
