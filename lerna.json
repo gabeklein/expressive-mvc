@@ -5,6 +5,6 @@
   "npmClient": "npm",
   "packages": [
     "packages/*",
-    "docs"
+    "website"
   ]
 }
