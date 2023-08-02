@@ -1,32 +1,25 @@
-import { Control } from './control';
-import { issues } from './helper/issues';
+import { addListener, getState } from './control';
 import { assign } from './helper/object';
+import { Model } from './model';
 
-export const Oops = issues({
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`,
-
-  Destoryed: () => "Model is destroyed."
-})
-
-export function suspense(source: Control, key: string): Promise<void> & Error {
-  const error = Oops.NotReady(source.subject, key);
-  const watch = source.observers.get(key)!;
+export function suspense(subject: Model, key: string): Promise<void> & Error {
+  const state = getState(subject);
+  const error = new Error(`${subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
-    function onUpdate(key: string | null | undefined){
-      if(key)
-        return () => {
-          if(source.state[key] !== undefined){
-            watch.delete(onUpdate);
-            resolve();
-          }
-        };
-
-      if(key === null)
-        reject(Oops.Destoryed());
+    function check(){
+      if(state[key] !== undefined){
+        remove();
+        resolve();
+      }
     }
 
-    watch.add(onUpdate)
+    const remove = addListener(subject, k => {
+      if(k === key)
+        return check;
+
+      if(k === null)
+        reject(new Error(`${subject} is destroyed.`));
+    });
   });
 
   return assign(promise, {
@@ -37,7 +30,7 @@ export function suspense(source: Control, key: string): Promise<void> & Error {
   });
 }
 
-export function mayRetry(fn: () => any): any {
+export function attempt(fn: () => any): any {
   const retry = (err: unknown) => {
     if(err instanceof Promise)
       return err.then(compute);

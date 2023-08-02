@@ -5,6 +5,8 @@ import { Consumer, Model, get, set } from '.';
 import { Provider } from './provider';
 import { mockAsync } from './tests';
 
+const timeout = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 describe("component", () => {
   class Foo extends Model {
     value?: string = undefined;
@@ -34,6 +36,7 @@ describe("component", () => {
     );
   
     element.unmount();
+    await timeout(20);
     expect(willDestroy).toBeCalledTimes(1);
   });
   
@@ -46,7 +49,7 @@ describe("component", () => {
     )
   })
   
-  it("will destroy created model on unmount", () => {
+  it("will destroy created model on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Test extends Model {}
@@ -61,10 +64,11 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(1);
     expect(willDestroy).toBeCalled();
   })
   
-  it("will destroy multiple created on unmount", () => {
+  it("will destroy multiple created on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Foo extends Model {}
@@ -82,10 +86,11 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(1);
     expect(willDestroy).toBeCalledTimes(2);
   })
   
-  it("will not destroy given instance on unmount", () => {
+  it("will not destroy given instance on unmount", async () => {
     const didUnmount = jest.fn();
   
     class Test extends Model {}
@@ -101,6 +106,7 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(1);
     expect(didUnmount).not.toBeCalled();
   })
   
@@ -185,10 +191,10 @@ describe("use prop", () => {
 
   it("will not assign foreign values", () => {
     create(
-      /// @ts-ignore - type-checking warns against this
+      // @ts-expect-error - type-checking warns against this
       <Provider for={Foo} use={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
-          // @ts-ignore
+          // @ts-expect-error
           expect(i.nonValue).toBeUndefined();
         }} />
       </Provider>

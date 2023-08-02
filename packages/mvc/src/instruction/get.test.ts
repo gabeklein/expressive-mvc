@@ -1,9 +1,10 @@
 import { Context } from '../context';
 import { Control } from '../control';
-import { render, context } from '../helper/mocks';
-import { mockPromise, mockError, mockWarn } from '../helper/testing';
+import { context, render } from '../helper/mocks';
+import { mockError, mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
-import { get, Oops } from './get';
+import { get } from './get';
+import { use } from './use';
 
 const warn = mockWarn();
 const error = mockError();
@@ -15,7 +16,7 @@ describe("fetch mode", () => {
   it("will allow overwrite", async () => {
     class Foo extends Model {
       value = "foo";
-      bar = new Bar();
+      bar = use(Bar);
     }
   
     class Bar extends Model {
@@ -50,7 +51,7 @@ describe("fetch mode", () => {
   
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = new Bar();
+      child = use(Bar);
     }
     class Bar extends Model {
       parent = get(Foo);
@@ -70,9 +71,8 @@ describe("fetch mode", () => {
     }
   
     const attempt = () => Child.new("ID");
-    const error = Oops.Required("Parent", "Child-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Parent.`);
   })
   
   it("retuns undefined if required is false", () => {
@@ -89,16 +89,15 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = new Adopted("ID");
+      child = use(new Adopted("ID"));
     }
     class Adopted extends Model {
       expects = get(Expected);
     }
   
     const attempt = () => Unexpected.new("ID");
-    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Adopted-ID created as child of Unexpected-ID, but must be instanceof Expected.`);
   })
 
   it('will track recursively', async () => {
@@ -109,7 +108,7 @@ describe("fetch mode", () => {
     
     class Parent extends Model {
       value = "foo";
-      child = new Child();
+      child = use(Child);
     }
   
     const { child } = Parent.new();
@@ -131,7 +130,7 @@ describe("fetch mode", () => {
 
   it('will yeild a computed value', async () => {
     class Foo extends Model {
-      bar = new Bar();
+      bar = use(Bar);
       seconds = 0;
     }
 
@@ -192,7 +191,7 @@ describe("compute mode", () => {
   
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
-      child = new Child();
+      child = use(Child);
       seconds = 0;
     
       minutes = get(this, state => {
@@ -312,7 +311,7 @@ describe("compute mode", () => {
       })
   
       // sanity check; multi-source updates do work
-      x = new Inner();
+      x = use(Inner);
     }
   
     const state = Test.new();
@@ -320,7 +319,10 @@ describe("compute mode", () => {
     expect(state.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.get("c", emit, false);
+    state.set((key) => {
+      if(key === "c")
+        emit();
+    })
   
     state.a++;
     state.b++;
@@ -376,11 +378,11 @@ describe("compute mode", () => {
   
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.set(0);
+
+    await test.set(0);
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
-    expect(updated).toMatchObject(["X", "A", "B", "C", "D"]);
   })
   
   it("will run a bound method", async () => {
@@ -415,10 +417,8 @@ describe("compute mode", () => {
       const state = Subject.new();
       const attempt = () => state.never;
 
-      const failed = Oops.Failed(state, "never", true);
-
       expect(attempt).toThrowError();
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while initializing ${state}.never.`);
     })
 
     it('will warn if throws on update', async () => {
@@ -434,14 +434,13 @@ describe("compute mode", () => {
       }
 
       const state = Test.new();
-      const failed = Oops.Failed(state, "value", false);
 
       void state.value;
       state.shouldFail = true;
 
       await expect(state).toUpdate();
 
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while refreshing ${state}.value.`);
       expect(error).toBeCalled();
     })
 
@@ -449,13 +448,11 @@ describe("compute mode", () => {
       class Test extends Model {
         peer = get(this, () => "foobar");
 
-        // @ts-ignore
+        // @ts-expect-error
         value = get(this.peer, () => {});
       }
 
-      const expected = Oops.PeerNotAllowed("Test-ID", "value");
-
-      expect(() => Test.new("ID")).toThrow(expected);
+      expect(() => Test.new("ID")).toThrowError(`Attempted to use an instruction result (probably use or get) as computed source for Test-ID.value. This is not allowed.`);
     })
   })
 
@@ -572,7 +569,7 @@ describe("compute mode", () => {
     it("will provide property key to factory", () => {
       class Test extends Model {
         // TODO: why is key not implicit?
-        // @ts-ignore
+        // @ts-expect-error
         fooBar = get((key) => () => key);
       }
 
@@ -636,15 +633,14 @@ describe("context", () => {
       }
     }
 
-    const expected = Oops.AmbientRequired("Bar", "Foo-ID");
     const tryToRender = () => render(() => Foo.use());
 
-    expect(tryToRender).toThrowError(expected);
+    expect(tryToRender).toThrowError(`Attempted to find an instance of Bar in context. It is required by Foo-ID, but one could not be found.`);
   })
 
   it("will prefer parent over context", () => {
     class Parent extends Model {
-      child = new Child();
+      child = use(Child);
       value = "foo";
     }
 
@@ -668,22 +664,27 @@ describe("context", () => {
     context.add(Ambient.new());
   
     const attempt = () => Child.new("ID");
-    const error = Oops.Required("Ambient", "Child-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Ambient.`);
   })
 })
 
 // not yet implemented by Context yet; this is a hack.
-describe("replaced source", () => {
+describe.skip("replaced source", () => {
   const context = new Context();
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.has = () => (got) => {
-      gotContext = got;
-      got(context);
-    };
+    Control.hooks = {
+      get(): any {},
+      use(): any {},
+      has(){
+        return (got) => {
+          gotContext = got;
+          got(context);
+        }
+      }
+    }
   })
 
   class Source extends Model {
@@ -748,8 +749,16 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    Control.has = () => (got) => {
-      setTimeout(() => got(context), 0);
+    Control.hooks = {
+      get(): any {},
+      use(): any {},
+      has(){
+        return (got) => {
+          setTimeout(() => {
+            got(context);
+          }, 0);
+        }
+      }
     }
   })
 

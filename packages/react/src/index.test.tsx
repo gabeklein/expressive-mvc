@@ -50,23 +50,21 @@ describe("useContext", () => {
       value: string;
     }
   
-    const Child = (props: ChildProps) => {
+    const Child = (props: ChildProps) => (
       Parent.get($ => {
         didPushToValues();
-        $.values.push(props.value);
-        $.set("values");
-  
-        return () => null;
-      });
-  
-      return null;
-    }
+        $.values = [...$.values, props.value];
+        return null;
+      })
+    )
   
     const parent = Parent.new();
     const didUpdateValues = jest.fn();
     const didPushToValues = jest.fn();
-  
-    parent.get("values", didUpdateValues, false);
+
+    parent.get(state => {
+      didUpdateValues(state.values.length);
+    })
   
     const element = create(
       <Provider for={parent}>
@@ -80,10 +78,9 @@ describe("useContext", () => {
   
     await expect(parent).toUpdate();
   
-    expect(parent.values.length).toBe(3);
-  
     // Expect updates to have bunched up before new frame.
-    expect(didUpdateValues).toBeCalledTimes(1);
+    expect(didUpdateValues).toBeCalledTimes(2);
+    expect(didUpdateValues).toBeCalledWith(3);
   
     element.unmount();
   })
@@ -180,7 +177,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await bar.set();
+    await bar.set(0);
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);

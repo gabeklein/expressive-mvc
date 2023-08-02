@@ -7,7 +7,7 @@ declare global {
       toUpdate(): Promise<R>;
 
       /** Assert model did update with keys specified. */
-      toHaveUpdated<R>(keys: string[]): Promise<R>; 
+      toHaveUpdated<R>(...keys: string[]): Promise<R>; 
     }
   }
 }

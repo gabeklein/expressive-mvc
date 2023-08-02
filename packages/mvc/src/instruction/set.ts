@@ -1,19 +1,9 @@
-import { Control, apply } from '../control';
-import { createValueEffect } from '../effect';
-import { issues } from '../helper/issues';
+import { add, Control } from '../control';
 import { assign } from '../helper/object';
-import { mayRetry, suspense } from '../suspense';
-
-export const Oops = issues({
-  ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
-});
+import { attempt, suspense } from '../suspense';
 
 declare namespace set {
-  type Callback<T, S = any> = (this: S, argument: T) =>
+  type Callback<T, S = any> = (this: S, next: T, previous: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
   type Factory<T, S = any> = (this: S, key: string, thisArg: S) => Promise<T> | T;
@@ -52,42 +42,41 @@ function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean){
 
-  return apply<T>((key, control) => {
+  return add<T>((key, control) => {
     const { state, subject } = control;
+    const output: Control.PropertyDescriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
-      const output: Control.PropertyDescriptor = {};
-
-      const init = () => {
+      function init(){
         try {
           if(typeof value == "function")
-            value = mayRetry(value.bind(subject, key, subject));
+            value = attempt(value.bind(subject, key, subject));
 
           if(value instanceof Promise){
             const pending = value
               .then(value => {
                 output.get = undefined;
-                state[key] = value;
+                control.update(key, value);
                 return value;
               })
               .catch(err => {
                 output.get = () => { throw err };
-              })
-              .finally(() => {
-                control.update(key);
+                control.update(key, undefined);
               })
 
             if(argument !== false)
-              return () => {
-                const { message, stack } = Oops.NotReady(subject, key);
-                throw assign(pending, { message, stack });
+              return output.get = () => {
+                throw assign(pending, {
+                  message: `${subject}.${key} is not yet available.`,
+                  stack: new Error().stack
+                });
               }
           }
-          else
-            state[key] = value;
+          else 
+            control.update(key, value);
         }
         catch(err){
-          Oops.ComputeFailed(subject, key).warn();
+          console.warn(`Generating initial value for ${subject}.${key} failed.`);
           throw err;
         }
       }
@@ -96,39 +85,40 @@ function set <T> (
         init();
       else
         output.get = () => {
-          const get = output.get =
-            key in state ? undefined : init();
-
+          const get = key in state ? null : init();
           return get ? get() : state[key];
         }
-
-      return output;
     }
+    else {
+      if(value !== undefined)
+        output.value = value;
+      else
+        output.get = () => {
+          if(key in state)
+            return state[key];
+    
+          throw suspense(subject, key);
+        }
 
-    const set = typeof argument == "function"
-      ? createValueEffect(argument)
-      : undefined;
+      if(typeof argument == "function"){
+        let unSet: ((next: T) => void) | undefined;
 
-    if(value !== undefined){
-      state[key] = value;
-      return { set };
+        output.set = function(this: any, value: any, previous: any){
+          state[key] = state[key];
+      
+          const out = argument.call(this, value, previous);
+
+          if(out !== false && typeof unSet == "function")
+            unSet = void unSet(value);
+      
+          if(typeof out == "boolean")
+            return out;
+      
+          if(typeof out == "function")
+            unSet = out;
+        }
+      }
     }
-
-    const output: Control.PropertyDescriptor = {
-      get(){
-        if(key in state)
-          return state[key];
-
-        throw suspense(control, key);
-      }
-    };
-
-    if(set)
-      output.set = function(this: any, value: any){
-        output.set = set;
-        state[key] = state[key];
-        return set.call(this, value);
-      }
 
     return output;
   })

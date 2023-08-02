@@ -120,73 +120,6 @@ it('will watch function properties', async () => {
   expect(mockFunction).toBeCalledTimes(1);
 });
 
-it('will throw if Model.on is called', () => {
-  const state = Subject.new();
-
-  // @ts-ignore
-  expect(() => state.on()).toThrow();
-})
-
-it('will throw if Model.is is accessed', () => {
-  const state = Subject.new();
-
-  // @ts-ignore
-  expect(() => state.is).toThrow();
-})
-
-describe("dispatch", () => {
-  class Test extends Model {
-    foo = "foo";
-    bar = "bar";
-
-    method = jest.fn();
-    methodString = jest.fn((argument: string) => {
-      this.foo = argument;
-    });
-  }
-
-  it("will send synthetic event", async () => {
-    const test = Test.new();
-    test.set("foo");
-
-    const update = await test.set(0);
-    expect(update).toContain("foo");
-  })
-
-  it("will squash updates which exist", async () => {
-    const test = Test.new();
-
-    test.foo = "bar";
-    test.set("foo");
-
-    const update = await test.set(0);
-    expect(update).toContain("foo");
-  })
-
-  it("will send arbitrary event", async () => {
-    const test = Test.new();
-    test.set("foobar");
-
-    const update = await test.set(0);
-    expect(update).toContain("foobar");
-  })
-
-  it("will resolve after event is handled", async () => {
-    const test = Test.new();
-    const update = await test.set("foo");
-
-    expect(update).toContain("foo");
-  })
-
-  it("will resolve with keys already in frame", async () => {
-    const test = Test.new();
-    test.bar = "foo";
-
-    const update = await test.set("foo");
-    expect(update).toMatchObject(["bar", "foo"]);
-  })
-})
-
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;
@@ -248,6 +181,6 @@ describe("subscriber", () => {
     })
 
     expect(test.value).toBe("bar");
-    expect(test.didSet).toBeCalledWith("bar");
+    expect(test.didSet).toBeCalledWith("bar", "foo");
   })
 })

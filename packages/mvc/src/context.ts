@@ -1,12 +1,6 @@
-import { control, parent } from './control';
-import { issues } from './helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
-import { Model, uid } from './model';
-
-export const Oops = issues({
-  MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`
-})
+import { control, parent, uid } from './control';
+import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './helper/object';
+import { Model } from './model';
 
 declare namespace Context {
   type Inputs = {
@@ -35,7 +29,7 @@ class Context {
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)
-      throw Oops.MultipleExist(Type);
+      throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
     return result;
   }
@@ -61,16 +55,13 @@ class Context {
       }
     }
 
-    for(const [ model ] of init){
-      const { state } = control(model, true);
-  
-      Object.values(state).forEach(value => {
+    for(const [ model ] of init)
+      values(control(model, true).state).forEach(value => {
         if(parent(value) === model){
-          this.add(value, true);
-          init.set(value, false);
+          this.add(value as Model, true);
+          init.set(value as Model, false);
         }
       });
-    }
 
     return init;
   }
@@ -87,7 +78,7 @@ class Context {
       I = new input();
     }
     else {
-      I = control(input).subject;
+      I = input;
       T = I.constructor as Model.New<T>;
       writable = false;
     }
@@ -97,7 +88,7 @@ class Context {
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || I !== this[key] && !implicit)
-        defineProperty(this, key, {
+        define(this, key, {
           configurable: true,
           value,
           writable

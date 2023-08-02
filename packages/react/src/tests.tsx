@@ -7,11 +7,8 @@ import { Provider } from './provider';
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();
 
-  const event = () => (
-    new Promise<T>((res, rej) => {
-      pending.add([res, rej]);
-    })
-  );
+  const event = () =>
+    new Promise<T>((res, rej) => pending.add([res, rej]))
 
   const resolve = (value: T) => {
     const done = event();
@@ -58,6 +55,7 @@ export function mockHook<T>(
   async function waitFor(fn: () => void | Promise<void>){
     return act(async () => {
       const pending = new Promise(res => waiting = res);
+      await new Promise(res => setTimeout(res, 10));
       await fn();
       await pending;
     })

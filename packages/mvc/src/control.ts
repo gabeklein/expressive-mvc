@@ -1,24 +1,12 @@
 import { Context } from './context';
-import { issues } from './helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor } from './helper/object';
+import { create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
 
-export const Oops = issues({
-  BadAssignment: (parent, expected, got) =>
-    `${parent} expected Model of type ${expected} but got ${got}.`,
-});
-
-type Observer<T extends Model = any> =
-  (key: Model.Event<T> | null | undefined, source: Control) => Callback | null | void;
-
-type InstructionRunner<T extends Model = any> =
-  (parent: Control<T>, key: Model.Key<T>) => void;
-
 const REGISTER = new WeakMap<{}, Control>();
-const OBSERVER = new WeakMap<{}, Observer>();
-const INSTRUCT = new Map<symbol, InstructionRunner>();
+const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
+const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
@@ -33,7 +21,7 @@ declare namespace Control {
     | void;
 
   type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T) => boolean | void;
+  type Setter<T> = (value: T, previous: T) => boolean | void;
 
   type PropertyDescriptor<T = any> = {
     get?: Getter<T>;
@@ -52,287 +40,306 @@ declare namespace Control {
 
   type RequestRefresh = (update: (tick: number) => number) => void;
 
-  type GetContext = (target: Model) =>
-    (callback: (got: Context) => void) => void;
-
-  type GetAdapter<T> = (
-    refresh: RequestRefresh,
-    context: Context
-  ) => {
+  type GetAdapter<T> = (refresh: RequestRefresh, context: Context) => {
     mount: () => (() => void) | void;
     render: () => T;
   } | void;
 
-  type GetHook = <T> (adapter: GetAdapter<T>) => T | null;
-
-  type UseAdapter<T extends Model, R> = (
-    refresh: RequestRefresh
-  ) => {
+  type UseAdapter<T extends Model, R> = (refresh: RequestRefresh) => {
     instance: T;
     mount: () => (() => void) | void;
     render: R;
   }
 
-  type UseHook = <T extends Model, R>
-    (adapter: UseAdapter<T, R>) => R;
+  interface Hooks {
+    get: <T> (adapter: GetAdapter<T>) => T | null;
+    use: <T extends Model, R>(adapter: UseAdapter<T, R>) => R;
+    has: (target: Model) => (callback: (got: Context) => void) => void;
+  }
+
+  type OnUpdate<T extends {} = any> =
+    (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
+
+  type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
 
+const LIFECYCLE = {
+  ready: new Set<Control.Callback>(),
+  dispatch: new Set<Callback>(),
+  update: new Set<Callback>(),
+  didUpdate: new Set<Callback>(),
+}
+
+const OBSERVERS = new WeakMap<{}, Map<string, Set<Control.OnUpdate>>>();
+const FOLLOWERS = new WeakMap<{}, Set<Control.OnUpdate>>();
+const STATE = new WeakMap<{}, { [key: string]: unknown }>();
+const FRAME = new WeakMap<{}, { [key: string]: unknown }>();
+export const ID = new WeakMap<{}, string | number | false>();
+
 class Control<T extends {} = any> {
-  static ready = new Set<Control.Callback>();
-  static after = new Set<Callback>();
-  static before = new Set<Callback>();
-  static pending = new Set<Callback>();
-
-  static get: Control.GetHook;
-  static use: Control.UseHook;
-  static has: Control.GetContext;
-
+  static hooks: Control.Hooks;
   static for = control;
-  static apply = apply;
-  static watch = watch;
+  static add = add;
 
-  public id: string | number | false;
+  static on(event: "ready", callback: Control.Callback): Callback;
+  static on(event: "update" | "didUpdate", callback: Callback): Callback;
+  static on(event: "ready" | "update" | "didUpdate", callback: any){
+    LIFECYCLE[event].add(callback);
+    return () =>
+      LIFECYCLE[event].delete(callback);
+  }
+
   public subject: T;
 
-  public state: { [key: string]: any } = {};
-  public latest?: Model.Event<T>[];
+  public state: { [property: string]: unknown };
+  public frame: { [property: string]: unknown };
 
-  public frame = new Set<string>();
-  public followers = new Set<Observer>();
-  public observers = new Map([["", this.followers]]);
+  public observers: Map<string, Set<Control.OnUpdate>>;
 
-  constructor(subject: T, id: string | number | false){
-    this.id = id;
-    this.subject = subject;
+  constructor(subject: T, id?: string | number | false){
+    const followers = new Set<Control.OnUpdate>();
+
+
+    ID.set(subject, id === undefined ? uid() : id);
+    STATE.set(subject, this.state = {});
+    FRAME.set(subject, this.frame = freeze({}));
+
+    FOLLOWERS.set(subject, followers);
+    OBSERVERS.set(subject, this.observers = new Map());
     REGISTER.set(subject, this);
 
+    this.subject = subject;
+    this.observers.set("", followers);
+
     if(id !== false)
-      PENDING.set(this, new Set(Control.ready));
+      PENDING.set(this, new Set(LIFECYCLE.ready));
   }
 
-  add(key: string){
-    const { value } = getOwnPropertyDescriptor(this.subject, key)!;
-    const instruction = INSTRUCT.get(value);
-
-    if(instruction){
-      INSTRUCT.delete(value);
-      instruction(this, key);
-    }
-    else if(value instanceof Model)
-      setRecursive(this, key, value);
-    else
-      this.watch(key, { value });
-  }
-
-  watch(
-    key: string,
-    output: Control.PropertyDescriptor<any>){
-
+  watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state } = this;
     const { set, enumerable = true } = output;
 
-    const subs = new Set<Observer>();
-    
+    const subs = new Set<Control.OnUpdate>();
+
     this.observers.set(key, subs);
 
     if("value" in output)
       state[key] = output.value;
 
-    defineProperty(this.subject, key, {
+    define(this.subject, key, {
       enumerable,
       set: set === false
         ? undefined
-        : this.ref(key as Model.Key<T>, set),
-      get(this: any){
-        const event = OBSERVER.get(this);
+        : this.ref(key, set),
+      get(this: Model){
+        const observer = OBSERVER.get(this);
 
-        if(event)
-          subs.add(event);
+        if(observer)
+          subs.add(observer);
 
         const value = output.get
-          ? output.get(this) : state[key];
+          ? output.get(this)
+          : state[key];
 
-        return event && REGISTER.has(value)
-          ? watch(value, event)
+        return observer && REGISTER.has(value)
+          ? watch(value, observer)
           : value;
       }
     });
   }
 
-  ref<K extends Model.Key<T>>(
-    key: K, callback?: (this: T, value: T[K]) => boolean | void){
+  update(key: string, value?: unknown){
+    let { frame, observers, state, subject } = this;
+    const any = observers.get("");
 
-    const { state, subject } = this
-  
-    return (value: any) => {
-      if(value !== state[key])
-        switch(callback && callback.call(subject, value)){
-          case undefined:
-            state[key] = value;
-          case true:
-            this.update(key);
-        }
-    }
-  }
-
-  update(key: string){
-    const { frame } = this;
-
-    if(frame.has(key))
+    if(!any)
       return;
 
-    if(!frame.size){
-      this.latest = undefined;
+    const own = observers.get(key);
 
-      requestUpdateFrame(() => {
-        this.latest = Array.from(frame);
-        this.followers.forEach(cb => {
-          const notify = cb(undefined, this);
-    
+    if(!own){
+      state[key] = value;
+      observers.set(key, new Set());
+      return;
+    }
+
+    if(isFrozen(frame)){
+      frame = this.frame = {};
+
+      enqueue(() => {
+        freeze(frame);
+
+        any.forEach(cb => {
+          const notify = cb(undefined, subject);
+
           if(notify)
-            requestUpdateFrame(notify);
-        })
-        frame.clear();
+            enqueue(notify);
+        });
       })
     }
-  
-    frame.add(key);
 
-    for(const k of ["", key]){
-      const subs = this.observers.get(k);
+    if(1 in arguments)
+      state[key] = value;
 
-      subs && subs.forEach(cb => {
-        const notify = cb(key, this);
-  
+    else if(key in frame)
+      return;
+    
+    frame[key] = state[key];
+
+    for(const subs of [own, any])
+      for(const cb of subs){
+        const notify = cb(key, subject);
+    
         if(notify === null)
           subs.delete(cb);
         else if(notify)
-          requestUpdateFrame(notify);
-      });
+          enqueue(notify);
+      }
+  }
+
+  ref(key: string, callback?: Control.OnChange){
+    const { state, subject } = this;
+
+    return (next: any) => {
+      const previous = state[key];
+
+      if(next === previous)
+        return;
+
+      state[key] = next;
+
+      if(callback && callback.call(subject, next, previous) === false){
+        state[key] = previous;
+        return;
+      }
+
+      this.update(key);
     }
   }
+}
 
-  addListener(fn: Observer){
-    this.followers.add(fn);
-    return () => this.followers.delete(fn);
-  }
+function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
+  const any = FOLLOWERS.get(subject.is)!;
+  any.add(fn);
+  return () => any.delete(fn);
+}
 
-  clear(){
-    this.observers.forEach(subs => {
-      subs.forEach(fn => {
-        const cb = fn(null, this);
-        cb && cb();
-      });
+function clear(subject: Model){
+  const self = REGISTER.get(subject)!;
+  const notify = (subs: Set<Control.OnUpdate>) => {
+    subs.forEach(fn => {
+      const cb = fn(null, self);
+      cb && cb();
     });
-    this.observers.clear();
   }
+
+  self.observers.forEach(notify);
+  self.observers.clear();
+}
+
+function getState(subject: Model){
+  return STATE.get(subject.is)!;
 }
 
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
 function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
-  const control = REGISTER.get(subject) as Control<T>;
-  const pending = PENDING.get(control);
+  const self = REGISTER.get(subject.is) as Control<T>;
+  const pending = PENDING.get(self);
 
   if(typeof ready == "function"){
-    if(!pending)
-      return ready(control);
+    if(pending){
+      let done: Callback | void;
+      pending.add(() => done = ready(self));
+      return () => done && done();
+    }
 
-    let done: Callback | void;
-    pending.add(() => done = ready(control));
-    return () => done && done();
+    return ready(self);
   }
 
   if(pending && ready){
-    for(const key in control.subject)
-      control.add(key);
+    for(const key in subject){
+      const { value } = getOwnPropertyDescriptor(subject, key)!;
+      const instruction = INSTRUCT.get(value);
+      let desc: Control.PropertyDescriptor<unknown> | void = { value };
 
-    PENDING.delete(control);
-    pending.forEach(cb => cb(control));
+      if(instruction){
+        INSTRUCT.delete(value);
+        delete subject[key];
+
+        const out = instruction.call(self, key, self);
+        desc = typeof out == "function" ? { get: out } : out;
+      }
+
+      if(desc)
+        self.watch(key, desc);
+    }
+    
+    PENDING.delete(self);
+    pending.forEach(cb => cb(self));
   }
 
-  return control;
+  return self;
 }
 
-function requestUpdateFrame(event: Callback){
-  const { after, before, pending } = Control;
+function enqueue(event: Callback){
+  const { update, didUpdate, dispatch } = LIFECYCLE;
 
-  if(!pending.size)
+  if(!dispatch.size)
     setTimeout(() => {
-      before.forEach(x => x());
-      pending.forEach(notify => {
+      update.forEach(x => x());
+      dispatch.forEach(event => {
         try {
-          notify();
+          event();
         }
         catch(err){
           console.error(err);
         }
       });
-      pending.clear();
-      after.forEach(x => x());
+      dispatch.clear();
+      didUpdate.forEach(x => x());
     }, 0);
 
-  pending.add(event);
+  dispatch.add(event);
 }
 
-function setRecursive(on: Control, key: string, value: Model){
-  function set(next: Model | undefined){
-    if(next instanceof value.constructor){
-      on.state[key] = next;
-      parent(next, on.subject);
-      control(next, true);
-      return true;
-    }
-
-    throw Oops.BadAssignment(`${on.subject}.${key}`, value.constructor, next);
-  }
-
-  on.watch(key, { set });
-  set(value);
-}
-
-function parent(child: unknown, assign?: Model){
+function parent(child: unknown, assign?: {}){
   if(!assign)
     return PARENTS.get(child as Model);
 
-  PARENTS.set(child as Model, assign);
+  PARENTS.set(child as Model, assign as Model);
 }
 
-type Focus<T extends {}> = T & { is: T };
+function watch<T extends {}>(value: T, argument: Control.OnUpdate){
+  const control = REGISTER.get(value)!;
 
-function watch<T extends {}>(value: T, cb: Observer){
-  if(!OBSERVER.has(value)){
-    const control = REGISTER.get(value);
-    value = defineProperty(create(value), "is", { value });
-    REGISTER.set(value, control!);
-  }
+  if(!OBSERVER.has(value))
+    REGISTER.set(value = create(value), control);
 
-  OBSERVER.set(value, cb);
+  OBSERVER.set(value, argument);
 
-  return value as Focus<T>;
+  return value;
 }
 
-function apply<T = any>(instruction: Control.Instruction<T>){
+function add<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
-
-  INSTRUCT.set(placeholder, (onto, key) => {
-    delete onto.subject[key];
-  
-    const output = instruction.call(onto, key, onto);
-  
-    if(output)
-      onto.watch(key, 
-        typeof output == "function" ? { get: output } : output
-      );
-  });
-
+  INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;
 }
 
+/** Random alphanumberic of length 6. Will always start with a letter. */
+function uid(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+}
+
 export {
-  apply,
+  add,
+  addListener,
+  clear,
   control,
   Control,
+  getState,
   parent,
+  uid,
   watch
 }

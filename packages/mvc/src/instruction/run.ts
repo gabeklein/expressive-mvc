@@ -1,14 +1,8 @@
-import { apply } from '../control';
-import { issues } from '../helper/issues';
-import { defineProperty } from '../helper/object';
-import { mayRetry } from '../suspense';
+import { add } from '../control';
+import { define } from '../helper/object';
+import { attempt } from '../suspense';
 
 type Async<T = any> = (...args: any[]) => Promise<T>;
-
-export const Oops = issues({
-  DuplicatePending: (key) =>
-    `Invoked action ${key} but one is already active.`
-})
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.
@@ -24,22 +18,20 @@ function run (action: Async): typeof action & { active: boolean };
 function run <S> (action: Async<S>): typeof action & { active: boolean };
 
 function run<T extends Async>(task: T){
-  return apply<T>((key, control) => {
+  return add<T>((key, control) => {
     let pending = false;
 
     const invoke = async (...args: any[]) => {
       if(pending)
         return Promise.reject(
-          Oops.DuplicatePending(key)
+          new Error(`Invoked action ${key} but one is already active.`)
         )
 
       pending = true;
       control.update(key);
 
       try {
-        return await mayRetry(() => (
-          task.apply(control.subject, args)
-        ))
+        return await attempt(() => task.apply(control.subject, args))
       }
       finally {
         pending = false;
@@ -47,9 +39,7 @@ function run<T extends Async>(task: T){
       }
     }
 
-    control.state[key] = undefined;
-
-    defineProperty(invoke, "active", {
+    define(invoke, "active", {
       get: () => pending
     })
 

@@ -8,6 +8,35 @@ let memoize: any;
 let mount: (() => typeof unmount) | void;
 let unmount: (() => void) | void;
 
+beforeAll(() => {
+  Control.hooks = {
+    has(){
+      return (got) => {
+        got(context);
+      }
+    },
+    get(adapter){
+      return useMemo(refresh => {
+        const result = adapter(refresh, context);
+    
+        if(!result)
+          return () => null
+    
+        mount = result.mount;
+        return result.render;
+      })();
+    },
+    use(adapter){
+      return useMemo(refresh => {
+        const result = adapter(refresh);
+        
+        mount = result.mount;
+        return result.render;
+      });
+    }
+  }
+})
+
 afterEach(() => {
   if(unmount)
     unmount();
@@ -18,33 +47,6 @@ afterEach(() => {
   attempt = undefined;
   unmount = undefined;
 });
-
-beforeAll(() => {
-  Control.has = () => (got) => {
-    got(context);
-  }
-
-  Control.get = (adapter) => {
-    return useMemo(refresh => {
-      const result = adapter(refresh, context);
-  
-      if(!result)
-        return () => null
-  
-      mount = result.mount;
-      return result.render;
-    })();
-  }
-  
-  Control.use = (adapter) => {
-    return useMemo(refresh => {
-      const result = adapter(refresh);
-      
-      mount = result.mount;
-      return result.render;
-    });
-  }
-})
 
 type DispatchFunction = (next: (tick: number) => number) => void;
 

@@ -1,3 +1,4 @@
+import { mockAsync, mockPromise, timeout } from '../helper/testing';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -10,7 +11,7 @@ class Parent extends Model {
   child = use(Child);
 }
 
-it('will track recursively', async () => {
+it('will subscribe recursively', async () => {
   const parent = Parent.new();
   const mock = jest.fn((it: Parent) => {
     void it.value;
@@ -31,11 +32,97 @@ it('will track recursively', async () => {
   expect(mock).toHaveBeenCalledTimes(3)
 })
 
-it('will accept instance', async () => {
-  const child = Child.new();
-
+it('will subscribe deeply', async () => {
   class Parent extends Model {
-    child = use(child);
+    value = "foo";
+    empty = undefined;
+    child = use(Child);
+  }
+
+  class Child extends Model {
+    value = "foo"
+    grandchild = use(GrandChild);
+  }
+
+  class GrandChild extends Model {
+    value = "bar"
+  }
+
+  const parent = Parent.new();
+  const effect = jest.fn();
+  let promise = mockPromise();
+
+  parent.get(state => {
+    const { child } = state;
+    const { grandchild } = child;
+
+    effect(child.value, grandchild.value);
+    promise.resolve();
+  })
+
+  expect(effect).toBeCalledWith("foo", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.value = "bar";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child = new Child();
+  await promise;
+  
+  expect(effect).toBeCalledWith("foo", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.value = "bar";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "bar");
+  effect.mockClear();
+
+  promise = mockPromise();
+  parent.child.grandchild.value = "foo";
+  await promise;
+  
+  expect(effect).toBeCalledWith("bar", "foo");
+  effect.mockClear();
+});
+
+// Bug is covered by more generic test.
+// Test is to cover refactor but may be removed in future.
+it('will not duplicate update on assignment', () => {
+  class Parent extends Model {
+    child = use(Child);
+  }
+
+  class Child extends Model {
+    constructor(public foo = "foo"){
+      super();
+    }
+  }
+
+  const parent = Parent.new();
+  const onUpdate = jest.fn();
+
+  parent.set(onUpdate);
+  
+  expect(parent.child.foo).toBe("foo");
+
+  const child = Child.new("bar");
+
+  parent.child = child;
+
+  expect(parent.child.foo).toBe("bar");
+  expect(onUpdate).toBeCalledTimes(1);
+})
+
+it('will accept instance', async () => {
+  class Parent extends Model {
+    child = use(new Child());
   }
 
   const state = Parent.new();
@@ -171,6 +258,25 @@ it('will still subscribe if initially undefined', async () => {
   expect(mock).toBeCalledTimes(4)
 })
 
+it('will only reassign a matching model', () => {
+  class Child extends Model {}
+  class Unrelated extends Model {};
+  class Parent extends Model {
+    child = use(Child);
+  }
+
+  const parent = Parent.new("ID");
+
+  expect(() => {
+  parent.child = Unrelated.new("ID");
+}).toThrowError(`Parent-ID.child expected Model of type Child but got Unrelated-ID.`)
+
+  expect(() => {
+  // @ts-expect-error
+  parent.child = undefined;
+}).toThrowError(`Parent-ID.child expected Model of type Child but got undefined.`)
+})
+
 describe("object", () => {
   it("will track object values", async () => {
     class Test extends Model {
@@ -178,14 +284,14 @@ describe("object", () => {
     }
 
     const test = Test.new();
-    const effect = jest.fn((state: Test) => {
+    const effect = mockAsync((state: Test) => {
       void state.info.foo;
     });
 
     test.get(effect);
     test.info.foo = "bar";
 
-    await test.info.set(0);
+    await effect.next();
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -205,9 +311,11 @@ describe("object", () => {
 
     test.get(effect);
 
+    expect(effect).toBeCalledTimes(1);
+
     test.info.bar = "foo";
 
-    await test.info.set(0);
+    await timeout(1);
 
     expect(effect).toBeCalledTimes(1);
   })
@@ -245,82 +353,5 @@ describe("object", () => {
     expect(test.info.foo).toBe("bar");
   })
 
-  describe("on method", () => {
-    it("will callback on update", async () => {
-      class Test extends Model {
-        info = use({ foo: "foo" });
-      }
-  
-      const { info } = Test.new();
-      const gotFoo = jest.fn();
-
-      expect<{ foo: string }>(info);
-  
-      const done = info.get("foo", gotFoo, false);
-
-      info.foo = "bar";
-      await info.set(0);
-
-      expect(gotFoo).toHaveBeenCalledTimes(1);
-
-      /* will unsubscribe when done is called */
-
-      done();
-      info.foo = "baz";
-      await info.set(0);
-
-      expect(gotFoo).toHaveBeenCalledTimes(1);
-    })
-  
-    it("will watch keys added to record", async () => {
-      class Test extends Model {
-        info = use<string>({});
-      }
-
-      const { info } = Test.new();
-      const gotFoo = jest.fn();
-
-      expect<Record<string, string>>(info);
-  
-      info.get("foo", gotFoo);
-      info.foo = "bar";
-  
-      await info.set(0);
-      expect(gotFoo).toHaveBeenCalled();
-    })
-  })
-
-  describe("set method", () => {
-    it("will assign to property", () => {
-      class Test extends Model {
-        info = use({
-          foo: "foo"
-        });
-      }
-
-      const { info } = Test.new();
-
-      info.set("foo", "bar");
-      
-      expect(info.foo).toBe("bar");
-    })
-
-    it("will add value to observe", async () => {
-      class Test extends Model {
-        info = use<string>({});
-      }
-
-      const { info } = Test.new();
-      const gotFoo = jest.fn();
-  
-      await info.set("foo", "bar");
-      expect(info.foo).toBe("bar");
-
-      info.get("foo", gotFoo);
-      info.foo = "foo";
-  
-      await info.set(0);
-      expect(gotFoo).toHaveBeenCalled();
-    })
-  })
+  it.todo("will assign new object")
 })

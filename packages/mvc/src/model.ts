@@ -1,14 +1,13 @@
-import { Control, control } from './control';
-import { defineProperties, defineProperty } from './helper/object';
-import { get } from './model-get';
-import { use } from './model-use';
-import { getMethod, Observable, setMethod } from './observable';
+import { addListener, clear, Control, control, ID } from './control';
+import { define } from './helper/object';
+import { get, use } from './hooks';
+import { extract, update, effect } from './observe';
 
 import type { Callback } from '../types';
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 
-declare namespace Model {
+namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
   export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
@@ -19,10 +18,7 @@ declare namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T, U = Observable> = Extract<Exclude<keyof T, keyof U>, string>;
-
-  /** Including but not limited to `keyof T` which are not methods or defined by base Model. */
-  export type Event<T> = Key<T> | (string & {});
+  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null">, string>;
 
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
@@ -33,13 +29,7 @@ declare namespace Model {
    */
   export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
 
-  /**
-   * Reference to `this` without a subscription.
-   * Use to obtain full reference from a destructure.
-   */
-  export type Focus<T> = T & { is: T };
-
-  /** Exotic value, actual value is contained. */
+  /** Exotic value, where actual value is contained within. */
   export type Ref<T = any> = {
     (next: T): void;
     current: T | null;
@@ -48,24 +38,72 @@ declare namespace Model {
   /** Actual value stored in state. */
   export type Value<R> =
     R extends Ref<infer T> ? T :
-    R extends Observable ? Export<R> :
+    R extends Model ? Export<R> :
     R;
+
+  export type Select<T, K extends Key<T> = Key<T>> = K | K[];
+
+  type SelectOne<T, K extends Key<T>> = K;
+  type SelectFew<T, K extends Key<T>> = K[];
+
+  export type Exports<T, S> =
+    S extends SelectOne<T, infer P> ? T[P] : 
+    S extends SelectFew<T, infer P> ? Export<T, P> :
+    never;
+
+  export type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
+
+  export type SetCallback = (key: string) => Callback | void;
+
+  export type Predicate = (key: string) => boolean | void;
 }
 
-interface Model extends Observable {}
-
 class Model {
+  is!: this;
+
   constructor(id?: string | number){
-    new Control(this, id === undefined ? uid() : id);
+    define(this, "is", { value: this });
+    new Control(this, id);
   }
+
+  get(): Model.Export<this>;
+
+  get(effect: Model.Effect<this>): Callback;
+
+  get <P extends Model.Select<this>> (select: P): Model.Exports<this, P>;
+
+  get <P extends Model.Select<this>> (select: P, callback: Model.GetCallback<this, P>): Callback;
+
+  get <P extends Model.Key<this>> (
+    arg1?: P | P[] | Model.Effect<this>,
+    arg2?: Function){
+
+    return typeof arg1 == "function"
+      ? effect(this, arg1)
+      : extract(this, arg1, arg2);
+  }
+
+  /** Assert update is in progress. Returns a promise which resolves updated keys. */
+  set (): Promise<Model.Values<this> | false>;
+
+  /** Detect and/or modify updates to state. */
+  set (event: Model.SetCallback): Callback;
+
+  set (timeout: number, predicate?: Model.Predicate): Promise<Model.Values<this>>;
+
+  set(
+    arg1?: number | Model.SetCallback,
+    arg2?: Model.Predicate): any {
+
+    return typeof arg1 == "function"
+      ? control(this, () => addListener(this, k => k && arg1(k)))
+      : update(this, arg1, arg2);
+    }
 
   /** Mark this instance for garbage collection. */
   null(){
-    control(this, true).clear();
+    clear(this);
   }
-
-  static get = get;
-  static use = use;
 
   /**
    * Creates a new instance of this controller.
@@ -82,65 +120,49 @@ class Model {
     return instance;
   }
 
+  static use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): T;
+
+  static use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
+
+  static use(apply: any, repeat?: boolean){
+    return use(this, apply, repeat);
+  }
+
+  /** Fetch instance of this class from context. */
+  static get <T extends Model> (this: Model.Type<T>, ignoreUpdates?: true): T;
+
+  /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
+  static get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
+
+  static get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | Promise<R> | R>): get.NoVoid<R>;
+
+  static get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | null>): get.NoVoid<R> | null;
+
+  static get(this: Model.Type, argument?: boolean | get.Factory<any, any>){
+    return get(this, argument);
+  }
+
   /**
    * Static equivalent of `x instanceof this`.
-   * 
-   * Will determine if provided class is a subtype of this one. 
+   * Determines if provided class is a subtype of this one.
+   * If so, language server will make available all static
+   * methods and properties of this class.
    */
-  static is<T extends Model.Type>(
-    this: T, maybe: any): maybe is T {
-
-    return (
-      typeof maybe == "function" &&
-      maybe.prototype instanceof this
-    )
+  static is<T extends Model.Type>(this: T, maybe: any): maybe is T {
+    return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 }
 
-defineProperty(Model, "toString", {
+define(Model.prototype, "toString", {
+  value(){
+    return `${this.constructor}-${ID.get(this)}`;
+  }
+});
+
+define(Model, "toString", {
   value(){
     return this.name;
   }
 });
 
-defineProperties(Model.prototype, {
-  get: { value: getMethod },
-  set: { value: setMethod },
-  toString: {
-    configurable: true,
-    value(){
-      return `${this.constructor.name}-${control(this).id}`;
-    }
-  }
-});
-
 export { Model }
-
-/* TODO: Remove below on 1.0.0 release. */
-
-defineProperty(Model, "isTypeof", {
-  get(){
-    throw new Error("Model.isTypeof method was renamed. Use Model.is instead.")
-  }
-})
-
-defineProperties(Model.prototype, {
-  is: {
-    configurable: true,
-    get(){
-      throw new Error("Model.is property is now is only available from a hook.")
-    }
-  },
-  on: {
-    configurable: true,
-    writable: true,
-    value(){
-      throw new Error("Model.on() is deprecated. Use Model.get or Model.set instead.")
-    }
-  }
-});
-
-/** Random alphanumberic of length 6. Will always start with a letter. */
-export function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
-}

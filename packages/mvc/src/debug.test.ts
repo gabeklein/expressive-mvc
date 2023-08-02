@@ -1,6 +1,7 @@
 import { Debug } from './debug';
-import { Model } from './model';
 import { mockError } from './helper/testing';
+import { use } from './instruction/use';
+import { Model } from './model';
 
 describe("is", () => {
   class Test extends Model {}
@@ -16,11 +17,6 @@ describe("is", () => {
 
     expect(Model.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
-  })
-
-  it("will throw if called as isTypeof", () => {
-    // @ts-ignore
-    expect(() => Model.isTypeof).toThrow();
   })
 })
 
@@ -55,7 +51,7 @@ describe("PARENT", () => {
   it("will return immediate parent of Model", () => {
     class Child extends Model {}
     class Parent extends Model {
-      child = new Child();
+      child = use(Child);
     }
 
     const parent = Parent.new();
@@ -78,51 +74,11 @@ describe("UPDATE", () => {
     test.value1 = 2;
     test.value2 = 3;
 
-    const update = await test.set();
+    const update = await test.set(0);
     const updated = test[Debug.UPDATE];
 
-    expect(update).toStrictEqual(updated);
-
-    expect(updated).toContain("value1");
-    expect(updated).toContain("value2");
-  })
-
-  it.skip("will reveal cause for update", async () => {
-    const test = Test.new() as Debug<Test>;
-
-    let update: readonly string[] | undefined;
-    let fullUpdate: readonly string[] | false;
-
-    test.get(state => {
-      void state.value1;
-      void state.value3;
-
-      update = state[Debug.UPDATE];
-    })
-
-    expect(update).toBeUndefined();
-
-    test.value1 = 2;
-    test.value2 = 3;
-
-    fullUpdate = await test.set();
-
-    // sanity check
-    expect(update).not.toStrictEqual(fullUpdate);
-    expect(fullUpdate).toContain("value2");
-
-    expect(update).toContain("value1");
-    expect(update).not.toContain("value2");
-
-    test.value3 = 4;
-
-    fullUpdate = await test.set();
-
-    // sanity check
-    expect(fullUpdate).not.toContain("value1");
-
-    expect(update).toContain("value3");
-    expect(fullUpdate).toContain("value3");
+    expect(update).toBe(updated);
+    expect(updated).toEqual({ value1: 2, value2: 3 });
   })
 })
 
@@ -153,21 +109,38 @@ describe("toString", () => {
 describe("errors", () => {
   const error = mockError();
 
-  it("will log update errors in the console", async () => {
+  it("will throw sync error to the console", async () => {
     class Test extends Model {
       value = 1;
     };
 
-    const expected = new Error("Goodbye cruel world!")
     const test = Test.new();
 
-    test.get("value", () => {
-      throw expected;
-    }, false);
+    test.set(() => {
+      throw new Error("sync error");
+    });
+
+    const attempt = () => test.value = 2;
+
+    expect(attempt).toThrowError(`sync error`);
+  });
+
+  it("will log async error to the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const expected = new Error("async error")
+    const test = Test.new();
+
+    test.get($ => {
+      if($.value == 2)
+        throw expected;
+    })
 
     test.value = 2;
 
-    await test.set();
+    await test.set(0);
 
     expect(error).toBeCalledWith(expected);
   });

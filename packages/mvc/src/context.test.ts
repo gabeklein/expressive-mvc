@@ -1,4 +1,5 @@
-import { Context, Oops } from './context';
+import { Context } from './context';
+import { use } from './instruction/use';
 import { Model } from './model';
 
 class Example extends Model {};
@@ -49,13 +50,12 @@ it("will return undefined if not found", () => {
 
 it("will complain if multiple registered", () => {
   const context = new Context();
-  const expected = Oops.MultipleExist(Example);
   const fetch = () => context.get(Example);
 
   context.add(Example);
   context.add(Example);
 
-  expect(fetch).toThrowError(expected);
+  expect(fetch).toThrowError(`Did find Example in context, but multiple were defined.`);
 })
 
 it("will ignore if multiple but same", () => {
@@ -100,7 +100,7 @@ describe("include", () => {
   class Foo extends Model {}
   class Bar extends Model {}
   class FooBar extends Model {
-    foo = new Foo();
+    foo = use(Foo);
   }
 
   it("will register in batch", () => {
@@ -120,13 +120,13 @@ describe("include", () => {
     const foo = Foo.new();
     const bar = Bar.new();
 
-    const bazDidNew = jest.fn(() => bazDidDie);
+    const bazEffect = jest.fn(() => bazDidDie);
     const bazDidDie = jest.fn();
 
     class Baz extends Model {
       constructor(){
         super();
-        this.get(bazDidNew);
+        this.get(bazEffect);
       }
     }
 
@@ -143,7 +143,7 @@ describe("include", () => {
     expect(context.get(Bar)).not.toBe(bar);
 
     // expect Baz should have been force-replaced.
-    expect(bazDidNew).toBeCalledTimes(2);
+    expect(bazEffect).toBeCalledTimes(2);
     expect(bazDidDie).toBeCalled();
   })
   

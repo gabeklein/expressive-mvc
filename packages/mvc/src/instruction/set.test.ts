@@ -1,8 +1,8 @@
-import { Oops as Effect } from '../effect';
 import { mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
-import { Oops, set } from './set';
+import { set } from './set';
+import { use } from './use';
 
 const warn = mockWarn();
 
@@ -48,22 +48,25 @@ describe("callback", () => {
   it('will invoke callback on property put', async () => {
     class Subject extends Model {
       test = set<number>(1, value => {
-        callback(value + 1);
+        didAssign(value + 1);
       });
     }
 
     const state = Subject.new();
-    const callback = jest.fn()
-    const event = jest.fn();
+    const didAssign = jest.fn()
+    const didUpdate = jest.fn();
 
-    expect(callback).not.toBeCalled();
-    state.get("test", event, true);
+    expect(didAssign).not.toBeCalled();
+
+    state.set((key) => {
+      if(key == "test")
+        didUpdate();
+    });
 
     state.test = 2;
-    expect(callback).toBeCalledWith(3);
 
-    await expect(state).toUpdate()
-    expect(event).toBeCalledWith(2, ["test"]);
+    expect(didUpdate).toBeCalledTimes(1);
+    expect(didAssign).toBeCalledWith(3);
   })
 
   it('will invoke return-callback on overwrite', async () => {
@@ -115,22 +118,10 @@ describe("callback", () => {
     expect(() => state.property = "bar").not.toThrow();
   })
 
-  it('will throw on bad effect return', () => {
-    class Subject extends Model {
-      // @ts-ignore
-      property = set<any>(undefined, () => 3);
-    }
-
-    const expected = Effect.BadCallback();
-    const state = Subject.new();
-
-    expect(() => state.property = "bar").toThrow(expected);
-  })
-
   it('will not suspend own property access', () => {
     class Subject extends Model {
-      property = set<string>(undefined, () => {
-        propertyWas = this.property;
+      property = set<string>(undefined, (_, previous) => {
+        propertyWas = previous;
       });
     }
 
@@ -165,18 +156,36 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
   })
 
-  it('will block value if callback returns true', async () => {
-    class Subject extends Model {
-      test = set("foo", () => true);
+  it('will not call prior cleanup if supressed', async () => {
+    const cleanup = jest.fn();
+    const setter = jest.fn(value => {
+      return value === 3 ? false : cleanup;
+    });
+    
+    class Test extends Model {
+      value = set(1, setter);
     }
 
-    const state = Subject.new();
+    const subject = Test.new();
 
-    expect(state.test).toBe("foo");
-    state.test = "bar";
+    subject.value = 2;
 
-    await expect(state).toUpdate();
-    expect(state.test).toBe("foo");
+    expect(setter).toBeCalledWith(2, 1);
+    await expect(subject).toUpdate();
+    expect(subject.value).toBe(2);
+
+    // this update will be supressed by setter
+    subject.value = 3;
+
+    expect(setter).toBeCalledWith(3, 2);
+    await expect(subject).not.toUpdate();
+    expect(cleanup).not.toBeCalled();
+
+    subject.value = 4;
+
+    expect(setter).toBeCalledWith(4, 2);
+    expect(cleanup).toBeCalledTimes(1);
+    expect(cleanup).toBeCalledWith(4);
   })
 })
 
@@ -247,7 +256,7 @@ describe("factory", () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await test.set();
+    await test.set(0);
 
     expect(test.value).toBe("foobar");
   })
@@ -282,10 +291,22 @@ describe("factory", () => {
       value = set(promise);
     }
 
-    const instance = Test.new();
-    const expected = Oops.NotReady(instance, "value");
+    const instance = Test.new("ID");
 
-    expect(() => instance.value).toThrowError(expected);
+    expect(() => instance.value).toThrowError(`Test-ID.value is not yet available.`);
+    promise.resolve();
+  })
+
+  it("will suspend required-compute while still pending", () => {
+    const promise = mockPromise();
+
+    class Test extends Model {
+      value = set(promise, true);
+    }
+
+    const instance = Test.new();
+
+    expect(() => instance.value).toThrow(expect.any(Promise));
     promise.resolve();
   })
 
@@ -299,11 +320,11 @@ describe("factory", () => {
 
     const test = Test.new();
 
-    test.get(state => mock(state.value));
+    test.get($ => mock($.value));
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.set();
+    await test.set(0);
 
     expect(mock).toBeCalledWith("foobar");
   })
@@ -317,10 +338,10 @@ describe("factory", () => {
       }
     }
 
-    const failed = Oops.ComputeFailed("Test-ID", "memoized");
+    const attempt = () => Test.new("ID");
 
-    expect(() => Test.new("ID")).toThrowError("Foobar");
-    expect(warn).toBeCalledWith(failed.message);
+    expect(attempt).toThrowError("Foobar");
+    expect(warn).toBeCalledWith(`Generating initial value for Test-ID.memoized failed.`);
   })
 
   it("will suspend another factory", async () => {
@@ -345,10 +366,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set();
+    await test.set(0);
 
     name.resolve("World");
-    await test.set();
+    await test.set(0);
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(didEvaluate).toHaveReturnedWith("Hello World");
@@ -375,10 +396,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set();
+    await test.set(0);
 
     name.resolve("World");
-    await test.set();
+    await test.set(0);
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
@@ -390,7 +411,7 @@ describe("factory", () => {
     }
 
     class Test extends Model {
-      child = new Child();
+      child = use(Child);
       
       childValue = get(() => this.getChildValue);
 
@@ -450,25 +471,23 @@ describe("factory", () => {
   })
 
   it("will squash repeating suspense", async () => {
+    let pending = mockPromise();
+    let suspend = true;
+
+    const compute = jest.fn(() => {
+      if(suspend)
+        throw pending;
+
+      return `OK I'm unblocked.`;
+    });
+
     class Test extends Model {
-      message = set(this.getSum);
-      suspend = true;
-      pending = mockPromise();
-
-      getSum(){
-        didTryToEvaluate()
-
-        if(this.suspend)
-          throw this.pending;
-
-        return `OK I'm unblocked.`;
-      }
+      message = set(compute);
     }
 
     const test = Test.new();
     const didEvaluate = mockPromise<string>();
     
-    const didTryToEvaluate = jest.fn();
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.message);
     });
@@ -477,20 +496,23 @@ describe("factory", () => {
 
     expect(effect).toBeCalled();
     expect(effect).not.toHaveReturned();
-    expect(didTryToEvaluate).toBeCalledTimes(1);
+    expect(compute).toBeCalledTimes(1);
 
-    test.pending.resolve();
-    await test.set(0);
+    pending.resolve();
+    pending = mockPromise();
+
+    // TODO: why does this not work when `.set(0)` is used?
+    await test.set();
 
     // expect eval to run again because promise resolved.
-    expect(didTryToEvaluate).toBeCalledTimes(2);
+    expect(compute).toBeCalledTimes(2);
 
-    test.suspend = false;
-    test.pending.resolve();
+    suspend = false;
+    pending.resolve();
     await didEvaluate;
 
     expect(test.message).toBe("OK I'm unblocked.");
-    expect(didTryToEvaluate).toBeCalledTimes(3);
+    expect(compute).toBeCalledTimes(3);
     expect(effect).toBeCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);
   })
@@ -557,7 +579,7 @@ describe("factory", () => {
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.resolve();
-    await instance.set();
+    await instance.set(0);
 
     expect(didThrow).toBe("oh no");
   })

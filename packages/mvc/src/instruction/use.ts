@@ -1,13 +1,11 @@
-import { apply, Control, control, parent } from '../control';
-import { assign, create } from '../helper/object';
+import { add, Control, control, parent } from '../control';
+import { create } from '../helper/object';
 import { Model } from '../model';
-import { getMethod, Observable, setMethod } from '../observable';
-
 type Empty = Record<string, never>;
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T } & Observable;
-  export type Object<T extends {}> = T & Observable;
+  export type Record<T> = { [key: string | number]: T };
+  export type Object<T extends {}> = T;
 }
 
 /** Create a placeholder for specified Model type. */
@@ -36,46 +34,40 @@ function use(
   input?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
-  return apply((key, source) => {
-    const { state, subject } = source;
+  return add((key, source) => {
+    const { subject } = source;
 
     if(typeof input === "function")
       input = new input();
 
     function set(next: {} | undefined){
+      if(input instanceof Model && !(next instanceof input.constructor))
+        throw new Error(`${subject}.${key} expected Model of type ${input.constructor} but got ${next}.`)
+
       if(next instanceof Model){
         parent(next, subject);
         control(next, true);
       }
-      else if(next)
-        next = manage(next);
+      else if(next){
+        const subject = create(next);
+        const control = new Control(subject, false);
 
-      state[key] = next;
+        for(const key in control.state = next)
+          control.watch(key, {});
+
+        next = subject;
+      }
+
+      source.update(key, next);
 
       if(typeof argument == "function")
         argument(next);
-
-      return true;
     }
 
     set(input);
 
     return { set };
   })
-}
-
-function manage<T extends {}>(next: T){
-  const subject = assign(create(next), {
-    get: getMethod,
-    set: setMethod
-  });
-
-  const control = new Control<T>(subject, false);
-
-  for(const key in control.state = next)
-    control.watch(key, {});
-
-  return subject as T & Observable;
 }
 
 export { use }

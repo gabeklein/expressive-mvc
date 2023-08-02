@@ -1,13 +1,6 @@
-import { apply, Control } from '../control';
-import { createValueEffect } from '../effect';
-import { issues } from '../helper/issues';
-import { defineProperty } from '../helper/object';
+import { add, Control } from '../control';
+import { define } from '../helper/object';
 import { Model } from '../model';
-
-export const Oops = issues({
-  BadRefObject: () =>
-    `ref instruction does not support object which is not 'this'`
-})
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -74,34 +67,45 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  return apply<T>((key, source) => {
+  return add<T>((key, source) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg != "object")
-      value = createRef(source, key,
-        arg && createValueEffect(arg, arg2 !== false)
-      );
+    if(typeof arg != "object"){
+      let unSet: ((next: T) => void) | undefined;
 
-    else if(arg !== source.subject)
-      throw Oops.BadRefObject();
-    else
-      for(const key in source.state)
-        defineProperty(value, key,
-          typeof arg2 == "function" ? {
-            configurable: true,
-            get(){
-              const out = arg2(key);
-              defineProperty(value, key, { value: out });
-              return out;
-            }
-          } : {
-            value: createRef(source, key)
+      value = createRef(source, key, arg &&
+        function(this: any, value: any){
+          if(unSet)
+            unSet = void unSet(value);
+      
+          if(value !== null || arg2 === false){  
+            const out = arg.call(this, value);
+        
+            if(typeof out == "function")
+              unSet = out;
           }
-        )
+        }
+      );
+    }
+    else if(arg !== source.subject)
+      throw new Error("ref instruction does not support object which is not 'this'")
 
-    source.state[key] = undefined;
-    source.observers.set(key, new Set());
-    defineProperty(source.subject, key, { value });
+    for(const key in source.state)
+      define(value, key,
+        typeof arg2 == "function" ? {
+          configurable: true,
+          get(){
+            const out = arg2(key);
+            define(value, key, { value: out });
+            return out;
+          }
+        } : {
+          value: createRef(source, key)
+        }
+      )
+
+    source.update(key);
+    define(source.subject, key, { value });
   })
 }
 
@@ -114,7 +118,7 @@ function createRef(
 
   const refObjectFunction = src.ref(key, cb);
 
-  defineProperty(refObjectFunction, "current", {
+  define(refObjectFunction, "current", {
     set: refObjectFunction,
     get: () => src.state[key]
   })

@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { ref, Oops } from './ref';
+import { ref } from './ref';
 
 describe("property", () => {
   it('will fetch value from ref-object', async () => {
@@ -21,13 +21,17 @@ describe("property", () => {
     }
 
     const state = Subject.new();
-    const callback = jest.fn()
-  
-    state.get("ref", callback, true);
+    const didCallback = jest.fn();
+
+    state.set((key) => {
+      if(key == "ref")
+        didCallback();
+    })
+
     state.ref.current = "foobar";
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref"]);
+    expect(didCallback).toBeCalledWith();
   })
   
   it('will update "current" when property invoked', async () => {
@@ -36,13 +40,17 @@ describe("property", () => {
     }
 
     const state = Subject.new();
-    const callback = jest.fn()
-  
-    state.get("ref", callback, true);
+    const didUpdate = jest.fn();
+
+    state.set((key) => {
+      if(key == "ref")
+        didUpdate();
+    })
+
     state.ref("foobar");
   
     await expect(state).toUpdate();
-    expect(callback).toBeCalledWith("foobar", ["ref"]);
+    expect(didUpdate).toBeCalledWith();
   })
   
   it('will invoke callback', async () => {
@@ -56,12 +64,17 @@ describe("property", () => {
     const state = Subject.new();
   
     expect(didTrigger).not.toBeCalled();
-    state.get("ref", didUpdate, true);
+
+    state.set((key, ) => {
+      if(key == "ref")
+        didUpdate();
+    })
+
     state.ref.current = "foobar";
     expect(didTrigger).toBeCalledWith("foobar");
   
     await expect(state).toUpdate();
-    expect(didUpdate).toBeCalledWith("foobar", ["ref"]);
+    expect(didUpdate).toBeCalledWith();
   })
   
   it('will invoke return-callback on overwrite', async () => {
@@ -228,6 +241,6 @@ describe("mapped", () => {
       fields = ref({});
     }
 
-    expect(() => Test.new()).toThrowError(Oops.BadRefObject());
+    expect(() => Test.new()).toThrowError(`ref instruction does not support object which is not 'this'`);
   })
 })

@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { Oops, run } from './run';
+import { run } from './run';
 import { set } from './set';
 
 class Test extends Model {
@@ -40,7 +40,7 @@ it("will set active to true for run-duration", async () => {
 })
 
 it("will emit method key before/after activity", async () => {
-  let update: readonly string[] | false;
+  let update: Model.Values<Test> | false;
   const is = Test.new();
 
   expect(is.test.active).toBe(false);
@@ -49,22 +49,21 @@ it("will emit method key before/after activity", async () => {
   update = await is.set(0);
 
   expect(is.test.active).toBe(true);
-  expect(update).toContain("test");
+  expect(update).toHaveProperty("test");
 
   const output = await result;
   update = await is.set(0);
 
   expect(is.test.active).toBe(false);
-  expect(update).toContain("test");
+  expect(update).toHaveProperty("test");
   expect(output).toBe("foobar");
 })
 
 it("will throw immediately if already in-progress", () => {
   const { test } = Test.new();
-  const expected = Oops.DuplicatePending("test");
 
   test();
-  expect(() => test()).rejects.toThrowError(expected);
+  expect(() => test()).rejects.toThrowError(`Invoked action test but one is already active.`);
 })
 
 it("will throw and reset if action fails", async () => {
