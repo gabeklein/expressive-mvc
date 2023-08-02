@@ -99,7 +99,6 @@ class Control<T extends {} = any> {
   constructor(subject: T, id?: string | number | false){
     const followers = new Set<Control.OnUpdate>();
 
-
     ID.set(subject, id === undefined ? uid() : id);
     STATE.set(subject, this.state = {});
     FRAME.set(subject, this.frame = freeze({}));
