@@ -218,6 +218,77 @@ class Control<T extends {} = any> {
   }
 }
 
+function update(subject: {}, key: string, value?: unknown){
+  let frame = FRAME.get(subject)!;
+  const state = STATE.get(subject)!;
+  const observers = OBSERVERS.get(subject)!;
+  const any = FOLLOWERS.get(subject)!;
+
+  if(!any)
+    return;
+
+  const own = observers.get(key);
+
+  if(!own){
+    state[key] = value;
+    observers.set(key, new Set());
+    return;
+  }
+
+  if(isFrozen(frame)){
+    FRAME.set(subject, frame = {});
+
+    enqueue(() => {
+      freeze(frame);
+
+      any.forEach(cb => {
+        const notify = cb(undefined, subject);
+
+        if(notify)
+          enqueue(notify);
+      });
+    })
+  }
+
+  if(1 in arguments)
+    state[key] = value;
+
+  else if(key in frame)
+    return;
+  
+  frame[key] = state[key];
+
+  for(const subs of [own, any])
+    for(const cb of subs){
+      const notify = cb(key, subject);
+  
+      if(notify === null)
+        subs.delete(cb);
+      else if(notify)
+        enqueue(notify);
+    }
+}
+
+function createRef(model: Model, key: string, callback?: Control.OnChange){
+  const control = REGISTER.get(model)!;
+
+  return (next: any) => {
+    const previous = control.state[key];
+
+    if(next === previous)
+      return;
+
+    control.state[key] = next;
+
+    if(callback && callback.call(model, next, previous) === false){
+      control.state[key] = previous;
+      return;
+    }
+
+    control.update(key);
+  }
+}
+
 function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
   const any = FOLLOWERS.get(subject.is)!;
   any.add(fn);
@@ -338,8 +409,10 @@ export {
   clear,
   control,
   Control,
+  createRef,
   getState,
   parent,
   uid,
+  update,
   watch
 }
