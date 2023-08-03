@@ -1,6 +1,4 @@
 import { Context } from '../context';
-import { Control } from '../control';
-import { context, render } from '../helper/mocks';
 import { mockError, mockPromise, mockWarn } from '../helper/testing';
 import { Model } from '../model';
 import { get } from './get';
@@ -11,6 +9,11 @@ const error = mockError();
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
+
+afterAll(() => {
+  // @ts-ignore
+  delete get.context;
+});
 
 describe("fetch mode", () => {
   it("will allow overwrite", async () => {
@@ -76,6 +79,8 @@ describe("fetch mode", () => {
   })
   
   it("retuns undefined if required is false", () => {
+    get.context = () => () => {};
+
     class MaybeParent extends Model {}
     class StandAlone extends Model {
       maybe = get(MaybeParent, false);
@@ -580,110 +585,15 @@ describe("compute mode", () => {
   })
 })
 
-describe("context", () => {
-  class Foo extends Model {
-    bar = get(Bar);
-  }
-
-  class Bar extends Model {
-    value = "bar";
-
-    constructor(){
-      super();
-      context.add(this);
-    }
-  }
-
-  it("will attach peer from context", async () => {
-    const bar = Bar.new();
-    const hook = render(() => Foo.use().is.bar);
-
-    expect(hook.output).toBe(bar);
-  })
-
-  it("will subscribe peer from context", async () => {
-    const bar = Bar.new();
-    const hook = render(() => Foo.use().bar.value);
-
-    expect(hook.output).toBe("bar");
-
-    bar.value = "foo";
-    await hook.update();
-
-    expect(hook.output).toBe("foo");
-    expect(hook).toBeCalledTimes(2);
-  })
-
-  it("will return undefined if instance not found", () => {
-    class Foo extends Model {
-      bar = get(Bar, false);
-    }
-
-    const hook = render(() => Foo.use().bar);
-
-    expect(hook.output).toBeUndefined();
-  })
-
-  it("will throw if instance not found", () => {
-    class Foo extends Model {
-      bar = get(Bar);
-
-      constructor(){
-        super("ID");
-      }
-    }
-
-    const tryToRender = () => render(() => Foo.use());
-
-    expect(tryToRender).toThrowError(`Attempted to find an instance of Bar in context. It is required by Foo-ID, but one could not be found.`);
-  })
-
-  it("will prefer parent over context", () => {
-    class Parent extends Model {
-      child = use(Child);
-      value = "foo";
-    }
-
-    class Child extends Model {
-      parent = get(Parent);
-    }
-
-    context.add(Parent.new());
-
-    const { output } = render(() => Parent.use().is);
-
-    expect(output.child.parent).toBe(output);
-  })
-
-  it("will throw if parent required in-context", () => {
-    class Ambient extends Model {}
-    class Child extends Model {
-      expects = get(Ambient, true);
-    }
-
-    context.add(Ambient.new());
-  
-    const attempt = () => Child.new("ID");
-  
-    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Ambient.`);
-  })
-})
-
 // not yet implemented by Context yet; this is a hack.
 describe.skip("replaced source", () => {
   const context = new Context();
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.hooks = {
-      get(): any {},
-      use(): any {},
-      has(){
-        return (got) => {
-          gotContext = got;
-          got(context);
-        }
-      }
+    get.context = () => (got) => {
+      gotContext = got;
+      got(context);
     }
   })
 
@@ -749,16 +659,10 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    Control.hooks = {
-      get(): any {},
-      use(): any {},
-      has(){
-        return (got) => {
-          setTimeout(() => {
-            got(context);
-          }, 0);
-        }
-      }
+    get.context = () => (got) => {
+      setTimeout(() => {
+        got(context);
+      }, 0);
     }
   })
 

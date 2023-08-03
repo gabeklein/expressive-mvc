@@ -1,66 +1,33 @@
-import { Context, Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import { get as getInstruction, Model } from '@expressive/mvc';
 
-import { Pending, useLookup } from './provider';
+import { get } from './get';
+import { getContext, use } from './use';
 
-const Applied = new WeakMap<Model, Context>();
+declare module '@expressive/mvc' {
+  namespace Model {
+    export function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
-Control.hooks = {
-  use(adapter){
-    const state = useState(0);
-    const hook = useMemo(() => adapter(state[1]), []);
-    const applied = Applied.get(hook.instance);
+    export function use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): T;
 
-    if(applied)
-      useLookup();
-
-    else if(applied === undefined){
-      const pending = Pending.get(hook.instance);
-
-      if(pending){
-        const local = useLookup();
-
-        pending.forEach(init => init(local));
-        Applied.set(hook.instance, local);
-        Pending.delete(hook.instance);
-      }
-    }
-
-    useEffect(hook.mount, []);
-
-    return hook.render;
-  },
-  get(adapter){
-    const context = useLookup();
-    const state = useState(0);
-    const hook = useMemo(() => adapter(state[1], context), []);
-
-    if(!hook)
-      return null;
-
-    useEffect(hook.mount, []);
-
-    return hook.render();
-  },
-  has(model){
-    let pending = Pending.get(model)!;
-
-    if(!pending)
-      Pending.set(model, pending = []);
-
-    return (callback: (got: Context) => void) => {
-      const applied = Applied.get(model);
-
-      if(applied)
-        callback(applied);
-      else
-        pending.push(callback);
-    }
+    /** Fetch instance of this class from context. */
+    export function get <T extends Model> (this: Model.Type<T>, ignore?: true): T;
+  
+    /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
+    export function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
+  
+    export function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | Promise<R> | R>): get.NoVoid<R>;
+  
+    export function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | null>): get.NoVoid<R> | null;
   }
 }
 
+Model.get = get;
+Model.use = use;
+
+getInstruction.context = getContext
+
 export * from '@expressive/mvc';
 
-export { Model, Model as default };
+export { Model as default };
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";

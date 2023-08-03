@@ -1,7 +1,8 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
 
-import { Model, Provider, get } from '.';
+import { get, Model } from '.';
+import { Provider } from './provider';
 import { mockHook } from './tests';
 
 describe("useContext", () => {

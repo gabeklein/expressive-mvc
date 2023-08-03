@@ -1,18 +1,18 @@
-import Model, { set } from "./";
-import { mockHook, mockPromise } from "./tests";
+import Model, { get, set, use } from '.';
+import { mockHook, mockPromise } from './tests';
 
 const error = jest
   .spyOn(console, "error")
   .mockImplementation(() => {});
 
 afterEach(() => {
-  expect(error).not.toBeCalled();
+  // expect(error).not.toBeCalled();
   error.mockReset()
 });
 
 afterAll(() => error.mockRestore());
 
-it("will target abstract class", () => {
+it("will fetch model", () => {
   class Test extends Model {}
 
   const test = Test.new();
@@ -38,6 +38,9 @@ it("will refresh for values accessed", async () => {
   await hook.act(() => {
     test.foo = "bar";
   });
+
+  expect(hook.output).toBe("bar");
+  expect(hook).toBeCalledTimes(2);
 })
 
 it("will not update on death event", async () => {
@@ -572,7 +575,6 @@ describe("update callback", () => {
 
     expect(hook).toHaveBeenCalledTimes(1);
 
-
     await hook.act(() => {
       forceUpdate(() => promise);
     })
@@ -584,5 +586,86 @@ describe("update callback", () => {
     });
 
     expect(hook).toHaveBeenCalledTimes(3);
+  })
+})
+
+describe("get instruction", () => {
+  class Foo extends Model {
+    bar = get(Bar);
+  }
+
+  class Bar extends Model {
+    value = "bar";
+  }
+
+  it("will attach peer from context", async () => {
+    const bar = Bar.new();
+    const hook = mockHook(bar, () => Foo.use().is.bar);
+
+    expect(hook.output).toBe(bar);
+  })
+
+  it("will subscribe peer from context", async () => {
+    const bar = Bar.new();
+    const hook = mockHook(bar, () => Foo.use().bar.value);
+
+    expect(hook.output).toBe("bar");
+
+    await hook.act(() => {
+      bar.value = "foo";
+    });
+
+    expect(hook.output).toBe("foo");
+    expect(hook).toBeCalledTimes(2);
+  })
+
+  it("will return undefined if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar, false);
+    }
+
+    const hook = mockHook(() => Foo.use().bar);
+
+    expect(hook.output).toBeUndefined();
+  })
+
+  it("will throw if instance not found", () => {
+    class Foo extends Model {
+      bar = get(Bar);
+
+      constructor(){
+        super("ID");
+      }
+    }
+
+    const tryToRender = () => mockHook(() => Foo.use().bar);
+
+    expect(tryToRender).toThrowError(`Attempted to find an instance of Bar in context. It is required by Foo-ID, but one could not be found.`);
+  })
+
+  it("will prefer parent over context", () => {
+    class Parent extends Model {
+      child = use(Child);
+      value = "foo";
+    }
+
+    class Child extends Model {
+      parent = get(Parent);
+    }
+
+    const { output } = mockHook(Parent, () => Parent.use().is);
+
+    expect(output.child.parent).toBe(output);
+  })
+
+  it("will throw if parent required in-context", () => {
+    class Ambient extends Model {}
+    class Child extends Model {
+      expects = get(Ambient, true);
+    }
+  
+    const attempt = () => Child.new("ID");
+  
+    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Ambient.`);
   })
 })

@@ -1,4 +1,3 @@
-import { Context } from './context';
 import { create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
 import { Model } from './model';
 
@@ -38,25 +37,6 @@ declare namespace Control {
    */
   type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
 
-  type RequestRefresh = (update: (tick: number) => number) => void;
-
-  type GetAdapter<T> = (refresh: RequestRefresh, context: Context) => {
-    mount: () => (() => void) | void;
-    render: () => T;
-  } | void;
-
-  type UseAdapter<T extends Model, R> = (refresh: RequestRefresh) => {
-    instance: T;
-    mount: () => (() => void) | void;
-    render: R;
-  }
-
-  interface Hooks {
-    get: <T> (adapter: GetAdapter<T>) => T | null;
-    use: <T extends Model, R>(adapter: UseAdapter<T, R>) => R;
-    has: (target: Model) => (callback: (got: Context) => void) => void;
-  }
-
   type OnUpdate<T extends {} = any> =
     (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
 
@@ -77,7 +57,7 @@ const FRAME = new WeakMap<{}, { [key: string]: unknown }>();
 export const ID = new WeakMap<{}, string | number | false>();
 
 class Control<T extends {} = any> {
-  static hooks: Control.Hooks;
+  static watch = watch;
   static for = control;
   static add = add;
 

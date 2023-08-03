@@ -2,6 +2,7 @@ import { add, Control, parent, watch } from '../control';
 import { Model } from '../model';
 import { suspense } from '../suspense';
 
+import type { Context } from '../context';
 import type { Callback } from '../../types';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -12,6 +13,8 @@ declare namespace get {
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
   type Source<T extends Model = Model> = (callback: (x: T) => void) => void;
+
+  export function context(target: Model): (callback: (got: Context) => void) => void
 }
 
 /**
@@ -78,9 +81,12 @@ function get<R, T extends Model>(
 
       if(!hasParent){
         if(arg1 === true)
-          throw new Error(`New ${subject} created standalone but requires parent of type ${arg0}.`)
+          throw new Error(`New ${subject} created standalone but requires parent of type ${arg0}.`);
 
-        const fetch = Control.hooks.has(subject);
+        if(!get.context)
+          throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
+
+        const fetch = get.context(subject);
 
         source = got => {
           fetch(context => {

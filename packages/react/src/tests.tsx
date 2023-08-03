@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
-import { act, create } from 'react-test-renderer';
 import React, { Suspense } from 'react';
+import { act, create } from 'react-test-renderer';
 
 import { Provider } from './provider';
 

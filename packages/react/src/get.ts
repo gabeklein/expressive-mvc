@@ -1,53 +1,7 @@
-import { Control, watch } from "./control";
-import { Model } from "./model";
+import { Control, Model } from '@expressive/mvc';
+import { useEffect, useMemo, useState } from 'react';
 
-function use <T extends Model> (
-  model: Model.New<T>,
-  apply?: Model.Values<T> | ((instance: T) => void),
-  repeat?: boolean){
-
-  const render = Control.hooks.use(dispatch => {
-    const instance = model.new();
-    const local = watch(instance, () => onUpdate);
-    const refresh = () => dispatch(x => x+1);
-
-    let onUpdate: (() => void) | undefined | null;
-    let shouldApply = !!apply;
-
-    return {
-      instance,
-      mount(){
-        onUpdate = refresh;
-        return () => {
-          onUpdate = null;
-          instance.null();
-        }
-      },
-      render(props?: Model.Values<T> | ((instance: T) => void)){
-        if(shouldApply){
-          onUpdate = undefined;
-
-          if(typeof props == "function")
-            props(instance);
-
-          else if(props)
-            for(const key in instance)
-              if(props.hasOwnProperty(key))
-                instance[key] = (props as any)[key];
-
-          if(!repeat)
-            shouldApply = false;
-
-          instance.set().then(() => onUpdate = refresh);
-        }
-
-        return local;
-      }
-    }
-  });
-
-  return render(apply);
-}
+import { useLookup } from './provider';
 
 declare namespace get {
   /** Type may not be undefined - instead will be null.  */
@@ -75,21 +29,23 @@ declare namespace get {
 }
 
 function get<T extends Model, R>(
-  model: Model.Type<T>,
+  this: Model.Type<T>,
   argument?: boolean | get.Factory<T, any>
 ){
-  return Control.hooks.get((dispatch, context) => {
-    const notFound = () => new Error(`Could not find ${model} in context.`);
-    const refresh = () => dispatch(x => x+1);
+  const context = useLookup();
+  const state = useState(0);
+  const hook = useMemo(() => {
+    const notFound = () => new Error(`Could not find ${this} in context.`);
+    const refresh = () => state[1](x => x+1);
     let onUpdate: (() => void) | undefined | null;
     let value: any;
 
     if(typeof argument !== "function"){
-      const got = context.get(model);
+      const got = context.get(this);
 
       if(got)
         value = argument === undefined
-          ? watch(got, k => k ? onUpdate : undefined)
+          ? Control.watch(got, k => k ? onUpdate : undefined)
           : got;
       else if(argument !== false)
         throw notFound();
@@ -109,7 +65,7 @@ function get<T extends Model, R>(
     let factory: true | undefined;
     let proxy!: T;
 
-    const found = context.get(model);
+    const found = context.get(this);
 
     if(!found)
       throw notFound();
@@ -140,7 +96,7 @@ function get<T extends Model, R>(
         refresh();
     };
 
-    proxy = watch(found, () => factory ? null : onUpdate);
+    proxy = Control.watch(found, () => factory ? null : onUpdate);
     getValue = () => compute.call(proxy, proxy, forceUpdate);
     value = getValue();
 
@@ -153,7 +109,7 @@ function get<T extends Model, R>(
     if(typeof value == "function"){
       const get = value;
       
-      watch(proxy, () => onUpdate);
+      Control.watch(proxy, () => onUpdate);
 
       factory = true;
       compute = () => get();
@@ -187,7 +143,14 @@ function get<T extends Model, R>(
         throw new Promise<void>(res => suspense = res);  
       }
     }
-  })
+  }, []);
+
+  if(!hook)
+    return null;
+
+  useEffect(hook.mount, []);
+
+  return hook.render();
 }
 
-export { use, get }
+export { get }

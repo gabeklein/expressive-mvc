@@ -1,5 +1,5 @@
-import Model from "./";
-import { mockHook } from "./tests";
+import Model from '.';
+import { mockHook } from './tests';
 
 const error = jest
   .spyOn(console, "error")
@@ -68,7 +68,8 @@ it("will destroy instance of given class", async () => {
   expect(didDestroy).not.toBeCalled();
 
   hook.unmount();
-  await hook.output.set(0);
+
+  await hook.output.set(10);
 
   expect(didDestroy).toBeCalled();
 })
