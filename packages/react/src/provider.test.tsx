@@ -2,9 +2,9 @@ import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
 import { get, Model, set } from '.';
+import { mockAsync } from './mocks';
 import { Provider } from './provider';
 import { Consumer } from './consumer';
-import { mockAsync } from './tests';
 
 const timeout = (ms: number) => new Promise(res => setTimeout(res, ms));
 

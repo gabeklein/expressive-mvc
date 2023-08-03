@@ -1,4 +1,4 @@
-import { mockPromise, mockWarn } from '../helper/testing';
+import { mockPromise, mockWarn } from '../helper/mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { set } from './set';

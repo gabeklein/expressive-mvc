@@ -1,4 +1,4 @@
-import { mockAsync, mockPromise, timeout } from '../helper/testing';
+import { mockAsync, mockPromise, timeout } from '../helper/mocks';
 import { Model } from '../model';
 import { use } from './use';
 

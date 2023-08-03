@@ -1,5 +1,5 @@
 import { Debug } from './debug';
-import { mockError } from './helper/testing';
+import { mockError } from './helper/mocks';
 import { use } from './instruction/use';
 import { Model } from './model';
 
