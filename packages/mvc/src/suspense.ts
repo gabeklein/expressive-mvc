@@ -1,19 +1,19 @@
-import { addListener, getState } from './control';
+import { control } from './control';
 import { assign } from './helper/object';
 import { Model } from './model';
 
 export function suspense(subject: Model, key: string): Promise<void> & Error {
-  const state = getState(subject);
+  const self = control(subject);
   const error = new Error(`${subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
-      if(state[key] !== undefined){
+      if(self.state[key] !== undefined){
         remove();
         resolve();
       }
     }
 
-    const remove = addListener(subject, k => {
+    const remove = self.addListener(k => {
       if(k === key)
         return check;
 

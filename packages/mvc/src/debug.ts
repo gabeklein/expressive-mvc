@@ -1,4 +1,4 @@
-import { Control, control, getState, parent } from './control';
+import { Control, control, parent } from './control';
 import { Model } from './model';
 
 const STATE = "__state";
@@ -14,7 +14,7 @@ Object.defineProperties(Model.prototype, {
   },
   [STATE]: {
     get(this: Model){
-      return { ...getState(this) };
+      return { ...control(this).state };
     }
   },
   [UPDATE]: {

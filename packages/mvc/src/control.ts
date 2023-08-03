@@ -50,10 +50,6 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>(),
 }
 
-const OBSERVERS = new WeakMap<{}, Map<string, Set<Control.OnUpdate>>>();
-const FOLLOWERS = new WeakMap<{}, Set<Control.OnUpdate>>();
-const STATE = new WeakMap<{}, { [key: string]: unknown }>();
-const FRAME = new WeakMap<{}, { [key: string]: unknown }>();
 export const ID = new WeakMap<{}, string | number | false>();
 
 class Control<T extends {} = any> {
@@ -69,26 +65,17 @@ class Control<T extends {} = any> {
       LIFECYCLE[event].delete(callback);
   }
 
-  public subject: T;
+  public state: { [property: string]: unknown } = {};
+  public frame: { [property: string]: unknown } = freeze({});
 
-  public state: { [property: string]: unknown };
-  public frame: { [property: string]: unknown };
+  public followers = new Set<Control.OnUpdate>();
+  public observers = new Map<string, Set<Control.OnUpdate>>([
+    ["", this.followers],
+  ]);
 
-  public observers: Map<string, Set<Control.OnUpdate>>;
-
-  constructor(subject: T, id?: string | number | false){
-    const followers = new Set<Control.OnUpdate>();
-
+  constructor(public subject: T, id?: string | number | false){
     ID.set(subject, id === undefined ? uid() : id);
-    STATE.set(subject, this.state = {});
-    FRAME.set(subject, this.frame = freeze({}));
-
-    FOLLOWERS.set(subject, followers);
-    OBSERVERS.set(subject, this.observers = new Map());
     REGISTER.set(subject, this);
-
-    this.subject = subject;
-    this.observers.set("", followers);
 
     if(id !== false)
       PENDING.set(this, new Set(LIFECYCLE.ready));
@@ -195,29 +182,23 @@ class Control<T extends {} = any> {
       this.update(key);
     }
   }
-}
 
-function addListener<T extends Model>(subject: T, fn: Control.OnUpdate<T>){
-  const any = FOLLOWERS.get(subject.is)!;
-  any.add(fn);
-  return () => any.delete(fn);
-}
-
-function clear(subject: Model){
-  const self = REGISTER.get(subject)!;
-  const notify = (subs: Set<Control.OnUpdate>) => {
-    subs.forEach(fn => {
-      const cb = fn(null, self);
-      cb && cb();
-    });
+  addListener<T extends Model>(fn: Control.OnUpdate<T>){
+    this.followers.add(fn);
+    return () => this.followers.delete(fn);
   }
 
-  self.observers.forEach(notify);
-  self.observers.clear();
-}
+  clear(){
+    const notify = (subs: Set<Control.OnUpdate>) => {
+      subs.forEach(fn => {
+        const cb = fn(null, this);
+        cb && cb();
+      });
+    }
 
-function getState(subject: Model){
-  return STATE.get(subject.is)!;
+    this.observers.forEach(notify);
+    this.observers.clear();
+  }
 }
 
 function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
@@ -282,11 +263,11 @@ function enqueue(event: Callback){
   dispatch.add(event);
 }
 
-function parent(child: unknown, assign?: {}){
+function parent(from: unknown, assign?: {}){
   if(!assign)
-    return PARENTS.get(child as Model);
+    return PARENTS.get(from as Model);
 
-  PARENTS.set(child as Model, assign as Model);
+  PARENTS.set(from as Model, assign as Model);
 }
 
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
@@ -313,11 +294,8 @@ function uid(){
 
 export {
   add,
-  addListener,
-  clear,
   control,
   Control,
-  getState,
   parent,
   uid,
   watch

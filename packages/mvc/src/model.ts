@@ -1,4 +1,4 @@
-import { addListener, clear, Control, control, ID } from './control';
+import { Control, control, ID } from './control';
 import { define } from './helper/object';
 import { extract, update, effect } from './observe';
 
@@ -96,13 +96,13 @@ class Model {
     arg2?: Model.Predicate): any {
 
     return typeof arg1 == "function"
-      ? control(this, () => addListener(this, k => k && arg1(k)))
+      ? control(this, c => c.addListener(k => k && arg1(k)))
       : update(this, arg1, arg2);
     }
 
   /** Mark this instance for garbage collection. */
   null(){
-    clear(this);
+    control(this).clear();
   }
 
   /**

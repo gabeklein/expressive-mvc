@@ -1,5 +1,5 @@
 import { Callback } from '../types';
-import { addListener, control, watch } from './control';
+import { control, watch } from './control';
 import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
 import { attempt } from './suspense';
@@ -53,7 +53,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
 
   invoke();
 
-  return addListener(target, key => {
+  return self.addListener(key => {
     if(select.includes(key as P))
       return invoke;
   });
@@ -73,7 +73,7 @@ export function update<T extends Model>(
   
       const callback = () => resolve(self.frame);
   
-      const remove = addListener(target, (key) => {
+      const remove = self.addListener((key) => {
         if(typeof arg2 !== "function" || key && arg2(key) === true){
           remove();
   
@@ -95,7 +95,7 @@ export function update<T extends Model>(
 export function effect<T extends Model>(
   source: T, callback: Model.Effect<T>){
 
-  return control(source, () => {
+  return control(source, self => {
     let unSet: Callback | Promise<void> | void;
     let busy = false;
 
@@ -122,7 +122,7 @@ export function effect<T extends Model>(
     let refresh: (() => void) | null;
 
     source = watch(source, () => refresh);
-    addListener(source, key => 
+    self.addListener(key => 
       key === null || refresh === null ? refresh : undefined
     );
 
