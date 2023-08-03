@@ -2,7 +2,7 @@ import React from 'react';
 import { create } from 'react-test-renderer';
 
 import { Model, Provider, get } from '.';
-import { mockAsyncHook, mockHook } from './tests';
+import { mockHook } from './tests';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
@@ -11,11 +11,11 @@ describe("useContext", () => {
     }
   
     const test = Test.new();
-    const render = await mockAsyncHook(() => Test.get().foo, test);
+    const render = mockHook(test, () => Test.get().foo);
   
-    expect(render.current).toBe("foo");
+    expect(render.output).toBe("foo");
 
-    await render.waitFor(() => {
+    await render.act(() => {
       test.foo = "bar"
     });
   })
@@ -25,20 +25,20 @@ describe("useContext", () => {
       value = 1;
     }
   
-    const instance = Test.new();
-    const render = mockHook(() => Test.get(), instance);
+    const test = Test.new();
+    const render = mockHook(test, () => Test.get());
   
-    expect(render.current).toBeInstanceOf(Test);
-    expect(render.current.value).toBe(1);
+    expect(render.output).toBeInstanceOf(Test);
+    expect(render.output.value).toBe(1);
   })
 
   it("will return null if factory does", () => {
     class Test extends Model {}
   
-    const instance = Test.new();
-    const render = mockHook(() => Test.get(() => null), instance);
+    const test = Test.new();
+    const render = mockHook(test, () => Test.get(() => null));
 
-    expect(render.current).toBe(null);
+    expect(render.output).toBe(null);
   })
   
   it("will run initial callback syncronously", async () => {
@@ -94,18 +94,18 @@ describe("useModel", () => {
 
     let test!: Test;
   
-    const render = await mockAsyncHook(() => {
+    const render = mockHook(() => {
       test = Test.use();
       return test.value;
     });
 
-    expect(render.current).toBe(1);
+    expect(render.output).toBe(1);
 
-    await render.waitFor(() => {
+    await render.act(() => {
       test.value = 2;
     });
 
-    expect(render.current).toBe(2);
+    expect(render.output).toBe(2);
   })
 })
 
