@@ -50,32 +50,47 @@ export function mockHook<T>(
       </Provider>
     );
 
-  create(element);
-
-  async function waitFor(fn: () => void | Promise<void>){
-    return act(async () => {
-      const pending = new Promise(res => waiting = res);
-      await new Promise(res => setTimeout(res, 10));
-      await fn();
-      await pending;
-    })
-  }
+  const mounted = create(element);
 
   return {
     get current(){
       return value
     },
-    waitFor
+    waitFor(fn?: () => void | Promise<void>){
+      return act(async () => {
+        const pending = new Promise(res => waiting = res);
+        await new Promise(res => setTimeout(res, 10));
+        if(fn)
+          await fn();
+        await pending;
+      })
+    },
+    update(to?: (props: {}) => T){
+      if(to){
+        callback = to;
+        mounted.update(element);
+      }
+
+      return this.waitFor();
+    },
+    unmount(){
+      mounted.unmount();
+      return new Promise(res => setTimeout(res, 10));
+    },
   }
 }
 
-export async function mockAsyncHook<T>(
-  callback: (props: {}) => T,
-  provide?: Model){
+export interface MockPromise<T> extends Promise<T> {
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: any) => void;
+}
 
-  const render = mockHook(callback, provide);
+export function mockPromise<T = void>(){
+  const methods = {} as MockPromise<T>;
+  const promise = new Promise((res, rej) => {
+    methods.resolve = res;
+    methods.reject = rej;
+  }) as MockPromise<T>;
 
-  await new Promise(res => setTimeout(res, 0));
-  
-  return render;
+  return Object.assign(promise, methods);
 }

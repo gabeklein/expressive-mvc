@@ -3,6 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Pending, useLookup } from './provider';
 
+// declare module '@expressive/mvc' {
+//   namespace Model {
+//     export function hello<T extends Model>(this: Model.Type<T>): T;
+//   }
+// }
+
 const Applied = new WeakMap<Model, Context>();
 
 Control.hooks = {

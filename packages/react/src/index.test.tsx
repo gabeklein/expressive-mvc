@@ -2,7 +2,7 @@ import React from 'react';
 import { create } from 'react-test-renderer';
 
 import { Model, Provider, get } from '.';
-import { mockAsyncHook, mockHook } from './tests';
+import { mockHook } from './tests';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
@@ -11,7 +11,7 @@ describe("useContext", () => {
     }
   
     const test = Test.new();
-    const render = await mockAsyncHook(() => Test.get().foo, test);
+    const render = mockHook(() => Test.get().foo, test);
   
     expect(render.current).toBe("foo");
 
@@ -94,7 +94,7 @@ describe("useModel", () => {
 
     let test!: Test;
   
-    const render = await mockAsyncHook(() => {
+    const render = await mockHook(() => {
       test = Test.use();
       return test.value;
     });
