@@ -50,13 +50,16 @@ function get<T extends Model, R>(
       else if(argument !== false)
         throw notFound();
 
-      return {
-        mount(){
+      return () => {
+        useEffect(() => {
           onUpdate = refresh;
-          return () => onUpdate = null;
-        },
-        render: () => value
-      };
+          return () => {
+            onUpdate = null;
+          };
+        }, []);
+
+        return value;
+      }
     }
 
     let compute = argument;
@@ -129,28 +132,22 @@ function get<T extends Model, R>(
           didUpdate(next);
       };
 
-    return {
-      mount: () => () => {
+    return () => {
+      useEffect(() => () => {
         onUpdate = null;
-      },
-      render: () => {
-        if(value !== undefined)
-          return value;
-  
-        if(onUpdate)
-          return null;
+      }, []);
 
-        throw new Promise<void>(res => suspense = res);  
-      }
+      if(value !== undefined)
+        return value;
+
+      if(onUpdate)
+        return null;
+
+      throw new Promise<void>(res => suspense = res);  
     }
   }, []);
 
-  if(!hook)
-    return null;
-
-  useEffect(hook.mount, []);
-
-  return hook.render();
+  return hook ? hook() : null;
 }
 
 export { get }
