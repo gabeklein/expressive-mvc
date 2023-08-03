@@ -73,8 +73,11 @@ class Control<T extends {} = any> {
     ["", this.followers],
   ]);
 
+  id: string;
+
   constructor(public subject: T, id?: string | number | false){
-    ID.set(subject, id === undefined ? uid() : id);
+    this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
+
     REGISTER.set(subject, this);
 
     if(id !== false)

@@ -1,6 +1,6 @@
-import { Control, control, ID } from './control';
+import { Control, control } from './control';
 import { define } from './helper/object';
-import { extract, update, effect } from './observe';
+import { effect, extract, update } from './observe';
 
 import type { Callback } from '../types';
 
@@ -18,7 +18,7 @@ namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null">, string>;
+  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null" | "is">, string>;
 
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
@@ -133,7 +133,7 @@ class Model {
 
 define(Model.prototype, "toString", {
   value(){
-    return `${this.constructor}-${ID.get(this)}`;
+    return control(this).id;
   }
 });
 
