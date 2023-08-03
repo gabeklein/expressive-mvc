@@ -6,6 +6,7 @@ import { extract, update, effect } from './observe';
 import type { Callback } from '../types';
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
+type Class = new (...args: any[]) => any;
 
 namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
@@ -112,17 +113,17 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends new (...args: any[]) => any> (
-    this: T, ...args: ConstructorParameters<T>): InstanceOf<T> {
-
+  static new <T extends Class> (
+    this: T, ...args: ConstructorParameters<T>
+  ): InstanceOf<T> {
     const instance = new this(...args);
     control(instance, true);
     return instance;
   }
 
-  static use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): T;
-
   static use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
+
+  static use <T extends Model> (this: Model.New<T>, callback?: (instance: T) => void, repeat?: boolean): T;
 
   static use(apply: any, repeat?: boolean){
     return use(this, apply, repeat);
