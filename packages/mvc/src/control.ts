@@ -65,15 +65,14 @@ class Control<T extends {} = any> {
       LIFECYCLE[event].delete(callback);
   }
 
+  public id: string;
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  public followers = new Set<Control.OnUpdate>();
-  public observers = new Map<string, Set<Control.OnUpdate>>([
+  private followers = new Set<Control.OnUpdate>();
+  private observers = new Map<string, Set<Control.OnUpdate>>([
     ["", this.followers],
   ]);
-
-  id: string;
 
   constructor(public subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -138,10 +137,9 @@ class Control<T extends {} = any> {
   }
 
   update(key: string, value?: unknown){
-    let { frame, observers, state, subject } = this;
-    const any = observers.get("");
+    let { followers, frame, observers, state, subject } = this;
 
-    if(!any)
+    if(!observers.size)
       return;
 
     const own = observers.get(key);
@@ -158,7 +156,7 @@ class Control<T extends {} = any> {
       enqueue(() => {
         freeze(frame);
 
-        any.forEach(cb => {
+        followers.forEach(cb => {
           const notify = cb(undefined, subject);
 
           if(notify)
@@ -175,7 +173,7 @@ class Control<T extends {} = any> {
     
     frame[key] = state[key];
 
-    for(const subs of [own, any])
+    for(const subs of [own, followers])
       for(const cb of subs){
         const notify = cb(key, subject);
     
