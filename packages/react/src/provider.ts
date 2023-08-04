@@ -47,9 +47,6 @@ function Provider<T extends Provider.Item>(
 
   const ambient = useLookup();
   const context = useMemo(() => ambient.push(), []);
-  const reject = (value: any) => {
-    throw new Error(`Provider expects a Model instance or class but got ${value}.`);
-  }
 
   if(!included)
     reject(included);
@@ -79,6 +76,10 @@ function Provider<T extends Provider.Item>(
   return createElement(LookupContext.Provider, { value: context, key: context.key },
     fallback === false ? children : createElement(Suspense, { fallback }, children)
   );
+}
+
+function reject(argument: any){
+  throw new Error(`Provider expects a Model instance or class but got ${argument}.`);
 }
 
 export { Provider };
