@@ -1,10 +1,8 @@
 import { add, Control, control, parent } from '../control';
 import { create } from '../helper/object';
 import { Model } from '../model';
-type Empty = Record<string, never>;
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T };
   export type Object<T extends {}> = T;
 }
 
@@ -23,9 +21,6 @@ function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
  * already active.
  **/
 function use <T extends Model> (model: T, ready?: (i: T) => void): T;
-
-/** Create a managed record with observable entries. */
-function use <T = any, C = use.Record<T>> (record: Empty, ready?: (object: C) => void): C;
 
 /** Create a managed object with observable entries. */
 function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
