@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './provider';
 
-function get<T extends Model, R>(
+export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.get.Factory<T, any>
 ){
@@ -122,5 +122,3 @@ function get<T extends Model, R>(
 
   return hook ? hook() : null;
 }
-
-export { get }

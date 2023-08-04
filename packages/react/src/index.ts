@@ -1,7 +1,7 @@
-import { get as getInstruction, Model } from '@expressive/mvc';
+import { get, Model } from '@expressive/mvc';
 
-import { get } from './get';
-import { getContext, use } from './use';
+import { getContext, useLocal } from './useLocal';
+import { useRemote } from './useRemote';
 
 /** Type may not be undefined - instead will be null.  */
 type NoVoid<T> = T extends undefined | void ? null : T;
@@ -54,10 +54,10 @@ declare module '@expressive/mvc' {
   }
 }
 
-Model.get = get;
-Model.use = use;
+Model.get = useRemote;
+Model.use = useLocal;
 
-getInstruction.context = getContext
+get.context = getContext
 
 export * from '@expressive/mvc';
 

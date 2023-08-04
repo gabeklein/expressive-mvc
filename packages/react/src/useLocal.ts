@@ -5,7 +5,7 @@ import { Pending, useLookup } from './provider';
 
 export const Applied = new WeakMap<Model, Context>();
 
-export function use <T extends Model> (
+export function useLocal <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
