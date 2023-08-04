@@ -117,6 +117,26 @@ class Control<T extends {} = any> {
     });
   }
 
+  ref(key: string, callback?: Control.OnChange){
+    const { state, subject } = this;
+
+    return (next: any) => {
+      const previous = state[key];
+
+      if(next === previous)
+        return;
+
+      state[key] = next;
+
+      if(callback && callback.call(subject, next, previous) === false){
+        state[key] = previous;
+        return;
+      }
+
+      this.update(key);
+    }
+  }
+
   update(key: string, value?: unknown){
     let { frame, observers, state, subject } = this;
     const any = observers.get("");
@@ -164,26 +184,6 @@ class Control<T extends {} = any> {
         else if(notify)
           enqueue(notify);
       }
-  }
-
-  ref(key: string, callback?: Control.OnChange){
-    const { state, subject } = this;
-
-    return (next: any) => {
-      const previous = state[key];
-
-      if(next === previous)
-        return;
-
-      state[key] = next;
-
-      if(callback && callback.call(subject, next, previous) === false){
-        state[key] = previous;
-        return;
-      }
-
-      this.update(key);
-    }
   }
 
   addListener<T extends Model>(fn: Control.OnUpdate<T>){
