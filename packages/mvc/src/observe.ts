@@ -4,15 +4,10 @@ import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
 import { attempt } from './suspense';
 
-export function extract <T extends Model, P extends Model.Key<T>> (
-  target: T,
-  argument?: P | P[],
-  callback?: Function){
-
+export function extract <T extends Model> (target: T){
   const cache = new Map<unknown, any>();
-  const self = control(target, true);
 
-  function get(value: unknown, select?: string[]){
+  function get(value: unknown){
     if(value instanceof Model){
       let flat = cache.get(value);
 
@@ -22,8 +17,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
         const { state } = control(value);
         
         entries(state).forEach(([key, value]) => {
-          if(!select || select.includes(key))
-            flat[key] = get(value);
+          flat[key] = get(value);
         })
       }
 
@@ -33,30 +27,7 @@ export function extract <T extends Model, P extends Model.Key<T>> (
     return value;
   }
 
-  const extract = typeof argument == "string"
-    ? () => get(self.state[argument])
-    : () => get(self.subject, argument);
-
-  if(typeof callback != "function")
-    return extract();
-
-  const select = typeof argument == "string" ? [argument] : argument!;
-  const invoke = () => callback(extract(), self.frame);
-
-  for(const key of select)
-    try {
-      self.subject[key];
-    }
-    catch(e){
-      // TODO: should this be caught?
-    }
-
-  invoke();
-
-  return self.addListener(key => {
-    if(select.includes(key as P))
-      return invoke;
-  });
+  return get(target);
 }
 
 export function update<T extends Model>(

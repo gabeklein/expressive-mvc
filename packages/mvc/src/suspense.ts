@@ -2,7 +2,9 @@ import { control } from './control';
 import { assign } from './helper/object';
 import { Model } from './model';
 
-export function suspense(subject: Model, key: string): Promise<void> & Error {
+export function suspense<T extends Model>(
+  subject: T, key: Model.Key<T>): Promise<void> & Error {
+
   const self = control(subject);
   const error = new Error(`${subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
@@ -13,7 +15,7 @@ export function suspense(subject: Model, key: string): Promise<void> & Error {
       }
     }
 
-    const remove = self.addListener(k => {
+    const remove = self.addListener((k: unknown) => {
       if(k === key)
         return check;
 

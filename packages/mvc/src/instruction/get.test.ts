@@ -229,37 +229,6 @@ describe("compute mode", () => {
     expect(subject.nested).toBe("foo");
   })
   
-  it('will compute immediately if watched', () => {
-    const mockFactory = jest.fn(() => "foobar");
-  
-    class Test extends Model {
-      value = get(() => mockFactory);
-    }
-  
-    const test = Test.new();
-    test.get("value", () => {});
-  
-    expect(mockFactory).toBeCalled();
-    expect(test.value).toBe("foobar");
-  })
-  
-  it("will compute immediately if exported", () => {
-    const mockFactory = jest.fn(() => "foobar");
-  
-    class Test extends Model {
-      value = get(() => mockFactory);
-    }
-  
-    const test = Test.new();
-
-    test.get("value", () => {});
-
-    const values = test.get();
-  
-    expect(mockFactory).toBeCalled();
-    expect(values).toEqual({ value: "foobar" });
-  })
-  
   it("will compute early if value is accessed", async () => {
     class Test extends Model {
       number = 0;

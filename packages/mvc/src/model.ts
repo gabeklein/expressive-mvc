@@ -18,7 +18,7 @@ namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Extract<Exclude<keyof T, "set" | "get" | "null" | "is">, string>;
+  export type Key<T> = Extract<Exclude<keyof T, keyof Model>, string>;
 
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
@@ -27,7 +27,7 @@ namespace Model {
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill into "real" values held by exotics like ref.
    */
-  export type Export<T, K extends Key<T> = Key<T>> = { [P in K]: Value<T[P]> };
+  export type Export<T> = { [P in keyof T]: Value<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   export type Ref<T = any> = {
@@ -40,18 +40,6 @@ namespace Model {
     R extends Ref<infer T> ? T :
     R extends Model ? Export<R> :
     R;
-
-  export type Select<T, K extends Key<T> = Key<T>> = K | K[];
-
-  type SelectOne<T, K extends Key<T>> = K;
-  type SelectFew<T, K extends Key<T>> = K[];
-
-  export type Exports<T, S> =
-    S extends SelectOne<T, infer P> ? T[P] : 
-    S extends SelectFew<T, infer P> ? Export<T, P> :
-    never;
-
-  export type GetCallback<T, S> = (this: T, value: Exports<T, S>, updated: Values<T>) => void;
 
   export type SetCallback = (key: string) => Callback | void;
 
@@ -70,17 +58,10 @@ class Model {
 
   get(effect: Model.Effect<this>): Callback;
 
-  get <P extends Model.Select<this>> (select: P): Model.Exports<this, P>;
-
-  get <P extends Model.Select<this>> (select: P, callback: Model.GetCallback<this, P>): Callback;
-
-  get <P extends Model.Key<this>> (
-    arg1?: P | P[] | Model.Effect<this>,
-    arg2?: Function){
-
+  get(arg1?: Model.Effect<this>){
     return typeof arg1 == "function"
       ? effect(this, arg1)
-      : extract(this, arg1, arg2);
+      : extract(this);
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
@@ -91,10 +72,7 @@ class Model {
 
   set (timeout: number, predicate?: Model.Predicate): Promise<Model.Values<this>>;
 
-  set(
-    arg1?: number | Model.SetCallback,
-    arg2?: Model.Predicate): any {
-
+  set(arg1?: number | Model.SetCallback, arg2?: Model.Predicate){
     return typeof arg1 == "function"
       ? control(this, c => c.addListener(k => k && arg1(k)))
       : update(this, arg1, arg2);

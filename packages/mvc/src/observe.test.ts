@@ -1,5 +1,4 @@
 import { get } from './instruction/get';
-import { ref } from './instruction/ref';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { Model } from './model';
@@ -12,28 +11,6 @@ describe("get", () => {
       baz = "baz"
     }
 
-    it("will export single value", () => {
-      const test = Test.new();
-      const value = test.get("foo");
-
-      expect(value).toBe("foo");
-    })
-
-    it('will export "current" of property', async () => {
-      class Test extends Model {
-        foo = ref<string>();
-      }
-
-      const test = Test.new();
-
-      expect(test.get("foo")).toBeUndefined();
-
-      test.foo("foobar");
-      await expect(test).toUpdate();
-
-      expect(test.get("foo")).toBe("foobar");
-    })
-
     it("will export all values", () => {
       const test = Test.new();
       const values = test.get();
@@ -42,16 +19,6 @@ describe("get", () => {
         foo: "foo",
         bar: "bar",
         baz: "baz"
-      })
-    })
-
-    it("will export selected values", () => {
-      const test = Test.new();
-      const values = test.get(["foo", "bar"]);
-
-      expect(values).toEqual({
-        foo: "foo",
-        bar: "bar"
       })
     })
 
@@ -103,68 +70,6 @@ describe("get", () => {
       const exported = parent.get();
 
       expect(exported.child.parent).toBe(exported);
-    })
-  })
-
-  describe("listener", () => {
-    it('will callback for value', async () => {
-      class Subject extends Model {
-        seconds = 0;
-      }
-
-      const state = Subject.new();
-      const callback = jest.fn();
-
-      state.get("seconds", callback);
-
-      // will call back immediately with current value
-      expect(callback).toBeCalledWith(0, {});
-
-      state.seconds = 30;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(30, { seconds: 30 });
-      expect(callback).toBeCalledTimes(2);
-    })
-
-    it('will callback for computed value', async () => {
-      class Subject extends Model {
-        seconds = 0;
-        minutes = get(this, $ => Math.floor($.seconds / 60))
-      }
-
-      const state = Subject.new();
-      const callback = jest.fn<void, [number]>();
-
-      state.get("minutes", callback);
-
-      expect(callback).toBeCalledWith(0, {});
-
-      state.seconds = 60;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(1, { seconds: 60, minutes: 1 });
-      expect(callback).toBeCalledTimes(2);
-    })
-
-    it('will compute pending value early', async () => {
-      class Subject extends Model {
-        seconds = 0;
-        minutes = get(this, $ => Math.floor($.seconds / 60))
-      }
-
-      const state = Subject.new();
-      const callback = jest.fn<void, [number]>();
-
-      state.get("minutes", callback);
-
-      expect(callback).toBeCalledWith(0, {});
-
-      state.seconds = 60;
-      await expect(state).toUpdate();
-
-      expect(callback).toBeCalledWith(1, { seconds: 60, minutes: 1 });
-      expect(callback).toBeCalledTimes(2);
     })
   })
 
