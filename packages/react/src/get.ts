@@ -3,34 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLookup } from './provider';
 
-declare namespace get {
-  /** Type may not be undefined - instead will be null.  */
-  type NoVoid<T> = T extends undefined | void ? null : T;
-
-  type Factory<T extends Model, R> = (this: T, current: T, update: ForceUpdate) => R;
-
-  type ForceUpdate = {
-    /** Force an update in current component. */
-    (): void;
-    
-    /**
-     * Force an update and again after promise either resolves or rejects.
-     * Will return a duplicate of given Promise, which resolves after refresh.
-     */
-    <T = void>(passthru: Promise<T>): Promise<T>
-
-    /**
-     * Force a update while calling async function.
-     * A refresh will occur both before and after given function.
-     * Any actions performed before first `await` will occur before refresh!
-     */
-    <T = void>(invoke: () => Promise<T>): Promise<T>
-  };
-}
-
 function get<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | get.Factory<T, any>
+  argument?: boolean | Model.get.Factory<T, any>
 ){
   const context = useLookup();
   const state = useState(0);
