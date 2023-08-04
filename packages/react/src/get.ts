@@ -12,16 +12,16 @@ function get<T extends Model, R>(
   const hook = useMemo(() => {
     const notFound = () => new Error(`Could not find ${this} in context.`);
     const refresh = () => state[1](x => x+1);
+    const instance = context.get(this);
+
     let onUpdate: (() => void) | undefined | null;
     let value: any;
 
     if(typeof argument !== "function"){
-      const got = context.get(this);
-
-      if(got)
+      if(instance)
         value = argument === undefined
-          ? Control.watch(got, k => k ? onUpdate : undefined)
-          : got;
+          ? Control.watch(instance, k => k ? onUpdate : undefined)
+          : instance;
       else if(argument !== false)
         throw notFound();
 
@@ -43,9 +43,7 @@ function get<T extends Model, R>(
     let factory: true | undefined;
     let proxy!: T;
 
-    const found = context.get(this);
-
-    if(!found)
+    if(!instance)
       throw notFound();
 
     function forceUpdate(): void;
@@ -74,7 +72,7 @@ function get<T extends Model, R>(
         refresh();
     };
 
-    proxy = Control.watch(found, () => factory ? null : onUpdate);
+    proxy = Control.watch(instance, () => factory ? null : onUpdate);
     getValue = () => compute.call(proxy, proxy, forceUpdate);
     value = getValue();
 
