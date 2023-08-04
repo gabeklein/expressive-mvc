@@ -12,7 +12,7 @@ import {
 } from 'react';
 
 export const LookupContext = createContext(new Context());
-export const Pending = new WeakMap<{}, ((context: Context) => void)[]>();
+export const RequireContext = new WeakMap<Model, ((context: Context) => void)[]>();
 export const useLookup = () => useContext(LookupContext);
 
 declare namespace Provider {
@@ -68,7 +68,7 @@ function Provider<T extends Provider.Item>(
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    const pending = Pending.get(model);
+    const pending = RequireContext.get(model);
 
     if(pending)
       pending.forEach(cb => cb(context));

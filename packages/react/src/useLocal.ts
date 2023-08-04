@@ -1,7 +1,7 @@
 import { Context, Control, Model } from '@expressive/mvc';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Pending, useLookup } from './provider';
+import { RequireContext, useLookup } from './provider';
 
 export const Applied = new WeakMap<Model, Context>();
 
@@ -43,14 +43,14 @@ export function useLocal <T extends Model> (
         useLookup();
 
       else if(applied === undefined){
-        const pending = Pending.get(instance);
+        const pending = RequireContext.get(instance);
 
         if(pending){
           const local = useLookup();
 
           pending.forEach(init => init(local));
           Applied.set(instance, local);
-          Pending.delete(instance);
+          RequireContext.delete(instance);
         }
       }
 
@@ -70,10 +70,10 @@ export function useLocal <T extends Model> (
 }
 
 export function getContext(from: Model){
-  let pending = Pending.get(from)!;
+  let waiting = RequireContext.get(from)!;
 
-  if(!pending)
-    Pending.set(from, pending = []);
+  if(!waiting)
+    RequireContext.set(from, waiting = []);
 
   return (callback: (got: Context) => void) => {
     const applied = Applied.get(from);
@@ -81,6 +81,6 @@ export function getContext(from: Model){
     if(applied)
       callback(applied);
     else
-      pending.push(callback);
+      waiting.push(callback);
   }
 }
