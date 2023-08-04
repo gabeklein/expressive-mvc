@@ -50,8 +50,6 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>(),
 }
 
-export const ID = new WeakMap<{}, string | number | false>();
-
 class Control<T extends {} = any> {
   static watch = watch;
   static for = control;
