@@ -851,5 +851,22 @@ describe("set", () => {
 
       expect(callback).toBeCalledWith("bar");
     })
+
+    it('will not fire after model is destroyed', () => {
+      class Test extends Model {
+        foo = 0;
+      }
+
+      const callback = jest.fn();
+      const test = Test.new();
+
+      test.set(callback);
+      test.foo++;
+
+      test.null();
+      test.foo++;
+
+      expect(callback).toBeCalledTimes(1);
+    })
   })
 })
