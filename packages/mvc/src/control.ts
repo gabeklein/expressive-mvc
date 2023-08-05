@@ -82,7 +82,7 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
-    const { state } = this;
+    const { state, subject } = this;
     const { set, enumerable = true } = output;
 
     const subs = new Set<Control.OnUpdate>();
@@ -96,7 +96,18 @@ class Control<T extends {} = any> {
       enumerable,
       set: set === false
         ? undefined
-        : this.ref(key, set),
+        : (next) => {
+          const previous = state[key];
+    
+          if(next !== previous){
+            state[key] = next;
+      
+            if(set && set.call(subject, next, previous) === false)
+              state[key] = previous;
+            else
+              this.update(key);
+          }
+        },
       get(this: Model){
         const observer = OBSERVER.get(this);
 
@@ -112,26 +123,6 @@ class Control<T extends {} = any> {
           : value;
       }
     });
-  }
-
-  ref(key: string, callback?: Control.OnChange){
-    const { state, subject } = this;
-
-    return (next: any) => {
-      const previous = state[key];
-
-      if(next === previous)
-        return;
-
-      state[key] = next;
-
-      if(callback && callback.call(subject, next, previous) === false){
-        state[key] = previous;
-        return;
-      }
-
-      this.update(key);
-    }
   }
 
   update(key: string, value?: unknown){
