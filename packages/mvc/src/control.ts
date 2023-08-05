@@ -140,6 +140,9 @@ class Control<T extends {} = any> {
     if(!observers.size)
       return;
 
+    if(1 in arguments && value === state[key])
+      return;
+
     const own = observers.get(key);
 
     if(!own){

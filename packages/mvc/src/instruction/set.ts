@@ -61,7 +61,7 @@ function set <T> (
               })
               .catch(err => {
                 output.get = () => { throw err };
-                control.update(key, undefined);
+                control.update(key);
               })
 
             if(argument !== false)
