@@ -185,9 +185,13 @@ class Control<T extends {} = any> {
       }
   }
 
-  addListener<T extends Model>(fn: Control.OnUpdate<T>){
-    this.followers.add(fn);
-    return () => this.followers.delete(fn);
+  addListener<T extends Model>(
+    fn: Control.OnUpdate<T>, key?: string){
+
+    const observer = this.observers.get(key || "")!;
+
+    observer.add(fn);
+    return () => observer.delete(fn);
   }
 
   clear(){

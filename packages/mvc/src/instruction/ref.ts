@@ -68,55 +68,58 @@ function ref<T>(
   arg2?: ((key: string) => any) | boolean){
 
   return add<T>((key, source) => {
+    const { subject, state } = source;
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg != "object"){
-      let unSet: ((next: T) => void) | undefined;
+    source.update(key);
 
-      value = createRef(source, key, arg &&
-        function(this: any, value: any){
+    if(arg === subject)
+      for(const key in state)
+        define(value, key,
+          typeof arg2 == "function" ? {
+            configurable: true,
+            get(){
+              const out = arg2(key);
+              define(value, key, { value: out });
+              return out;
+            }
+          } : {
+            value: createRef(source, key)
+          }
+        )
+
+    else if(typeof arg == "object")
+      throw new Error("ref instruction does not support object which is not 'this'");
+
+    else {
+      let unSet: ((next: T) => void) | undefined;
+  
+      if(arg)
+        source.addListener(() => {
+          const value = state[key] as T;
+
           if(unSet)
             unSet = void unSet(value);
       
           if(value !== null || arg2 === false){  
-            const out = arg.call(this, value);
+            const out = arg.call(subject, value);
         
             if(typeof out == "function")
               unSet = out;
           }
-        }
-      );
+        }, key)
+  
+      value = createRef(source, key);
     }
-    else if(arg !== source.subject)
-      throw new Error("ref instruction does not support object which is not 'this'")
 
-    for(const key in source.state)
-      define(value, key,
-        typeof arg2 == "function" ? {
-          configurable: true,
-          get(){
-            const out = arg2(key);
-            define(value, key, { value: out });
-            return out;
-          }
-        } : {
-          value: createRef(source, key)
-        }
-      )
-
-    source.update(key);
-    define(source.subject, key, { value });
+    define(subject, key, { value });
   })
 }
 
 export { ref }
 
-function createRef(
-  src: Control,
-  key: string,
-  cb?: (x: any) => boolean | void){
-
-  const refObjectFunction = src.ref(key, cb);
+function createRef(src: Control, key: string){
+  const refObjectFunction = src.update.bind(src, key);
 
   define(refObjectFunction, "current", {
     set: refObjectFunction,
