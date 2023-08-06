@@ -38,7 +38,7 @@ declare namespace Control {
   type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
 
   type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
+    (this: T, key: Model.Key<T> | null | undefined) => (() => void) | null | void;
 
   type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
@@ -91,6 +91,11 @@ class Control<T extends {} = any> {
 
     if("value" in output)
       state[key] = output.value;
+
+    if(set)
+      subs.add(key => {
+
+      })
 
     define(this.subject, key, {
       enumerable,
@@ -149,7 +154,7 @@ class Control<T extends {} = any> {
         freeze(frame);
 
         followers.forEach(cb => {
-          const notify = cb(undefined, subject);
+          const notify = cb.call(subject, undefined);
 
           if(notify)
             enqueue(notify);
@@ -167,7 +172,7 @@ class Control<T extends {} = any> {
 
     for(const subs of [own, followers])
       for(const cb of subs){
-        const notify = cb(key, subject);
+        const notify = cb(key);
     
         if(notify === null)
           subs.delete(cb);
@@ -188,7 +193,7 @@ class Control<T extends {} = any> {
   clear(){
     const notify = (subs: Set<Control.OnUpdate>) => {
       subs.forEach(fn => {
-        const cb = fn(null, this);
+        const cb = fn.call(this.subject, null);
         cb && cb();
       });
     }
