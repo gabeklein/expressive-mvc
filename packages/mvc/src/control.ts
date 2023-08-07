@@ -67,10 +67,7 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  private followers = new Set<Control.OnUpdate>();
-  private observers = new Map<string, Set<Control.OnUpdate>>([
-    ["", this.followers],
-  ]);
+  private observers = new Map([["", new Set<Control.OnUpdate>()]]);
 
   constructor(public subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -126,9 +123,11 @@ class Control<T extends {} = any> {
   }
 
   update(key: string, value?: unknown){
-    let { followers, frame, observers, state, subject } = this;
+    let { frame, observers, state, subject } = this;
 
-    if(!observers.size)
+    const any = observers.get("");
+
+    if(!any)
       return;
 
     if(1 in arguments && value === state[key])
@@ -148,7 +147,7 @@ class Control<T extends {} = any> {
       enqueue(() => {
         freeze(frame);
 
-        followers.forEach(cb => {
+        any.forEach(cb => {
           const notify = cb(undefined, subject);
 
           if(notify)
@@ -165,7 +164,7 @@ class Control<T extends {} = any> {
     
     frame[key] = state[key];
 
-    for(const subs of [own, followers])
+    for(const subs of [own, any])
       for(const cb of subs){
         const notify = cb(key, subject);
     
