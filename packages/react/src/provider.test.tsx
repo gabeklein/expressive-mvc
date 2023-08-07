@@ -213,12 +213,10 @@ describe("suspense", () => {
     return null;
   }
 
-  const TestComponent = (
-    props: { fallback?: React.ReactNode }) => {
-
+  const TestComponent = (props: {}) => {
     willRender();
     return (
-      <Provider for={Test} fallback={props.fallback}>
+      <Provider for={Test}>
         <GetValue />
       </Provider>
     )
@@ -238,7 +236,7 @@ describe("suspense", () => {
   const didRender = jest.fn();
   const didSuspend = jest.fn();
 
-  beforeEach(() => {
+  afterEach(() => {
     willRender.mockClear();
     didSuspend.mockClear();
     didRender.mockClear();
@@ -246,7 +244,9 @@ describe("suspense", () => {
 
   it("will apply fallback", async () => {
     const element = create(
-      <TestComponent fallback={<DidSuspend />} />
+      <Suspense fallback={<DidSuspend />}>
+        <TestComponent />
+      </Suspense>
     )
 
     expect(willRender).toBeCalledTimes(1);
@@ -262,46 +262,6 @@ describe("suspense", () => {
 
     element.unmount();
   });
-
-  it("will apply fallback implicitly", async () => {
-    const element = create(
-      <Suspense fallback={<DidSuspend />}>
-        <TestComponent />
-      </Suspense>
-    )
-  
-    // Provider itself suspended with default null.
-    expect(didSuspend).not.toBeCalled();
-    expect(didRender).not.toBeCalled();
-
-    promise.resolve("hello!");
-    await didRefresh.pending();
-
-    expect(didRender).toBeCalledWith("hello!");
-
-    element.unmount();
-  })
-
-  it("will not apply fallback", async () => {
-    const element = create(
-      <Suspense fallback={<DidSuspend />}>
-        <TestComponent fallback={false} />
-      </Suspense>
-    )
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).not.toBeCalled();
-
-    promise.resolve("hello!");
-    await didRefresh.pending();
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).toBeCalledWith("hello!");
-
-    element.unmount();
-  })
 })
 
 describe("get instruction", () => {

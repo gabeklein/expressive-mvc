@@ -5,7 +5,6 @@ import {
   FunctionComponentElement,
   ProviderProps,
   ReactNode,
-  Suspense,
   useContext,
   useEffect,
   useMemo,
@@ -26,7 +25,6 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
-    fallback?: ReactNode;
     children?: ReactNode;
     use?: Model.Values<I>;
   }
@@ -34,7 +32,6 @@ declare namespace Provider {
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    fallback?: ReactNode;
     children?: ReactNode;
     use?: Model.Values<Instance<T>>;
   }
@@ -43,7 +40,7 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(
   props: Provider.Props<T>
 ): FunctionComponentElement<ProviderProps<Context>> {
-  let { for: included, use: assign, children, fallback } = props;
+  let { for: included, use: assign, children } = props;
 
   const ambient = useLookup();
   const context = useMemo(() => ambient.push(), []);
@@ -73,9 +70,7 @@ function Provider<T extends Provider.Item>(
 
   useEffect(() => () => context.pop(), []);
 
-  return createElement(LookupContext.Provider, { value: context, key: context.key },
-    fallback === false ? children : createElement(Suspense, { fallback }, children)
-  );
+  return createElement(LookupContext.Provider, { value: context, key: context.key }, children);
 }
 
 function reject(argument: any){
