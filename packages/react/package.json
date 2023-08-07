@@ -40,5 +40,10 @@
     "react": "^18.2.0",
     "react-test-renderer": "^18.2.0"
   },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
   "version": "0.33.0"
 }

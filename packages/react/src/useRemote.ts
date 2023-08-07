@@ -1,5 +1,5 @@
 import { Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import R from 'react';
 
 import { useLookup } from './provider';
 
@@ -8,8 +8,8 @@ export function useRemote<T extends Model, R>(
   argument?: boolean | Model.get.Factory<T, any>
 ){
   const context = useLookup();
-  const state = useState(0);
-  const hook = useMemo(() => {
+  const state = R.useState(0);
+  const hook = R.useMemo(() => {
     const notFound = () => new Error(`Could not find ${this} in context.`);
     const refresh = () => state[1](x => x+1);
     const instance = context.get(this);
@@ -26,7 +26,7 @@ export function useRemote<T extends Model, R>(
         throw notFound();
 
       return () => {
-        useEffect(() => {
+        R.useEffect(() => {
           onUpdate = refresh;
           return () => {
             onUpdate = null;
@@ -106,7 +106,7 @@ export function useRemote<T extends Model, R>(
       };
 
     return () => {
-      useEffect(() => () => {
+      R.useEffect(() => () => {
         onUpdate = null;
       }, []);
 

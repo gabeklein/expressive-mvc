@@ -1,5 +1,7 @@
 import { get, Model } from '@expressive/mvc';
 
+import Adapter from './adapter';
+
 import { getContext, useLocal } from './useLocal';
 import { useRemote } from './useRemote';
 

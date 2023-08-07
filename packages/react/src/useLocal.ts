@@ -1,7 +1,7 @@
 import { Context, Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import R from './adapter';
 
-import { RequireContext, useLookup } from './provider';
+import { LookupContext, useLookup } from './provider';
 
 export const Applied = new WeakMap<Model, Context>();
 
@@ -10,8 +10,8 @@ export function useLocal <T extends Model> (
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
-  const state = useState(0);
-  const hook = useMemo(() => {
+  const state = R.useState(0);
+  const hook = R.useMemo(() => {
     const instance = this.new();
     const local = Control.watch(instance, () => onUpdate);
     const refresh = () => state[1](x => x+1);
@@ -43,18 +43,18 @@ export function useLocal <T extends Model> (
         useLookup();
 
       else if(applied === undefined){
-        const pending = RequireContext.get(instance);
+        const pending = LookupContext.get(instance);
 
         if(pending){
           const local = useLookup();
 
           pending.forEach(init => init(local));
           Applied.set(instance, local);
-          RequireContext.delete(instance);
+          LookupContext.delete(instance);
         }
       }
 
-      useEffect(() => {
+      R.useEffect(() => {
         onUpdate = refresh;
         return () => {
           onUpdate = null;
@@ -70,10 +70,10 @@ export function useLocal <T extends Model> (
 }
 
 export function getContext(from: Model){
-  let waiting = RequireContext.get(from)!;
+  let waiting = LookupContext.get(from)!;
 
   if(!waiting)
-    RequireContext.set(from, waiting = []);
+    LookupContext.set(from, waiting = []);
 
   return (callback: (got: Context) => void) => {
     const applied = Applied.get(from);

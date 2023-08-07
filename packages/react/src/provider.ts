@@ -1,18 +1,15 @@
 import { Context, Model } from '@expressive/mvc';
-import {
-  createContext,
-  createElement,
+import R from './adapter';
+
+import type {
   FunctionComponentElement,
   ProviderProps,
-  ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
+  ReactNode
 } from 'react';
 
-export const LookupContext = createContext(new Context());
-export const RequireContext = new WeakMap<Model, ((context: Context) => void)[]>();
-export const useLookup = () => useContext(LookupContext);
+export const LookupContext = new WeakMap<Model, ((context: Context) => void)[]>();
+const ModelContext = R.createContext(new Context());
+export const useLookup = () => R.useContext(ModelContext);
 
 declare namespace Provider {
   type Item = Model | Model.New;
@@ -43,7 +40,7 @@ function Provider<T extends Provider.Item>(
   let { for: included, use: assign, children } = props;
 
   const ambient = useLookup();
-  const context = useMemo(() => ambient.push(), []);
+  const context = R.useMemo(() => ambient.push(), []);
 
   if(!included)
     reject(included);
@@ -62,15 +59,15 @@ function Provider<T extends Provider.Item>(
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    const pending = RequireContext.get(model);
+    const pending = LookupContext.get(model);
 
     if(pending)
       pending.forEach(cb => cb(context));
   });
 
-  useEffect(() => () => context.pop(), []);
+  R.useEffect(() => () => context.pop(), []);
 
-  return createElement(LookupContext.Provider, { value: context, key: context.key }, children);
+  return R.createElement(ModelContext.Provider, { value: context, key: context.key }, children);
 }
 
 function reject(argument: any){
