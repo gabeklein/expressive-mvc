@@ -111,9 +111,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source((got) => {
-      control.update(key, got);
-    });
+    source((got) => control.update(key, got));
 
     return () => {
       const value = state[key];

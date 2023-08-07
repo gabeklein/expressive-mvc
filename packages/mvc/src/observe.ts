@@ -45,7 +45,7 @@ export function update<T extends Model>(
       const callback = () => resolve(self.frame);
   
       const remove = self.addListener((key) => {
-        if(typeof arg2 !== "function" || key && arg2(key) === true){
+        if(!arg2 || key && arg2(key) === true){
           remove();
   
           if(timeout)

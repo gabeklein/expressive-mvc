@@ -88,7 +88,7 @@ class Control<T extends {} = any> {
     if("value" in output)
       state[key] = output.value;
 
-    define(this.subject, key, {
+    define(subject, key, {
       enumerable,
       set: set === false
         ? undefined
