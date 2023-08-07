@@ -53,6 +53,7 @@ class Model {
     new Control(this, id);
   }
 
+  /** Pull current values from state. Flattens all models and exotic values amongst properties. */
   get(): Model.Export<this>;
 
   get(effect: Model.Effect<this>): Callback;
