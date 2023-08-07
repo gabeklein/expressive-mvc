@@ -1,7 +1,7 @@
 import { Context, Control, Model } from '@expressive/mvc';
 import { useEffect, useMemo, useState } from 'react';
 
-import { RequireContext, useLookup } from './provider';
+import { RequireContext, useModelContext } from './provider';
 
 export const Applied = new WeakMap<Model, Context>();
 
@@ -40,13 +40,13 @@ export function useLocal <T extends Model> (
       const applied = Applied.get(instance);
 
       if(applied)
-        useLookup();
+        useModelContext();
 
       else if(applied === undefined){
         const pending = RequireContext.get(instance);
 
         if(pending){
-          const local = useLookup();
+          const local = useModelContext();
 
           pending.forEach(init => init(local));
           Applied.set(instance, local);

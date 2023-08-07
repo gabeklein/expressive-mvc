@@ -10,11 +10,14 @@ import {
   useMemo,
 } from 'react';
 
-export const LookupContext = createContext(new Context());
+const ModelContext = createContext(new Context());
+
 export const RequireContext = new WeakMap<Model, ((context: Context) => void)[]>();
-export const useLookup = () => useContext(LookupContext);
+export const useModelContext = () => useContext(ModelContext);
 
 declare namespace Provider {
+  type Element = FunctionComponentElement<ProviderProps<Context>>;
+
   type Item = Model | Model.New;
 
   type Multiple<T extends Item = Item> = { [key: string | number]: T };
@@ -38,12 +41,12 @@ declare namespace Provider {
 }
 
 function Provider<T extends Provider.Item>(
-  props: Provider.Props<T>
-): FunctionComponentElement<ProviderProps<Context>> {
+  props: Provider.Props<T>): Provider.Element {
+
   let { for: included, use: assign, children } = props;
 
-  const ambient = useLookup();
-  const context = useMemo(() => ambient.push(), []);
+  const context = useModelContext();
+  const value = useMemo(() => context.push(), []);
 
   if(!included)
     reject(included);
@@ -56,7 +59,7 @@ function Provider<T extends Provider.Item>(
       reject(`${V} as ${K}`);
   })
   
-  context.include(included).forEach((isExplicit, model) => {
+  value.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
       for(const K in assign)
         if(K in model)
@@ -65,12 +68,12 @@ function Provider<T extends Provider.Item>(
     const pending = RequireContext.get(model);
 
     if(pending)
-      pending.forEach(cb => cb(context));
+      pending.forEach(cb => cb(value));
   });
 
-  useEffect(() => () => context.pop(), []);
+  useEffect(() => () => value.pop(), []);
 
-  return createElement(LookupContext.Provider, { value: context, key: context.key }, children);
+  return createElement(ModelContext.Provider, { key: value.key, value }, children);
 }
 
 function reject(argument: any){

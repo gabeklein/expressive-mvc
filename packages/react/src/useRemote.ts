@@ -1,13 +1,13 @@
 import { Control, Model } from '@expressive/mvc';
 import { useEffect, useMemo, useState } from 'react';
 
-import { useLookup } from './provider';
+import { useModelContext } from './provider';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.get.Factory<T, any>
 ){
-  const context = useLookup();
+  const context = useModelContext();
   const state = useState(0);
   const hook = useMemo(() => {
     const notFound = () => new Error(`Could not find ${this} in context.`);
