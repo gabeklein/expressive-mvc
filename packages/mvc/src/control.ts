@@ -181,14 +181,12 @@ class Control<T extends {} = any> {
   }
 
   clear(){
-    const notify = (subs: Set<Control.OnUpdate>) => {
+    this.observers.forEach(subs => {
       subs.forEach(fn => {
         const cb = fn(null, this);
         cb && cb();
       });
-    }
-
-    this.observers.forEach(notify);
+    });
     this.observers.clear();
   }
 }
