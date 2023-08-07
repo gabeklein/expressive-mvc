@@ -33,7 +33,7 @@ export function extract <T extends Model> (target: T){
 export function update<T extends Model>(
   target: T,
   arg1?: number,
-  arg2?: Model.Predicate){
+  arg2?: (key: string) => boolean | void){
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {

@@ -6,6 +6,7 @@ import type { Callback } from '../types';
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
+type Predicate = (key: string) => boolean | void;
 
 namespace Model {
   /** Any typeof Model, using class constructor as the reference. */
@@ -14,11 +15,14 @@ namespace Model {
   /** A typeof Model, specifically one which can be created without any arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
 
-  /** A callback function which is subscribed to parent and updates when values change. */
-  export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
-
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Extract<Exclude<keyof T, keyof Model>, string>;
+  export type Key<T> = Exclude<keyof T, keyof Model> & string;
+
+  /** Actual value stored in state. */
+  export type Value<R> =
+    R extends Ref<infer T> ? T :
+    R extends Model ? Export<R> :
+    R;
 
   /** Object comperable to data found in T. */
   export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
@@ -35,15 +39,10 @@ namespace Model {
     current: T | null;
   }
 
-  /** Actual value stored in state. */
-  export type Value<R> =
-    R extends Ref<infer T> ? T :
-    R extends Model ? Export<R> :
-    R;
+  /** A callback function which is subscribed to parent and updates when values change. */
+  export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
-  export type SetCallback = (key: string) => Callback | void;
-
-  export type Predicate = (key: string) => boolean | void;
+  export type Event = (key: string) => Callback | void;
 }
 
 class Model {
@@ -67,12 +66,30 @@ class Model {
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
   set (): Promise<Model.Values<this> | false>;
 
-  /** Detect and/or modify updates to state. */
-  set (event: Model.SetCallback): Callback;
+  /**
+   * Expect an update to state within timeout.
+   * 
+   * @param timeout - milliseconds to wait for update
+   * @param predicate - optional function to filter updates. If returns true, update is accepted.
+   * 
+   * @returns a promise which resolves full update.
+   */
+  set (timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
 
-  set (timeout: number, predicate?: Model.Predicate): Promise<Model.Values<this>>;
+  /**
+   * Call a function when an update to state has occured.
+   * 
+   * @param callback - Function to call when any update occurs. 
+   *   Note: This will be called for every assignment which changes the value.
+   *   To run logic on final value only, this callback may return a function.
+   *   Returning the same function for the same (or multiple for that matter)
+   *   will ensure it is only called once.
+   *
+   * @returns a function to remove listener
+  */
+  set (callback: Model.Event): Callback;
 
-  set(arg1?: number | Model.SetCallback, arg2?: Model.Predicate){
+  set(arg1?: Model.Event | number, arg2?: Predicate){
     return typeof arg1 == "function"
       ? control(this, c => c.addListener(k => k && arg1(k)))
       : update(this, arg1, arg2);

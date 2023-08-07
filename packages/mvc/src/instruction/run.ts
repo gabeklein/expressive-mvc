@@ -2,7 +2,10 @@ import { add } from '../control';
 import { define } from '../helper/object';
 import { attempt } from '../suspense';
 
-type Async<T = any> = (...args: any[]) => Promise<T>;
+type Async<T = any, Y extends any[] = any> = {
+  (...args: Y): Promise<T>;
+  active: boolean
+};
 
 /**
  * Sets an exotic method with managed ready-state. Property accepts an async function.
@@ -14,11 +17,10 @@ type Async<T = any> = (...args: any[]) => Promise<T>;
  *
  * @param action - Action to fire when resulting property is invoked.
  */
-function run (action: Async): typeof action & { active: boolean };
-function run <S> (action: Async<S>): typeof action & { active: boolean };
+function run <T, Y extends any[]> (action: (...args: Y) => T | Promise<T>): Async<T, Y>;
 
-function run<T extends Async>(task: T){
-  return add<T>((key, control) => {
+function run(task: Function){
+  return add((key, control) => {
     let pending = false;
 
     const invoke = async (...args: any[]) => {
@@ -44,7 +46,7 @@ function run<T extends Async>(task: T){
     })
 
     return {
-      value: invoke as T,
+      value: invoke,
       set: false
     };
   })
