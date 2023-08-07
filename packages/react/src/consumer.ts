@@ -1,5 +1,6 @@
 import { Model } from '@expressive/mvc';
-import { ReactElement } from 'react';
+
+import type { ReactElement } from 'react';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {

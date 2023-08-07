@@ -2,12 +2,15 @@ import { Context, Model } from '@expressive/mvc';
 import {
   createContext,
   createElement,
-  FunctionComponentElement,
-  ProviderProps,
-  ReactNode,
   useContext,
   useEffect,
   useMemo,
+} from 'react';
+
+import type {
+  FunctionComponentElement,
+  ProviderProps,
+  ReactNode,
 } from 'react';
 
 const ModelContext = createContext(new Context());
