@@ -59,8 +59,7 @@ class Control<T extends {} = any> {
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
   static on(event: "ready" | "update" | "didUpdate", callback: any){
     LIFECYCLE[event].add(callback);
-    return () =>
-      LIFECYCLE[event].delete(callback);
+    return () => LIFECYCLE[event].delete(callback);
   }
 
   public id: string;
@@ -127,10 +126,7 @@ class Control<T extends {} = any> {
 
     const any = observers.get("");
 
-    if(!any)
-      return;
-
-    if(1 in arguments && value === state[key])
+    if(!any || 1 in arguments && value === state[key])
       return;
 
     const own = observers.get(key);
