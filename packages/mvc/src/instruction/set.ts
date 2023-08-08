@@ -110,15 +110,13 @@ function set <T> (
         let unSet: ((next: T) => void) | undefined;
 
         output.set = function(this: any, value: any, previous: any){
-          state[key] = state[key];
-      
           const out = argument.call(this, value, previous);
 
-          if(out !== false && typeof unSet == "function")
-            unSet = void unSet(value);
-      
-          if(typeof out == "boolean")
+          if(out === false)
             return out;
+
+          if(typeof unSet == "function")
+            unSet = void unSet(value);
       
           if(typeof out == "function")
             unSet = out;
