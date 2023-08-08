@@ -66,7 +66,9 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  private observers = new Map([["", new Set<Control.OnUpdate>()]]);
+  private observers = new Map([
+    ["", new Set<Control.OnUpdate>()]
+  ]);
 
   constructor(public subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -114,7 +116,7 @@ class Control<T extends {} = any> {
           ? output.get(this)
           : state[key];
 
-        return observer && REGISTER.has(value)
+        return observer
           ? watch(value, observer)
           : value;
       }
@@ -263,10 +265,12 @@ function parent(from: unknown, assign?: {}){
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   const control = REGISTER.get(value)!;
 
-  if(!OBSERVER.has(value))
-    REGISTER.set(value = create(value), control);
-
-  OBSERVER.set(value, argument);
+  if(control){
+    if(!OBSERVER.has(value))
+      REGISTER.set(value = create(value), control);
+  
+    OBSERVER.set(value, argument);
+  }
 
   return value;
 }
