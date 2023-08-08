@@ -1,6 +1,6 @@
 import { Control, control } from './control';
 import { define } from './helper/object';
-import { effect, extract, update } from './observe';
+import { effect, extract, nextUpdate } from './observe';
 
 import type { Callback } from '../types';
 
@@ -65,7 +65,7 @@ class Model {
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
-  set (): Promise<Model.Values<this> | false>;
+  set(): Promise<Model.Values<this> | false>;
 
   /**
    * Expect an update to state within timeout.
@@ -75,7 +75,7 @@ class Model {
    * 
    * @returns a promise which resolves full update.
    */
-  set (timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
+  set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
 
   /**
    * Call a function when an update to state has occured.
@@ -88,12 +88,12 @@ class Model {
    *
    * @returns a function to remove listener
   */
-  set (callback: Model.Event): Callback;
+  set(callback: Model.Event): Callback;
 
   set(arg1?: Model.Event | number, arg2?: Predicate){
     return typeof arg1 == "function"
       ? control(this, c => c.addListener(k => k && arg1(k)))
-      : update(this, arg1, arg2);
+      : nextUpdate(this, arg1, arg2);
     }
 
   /** Mark this instance for garbage collection. */

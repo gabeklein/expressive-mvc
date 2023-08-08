@@ -30,7 +30,7 @@ export function extract <T extends Model> (target: T){
   return get(target);
 }
 
-export function update<T extends Model>(
+export function nextUpdate<T extends Model>(
   target: T,
   arg1?: number,
   arg2?: (key: string) => boolean | void){
