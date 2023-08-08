@@ -139,7 +139,6 @@ function compute<T>(
   const { state, subject } = parent;
 
   let proxy: any;
-  let active: boolean;
   let isAsync: boolean;
   let reset: (() => void) | undefined;
 
@@ -162,10 +161,10 @@ function compute<T>(
     }
 
     if(next !== state[key]){
-      state[key] = next;
-
-      if(!initial || isAsync)
+      if(key in state || isAsync)
         parent.update(key);
+
+      state[key] = next;
     }
   }
 
@@ -195,13 +194,7 @@ function compute<T>(
     }
   }
 
-  return () => {
-    if(!active){
-      active = true;
-      source(connect);
-      isAsync = true;
-    }
-    
+  function get(){      
     if(!proxy)
       throw suspense(subject, key);
 
@@ -210,6 +203,18 @@ function compute<T>(
 
     return state[key];
   }
+
+  const output: Control.PropertyDescriptor = {
+    get(){
+      output.get = get;
+      source(connect);
+      isAsync = true;
+
+      return get();
+    }
+  }
+
+  return output;
 }
 
 Control.on("update", () => {
