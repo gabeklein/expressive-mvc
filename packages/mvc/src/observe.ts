@@ -63,9 +63,9 @@ export function nextUpdate<T extends Model>(
 }
 
 export function effect<T extends Model>(
-  source: T, callback: Model.Effect<T>){
+  target: T, callback: Model.Effect<T>){
 
-  return control(source, self => {
+  return control(target, self => {
     let unSet: Callback | Promise<void> | void;
     let busy = false;
 
@@ -77,7 +77,7 @@ export function effect<T extends Model>(
         if(typeof unSet == "function")
           unSet();
     
-        unSet = callback.call(source, source);
+        unSet = callback.call(target, target);
     
         if(typeof unSet !== "function")
           unSet = undefined;
@@ -91,7 +91,7 @@ export function effect<T extends Model>(
 
     let refresh: (() => void) | null;
 
-    source = watch(source, () => refresh);
+    target = watch(target, () => refresh);
     self.addListener(key => 
       key === null || refresh === null ? refresh : undefined
     );
