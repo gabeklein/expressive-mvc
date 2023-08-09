@@ -2,7 +2,6 @@ import { Callback } from '../types';
 import { control, watch } from './control';
 import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
-import { attempt } from './suspense';
 
 export function extract <T extends Model> (target: T){
   const cache = new Map<unknown, any>();
@@ -102,4 +101,28 @@ export function effect<T extends Model>(
 
     return () => refresh = null;
   });
+}
+
+export function attempt(fn: () => any): any {
+  const retry = (err: unknown) => {
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  const compute = (): any => {
+    try {
+      const output = fn();
+
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
 }

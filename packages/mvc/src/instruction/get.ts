@@ -1,6 +1,5 @@
 import { add, Control, parent, watch } from '../control';
 import { Model } from '../model';
-import { suspense } from '../suspense';
 
 import type { Context } from '../context';
 import type { Callback } from '../../types';
@@ -113,15 +112,7 @@ function get<R, T extends Model>(
 
     source(got => control.update(key, got));
 
-    return () => {
-      const value = control.state[key];
-
-      if(value)
-        return value;
-
-      if(arg1 !== false)
-        throw suspense(control, key);
-    }
+    return () => control.fetch(key, arg1 !== false);
   })
 }
 
@@ -203,9 +194,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = () => {
-        throw suspense(parent, key);
-      }
+      output.get = () => parent.fetch(key);
       source(connect);
       isAsync = true;
       return output.get();

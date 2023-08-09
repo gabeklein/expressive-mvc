@@ -1,6 +1,6 @@
 import { add } from '../control';
 import { define } from '../helper/object';
-import { attempt } from '../suspense';
+import { attempt } from '../observe';
 
 type Async<T = any, Y extends any[] = any> = {
   (...args: Y): Promise<T>;

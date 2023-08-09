@@ -1,4 +1,4 @@
-import { create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
+import { assign, create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -171,6 +171,42 @@ class Control<T extends {} = any> {
         else if(notify)
           enqueue(notify);
       }
+  }
+
+  fetch(key: string, required?: boolean){
+    const { state, subject } = this;
+
+    if(key in state || required === false){
+      const value = state[key];
+
+      if(value !== undefined || !required)
+        return value;
+    }
+
+    const error = new Error(`${subject}.${key} is not yet available.`);
+    const promise = new Promise<void>((resolve, reject) => {
+      function check(){
+        if(state[key] !== undefined){
+          remove();
+          resolve();
+        }
+      }
+  
+      const remove = this.addListener((k: unknown) => {
+        if(k === key)
+          return check;
+  
+        if(k === null)
+          reject(new Error(`${subject} is destroyed.`));
+      });
+    });
+  
+    throw assign(promise, {
+      toString: () => String(error),
+      name: "Suspense",
+      message: error.message,
+      stack: error.stack
+    });
   }
 
   addListener<T extends Model>(

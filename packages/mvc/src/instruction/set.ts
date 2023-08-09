@@ -1,6 +1,6 @@
 import { add, Control } from '../control';
 import { assign } from '../helper/object';
-import { attempt, suspense } from '../suspense';
+import { attempt } from '../observe';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
@@ -99,12 +99,7 @@ function set <T> (
       if(value !== undefined)
         output.value = value;
       else
-        output.get = () => {
-          if(key in state)
-            return state[key];
-    
-          throw suspense(control, key);
-        }
+        output.get = () => control.fetch(key);
 
       if(typeof argument == "function"){
         let unSet: ((next: T) => void) | undefined;
