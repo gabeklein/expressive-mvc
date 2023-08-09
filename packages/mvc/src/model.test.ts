@@ -184,3 +184,20 @@ describe("subscriber", () => {
     expect(test.didSet).toBeCalledWith("bar", "foo");
   })
 })
+
+describe("static is", () => {
+  class Test extends Model {}
+
+  it("will assert if Model extends another", () => {
+    class Test2 extends Test {}
+
+    expect(Test.is(Test2)).toBe(true);
+  })
+
+  it("will be falsy if not super", () => {
+    class NotATest extends Model {}
+
+    expect(Model.is(NotATest)).toBe(true);
+    expect(Test.is(NotATest)).toBe(false);
+  })
+})
