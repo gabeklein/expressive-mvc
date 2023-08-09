@@ -66,12 +66,12 @@ function get<R, T extends Model>(
   arg1?: get.Function<R, T> | boolean){
 
   return add((key, control) => {
-    let { subject, state } = control;
+    let { subject } = control;
 
     if(typeof arg0 == "symbol")
       throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`)
 
-    let source: get.Source = cb => cb(subject);
+    let source: get.Source = resolve => resolve(subject);
 
     if(arg0 instanceof Model)
       subject = arg0;
@@ -111,10 +111,10 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source((resolve) => control.update(key, resolve));
+    source(got => control.update(key, got));
 
     return () => {
-      const value = state[key];
+      const value = control.state[key];
 
       if(value)
         return value;
@@ -176,11 +176,11 @@ function compute<T>(
 
     reset = () => done = true;
 
-    proxy = watch(model, (_, source) => {
+    proxy = watch(model, (_, updated) => {
       if(done)
         return null;
 
-      if(source !== subject)
+      if(updated !== subject)
         compute();
       else
         PENDING.add(compute);
