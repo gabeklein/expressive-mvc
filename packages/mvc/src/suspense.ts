@@ -1,26 +1,25 @@
-import { control } from './control';
+import { Control } from './control';
 import { assign } from './helper/object';
 import { Model } from './model';
 
 export function suspense<T extends Model>(
-  subject: T, key: Model.Key<T>): Promise<void> & Error {
+  control: Control<T>, key: Model.Key<T>): Promise<void> & Error {
 
-  const self = control(subject);
-  const error = new Error(`${subject}.${key} is not yet available.`);
+  const error = new Error(`${control.subject}.${key} is not yet available.`);
   const promise = new Promise<void>((resolve, reject) => {
     function check(){
-      if(self.state[key] !== undefined){
+      if(control.state[key] !== undefined){
         remove();
         resolve();
       }
     }
 
-    const remove = self.addListener((k: unknown) => {
+    const remove = control.addListener((k: unknown) => {
       if(k === key)
         return check;
 
       if(k === null)
-        reject(new Error(`${subject} is destroyed.`));
+        reject(new Error(`${control.subject} is destroyed.`));
     });
   });
 

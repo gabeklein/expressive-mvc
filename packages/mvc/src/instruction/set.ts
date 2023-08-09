@@ -103,7 +103,7 @@ function set <T> (
           if(key in state)
             return state[key];
     
-          throw suspense(subject, key);
+          throw suspense(control, key);
         }
 
       if(typeof argument == "function"){

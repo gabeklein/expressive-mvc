@@ -120,7 +120,7 @@ function get<R, T extends Model>(
         return value;
 
       if(arg1 !== false)
-        throw suspense(subject, key);
+        throw suspense(control, key);
     }
   })
 }
@@ -204,7 +204,7 @@ function compute<T>(
   const output = {
     get(): any {
       output.get = () => {
-        throw suspense(subject, key);
+        throw suspense(parent, key);
       }
       source(connect);
       isAsync = true;
