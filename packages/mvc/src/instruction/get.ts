@@ -12,9 +12,9 @@ declare namespace get {
 
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
-  type Source<T extends Model = Model> = (callback: (x: T) => void) => void;
+  type Source<T extends Model = Model> = (resolve: (x: T) => void) => void;
 
-  export function context(target: Model): (callback: (got: Context) => void) => void
+  export function context(target: Model): (resolve: (got: Context) => void) => void
 }
 
 /**
@@ -88,12 +88,12 @@ function get<R, T extends Model>(
 
         const fetch = get.context(subject);
 
-        source = got => {
+        source = (resolve) => {
           fetch(context => {
             const model = context.get(arg0);
 
             if(model)
-              got(model);
+              resolve(model);
             else if(arg1 !== false)
               throw new Error(`Attempted to find an instance of ${arg0} in context. It is required by ${subject}, but one could not be found.`)
           });
@@ -111,7 +111,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source((got) => control.update(key, got));
+    source((resolve) => control.update(key, resolve));
 
     return () => {
       const value = state[key];
