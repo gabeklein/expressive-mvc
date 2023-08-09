@@ -12,7 +12,7 @@ it.todo("will add pending compute to frame immediately");
 
 afterAll(() => {
   // @ts-ignore
-  delete get.context;
+  delete get.from;
 });
 
 describe("fetch mode", () => {
@@ -79,7 +79,7 @@ describe("fetch mode", () => {
   })
   
   it("retuns undefined if required is false", () => {
-    get.context = () => () => {};
+    get.from = () => () => {};
 
     class MaybeParent extends Model {}
     class StandAlone extends Model {
@@ -560,7 +560,7 @@ describe.skip("replaced source", () => {
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    get.context = () => (got) => {
+    get.from = () => (got) => {
       gotContext = got;
       got(context);
     }
@@ -628,7 +628,7 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    get.context = () => (got) => {
+    get.from = () => (got) => {
       setTimeout(() => {
         got(context);
       }, 0);

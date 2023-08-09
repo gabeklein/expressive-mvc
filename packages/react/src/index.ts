@@ -6,7 +6,7 @@ import { useRemote } from './useRemote';
 Model.get = useRemote;
 Model.use = useLocal;
 
-get.context = getContext;
+get.from = getContext;
 
 export * from '@expressive/mvc';
 

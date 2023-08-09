@@ -14,7 +14,7 @@ declare namespace get {
 
   type Source<T extends Model = Model> = (resolve: (x: T) => void) => void;
 
-  export function context(target: Model): (resolve: (got: Context) => void) => void
+  export function from(target: Model): (resolve: (got: Context) => void) => void
 }
 
 /**
@@ -83,10 +83,10 @@ function get<R, T extends Model>(
         if(arg1 === true)
           throw new Error(`New ${subject} created standalone but requires parent of type ${arg0}.`);
 
-        if(!get.context)
+        if(!get.from)
           throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
 
-        const fetch = get.context(subject);
+        const fetch = get.from(subject);
 
         source = (resolve) => {
           fetch(context => {
