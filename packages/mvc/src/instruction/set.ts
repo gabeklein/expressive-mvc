@@ -99,7 +99,7 @@ function set <T> (
       if(value !== undefined)
         output.value = value;
       else
-        output.get = () => control.fetch(key);
+        output.get = control.fetch(key);
 
       if(typeof argument == "function"){
         let unSet: ((next: T) => void) | undefined;

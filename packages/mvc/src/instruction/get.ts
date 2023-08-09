@@ -112,7 +112,7 @@ function get<R, T extends Model>(
 
     source(got => control.update(key, got));
 
-    return () => control.fetch(key, arg1 !== false);
+    return control.fetch(key, arg1 !== false);
   })
 }
 
@@ -194,7 +194,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = () => parent.fetch(key);
+      output.get = parent.fetch(key);
       source(connect);
       isAsync = true;
       return output.get();

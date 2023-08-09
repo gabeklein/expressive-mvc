@@ -174,39 +174,41 @@ class Control<T extends {} = any> {
   }
 
   fetch(key: string, required?: boolean){
-    const { state, subject } = this;
+    return () => {
+      const { state, subject } = this;
 
-    if(key in state || required === false){
-      const value = state[key];
+      if(key in state || required === false){
+        const value = state[key];
 
-      if(value !== undefined || !required)
-        return value;
-    }
-
-    const error = new Error(`${subject}.${key} is not yet available.`);
-    const promise = new Promise<void>((resolve, reject) => {
-      function check(){
-        if(state[key] !== undefined){
-          remove();
-          resolve();
-        }
+        if(value !== undefined || !required)
+          return value;
       }
-  
-      const remove = this.addListener((k: unknown) => {
-        if(k === key)
-          return check;
-  
-        if(k === null)
-          reject(new Error(`${subject} is destroyed.`));
+
+      const error = new Error(`${subject}.${key} is not yet available.`);
+      const promise = new Promise<void>((resolve, reject) => {
+        function check(){
+          if(state[key] !== undefined){
+            remove();
+            resolve();
+          }
+        }
+    
+        const remove = this.addListener((k: unknown) => {
+          if(k === key)
+            return check;
+    
+          if(k === null)
+            reject(new Error(`${subject} is destroyed.`));
+        });
       });
-    });
-  
-    throw assign(promise, {
-      toString: () => String(error),
-      name: "Suspense",
-      message: error.message,
-      stack: error.stack
-    });
+    
+      throw assign(promise, {
+        toString: () => String(error),
+        name: "Suspense",
+        message: error.message,
+        stack: error.stack
+      });
+    }
   }
 
   addListener<T extends Model>(
