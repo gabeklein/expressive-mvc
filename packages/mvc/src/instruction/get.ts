@@ -169,10 +169,10 @@ function compute<T>(
   }
 
   function connect(model: Model){
+    let done: boolean;
+
     if(reset)
       reset();
-
-    let done: boolean;
 
     reset = () => done = true;
 
@@ -186,6 +186,13 @@ function compute<T>(
         PENDING.add(compute);
     });
 
+    output.get = () => {      
+      if(PENDING.delete(compute))
+        compute();
+  
+      return state[key] as T;
+    }
+
     try {
       compute(true);
     }
@@ -194,27 +201,18 @@ function compute<T>(
     }
   }
 
-  function get(){      
-    if(!proxy)
-      throw suspense(subject, key);
-
-    if(PENDING.delete(compute))
-      compute();
-
-    return state[key];
-  }
-
-  const output: Control.PropertyDescriptor = {
-    get(){
-      output.get = get;
+  const output = {
+    get(): any {
+      output.get = () => {
+        throw suspense(subject, key);
+      }
       source(connect);
       isAsync = true;
-
-      return get();
+      return output.get();
     }
   }
 
-  return output;
+  return output as Control.PropertyDescriptor;
 }
 
 Control.on("update", () => {
