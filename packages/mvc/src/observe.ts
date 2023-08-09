@@ -104,14 +104,14 @@ export function effect<T extends Model>(
 }
 
 export function attempt(fn: () => any): any {
-  const retry = (err: unknown) => {
+  function retry(err: unknown){
     if(err instanceof Promise)
       return err.then(compute);
     else
       throw err;
   }
 
-  const compute = (): any => {
+  function compute(): any {
     try {
       const output = fn();
 
