@@ -66,9 +66,7 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  private observers = new Map([
-    ["", new Set<Control.OnUpdate>()]
-  ]);
+  public listeners: Map<Control.OnUpdate, Set<string> | undefined> | undefined = new Map();
 
   constructor(public subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -80,12 +78,9 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
+    const self = this;
     const { state, subject } = this;
     const { set, enumerable = true } = output;
-
-    const subs = new Set<Control.OnUpdate>();
-
-    this.observers.set(key, subs);
 
     if("value" in output)
       state[key] = output.value;
@@ -110,46 +105,36 @@ class Control<T extends {} = any> {
         const observer = OBSERVER.get(this);
 
         if(observer)
-          subs.add(observer);
+          self.addListener(observer, key);
 
         const value = output.get
           ? output.get(this)
           : state[key];
 
-        return observer
-          ? watch(value, observer)
-          : value;
+        return observer ? watch(value, observer) : value;
       }
     });
   }
 
   update(key: string, value?: unknown){
-    let { frame, observers, state, subject } = this;
+    const { state, subject, listeners } = this;
 
-    const any = observers.get("");
-
-    if(!any || 1 in arguments && value === state[key])
+    if(!listeners || 1 in arguments && value === state[key])
       return;
 
-    const own = observers.get(key);
-
-    if(!own){
-      state[key] = value;
-      observers.set(key, new Set());
-      return;
-    }
-
-    if(isFrozen(frame)){
-      frame = this.frame = {};
+    if(isFrozen(this.frame)){
+      this.frame = {};
 
       enqueue(() => {
-        freeze(frame);
+        freeze(this.frame);
 
-        any.forEach(cb => {
-          const notify = cb(undefined, subject);
-
-          if(notify)
-            enqueue(notify);
+        listeners.forEach((subs, cb) => {
+          if(!subs){
+            const notify = cb(undefined, subject);
+  
+            if(notify)
+              enqueue(notify);
+          }
         });
       })
     }
@@ -157,17 +142,17 @@ class Control<T extends {} = any> {
     if(1 in arguments)
       state[key] = value;
 
-    else if(key in frame)
+    if(key in this.frame)
       return;
     
-    frame[key] = state[key];
+    this.frame[key] = state[key];
 
-    for(const subs of [own, any])
-      for(const cb of subs){
+    for(const [cb, keys] of listeners)
+      if(!keys || keys.has(key)){
         const notify = cb(key, subject);
     
         if(notify === null)
-          subs.delete(cb);
+          listeners.delete(cb);
         else if(notify)
           enqueue(notify);
       }
@@ -214,20 +199,34 @@ class Control<T extends {} = any> {
   addListener<T extends Model>(
     fn: Control.OnUpdate<T>, key?: string){
 
-    const observer = this.observers.get(key || "")!;
+    const { listeners } = this;
 
-    observer.add(fn);
-    return () => observer.delete(fn);
+    if(!listeners)
+      throw new Error("Model is destroyed.");
+
+    let keys = listeners.get(fn);
+
+    if(key){
+      if(!keys)
+        keys = new Set();
+
+      keys.add(key);
+    }
+
+    listeners.set(fn, keys);
+    return () => listeners.delete(fn);
   }
 
   clear(){
-    this.observers.forEach(subs => {
-      subs.forEach(fn => {
+    const { listeners } = this;
+
+    if(listeners){
+      this.listeners = undefined;
+      listeners.forEach((_, fn) => {
         const cb = fn(null, this);
         cb && cb();
       });
-    });
-    this.observers.clear();
+    }
   }
 }
 
@@ -301,7 +300,7 @@ function parent(from: unknown, assign?: {}){
 }
 
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
-  const control = REGISTER.get(value)!;
+  const control = REGISTER.get(value);
 
   if(control){
     if(!OBSERVER.has(value))

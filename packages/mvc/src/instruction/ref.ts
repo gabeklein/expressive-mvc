@@ -71,8 +71,6 @@ function ref<T>(
     const { subject, state } = source;
     let value: ref.Object | ref.Proxy<any> = {};
 
-    source.update(key);
-
     if(arg === subject)
       for(const key in state)
         define(value, key,
