@@ -174,9 +174,9 @@ class Control<T extends {} = any> {
   }
 
   fetch(key: string, required?: boolean){
-    return () => {
-      const { state, subject } = this;
+    const { state, subject } = this;
 
+    return () => {
       if(key in state || required === false){
         const value = state[key];
 
