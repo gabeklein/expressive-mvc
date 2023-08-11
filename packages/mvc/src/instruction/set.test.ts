@@ -1,10 +1,11 @@
-import { mockPromise, mockWarn } from '../helper/mocks';
+import { mockError, mockPromise, mockWarn, timeout } from '../helper/mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { set } from './set';
 import { use } from './use';
 
 const warn = mockWarn();
+const error = mockError();
 
 describe("placeholder", () => {
   class Test extends Model {
@@ -568,15 +569,16 @@ describe("factory", () => {
         void state.value;
       }
       catch(err: any){
-        didThrow = err;
+        throw didThrow = err;
       }
     });
 
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.resolve();
-    await instance.set(0);
+    await timeout(10);
 
     expect(didThrow).toBe("oh no");
+    expect(error).toBeCalledWith("oh no");
   })
 })
