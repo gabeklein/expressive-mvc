@@ -70,13 +70,15 @@ function set <T> (
                 control.update(key);
               })
 
+            assign(pending, {
+              message: `${subject}.${key} is not yet available.`,
+              stack: new Error().stack
+            });
+
             if(argument !== false)
               return output.get = () => {
-                throw assign(pending, {
-                  message: `${subject}.${key} is not yet available.`,
-                  stack: new Error().stack
-                });
-              }
+                throw pending;
+              };
           }
           else 
             control.update(key, value);
