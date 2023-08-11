@@ -105,7 +105,7 @@ class Control<T extends {} = any> {
           }
         },
       get(this: Model){
-        const observer = OBSERVER.get(this);
+        const observer = watch(this);
 
         if(observer)
           self.addListener(observer, key);
@@ -302,11 +302,17 @@ function parent(from: unknown, assign?: {}){
   PARENTS.set(from as Model, assign as Model);
 }
 
-function watch<T extends {}>(value: T, argument: Control.OnUpdate){
+function watch<T>(value: T): Control.OnUpdate | undefined;
+function watch<T>(value: T, argument: Control.OnUpdate): T;
+function watch<T extends {}>(value: T, argument?: Control.OnUpdate){
   const control = REGISTER.get(value);
+  const observer = OBSERVER.get(value);
+
+  if(!argument)
+    return observer;
 
   if(control){
-    if(!OBSERVER.has(value))
+    if(!observer)
       REGISTER.set(value = create(value), control);
   
     OBSERVER.set(value, argument);
