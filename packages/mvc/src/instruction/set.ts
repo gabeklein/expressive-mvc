@@ -53,33 +53,37 @@ function set <T> (
     const output: Control.PropertyDescriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
+      function wait(forValue: Promise<T>){
+        const pending = forValue
+          .then(value => {
+            output.get = undefined;
+            control.update(key, value);
+            return value;
+          })
+          .catch(err => {
+            output.get = () => { throw err };
+            control.update(key);
+          })
+
+        if(argument !== false){
+          assign(pending, {
+            message: `${subject}.${key} is not yet available.`,
+            stack: new Error().stack
+          });
+
+          return output.get = () => {
+            throw pending;
+          };
+        }
+      }
+
       function init(){
         try {
           if(typeof value == "function")
             value = attempt(value.bind(subject, key, subject));
 
-          if(value instanceof Promise){
-            const pending = value
-              .then(value => {
-                output.get = undefined;
-                control.update(key, value);
-                return value;
-              })
-              .catch(err => {
-                output.get = () => { throw err };
-                control.update(key);
-              })
-
-            assign(pending, {
-              message: `${subject}.${key} is not yet available.`,
-              stack: new Error().stack
-            });
-
-            if(argument !== false)
-              return output.get = () => {
-                throw pending;
-              };
-          }
+          if(value instanceof Promise)
+            return wait(value);
           else 
             control.update(key, value);
         }
