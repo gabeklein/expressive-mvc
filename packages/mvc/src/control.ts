@@ -105,16 +105,18 @@ class Control<T extends {} = any> {
           }
         },
       get(this: Model){
-        const observer = watch(this);
-
-        if(observer)
-          self.addListener(observer, key);
-
         const value = output.get
           ? output.get(this)
           : state[key];
 
-        return observer ? watch(value, observer) : value;
+        const observer = watch(this);
+
+        if(observer){
+          self.addListener(observer, key);
+          return watch(value, observer)
+        }
+
+        return value;
       }
     });
   }
