@@ -14,9 +14,7 @@ export function mockPromise<T = void>(){
 }
 
 interface MockAsync {
-  /**
-   * Promise resolves next invocation of this mock function.
-   */
+  /** Promise resolves next invocation of this mock function. */
   next(): Promise<void>;
 }
 

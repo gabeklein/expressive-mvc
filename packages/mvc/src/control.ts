@@ -63,13 +63,16 @@ class Control<T extends {} = any> {
   }
 
   public id: string;
+  public subject: T;
+
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> | undefined = new Map();
 
-  constructor(public subject: T, id?: string | number | false){
+  constructor(subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
+    this.subject = subject;
 
     REGISTER.set(subject, this);
 
