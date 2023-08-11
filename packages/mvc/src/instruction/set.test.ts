@@ -413,11 +413,9 @@ describe("factory", () => {
     class Test extends Model {
       child = use(Child);
       
-      childValue = get(() => this.getChildValue);
-
-      getChildValue(){
-        return this.child.value + " world!";
-      }
+      childValue = get(this, self => {
+        return self.child.value + " world!";
+      });
     }
 
     const promise = mockPromise<string>();
@@ -431,6 +429,7 @@ describe("factory", () => {
     test.get(effect);
 
     expect(effect).toBeCalledTimes(1);
+    expect(effect).not.toHaveReturned();
 
     promise.resolve("hello");
 
@@ -442,17 +441,14 @@ describe("factory", () => {
     class Test extends Model {
       asyncValue = set(() => promise);
 
-      value = get(() => this.getValue);
-
-      getValue(){
-        const { asyncValue } = this;
+      value = get(this, ({ asyncValue }) => {
         return `Hello ${asyncValue}`;
-      }
+      });
     }
 
-    const test = Test.new();
     const promise = mockPromise<string>();
     const didEvaluate = mockPromise<string>();
+    const test = Test.new();
 
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.value);
@@ -460,7 +456,7 @@ describe("factory", () => {
 
     test.get(effect);
 
-    expect(effect).toBeCalled();
+    expect(effect).toBeCalledTimes(1);
     expect(effect).not.toHaveReturned();
 
     promise.resolve("World");
