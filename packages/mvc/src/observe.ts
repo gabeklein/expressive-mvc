@@ -73,7 +73,7 @@ export function effect<T extends Model>(
       if(busy)
         return;
 
-      const output = attempt(() => {
+      try {
         if(typeof unSet == "function")
           unSet();
     
@@ -81,11 +81,17 @@ export function effect<T extends Model>(
     
         if(typeof unSet !== "function")
           unSet = undefined;
-      })
-
-      if(output instanceof Promise){
-        output.finally(() => busy = false);
-        busy = true;
+      }
+      catch(err){
+        if(err instanceof Promise){
+          busy = true;
+          err.finally(() => {
+            busy = false;
+            invoke();
+          });
+        }
+        else 
+          console.error(err);
       }
     }
 
