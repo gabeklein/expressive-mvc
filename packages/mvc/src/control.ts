@@ -84,6 +84,7 @@ class Control<T extends {} = any> {
     const self = this;
     const { state, subject } = this;
     const { set, enumerable = true } = output;
+    const cache = new WeakMap<T, T>();
 
     if("value" in output)
       state[key] = output.value;
@@ -105,16 +106,31 @@ class Control<T extends {} = any> {
           }
         },
       get(this: Model){
-        const value = output.get
+        let value = output.get
           ? output.get(this)
           : state[key];
 
+        if(cache.has(value))
+          return cache.get(value);
+
         const observer = watch(this);
 
-        if(observer){
-          self.addListener(observer, key);
-          return watch(value, observer)
-        }
+        if(observer)
+          if(REGISTER.has(value)){
+            let done = false;
+            const listener: Control.OnUpdate<T> = (key, from) => {
+              return done ? null : observer(key, from);
+            }
+
+            self.addListener((key, subject) => {
+              done = true;
+              return observer(key, subject)
+            }, key);
+
+            cache.set(value, value = watch(value, listener));
+          }
+          else
+            self.addListener(observer, key);
 
         return value;
       }
