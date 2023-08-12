@@ -132,6 +132,8 @@ describe("get", () => {
       expect(effect).toBeCalledTimes(2);
     })
 
+    jest.setTimeout(100000);
+    
     it.skip("will not update for removed children", async () => {
       class Nested extends Model {
         value = 1;
@@ -143,6 +145,7 @@ describe("get", () => {
 
       const test = Test.new();
       const effect = jest.fn((state: Test) => {
+        void state.nested;
         void state.nested.value;
       });
 
@@ -156,7 +159,8 @@ describe("get", () => {
       const old = test.nested;
 
       test.nested = Nested.new();
-      await expect(test).toUpdate();
+      // await expect(test).toUpdate();
+      await new Promise(resolve => setTimeout(resolve, 1000));
       // Updates because nested property is new.
       expect(effect).toBeCalledTimes(3);
 

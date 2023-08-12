@@ -155,11 +155,12 @@ class Control<T extends {} = any> {
     for(const [cb, keys] of listeners)
       if(!keys || keys.has(key)){
         const notify = cb(key, subject);
-    
-        if(notify === null)
-          listeners.delete(cb);
-        else if(notify)
+
+        if(notify)
           enqueue(notify);
+
+        if(notify === null || keys)
+          listeners.delete(cb);
       }
   }
 
