@@ -79,7 +79,7 @@ export function effect<T extends Model>(
       }
       catch(err){
         if(err instanceof Promise){
-          err.finally(() => (refresh = invoke)());
+          err.then(() => (refresh = invoke)());
           refresh = undefined;
         }
         else 
@@ -93,16 +93,16 @@ export function effect<T extends Model>(
       if(!refresh)
         return refresh;
 
-      if(key === null && unSet){
+      if(key === null && unSet)
         unSet();
-        return null;
-      }
     });
 
     invoke();
     refresh = invoke;
 
-    return () => refresh = null;
+    return () => {
+      refresh = null;
+    };
   });
 }
 
