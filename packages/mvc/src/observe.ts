@@ -66,36 +66,28 @@ export function effect<T extends Model>(
   target: T, callback: Model.Effect<T>){
 
   return control(target, self => {
+    let refresh: (() => void) | null | undefined;
     let unSet: Callback | Promise<void> | void;
-    let busy = false;
 
     function invoke(){
-      if(busy)
-        return;
-
       try {
         if(typeof unSet == "function")
           unSet();
     
         unSet = callback.call(target, target);
     
-        if(typeof unSet !== "function")
+        if(typeof unSet != "function")
           unSet = undefined;
       }
       catch(err){
         if(err instanceof Promise){
-          busy = true;
-          err.finally(() => {
-            busy = false;
-            invoke();
-          });
+          err.finally(() => (refresh = invoke)());
+          refresh = undefined;
         }
         else 
           console.error(err);
       }
     }
-
-    let refresh: (() => void) | null;
 
     target = watch(target, () => refresh);
     self.addListener(key => 
