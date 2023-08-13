@@ -175,10 +175,10 @@ function compute<T>(
       if(done)
         return null;
 
-      if(updated !== subject)
-        compute();
-      else
+      if(updated == subject)
         PENDING.add(compute);
+      else
+        compute();
     });
 
     output.get = () => {      
