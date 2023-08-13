@@ -1,5 +1,5 @@
 import Model from '.';
-import { mockHook } from './mocks';
+import { mockHook, mockPromise } from './mocks';
 
 const error = jest
   .spyOn(console, "error")
@@ -54,24 +54,20 @@ it("will run callback", () => {
 })
 
 it("will destroy instance of given class", async () => {
-  const didDestroy = jest.fn();
+  const didDestroy = mockPromise();
 
   class Test extends Model {
     null(){
       super.null();
-      didDestroy();
+      didDestroy.resolve();
     }
   }
 
   const hook = mockHook(() => Test.use());
 
-  expect(didDestroy).not.toBeCalled();
-
   hook.unmount();
 
-  await hook.output.set(10);
-
-  expect(didDestroy).toBeCalled();
+  await didDestroy;
 })
 
 it("will ignore updates after unmount", async () => {

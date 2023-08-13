@@ -209,11 +209,7 @@ class Control<T extends {} = any> {
   }
 
   clear(){
-    this.listeners.forEach((_, fn) => {
-      const callback = fn(null, this);
-      if(callback)
-        callback();
-    });
+    this.listeners.forEach((_, fn) => fn(null, this));
     this.listeners.clear();
     freeze(this.state);
   }
