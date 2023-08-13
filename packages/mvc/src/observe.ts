@@ -42,7 +42,7 @@ export function nextUpdate<T extends Model>(
       }
   
       const callback = () => resolve(self.frame);
-  
+
       const remove = self.addListener((key) => {
         if(!arg2 || key && arg2(key) === true){
           remove();
@@ -54,10 +54,12 @@ export function nextUpdate<T extends Model>(
         }
       });
   
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
-        remove();
-        reject(arg1);
-      }, arg1);
+      const timeout =
+        typeof arg1 == "number" &&
+        setTimeout(() => {
+          remove();
+          reject(arg1);
+        }, arg1);
     })
   });
 }

@@ -132,7 +132,7 @@ describe("get", () => {
       expect(effect).toBeCalledTimes(2);
     })
 
-    it.skip("will not update for removed children", async () => {
+    it.only("will not update for removed children", async () => {
       class Nested extends Model {
         value = 1;
       }

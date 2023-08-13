@@ -8,6 +8,7 @@ const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
+const SEEN = new WeakSet<Function>();
 
 declare namespace Control {
   /**
@@ -68,7 +69,7 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  public listeners: Map<Control.OnUpdate, Set<string> | undefined> | undefined = new Map();
+  public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
 
   constructor(subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -81,8 +82,7 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
-    const self = this;
-    const { state, subject } = this;
+    const { state, subject, listeners } = this;
     const { set, enumerable = true } = output;
 
     if("value" in output)
@@ -112,7 +112,10 @@ class Control<T extends {} = any> {
         const observer = watch(this);
 
         if(observer){
-          self.addListener(observer, key);
+          const keys = listeners.get(observer);
+
+          listeners.set(observer, new Set(keys).add(key));
+
           return watch(value, observer)
         }
 
@@ -154,11 +157,17 @@ class Control<T extends {} = any> {
 
     for(const [cb, keys] of listeners)
       if(!keys || keys.has(key)){
+        if(SEEN.has(cb))
+          continue;
+
         const notify = cb(key, subject);
+
+        SEEN.add(cb);
     
-        if(notify === null)
+        if(notify === null || keys)
           listeners.delete(cb);
-        else if(notify)
+
+        if(notify)
           enqueue(notify);
       }
   }
@@ -201,37 +210,17 @@ class Control<T extends {} = any> {
     }
   }
 
-  addListener<T extends Model>(
-    fn: Control.OnUpdate<T>, key?: string){
-
-    const { listeners } = this;
-
-    if(!listeners)
-      throw new Error("Model is destroyed.");
-
-    let keys = listeners.get(fn);
-
-    if(key){
-      if(!keys)
-        keys = new Set();
-
-      keys.add(key);
-    }
-
-    listeners.set(fn, keys);
-    return () => listeners.delete(fn);
+  addListener<T extends Model>(fn: Control.OnUpdate<T>){
+    this.listeners.set(fn, undefined);
+    return () => this.listeners.delete(fn);
   }
 
   clear(){
-    const { listeners } = this;
-
-    if(listeners){
-      this.listeners = undefined;
-      listeners.forEach((_, fn) => {
-        const cb = fn(null, this);
-        cb && cb();
-      });
-    }
+    this.listeners.forEach((_, fn) => {
+      const cb = fn(null, this);
+      cb && cb();
+    });
+    this.listeners = new Map();
   }
 }
 
@@ -307,11 +296,12 @@ function parent(from: unknown, assign?: {}){
 function watch<T>(value: T): Control.OnUpdate | undefined;
 function watch<T>(value: T, argument: Control.OnUpdate): T;
 function watch<T extends {}>(value: T, argument?: Control.OnUpdate){
-  const control = REGISTER.get(value);
   const observer = OBSERVER.get(value);
 
   if(!argument)
     return observer;
+
+  const control = REGISTER.get(value);
 
   if(control){
     if(!observer)
