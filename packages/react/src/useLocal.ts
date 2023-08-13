@@ -1,4 +1,4 @@
-import { Context, Control, Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const Applied = new WeakMap<Model, Context>();
@@ -12,16 +12,20 @@ function useLocal <T extends Model> (
 
   const state = useState(0);
   const hook = useMemo(() => {
-    const instance = this.new();
-    const local = Control.watch(instance, () => onUpdate);
-    const refresh = () => state[1](x => x+1);
-
-    let onUpdate: (() => void) | undefined | null;
+    const instance = this.new() as T;
     let shouldApply = !!apply;
+    let lock = true;
+    let local: any;
+
+    const done = instance.get(current => {
+      local = current;
+      if(!lock)
+        state[1](x => x+1);
+    })
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
       if(shouldApply){
-        onUpdate = undefined;
+        lock = true;
 
         if(typeof props == "function")
           props(instance);
@@ -34,15 +38,15 @@ function useLocal <T extends Model> (
         if(!repeat)
           shouldApply = false;
 
-        instance.set().then(() => onUpdate = refresh);
+        instance.set().then(() => lock = false);
       }
 
       useModelContext(instance);
 
       useEffect(() => {
-        onUpdate = refresh;
+        lock = false;
         return () => {
-          onUpdate = null;
+          done();
           instance.null();
         }
       }, []);
