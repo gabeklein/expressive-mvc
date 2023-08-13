@@ -210,8 +210,9 @@ class Control<T extends {} = any> {
 
   clear(){
     this.listeners.forEach((_, fn) => {
-      const cb = fn(null, this);
-      cb && cb();
+      const callback = fn(null, this);
+      if(callback)
+        callback();
     });
     this.listeners.clear();
     freeze(this.state);
