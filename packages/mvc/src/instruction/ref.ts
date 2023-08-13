@@ -91,23 +91,28 @@ function ref<T>(
 
     else {
       let unSet: ((next: T) => void) | undefined;
-  
-      if(arg)
-        source.addListener(() => {
-          const value = state[key] as T;
 
-          if(unSet)
-            unSet = void unSet(value);
+      const set = (value?: any) => {
+        source.update(key, value);
+
+        if(!arg)
+          return;
+
+        if(unSet)
+          unSet = void unSet(value);
+    
+        if(value !== null || arg2 === false){  
+          const out = arg.call(subject, value);
       
-          if(value !== null || arg2 === false){  
-            const out = arg.call(subject, value);
-        
-            if(typeof out == "function")
-              unSet = out;
-          }
-        }, key)
+          if(typeof out == "function")
+            unSet = out;
+        }
+      };
   
-      value = createRef(source, key);
+      value = define(set, "current", {
+        get: () => state[key],
+        set
+      }) as ref.Object<T>;
     }
 
     define(subject, key, { value });
