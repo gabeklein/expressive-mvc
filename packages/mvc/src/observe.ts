@@ -67,17 +67,15 @@ export function effect<T extends Model>(
 
   return control(target, self => {
     let refresh: (() => void) | null | undefined;
-    let unSet: Callback | Promise<void> | void;
+    let unSet: Callback | undefined;
 
     function invoke(){
+      if(unSet)
+        unSet();
+
       try {
-        if(typeof unSet == "function")
-          unSet();
-    
-        unSet = callback.call(target, target);
-    
-        if(typeof unSet != "function")
-          unSet = undefined;
+        const out = callback.call(target, target);
+        unSet = typeof out == "function" ? out : undefined;
       }
       catch(err){
         if(err instanceof Promise){
@@ -90,9 +88,16 @@ export function effect<T extends Model>(
     }
 
     target = watch(target, () => refresh);
-    self.addListener(key => 
-      key === null || refresh === null ? refresh : undefined
-    );
+
+    self.addListener(key => {
+      if(!refresh)
+        return refresh;
+
+      if(key === null && unSet){
+        unSet();
+        return null;
+      }
+    });
 
     invoke();
     refresh = invoke;
