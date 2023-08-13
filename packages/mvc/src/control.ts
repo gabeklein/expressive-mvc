@@ -68,7 +68,7 @@ class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
   public frame: { [property: string]: unknown } = freeze({});
 
-  public listeners: Map<Control.OnUpdate, Set<string> | undefined> | undefined = new Map();
+  public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
 
   constructor(subject: T, id?: string | number | false){
     this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
@@ -206,32 +206,21 @@ class Control<T extends {} = any> {
 
     const { listeners } = this;
 
-    if(!listeners)
-      throw new Error("Model is destroyed.");
-
     let keys = listeners.get(fn);
 
-    if(key){
-      if(!keys)
-        keys = new Set();
-
-      keys.add(key);
-    }
+    if(key)
+      keys = new Set(keys).add(key);
 
     listeners.set(fn, keys);
     return () => listeners.delete(fn);
   }
 
   clear(){
-    const { listeners } = this;
-
-    if(listeners){
-      this.listeners = undefined;
-      listeners.forEach((_, fn) => {
-        const cb = fn(null, this);
-        cb && cb();
-      });
-    }
+    this.listeners.forEach((_, fn) => {
+      const cb = fn(null, this);
+      cb && cb();
+    });
+    this.listeners.clear();
   }
 }
 
