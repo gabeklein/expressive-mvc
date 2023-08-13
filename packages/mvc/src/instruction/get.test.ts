@@ -16,6 +16,18 @@ afterAll(() => {
 });
 
 describe("fetch mode", () => {
+  it("will throw if no adapter", () => {
+    class Parent extends Model {}
+
+    class Test extends Model {
+      value = get(Parent);
+    }
+
+    expect(() => Test.new()).toThrowError(
+      `Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`
+    );
+  })
+
   it("will allow overwrite", async () => {
     class Foo extends Model {
       value = "foo";
