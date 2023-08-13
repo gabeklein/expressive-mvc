@@ -1,3 +1,4 @@
+import { mockError } from './helper/mocks';
 import { get } from './instruction/get';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
@@ -692,6 +693,8 @@ describe("set", () => {
   })
 
   describe("effect", () => {
+    const error = mockError();
+
     class Test extends Model {
       foo = 0;
       bar = 1;
@@ -734,6 +737,22 @@ describe("set", () => {
 
       done();
     })
+
+    it("will log error thrown by async callback", async () => {
+      const test = Test.new();
+      const oops = new Error("oops");
+
+      const done = test.set(() => () => {
+        throw oops;
+      });
+
+      test.foo = 1;
+
+      await expect(test).toUpdate();
+      expect(error).toBeCalledWith(oops);
+
+      done();
+    });
 
     it('will not activate Model prematurely', () => {
       class Test extends Model {
