@@ -1,11 +1,11 @@
 import { Context, Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { RequireContext, useModelContext } from './provider';
+const Applied = new WeakMap<Model, Context>();
+const Expects = new WeakMap<Model, ((context: Context) => void)[]>();
+const Shared = createContext(new Context());
 
-export const Applied = new WeakMap<Model, Context>();
-
-export function useLocal <T extends Model> (
+function useLocal <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
@@ -37,22 +37,7 @@ export function useLocal <T extends Model> (
         instance.set().then(() => onUpdate = refresh);
       }
 
-      const applied = Applied.get(instance);
-
-      if(applied)
-        useModelContext();
-
-      else if(applied === undefined){
-        const pending = RequireContext.get(instance);
-
-        if(pending){
-          const local = useModelContext();
-
-          pending.forEach(init => init(local));
-          Applied.set(instance, local);
-          RequireContext.delete(instance);
-        }
-      }
+      useModelContext(instance);
 
       useEffect(() => {
         onUpdate = refresh;
@@ -69,11 +54,28 @@ export function useLocal <T extends Model> (
   return hook(apply);
 }
 
-export function getContext(from: Model){
-  let waiting = RequireContext.get(from)!;
+function useModelContext(): Context;
+function useModelContext(applyTo: Model): void;
+function useModelContext(applyTo?: Model){
+  const context = useContext(Shared);
+
+  if(!applyTo || Applied.has(applyTo))
+    return context;
+
+  const pending = Expects.get(applyTo);
+
+  if(pending){
+    pending.forEach(init => init(context));
+    Applied.set(applyTo, context);
+    Expects.delete(applyTo);
+  }
+}
+
+function getContext(from: Model){
+  let waiting = Expects.get(from)!;
 
   if(!waiting)
-    RequireContext.set(from, waiting = []);
+    Expects.set(from, waiting = []);
 
   return (callback: (got: Context) => void) => {
     const applied = Applied.get(from);
@@ -83,4 +85,19 @@ export function getContext(from: Model){
     else
       waiting.push(callback);
   }
+}
+
+function setContext(to: Model, context: Context){
+  const pending = Expects.get(to);
+
+  if(pending)
+    pending.forEach(cb => cb(context));
+}
+
+export {
+  useLocal,
+  useModelContext,
+  getContext,
+  setContext,
+  Shared
 }

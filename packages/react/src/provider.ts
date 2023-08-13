@@ -1,22 +1,9 @@
 import { Context, Model } from '@expressive/mvc';
-import {
-  createContext,
-  createElement,
-  useContext,
-  useEffect,
-  useMemo,
-} from 'react';
+import { createElement, useEffect, useMemo } from 'react';
 
-import type {
-  FunctionComponentElement,
-  ProviderProps,
-  ReactNode,
-} from 'react';
+import { Shared, setContext, useModelContext } from './useLocal';
 
-const ModelContext = createContext(new Context());
-
-export const RequireContext = new WeakMap<Model, ((context: Context) => void)[]>();
-export const useModelContext = () => useContext(ModelContext);
+import type { FunctionComponentElement, ProviderProps, ReactNode } from 'react';
 
 declare namespace Provider {
   type Element = FunctionComponentElement<ProviderProps<Context>>;
@@ -68,15 +55,12 @@ function Provider<T extends Provider.Item>(
         if(K in model)
           (model as any)[K] = (assign as any)[K];
 
-    const pending = RequireContext.get(model);
-
-    if(pending)
-      pending.forEach(cb => cb(value));
+    setContext(model, value);
   });
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(ModelContext.Provider, { key: value.key, value }, children);
+  return createElement(Shared.Provider, { key: value.key, value }, children);
 }
 
 function reject(argument: any){

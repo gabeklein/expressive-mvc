@@ -1,7 +1,7 @@
 import { Control, Model } from '@expressive/mvc';
 import { useEffect, useMemo, useState } from 'react';
 
-import { useModelContext } from './provider';
+import { useModelContext } from './useLocal';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
