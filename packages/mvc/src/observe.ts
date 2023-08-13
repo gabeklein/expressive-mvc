@@ -1,5 +1,5 @@
 import { Callback } from '../types';
-import { control, watch } from './control';
+import { control, subscribe } from './control';
 import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
 
@@ -66,43 +66,25 @@ export function effect<T extends Model>(
   target: T, callback: Model.Effect<T>){
 
   return control(target, self => {
-    let refresh: (() => void) | null | undefined;
     let unSet: Callback | undefined;
 
-    function invoke(){
+    const remove = self.addListener(key => {
+      if(key === null && unSet)
+        unSet();
+    });
+
+    const done = subscribe(target, state => {
       if(unSet)
         unSet();
 
-      try {
-        const out = callback.call(target, target);
-        unSet = typeof out == "function" ? out : undefined;
-      }
-      catch(err){
-        if(err instanceof Promise){
-          err.finally(() => (refresh = invoke)());
-          refresh = undefined;
-        }
-        else 
-          console.error(err);
-      }
-    }
-
-    target = watch(target, () => refresh);
-
-    self.addListener(key => {
-      if(!refresh)
-        return refresh;
-
-      if(key === null && unSet){
-        unSet();
-        return null;
-      }
+      const out = callback.call(state, state);
+      unSet = typeof out == "function" ? out : undefined;
     });
 
-    invoke();
-    refresh = invoke;
-
-    return () => refresh = null;
+    return () => {
+      remove();
+      done();
+    }
   });
 }
 
