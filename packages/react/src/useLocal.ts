@@ -1,28 +1,30 @@
-import { Context, Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import { Context, Model } from '@expressive/mvc';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { RequireContext, useModelContext } from './provider';
+const Applied = new WeakMap<Model, Context>();
+const Expects = new WeakMap<Model, ((context: Context) => void)[]>();
+const ModelContext = createContext(new Context());
 
-export const Applied = new WeakMap<Model, Context>();
-
-export function useLocal <T extends Model> (
+function useLocal <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
   const state = useState(0);
   const hook = useMemo(() => {
-    const instance = this.new();
-    const local = Control.watch(instance, () => onUpdate);
-    const refresh = () => state[1](x => x+1);
-
-    let onUpdate: (() => void) | undefined | null;
+    const instance = this.new() as T;
     let shouldApply = !!apply;
+    let lock = true;
+    let local: any;
+
+    const remove = instance.get(current => {
+      local = current;
+      if(!lock)
+        state[1](x => x+1);
+    })
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
       if(shouldApply){
-        onUpdate = undefined;
-
         if(typeof props == "function")
           props(instance);
 
@@ -34,30 +36,16 @@ export function useLocal <T extends Model> (
         if(!repeat)
           shouldApply = false;
 
-        instance.set().then(() => onUpdate = refresh);
+        lock = true;
+        instance.set().then(() => lock = false);
       }
 
-      const applied = Applied.get(instance);
-
-      if(applied)
-        useModelContext();
-
-      else if(applied === undefined){
-        const pending = RequireContext.get(instance);
-
-        if(pending){
-          const local = useModelContext();
-
-          pending.forEach(init => init(local));
-          Applied.set(instance, local);
-          RequireContext.delete(instance);
-        }
-      }
+      useModelContext(instance);
 
       useEffect(() => {
-        onUpdate = refresh;
+        lock = false;
         return () => {
-          onUpdate = null;
+          remove();
           instance.null();
         }
       }, []);
@@ -69,11 +57,28 @@ export function useLocal <T extends Model> (
   return hook(apply);
 }
 
-export function getContext(from: Model){
-  let waiting = RequireContext.get(from)!;
+function useModelContext(): Context;
+function useModelContext(applyTo: Model): void;
+function useModelContext(applyTo?: Model){
+  const context = useContext(ModelContext);
+
+  if(!applyTo || Applied.has(applyTo))
+    return context;
+
+  const pending = Expects.get(applyTo);
+
+  if(pending){
+    pending.forEach(init => init(context));
+    Applied.set(applyTo, context);
+    Expects.delete(applyTo);
+  }
+}
+
+function getContext(from: Model){
+  let waiting = Expects.get(from)!;
 
   if(!waiting)
-    RequireContext.set(from, waiting = []);
+    Expects.set(from, waiting = []);
 
   return (callback: (got: Context) => void) => {
     const applied = Applied.get(from);
@@ -83,4 +88,19 @@ export function getContext(from: Model){
     else
       waiting.push(callback);
   }
+}
+
+function setContext(to: Model, context: Context){
+  const pending = Expects.get(to);
+
+  if(pending)
+    pending.forEach(cb => cb(context));
+}
+
+export {
+  useLocal,
+  useModelContext,
+  getContext,
+  setContext,
+  ModelContext
 }

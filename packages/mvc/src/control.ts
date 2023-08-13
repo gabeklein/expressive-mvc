@@ -52,6 +52,7 @@ const LIFECYCLE = {
 
 class Control<T extends {} = any> {
   static watch = watch;
+  static act = subscribe;
   static for = control;
   static add = add;
 
@@ -317,6 +318,34 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
+function subscribe<T extends Model>(
+  to: T, action: (state: T) => void): Callback {
+
+  let refresh: (() => void) | null | undefined;
+  const target = watch(to, () => refresh);
+  
+  function invoke(){
+    try {
+      action.call(target, target);
+    }
+    catch(err){
+      if(err instanceof Promise){
+        err.finally(() => (refresh = invoke)());
+        refresh = undefined;
+      }
+      else 
+        console.error(err);
+    }
+  }
+
+  invoke();
+  refresh = invoke;
+
+  return () => {
+    refresh = null;
+  }
+}
+
 function add<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
   INSTRUCT.set(placeholder, instruction);
@@ -334,5 +363,6 @@ export {
   Control,
   parent,
   uid,
+  subscribe,
   watch
 }
