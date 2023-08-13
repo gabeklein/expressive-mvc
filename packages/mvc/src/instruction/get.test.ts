@@ -89,6 +89,22 @@ describe("fetch mode", () => {
   
     expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Parent.`);
   })
+
+  it("will throw if instance not found", () => {
+    get.from = () => (got) => {
+      got(new Context());
+    };
+
+    class Parent extends Model {}
+    class Child extends Model {
+      expects = get(Parent);
+    }
+
+    // should this throw immediately, or only on access?
+    expect(() => Child.new("ID")).toThrowError(
+      `Attempted to find an instance of Parent in context. It is required by Child-ID, but one could not be found.`
+    );
+  })
   
   it("retuns undefined if required is false", () => {
     get.from = () => () => {};

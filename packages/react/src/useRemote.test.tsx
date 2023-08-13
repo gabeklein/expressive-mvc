@@ -638,7 +638,7 @@ describe("get instruction", () => {
       }
     }
 
-    const tryToRender = () => mockHook(() => Foo.use().bar);
+    const tryToRender = () => mockHook(() => Foo.use());
 
     expect(tryToRender).toThrowError(`Attempted to find an instance of Bar in context. It is required by Foo-ID, but one could not be found.`);
   })
