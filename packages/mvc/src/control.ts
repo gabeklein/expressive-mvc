@@ -307,11 +307,12 @@ function parent(from: unknown, assign?: {}){
 function watch<T>(value: T): Control.OnUpdate | undefined;
 function watch<T>(value: T, argument: Control.OnUpdate): T;
 function watch<T extends {}>(value: T, argument?: Control.OnUpdate){
-  const control = REGISTER.get(value);
   const observer = OBSERVER.get(value);
 
   if(!argument)
     return observer;
+
+  const control = REGISTER.get(value);
 
   if(control){
     if(!observer)
