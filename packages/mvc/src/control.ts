@@ -214,6 +214,7 @@ class Control<T extends {} = any> {
       cb && cb();
     });
     this.listeners.clear();
+    freeze(this.state);
   }
 }
 

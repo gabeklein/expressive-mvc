@@ -757,7 +757,7 @@ describe("set", () => {
       expect(callback).toBeCalledWith("bar");
     })
 
-    it('will not fire after model is destroyed', () => {
+    it('will disallow update if model is destroyed', () => {
       class Test extends Model {
         foo = 0;
       }
@@ -769,9 +769,11 @@ describe("set", () => {
       test.foo++;
 
       test.null();
-      test.foo++;
 
+      expect(() => test.foo++).toThrowError();
       expect(callback).toBeCalledTimes(1);
     })
+
+    it.todo("will throw clear error on bad update");
   })
 })
