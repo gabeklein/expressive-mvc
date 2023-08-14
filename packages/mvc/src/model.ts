@@ -56,7 +56,7 @@ class Model {
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
   get(): Model.Export<this>;
 
-  /** Run a function which will automatically run again when accessed properties change. */
+  /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): Callback;
 
   get(arg1?: Model.Effect<this>){
@@ -95,7 +95,7 @@ class Model {
     return typeof arg1 == "function"
       ? control(this, c => c.addListener(k => k && arg1(k)))
       : nextUpdate(this, arg1, arg2);
-    }
+  }
 
   /** Mark this instance for garbage collection. */
   null(){
