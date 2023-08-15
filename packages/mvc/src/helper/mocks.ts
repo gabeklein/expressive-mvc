@@ -42,9 +42,7 @@ export function mockAsync<T = any, Y extends any[] = any>(
 }
 
 export function mockError(){
-  const error = jest
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
+  const error = jest.spyOn(console, "error");
 
   afterEach(() => error.mockReset());
   afterAll(() => error.mockRestore());
