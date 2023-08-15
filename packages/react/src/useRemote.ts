@@ -10,9 +10,9 @@ export function useRemote<T extends Model, R>(
   const context = useModelContext();
   const state = useState(0);
   const hook = useMemo(() => {
-    const notFound = () => new Error(`Could not find ${this} in context.`);
-    const refresh = () => state[1](x => x+1);
     const instance = context.get(this);
+    const refresh = () => state[1](x => x+1);
+    const notFound = () => new Error(`Could not find ${this} in context.`);
 
     let onUpdate: (() => void) | undefined | null;
     let value: any;
