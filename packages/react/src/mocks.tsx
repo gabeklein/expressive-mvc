@@ -94,12 +94,9 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.New, arg2?: () => T)
   }
 
   mock.act = (fn: () => void | Promise<void>) => {
-    return act(async () => {
-      const pending = new Promise<void>(res => waiting = res);
-      await new Promise(res => setTimeout(res, 10));
-      await fn();
-      await pending;
-    });
+    const pending = new Promise<void>(res => waiting = res);
+    act(async () => { await fn() });
+    return pending;
   }
 
   mock.update = (next?: () => T) => {

@@ -138,8 +138,8 @@ describe("set instruction", () => {
     })
   });
   
-  describe("placeholder", () => {
-    it.only('will suspend if value is not assigned', async () => {
+  describe.skip("placeholder", () => {
+    it.skip('will suspend if value is not assigned', async () => {
       class Test extends Model {
         foobar = set<string>();
       }

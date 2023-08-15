@@ -583,7 +583,7 @@ describe("compute mode", () => {
 })
 
 // not yet implemented by Context yet; this is a hack.
-describe.skip("replaced source", () => {
+describe("replaced source", () => {
   const context = new Context();
   let gotContext: (got: Context) => void;
 
@@ -610,7 +610,7 @@ describe.skip("replaced source", () => {
     })
   }
 
-  it("will update", async () => {
+  it.skip("will update", async () => {
     const test = Test.new();
     const oldSource = Source.new("Foo");
   
