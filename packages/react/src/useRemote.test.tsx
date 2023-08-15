@@ -58,120 +58,124 @@ it("will not update on death event", async () => {
   expect(hook).toBeCalledTimes(1);
 })
 
-describe("set factory", () => {
-  it.skip('will suspend if function is async', async () => {
-    const promise = mockPromise();
-
-    class Test extends Model {
-      value = set(() => promise);
-    }
-
-    const hook = mockHook(Test, () => {
-      void Test.get().value;
-    });
+describe("set instruction", () => {
+  describe("factory", () => {
+    it('will suspend if function is async', async () => {
+      const promise = mockPromise<string>();
   
-    expect(hook.suspense).toBe(true);
-
-    await hook.act(() => {
-      promise.resolve();
-    })
+      class Test extends Model {
+        value = set(() => promise);
+      }
   
-    expect(hook).toBeCalledTimes(2);
-    expect(hook).toHaveReturnedTimes(1);
-  })
-
-  it('will refresh and throw if async rejects', async () => {
-    const promise = mockPromise();
+      const hook = mockHook(Test, () => {
+        const { value } = Test.get();
+        return value;
+      });
+    
+      expect(hook.suspense).toBe(true);
   
-    class Test extends Model {
-      value = set(async () => {
-        await promise;
-        throw "oh no";
+      await hook.act(() => {
+        promise.resolve("hello");
       })
-    }
+    
+      expect(hook).toBeCalledTimes(2);
+      expect(hook.output).toBe("hello");
+      expect(hook).toHaveReturnedTimes(1);
+    })
   
-    const didThrow = mockPromise();
-    const hook = mockHook(Test, () => {
-      try {
+    it('will refresh and throw if async rejects', async () => {
+      const promise = mockPromise();
+    
+      class Test extends Model {
+        value = set(async () => {
+          await promise;
+          throw "oh no";
+        })
+      }
+    
+      const didThrow = mockPromise();
+      const hook = mockHook(Test, () => {
+        try {
+          void Test.get().value;
+        }
+        catch(err: any){
+          if(err instanceof Promise)
+            throw err;
+          else
+            didThrow.resolve(err);
+        }
+      });
+    
+      expect(hook.suspense).toBe(true);
+    
+      promise.resolve();
+    
+      const error = await didThrow;
+    
+      expect(error).toBe("oh no");
+    })
+  
+    it('will suspend if value is promise', async () => {
+      const promise = mockPromise<string>();
+    
+      class Test extends Model {
+        value = set(promise);
+      }
+  
+      const hook = mockHook(Test, () => {
         void Test.get().value;
-      }
-      catch(err: any){
-        if(err instanceof Promise)
-          throw err;
-        else
-          didThrow.resolve(err);
-      }
-    });
+        didRender.resolve();
+      });
   
-    expect(hook.suspense).toBe(true);
-  
-    promise.resolve();
-  
-    const error = await didThrow;
-  
-    expect(error).toBe("oh no");
-  })
-
-  it('will suspend if value is promise', async () => {
-    const promise = mockPromise<string>();
-  
-    class Test extends Model {
-      value = set(promise);
-    }
-
-    const hook = mockHook(Test, () => {
-      void Test.get().value;
-      didRender.resolve();
-    });
-
-    const didRender = mockPromise();
-  
-    expect(hook.suspense).toBe(true);
-  
-    promise.resolve("hello");
-    await didRender;
-  
-    expect(hook).toBeCalledTimes(2);
-  })
-});
-
-describe("set placeholder", () => {
-  it.skip('will suspend if value is accessed before put', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
-
-    const test = Test.new();
-    const hook = mockHook(test, () => {
-      Test.get().foobar;
+      const didRender = mockPromise();
+    
+      expect(hook.suspense).toBe(true);
+    
+      promise.resolve("hello");
+      await didRender;
+    
+      expect(hook).toBeCalledTimes(2);
     })
-
-    expect(hook.suspense).toBe(true);
-
-    // expect refresh caused by update
-    await hook.act(() => {
+  });
+  
+  describe("placeholder", () => {
+    it.only('will suspend if value is not assigned', async () => {
+      class Test extends Model {
+        foobar = set<string>();
+      }
+  
+      const test = Test.new();
+      const hook = mockHook(test, () => {
+        Test.get().foobar;
+      })
+  
+      expect(hook.suspense).toBe(true);
+  
+      // expect refresh caused by update
+      await hook.act(() => {
+        test.foobar = "foo!";
+      });
+  
+      expect(hook).toBeCalledTimes(2);
+    })
+  
+    it('will not suspend if value is defined', async () => {
+      class Test extends Model {
+        foobar = set<string>();
+      }
+  
+      const test = Test.new();
+  
       test.foobar = "foo!";
-    });
-
-    expect(hook).toBeCalledTimes(2);
-  })
-
-  it('will not suspend if value is defined', async () => {
-    class Test extends Model {
-      foobar = set<string>();
-    }
-
-    const test = Test.new();
-
-    test.foobar = "foo!";
-
-    const hook = mockHook(test, () => {
-      return Test.get().foobar;
+  
+      const hook = mockHook(test, () => {
+        return Test.get().foobar;
+      })
+  
+      expect(hook).toHaveReturnedWith("foo!");
     })
-
-    expect(hook).toHaveReturnedWith("foo!");
-  })
-});
+  });
+})
 
 describe("passive mode", () => {
   it("will not subscribe", async () => {
