@@ -268,13 +268,13 @@ it('will only reassign a matching model', () => {
   const parent = Parent.new("ID");
 
   expect(() => {
-  parent.child = Unrelated.new("ID");
-}).toThrowError(`Parent-ID.child expected Model of type Child but got Unrelated-ID.`)
+    parent.child = Unrelated.new("ID");
+  }).toThrowError(`Parent-ID.child expected Model of type Child but got Unrelated-ID.`)
 
   expect(() => {
-  // @ts-expect-error
-  parent.child = undefined;
-}).toThrowError(`Parent-ID.child expected Model of type Child but got undefined.`)
+    // @ts-expect-error
+    parent.child = undefined;
+  }).toThrowError(`Parent-ID.child expected Model of type Child but got undefined.`)
 })
 
 describe("object", () => {
