@@ -79,7 +79,7 @@ function get<R, T extends Model>(
 
       if(!hasParent){
         if(arg1 === true)
-          throw new Error(`New ${subject} created standalone but requires parent of type ${arg0}.`);
+          throw new Error(`New ${subject} was created standalone but requires a parent of type ${arg0}.`);
 
         if(!get.from)
           throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);

@@ -97,7 +97,7 @@ describe("fetch mode", () => {
   
     const attempt = () => Child.new("ID");
   
-    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Parent.`);
+    expect(attempt).toThrowError(`New Child-ID was created standalone but requires a parent of type Parent.`);
   })
 
   it("will throw if instance not found", () => {

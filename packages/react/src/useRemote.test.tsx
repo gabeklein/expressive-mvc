@@ -670,6 +670,6 @@ describe("get instruction", () => {
   
     const attempt = () => Child.new("ID");
   
-    expect(attempt).toThrowError(`New Child-ID created standalone but requires parent of type Ambient.`);
+    expect(attempt).toThrowError(`New Child-ID was created standalone but requires a parent of type Ambient.`);
   })
 })
