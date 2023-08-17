@@ -1,4 +1,4 @@
-import { mockPromise } from '../helper/mocks';
+import { mockPromise } from '../mocks';
 import { Model } from '../model';
 import { use } from './use';
 

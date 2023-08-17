@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { mockPromise } from '../helper/mocks';
+import { mockPromise } from '../mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { use } from './use';
