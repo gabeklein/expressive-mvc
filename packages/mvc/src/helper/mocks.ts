@@ -13,34 +13,6 @@ export function mockPromise<T = void>(){
   return Object.assign(promise, methods);
 }
 
-interface MockAsync {
-  /** Promise resolves next invocation of this mock function. */
-  next(): Promise<void>;
-}
-
-export function mockAsync<T = any, Y extends any[] = any>(
-  implementation?: (...args: Y) => T){
-
-  const waiting = new Set<() => void>();
-  const mock = jest.fn((...args: Y) => {
-    waiting.forEach(x => x());
-    waiting.clear();
-
-    if(implementation)
-      return implementation(...args);
-  });
-
-  Object.assign(mock, {
-    next(){
-      return new Promise<void>(res => {
-        waiting.add(res);
-      });
-    }
-  })
-  
-  return mock as jest.Mock<T, Y> & MockAsync
-}
-
 export function mockError(){
   const error = jest.spyOn(console, "error");
 

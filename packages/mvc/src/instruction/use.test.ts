@@ -1,4 +1,4 @@
-import { mockAsync, mockPromise, timeout } from '../helper/mocks';
+import { mockPromise, timeout } from '../helper/mocks';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -284,15 +284,14 @@ describe("object", () => {
     }
 
     const test = Test.new();
-    const effect = mockAsync((state: Test) => {
+    const effect = jest.fn((state: Test) => {
       void state.info.foo;
     });
 
     test.get(effect);
     test.info.foo = "bar";
 
-    await effect.next();
-
+    await timeout(10);
     expect(effect).toBeCalledTimes(2);
   })
 
