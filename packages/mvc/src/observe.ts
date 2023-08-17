@@ -40,7 +40,7 @@ export function nextUpdate<T extends Model>(
       const callback = () => resolve(self.frame);
   
       const remove = self.addListener((key) => {
-        if(!arg2 || key && arg2(key) === true){
+        if(!arg2 || key !== undefined && arg2(key as any) === true){
           remove();
   
           if(timeout)

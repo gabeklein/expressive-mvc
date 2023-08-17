@@ -35,7 +35,7 @@ declare namespace Control {
   type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
 
   type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
+    (key: Model.Key<T> | boolean | null, source: T) => (() => void) | null | void;
 
   type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
 }
@@ -134,7 +134,7 @@ class Control<T extends {} = any> {
 
         listeners.forEach((subs, cb) => {
           if(!subs){
-            const notify = cb(undefined, subject);
+            const notify = cb(false, subject);
   
             if(notify)
               enqueue(notify);
