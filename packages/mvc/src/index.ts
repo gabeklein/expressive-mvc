@@ -7,4 +7,3 @@ export { use } from './instruction/use';
 export { Model, Model as default } from './model';
 export { Control } from './control';
 export { Context } from './context';
-export { Debug } from './debug';
