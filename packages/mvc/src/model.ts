@@ -112,7 +112,10 @@ class Model {
 
   set(arg1?: Model.Event | number, arg2?: Predicate){
     return typeof arg1 == "function"
-      ? control(this, c => c.addListener(k => k && arg1(k)))
+      ? control(this, c => c.addListener(key => {
+          if(typeof key == "string")
+            return arg1(key)  
+        }))
       : nextUpdate(this, arg1, arg2);
   }
 

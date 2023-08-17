@@ -34,10 +34,19 @@ declare namespace Control {
    */
   type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
 
+  /**
+   * Update callback function.
+   * 
+   * @param key - Specifies cause for update.
+   *    - `string` - property which has updated.
+   *    - `true` - the initial event, instance is now ready.
+   *    - `false` - update in-progress has completed.
+   *    - `null` - model is marked for garbage collection.
+   * 
+   * @param source - Instance of Model for which update has occured.
+   */
   type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | undefined, source: T) => (() => void) | null | void;
-
-  type OnChange = (this: {}, next: unknown, previous: unknown) => boolean | void;
+    (key: Model.Key<T> | null | boolean, source: T) => (() => void) | null | void;
 }
 
 const LIFECYCLE = {
@@ -134,7 +143,7 @@ class Control<T extends {} = any> {
 
         listeners.forEach((subs, cb) => {
           if(!subs){
-            const notify = cb(undefined, subject);
+            const notify = cb(false, subject);
   
             if(notify)
               enqueue(notify);
