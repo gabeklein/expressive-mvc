@@ -1,11 +1,21 @@
 import { Context } from '../context';
-import { mockError, mockPromise, mockWarn } from '../helper/mocks';
+import { mockPromise } from '../helper/mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { use } from './use';
 
-const warn = mockWarn();
-const error = mockError();
+const warn = jest.spyOn(console, "warn");
+const error = jest.spyOn(console, "error");
+
+afterEach(() => {
+  error.mockReset();
+  warn.mockReset();
+});
+
+afterAll(() => {
+  error.mockRestore();
+  warn.mockRestore();
+});
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");

@@ -1,11 +1,21 @@
-import { mockError, mockPromise, mockWarn, timeout } from '../helper/mocks';
+import { mockPromise, timeout } from '../helper/mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { set } from './set';
 import { use } from './use';
 
-const warn = mockWarn();
-const error = mockError();
+const warn = jest.spyOn(console, "warn");
+const error = jest.spyOn(console, "error");
+
+afterEach(() => {
+  error.mockReset();
+  warn.mockReset();
+});
+
+afterAll(() => {
+  error.mockRestore();
+  warn.mockRestore();
+});
 
 describe("placeholder", () => {
   class Test extends Model {

@@ -13,24 +13,6 @@ export function mockPromise<T = void>(){
   return Object.assign(promise, methods);
 }
 
-export function mockError(){
-  const error = jest.spyOn(console, "error");
-
-  afterEach(() => error.mockReset());
-  afterAll(() => error.mockRestore());
-
-  return error;
-}
-
-export function mockWarn(){
-  const warn = jest.spyOn(console, "warn");
-
-  afterEach(() => warn.mockReset());
-  afterAll(() => warn.mockReset());
-
-  return warn
-}
-
 export function timeout(ms?: number){
   return new Promise(res => setTimeout(res, ms));
 }

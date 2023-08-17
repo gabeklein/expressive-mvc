@@ -1,4 +1,3 @@
-import { mockError } from './helper/mocks';
 import { get } from './instruction/get';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
@@ -693,7 +692,10 @@ describe("set", () => {
   })
 
   describe("effect", () => {
-    const error = mockError();
+    const error = jest.spyOn(console, "error");
+
+    afterEach(() => error.mockReset());
+    afterAll(() => error.mockRestore());
 
     class Test extends Model {
       foo = 0;
