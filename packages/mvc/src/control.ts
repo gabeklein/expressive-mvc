@@ -135,40 +135,40 @@ class Control<T extends {} = any> {
     if(!listeners || 1 in arguments && value === state[key])
       return;
 
-    if(Object.isFrozen(this.frame)){
-      this.frame = {};
+    function push(
+      this: string | boolean,
+      only: Set<string> | undefined,
+      cb: Control.OnUpdate<any>){
 
-      enqueue(() => {
-        Object.freeze(this.frame);
+      if(!only || only.has(this as string)){
+        const after = cb(key, subject);
+    
+        if(after === null)
+          listeners.delete(cb);
+        else if(after)
+          queue(after);
+      }
+    }
 
-        listeners.forEach((subs, cb) => {
-          if(!subs){
-            const notify = cb(false, subject);
-  
-            if(notify)
-              enqueue(notify);
-          }
-        });
+    let { frame } = this; 
+
+    if(Object.isFrozen(frame)){
+      frame = this.frame = {};
+
+      queue(() => {
+        Object.freeze(frame);
+        listeners.forEach(push, false);
       })
     }
 
     if(1 in arguments)
       state[key] = value;
 
-    if(key in this.frame)
+    if(key in frame)
       return;
     
-    this.frame[key] = state[key];
-
-    for(const [cb, keys] of listeners)
-      if(!keys || keys.has(key)){
-        const notify = cb(key, subject);
-    
-        if(notify === null)
-          listeners.delete(cb);
-        else if(notify)
-          enqueue(notify);
-      }
+    frame[key] = state[key];
+    listeners.forEach(push, key);
   }
 
   fetch(key: string, required?: boolean){
@@ -262,7 +262,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   return self;
 }
 
-function enqueue(event: Callback){
+function queue(event: Callback){
   const { update, didUpdate, dispatch } = LIFECYCLE;
 
   if(!dispatch.size)
