@@ -12,6 +12,7 @@ declare namespace get {
 
   type Source<T extends Model = Model> = (resolve: (x: T) => void) => void;
 
+  /** Adapter function should be defined by your environment. */
   export function from(target: Model): (resolve: (got: Context) => void) => void
 }
 

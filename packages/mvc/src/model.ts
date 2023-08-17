@@ -6,10 +6,10 @@ type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;
 
 namespace Model {
-  /** Any typeof Model, using class constructor as the reference. */
+  /** Any type of Model, using own class constructor as its identifier. */
   export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
-  /** A typeof Model, specifically one which can be created without any arguments. */
+  /** A type of Model which may be created without constructor arguments. */
   export type New<T extends Model = Model> = (new () => T) & typeof Model;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
