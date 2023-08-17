@@ -2,7 +2,6 @@ import { add, Control, parent, watch } from '../control';
 import { Model } from '../model';
 
 import type { Context } from '../context';
-import type { Callback } from '../../types';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 

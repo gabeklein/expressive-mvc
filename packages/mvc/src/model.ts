@@ -1,8 +1,6 @@
 import { Control, control } from './control';
 import { effect, extract, nextUpdate } from './observe';
 
-import type { Callback } from '../types';
-
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;

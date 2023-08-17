@@ -1,7 +1,5 @@
 import { Model } from './model';
 
-import type { Callback } from '../types';
-
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const INSTRUCT = new Map<symbol, Control.Instruction<any>>();

@@ -1,4 +1,3 @@
-import { Callback } from '../types';
 import { control, watch } from './control';
 import { Model } from './model';
 
