@@ -21,14 +21,15 @@ namespace Model {
     R extends Model ? Export<R> :
     R;
 
-  /** Object comperable to data found in T. */
-  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
-
   /**
    * Values from current state of given controller.
-   * Differs from `Values` as values here will drill into "real" values held by exotics like ref.
+   * Differs from `Values` as values here will drill
+   * into "real" values held by exotics like ref.
    */
-  export type Export<T> = { [P in keyof T]: Value<T[P]> };
+  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
+
+  /** Object comperable to data found in T. */
+  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   export type Ref<T = any> = {
@@ -43,6 +44,27 @@ namespace Model {
 }
 
 class Model {
+  /**
+   * Loopback to instance of this model. This is useful when in a subscribed context,
+   * to destructure while retaining access to `this`.
+   * 
+   * ```js
+   * class Example extends Model {
+   *   foo = 1;
+   * }
+   * 
+   * const example = Example.new();
+   * 
+   * example.get(current => {
+   *   const { is: original, foo } = current;
+   * 
+   *   // do stuff
+   * })
+   * ```
+   *
+   * Above, `original === example` while `state` is a proxy, to detect access and refresh accordingly.
+   * Using `is` allows you directly destructure in params, retaining ability to assign. You can use it to read variables silently as well.
+   **/
   is!: this;
 
   constructor(id?: string | number){
