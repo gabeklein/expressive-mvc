@@ -1,5 +1,4 @@
 import { control, parent, uid } from './control';
-import { create, define, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf, values } from './helper/object';
 import { Model } from './model';
 
 declare namespace Context {
@@ -56,7 +55,7 @@ class Context {
     }
 
     for(const [ model ] of init)
-      values(control(model, true).state).forEach(value => {
+      Object.values(control(model, true).state).forEach(value => {
         if(parent(value) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
@@ -88,13 +87,13 @@ class Context {
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || I !== this[key] && !implicit)
-        define(this, key, {
+      Object.defineProperty(this, key, {
           configurable: true,
           value,
           writable
         });
 
-      T = getPrototypeOf(T);
+      T = Object.getPrototypeOf(T);
     }
     while(T !== Model);
 
@@ -102,7 +101,7 @@ class Context {
   }
 
   public push(){
-    const next = create(this) as this;
+    const next = Object.create(this) as this;
     next.layer = new Map();
     return next;
   }
@@ -110,8 +109,8 @@ class Context {
   public pop(){
     const items = new Set<Model>();
 
-    for(const key of getOwnPropertySymbols(this)){
-      const entry = getOwnPropertyDescriptor(this, key)!;
+    for(const key of Object.getOwnPropertySymbols(this)){
+      const entry = Object.getOwnPropertyDescriptor(this, key)!;
 
       if(entry.writable && entry.value)
         items.add(entry.value);

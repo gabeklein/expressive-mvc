@@ -1,5 +1,4 @@
 import { add } from '../control';
-import { define } from '../helper/object';
 import { attempt } from '../observe';
 
 type Async<T = any, Y extends any[] = any> = {
@@ -41,7 +40,7 @@ function run(task: Function){
       }
     }
 
-    define(invoke, "active", {
+    Object.defineProperty(invoke, "active", {
       get: () => pending
     })
 

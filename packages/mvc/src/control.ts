@@ -1,4 +1,3 @@
-import { assign, create, define, freeze, getOwnPropertyDescriptor, isFrozen } from './helper/object';
 import { Model } from './model';
 
 import type { Callback } from '../types';
@@ -66,7 +65,7 @@ class Control<T extends {} = any> {
   public subject: T;
 
   public state: { [property: string]: unknown } = {};
-  public frame: { [property: string]: unknown } = freeze({});
+  public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
 
@@ -87,7 +86,7 @@ class Control<T extends {} = any> {
     if("value" in output)
       state[key] = output.value;
 
-    define(subject, key, {
+    Object.defineProperty(subject, key, {
       enumerable,
       set: set === false
         ? undefined
@@ -129,11 +128,11 @@ class Control<T extends {} = any> {
     if(!listeners || 1 in arguments && value === state[key])
       return;
 
-    if(isFrozen(this.frame)){
+    if(Object.isFrozen(this.frame)){
       this.frame = {};
 
       enqueue(() => {
-        freeze(this.frame);
+        Object.freeze(this.frame);
 
         listeners.forEach((subs, cb) => {
           if(!subs){
@@ -194,7 +193,7 @@ class Control<T extends {} = any> {
         });
       });
     
-      throw assign(promise, {
+      throw Object.assign(promise, {
         toString: () => String(error),
         name: "Suspense",
         message: error.message,
@@ -211,7 +210,7 @@ class Control<T extends {} = any> {
   clear(){
     this.listeners.forEach((_, fn) => fn(null, this));
     this.listeners.clear();
-    freeze(this.state);
+    Object.freeze(this.state);
   }
 }
 
@@ -233,7 +232,7 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
 
   if(pending && ready){
     for(const key in subject){
-      const { value } = getOwnPropertyDescriptor(subject, key)!;
+      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
       const instruction = INSTRUCT.get(value);
       let desc: Control.PropertyDescriptor<unknown> | void = { value };
 
@@ -289,7 +288,7 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 
   if(control){
     if(!OBSERVER.has(value))
-      REGISTER.set(value = create(value), control);
+      REGISTER.set(value = Object.create(value), control);
   
     OBSERVER.set(value, argument);
   }

@@ -1,5 +1,4 @@
 import { add, Control } from '../control';
-import { define } from '../helper/object';
 import { Model } from '../model';
 
 declare namespace ref {
@@ -67,18 +66,20 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
+  const def = Object.defineProperty;
+
   return add<T>((key, source) => {
     const { subject, state } = source;
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(arg === subject)
       for(const key in state)
-        define(value, key,
+        def(value, key,
           typeof arg2 == "function" ? {
             configurable: true,
             get(){
               const out = arg2(key);
-              define(value, key, { value: out });
+              def(value, key, { value: out });
               return out;
             }
           } : {
@@ -109,13 +110,13 @@ function ref<T>(
         }
       };
   
-      value = define(set, "current", {
+      value = def(set, "current", {
         get: () => state[key],
         set
       }) as ref.Object<T>;
     }
 
-    define(subject, key, { value });
+    def(subject, key, { value });
   })
 }
 
@@ -124,7 +125,7 @@ export { ref }
 function createRef(src: Control, key: string){
   const refObjectFunction = src.update.bind(src, key);
 
-  define(refObjectFunction, "current", {
+  Object.defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
     get: () => src.state[key]
   })

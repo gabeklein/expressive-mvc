@@ -1,5 +1,4 @@
 import { add, Control, control, parent } from '../control';
-import { create } from '../helper/object';
 import { Model } from '../model';
 
 namespace use {
@@ -44,7 +43,7 @@ function use(
         control(next, true);
       }
       else if(next){
-        const subject = create(next);
+        const subject = Object.create(next);
         const control = new Control(subject, false);
 
         for(const key in control.state = next)

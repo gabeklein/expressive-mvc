@@ -1,5 +1,4 @@
 import { Control, control } from './control';
-import { define } from './helper/object';
 import { effect, extract, nextUpdate } from './observe';
 
 import type { Callback } from '../types';
@@ -49,7 +48,7 @@ class Model {
   is!: this;
 
   constructor(id?: string | number){
-    define(this, "is", { value: this });
+    Object.defineProperty(this, "is", { value: this });
     new Control(this, id);
   }
 
@@ -128,13 +127,13 @@ class Model {
   }
 }
 
-define(Model.prototype, "toString", {
+Object.defineProperty(Model.prototype, "toString", {
   value(){
     return control(this).id;
   }
 });
 
-define(Model, "toString", {
+Object.defineProperty(Model, "toString", {
   value(){
     return this.name;
   }

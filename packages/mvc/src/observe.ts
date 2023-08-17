@@ -1,6 +1,5 @@
 import { Callback } from '../types';
 import { control, watch } from './control';
-import { entries, isFrozen } from './helper/object';
 import { Model } from './model';
 
 export function extract <T extends Model> (target: T){
@@ -13,7 +12,7 @@ export function extract <T extends Model> (target: T){
       if(!flat){
         cache.set(value, flat = {});
 
-        entries(control(value).state).forEach(([key, value]) => {
+        Object.entries(control(value).state).forEach(([key, value]) => {
           flat[key] = get(value);
         })
       }
@@ -34,7 +33,7 @@ export function nextUpdate<T extends Model>(
 
   return new Promise<any>((resolve, reject) => {
     control(target, self => {
-      if(isFrozen(self.frame) && typeof arg1 != "number"){
+      if(Object.isFrozen(self.frame) && typeof arg1 != "number"){
         resolve(false);
         return;
       }

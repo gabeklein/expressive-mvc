@@ -1,5 +1,4 @@
 import { add, Control } from '../control';
-import { assign } from '../helper/object';
 import { attempt } from '../observe';
 
 declare namespace set {
@@ -70,7 +69,7 @@ function set <T> (
                 control.update(key);
               })
 
-            assign(pending, {
+            Object.assign(pending, {
               message: `${subject}.${key} is not yet available.`,
               stack: new Error().stack
             });
