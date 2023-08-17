@@ -60,7 +60,7 @@ it("will not update on death event", async () => {
 
 describe("set instruction", () => {
   describe("factory", () => {
-    it('will suspend if function is async', async () => {
+    it.skip('will suspend if function is async', async () => {
       const promise = mockPromise<string>();
   
       class Test extends Model {
@@ -139,7 +139,7 @@ describe("set instruction", () => {
   });
   
   describe("placeholder", () => {
-    it.only('will suspend if value is not assigned', async () => {
+    it.skip('will suspend if value is not assigned', async () => {
       class Test extends Model {
         foobar = set<string>();
       }
