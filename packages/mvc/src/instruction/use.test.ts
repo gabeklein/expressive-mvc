@@ -1,4 +1,4 @@
-import { mockPromise, timeout } from '../helper/mocks';
+import { mockPromise } from '../helper/mocks';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -291,7 +291,7 @@ describe("object", () => {
     test.get(effect);
     test.info.foo = "bar";
 
-    await timeout(10);
+    await new Promise(res => setTimeout(res, 10))
     expect(effect).toBeCalledTimes(2);
   })
 
@@ -314,7 +314,7 @@ describe("object", () => {
 
     test.info.bar = "foo";
 
-    await timeout(1);
+    await new Promise(res => setTimeout(res, 10))
 
     expect(effect).toBeCalledTimes(1);
   })

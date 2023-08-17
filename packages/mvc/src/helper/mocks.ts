@@ -12,7 +12,3 @@ export function mockPromise<T = void>(){
 
   return Object.assign(promise, methods);
 }
-
-export function timeout(ms?: number){
-  return new Promise(res => setTimeout(res, ms));
-}

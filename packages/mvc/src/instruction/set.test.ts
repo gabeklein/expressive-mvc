@@ -1,4 +1,4 @@
-import { mockPromise, timeout } from '../helper/mocks';
+import { mockPromise } from '../helper/mocks';
 import { Model } from '../model';
 import { get } from './get';
 import { set } from './set';
@@ -586,7 +586,7 @@ describe("factory", () => {
     expect(didThrow).toBeInstanceOf(Promise);
 
     promise.resolve();
-    await timeout(10);
+    await new Promise(res => setTimeout(res, 10))
 
     expect(didThrow).toBe("oh no");
     expect(error).toBeCalledWith("oh no");
