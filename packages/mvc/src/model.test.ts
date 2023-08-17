@@ -2,7 +2,7 @@ import { set } from './instruction/set';
 import { Model } from './model';
 
 class Subject extends Model {
-  value = 1;
+  value = 1000;
 }
 
 it('will instantiate from custom class', () => {

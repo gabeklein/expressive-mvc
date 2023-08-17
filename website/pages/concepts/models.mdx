@@ -236,3 +236,42 @@ function UserList(){
   )
 }
 ```
+
+Let's create an example where we can fetch a user by ID, and then use that user in another component.
+
+```jsx filename="User.ts"
+class User extends Query<User> {
+  url = "http://service.com/getUser";
+  query = {
+    id: 1
+  };
+}
+
+function UserList(){
+  const { error, response, waiting, fetch } = User.use();
+
+  if(response)
+    return <p>User: {response.name}</p>
+
+  if(error)
+    return <p>There was an error fetching user.</p>
+
+  if(waiting)
+    return <p>Waiting for user...</p>
+
+  return (
+    <a onClick={fetch}>Get user!</a>
+  )
+}
+
+function UserPage(){
+  const { response } = User.use();
+
+  return (
+    <div>
+      <UserList />
+      {response && <UserCard user={response} />}
+    </div>
+  )
+}
+```
