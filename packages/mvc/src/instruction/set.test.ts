@@ -397,8 +397,8 @@ describe("factory", () => {
     );
 
     class Test extends Model {
-      greet = set(greet);
-      name = set(name);
+      greet = set(() => greet);
+      name = set(() => name);
       value = set(didEvaluate);
     }
 
@@ -417,6 +417,9 @@ describe("factory", () => {
   })
 
   it("will nest suspense", async () => {
+    const promise = mockPromise<string>();
+    const didUpdate = mockPromise<string>();
+
     class Child extends Model {
       value = set(promise);
     }
@@ -428,9 +431,6 @@ describe("factory", () => {
         return self.child.value + " world!";
       });
     }
-
-    const promise = mockPromise<string>();
-    const didUpdate = mockPromise<string>();
 
     const test = Test.new();
     const effect = jest.fn((state: Test) => {
@@ -449,6 +449,9 @@ describe("factory", () => {
   })
 
   it("will return undefined on suspense", async () => {
+    const promise = mockPromise<string>();
+    const didEvaluate = mockPromise<string>();
+
     class Test extends Model {
       asyncValue = set(() => promise);
 
@@ -457,10 +460,7 @@ describe("factory", () => {
       });
     }
 
-    const promise = mockPromise<string>();
-    const didEvaluate = mockPromise<string>();
     const test = Test.new();
-
     const effect = jest.fn((state: Test) => {
       didEvaluate.resolve(state.value);
     });
