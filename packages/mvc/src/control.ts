@@ -241,8 +241,8 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
         INSTRUCT.delete(value);
         delete subject[key];
 
-        const out = instruction.call(self, key, self);
-        desc = typeof out == "function" ? { get: out } : out;
+        const output = instruction.call(self, key, self);
+        desc = typeof output == "function" ? { get: output } : output;
       }
 
       if(desc)

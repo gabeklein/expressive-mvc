@@ -13,9 +13,7 @@ export function extract <T extends Model> (target: T){
       if(!flat){
         cache.set(value, flat = {});
 
-        const { state } = control(value);
-        
-        entries(state).forEach(([key, value]) => {
+        entries(control(value).state).forEach(([key, value]) => {
           flat[key] = get(value);
         })
       }
