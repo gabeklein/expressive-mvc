@@ -201,3 +201,27 @@ describe("static is", () => {
     expect(Test.is(NotATest)).toBe(false);
   })
 })
+
+describe("string coercion", () => {
+  it("will output a unique ID", () => {
+    const a = String(Model.new());
+    const b = String(Model.new());
+
+    expect(a).not.toBe(b);
+  })
+
+  it("will be class name and 6 random characters", () => {
+    class FooBar extends Model {}
+
+    const foobar = String(FooBar.new());
+
+    expect(foobar).toMatch(/^FooBar-\w{6}/)
+  })
+
+  it("will be class name and supplied ID", () => {
+    const a = String(Model.new("ID"));
+
+    expect(a).toBe("Model-ID");
+  })
+
+})

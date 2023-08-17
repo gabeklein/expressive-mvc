@@ -1,4 +1,5 @@
 import { add, Control } from './control';
+import { mockError } from './helper/mocks';
 import { set } from './instruction/set';
 import { Model } from './model';
 
@@ -295,4 +296,44 @@ describe("suspense", () => {
   
     await expect(didThrow).rejects.toThrowError(`Test-ID is destroyed.`);
   })
+})
+
+describe("errors", () => {
+  const error = mockError();
+
+  it("will throw sync error to the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const test = Test.new();
+
+    test.set(() => {
+      throw new Error("sync error");
+    });
+
+    const attempt = () => test.value = 2;
+
+    expect(attempt).toThrowError(`sync error`);
+  });
+
+  it("will log async error to the console", async () => {
+    class Test extends Model {
+      value = 1;
+    };
+
+    const expected = new Error("async error")
+    const test = Test.new();
+
+    test.get($ => {
+      if($.value == 2)
+        throw expected;
+    })
+
+    test.value = 2;
+
+    await test.set(0);
+
+    expect(error).toBeCalledWith(expected);
+  });
 })

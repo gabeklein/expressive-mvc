@@ -1,5 +1,4 @@
 import { Debug } from './debug';
-import { mockError } from './helper/mocks';
 import { use } from './instruction/use';
 import { Model } from './model';
 
@@ -63,68 +62,4 @@ describe("UPDATE", () => {
     expect(update).toBe(updated);
     expect(updated).toEqual({ value1: 2, value2: 3 });
   })
-})
-
-describe("toString", () => {
-  it("will output a unique ID", () => {
-    const a = String(Model.new());
-    const b = String(Model.new());
-
-    expect(a).not.toBe(b);
-  })
-
-  it("will use user-defined ID", () => {
-    const a = String(Model.new("ID"));
-    const b = String(Model.new("ID"));
-
-    expect(a).toBe(b);
-  })
-
-  it("will be class name and 6 random characters", () => {
-    class FooBar extends Model {}
-
-    const foobar = String(FooBar.new());
-
-    expect(foobar).toMatch(/^FooBar-\w{6}/)
-  })
-})
-
-describe("errors", () => {
-  const error = mockError();
-
-  it("will throw sync error to the console", async () => {
-    class Test extends Model {
-      value = 1;
-    };
-
-    const test = Test.new();
-
-    test.set(() => {
-      throw new Error("sync error");
-    });
-
-    const attempt = () => test.value = 2;
-
-    expect(attempt).toThrowError(`sync error`);
-  });
-
-  it("will log async error to the console", async () => {
-    class Test extends Model {
-      value = 1;
-    };
-
-    const expected = new Error("async error")
-    const test = Test.new();
-
-    test.get($ => {
-      if($.value == 2)
-        throw expected;
-    })
-
-    test.value = 2;
-
-    await test.set(0);
-
-    expect(error).toBeCalledWith(expected);
-  });
 })
