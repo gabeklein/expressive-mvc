@@ -25,42 +25,39 @@ function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
 
 function use(
-  input?: any,
+  value?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
   return add((key, source) => {
-    const { subject, state } = source;
+    const { subject } = source;
 
-    if(typeof input === "function")
-      input = new input();
+    if(typeof value === "function")
+      value = new value();
 
     function set(next: {} | undefined){
-      if(input instanceof Model && !(next instanceof input.constructor))
-        throw new Error(`${subject}.${key} expected Model of type ${input.constructor} but got ${next}.`)
+      if(value instanceof Model && !(next instanceof value.constructor))
+        throw new Error(`${subject}.${key} expected Model of type ${value.constructor} but got ${next}.`)
 
       if(next instanceof Model){
         parent(next, subject);
         control(next, true);
       }
       else if(next){
-        const subject = Object.create(next);
-        const control = new Control(subject, false);
+        const control = new Control(value = Object.create(next), false);
 
         for(const key in control.state = next)
           control.watch(key, {});
 
-        next = subject;
+        return () => value;
       }
-
-      state[key] = next;
 
       if(typeof argument == "function")
         argument(next);
     }
 
-    set(input);
+    set(value);
 
-    return { set };
+    return { set, value };
   })
 }
 

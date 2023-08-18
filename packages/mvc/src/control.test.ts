@@ -86,16 +86,15 @@ describe("instruction", () => {
   
     // duplicate test?
     it("will revert update if returns false", async () => {
-      let shouldUpdate = true;
-  
+      let ignore = false;
+
       class Test extends Model {
-        property = add((key, control) => {
+        property = add(() => {
           return {
             value: 0,
-            set: (value: any) => {
-              control.state[key] = value + 10;
-              return shouldUpdate;
-            }
+            set: (value) => ignore
+              ? false
+              : () => value + 10
           }
         })
       }
@@ -107,8 +106,9 @@ describe("instruction", () => {
       instance.property = 10;
       expect(instance.property).toBe(20);
       await expect(instance).toUpdate();
-  
-      shouldUpdate = false;
+
+      ignore = true;
+
       instance.property = 0;
       expect(instance.property).toBe(20);
       await expect(instance).not.toUpdate();
@@ -116,11 +116,9 @@ describe("instruction", () => {
 
     it("will not duplicate explicit update", () => {
       class Test extends Model {
-        property = add<string>((key, control) => ({
+        property = add<string>(() => ({
           value: "foobar",
-          set(value: any){
-            control.update(key, value + "!");
-          }
+          set: (value) => () => value + "!"
         }))
       }
 

@@ -17,7 +17,7 @@ declare namespace Control {
     | void;
 
   type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T, previous: T) => boolean | void;
+  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
   type PropertyDescriptor<T = any> = {
     get?: Getter<T>;
@@ -100,14 +100,21 @@ class Control<T extends {} = any> {
         : (next) => {
           const previous = state[key];
     
-          if(next !== previous){
-            state[key] = next;
-      
-            if(set && set.call(subject, next, previous) === false)
-              state[key] = previous;
-            else
-              this.update(key);
+          if(next === previous)
+            return;
+          
+          if(set){
+            const result = set.call(subject, next, previous);
+
+            if(result === false)
+              return;
+              
+            if(typeof result == "function")
+              next = result();
           }
+  
+          state[key] = next;
+          this.update(key);
         },
       get(this: Model){
         const value = output.get
