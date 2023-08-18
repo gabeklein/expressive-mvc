@@ -61,7 +61,12 @@ function set <T> (
             const pending = value
               .then(value => {
                 output.get = undefined;
-                control.update(key, value);
+
+                if(value !== state[key]){
+                  state[key] = value;
+                  control.update(key);
+                }
+
                 return value;
               })
               .catch(err => {
@@ -79,8 +84,10 @@ function set <T> (
                 throw pending;
               };
           }
-          else 
-            control.update(key, value);
+          else {
+            state[key] = value;
+            control.update(key);
+          }
         }
         catch(err){
           console.warn(`Generating initial value for ${subject}.${key} failed.`);

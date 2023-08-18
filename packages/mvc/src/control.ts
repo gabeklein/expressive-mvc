@@ -136,10 +136,10 @@ class Control<T extends {} = any> {
     });
   }
 
-  update(key: string, value?: unknown){
+  update(key: string){
     const { state, subject, listeners } = this;
 
-    if(!listeners || 1 in arguments && value === state[key])
+    if(!listeners)
       return;
 
     function push(
@@ -167,9 +167,6 @@ class Control<T extends {} = any> {
         listeners.forEach(push, false);
       })
     }
-
-    if(1 in arguments)
-      state[key] = value;
 
     if(key in frame)
       return;

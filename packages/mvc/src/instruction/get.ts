@@ -110,7 +110,10 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source(got => control.update(key, got));
+    source(got => {
+      control.state[key] = got;
+      control.update(key)
+    });
 
     return control.fetch(key, arg1 !== false);
   })
