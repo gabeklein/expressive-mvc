@@ -2,21 +2,18 @@ import { control, watch } from './control';
 import { Model } from './model';
 
 export function extract <T extends Model> (target: T){
-  const cache = new Map<unknown, any>();
+  const cache = new WeakMap<Model, any>();
 
-  function get(value: unknown){
+  function get(value: any){
     if(value instanceof Model){
-      let flat = cache.get(value);
+      if(cache.has(value))
+        return cache.get(value);
 
-      if(!flat){
-        cache.set(value, flat = {});
+      const { state } = control(value);
+      cache.set(value, value = {});
 
-        Object.entries(control(value).state).forEach(([key, value]) => {
-          flat[key] = get(value);
-        })
-      }
-
-      return flat;
+      for(const key in state)
+        value[key] = get(state[key]);
     }
 
     return value;
