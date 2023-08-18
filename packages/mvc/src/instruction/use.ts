@@ -1,5 +1,5 @@
-import { add, Control, control, parent } from '../control';
-import { Model } from '../model';
+import { Control, control, parent } from '../control';
+import { add, Model } from '../model';
 
 namespace use {
   export type Object<T extends {}> = T;
