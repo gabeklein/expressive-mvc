@@ -1,5 +1,5 @@
-import { add, Control, parent, watch } from '../control';
-import { Model } from '../model';
+import { Control, parent, watch } from '../control';
+import { add, Model } from '../model';
 
 import type { Context } from '../context';
 

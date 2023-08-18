@@ -1,6 +1,6 @@
-import { add, Control } from './control';
+import { Control } from './control';
 import { set } from './instruction/set';
-import { Model } from './model';
+import { add, Model } from './model';
 
 describe("instruction", () => {
   class Test extends Model {
@@ -215,22 +215,6 @@ it("will call dispatch callbacks", async () => {
 
   remove();
   removeDid();
-})
-
-it("will call create callbacks", () => {
-  class Test extends Model {}
-
-  const didCreate = jest.fn((control: Control) => {
-    expect(control.subject).toBeInstanceOf(Test);
-  });
-
-  const remove = Control.on("ready", didCreate);
-
-  Test.new();
-  
-  expect(didCreate).toBeCalled();
-
-  remove();
 })
 
 it("will run effect after properties", () => {

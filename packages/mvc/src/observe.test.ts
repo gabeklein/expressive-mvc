@@ -611,6 +611,8 @@ describe("get", () => {
 
 describe("set", () => {
   describe("timeout", () => {
+    it.todo("will not break if defined before init")
+
     it('will reject if not pending', async () => {
       const control = Model.new();
       const update = control.set(0);

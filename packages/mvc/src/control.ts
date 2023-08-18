@@ -2,7 +2,6 @@ import { Model } from './model';
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
-const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
@@ -50,7 +49,6 @@ declare namespace Control {
 }
 
 const LIFECYCLE = {
-  ready: new Set<Control.Callback>(),
   dispatch: new Set<Callback>(),
   update: new Set<Callback>(),
   didUpdate: new Set<Callback>(),
@@ -59,11 +57,8 @@ const LIFECYCLE = {
 class Control<T extends {} = any> {
   static watch = watch;
   static for = control;
-  static add = add;
 
-  static on(event: "ready", callback: Control.Callback): Callback;
-  static on(event: "update" | "didUpdate", callback: Callback): Callback;
-  static on(event: "ready" | "update" | "didUpdate", callback: any){
+  static on(event: "update" | "didUpdate", callback: Callback): Callback {
     LIFECYCLE[event].add(callback);
     return () => LIFECYCLE[event].delete(callback);
   }
@@ -71,7 +66,7 @@ class Control<T extends {} = any> {
   public id: string;
   public subject: T;
 
-  public state: { [property: string]: unknown } = {};
+  public state!: { [property: string]: unknown };
   public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
@@ -83,7 +78,7 @@ class Control<T extends {} = any> {
     REGISTER.set(subject, this);
 
     if(id !== false)
-      PENDING.set(this, new Set(LIFECYCLE.ready));
+      PENDING.set(this, new Set());
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
@@ -213,7 +208,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  addListener<T extends Model>(fn: Control.OnUpdate<T>){
+  addListener<T extends Model>(fn: Control.OnUpdate<T>): Callback {
     this.listeners.set(fn, undefined);
     return () => this.listeners.delete(fn);
   }
@@ -225,40 +220,24 @@ class Control<T extends {} = any> {
   }
 }
 
-function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
-function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
 function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
   const self = REGISTER.get(subject.is) as Control<T>;
   const pending = PENDING.get(self);
 
   if(typeof ready == "function"){
     if(!pending)
-      return ready(self);
-    
-    let done: Callback | void;
-    pending.add(() => done = ready(self));
-    return () => done && done();
+      ready(self);
+    else
+      pending.add(() => ready(self));
   }
 
-  if(pending && ready){
-    for(const key in subject){
-      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
-      const instruction = INSTRUCT.get(value);
-      let desc: Control.PropertyDescriptor<unknown> | void = { value };
-
-      if(instruction){
-        INSTRUCT.delete(value);
-        delete subject[key];
-
-        const output = instruction.call(self, key, self);
-        desc = typeof output == "function" ? { get: output } : output;
-      }
-
-      if(desc)
-        self.watch(key, desc);
-    }
-    
+  else if(pending && ready){
     PENDING.delete(self);
+    self.state = {};
+    self.listeners.forEach((_, fn) => {
+      if(fn(true, self) === null)
+        self.listeners.delete(fn);
+    });
     pending.forEach(cb => cb(self));
   }
 
@@ -306,19 +285,12 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
-function add<T = any>(instruction: Control.Instruction<T>){
-  const placeholder = Symbol("instruction");
-  INSTRUCT.set(placeholder, instruction);
-  return placeholder as unknown as T;
-}
-
 /** Random alphanumberic of length 6. Will always start with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
-  add,
   control,
   Control,
   parent,
