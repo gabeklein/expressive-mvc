@@ -88,21 +88,17 @@ export function effect<T extends Model>(
   target = watch(target, () => refresh);
 
   const self = control(target);
-
-  if(self.state){
+  const ready = () => {
     invoke();
     refresh = invoke;
   }
-  else
-    self.addListener(() => {
-      invoke();
-      refresh = invoke;
-      return null;
-    })
+
+  if(self.state)
+    ready();
 
   self.addListener(key => {
     if(key === true)
-      return;
+      return ready();
 
     if(!refresh)
       return refresh;
