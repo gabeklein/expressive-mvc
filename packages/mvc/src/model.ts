@@ -1,6 +1,8 @@
 import { Control, control } from './control';
 import { effect, extract, nextUpdate } from './observe';
 
+const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
+
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;
@@ -53,6 +55,25 @@ class Model {
   constructor(id?: string | number){
     Object.defineProperty(this, "is", { value: this });
     new Control(this, id);
+
+    control(this, control => {
+      for(const key in this){
+        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
+        const instruction = INSTRUCT.get(value);
+        let desc: Control.PropertyDescriptor<unknown> | void = { value };
+  
+        if(instruction){
+          INSTRUCT.delete(value);
+          delete this[key];
+  
+          const output = instruction.call(control, key, control);
+          desc = typeof output == "function" ? { get: output } : output;
+        }
+  
+        if(desc)
+          control.watch(key, desc);
+      }
+    });
   }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
@@ -145,4 +166,10 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-export { Model }
+function add<T = any>(instruction: Control.Instruction<T>){
+  const placeholder = Symbol("instruction");
+  INSTRUCT.set(placeholder, instruction);
+  return placeholder as unknown as T;
+}
+
+export { Model, add }

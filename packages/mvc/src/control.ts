@@ -2,7 +2,6 @@ import { Model } from './model';
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
-const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
@@ -59,7 +58,6 @@ const LIFECYCLE = {
 class Control<T extends {} = any> {
   static watch = watch;
   static for = control;
-  static add = add;
 
   static on(event: "ready", callback: Control.Callback): Callback;
   static on(event: "update" | "didUpdate", callback: Callback): Callback;
@@ -241,23 +239,6 @@ function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<
   }
 
   if(pending && ready){
-    for(const key in subject){
-      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
-      const instruction = INSTRUCT.get(value);
-      let desc: Control.PropertyDescriptor<unknown> | void = { value };
-
-      if(instruction){
-        INSTRUCT.delete(value);
-        delete subject[key];
-
-        const output = instruction.call(self, key, self);
-        desc = typeof output == "function" ? { get: output } : output;
-      }
-
-      if(desc)
-        self.watch(key, desc);
-    }
-    
     PENDING.delete(self);
     pending.forEach(cb => cb(self));
   }
@@ -306,19 +287,12 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
-function add<T = any>(instruction: Control.Instruction<T>){
-  const placeholder = Symbol("instruction");
-  INSTRUCT.set(placeholder, instruction);
-  return placeholder as unknown as T;
-}
-
 /** Random alphanumberic of length 6. Will always start with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
-  add,
   control,
   Control,
   parent,

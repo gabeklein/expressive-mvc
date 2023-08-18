@@ -1,6 +1,6 @@
-import { add, Control } from './control';
+import { Control } from './control';
 import { set } from './instruction/set';
-import { Model } from './model';
+import { add, Model } from './model';
 
 describe("instruction", () => {
   class Test extends Model {

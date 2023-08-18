@@ -1,5 +1,5 @@
-import { add, Control } from '../control';
-import { Model } from '../model';
+import { Control } from '../control';
+import { add, Model } from '../model';
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
