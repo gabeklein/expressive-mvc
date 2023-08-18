@@ -31,73 +31,87 @@ export function nextUpdate<T extends Model>(
   arg2?: (key: string) => boolean | void){
 
   return new Promise<any>((resolve, reject) => {
-    control(target, self => {
-      if(Object.isFrozen(self.frame) && typeof arg1 != "number"){
-        resolve(false);
-        return;
-      }
-  
-      const callback = () => resolve(self.frame);
-  
-      const remove = self.addListener((key) => {
-        if(!arg2 || typeof key == "string" && arg2(key) === true){
-          remove();
-  
-          if(timeout)
-            clearTimeout(timeout);
+    const self = control(target);
 
-          return callback;
-        }
-      });
-  
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
+    if(Object.isFrozen(self.frame) && typeof arg1 != "number"){
+      resolve(false);
+      return;
+    }
+
+    const callback = () => resolve(self.frame);
+
+    const remove = self.addListener((key) => {
+      if(key === true)
+        return;
+
+      if(!arg2 || typeof key == "string" && arg2(key) === true){
         remove();
-        reject(arg1);
-      }, arg1);
-    })
+
+        if(timeout)
+          clearTimeout(timeout);
+
+        return callback;
+      }
+    });
+
+    const timeout = typeof arg1 == "number" && setTimeout(() => {
+      remove();
+      reject(arg1);
+    }, arg1);
   });
 }
 
 export function effect<T extends Model>(
   target: T, callback: Model.Effect<T>){
 
-  return control(target, self => {
-    let refresh: (() => void) | null | undefined;
-    let unSet: Callback | undefined;
+  let refresh: (() => void) | null | undefined;
+  let unSet: Callback | undefined;
 
-    function invoke(){
-      if(unSet)
-        unSet();
+  function invoke(){
+    if(unSet)
+      unSet();
 
-      try {
-        const out = callback.call(target, target);
-        unSet = typeof out == "function" ? out : undefined;
-      }
-      catch(err){
-        if(err instanceof Promise){
-          err.then(() => (refresh = invoke)());
-          refresh = undefined;
-        }
-        else 
-          console.error(err);
-      }
+    try {
+      const out = callback.call(target, target);
+      unSet = typeof out == "function" ? out : undefined;
     }
+    catch(err){
+      if(err instanceof Promise){
+        err.then(() => (refresh = invoke)());
+        refresh = undefined;
+      }
+      else 
+        console.error(err);
+    }
+  }
 
-    target = watch(target, () => refresh);
+  target = watch(target, () => refresh);
 
-    self.addListener(key => {
-      if(!refresh)
-        return refresh;
+  const self = control(target);
 
-      if(key === null && unSet)
-        unSet();
-    });
-
+  if(self.state){
     invoke();
     refresh = invoke;
+  }
+  else
+    self.addListener(() => {
+      invoke();
+      refresh = invoke;
+      return null;
+    })
 
-    return () => {
-      refresh = null;
-    };
+  self.addListener(key => {
+    if(key === true)
+      return;
+
+    if(!refresh)
+      return refresh;
+
+    if(key === null && unSet)
+      unSet();
   });
+
+  return () => {
+    refresh = null;
+  };
 }

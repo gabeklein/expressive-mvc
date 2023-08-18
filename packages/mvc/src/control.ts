@@ -2,7 +2,6 @@ import { Model } from './model';
 
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
-const PENDING = new WeakMap<Control, Set<Control.Callback>>();
 const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
@@ -49,7 +48,6 @@ declare namespace Control {
 }
 
 const LIFECYCLE = {
-  ready: new Set<Control.Callback>(),
   dispatch: new Set<Callback>(),
   update: new Set<Callback>(),
   didUpdate: new Set<Callback>(),
@@ -59,9 +57,7 @@ class Control<T extends {} = any> {
   static watch = watch;
   static for = control;
 
-  static on(event: "ready", callback: Control.Callback): Callback;
-  static on(event: "update" | "didUpdate", callback: Callback): Callback;
-  static on(event: "ready" | "update" | "didUpdate", callback: any){
+  static on(event: "update" | "didUpdate", callback: Callback): Callback {
     LIFECYCLE[event].add(callback);
     return () => LIFECYCLE[event].delete(callback);
   }
@@ -69,7 +65,7 @@ class Control<T extends {} = any> {
   public id: string;
   public subject: T;
 
-  public state: { [property: string]: unknown } = {};
+  public state!: { [property: string]: unknown };
   public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
@@ -79,9 +75,6 @@ class Control<T extends {} = any> {
     this.subject = subject;
 
     REGISTER.set(subject, this);
-
-    if(id !== false)
-      PENDING.set(this, new Set(LIFECYCLE.ready));
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
@@ -213,7 +206,9 @@ class Control<T extends {} = any> {
 
   addListener<T extends Model>(fn: Control.OnUpdate<T>){
     this.listeners.set(fn, undefined);
-    return () => this.listeners.delete(fn);
+    return () => {
+      this.listeners.delete(fn);
+    }
   }
 
   clear(){
@@ -223,24 +218,15 @@ class Control<T extends {} = any> {
   }
 }
 
-function control<T extends Model>(subject: T, ready: Control.OnReady<T>): Callback;
-function control<T extends Model>(subject: T, ready?: boolean): Control<T>;
-function control<T extends Model>(subject: T, ready?: boolean | Control.OnReady<T>){
+function control<T extends Model>(subject: T, required?: boolean){
   const self = REGISTER.get(subject.is) as Control<T>;
-  const pending = PENDING.get(self);
 
-  if(typeof ready == "function"){
-    if(!pending)
-      return ready(self);
-    
-    let done: Callback | void;
-    pending.add(() => done = ready(self));
-    return () => done && done();
-  }
-
-  if(pending && ready){
-    PENDING.delete(self);
-    pending.forEach(cb => cb(self));
+  if(required && !self.state){
+    self.state = {};
+    self.listeners.forEach((_, fn) => {
+      if(fn(true, self) === null)
+        self.listeners.delete(fn);
+    });
   }
 
   return self;
