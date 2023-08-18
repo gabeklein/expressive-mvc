@@ -1,5 +1,4 @@
 import { add } from '../control';
-import { attempt } from '../observe';
 
 type Async<T = any, Y extends any[] = any> = {
   (...args: Y): Promise<T>;
@@ -22,7 +21,7 @@ function run(task: Function){
   return add((key, control) => {
     let pending = false;
 
-    const invoke = async (...args: any[]) => {
+    async function invoke(...args: any[]){
       if(pending)
         return Promise.reject(
           new Error(`Invoked action ${key} but one is already active.`)
@@ -52,3 +51,27 @@ function run(task: Function){
 }
 
 export { run }
+
+export function attempt(fn: () => any): any {
+  function retry(err: unknown){
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  function compute(): any {
+    try {
+      const output = fn();
+
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
+}

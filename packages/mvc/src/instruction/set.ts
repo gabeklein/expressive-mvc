@@ -1,5 +1,5 @@
 import { add, Control } from '../control';
-import { attempt } from '../observe';
+import { attempt } from './run';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
