@@ -46,24 +46,7 @@ namespace Model {
 class Model {
   /**
    * Loopback to instance of this model. This is useful when in a subscribed context,
-   * to destructure while retaining access to `this`.
-   * 
-   * ```js
-   * class Example extends Model {
-   *   foo = 1;
-   * }
-   * 
-   * const example = Example.new();
-   * 
-   * example.get(current => {
-   *   const { is: original, foo } = current;
-   * 
-   *   // do stuff
-   * })
-   * ```
-   *
-   * Above, `original === example` while `state` is a proxy, to detect access and refresh accordingly.
-   * Using `is` allows you directly destructure in params, retaining ability to assign. You can use it to read variables silently as well.
+   * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is!: this;
 
