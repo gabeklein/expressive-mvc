@@ -1,6 +1,7 @@
 import { Control } from './control';
 import { set } from './instruction/set';
 import { add, Model } from './model';
+import { mockError } from './tests/mocks';
 
 describe("instruction", () => {
   class Test extends Model {
@@ -280,10 +281,7 @@ describe("suspense", () => {
 })
 
 describe("errors", () => {
-  const error = jest.spyOn(console, "error");
-
-  afterEach(() => error.mockReset());
-  afterAll(() => error.mockRestore());
+  const error = mockError();
 
   it("will throw sync error to the console", async () => {
     class Test extends Model {
