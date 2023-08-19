@@ -1,13 +1,13 @@
 import { Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 
-import { useModelContext } from './useLocal';
+import { Shared } from './useLocal';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
   argument?: boolean | Model.get.Factory<T, any>
 ){
-  const context = useModelContext();
+  const context = useContext(Shared)
   const state = useState(0);
   const hook = useMemo(() => {
     const instance = context.get(this);

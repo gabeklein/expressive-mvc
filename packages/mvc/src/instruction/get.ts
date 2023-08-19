@@ -1,7 +1,6 @@
+import { Context } from '../context';
 import { Control, parent, watch } from '../control';
 import { add, Model } from '../model';
-
-import type { Context } from '../context';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
@@ -80,21 +79,16 @@ function get<R, T extends Model>(
 
       if(!hasParent){
         if(arg1 === true)
-          throw new Error(`New ${subject} was created standalone but requires a parent of type ${arg0}.`);
-
-        if(!get.from)
-          throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
-
-        const fetch = get.from(subject);
+          throw new Error(`${subject} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          fetch(context => {
+          Context.resolve(subject, context => {
             const model = context.get(arg0);
 
             if(model)
               resolve(model);
             else if(arg1 !== false)
-              throw new Error(`Attempted to find an instance of ${arg0} in context. It is required by ${subject}, but one could not be found.`)
+              throw new Error(`Required ${arg0} not found in context for ${subject}.`)
           });
         }
       }

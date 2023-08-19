@@ -10,12 +10,13 @@ const warn = mockWarn();
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
 
-afterAll(() => {
-  // @ts-ignore
-  delete get.from;
-});
-
 describe("fetch mode", () => {
+  const { resolve } = Context;
+
+  afterEach(() => {
+    Context.resolve = resolve;
+  })
+
   it("will throw if no adapter", () => {
     class Parent extends Model {}
 
@@ -79,7 +80,7 @@ describe("fetch mode", () => {
     expect(bar.parent).toBe(foo);
   })
 
-  it("throws when required parent is absent :(", () => {
+  it("throws when standalone but expects parent", () => {
     class Parent extends Model {}
     class Child extends Model {
       expects = get(Parent, true);
@@ -87,13 +88,11 @@ describe("fetch mode", () => {
   
     const attempt = () => Child.new("ID");
   
-    expect(attempt).toThrowError(`New Child-ID was created standalone but requires a parent of type Parent.`);
+    expect(attempt).toThrowError(`Child-ID may only exist as a child of type Parent.`);
   })
 
-  it("will throw if instance not found", () => {
-    get.from = () => (got) => {
-      got(new Context());
-    };
+  it("will throw if not found in context", () => {
+    Context.resolve = (_, cb) => cb(new Context());
 
     class Parent extends Model {}
     class Child extends Model {
@@ -101,13 +100,11 @@ describe("fetch mode", () => {
     }
 
     // should this throw immediately, or only on access?
-    expect(() => Child.new("ID")).toThrowError(
-      `Attempted to find an instance of Parent in context. It is required by Child-ID, but one could not be found.`
-    );
+    expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for Child-ID.`);
   })
   
   it("retuns undefined if required is false", () => {
-    get.from = () => () => {};
+    Context.resolve = (_, cb) => cb(new Context());
 
     class MaybeParent extends Model {}
     class StandAlone extends Model {
@@ -588,7 +585,7 @@ describe.skip("replaced source", () => {
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    get.from = () => (got) => {
+    Context.resolve = (_, got) => {
       gotContext = got;
       got(context);
     }
@@ -656,10 +653,8 @@ describe("async", () => {
   context.add(Foo);
 
   beforeAll(() => {
-    get.from = () => (got) => {
-      setTimeout(() => {
-        got(context);
-      }, 0);
+    Context.resolve = (_, got) => {
+      setTimeout(() => got(context));
     }
   })
 

@@ -1,4 +1,4 @@
-import { get, Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 
 import { getContext, useLocal } from './useLocal';
 import { useRemote } from './useRemote';
@@ -57,7 +57,7 @@ declare module '@expressive/mvc' {
 Model.get = useRemote;
 Model.use = useLocal;
 
-get.from = getContext;
+Context.resolve = getContext;
 
 export * from '@expressive/mvc';
 

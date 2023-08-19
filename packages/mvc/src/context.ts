@@ -8,6 +8,10 @@ declare namespace Context {
 }
 
 class Context {
+  static resolve(from: Model, callback: (context: Context) => void){
+    throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
+  }
+
   public key!: string;
 
   private table = new WeakMap<Model.Type, symbol>();

@@ -2,7 +2,7 @@ import { Context, Control, Model } from '@expressive/mvc';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const Applied = new WeakMap<Model, Context>();
-const Expects = new WeakMap<Model, ((context: Context) => void)[]>();
+const Waiting = new WeakMap<Model, ((context: Context) => void)[]>();
 const Shared = createContext(new Context());
 
 function useLocal <T extends Model> (
@@ -37,7 +37,7 @@ function useLocal <T extends Model> (
         instance.set().then(() => onUpdate = refresh);
       }
 
-      useModelContext(instance);
+      setContext(instance, useContext(Shared));
 
       useEffect(() => {
         onUpdate = refresh;
@@ -54,49 +54,34 @@ function useLocal <T extends Model> (
   return hook(apply);
 }
 
-function useModelContext(): Context;
-function useModelContext(applyTo: Model): void;
-function useModelContext(applyTo?: Model){
-  const context = useContext(Shared);
+function getContext(from: Model, resolve: (got: Context) => void){
+  const context = Applied.get(from);
 
-  if(!applyTo || Applied.has(applyTo))
-    return context;
+  if(context)
+    resolve(context);
+  else {
+    const waiting = Waiting.get(from);
 
-  const pending = Expects.get(applyTo);
-
-  if(pending){
-    pending.forEach(init => init(context));
-    Applied.set(applyTo, context);
-    Expects.delete(applyTo);
-  }
-}
-
-function getContext(from: Model){
-  let waiting = Expects.get(from)!;
-
-  if(!waiting)
-    Expects.set(from, waiting = []);
-
-  return (callback: (got: Context) => void) => {
-    const applied = Applied.get(from);
-
-    if(applied)
-      callback(applied);
+    if(waiting)
+      waiting.push(resolve);
     else
-      waiting.push(callback);
+      Waiting.set(from, [resolve]);
   }
 }
 
-function setContext(to: Model, context: Context){
-  const pending = Expects.get(to);
+function setContext(model: Model, context: Context){
+  const waiting = Waiting.get(model);
 
-  if(pending)
-    pending.forEach(cb => cb(context));
+  Applied.set(model, context);
+
+  if(waiting){
+    waiting.forEach(cb => cb(context));
+    Waiting.delete(model);
+  }
 }
 
 export {
   useLocal,
-  useModelContext,
   getContext,
   setContext,
   Shared

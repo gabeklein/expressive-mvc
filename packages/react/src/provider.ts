@@ -1,7 +1,7 @@
 import { Context, Model } from '@expressive/mvc';
-import { createElement, useEffect, useMemo } from 'react';
+import { createElement, useContext, useEffect, useMemo } from 'react';
 
-import { Shared, setContext, useModelContext } from './useLocal';
+import { Shared, setContext } from './useLocal';
 
 import type { FunctionComponentElement, ProviderProps, ReactNode } from 'react';
 
@@ -35,7 +35,7 @@ function Provider<T extends Provider.Item>(
 
   let { for: included, use: assign, children } = props;
 
-  const context = useModelContext();
+  const context = useContext(Shared)
   const value = useMemo(() => context.push(), []);
 
   if(!included)
