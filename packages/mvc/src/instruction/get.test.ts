@@ -651,15 +651,12 @@ describe("async", () => {
     value = "foobar";
   }
 
-  const context = new Context();
-
-  context.add(Foo);
-
   beforeAll(() => {
-    get.from = () => (got) => {
-      setTimeout(() => {
-        got(context);
-      }, 0);
+    const context = new Context();
+
+    context.add(Foo);
+    get.from = () => (resolve) => {
+      setTimeout(() => resolve(context));
     }
   })
 

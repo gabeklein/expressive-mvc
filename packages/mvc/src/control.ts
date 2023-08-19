@@ -84,6 +84,16 @@ class Control<T extends {} = any> {
     }
   }
 
+  set(key: string, value: unknown){
+    const { state } = this;
+
+    if(value === state[key])
+      return true;
+
+    state[key] = value;
+    this.update(key);
+  }
+
   watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state, subject, listeners } = this;
     const { set, enumerable = true } = output;
@@ -110,9 +120,8 @@ class Control<T extends {} = any> {
             if(typeof result == "function")
               next = result();
           }
-  
-          state[key] = next;
-          this.update(key);
+
+          this.set(key, next);
         },
       get(this: Model){
         const value = output.get
