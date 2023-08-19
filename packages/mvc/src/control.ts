@@ -223,9 +223,9 @@ function control<T extends Model>(subject: T, ready?: boolean){
   }
 
   if(ready === false){
+    Object.freeze(self.state);
     subs.forEach((_, fn) => fn(null, self));
     subs.clear();
-    Object.freeze(self.state);
   }
 
   return self;
