@@ -1,6 +1,7 @@
 import { Context } from '../context';
 import { Control, parent, watch } from '../control';
 import { add, Model } from '../model';
+import { fetch } from './set';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
@@ -103,7 +104,7 @@ function get<R, T extends Model>(
 
     source(got => control.set(key, got));
 
-    return control.fetch(key, arg1 !== false);
+    return fetch(control, key, arg1 !== false);
   })
 }
 
@@ -189,7 +190,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = control.fetch(key);
+      output.get = fetch(control, key);
       source(connect);
       isAsync = true;
       return output.get();

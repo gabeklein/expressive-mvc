@@ -99,7 +99,7 @@ function set <T> (
     }
     else {
       if(value === undefined)
-        output.get = control.fetch(key);
+        output.get = fetch(control, key);
       else
         output.value = value;
 
@@ -125,4 +125,40 @@ function set <T> (
   })
 }
 
-export { set }
+function fetch(self: Control, property: string, required?: boolean){
+  const { subject, state } = self;
+  
+  return () => {
+    if(property in state || required === false){
+      const value = state[property];
+
+      if(value !== undefined || !required)
+        return value;
+    }
+
+    const error = new Error(`${subject}.${property} is not yet available.`);
+    const promise = new Promise<void>((resolve, reject) => {
+      function release(){
+        remove();
+        resolve();
+      }
+  
+      const remove = self.addListener(key => {
+        if(key === property)
+          return release;
+  
+        if(key === null)
+          reject(new Error(`${subject} is destroyed.`));
+      });
+    });
+  
+    throw Object.assign(promise, {
+      toString: () => String(error),
+      name: "Suspense",
+      message: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+export { fetch, set }
