@@ -1,5 +1,4 @@
-import { Control, control } from './control';
-import { effect, extract, nextUpdate } from './observe';
+import { Control, control, watch } from './control';
 
 const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
 
@@ -7,7 +6,7 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;
 
-namespace Model {
+export namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
@@ -45,7 +44,7 @@ namespace Model {
   export type Event = (key: string) => Callback | void;
 }
 
-class Model {
+export class Model {
   /**
    * Loopback to instance of this model. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -168,10 +167,116 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-function add<T = any>(instruction: Control.Instruction<T>){
+export function add<T = any>(instruction: Control.Instruction<T>){
   const placeholder = Symbol("instruction");
   INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;
 }
 
-export { Model, add }
+function extract <T extends Model> (target: T){
+  const cache = new WeakMap<Model, any>();
+
+  function get(value: any){
+    if(value instanceof Model){
+      if(cache.has(value))
+        return cache.get(value);
+
+      const { state } = control(value);
+      cache.set(value, value = {});
+
+      for(const key in state)
+        value[key] = get(state[key]);
+    }
+
+    return value;
+  }
+
+  return get(target);
+}
+
+function nextUpdate<T extends Model>(
+  target: T,
+  arg1?: number,
+  arg2?: (key: string) => boolean | void){
+
+  return new Promise<any>((resolve, reject) => {
+    const self = control(target);
+
+    if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
+      resolve(false);
+      return;
+    }
+
+    const callback = () => resolve(self.frame);
+
+    const remove = self.addListener((key) => {
+      if(key === true)
+        return;
+
+      if(!arg2 || typeof key == "string" && arg2(key) === true){
+        remove();
+
+        if(timeout)
+          clearTimeout(timeout);
+
+        return callback;
+      }
+    });
+
+    const timeout = typeof arg1 == "number" && setTimeout(() => {
+      remove();
+      reject(arg1);
+    }, arg1);
+  });
+}
+
+function effect<T extends Model>(
+  target: T, callback: Model.Effect<T>){
+
+  const self = control(target);
+  let refresh: (() => void) | null | undefined;
+  let unSet: Callback | undefined;
+
+  function invoke(){
+    if(unSet)
+      unSet();
+
+    try {
+      const out = callback.call(target, target);
+      unSet = typeof out == "function" ? out : undefined;
+    }
+    catch(err){
+      if(err instanceof Promise){
+        refresh = undefined;
+        err.then(ready);
+      }
+      else 
+        console.error(err);
+    }
+  }
+
+  function ready() {
+    refresh = invoke;
+    invoke();
+  }
+
+  target = watch(target.is, () => refresh);
+
+  if(self.state)
+    ready();
+
+  self.addListener(key => {
+    if(key === true)
+      return ready();
+
+    if(!refresh)
+      return refresh;
+
+    if(key === null && unSet)
+      unSet();
+  });
+
+  return () => {
+    refresh = null;
+  };
+}
