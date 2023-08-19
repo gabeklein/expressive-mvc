@@ -210,23 +210,24 @@ class Control<T extends {} = any> {
       this.listeners.delete(fn);
     }
   }
-
-  clear(){
-    this.listeners.forEach((_, fn) => fn(null, this));
-    this.listeners.clear();
-    Object.freeze(this.state);
-  }
 }
 
-function control<T extends Model>(subject: T, required?: boolean){
+function control<T extends Model>(subject: T, ready?: boolean){
   const self = REGISTER.get(subject.is) as Control<T>;
+  const subs = self.listeners;
 
-  if(required && !self.state){
+  if(ready !== undefined && !self.state){
     self.state = {};
-    self.listeners.forEach((_, fn) => {
+    subs.forEach((_, fn) => {
       if(fn(true, self) === null)
-        self.listeners.delete(fn);
+        subs.delete(fn);
     });
+  }
+
+  if(ready === false){
+    subs.forEach((_, fn) => fn(null, self));
+    subs.clear();
+    Object.freeze(self.state);
   }
 
   return self;

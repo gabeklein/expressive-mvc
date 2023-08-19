@@ -128,7 +128,7 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
-    control(this, true).clear();
+    control(this, false);
   }
 
   /**
