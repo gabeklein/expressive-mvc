@@ -1,9 +1,8 @@
 import { Context, Control, Model } from '@expressive/mvc';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-const Applied = new WeakMap<Model, Context>();
-const Waiting = new WeakMap<Model, ((context: Context) => void)[]>();
 const Shared = createContext(new Context());
+const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
 function useLocal <T extends Model> (
   this: Model.New<T>,
@@ -55,29 +54,23 @@ function useLocal <T extends Model> (
 }
 
 function getContext(from: Model, resolve: (got: Context) => void){
-  const context = Applied.get(from);
+  const context = Register.get(from);
 
-  if(context)
+  if(context instanceof Context)
     resolve(context);
-  else {
-    const waiting = Waiting.get(from);
-
-    if(waiting)
-      waiting.push(resolve);
-    else
-      Waiting.set(from, [resolve]);
-  }
+  else if(context)
+    context.push(resolve);
+  else
+    Register.set(from, [resolve]);
 }
 
 function setContext(model: Model, context: Context){
-  const waiting = Waiting.get(model);
+  const waiting = Register.get(model);
 
-  Applied.set(model, context);
-
-  if(waiting){
+  if(waiting instanceof Array)
     waiting.forEach(cb => cb(context));
-    Waiting.delete(model);
-  }
+
+  Register.set(model, context);
 }
 
 export {
