@@ -141,38 +141,36 @@ class Control<T extends {} = any> {
     });
   }
 
-  update(key: string | boolean){
-    if(!this.listeners)
+  update(key: string){
+    let { frame, listeners, state, subject } = this; 
+
+    function push(key: string | boolean){
+      listeners.forEach((only, cb, subs) => {
+        if(!only || only.has(key as string)){
+          const after = cb(key, subject);
+      
+          if(after === null)
+            subs.delete(cb);
+          else if(after)
+            queue(after);
+        }
+      });
+    }
+
+    if(Object.isFrozen(frame)){
+      frame = this.frame = {};
+
+      queue(() => {
+        Object.freeze(frame);
+        push(false);
+      })
+    }
+
+    if(key in frame)
       return;
 
-    if(typeof key == "string"){
-      let { frame, state } = this; 
-
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
-  
-        queue(() => {
-          Object.freeze(frame);
-          this.update(false);
-        })
-      }
-
-      if(key in frame)
-        return;
-
-      frame[key] = state[key];
-    }
-    
-    this.listeners.forEach((only, cb, subs) => {
-      if(!only || only.has(key as string)){
-        const after = cb(key, this.subject);
-    
-        if(after === null)
-          subs.delete(cb);
-        else if(after)
-          queue(after);
-      }
-    });
+    frame[key] = state[key];
+    push(key);
   }
 }
 
