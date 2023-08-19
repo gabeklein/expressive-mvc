@@ -77,6 +77,13 @@ class Control<T extends {} = any> {
     REGISTER.set(subject, this);
   }
 
+  addListener<T extends Model>(fn: Control.OnUpdate<T>){
+    this.listeners.set(fn, undefined);
+    return () => {
+      this.listeners.delete(fn);
+    }
+  }
+
   watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state, subject, listeners } = this;
     const { set, enumerable = true } = output;
@@ -116,9 +123,7 @@ class Control<T extends {} = any> {
 
         if(observer){
           const keys = listeners.get(observer);
-
           listeners.set(observer, new Set(keys).add(key));
-
           return watch(value, observer)
         }
 
@@ -201,13 +206,6 @@ class Control<T extends {} = any> {
         message: error.message,
         stack: error.stack
       });
-    }
-  }
-
-  addListener<T extends Model>(fn: Control.OnUpdate<T>){
-    this.listeners.set(fn, undefined);
-    return () => {
-      this.listeners.delete(fn);
     }
   }
 }

@@ -30,7 +30,7 @@ export function nextUpdate<T extends Model>(
   return new Promise<any>((resolve, reject) => {
     const self = control(target);
 
-    if(Object.isFrozen(self.frame) && typeof arg1 != "number"){
+    if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
       resolve(false);
       return;
     }
