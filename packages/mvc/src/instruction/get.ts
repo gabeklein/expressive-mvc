@@ -10,9 +10,6 @@ declare namespace get {
   type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
 
   type Source<T extends Model = Model> = (resolve: (x: T) => void) => void;
-
-  /** Adapter function should be defined by your environment. */
-  export function from(target: Model): (resolve: (got: Context) => void) => void
 }
 
 /**
@@ -104,10 +101,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source(got => {
-      control.state[key] = got;
-      control.update(key)
-    });
+    source(got => control.set(key, got));
 
     return control.fetch(key, arg1 !== false);
   })
@@ -119,19 +113,19 @@ const PENDING = new Set<Callback>();
 let OFFSET = 0;
 
 function compute<T>(
-  parent: Control,
+  control: Control,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
 
-  const { state, subject } = parent;
+  const { state, subject } = control;
 
   let proxy: any;
   let isAsync: boolean;
   let reset: (() => void) | undefined;
 
   function compute(initial?: boolean){
-    if(key in parent.frame)
+    if(key in control.frame)
       return;
 
     let next: T | undefined;
@@ -148,13 +142,13 @@ function compute<T>(
 
       if(initial)
         throw err;
-      
+
       console.error(err);
     }
 
     if(next !== state[key]){
-      if(key in state || isAsync)
-        parent.update(key);
+      if(!initial || isAsync)
+        control.update(key);
 
       state[key] = next;
     }
@@ -195,7 +189,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = parent.fetch(key);
+      output.get = control.fetch(key);
       source(connect);
       isAsync = true;
       return output.get();

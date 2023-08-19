@@ -648,12 +648,10 @@ describe("async", () => {
     value = "foobar";
   }
 
-  const context = new Context();
-
-  context.add(Foo);
-
   beforeAll(() => {
     Context.resolve = (_, got) => {
+      const context = new Context();
+      context.add(Foo);
       setTimeout(() => got(context));
     }
   })
