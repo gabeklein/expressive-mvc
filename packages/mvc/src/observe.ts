@@ -61,6 +61,7 @@ export function nextUpdate<T extends Model>(
 export function effect<T extends Model>(
   target: T, callback: Model.Effect<T>){
 
+  const self = control(target);
   let refresh: (() => void) | null | undefined;
   let unSet: Callback | undefined;
 
@@ -74,21 +75,20 @@ export function effect<T extends Model>(
     }
     catch(err){
       if(err instanceof Promise){
-        err.then(() => (refresh = invoke)());
         refresh = undefined;
+        err.then(ready);
       }
       else 
         console.error(err);
     }
   }
 
-  target = watch(target, () => refresh);
-
-  const self = control(target);
-  const ready = () => {
-    invoke();
+  function ready() {
     refresh = invoke;
+    invoke();
   }
+
+  target = watch(target.is, () => refresh);
 
   if(self.state)
     ready();

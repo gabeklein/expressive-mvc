@@ -43,8 +43,8 @@ declare namespace Control {
    * 
    * @param source - Instance of Model for which update has occured.
    */
-  type OnUpdate<T extends {} = any> =
-    (key: Model.Key<T> | null | boolean, source: T) => (() => void) | null | void;
+  type OnUpdate =
+    (key: string | null | boolean, source: {}) => (() => void) | null | void;
 }
 
 const LIFECYCLE = {
@@ -77,7 +77,7 @@ class Control<T extends {} = any> {
     REGISTER.set(subject, this);
   }
 
-  addListener<T extends Model>(fn: Control.OnUpdate<T>){
+  addListener<T extends Model>(fn: Control.OnUpdate){
     this.listeners.set(fn, undefined);
     return () => {
       this.listeners.delete(fn);
@@ -131,8 +131,8 @@ class Control<T extends {} = any> {
         const observer = OBSERVER.get(this);
 
         if(observer){
-          const keys = listeners.get(observer);
-          listeners.set(observer, new Set(keys).add(key));
+          const keys = new Set(listeners.get(observer));
+          listeners.set(observer, keys.add(key));
           return watch(value, observer)
         }
 
@@ -141,70 +141,63 @@ class Control<T extends {} = any> {
     });
   }
 
-  update(key: string){
-    const { state, subject, listeners } = this;
-
-    if(!listeners)
+  update(key: string | boolean){
+    if(!this.listeners)
       return;
 
-    function push(
-      this: string | boolean,
-      only: Set<string> | undefined,
-      cb: Control.OnUpdate<any>){
+    if(typeof key == "string"){
+      let { frame, state } = this; 
 
-      if(!only || only.has(this as string)){
-        const after = cb(key, subject);
+      if(Object.isFrozen(frame)){
+        frame = this.frame = {};
+  
+        queue(() => {
+          Object.freeze(frame);
+          this.update(false);
+        })
+      }
+
+      if(key in frame)
+        return;
+
+      frame[key] = state[key];
+    }
+    
+    this.listeners.forEach((only, cb, subs) => {
+      if(!only || only.has(key as string)){
+        const after = cb(key, this.subject);
     
         if(after === null)
-          listeners.delete(cb);
+          subs.delete(cb);
         else if(after)
           queue(after);
       }
-    }
-
-    let { frame } = this; 
-
-    if(Object.isFrozen(frame)){
-      frame = this.frame = {};
-
-      queue(() => {
-        Object.freeze(frame);
-        listeners.forEach(push, false);
-      })
-    }
-
-    if(key in frame)
-      return;
-    
-    frame[key] = state[key];
-    listeners.forEach(push, key);
+    });
   }
 
-  fetch(key: string, required?: boolean){
+  fetch(property: string, required?: boolean){
     const { state, subject } = this;
 
     return () => {
-      if(key in state || required === false){
-        const value = state[key];
+      if(property in state || required === false){
+        const value = state[property];
 
         if(value !== undefined || !required)
           return value;
       }
 
-      const error = new Error(`${subject}.${key} is not yet available.`);
+      const error = new Error(`${subject}.${property} is not yet available.`);
       const promise = new Promise<void>((resolve, reject) => {
-        function check(){
-          if(state[key] !== undefined){
-            remove();
-            resolve();
-          }
+        function release(){
+          remove();
+          resolve();
         }
     
-        const remove = this.addListener((k: unknown) => {
-          if(k === key)
-            return check;
+        const remove = this.addListener(key => {
+          if(key === property)
+            return release;
     
-          if(k === null)
+          if(key === null)
             reject(new Error(`${subject} is destroyed.`));
         });
       });
@@ -225,10 +218,7 @@ function control<T extends Model>(subject: T, ready?: boolean){
 
   if(ready !== undefined && !self.state){
     self.state = {};
-    subs.forEach((_, fn) => {
-      if(fn(true, self) === null)
-        subs.delete(fn);
-    });
+    subs.forEach((_, fn) => fn(true, self));
   }
 
   if(ready === false){

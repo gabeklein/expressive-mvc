@@ -56,8 +56,7 @@ class Model {
     Object.defineProperty(this, "is", { value: this });
 
     const control = new Control(this, id);
-
-    control.addListener(() => {
+    const done = control.addListener(() => {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
         const instruction = INSTRUCT.get(value);
@@ -75,7 +74,7 @@ class Model {
           control.watch(key, desc);
       }
 
-      return null;
+      done();
     });
   }
 
