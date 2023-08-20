@@ -116,13 +116,14 @@ class Control<T extends {} = any> {
         const value = output.get ? output.get(this) : state[key];
         const observer = OBSERVER.get(this);
 
-        if(observer){
-          const keys = new Set(listeners.get(observer));
-          listeners.set(observer, keys.add(key));
-          return watch(value, observer)
-        }
+        if(!observer)
+          return value;
+          
+        listeners.set(observer,
+          new Set(listeners.get(observer)).add(key)
+        );
 
-        return value;
+        return watch(value, observer)
       }
     });
   }
