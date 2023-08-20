@@ -147,12 +147,7 @@ function compute<T>(
       console.error(err);
     }
 
-    if(next !== state[key]){
-      if(!initial || isAsync)
-        control.update(key);
-
-      state[key] = next;
-    }
+    control.set(key, next, initial && !isAsync);
   }
 
   function connect(model: Model){

@@ -84,14 +84,16 @@ class Control<T extends {} = any> {
     }
   }
 
-  set(key: string, value: unknown){
+  set(key: string, value: unknown, silent?: boolean){
     const { state } = this;
 
     if(value === state[key])
       return true;
 
     state[key] = value;
-    this.update(key);
+
+    if(!silent)
+      this.update(key);
   }
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
