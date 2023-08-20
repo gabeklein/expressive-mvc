@@ -5,7 +5,6 @@ const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
-
   type Getter<T> = (source: Model) => T;
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
@@ -54,22 +53,16 @@ class Control<T extends {} = any> {
     return () => LIFECYCLE[event].delete(callback);
   }
 
-  public id: string;
-  public subject: T;
-
   public state!: { [property: string]: unknown };
   public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
 
-  constructor(subject: T, id?: string | number | false){
-    this.id = `${subject.constructor}-${id ? String(id) : uid()}`;
-    this.subject = subject;
-
+  constructor(public subject: T){
     REGISTER.set(subject, this);
   }
 
-  addListener<T extends Model>(fn: Control.OnUpdate){
+  addListener(fn: Control.OnUpdate){
     this.listeners.set(fn, undefined);
     return () => {
       this.listeners.delete(fn);
@@ -225,15 +218,9 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
-/** Random alphanumberic of length 6. Will always start with a letter. */
-function uid(){
-  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
-}
-
 export {
   control,
   Control,
   parent,
-  uid,
   watch
 }

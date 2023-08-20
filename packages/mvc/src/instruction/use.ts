@@ -43,7 +43,7 @@ function use(
         control(next, true);
       }
       else if(next){
-        const control = new Control(value = Object.create(next), false);
+        const control = new Control(value = Object.create(next));
 
         for(const key in control.state = next)
           control.watch(key, {});

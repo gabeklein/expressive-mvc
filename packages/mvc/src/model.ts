@@ -1,5 +1,6 @@
 import { Control, control, watch } from './control';
 
+const ID = new WeakMap<Model, string>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
@@ -63,7 +64,9 @@ export class Model {
   constructor(id?: string | number){
     Object.defineProperty(this, "is", { value: this });
 
-    const control = new Control(this, id);
+    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
+
+    const control = new Control(this);
     const done = control.addListener(() => {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
@@ -166,7 +169,7 @@ export class Model {
 
 Object.defineProperty(Model.prototype, "toString", {
   value(){
-    return control(this).id;
+    return ID.get(this.is);
   }
 });
 
@@ -182,7 +185,12 @@ export function add<T = any>(instruction: Model.Instruction<T>){
   return placeholder as unknown as T;
 }
 
-function extract <T extends Model> (target: T){
+/** Random alphanumberic of length 6. Will always start with a letter. */
+export function uid(){
+  return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
+}
+
+function extract(target: Model){
   const cache = new WeakMap<Model, any>();
 
   function get(value: any){
@@ -203,8 +211,8 @@ function extract <T extends Model> (target: T){
   return get(target);
 }
 
-function nextUpdate<T extends Model>(
-  target: T,
+function nextUpdate(
+  target: Model,
   arg1?: number,
   arg2?: (key: string) => boolean | void){
 
@@ -267,7 +275,7 @@ function effect<T extends Model>(
     invoke();
   }
 
-  target = watch(target.is, () => refresh);
+  target = watch(self.subject, () => refresh);
 
   if(self.state)
     ready();

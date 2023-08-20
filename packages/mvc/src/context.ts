@@ -1,5 +1,5 @@
-import { control, parent, uid } from './control';
-import { Model } from './model';
+import { control, parent } from './control';
+import { Model, uid } from './model';
 
 declare namespace Context {
   type Inputs = {
