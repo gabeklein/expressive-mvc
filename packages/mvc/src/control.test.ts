@@ -1,4 +1,4 @@
-import { Control } from './control';
+import { Control, LIFECYCLE } from './control';
 import { set } from './instruction/set';
 import { add, Model } from './model';
 import { mockError } from './tests/mocks';
@@ -198,9 +198,9 @@ describe("instruction", () => {
 it("will call dispatch callbacks", async () => {
   const didUpdate = jest.fn();
   const willUpdate = jest.fn();
-  
-  const remove = Control.on("update", willUpdate);
-  const removeDid = Control.on("didUpdate", didUpdate);
+
+  LIFECYCLE.update.add(willUpdate);
+  LIFECYCLE.didUpdate.add(didUpdate);
 
   class Test extends Model {
     value = 1;
@@ -214,8 +214,8 @@ it("will call dispatch callbacks", async () => {
   expect(willUpdate).toBeCalledTimes(1);
   expect(didUpdate).toBeCalledTimes(1);
 
-  remove();
-  removeDid();
+  LIFECYCLE.update.delete(willUpdate);
+  LIFECYCLE.didUpdate.delete(didUpdate);
 })
 
 it("will run effect after properties", () => {

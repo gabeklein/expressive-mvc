@@ -46,13 +46,6 @@ class Control<T extends {} = any> {
   static watch = watch;
   static for = control;
 
-  static on(event: "update" | "didUpdate", callback: Callback): Callback {
-    LIFECYCLE[event].add(callback);
-    return () => {
-      LIFECYCLE[event].delete(callback);
-    }
-  }
-
   public state!: { [property: string]: unknown };
 
   public frame: { [property: string]: unknown } = Object.freeze({});
@@ -213,5 +206,6 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 export {
   control,
   Control,
+  LIFECYCLE,
   watch
 }

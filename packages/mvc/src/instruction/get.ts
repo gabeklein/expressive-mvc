@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Control, watch } from '../control';
+import { Control, LIFECYCLE, watch } from '../control';
 import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
@@ -195,7 +195,7 @@ function compute<T>(
   return output as Control.Descriptor;
 }
 
-Control.on("update", () => {
+LIFECYCLE.update.add(() => {
   while(PENDING.size){
     let compute!: Callback;
 
