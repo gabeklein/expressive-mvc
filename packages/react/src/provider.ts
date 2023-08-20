@@ -1,34 +1,9 @@
-import { Context, Model } from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { createElement, useContext, useEffect, useMemo } from 'react';
 
-import { Shared, setContext } from './useLocal';
+import { setContext, Shared } from './useLocal';
 
-import type { FunctionComponentElement, ProviderProps, ReactNode } from 'react';
-
-declare namespace Provider {
-  type Element = FunctionComponentElement<ProviderProps<Context>>;
-
-  type Item = Model | Model.New;
-
-  type Multiple<T extends Item = Item> = { [key: string | number]: T };
-
-  type Instance<E> = E extends (new () => any) ? InstanceType<E> : E extends Model ? E : never;
-
-  type Props<T extends Item = Item> = MultipleProps<T> | NormalProps<T>;
-
-  type NormalProps<E, I = Instance<E>> = {
-    for: E;
-    children?: ReactNode;
-    use?: Model.Values<I>;
-  }
-
-  // FIX: This fails to exclude properties with same key but different type.
-  type MultipleProps<T extends Item> = {
-    for: Multiple<T>;
-    children?: ReactNode;
-    use?: Model.Values<Instance<T>>;
-  }
-}
+import type { Provider } from '../types';
 
 function Provider<T extends Provider.Item>(
   props: Provider.Props<T>): Provider.Element {
