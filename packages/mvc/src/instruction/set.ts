@@ -67,7 +67,7 @@ function set <T> (
               })
               .catch(err => {
                 output.get = () => { throw err };
-                control.update(key);
+                control.set(key);
               })
 
             Object.assign(pending, {

@@ -70,30 +70,60 @@ class Control<T extends {} = any> {
     }
   }
 
-  set(
-    key: string,
-    next: unknown,
-    argument?: boolean | Control.Setter<any>){
+  set(key: string, value?: unknown, intercept?: boolean | Control.Setter<any>){
+    const { state, subject } = this; 
 
-    const previous = this.state[key];
-
-    if(next === previous)
-      return true;
-
-    if(typeof argument == "function"){
-      const result = argument.call(this.subject, next, previous);
-
-      if(result === false)
-        return;
-        
-      if(typeof result == "function")
-        next = result();
+    if(1 in arguments){
+      const previous = state[key];
+  
+      if(value === previous)
+        return true;
+  
+      if(typeof intercept == "function"){
+        const result = intercept.call(subject, value, previous);
+  
+        if(result === false)
+          return;
+          
+        if(typeof result == "function")
+          value = result();
+      }
+  
+      state[key] = value;
     }
 
-    this.state[key] = next;
+    if(intercept === true)
+      return;
 
-    if(argument !== true)
-      this.update(key);
+    let { frame, listeners } = this;
+
+    function push(key: string | boolean){
+      listeners.forEach((only, cb, subs) => {
+        if(!only || only.has(key as string)){
+          const after = cb(key, subject);
+      
+          if(after === null)
+            subs.delete(cb);
+          else if(after)
+            queue(after);
+        }
+      });
+    }
+
+    if(Object.isFrozen(frame)){
+      frame = this.frame = {};
+
+      queue(() => {
+        Object.freeze(frame);
+        push(false);
+      })
+    }
+
+    if(key in frame)
+      return;
+
+    frame[key] = state[key];
+    push(key);
   }
 
   watch(key: string, output: Control.Descriptor<any>){
@@ -125,38 +155,6 @@ class Control<T extends {} = any> {
         return watch(value, observer)
       }
     });
-  }
-
-  update(key: string){
-    let { frame, listeners, state, subject } = this; 
-
-    function push(key: string | boolean){
-      listeners.forEach((only, cb, subs) => {
-        if(!only || only.has(key as string)){
-          const after = cb(key, subject);
-      
-          if(after === null)
-            subs.delete(cb);
-          else if(after)
-            queue(after);
-        }
-      });
-    }
-
-    if(Object.isFrozen(frame)){
-      frame = this.frame = {};
-
-      queue(() => {
-        Object.freeze(frame);
-        push(false);
-      })
-    }
-
-    if(key in frame)
-      return;
-
-    frame[key] = state[key];
-    push(key);
   }
 }
 
