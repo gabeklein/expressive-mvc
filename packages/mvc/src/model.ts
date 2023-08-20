@@ -219,17 +219,15 @@ function nextUpdate<T extends Model>(
     const callback = () => resolve(self.frame);
 
     const remove = self.addListener((key) => {
-      if(key === true)
+      if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
         return;
 
-      if(!arg2 || typeof key == "string" && arg2(key) === true){
-        remove();
+      if(timeout)
+        clearTimeout(timeout);
 
-        if(timeout)
-          clearTimeout(timeout);
+      remove();
 
-        return callback;
-      }
+      return callback;
     });
 
     const timeout = typeof arg1 == "number" && setTimeout(() => {
