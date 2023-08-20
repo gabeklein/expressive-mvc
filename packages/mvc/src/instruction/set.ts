@@ -54,48 +54,45 @@ function set <T> (
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){
-        try {
-          if(typeof value == "function")
+        if(typeof value == "function")
+          try {
             value = attempt(value.bind(subject, key, subject));
-
-          if(value instanceof Promise){
-            const pending = value
-              .then(value => {
-                output.get = undefined;
-                control.set(key, value);
-                return value;
-              })
-              .catch(err => {
-                output.get = () => { throw err };
-                control.set(key);
-              })
-
-            Object.assign(pending, {
-              message: `${subject}.${key} is not yet available.`,
-              stack: new Error().stack
-            });
-
-            if(argument !== false)
-              return output.get = () => {
-                throw pending;
-              };
           }
-          else
-            control.set(key, value);
+          catch(err){
+            console.warn(`Generating initial value for ${subject}.${key} failed.`);
+            throw err;
+          }
+
+        if(value instanceof Promise){
+          const pending = value
+            .then(value => {
+              output.get = undefined;
+              control.set(key, value);
+              return value;
+            })
+            .catch(err => {
+              output.get = () => { throw err };
+              control.set(key);
+            })
+
+          Object.assign(pending, {
+            message: `${subject}.${key} is not yet available.`,
+            stack: new Error().stack
+          });
+
+          return () => {
+            if(argument !== false)
+              throw pending;
+          };
         }
-        catch(err){
-          console.warn(`Generating initial value for ${subject}.${key} failed.`);
-          throw err;
-        }
+
+        control.set(key, value);
       }
 
-      if(argument)
-        init();
-      else
-        output.get = () => {
-          const get = key in state ? null : init();
-          return get ? get() : state[key];
-        }
+      output.get = argument ? init() : () => {
+        const get = key in state ? null : init();
+        return get ? get() : state[key];
+      };
     }
     else {
       if(value === undefined)
