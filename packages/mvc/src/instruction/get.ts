@@ -204,7 +204,6 @@ Control.on("update", () => {
         compute = item;
 
     PENDING.delete(compute);
-    
     compute();
   }
 });

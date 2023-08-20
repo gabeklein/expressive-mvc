@@ -1,5 +1,6 @@
 import { Model } from './model';
 
+const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const PARENTS = new WeakMap<Model, Model>();
@@ -27,21 +28,19 @@ declare namespace Control {
    * Update callback function.
    * 
    * @param key - Specifies cause for update.
-   *    - `string` - property which has updated.
-   *    - `true` - the initial event, instance is now ready.
-   *    - `false` - update in-progress has completed.
-   *    - `null` - model is marked for garbage collection.
+   *   - `string` - property which has updated.
+   *   - `true` - the initial event, instance is now ready.
+   *   - `false` - non-initial update has completed.
+   *   - `null` - model is marked for garbage collection.
    * 
    * @param source - Instance of Model for which update has occured.
    */
-  type OnUpdate =
-    (key: string | null | boolean, source: {}) => (() => void) | null | void;
+  type OnUpdate = (key: string | null | boolean, source: {}) => (() => void) | null | void;
 }
 
 const LIFECYCLE = {
-  dispatch: new Set<Callback>(),
   update: new Set<Callback>(),
-  didUpdate: new Set<Callback>(),
+  didUpdate: new Set<Callback>()
 }
 
 class Control<T extends {} = any> {
@@ -54,6 +53,7 @@ class Control<T extends {} = any> {
   }
 
   public state!: { [property: string]: unknown };
+
   public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
@@ -178,12 +178,12 @@ function control<T extends Model>(subject: T, ready?: boolean){
 }
 
 function queue(event: Callback){
-  const { update, didUpdate, dispatch } = LIFECYCLE;
+  const { update, didUpdate } = LIFECYCLE;
 
-  if(!dispatch.size)
+  if(!DISPATCH.size)
     setTimeout(() => {
       update.forEach(x => x());
-      dispatch.forEach(event => {
+      DISPATCH.forEach(event => {
         try {
           event();
         }
@@ -191,11 +191,11 @@ function queue(event: Callback){
           console.error(err);
         }
       });
-      dispatch.clear();
+      DISPATCH.clear();
       didUpdate.forEach(x => x());
     }, 0);
 
-  dispatch.add(event);
+  DISPATCH.add(event);
 }
 
 function parent(from: unknown, assign?: {}){
