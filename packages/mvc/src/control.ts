@@ -3,7 +3,6 @@ import { Model } from './model';
 const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
-const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
   type Getter<T> = (source: Model) => T;
@@ -200,13 +199,6 @@ function queue(event: Callback){
   DISPATCH.add(event);
 }
 
-function parent(from: unknown, assign?: {}){
-  if(!assign)
-    return PARENTS.get(from as Model);
-
-  PARENTS.set(from as Model, assign as Model);
-}
-
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   const control = REGISTER.get(value);
 
@@ -223,6 +215,5 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 export {
   control,
   Control,
-  parent,
   watch
 }

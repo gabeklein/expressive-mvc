@@ -2,6 +2,7 @@ import { Control, control, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
+const PARENT = new WeakMap<Model, Model>();
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
@@ -190,6 +191,12 @@ export function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
+export function parent(from: unknown, assign?: {}){
+  if(!assign)
+    return PARENT.get(from as Model);
+
+  PARENT.set(from as Model, assign as Model);
+}
 function extract(target: Model){
   const cache = new WeakMap<Model, any>();
 

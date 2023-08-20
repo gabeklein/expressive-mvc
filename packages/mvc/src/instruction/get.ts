@@ -1,6 +1,6 @@
 import { Context } from '../context';
-import { Control, parent, watch } from '../control';
-import { add, Model } from '../model';
+import { Control, watch } from '../control';
+import { add, Model, parent } from '../model';
 import { fetch } from './set';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
