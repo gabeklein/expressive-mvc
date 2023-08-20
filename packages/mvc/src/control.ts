@@ -44,7 +44,6 @@ const LIFECYCLE = {
 
 class Control<T extends {} = any> {
   static watch = watch;
-  static for = control;
 
   public state!: { [property: string]: unknown };
 
