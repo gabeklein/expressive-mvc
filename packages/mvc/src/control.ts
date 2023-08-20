@@ -158,24 +158,6 @@ class Control<T extends {} = any> {
   }
 }
 
-function control<T extends Model>(subject: T, ready?: boolean){
-  const self = REGISTER.get(subject.is) as Control<T>;
-  const subs = self.listeners;
-
-  if(ready !== undefined && !self.state){
-    self.state = {};
-    subs.forEach((_, fn) => fn(true, self));
-  }
-
-  if(ready === false){
-    Object.freeze(self.state);
-    subs.forEach((_, fn) => fn(null, self));
-    subs.clear();
-  }
-
-  return self;
-}
-
 function queue(event: Callback){
   const { update, didUpdate } = LIFECYCLE;
 
@@ -195,6 +177,24 @@ function queue(event: Callback){
     }, 0);
 
   DISPATCH.add(event);
+}
+
+function control<T extends Model>(subject: T, ready?: boolean){
+  const self = REGISTER.get(subject.is) as Control<T>;
+  const subs = self.listeners;
+
+  if(ready !== undefined && !self.state){
+    self.state = {};
+    subs.forEach((_, fn) => fn(true, self));
+  }
+
+  if(ready === false){
+    Object.freeze(self.state);
+    subs.forEach((_, fn) => fn(null, self));
+    subs.clear();
+  }
+
+  return self;
 }
 
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
