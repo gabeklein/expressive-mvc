@@ -192,7 +192,7 @@ function compute<T>(
     }
   }
 
-  return output as Control.PropertyDescriptor;
+  return output as Control.Descriptor;
 }
 
 Control.on("update", () => {

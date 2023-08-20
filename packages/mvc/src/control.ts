@@ -5,19 +5,11 @@ const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const PARENTS = new WeakMap<Model, Model>();
 
 declare namespace Control {
-  /**
-   * Property initializer, will run upon instance creation.
-   * Optional returned callback will run when once upon first access.
-   */
-  type Instruction<T> = (this: Control, key: string, thisArg: Control) =>
-    | PropertyDescriptor<T>
-    | Getter<T>
-    | void;
 
   type Getter<T> = (source: Model) => T;
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
-  type PropertyDescriptor<T = any> = {
+  type Descriptor<T = any> = {
     get?: Getter<T>;
     set?: Setter<T> | false;
     enumerable?: boolean;
@@ -96,7 +88,7 @@ class Control<T extends {} = any> {
       this.update(key);
   }
 
-  watch(key: string, output: Control.PropertyDescriptor<any>){
+  watch(key: string, output: Control.Descriptor<any>){
     const { state, subject, listeners } = this;
     const { enumerable = true } = output;
 

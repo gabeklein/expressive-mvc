@@ -50,7 +50,7 @@ function set <T> (
 
   return add<T>((key, control) => {
     const { state, subject } = control;
-    const output: Control.PropertyDescriptor = {};
+    const output: Control.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){

@@ -1,6 +1,6 @@
 import { Control, control, watch } from './control';
 
-const INSTRUCT = new Map<symbol, Control.Instruction<any>>();
+const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
@@ -42,6 +42,15 @@ export namespace Model {
   export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
   export type Event = (key: string) => Callback | void;
+
+  /**
+   * Property initializer, will run upon instance creation.
+   * Optional returned callback will run when once upon first access.
+   */
+  export type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
+    | Control.Descriptor<T>
+    | Control.Getter<T>
+    | void;
 }
 
 export class Model {
@@ -59,7 +68,7 @@ export class Model {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
         const instruction = INSTRUCT.get(value);
-        let desc: Control.PropertyDescriptor<unknown> | void = { value };
+        let desc: Control.Descriptor | void = { value };
   
         if(instruction){
           INSTRUCT.delete(value);
@@ -167,7 +176,7 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-export function add<T = any>(instruction: Control.Instruction<T>){
+export function add<T = any>(instruction: Model.Instruction<T>){
   const placeholder = Symbol("instruction");
   INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;
