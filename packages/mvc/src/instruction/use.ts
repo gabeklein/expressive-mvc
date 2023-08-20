@@ -1,5 +1,5 @@
 import { Control, control } from '../control';
-import { add, Model, parent } from '../model';
+import { add, Model, PARENT } from '../model';
 
 namespace use {
   export type Object<T extends {}> = T;
@@ -39,7 +39,7 @@ function use(
         throw new Error(`${subject}.${key} expected Model of type ${value.constructor} but got ${next}.`)
 
       if(next instanceof Model){
-        parent(next, subject);
+        PARENT.set(next, subject);
         control(next, true);
       }
       else if(next){

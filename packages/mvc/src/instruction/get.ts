@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { Control, watch } from '../control';
-import { add, Model, parent } from '../model';
+import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -73,7 +73,7 @@ function get<R, T extends Model>(
       subject = arg0;
 
     else if(Model.is(arg0)){
-      const hasParent = parent(subject);
+      const hasParent = PARENT.get(subject);
 
       if(!hasParent){
         if(arg1 === true)

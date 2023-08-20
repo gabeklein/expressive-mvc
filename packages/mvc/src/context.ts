@@ -1,5 +1,5 @@
 import { control } from './control';
-import { Model, uid, parent } from './model';
+import { Model, PARENT, uid } from './model';
 
 declare namespace Context {
   type Inputs = {
@@ -60,7 +60,7 @@ class Context {
 
     for(const [ model ] of init)
       Object.values(control(model, true).state).forEach(value => {
-        if(parent(value) === model){
+        if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
         }

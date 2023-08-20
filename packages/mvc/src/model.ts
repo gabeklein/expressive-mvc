@@ -8,18 +8,18 @@ type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
 type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;
 
-export namespace Model {
+declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
-  export type Type<T extends Model = Model> = abstract new (...args: any[]) => T
+  type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
   /** A type of Model which may be created without constructor arguments. */
-  export type New<T extends Model = Model> = (new () => T) & typeof Model;
+  type New<T extends Model = Model> = (new () => T) & typeof Model;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  export type Key<T> = Exclude<keyof T, keyof Model> & string;
+  type Key<T> = Exclude<keyof T, keyof Model> & string;
 
   /** Actual value stored in state. */
-  export type Value<R> =
+  type Value<R> =
     R extends Ref<infer T> ? T :
     R extends Model ? Export<R> :
     R;
@@ -29,33 +29,33 @@ export namespace Model {
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.
    */
-  export type Export<T> = { [P in Key<T>]: Value<T[P]> };
+  type Export<T> = { [P in Key<T>]: Value<T[P]> };
 
   /** Object comperable to data found in T. */
-  export type Values<T> = { [P in Key<T>]?: Value<T[P]> };
+  type Values<T> = { [P in Key<T>]?: Value<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
-  export type Ref<T = any> = {
+  type Ref<T = any> = {
     (next: T): void;
     current: T | null;
   }
 
   /** A callback function which is subscribed to parent and updates when values change. */
-  export type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
+  type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
 
-  export type Event = (key: string) => Callback | void;
+  type Event = (key: string) => Callback | void;
 
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
-  export type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
+  type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
     | Control.Descriptor<T>
     | Control.Getter<T>
     | void;
 }
 
-export class Model {
+class Model {
   /**
    * Loopback to instance of this model. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
@@ -180,23 +180,24 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-export function add<T = any>(instruction: Model.Instruction<T>){
+function add<T = any>(instruction: Model.Instruction<T>){
   const placeholder = Symbol("instruction");
   INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;
 }
 
 /** Random alphanumberic of length 6. Will always start with a letter. */
-export function uid(){
+function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
-export function parent(from: unknown, assign?: {}){
-  if(!assign)
-    return PARENT.get(from as Model);
-
-  PARENT.set(from as Model, assign as Model);
+export {
+  add,
+  Model,
+  PARENT,
+  uid
 }
+
 function extract(target: Model){
   const cache = new WeakMap<Model, any>();
 
