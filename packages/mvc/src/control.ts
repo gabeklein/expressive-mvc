@@ -98,38 +98,36 @@ class Control<T extends {} = any> {
 
   watch(key: string, output: Control.PropertyDescriptor<any>){
     const { state, subject, listeners } = this;
-    const { set, enumerable = true } = output;
+    const { enumerable = true } = output;
 
     if("value" in output)
       state[key] = output.value;
 
     Object.defineProperty(subject, key, {
       enumerable,
-      set: set === false
-        ? undefined
-        : (next) => {
-          const previous = state[key];
-    
-          if(next === previous)
+      set: (next) => {
+        if(output.set === false)
+          throw new Error(`${subject}.${key} is read-only.`);
+
+        const previous = state[key];
+  
+        if(next === previous)
+          return;
+        
+        if(output.set){
+          const result = output.set.call(subject, next, previous);
+
+          if(result === false)
             return;
-          
-          if(set){
-            const result = set.call(subject, next, previous);
+            
+          if(typeof result == "function")
+            next = result();
+        }
 
-            if(result === false)
-              return;
-              
-            if(typeof result == "function")
-              next = result();
-          }
-
-          this.set(key, next);
-        },
-      get(this: Model){
-        const value = output.get
-          ? output.get(this)
-          : state[key];
-
+        this.set(key, next);
+      },
+      get(){
+        const value = output.get ? output.get(this) : state[key];
         const observer = OBSERVER.get(this);
 
         if(observer){
