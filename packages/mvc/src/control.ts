@@ -49,7 +49,9 @@ class Control<T extends {} = any> {
 
   static on(event: "update" | "didUpdate", callback: Callback): Callback {
     LIFECYCLE[event].add(callback);
-    return () => LIFECYCLE[event].delete(callback);
+    return () => {
+      LIFECYCLE[event].delete(callback);
+    }
   }
 
   public state!: { [property: string]: unknown };
@@ -69,15 +71,29 @@ class Control<T extends {} = any> {
     }
   }
 
-  set(key: string, value: unknown, silent?: boolean){
-    const { state } = this;
+  set(
+    key: string,
+    next: unknown,
+    argument?: boolean | Control.Setter<any>){
 
-    if(value === state[key])
+    const previous = this.state[key];
+
+    if(next === previous)
       return true;
 
-    state[key] = value;
+    if(typeof argument == "function"){
+      const result = argument.call(this.subject, next, previous);
 
-    if(!silent)
+      if(result === false)
+        return;
+        
+      if(typeof result == "function")
+        next = result();
+    }
+
+    this.state[key] = next;
+
+    if(argument !== true)
       this.update(key);
   }
 
@@ -94,22 +110,7 @@ class Control<T extends {} = any> {
         if(output.set === false)
           throw new Error(`${subject}.${key} is read-only.`);
 
-        const previous = state[key];
-  
-        if(next === previous)
-          return;
-        
-        if(output.set){
-          const result = output.set.call(subject, next, previous);
-
-          if(result === false)
-            return;
-            
-          if(typeof result == "function")
-            next = result();
-        }
-
-        this.set(key, next);
+        this.set(key, next, output.set);
       },
       get(){
         const value = output.get ? output.get(this) : state[key];
