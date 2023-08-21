@@ -450,6 +450,8 @@ describe("get method", () => {
     })
 
     it("will bind to model called upon", () => {
+      class Test extends Model {}
+
       function testEffect(this: Test) {
         didCreate(this);
       }
