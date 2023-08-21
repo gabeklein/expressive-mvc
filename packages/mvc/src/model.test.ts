@@ -441,8 +441,6 @@ describe("get method", () => {
     })
 
     it('will call immediately', async () => {
-      class Test extends Model { }
-
       const testEffect = jest.fn();
       const test = Test.new();
 
@@ -452,8 +450,6 @@ describe("get method", () => {
     })
 
     it("will bind to model called upon", () => {
-      class Test extends Model { }
-
       function testEffect(this: Test) {
         didCreate(this);
       }
@@ -467,8 +463,6 @@ describe("get method", () => {
     })
 
     it('will callback on willDestroy by default', async () => {
-      class Test extends Model { }
-
       const willDestroy = jest.fn();
       const test = Test.new();
 
@@ -479,25 +473,21 @@ describe("get method", () => {
     })
 
     it('will cancel effect on callback', async () => {
-      class Test extends Model {
-        value = 0;
-      }
-
       const test = Test.new();
       const didEffect = jest.fn((test: Test) => {
-        void test.value;
+        void test.value1;
       });
 
       const done = test.get(didEffect);
 
-      test.value += 1;
+      test.value1 += 1;
 
       await expect(test).toUpdate();
       expect(didEffect).toBeCalledTimes(2);
 
       done();
 
-      test.value += 1;
+      test.value1 += 1;
       await expect(test).toUpdate();
 
       expect(didEffect).toBeCalledTimes(2);
