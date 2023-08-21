@@ -41,7 +41,7 @@ declare namespace Model {
   }
 
   /** A callback function which is subscribed to parent and updates when values change. */
-  type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | void;
+  type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | null | void;
 
   type Event = (key: string) => Callback | void;
 
@@ -266,6 +266,10 @@ function effect<T extends Model>(
 
     try {
       const out = callback.call(target, target);
+
+      if(out === null)
+        refresh = out;
+
       unSet = typeof out == "function" ? out : undefined;
     }
     catch(err){

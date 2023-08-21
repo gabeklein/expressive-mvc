@@ -493,6 +493,47 @@ describe("get method", () => {
       expect(didEffect).toBeCalledTimes(2);
     })
 
+    it('will cancel effect if returns null', async () => {
+      const test = Test.new();
+      const didEffect = jest.fn((test: Test) => {
+        void test.value1;
+        return null;
+      });
+
+      test.get(didEffect);
+
+      test.value1 += 1;
+      await expect(test).toUpdate();
+
+      expect(didEffect).toBeCalledTimes(1);
+    })
+
+    it('will cancel if returns null after callback', async () => {
+      const test = Test.new();
+      const cleanup = jest.fn();
+
+      let callback: Callback | null = cleanup;
+
+      const didEffect = jest.fn((test: Test) => {
+        void test.value1;
+        return callback;
+      });
+
+      test.get(didEffect);
+
+      callback = null;
+      test.value1 += 1;
+      await expect(test).toUpdate();
+
+      expect(didEffect).toBeCalledTimes(2);
+
+      test.value1 += 1;
+      await expect(test).toUpdate();
+
+      expect(didEffect).toBeCalledTimes(2);
+      expect(cleanup).toBeCalledTimes(1);
+    })
+
     it('will watch values via arrow function', async () => {
       const state = Test.new();
       const mock = jest.fn();
