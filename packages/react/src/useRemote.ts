@@ -79,7 +79,7 @@ export function useRemote<T extends Model, R>(
     if(value === null){
       getValue = undefined;
       onUpdate = null;
-      return;
+      return null;
     }
 
     if(value instanceof Promise){
@@ -110,5 +110,5 @@ export function useRemote<T extends Model, R>(
     }
   }, []);
 
-  return hook ? hook() : null;
+  return hook && hook();
 }
