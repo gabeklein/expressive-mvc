@@ -38,7 +38,6 @@ export function useRemote<T extends Model, R>(
       }
     }
 
-    let compute = argument;
     let suspense: (() => void) | undefined;
     let getValue: (() => R | undefined) | undefined;
     let factory: true | undefined;
@@ -74,23 +73,13 @@ export function useRemote<T extends Model, R>(
     };
 
     proxy = Control.watch(instance, () => factory ? null : onUpdate);
-    getValue = () => compute.call(proxy, proxy, forceUpdate);
+    getValue = () => argument.call(proxy, proxy, forceUpdate);
     value = getValue();
 
     if(value === null){
       getValue = undefined;
       onUpdate = null;
       return;
-    }
-
-    if(typeof value == "function"){
-      const get = value;
-      
-      Control.watch(proxy, () => onUpdate);
-
-      factory = true;
-      compute = () => get();
-      value = get();
     }
 
     if(value instanceof Promise){
