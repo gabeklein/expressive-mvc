@@ -12,25 +12,26 @@ export function useRemote<T extends Model, R>(
   const hook = useMemo(() => {
     const instance = context.get(this);
     const refresh = () => state[1](x => x+1);
-    const notFound = () => new Error(`Could not find ${this} in context.`);
 
-    let onUpdate: (() => void) | undefined | null;
-    let value = instance as any;
+    if(!instance)
+      if(argument !== false)
+        throw new Error(`Could not find ${this} in context.`);
+      else
+        return undefined;
 
     if(typeof argument !== "function"){
-      let remove: Callback | undefined;
+      if(argument !== undefined)
+        return () => instance;
 
-      if(instance){
-        if(argument === undefined)
-          remove = instance.get(current => {
-            value = current;
+      let value = instance;
 
-            if(remove)
-              refresh();
-          })
-      }
-      else if(argument !== false)
-        throw notFound();
+      const remove: Callback | undefined =
+        instance.get(current => {
+          value = current;
+
+          if(remove)
+            refresh();
+        })
 
       return () => {
         useEffect(() => remove, []);
@@ -38,13 +39,12 @@ export function useRemote<T extends Model, R>(
       }
     }
 
-    let suspense: (() => void) | undefined;
-    let getValue: (() => R | undefined) | undefined;
     let factory: true | undefined;
+    let getValue: (() => R | undefined) | undefined;
+    let onUpdate: (() => void) | undefined | null;
     let proxy!: T;
-
-    if(!instance)
-      throw notFound();
+    let suspense: (() => void) | undefined;
+    let value = instance as any;
 
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
