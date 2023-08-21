@@ -15,22 +15,27 @@ export function useRemote<T extends Model, R>(
     const notFound = () => new Error(`Could not find ${this} in context.`);
 
     let onUpdate: (() => void) | undefined | null;
-    let value: any;
+    let value = instance as any;
+    let remove: Callback | undefined;
 
     if(typeof argument !== "function"){
-      if(instance)
-        value = argument === undefined
-          ? Control.watch(instance, k => k ? onUpdate : undefined)
-          : instance;
+      if(instance){
+        if(argument === undefined){
+          remove = instance.get(current => {
+            value = current;
+
+            if(onUpdate)
+              onUpdate();
+          })
+        }
+      }
       else if(argument !== false)
         throw notFound();
 
       return () => {
         useEffect(() => {
           onUpdate = refresh;
-          return () => {
-            onUpdate = null;
-          };
+          return remove;
         }, []);
 
         return value;
@@ -72,6 +77,15 @@ export function useRemote<T extends Model, R>(
         refresh();
     };
 
+    remove = instance.get(current => {
+      value = compute.call(current, current, forceUpdate);
+
+      // proxy = current;
+
+      // if(onUpdate)
+      //   onUpdate();
+    })
+
     proxy = Control.watch(instance, () => factory ? null : onUpdate);
     getValue = () => compute.call(proxy, proxy, forceUpdate);
     value = getValue();
@@ -79,7 +93,7 @@ export function useRemote<T extends Model, R>(
     if(value === null){
       getValue = undefined;
       onUpdate = null;
-      return;
+      return null;
     }
 
     if(typeof value == "function"){
@@ -87,7 +101,8 @@ export function useRemote<T extends Model, R>(
       
       Control.watch(proxy, () => onUpdate);
 
-      factory = true;
+      remove();
+      remove = instance.get(current => {})
       compute = () => get();
       value = get();
     }
@@ -106,9 +121,7 @@ export function useRemote<T extends Model, R>(
       };
 
     return () => {
-      useEffect(() => () => {
-        onUpdate = null;
-      }, []);
+      useEffect(() => remove, []);
 
       if(value !== undefined)
         return value;
@@ -120,5 +133,5 @@ export function useRemote<T extends Model, R>(
     }
   }, []);
 
-  return hook ? hook() : null;
+  return hook && hook();
 }
