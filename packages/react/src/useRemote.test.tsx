@@ -188,27 +188,27 @@ describe("computed", () => {
   })
 
   it("will disable updates if null returned", async () => {
-    const test = Test.new();
-    const didEval = jest.fn(($: Test) => {
+    const factory = jest.fn(($: Test, update) => {
       void $.foo;
-      return null;
+      update();
     });
 
-    const didRender = jest.fn(() => {
-      return Test.get(didEval);
+    const render = jest.fn(() => {
+      return Test.get(factory);
     })
 
-    const hook = mockHook(test, didRender);
+    const test = Test.new();
+    const hook = mockHook(test, render);
 
-    expect(didRender).toBeCalledTimes(1);
+    expect(render).toBeCalledTimes(1);
     expect(hook.output).toBe(null);
 
     test.foo = 2;
 
     await expect(test).toUpdate();
 
-    expect(didEval).toBeCalledTimes(1);
-    expect(didRender).toBeCalledTimes(1);
+    expect(factory).toBeCalledTimes(1);
+    expect(render).toBeCalledTimes(1);
   })
 })
 
