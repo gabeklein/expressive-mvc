@@ -1,4 +1,4 @@
-import { Context, Control, Model } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const Shared = createContext(new Context());
@@ -11,16 +11,22 @@ function useLocal <T extends Model> (
 
   const state = useState(0);
   const hook = useMemo(() => {
-    const instance = this.new();
-    const local = Control.watch(instance, () => onUpdate);
-    const refresh = () => state[1](x => x+1);
+    const instance = this.new() as T;
 
-    let onUpdate: (() => void) | undefined | null;
+    let local: T;
+    let enabled: boolean | undefined;
     let shouldApply = !!apply;
+
+    const detach = instance.get(current => {
+      local = current;
+
+      if(enabled)
+        state[1](x => x+1);
+    });
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
       if(shouldApply){
-        onUpdate = undefined;
+        enabled = false;
 
         if(typeof props == "function")
           props(instance);
@@ -33,15 +39,15 @@ function useLocal <T extends Model> (
         if(!repeat)
           shouldApply = false;
 
-        instance.set().then(() => onUpdate = refresh);
+        instance.set().then(() => enabled = true);
       }
 
       setContext(instance, useContext(Shared));
 
       useEffect(() => {
-        onUpdate = refresh;
+        enabled = true;
         return () => {
-          onUpdate = null;
+          detach();
           instance.null();
         }
       }, []);
