@@ -189,8 +189,13 @@ describe("computed", () => {
 
   it("will disable updates if null returned", async () => {
     const test = Test.new();
+    const didEval = jest.fn(($: Test) => {
+      void $.foo;
+      return null;
+    });
+
     const didRender = jest.fn(() => {
-      return Test.get($ => null);
+      return Test.get(didEval);
     })
 
     const hook = mockHook(test, didRender);
@@ -202,6 +207,7 @@ describe("computed", () => {
 
     await expect(test).toUpdate();
 
+    expect(didEval).toBeCalledTimes(1);
     expect(didRender).toBeCalledTimes(1);
   })
 })
