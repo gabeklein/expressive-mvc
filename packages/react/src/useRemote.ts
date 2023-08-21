@@ -15,24 +15,25 @@ export function useRemote<T extends Model, R>(
     const notFound = () => new Error(`Could not find ${this} in context.`);
 
     let onUpdate: (() => void) | undefined | null;
-    let value: any;
+    let value = instance as any;
 
     if(typeof argument !== "function"){
-      if(instance)
-        value = argument === undefined
-          ? Control.watch(instance, k => k ? onUpdate : undefined)
-          : instance;
+      let remove: Callback | undefined;
+
+      if(instance){
+        if(argument === undefined)
+          remove = instance.get(current => {
+            value = current;
+
+            if(remove)
+              refresh();
+          })
+      }
       else if(argument !== false)
         throw notFound();
 
       return () => {
-        useEffect(() => {
-          onUpdate = refresh;
-          return () => {
-            onUpdate = null;
-          };
-        }, []);
-
+        useEffect(() => remove, []);
         return value;
       }
     }
