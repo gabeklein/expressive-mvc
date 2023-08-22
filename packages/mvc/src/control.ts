@@ -43,8 +43,6 @@ const LIFECYCLE = {
 }
 
 class Control<T extends {} = any> {
-  static watch = watch;
-
   public state!: { [property: string]: unknown };
 
   public frame: { [property: string]: unknown } = Object.freeze({});
