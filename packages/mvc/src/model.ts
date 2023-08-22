@@ -170,7 +170,7 @@ class Model {
 
 Object.defineProperty(Model.prototype, "toString", {
   value(){
-    return ID.get(this.is);
+    return ID.get(this);
   }
 });
 
@@ -287,7 +287,7 @@ function effect<T extends Model>(
     invoke();
   }
 
-  target = watch(self.subject, () => refresh);
+  target = watch(target, () => refresh);
 
   if(self.state)
     ready();

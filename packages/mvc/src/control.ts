@@ -170,7 +170,7 @@ function queue(event: Callback){
 }
 
 function control<T extends Model>(subject: T, ready?: boolean){
-  const self = REGISTER.get(subject.is) as Control<T>;
+  const self = REGISTER.get(subject) as Control<T>;
   const subs = self.listeners;
 
   if(ready !== undefined && !self.state){
@@ -191,9 +191,7 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   const control = REGISTER.get(value);
 
   if(control){
-    if(!OBSERVER.has(value))
-      REGISTER.set(value = Object.create(value), control);
-  
+    REGISTER.set(value = Object.create(value), control);
     OBSERVER.set(value, argument);
   }
 
