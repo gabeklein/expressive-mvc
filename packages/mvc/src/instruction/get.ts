@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Control, LIFECYCLE, watch } from '../control';
+import { Control, LIFECYCLE, update, watch } from '../control';
 import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
@@ -102,7 +102,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source(got => control.set(key, got));
+    source(got => update(control.subject, key, got));
 
     return fetch(control, key, arg1 !== false);
   })
@@ -147,7 +147,7 @@ function compute<T>(
       console.error(err);
     }
 
-    control.set(key, next, initial && !isAsync);
+    update(subject, key, next, initial && !isAsync);
   }
 
   function connect(model: Model){

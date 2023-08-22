@@ -1,4 +1,4 @@
-import { Control } from '../control';
+import { Control, addListener, update } from '../control';
 import { add } from '../model';
 import { attempt } from './run';
 
@@ -67,12 +67,12 @@ function set <T> (
           const pending = value
             .then(value => {
               output.get = undefined;
-              control.set(key, value);
+              update(subject, key, value);
               return value;
             })
             .catch(err => {
               output.get = () => { throw err };
-              control.set(key);
+              update(subject, key);
             })
 
           Object.assign(pending, {
@@ -86,7 +86,7 @@ function set <T> (
           };
         }
 
-        control.set(key, value);
+        update(subject, key, value);
       }
 
       output.get = argument ? init() : () => {
@@ -140,7 +140,7 @@ function fetch(self: Control, property: string, required?: boolean){
         resolve();
       }
   
-      const remove = self.addListener(key => {
+      const remove = addListener(subject, key => {
         if(key === property)
           return release;
   

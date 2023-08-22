@@ -1,4 +1,4 @@
-import { Control, control, watch } from './control';
+import { Control, add as add2, addListener, control, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
@@ -68,7 +68,7 @@ class Model {
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
 
     const control = new Control(this);
-    const done = control.addListener(() => {
+    const done = addListener(this, () => {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
         const instruction = INSTRUCT.get(value);
@@ -83,7 +83,7 @@ class Model {
         }
   
         if(desc)
-          control.watch(key, desc);
+          add2(this, key, desc);
       }
 
       done();
@@ -130,7 +130,7 @@ class Model {
 
   set(arg1?: Model.Event | number, arg2?: Predicate){
     return typeof arg1 == "function"
-      ? control(this).addListener(key => {
+      ? addListener(this, key => {
         if(typeof key == "string")
           return arg1(key)
       })
@@ -234,7 +234,7 @@ function nextUpdate(
 
     const callback = () => resolve(self.frame);
 
-    const remove = self.addListener((key) => {
+    const remove = addListener(target, (key) => {
       if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
         return;
 
@@ -287,12 +287,12 @@ function effect<T extends Model>(
     invoke();
   }
 
-  target = watch(self.subject, () => refresh);
+  target = watch(target, () => refresh);
 
   if(self.state)
     ready();
 
-  self.addListener(key => {
+  addListener(target, key => {
     if(key === true)
       return ready();
 

@@ -52,100 +52,108 @@ class Control<T extends {} = any> {
   constructor(public subject: T){
     REGISTER.set(subject, this);
   }
+}
 
-  addListener(fn: Control.OnUpdate){
-    this.listeners.set(fn, undefined);
-    return () => {
-      this.listeners.delete(fn);
+function addListener(subject: Model, fn: Control.OnUpdate){
+  const { listeners } = control(subject);
+
+  listeners.set(fn, undefined);
+  return () => {
+    listeners.delete(fn);
+  }
+}
+
+function update(
+  target: Model,
+  key: string,
+  value?: unknown,
+  intercept?: boolean | Control.Setter<any>){
+
+  const self = REGISTER.get(target)!;
+  const { state, subject } = self; 
+
+  if(1 in arguments){
+    const previous = state[key];
+
+    if(value === previous)
+      return true;
+
+    if(typeof intercept == "function"){
+      const result = intercept.call(subject, value, previous);
+
+      if(result === false)
+        return;
+        
+      if(typeof result == "function")
+        value = result();
     }
+
+    state[key] = value;
   }
 
-  set(key: string, value?: unknown, intercept?: boolean | Control.Setter<any>){
-    const { state, subject } = this; 
+  if(intercept === true)
+    return;
 
-    if(1 in arguments){
-      const previous = state[key];
-  
-      if(value === previous)
-        return true;
-  
-      if(typeof intercept == "function"){
-        const result = intercept.call(subject, value, previous);
-  
-        if(result === false)
-          return;
-          
-        if(typeof result == "function")
-          value = result();
-      }
-  
-      state[key] = value;
-    }
+  let { frame, listeners } = self;
 
-    if(intercept === true)
-      return;
-
-    let { frame, listeners } = this;
-
-    function push(key: string | boolean){
-      listeners.forEach((only, cb, subs) => {
-        if(!only || only.has(key as string)){
-          const after = cb(key, subject);
-      
-          if(after === null)
-            subs.delete(cb);
-          else if(after)
-            queue(after);
-        }
-      });
-    }
-
-    if(Object.isFrozen(frame)){
-      frame = this.frame = {};
-
-      queue(() => {
-        Object.freeze(frame);
-        push(false);
-      })
-    }
-
-    if(key in frame)
-      return;
-
-    frame[key] = state[key];
-    push(key);
-  }
-
-  watch(key: string, output: Control.Descriptor<any>){
-    const { state, subject, listeners } = this;
-    const { enumerable = true } = output;
-
-    if("value" in output)
-      state[key] = output.value;
-
-    Object.defineProperty(subject, key, {
-      enumerable,
-      set: (next) => {
-        if(output.set === false)
-          throw new Error(`${subject}.${key} is read-only.`);
-
-        this.set(key, next, output.set);
-      },
-      get(){
-        const value = output.get ? output.get(this) : state[key];
-        const observer = OBSERVER.get(this);
-
-        if(!observer)
-          return value;
-          
-        listeners.set(observer,
-          new Set(listeners.get(observer)).add(key)
-        );
-
-        return watch(value, observer)
+  function push(key: string | boolean){
+    listeners.forEach((only, cb, subs) => {
+      if(!only || only.has(key as string)){
+        const after = cb(key, subject);
+    
+        if(after === null)
+          subs.delete(cb);
+        else if(after)
+          queue(after);
       }
     });
   }
+
+  if(Object.isFrozen(frame)){
+    frame = self.frame = {};
+
+    queue(() => {
+      Object.freeze(frame);
+      push(false);
+    })
+  }
+
+  if(key in frame)
+    return;
+
+  frame[key] = state[key];
+  push(key);
+}
+
+function add(subject: Model, key: string, output: Control.Descriptor<any>){
+  const { state, listeners } = REGISTER.get(subject)!;
+  const { enumerable = true } = output;
+
+  if("value" in output)
+    state[key] = output.value;
+
+  Object.defineProperty(subject, key, {
+    enumerable,
+    set: (next) => {
+      if(output.set === false)
+        throw new Error(`${subject}.${key} is read-only.`);
+
+      update(subject, key, next, output.set);
+    },
+    get(){
+      const value = output.get ? output.get(this) : state[key];
+      const observer = OBSERVER.get(this);
+
+      if(!observer)
+        return value;
+        
+      listeners.set(observer,
+        new Set(listeners.get(observer)).add(key)
+      );
+
+      return watch(value, observer)
+    }
+  });
 }
 
 function queue(event: Callback){
@@ -201,8 +209,11 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 }
 
 export {
+  add,
+  addListener,
   control,
   Control,
   LIFECYCLE,
+  update,
   watch
 }
