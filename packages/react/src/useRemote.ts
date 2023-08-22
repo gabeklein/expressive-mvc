@@ -23,15 +23,15 @@ export function useRemote<T extends Model, R>(
       if(argument !== undefined)
         return () => instance;
 
-      let value = instance;
+      let remove: Callback | undefined;
+      let value: T;
 
-      const remove: Callback | undefined =
-        instance.get(current => {
-          value = current;
+      remove = instance.get(current => {
+        value = current;
 
-          if(remove)
-            refresh();
-        })
+        if(remove)
+          refresh();
+      })
 
       return () => {
         useEffect(() => remove, []);

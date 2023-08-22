@@ -188,9 +188,9 @@ describe("computed", () => {
   })
 
   it("will disable updates if null returned", async () => {
-    const factory = jest.fn(($: Test, update) => {
+    const factory = jest.fn(($: Test) => {
       void $.foo;
-      update();
+      return null;
     });
 
     const render = jest.fn(() => {
