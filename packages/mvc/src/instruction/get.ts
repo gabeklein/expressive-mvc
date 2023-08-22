@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Control, LIFECYCLE, watch } from '../control';
+import { Control, LIFECYCLE } from '../control';
 import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
@@ -151,22 +151,28 @@ function compute<T>(
   }
 
   function connect(model: Model){
-    let done: boolean;
-
     if(reset)
       reset();
 
-    reset = () => done = true;
+    reset = model.get(current => {
+      proxy = current;
+      PENDING.add(compute);
+    })
 
-    proxy = watch(model, (_, updated) => {
-      if(done)
-        return null;
+    // proxy = watch(model, (_, updated) => {
+    //   if(done)
+    //     return null;
 
-      if(updated == subject)
-        PENDING.add(compute);
-      else
-        compute();
-    });
+
+    //   // PENDING.add(compute);
+    //   // if(updated !== model)
+    //   //   debugger
+
+    //   if(model == subject)
+    //     PENDING.add(compute);
+    //   else
+    //     compute();
+    // });
 
     output.get = () => {      
       if(PENDING.delete(compute))
