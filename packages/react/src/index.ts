@@ -20,7 +20,7 @@ declare module '@expressive/mvc' {
          * 
          * @returns Promise which resolves, after refresh, to same value as input.
          */
-        <T = void>(passthru: Promise<T>): Promise<T>
+        <T = void>(passthru: Promise<T>): Promise<T>;
     
         /**
          * Request refresh before and after async function.
@@ -30,7 +30,7 @@ declare module '@expressive/mvc' {
          * 
          * @returns Promise which resolves, after refresh, return value.
          */
-        <T = void>(invoke: () => Promise<T>): Promise<T>
+        <T = void>(invoke: () => Promise<T>): Promise<T>;
       };
     }
 
@@ -40,9 +40,9 @@ declare module '@expressive/mvc' {
     /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
     function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
   
-    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | Promise<R> | R>): NoVoid<R>;
+    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, Promise<R> | R>): NoVoid<R>;
   
-    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, (() => R) | null>): NoVoid<R> | null;
+    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, null>): NoVoid<R> | null;
 
     namespace use {
       type OnCreate<T extends Model> = (instance: T) => void;
