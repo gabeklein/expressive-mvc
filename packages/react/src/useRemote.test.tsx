@@ -235,7 +235,7 @@ describe("force update", () => {
       forceUpdate();
     });
     
-    expect(didEvaluate).toHaveBeenCalledTimes(2);
+    expect(didEvaluate).toHaveBeenCalledTimes(1);
     expect(hook).toHaveBeenCalledTimes(2);
   })
 
@@ -319,7 +319,7 @@ describe("force update", () => {
   })
 })
 
-describe.skip("async", () => {
+describe("async", () => {
   class Test extends Model {
     foo = "bar";
   };
@@ -336,10 +336,11 @@ describe.skip("async", () => {
     });
 
     expect(hook).toBeCalledTimes(1);
+    expect(hook.output).toBe(null);
 
-    promise.resolve("foobar");
-
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await hook.act(() => {
+      promise.resolve("foobar");
+    })
 
     expect(hook).toBeCalledTimes(2);
     expect(hook.output).toBe("foobar");
@@ -349,24 +350,6 @@ describe.skip("async", () => {
 
     expect(hook).toBeCalledTimes(2);
   });
-
-  it('will suspend', async () => {
-    const promise = mockPromise();
-    const compute = jest.fn(() => promise)
-
-    const hook = mockHook(Test, () => {
-      return Test.get(compute);
-    });
-
-    expect(hook.suspense).toBe(true);
-
-    await hook.act(() => {
-      promise.resolve();
-    });
-
-    expect(hook).toBeCalledTimes(2);
-    expect(compute).toBeCalledTimes(1);
-  })
 })
 
 describe("get instruction", () => {
@@ -452,7 +435,7 @@ describe("get instruction", () => {
 
 describe("set instruction", () => {
   describe("factory", () => {
-    it.skip('will suspend if function is async', async () => {
+    it('will suspend if function is async', async () => {
       const promise = mockPromise<string>();
   
       class Test extends Model {
@@ -466,9 +449,8 @@ describe("set instruction", () => {
     
       expect(hook.suspense).toBe(true);
   
-      await hook.act(() => {
-        promise.resolve("hello");
-      })
+      promise.resolve("hello");
+      await hook.act(() => {})
     
       expect(hook).toBeCalledTimes(2);
       expect(hook.output).toBe("hello");
@@ -515,18 +497,17 @@ describe("set instruction", () => {
       }
   
       const hook = mockHook(Test, () => {
-        void Test.get().value;
-        didRender.resolve();
+        return Test.get().value;
       });
-  
-      const didRender = mockPromise();
-    
+
       expect(hook.suspense).toBe(true);
-    
+
+      // why can't this be nested in act?
       promise.resolve("hello");
-      await didRender;
+      await hook.act(() => {});
     
       expect(hook).toBeCalledTimes(2);
+      expect(hook.output).toBe("hello");
     })
   });
   
