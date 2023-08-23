@@ -136,6 +136,7 @@ class Control<T extends {} = any> {
       },
       get(){
         const value = output.get ? output.get(this) : state[key];
+        
         const observer = OBSERVER.get(this);
 
         if(!observer)
@@ -188,20 +189,35 @@ function control<T extends Model>(subject: T, ready?: boolean){
   return self;
 }
 
-function watch<T extends {}>(value: T, argument: Control.OnUpdate){
+function watch<T extends {}>(value: T, argument: Control.OnUpdate): T;
+function watch<T extends unknown>(from: unknown, key: string, value: T): T;
+function watch(value: any, arg1: Control.OnUpdate | string, arg2?: any){
   const control = REGISTER.get(value);
 
-  if(control){
-    REGISTER.set(value = Object.create(value), control);
-    OBSERVER.set(value, argument);
+  if(typeof arg1 == "function"){
+    if(control){
+      REGISTER.set(value = Object.create(value), control);
+      OBSERVER.set(value, arg1);
+    }
+
+    return value;
   }
 
-  return value;
+  const observer = OBSERVER.get(arg2);
+  const { listeners } = control!;
+
+  if(!observer)
+    return value;
+    
+  listeners.set(observer, new Set(listeners.get(observer)).add(arg1));
+
+  return watch(value, observer);
 }
 
 export {
   control,
   Control,
   LIFECYCLE,
+  OBSERVER,
   watch
 }
