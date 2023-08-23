@@ -85,35 +85,38 @@ class Control<T extends {} = any> {
     if(intercept === true)
       return;
 
-    let { frame, listeners } = this;
+    this.update(key);
+  }
 
-    function push(key: string | boolean){
-      listeners.forEach((only, cb, subs) => {
-        if(!only || only.has(key as string)){
-          const after = cb(key, subject);
-      
-          if(after === null)
-            subs.delete(cb);
-          else if(after)
-            queue(after);
-        }
-      });
+  update(key: string | boolean | null){
+    let { frame } = this;
+
+    if(typeof key == "string"){
+      if(Object.isFrozen(frame)){
+        frame = this.frame = {};
+  
+        queue(() => {
+          this.update(false);
+          Object.freeze(frame);
+        })
+      }
+
+      if(key in frame)
+        return;
+  
+      frame[key] = this.state[key];
     }
 
-    if(Object.isFrozen(frame)){
-      frame = this.frame = {};
-
-      queue(() => {
-        Object.freeze(frame);
-        push(false);
-      })
-    }
-
-    if(key in frame)
-      return;
-
-    frame[key] = state[key];
-    push(key);
+    this.listeners.forEach((only, cb, subs) => {
+      if(!only || typeof key == "string" && only.has(key)){
+        const after = cb(key, this.subject);
+    
+        if(after === null)
+          subs.delete(cb);
+        else if(after)
+          queue(after);
+      }
+    });
   }
 
   watch(key: string, output: Control.Descriptor<any>){
@@ -138,9 +141,7 @@ class Control<T extends {} = any> {
         if(!observer)
           return value;
           
-        listeners.set(observer,
-          new Set(listeners.get(observer)).add(key)
-        );
+        listeners.set(observer, new Set(listeners.get(observer)).add(key));
 
         return watch(value, observer)
       }
@@ -175,12 +176,12 @@ function control<T extends Model>(subject: T, ready?: boolean){
 
   if(ready !== undefined && !self.state){
     self.state = {};
-    subs.forEach((_, fn) => fn(true, self));
+    self.update(true);
   }
 
   if(ready === false){
     Object.freeze(self.state);
-    subs.forEach((_, fn) => fn(null, self));
+    self.update(null);
     subs.clear();
   }
 
