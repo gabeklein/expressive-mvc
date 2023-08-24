@@ -126,9 +126,6 @@ function compute<T>(
   let reset: (() => void) | undefined;
 
   function compute(initial?: boolean){
-    if(key in control.frame)
-      return;
-
     let next: T | undefined;
 
     try {
@@ -154,14 +151,12 @@ function compute<T>(
 
     reset = () => done = true;
 
-    proxy = watch(model, (_, updated) => {
+    proxy = watch(model, (_) => {
       if(done)
         return null;
 
-      if(updated == subject)
-        PENDING.add(compute);
-      else
-        compute();
+      PENDING.add(compute);
+      control.update(key);
     });
 
     output.get = () => {      
