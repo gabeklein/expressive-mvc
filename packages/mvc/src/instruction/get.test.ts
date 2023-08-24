@@ -9,6 +9,7 @@ const warn = mockWarn();
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
+it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
   const { resolve } = Context;

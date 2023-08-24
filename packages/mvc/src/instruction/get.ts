@@ -135,10 +135,6 @@ function compute<T>(
       next = setter.call(proxy, proxy);
     }
     catch(err){
-      // TODO: address possibility of loop
-      if(err instanceof Promise)
-        throw err.finally(compute)
-
       console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
 
       if(initial)
