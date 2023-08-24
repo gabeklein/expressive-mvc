@@ -3,6 +3,7 @@ import { Model } from './model';
 const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
+const LISTENER = new WeakMap<{}, Map<Control.OnUpdate, Set<string> | undefined>>
 
 declare namespace Control {
   type Getter<T> = (source: Model) => T;
@@ -51,6 +52,7 @@ class Control<T extends {} = any> {
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
+    LISTENER.set(subject, this.listeners);
   }
 
   addListener(fn: Control.OnUpdate){
@@ -165,7 +167,7 @@ function queue(event: Callback){
 }
 
 function control<T extends Model>(subject: T, ready?: boolean){
-  const self = REGISTER.get(subject) as Control<T>;
+  const self = REGISTER.get(subject.is) as Control<T>;
   const subs = self.listeners;
 
   if(ready !== undefined && !self.state){
@@ -183,10 +185,10 @@ function control<T extends Model>(subject: T, ready?: boolean){
 }
 
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
-  const control = REGISTER.get(value);
+  const listeners = LISTENER.get(value);
 
-  if(control){
-    REGISTER.set(value = Object.create(value), control);
+  if(listeners){
+    LISTENER.set(value = Object.create(value), listeners);
     OBSERVER.set(value, argument);
   }
 
@@ -194,15 +196,15 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 }
 
 function observe(from: any, key: string, value: any){
-  const control = REGISTER.get(from);
+  const listeners = LISTENER.get(from);
   const observer = OBSERVER.get(from);
 
-  if(!observer || !control)
+  if(!observer || !listeners)
     return value;
     
-  control.listeners.set(observer, 
-    new Set(control.listeners.get(observer)
-  ).add(key));
+  listeners.set(observer, 
+    new Set(listeners.get(observer)).add(key)
+  );
 
   return watch(value, observer)
 }
