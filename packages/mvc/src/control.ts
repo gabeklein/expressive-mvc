@@ -120,7 +120,7 @@ class Control<T extends {} = any> {
   }
 
   watch(key: string, output: Control.Descriptor<any>){
-    const { state, subject, listeners } = this;
+    const { state, subject } = this;
     const { enumerable = true } = output;
 
     if("value" in output)
@@ -136,14 +136,8 @@ class Control<T extends {} = any> {
       },
       get(){
         const value = output.get ? output.get(this) : state[key];
-        const observer = OBSERVER.get(this);
 
-        if(!observer)
-          return value;
-          
-        listeners.set(observer, new Set(listeners.get(observer)).add(key));
-
-        return watch(value, observer)
+        return observe(this, key, value);
       }
     });
   }
@@ -197,6 +191,20 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   }
 
   return value;
+}
+
+function observe(from: any, key: string, value: any){
+  const control = REGISTER.get(from);
+  const observer = OBSERVER.get(from);
+
+  if(!observer || !control)
+    return value;
+    
+  control.listeners.set(observer, 
+    new Set(control.listeners.get(observer)
+  ).add(key));
+
+  return watch(value, observer)
 }
 
 export {
