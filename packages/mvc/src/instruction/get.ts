@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Control, LIFECYCLE, watch } from '../control';
+import { Control, LIFECYCLE, control } from '../control';
 import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
@@ -114,19 +114,19 @@ const PENDING = new Set<Callback>();
 let OFFSET = 0;
 
 function compute<T>(
-  control: Control,
+  self: Control,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
 
-  const { state, subject } = control;
+  const { state, subject } = self;
 
   let proxy: any;
   let isAsync: boolean;
   let reset: (() => void) | undefined;
 
   function compute(initial?: boolean){
-    if(key in control.frame)
+    if(key in self.frame)
       return;
 
     let next: T | undefined;
@@ -147,45 +147,52 @@ function compute<T>(
       console.error(err);
     }
 
-    control.set(key, next, initial && !isAsync);
+    self.set(key, next, initial && !isAsync);
+  }
+
+  function get(){
+    if(PENDING.delete(compute))
+      compute();
+
+    return state[key] as T;
   }
 
   function connect(model: Model){
-    let done: boolean;
+    proxy = undefined;
 
     if(reset)
       reset();
 
-    reset = () => done = true;
-
-    proxy = watch(model, (_, updated) => {
-      if(done)
-        return null;
-
-      if(updated == subject)
+    function stale(){
+      if(model == subject)
         PENDING.add(compute);
       else
         compute();
-    });
-
-    output.get = () => {      
-      if(PENDING.delete(compute))
-        compute();
-  
-      return state[key] as T;
     }
 
-    try {
-      compute(true);
-    }
-    finally {
-      ORDER.set(compute, OFFSET++);
-    }
+    control(model, true);
+    reset = model.get(current => {
+      const initial = !proxy;
+
+      proxy = current;
+
+      if(initial)
+        try {
+          compute(true);
+        }
+        finally {
+          ORDER.set(compute, OFFSET++);
+        }
+
+      return stale;
+    })
+
+    output.get = get;
   }
 
   const output = {
     get(): any {
-      output.get = fetch(control, key);
+      output.get = fetch(self, key);
       source(connect);
       isAsync = true;
       return output.get();
