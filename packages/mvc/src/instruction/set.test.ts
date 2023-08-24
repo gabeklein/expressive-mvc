@@ -1,6 +1,5 @@
 import { mockError, mockPromise, mockWarn } from '../tests/mocks';
 import { Model } from '../model';
-import { get } from './get';
 import { set } from './set';
 import { use } from './use';
 
@@ -417,8 +416,8 @@ describe("factory", () => {
     class Test extends Model {
       child = use(Child);
       
-      childValue = get(this, self => {
-        return self.child.value + " world!";
+      childValue = set(() => {
+        return this.child.value + " world!";
       });
     }
 
@@ -445,8 +444,8 @@ describe("factory", () => {
     class Test extends Model {
       asyncValue = set(() => promise);
 
-      value = get(this, ({ asyncValue }) => {
-        return `Hello ${asyncValue}`;
+      value = set(() => {
+        return `Hello ${this.asyncValue}`;
       });
     }
 
