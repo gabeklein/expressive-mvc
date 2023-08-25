@@ -54,36 +54,36 @@ class Control<T extends {} = any> {
     }
   }
 
-  set(key: string, value?: unknown, intercept?: boolean | Control.Setter<any>){
-    if(1 in arguments){
-      const previous = this.state[key];
-  
-      if(value === previous)
-        return true;
-  
-      if(typeof intercept == "function"){
-        const result = intercept.call(this.subject, value, previous);
-  
-        if(result === false)
-          return;
-          
-        if(typeof result == "function")
-          value = result();
-      }
-  
-      this.state[key] = value;
-    }
+  update(
+    key: string | boolean | null,
+    value?: unknown,
+    callback?: boolean | Control.Setter<any>){
 
-    if(intercept === true)
-      return;
-
-    this.update(key);
-  }
-
-  update(key: string | boolean | null){
     let { frame } = this;
 
     if(typeof key == "string"){
+      if(1 in arguments){
+        const previous = this.state[key];
+    
+        if(typeof callback == "function"){
+          const result = callback.call(this.subject, value, previous);
+    
+          if(result === false)
+            return;
+            
+          if(typeof result == "function")
+            value = result();
+        }
+    
+        if(value === previous)
+          return true;
+    
+        this.state[key] = value;
+  
+        if(callback === true)
+          return;
+      }
+
       if(Object.isFrozen(frame)){
         frame = this.frame = {};
   
@@ -124,7 +124,7 @@ class Control<T extends {} = any> {
         if(output.set === false)
           throw new Error(`${subject}.${key} is read-only.`);
 
-        this.set(key, next, output.set);
+        this.update(key, next, output.set);
       },
       get(){
         const value = output.get ? output.get(this) : state[key];
