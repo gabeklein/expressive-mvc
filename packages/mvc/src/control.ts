@@ -170,7 +170,7 @@ function control<T extends Model>(subject: T, ready?: boolean){
   const self = REGISTER.get(subject.is) as Control<T>;
   const subs = self.listeners;
 
-  if(ready !== undefined && !self.state){
+  if(ready && !self.state){
     self.state = {};
     self.update(true);
   }
@@ -206,7 +206,7 @@ function observe(from: any, key: string, value: any){
     new Set(listeners.get(observer)).add(key)
   );
 
-  return watch(value, observer)
+  return watch(value, observer);
 }
 
 export {

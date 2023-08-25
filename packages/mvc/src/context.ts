@@ -78,7 +78,7 @@ class Context {
 
     if(typeof input == "function"){
       T = input;
-      I = new input();
+      I = input.new();
     }
     else {
       I = input;
