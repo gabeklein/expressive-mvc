@@ -136,12 +136,12 @@ describe("instruction", () => {
       expect(didUpdate).toBeCalledTimes(1);
     })
 
-    it.skip("will not update on reassignment", () => {
+    it("will not update on reassignment", () => {
       class Test extends Model {
         property = add<string>((key) => ({
           value: "foobar",
           set: (value: any) => {
-            (this as any)[key] = value + "!";
+            return () => value + "!";
           }
         }))
       }
