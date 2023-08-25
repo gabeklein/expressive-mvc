@@ -12,6 +12,11 @@ class Context {
     throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
   }
 
+  constructor(inputs?: Context.Inputs){
+    if(inputs)
+      this.include(inputs);
+  }
+
   public key!: string;
 
   private table = new WeakMap<Model.Type, symbol>();
@@ -69,8 +74,9 @@ class Context {
     return init;
   }
 
-  public add<T extends Model>(
-    input: T | Model.New<T>, implicit?: boolean){
+  protected add<T extends Model>(
+    input: T | Model.New<T>,
+    implicit?: boolean){
 
     let writable = true;
     let T: Model.New<T>;

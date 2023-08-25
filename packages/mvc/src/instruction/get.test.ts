@@ -651,8 +651,7 @@ describe("async", () => {
 
   beforeAll(() => {
     Context.resolve = (_, got) => {
-      const context = new Context();
-      context.add(Foo);
+      const context = new Context({ Foo });
       setTimeout(() => got(context));
     }
   })

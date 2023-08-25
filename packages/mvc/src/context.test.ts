@@ -6,38 +6,32 @@ class Example extends Model {};
 class Example2 extends Example {};
 
 it("will add instance to context", () => {
-  const context = new Context();
   const example = Example.new();
-
-  context.add(example);
+  const context = new Context({ example });
 
   expect(context.get(Example)).toBe(example);
 })
 
 it("will access upstream model", () => {
-  const context = new Context();
-  const context2 = context.push();
   const example = Example.new();
 
-  context.add(example);
+  const context = new Context({ example });
+  const context2 = context.push();
 
   expect(context2.get(Example)).toBe(example);
 })
 
 it("will register all subtypes", () => {
-  const context = new Context();
   const example2 = new Example2();
-
-  context.add(example2);
+  const context = new Context({ example2 });
 
   expect(context.get(Example2)).toBe(example2);
   expect(context.get(Example)).toBe(example2);
 })
 
 it("will create instance in context", () => {
-  const context = new Context();
+  const context = new Context({ Example });
 
-  context.add(Example);
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
 
@@ -49,21 +43,22 @@ it("will return undefined if not found", () => {
 })
 
 it("will complain if multiple registered", () => {
-  const context = new Context();
-  const fetch = () => context.get(Example);
+  const context = new Context({
+    e1: Example,
+    e2: Example
+  });
 
-  context.add(Example);
-  context.add(Example);
+  const fetch = () => context.get(Example);
 
   expect(fetch).toThrowError(`Did find Example in context, but multiple were defined.`);
 })
 
 it("will ignore if multiple but same", () => {
-  const context = new Context();
   const example = Example.new();
-
-  context.add(example);
-  context.add(example);
+  const context = new Context({
+    e1: example,
+    e2: example
+  });
 
   const got = context.get(Example);
 
@@ -82,18 +77,23 @@ it("will destroy modules created by layer", () => {
 
   class Test1 extends Test {};
   class Test2 extends Test {};
+  class Test3 extends Test {};
 
-  const context1 = new Context();
+  const test2 = Test2.new();
+
+  const context1 = new Context({ Test1 });
   const context2 = context1.push();
 
-  const test1 = Test1.new();
-  const test2 = context2.add(Test2);
+  context2.include({ test2, Test3 });
 
-  context2.add(test1);
+  const test1 = context2.get(Test1)!;
+  const test3 = context2.get(Test3)!;
+
   context2.pop();
 
   expect(test1.didDestroy).not.toBeCalled();
-  expect(test2.didDestroy).toBeCalled();
+  expect(test2.didDestroy).not.toBeCalled();
+  expect(test3.didDestroy).toBeCalled();
 })
 
 describe("include", () => {
@@ -104,11 +104,10 @@ describe("include", () => {
   }
 
   it("will register in batch", () => {
-    const context = new Context();
     const foo = Foo.new();
     const bar = Bar.new();
-  
-    context.include({ foo, bar });
+
+    const context = new Context({ foo, bar });
   
     expect(context.get(Foo)).toBe(foo);
     expect(context.get(Bar)).toBe(bar);
@@ -125,11 +124,9 @@ describe("include", () => {
       }
     }
 
-    const context = new Context();
     const foo = Foo.new();
     const bar = Bar.new();
-
-    context.include({ foo, bar, Baz });
+    const context = new Context({ foo, bar, Baz });
 
     const keyPriorUpdate = context.key;
     const baz = context.get(Baz);
@@ -152,21 +149,17 @@ describe("include", () => {
   })
   
   it("will register children implicitly", () => {
-    const context = new Context();
     const foobar = FooBar.new();
-  
-    context.include({ foobar });
+    const context = new Context({ foobar });
   
     expect(context.get(FooBar)).toBe(foobar);
     expect(context.get(Foo)).toBe(foobar.foo);
   })
   
   it("will prefer explicit over implicit", () => {
-    const context = new Context();
-    const foobar = FooBar.new();
     const foo = Foo.new();
-    
-    context.include({ foobar, foo });
+    const foobar = FooBar.new();
+    const context = new Context({ foobar, foo });
 
     expect(context.get(FooBar)).toBe(foobar);
     expect(context.get(Foo)).not.toBe(foobar.foo);
