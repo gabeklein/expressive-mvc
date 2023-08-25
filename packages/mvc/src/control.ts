@@ -55,16 +55,14 @@ class Control<T extends {} = any> {
   }
 
   set(key: string, value?: unknown, intercept?: boolean | Control.Setter<any>){
-    const { state, subject } = this; 
-
     if(1 in arguments){
-      const previous = state[key];
+      const previous = this.state[key];
   
       if(value === previous)
         return true;
   
       if(typeof intercept == "function"){
-        const result = intercept.call(subject, value, previous);
+        const result = intercept.call(this.subject, value, previous);
   
         if(result === false)
           return;
@@ -73,7 +71,7 @@ class Control<T extends {} = any> {
           value = result();
       }
   
-      state[key] = value;
+      this.state[key] = value;
     }
 
     if(intercept === true)
@@ -153,7 +151,6 @@ class Control<T extends {} = any> {
       }
   
       const callback = () => resolve(this.frame);
-  
       const remove = this.addListener((key) => {
         if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
           return;
