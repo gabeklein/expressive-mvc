@@ -244,13 +244,13 @@ function effect<T extends Model>(
 
   const self = control(target);
   let refresh: (() => void) | null | undefined;
-  let unSet: Callback | undefined;
+  let unSet: Callback | false | undefined;
 
   function invoke(){
     try {
       const out = callback.call(target, target);
 
-      unSet = typeof out == "function" ? out : undefined;
+      unSet = typeof out == "function" && out;
       refresh = out === null ? out : invoke;
     }
     catch(err){
@@ -296,6 +296,5 @@ export {
   control,
   Control,
   effect,
-  LIFECYCLE,
-  watch
+  LIFECYCLE
 }
