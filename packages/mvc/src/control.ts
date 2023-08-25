@@ -143,6 +143,43 @@ class Control<T extends {} = any> {
       }
     });
   }
+
+  next(
+    arg1?: number | Model.Event,
+    arg2?: (key: string) => boolean | void
+  ){
+    if(typeof arg1 == "function")
+      return this.addListener(key => {
+        if(typeof key == "string")
+          return arg1(key)
+      })
+
+    return new Promise<any>((resolve, reject) => {
+      if(typeof arg1 != "number" && Object.isFrozen(this.frame)){
+        resolve(false);
+        return;
+      }
+  
+      const callback = () => resolve(this.frame);
+  
+      const remove = this.addListener((key) => {
+        if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
+          return;
+  
+        if(timeout)
+          clearTimeout(timeout);
+  
+        remove();
+  
+        return callback;
+      });
+  
+      const timeout = typeof arg1 == "number" && setTimeout(() => {
+        remove();
+        reject(arg1);
+      }, arg1);
+    });
+  }
 }
 
 function queue(event: Callback){
@@ -209,9 +246,64 @@ function observe(from: any, key: string, value: any){
   return watch(value, observer);
 }
 
+function effect<T extends Model>(
+  target: T,
+  callback: Model.Effect<T>){
+
+  const self = control(target);
+  let refresh: (() => void) | null | undefined;
+  let unSet: Callback | undefined;
+
+  function invoke(){
+    try {
+      const out = callback.call(target, target);
+
+      unSet = typeof out == "function" ? out : undefined;
+      refresh = out === null ? out : invoke;
+    }
+    catch(err){
+      if(err instanceof Promise){
+        refresh = undefined;
+        err.then(invoke).catch(console.error);
+      }
+      else if(refresh)
+        console.error(err);
+      else
+        throw err;
+    }
+  }
+
+  target = watch(target, () => {
+    if(refresh && unSet){
+      unSet();
+      unSet = undefined;
+    }
+    return refresh;
+  });
+
+  if(self.state)
+    invoke();
+
+  self.addListener(key => {
+    if(key === true)
+      invoke();
+
+    else if(!refresh)
+      return refresh;
+
+    if(key === null && unSet)
+      unSet();
+  });
+
+  return () => {
+    refresh = null;
+  };
+}
+
 export {
   control,
   Control,
+  effect,
   LIFECYCLE,
   watch
 }

@@ -1,4 +1,4 @@
-import { Control, control, watch } from './control';
+import { Control, control, effect } from './control';
 
 const ID = new WeakMap<Model, string>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
@@ -97,9 +97,27 @@ class Model {
   get(effect: Model.Effect<this>): Callback;
 
   get(arg1?: Model.Effect<this>){
-    return typeof arg1 == "function"
-      ? effect(this, arg1)
-      : extract(this);
+    if(typeof arg1 == "function")
+      return effect(this, arg1);
+
+    const cache = new WeakMap<Model, any>();
+
+    function get(value: any){
+      if(value instanceof Model){
+        if(cache.has(value))
+          return cache.get(value);
+
+        const { state } = control(value);
+        cache.set(value, value = {});
+
+        for(const key in state)
+          value[key] = get(state[key]);
+      }
+
+      return value;
+    }
+
+    return get(this);
   }
 
   /** Assert update is in progress. Returns a promise which resolves updated keys. */
@@ -129,12 +147,7 @@ class Model {
   set(callback: Model.Event): Callback;
 
   set(arg1?: Model.Event | number, arg2?: Predicate){
-    return typeof arg1 == "function"
-      ? control(this).addListener(key => {
-        if(typeof key == "string")
-          return arg1(key)
-      })
-      : nextUpdate(this, arg1, arg2);
+    return control(this).next(arg1, arg2);
   }
 
   /** Mark this instance for garbage collection. */
@@ -196,112 +209,4 @@ export {
   Model,
   PARENT,
   uid
-}
-
-function extract(target: Model){
-  const cache = new WeakMap<Model, any>();
-
-  function get(value: any){
-    if(value instanceof Model){
-      if(cache.has(value))
-        return cache.get(value);
-
-      const { state } = control(value);
-      cache.set(value, value = {});
-
-      for(const key in state)
-        value[key] = get(state[key]);
-    }
-
-    return value;
-  }
-
-  return get(target);
-}
-
-function nextUpdate(
-  target: Model,
-  arg1?: number,
-  arg2?: (key: string) => boolean | void){
-
-  return new Promise<any>((resolve, reject) => {
-    const self = control(target);
-
-    if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
-      resolve(false);
-      return;
-    }
-
-    const callback = () => resolve(self.frame);
-
-    const remove = self.addListener((key) => {
-      if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
-        return;
-
-      if(timeout)
-        clearTimeout(timeout);
-
-      remove();
-
-      return callback;
-    });
-
-    const timeout = typeof arg1 == "number" && setTimeout(() => {
-      remove();
-      reject(arg1);
-    }, arg1);
-  });
-}
-
-function effect<T extends Model>(
-  target: T, callback: Model.Effect<T>){
-
-  const self = control(target);
-  let refresh: (() => void) | null | undefined;
-  let unSet: Callback | undefined;
-
-  function invoke(){
-    try {
-      const out = callback.call(target, target);
-
-      unSet = typeof out == "function" ? out : undefined;
-      refresh = out === null ? out : invoke;
-    }
-    catch(err){
-      if(err instanceof Promise){
-        refresh = undefined;
-        err.then(invoke).catch(console.error);
-      }
-      else if(refresh)
-        console.error(err);
-      else
-        throw err;
-    }
-  }
-
-  target = watch(target, () => {
-    if(refresh && unSet){
-      unSet();
-      unSet = undefined;
-    }
-    return refresh;
-  });
-
-  if(self.state)
-    invoke();
-
-  self.addListener(key => {
-    if(key === true)
-      return invoke();
-
-    if(!refresh)
-      return refresh;
-
-    if(key === null && unSet)
-      unSet();
-  });
-
-  return () => {
-    refresh = null;
-  };
 }
