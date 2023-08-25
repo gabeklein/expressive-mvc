@@ -692,11 +692,10 @@ describe("async", () => {
       throw false;
     }
     catch(err){
-      expect(err).toBeInstanceOf(Promise);
       suspense = err as Promise<unknown>;
     }
 
-    await suspense;
+    await expect(suspense).resolves.toBe(undefined);
   
     expect(bar.foo).toBe("foobar");
   })

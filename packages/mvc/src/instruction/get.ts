@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { Control, LIFECYCLE, watch } from '../control';
+import { Control, LIFECYCLE } from '../control';
 import { add, Model, PARENT } from '../model';
 import { fetch } from './set';
 
@@ -128,6 +128,17 @@ function compute<T>(
   function compute(initial?: boolean){
     let next: T | undefined;
 
+    if(initial){
+      ORDER.set(compute, OFFSET++);
+
+      output.get = () => {
+        if(PENDING.delete(compute))
+          compute();
+    
+        return state[key] as T;
+      }
+    }
+
     try {
       next = setter.call(proxy, proxy);
     }
@@ -140,38 +151,24 @@ function compute<T>(
       console.error(err);
     }
 
-    control.set(key, next, initial && !isAsync);
+    control.set(key, next, !isAsync);
   }
 
   function connect(model: Model){
-    let done: boolean;
-
     if(reset)
       reset();
 
-    reset = () => done = true;
+    reset = model.get(current => {
+      proxy = current;
 
-    proxy = watch(model, (_) => {
-      if(done)
-        return null;
+      if(!reset)
+        compute(true);
 
-      PENDING.add(compute);
-      control.update(key);
-    });
-
-    output.get = () => {      
-      if(PENDING.delete(compute))
-        compute();
-  
-      return state[key] as T;
-    }
-
-    try {
-      compute(true);
-    }
-    finally {
-      ORDER.set(compute, OFFSET++);
-    }
+      return () => {
+        PENDING.add(compute);
+        control.update(key);
+      };
+    })
   }
 
   const output = {
