@@ -261,40 +261,38 @@ function effect<T extends Model>(
   let unSet: Callback | undefined;
 
   function invoke(){
-    if(unSet)
-      unSet();
-
     try {
       const out = callback.call(target, target);
 
-      if(out === null)
-        refresh = out;
-
       unSet = typeof out == "function" ? out : undefined;
+      refresh = out === null ? out : invoke;
     }
     catch(err){
       if(err instanceof Promise){
         refresh = undefined;
-        err.then(ready);
+        err.then(invoke).catch(console.error);
       }
-      else 
+      else if(refresh)
         console.error(err);
+      else
+        throw err;
     }
   }
 
-  function ready() {
-    refresh = invoke;
-    invoke();
-  }
-
-  target = watch(target, () => refresh);
+  target = watch(target, () => {
+    if(refresh && unSet){
+      unSet();
+      unSet = undefined;
+    }
+    return refresh;
+  });
 
   if(self.state)
-    ready();
+    invoke();
 
   self.addListener(key => {
     if(key === true)
-      return ready();
+      return invoke();
 
     if(!refresh)
       return refresh;
