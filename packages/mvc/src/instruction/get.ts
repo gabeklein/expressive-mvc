@@ -166,7 +166,7 @@ function compute<T>(
 
       return () => {
         PENDING.add(compute);
-        control.update(key);
+        control.set(key);
       };
     })
   }

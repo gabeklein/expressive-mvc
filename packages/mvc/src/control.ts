@@ -54,49 +54,49 @@ class Control<T extends {} = any> {
     }
   }
 
-  set(key: string, value?: unknown, intercept?: boolean | Control.Setter<any>){
-    if(1 in arguments){
-      const previous = this.state[key];
-  
-      if(value === previous)
-        return true;
-  
-      if(typeof intercept == "function"){
-        const result = intercept.call(this.subject, value, previous);
-  
-        if(result === false)
-          return;
-          
-        if(typeof result == "function")
-          value = result();
-      }
-  
-      this.state[key] = value;
-    }
+  set(
+    key: string | boolean | null,
+    value?: unknown,
+    intercept?: boolean | Control.Setter<any>){
 
-    if(intercept === true)
-      return;
-
-    this.update(key);
-  }
-
-  update(key: string | boolean | null){
     let { frame } = this;
 
     if(typeof key == "string"){
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
-  
-        queue(() => {
-          this.update(false);
-          Object.freeze(frame);
-        })
+      if(1 in arguments){
+        const previous = this.state[key];
+    
+        if(value === previous)
+          return true;
+    
+        if(typeof intercept == "function"){
+          const result = intercept.call(this.subject, value, previous);
+    
+          if(result === false)
+            return;
+            
+          if(typeof result == "function")
+            value = result();
+        }
+    
+        this.state[key] = value;
+
+        if(Object.isFrozen(frame)){
+          frame = this.frame = {};
+    
+          queue(() => {
+            this.set(false);
+            Object.freeze(frame);
+          })
+        }
+
+        if(key in frame)
+          return;
+    
+        frame[key] = this.state[key];
       }
 
-      if(key in frame)
+      if(intercept === true)
         return;
-  
-      frame[key] = this.state[key];
     }
 
     this.listeners.forEach((only, cb, subs) => {
@@ -198,12 +198,12 @@ function control<T extends Model>(subject: T, ready?: boolean){
 
   if(ready && !self.state){
     self.state = {};
-    self.update(true);
+    self.set(true);
   }
 
   if(ready === false){
     Object.freeze(self.state);
-    self.update(null);
+    self.set(null);
     subs.clear();
   }
 
