@@ -16,14 +16,6 @@ declare namespace Control {
     value?: T;
   }
 
-  type Callback = (control: Control) => void;
-
-  /**
-   * Callback for Controller.for() static method.
-   * Returned callback is forwarded.
-   */
-  type OnReady<T extends {}> = (control: Control<T>) => (() => void) | void;
-
   /**
    * Update callback function.
    * 
