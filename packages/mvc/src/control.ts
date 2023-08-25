@@ -293,5 +293,6 @@ export {
   control,
   Control,
   effect,
+  observe,
   LIFECYCLE
 }

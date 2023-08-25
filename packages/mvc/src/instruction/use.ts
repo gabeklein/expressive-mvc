@@ -1,4 +1,4 @@
-import { Control, control } from '../control';
+import { Control, control, observe } from '../control';
 import { add, Model, PARENT } from '../model';
 
 namespace use {
@@ -43,10 +43,15 @@ function use(
         control(next, true);
       }
       else if(next){
+        const state = value;
         const control = new Control(value = Object.create(next));
 
         for(const key in control.state = next)
-          control.watch(key, {});
+          Object.defineProperty(value, key, {
+            enumerable: true,
+            get: () => observe.call(control, key, control.state[key]),
+            set: (next: any) => control.set(key, next)
+          })
 
         return () => value;
       }
