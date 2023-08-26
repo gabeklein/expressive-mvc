@@ -60,14 +60,14 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame } = this;
+    let { frame, state, subject } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
-        const previous = this.state[key];
+        const previous = state[key];
     
         if(typeof callback == "function"){
-          const result = callback.call(this.subject, value, previous);
+          const result = callback.call(subject, value, previous);
     
           if(result === false)
             return;
@@ -79,7 +79,7 @@ class Control<T extends {} = any> {
         if(value === previous)
           return true;
     
-        this.state[key] = value;
+        state[key] = value;
   
         if(callback === true)
           return;
@@ -97,12 +97,12 @@ class Control<T extends {} = any> {
       if(key in frame)
         return;
   
-      frame[key] = this.state[key];
+      frame[key] = state[key];
     }
 
     this.listeners.forEach((only, cb, subs) => {
       if(!only || typeof key == "string" && only.has(key)){
-        const after = cb(key, this.subject);
+        const after = cb(key, subject);
     
         if(after === null)
           subs.delete(cb);
