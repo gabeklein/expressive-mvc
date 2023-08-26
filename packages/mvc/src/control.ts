@@ -38,7 +38,7 @@ const LIFECYCLE = {
 class Control<T extends {} = any> {
   public state!: { [property: string]: unknown };
 
-  public frame: { [property: string]: unknown } = Object.freeze({});
+  // public frame: { [property: string]: unknown } = Object.freeze({});
 
   public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
 
@@ -59,11 +59,11 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame } = this;
+    const { state } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
-        const previous = this.state[key];
+        const previous = state[key];
     
         if(typeof callback == "function"){
           const result = callback.call(this.subject, value, previous);
@@ -77,26 +77,28 @@ class Control<T extends {} = any> {
     
         if(value === previous)
           return true;
-    
-        this.state[key] = value;
   
         if(callback === true)
           return;
       }
 
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
+      if(Object.isFrozen(state)){
+        this.state = Object.create({ ...state });
   
         queue(() => {
           this.update(false);
-          Object.freeze(frame);
+          this.state = Object.freeze({
+            ...state, ...this.state
+          });
         })
       }
 
-      if(key in frame)
+      const exists = this.state.hasOwnProperty(key);
+
+      this.state[key] = value;
+
+      if(exists)
         return;
-  
-      frame[key] = this.state[key];
     }
 
     this.listeners.forEach((only, cb, subs) => {
@@ -134,10 +136,7 @@ class Control<T extends {} = any> {
     });
   }
 
-  next(
-    arg1?: number | Model.Event,
-    arg2?: (key: string) => boolean | void
-  ){
+  next(arg1?: number | Model.Event, arg2?: (key: string) => boolean | void){
     if(typeof arg1 == "function")
       return this.addListener(key => {
         if(typeof key == "string")
@@ -145,12 +144,12 @@ class Control<T extends {} = any> {
       })
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && Object.isFrozen(this.frame)){
+      if(typeof arg1 != "number" && Object.isFrozen(this.state)){
         resolve(false);
         return;
       }
   
-      const callback = () => resolve(this.frame);
+      const callback = () => resolve(this.state);
       const remove = this.addListener((key) => {
         if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
           return;

@@ -72,6 +72,7 @@ class Model {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
         const instruction = INSTRUCT.get(value);
+
         let desc: Control.Descriptor | void = { value };
   
         if(instruction){
