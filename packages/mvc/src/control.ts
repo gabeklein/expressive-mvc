@@ -153,42 +153,6 @@ class Control<T extends {} = any> {
       });
     }
   }
-
-  next(
-    arg1?: number | Model.Event,
-    arg2?: (key: string) => boolean | void
-  ){
-    if(typeof arg1 == "function")
-      return this.addListener(key => {
-        if(typeof key == "string")
-          return arg1(key)
-      })
-
-    return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && Object.isFrozen(this.frame)){
-        resolve(false);
-        return;
-      }
-  
-      const callback = () => resolve(this.frame);
-      const remove = this.addListener((key) => {
-        if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
-          return;
-  
-        if(timeout)
-          clearTimeout(timeout);
-  
-        remove();
-  
-        return callback;
-      });
-  
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
-        remove();
-        reject(arg1);
-      }, arg1);
-    });
-  }
 }
 
 function add<T = any>(instruction: Model.Instruction<T>){

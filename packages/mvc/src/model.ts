@@ -130,7 +130,38 @@ class Model {
   set(callback: Model.Event): Callback;
 
   set(arg1?: Model.Event | number, arg2?: Predicate){
-    return control(this).next(arg1, arg2);
+    const self = control(this);
+
+    if(typeof arg1 == "function")
+      return self.addListener(key => {
+        if(typeof key == "string")
+          return arg1(key)
+      })
+
+    return new Promise<any>((resolve, reject) => {
+      if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
+        resolve(false);
+        return;
+      }
+  
+      const callback = () => resolve(self.frame);
+      const remove = self.addListener((key) => {
+        if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
+          return;
+  
+        if(timeout)
+          clearTimeout(timeout);
+  
+        remove();
+  
+        return callback;
+      });
+  
+      const timeout = typeof arg1 == "number" && setTimeout(() => {
+        remove();
+        reject(arg1);
+      }, arg1);
+    });
   }
 
   /** Mark this instance for garbage collection. */
