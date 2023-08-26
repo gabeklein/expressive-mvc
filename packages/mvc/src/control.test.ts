@@ -1,6 +1,6 @@
-import { Control, LIFECYCLE } from './control';
+import { add, Control, LIFECYCLE } from './control';
 import { set } from './instruction/set';
-import { add, Model } from './model';
+import { Model } from './model';
 import { mockError } from './tests/mocks';
 
 describe("instruction", () => {

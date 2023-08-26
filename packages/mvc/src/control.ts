@@ -3,7 +3,8 @@ import { Model } from './model';
 const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<Control.OnUpdate, Set<string> | undefined>>
+const LISTENER = new WeakMap<{}, Map<Control.OnUpdate, Set<string> | undefined>>;
+const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 declare namespace Control {
   type Getter<T> = (source: Model) => T;
@@ -111,27 +112,46 @@ class Control<T extends {} = any> {
     });
   }
 
-  watch(key: string, output: Control.Descriptor<any>){
+  init(){
     const { state, subject } = this;
-    const { enumerable = true } = output;
 
-    if("value" in output)
-      state[key] = output.value;
+    for(const key in subject){
+      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
+      const instruction = INSTRUCT.get(value);
+      let desc: Control.Descriptor = { value };
 
-    Object.defineProperty(subject, key, {
-      enumerable,
-      set: (next) => {
-        if(output.set === false)
-          throw new Error(`${subject}.${key} is read-only.`);
+      if(instruction){
+        INSTRUCT.delete(value);
+        delete subject[key];
 
-        this.update(key, next, output.set);
-      },
-      get(){
-        const value = output.get ? output.get(this) : state[key];
+        const output = instruction.call(this, key, this);
 
-        return observe(this, key, value);
+        if(!output)
+          continue;
+
+        desc = typeof output == "function" ? { get: output } : output;
       }
-    });
+
+      const { enumerable = true } = desc;
+
+      if("value" in desc)
+        state[key] = desc.value;
+
+      Object.defineProperty(subject, key, {
+        enumerable,
+        set: (next) => {
+          if(desc.set === false)
+            throw new Error(`${subject}.${key} is read-only.`);
+
+          this.update(key, next, desc.set);
+        },
+        get(){
+          const value = desc.get ? desc.get(this) : state[key];
+
+          return observe(this, key, value);
+        }
+      });
+    }
   }
 
   next(
@@ -169,6 +189,12 @@ class Control<T extends {} = any> {
       }, arg1);
     });
   }
+}
+
+function add<T = any>(instruction: Model.Instruction<T>){
+  const placeholder = Symbol("instruction");
+  INSTRUCT.set(placeholder, instruction);
+  return placeholder as unknown as T;
 }
 
 function queue(event: Callback){
@@ -290,8 +316,10 @@ function effect<T extends Model>(
 }
 
 export {
+  add,
   control,
   Control,
   effect,
+  observe,
   LIFECYCLE
 }

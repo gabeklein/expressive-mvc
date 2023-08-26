@@ -1,5 +1,5 @@
-import { Control, control } from '../control';
-import { add, Model, PARENT } from '../model';
+import { add, Control, control, observe } from '../control';
+import { Model, PARENT } from '../model';
 
 namespace use {
   export type Object<T extends {}> = T;
@@ -34,7 +34,7 @@ function use(
     if(typeof value === "function")
       value = new value();
 
-    function set(next: {} | undefined){
+    function set(next: Record<string, unknown> | undefined){
       if(value instanceof Model && !(next instanceof value.constructor))
         throw new Error(`${subject}.${key} expected Model of type ${value.constructor} but got ${next}.`)
 
@@ -46,7 +46,15 @@ function use(
         const control = new Control(value = Object.create(next));
 
         for(const key in control.state = next)
-          control.watch(key, {});
+          Object.defineProperty(value, key, {
+            enumerable: true,
+            set(value){
+              control.update(key, value);
+            },
+            get(){
+              return observe(this, key, next[key]);
+            }
+          });
 
         return () => value;
       }

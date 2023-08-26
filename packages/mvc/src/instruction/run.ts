@@ -1,4 +1,4 @@
-import { add } from '../model';
+import { add } from '../control';
 
 type Async<T = any, Y extends any[] = any> = {
   (...args: Y): Promise<T>;

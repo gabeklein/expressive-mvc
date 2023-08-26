@@ -1,7 +1,6 @@
 import { Control, control, effect } from './control';
 
 const ID = new WeakMap<Model, string>();
-const INSTRUCT = new Map<symbol, Model.Instruction>();
 const PARENT = new WeakMap<Model, Model>();
 
 type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
@@ -69,23 +68,7 @@ class Model {
 
     const control = new Control(this);
     const done = control.addListener(() => {
-      for(const key in this){
-        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
-        const instruction = INSTRUCT.get(value);
-        let desc: Control.Descriptor | void = { value };
-  
-        if(instruction){
-          INSTRUCT.delete(value);
-          delete this[key];
-  
-          const output = instruction.call(control, key, control);
-          desc = typeof output == "function" ? { get: output } : output;
-        }
-  
-        if(desc)
-          control.watch(key, desc);
-      }
-
+      control.init();
       done();
     });
   }
@@ -193,19 +176,12 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-function add<T = any>(instruction: Model.Instruction<T>){
-  const placeholder = Symbol("instruction");
-  INSTRUCT.set(placeholder, instruction);
-  return placeholder as unknown as T;
-}
-
 /** Random alphanumberic of length 6. Will always start with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
-  add,
   Model,
   PARENT,
   uid
