@@ -67,12 +67,7 @@ class Model {
     Object.defineProperty(this, "is", { value: this });
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-
-    const control = new Control(this);
-    const done = control.addListener(() => {
-      control.init();
-      done();
-    });
+    new Control(this);
   }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */

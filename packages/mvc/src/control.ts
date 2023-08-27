@@ -46,6 +46,11 @@ class Control<T extends {} = any> {
   constructor(public subject: T){
     REGISTER.set(subject, this);
     LISTENER.set(subject, this.listeners);
+
+    const done = this.addListener(() => {
+      this.init();
+      done();
+    });
   }
 
   addListener(fn: Control.OnUpdate){
