@@ -659,7 +659,7 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Promise<unknown>;
+    let caught: unknown;
 
     try {
       void bar.foo;
@@ -667,10 +667,10 @@ describe("async", () => {
     }
     catch(err){
       expect(err).toBeInstanceOf(Promise);
-      suspense = err as Promise<unknown>;
+      caught = err;
     }
 
-    await suspense;
+    await expect(caught).resolves.toBe(undefined);
   
     expect(bar.foo).toBeInstanceOf(Foo);
   })
@@ -681,17 +681,17 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Promise<unknown>;
+    let caught: unknown;
 
     try {
       void bar.foo;
       throw false;
     }
     catch(err){
-      suspense = err as Promise<unknown>;
+      caught = err;
     }
 
-    await expect(suspense).resolves.toBe(undefined);
+    await expect(caught).resolves.toBe(undefined);
   
     expect(bar.foo).toBe("foobar");
   })
