@@ -2,7 +2,7 @@ import { get } from './instruction/get';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { Model } from './model';
-import { mockError } from './tests/mocks';
+import { mockError } from './mocks';
 
 describe("model", () => {
   class Subject extends Model {

@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { Model } from '../model';
-import { mockError, mockPromise, mockWarn } from '../tests/mocks';
+import { mockError, mockPromise, mockWarn } from '../mocks';
 import { get } from './get';
 import { use } from './use';
 

@@ -1,7 +1,7 @@
 import { add, Control, LIFECYCLE } from './control';
 import { set } from './instruction/set';
 import { Model } from './model';
-import { mockError } from './tests/mocks';
+import { mockError } from './mocks';
 
 describe("instruction", () => {
   class Test extends Model {
