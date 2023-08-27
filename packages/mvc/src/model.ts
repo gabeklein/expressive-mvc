@@ -54,13 +54,15 @@ declare namespace Model {
     | void;
 }
 
-class Model {
+interface Model {
   /**
    * Loopback to instance of this model. This is useful when in a subscribed context,
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
-  is!: this;
+  is: this;
+}
 
+class Model {
   constructor(id?: string | number){
     Object.defineProperty(this, "is", { value: this });
 

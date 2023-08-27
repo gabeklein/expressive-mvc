@@ -1,6 +1,8 @@
 {
-  "preset": "ts-jest",
   "testTimeout": 1000,
+  "transform": {
+    "^.+\\.[tj]sx?$": "@swc/jest"
+  },
   "coveragePathIgnorePatterns": [
     "/src/index.ts"
   ],

@@ -460,7 +460,7 @@ describe("compute mode", () => {
     it("will access own previous value", async () => {
       class Test extends Model {
         multiplier = 0;
-        previous: any;
+        previous: number | undefined | null = null;
 
         value = get(this, state => {
           const { value, multiplier } = state;
@@ -475,7 +475,7 @@ describe("compute mode", () => {
       const test = Test.new();
 
       // shouldn't exist until getter's side-effect
-      expect("previous" in test).toBe(false);
+      expect(test.previous).toBe(null);
 
       const initial = test.value;
 
@@ -484,7 +484,7 @@ describe("compute mode", () => {
 
       // should now exist but be undefined (initial get)
       expect("previous" in test).toBe(true);
-      expect(test.previous).toBeUndefined();
+      expect(test.previous).toBe(undefined);
 
       // change upstream value to trigger re-compute
       test.multiplier = 1;

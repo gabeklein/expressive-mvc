@@ -2,21 +2,25 @@ module.exports = {
   testTimeout: 1000,
   projects: [
     {
-      preset: "ts-jest",
       displayName: "MVC",
       testMatch: [
         '<rootDir>/packages/mvc/src/**/*.test.*'
       ],
+      transform: {
+        "^.+\\.[tj]sx?$": "@swc/jest",
+      },
       setupFilesAfterEnv: [
         "<rootDir>/jest.setup.ts"
       ],
     },
     {
-      preset: "ts-jest",
       displayName: "React",
       testMatch: [
         '<rootDir>/packages/react/src/**/*.test.*'
       ],
+      transform: {
+        "^.+\\.[tj]sx?$": "@swc/jest",
+      },
       moduleNameMapper: {
         "@expressive/(.*)$": "<rootDir>/packages/$1/src"
       },
