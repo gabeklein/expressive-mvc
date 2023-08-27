@@ -134,12 +134,14 @@ class Model {
       })
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
+      const { state } = self;
+
+      if(typeof arg1 != "number" && Object.isFrozen(state)){
         resolve(false);
         return;
       }
   
-      const callback = () => resolve(self.frame);
+      const callback = () => resolve(state);
       const remove = self.addListener((key) => {
         if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
           return;

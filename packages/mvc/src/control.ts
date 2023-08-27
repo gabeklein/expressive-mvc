@@ -40,7 +40,7 @@ const LIFECYCLE = {
 class Control<T extends {} = any> {
   public state: { [property: string]: unknown } = {};
 
-  public frame: { [property: string]: unknown } = Object.freeze({});
+  // public frame: { [property: string]: unknown } = Object.freeze({});
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
@@ -64,14 +64,14 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame, state, subject } = this;
+    let { state, subject } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
-        const previous = state[key];
+        const current = state[key];
     
         if(typeof callback == "function"){
-          const result = callback.call(subject, value, previous);
+          const result = callback.call(subject, value, current);
     
           if(result === false)
             return;
@@ -80,28 +80,26 @@ class Control<T extends {} = any> {
             value = result();
         }
     
-        if(value === previous)
+        if(value === current)
           return true;
-    
-        state[key] = value;
-  
-        if(callback === true)
-          return;
       }
 
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
+      if(Object.isFrozen(state)){
+        const current = state;
+        state = this.state = Object.create({ ...state });
   
         queue(() => {
           update(subject, false);
-          Object.freeze(frame);
+          this.state = Object.freeze({ ...current, ...state });
         })
       }
 
-      if(key in frame)
+      const pending = state.hasOwnProperty(key);
+
+      state[key] = value;
+
+      if(pending || callback === true)
         return;
-  
-      frame[key] = state[key];
     }
 
     update(subject, key);
