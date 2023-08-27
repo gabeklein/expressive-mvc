@@ -6,7 +6,7 @@ const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
 function useLocal <T extends Model> (
   this: Model.New<T>,
-  apply?: Model.Values<T> | ((instance: T) => void),
+  apply?: Model.Values<T> | Model.UseCallback<T>,
   repeat?: boolean){
 
   const state = useState(0);

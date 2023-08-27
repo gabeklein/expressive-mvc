@@ -5,7 +5,7 @@ import { Shared } from './useLocal';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.get.Factory<T, any>
+  argument?: boolean | Model.GetFactory<T, any>
 ){
   const context = useContext(Shared)
   const state = useState(0);
