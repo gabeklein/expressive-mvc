@@ -60,7 +60,7 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame, state, subject } = this;
+    let { frame, listeners, state, subject } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
@@ -100,7 +100,7 @@ class Control<T extends {} = any> {
       frame[key] = state[key];
     }
 
-    this.listeners.forEach((only, cb, subs) => {
+    listeners.forEach((only, cb, subs) => {
       if(!only || typeof key == "string" && only.has(key)){
         const after = cb(key, subject);
     
@@ -188,6 +188,7 @@ function control<T extends Model>(subject: T, ready?: boolean){
 
   if(ready && !self.state){
     self.state = {};
+    self.init();
     self.update(true);
   }
 
