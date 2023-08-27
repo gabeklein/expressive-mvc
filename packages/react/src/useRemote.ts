@@ -14,7 +14,7 @@ export function useRemote<T extends Model, R>(
     const refresh = () => state[1](x => x+1);
 
     let value: any;
-    let remove: Callback | undefined;
+    let release: Callback | undefined;
 
     if(!instance)
       if(argument !== false)
@@ -37,7 +37,7 @@ export function useRemote<T extends Model, R>(
         return action.finally(refresh);
     }
 
-    remove = instance.get(current => {
+    release = instance.get(current => {
       if(typeof argument === "function"){
         const next = argument.call(current, current, forceUpdate);
 
@@ -49,19 +49,19 @@ export function useRemote<T extends Model, R>(
       else
         value = current;
 
-      if(remove)
+      if(release)
         refresh();
     });
 
     if(value === null){
-      remove();
+      release();
       return () => null;
     }
 
     if(value instanceof Promise){
       let error: Error | undefined;
 
-      remove();
+      release();
 
       // TODO: ignore update if resolves to undefined or null
       value.then(x => value = x).catch(e => error = e).finally(refresh);
@@ -76,7 +76,7 @@ export function useRemote<T extends Model, R>(
     }
 
     return () => {
-      useEffect(() => remove, []);
+      useEffect(() => release, []);
       return value === undefined ? null : value;
     }
   }, []);
