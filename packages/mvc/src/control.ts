@@ -42,17 +42,17 @@ class Control<T extends {} = any> {
 
   public frame: { [property: string]: unknown } = Object.freeze({});
 
-  public listeners: Map<Control.OnUpdate, Set<string> | undefined> = new Map();
-
   constructor(public subject: T){
     REGISTER.set(subject, this);
-    LISTENER.set(subject, this.listeners);
+    LISTENER.set(subject, new Map());
   }
 
   addListener(fn: Control.OnUpdate){
-    this.listeners.set(fn, undefined);
+    const subs = LISTENER.get(this.subject)!;
+
+    subs.set(fn, undefined);
     return () => {
-      this.listeners.delete(fn);
+      subs.delete(fn);
     }
   }
 
@@ -61,7 +61,7 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame, listeners, state, subject } = this;
+    let { frame, state, subject } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
@@ -90,7 +90,7 @@ class Control<T extends {} = any> {
         frame = this.frame = {};
   
         queue(() => {
-          this.set(false);
+          update(subject, false);
           Object.freeze(frame);
         })
       }
@@ -101,16 +101,7 @@ class Control<T extends {} = any> {
       frame[key] = state[key];
     }
 
-    listeners.forEach((only, cb, subs) => {
-      if(!only || typeof key == "string" && only.has(key)){
-        const after = cb(key, subject);
-    
-        if(after === null)
-          subs.delete(cb);
-        else if(after)
-          queue(after);
-      }
-    });
+    update(subject, key);
   }
 
   init(){
@@ -184,18 +175,20 @@ function queue(event: Callback){
 }
 
 function control<T extends Model>(subject: T, ready?: boolean){
-  const self = REGISTER.get(subject.is) as Control<T>;
-  const subs = self.listeners;
+  subject = subject.is;
+
+  const self = REGISTER.get(subject) as Control<T>;
+  const subs = LISTENER.get(subject)!;
 
   if(ready && !READY.has(self)){
     READY.add(self);
     self.init();
-    self.set(true);
+    update(subject, true);
   }
 
   if(ready === false){
     Object.freeze(self.state);
-    self.set(null);
+    update(subject, null);
     subs.clear();
   }
 
@@ -211,6 +204,19 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   }
 
   return value;
+}
+
+function update(from: {}, key: string | boolean | null){
+  LISTENER.get(from)!.forEach((select, callback, subs) => {
+    if(!select || typeof key == "string" && select.has(key)){
+      const after = callback(key, from);
+  
+      if(after === null)
+        subs.delete(callback);
+      else if(after)
+        queue(after);
+    }
+  });
 }
 
 function observe(from: any, key: string, value: any){
