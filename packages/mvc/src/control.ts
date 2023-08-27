@@ -56,7 +56,7 @@ class Control<T extends {} = any> {
     }
   }
 
-  update(
+  set(
     key: string | boolean | null,
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
@@ -90,7 +90,7 @@ class Control<T extends {} = any> {
         frame = this.frame = {};
   
         queue(() => {
-          this.update(false);
+          this.set(false);
           Object.freeze(frame);
         })
       }
@@ -144,7 +144,7 @@ class Control<T extends {} = any> {
           if(desc.set === false)
             throw new Error(`${subject}.${key} is read-only.`);
 
-          this.update(key, next, desc.set);
+          this.set(key, next, desc.set);
         },
         get(){
           const value = desc.get ? desc.get(this) : state[key];
@@ -190,12 +190,12 @@ function control<T extends Model>(subject: T, ready?: boolean){
   if(ready && !READY.has(self)){
     READY.add(self);
     self.init();
-    self.update(true);
+    self.set(true);
   }
 
   if(ready === false){
     Object.freeze(self.state);
-    self.update(null);
+    self.set(null);
     subs.clear();
   }
 

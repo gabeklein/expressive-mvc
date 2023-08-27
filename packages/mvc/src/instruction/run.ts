@@ -28,14 +28,14 @@ function run(task: Function){
         )
 
       pending = true;
-      control.update(key);
+      control.set(key);
 
       try {
         return await attempt(() => task.apply(control.subject, args))
       }
       finally {
         pending = false;
-        control.update(key);
+        control.set(key);
       }
     }
 
