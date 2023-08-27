@@ -132,10 +132,12 @@ class Control<T extends {} = any> {
         })
       }
 
-      if(key in frame)
-        return;
+      const pending = key in frame;
   
       frame[key] = state[key];
+
+      if(pending)
+        return;
     }
 
     update(subject, key);

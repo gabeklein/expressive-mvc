@@ -847,6 +847,43 @@ describe("set method", () => {
       await expect(update).rejects.toBe(1);
     })
 
+    it("will resolve object with updated properties", () => {
+      class Test extends Model {
+        foo = 0;
+        bar = 1;
+      }
+      
+      const test = Test.new();
+      const update = test.set(0);
+
+      test.foo = 1;
+      test.bar = 2;
+
+      expect(update).resolves.toEqual({
+        foo: 1,
+        bar: 2
+      })
+    })
+
+    it("will include overridden updates", () => {
+      class Test extends Model {
+        foo = 0;
+        bar = 1;
+      }
+      
+      const test = Test.new();
+      const update = test.set(0);
+
+      test.foo = 1;
+      test.bar = 2;
+      test.bar = 3;
+
+      expect(update).resolves.toEqual({
+        foo: 1,
+        bar: 3
+      })
+    })
+
     it("will resolve promise made after assignment", async () => {
       class Test extends Model {
         foo = 0;
