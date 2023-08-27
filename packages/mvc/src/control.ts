@@ -1,5 +1,6 @@
 import { Model } from './model';
 
+const READY = new WeakSet<Control>();
 const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
@@ -37,7 +38,7 @@ const LIFECYCLE = {
 }
 
 class Control<T extends {} = any> {
-  public state!: { [property: string]: unknown };
+  public state: { [property: string]: unknown } = {};
 
   public frame: { [property: string]: unknown } = Object.freeze({});
 
@@ -186,8 +187,8 @@ function control<T extends Model>(subject: T, ready?: boolean){
   const self = REGISTER.get(subject.is) as Control<T>;
   const subs = self.listeners;
 
-  if(ready && !self.state){
-    self.state = {};
+  if(ready && !READY.has(self)){
+    READY.add(self);
     self.init();
     self.update(true);
   }
@@ -261,7 +262,7 @@ function effect<T extends Model>(
     return refresh;
   });
 
-  if(self.state)
+  if(READY.has(self))
     invoke();
 
   self.addListener(key => {
