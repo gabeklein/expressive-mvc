@@ -3,8 +3,6 @@ import { Control, control, effect } from './control';
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 
-type InstanceOf<T> = T extends { prototype: infer U } ? U : never;
-type Class = new (...args: any[]) => any;
 type Predicate = (key: string) => boolean | void;
 
 declare namespace Model {
@@ -173,12 +171,12 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Class> (
+  static new <T extends typeof Model> (
     this: T, ...args: ConstructorParameters<T>
-  ): InstanceOf<T> {
+  ){
     const instance = new this(...args);
     control(instance, true);
-    return instance;
+    return instance as InstanceType<T>;
   }
 
   /**

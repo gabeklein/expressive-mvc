@@ -64,7 +64,7 @@ class Context {
     }
 
     for(const [ model ] of init)
-      Object.values(control(model, true).state).forEach(value => {
+      Object.values(control(model).state).forEach(value => {
         if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
@@ -84,7 +84,7 @@ class Context {
 
     if(typeof input == "function"){
       T = input;
-      I = input.new();
+      I = input.new() as T;
     }
     else {
       I = input;
