@@ -49,7 +49,7 @@ function use(
           Object.defineProperty(value, key, {
             enumerable: true,
             set(value){
-              control.update(key, value);
+              control.set(key, value);
             },
             get(){
               return observe(this, key, next[key]);

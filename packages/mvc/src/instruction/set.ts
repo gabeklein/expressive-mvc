@@ -66,7 +66,7 @@ function set <T> (
           const pending = value
             .then(value => {
               output.get = undefined;
-              control.update(key, value);
+              control.set(key, value);
               return value;
             })
             .catch(err => {
@@ -85,7 +85,7 @@ function set <T> (
           };
         }
 
-        control.update(key, value);
+        control.set(key, value);
       }
 
       output.get = argument ? init() : () => {

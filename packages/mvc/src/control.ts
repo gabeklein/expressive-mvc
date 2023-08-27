@@ -56,19 +56,19 @@ class Control<T extends {} = any> {
     }
   }
 
-  update(
+  set(
     key: string | boolean | null,
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame, listeners, state, subject } = this;
+    let { frame, state } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
         const previous = state[key];
     
         if(typeof callback == "function"){
-          const result = callback.call(subject, value, previous);
+          const result = callback.call(this.subject, value, previous);
     
           if(result === false)
             return;
@@ -101,9 +101,13 @@ class Control<T extends {} = any> {
       frame[key] = state[key];
     }
 
-    listeners.forEach((only, cb, subs) => {
+    this.update(key);
+  }
+
+  update(key: string | boolean | null){
+    this.listeners.forEach((only, cb, subs) => {
       if(!only || typeof key == "string" && only.has(key)){
-        const after = cb(key, subject);
+        const after = cb(key, this.subject);
     
         if(after === null)
           subs.delete(cb);
@@ -144,7 +148,7 @@ class Control<T extends {} = any> {
           if(desc.set === false)
             throw new Error(`${subject}.${key} is read-only.`);
 
-          this.update(key, next, desc.set);
+          this.set(key, next, desc.set);
         },
         get(){
           const value = desc.get ? desc.get(this) : state[key];
