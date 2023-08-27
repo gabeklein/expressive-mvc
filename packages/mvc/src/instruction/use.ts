@@ -1,4 +1,4 @@
-import { add, Control, control, observe } from '../control';
+import { add, Control, control } from '../control';
 import { Model, PARENT } from '../model';
 
 namespace use {
@@ -24,39 +24,42 @@ function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 /** Create a managed object with observable entries. */
 function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
 
-function use(
+function use <T = any> (
   value?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
-  return add((key, source) => {
+  return add((property, source) => {
     const { subject } = source;
 
     if(typeof value === "function")
       value = new value();
 
+    const output: Control.Descriptor = { set, value };
+
     function set(next: Record<string, unknown> | undefined){
       if(value instanceof Model && !(next instanceof value.constructor))
-        throw new Error(`${subject}.${key} expected Model of type ${value.constructor} but got ${next}.`)
+        throw new Error(`${subject}.${property} expected Model of type ${value.constructor} but got ${next}.`)
 
       if(next instanceof Model){
         PARENT.set(next, subject);
         control(next, true);
       }
       else if(next){
-        const control = new Control(value = Object.create(next));
+        const proxy = Object.create(next); 
 
-        for(const key in control.state = next)
-          Object.defineProperty(value, key, {
+        for(const key in proxy)
+          Object.defineProperty(proxy, key, {
             enumerable: true,
+            get: () => next[key],
             set(value){
-              control.set(key, value);
-            },
-            get(){
-              return observe(this, key, next[key]);
+              if(value != next[key]){
+                next[key] = value;
+                source.set(property)
+              }
             }
           });
 
-        return () => value;
+        output.get = () => proxy;
       }
 
       if(typeof argument == "function")
@@ -65,7 +68,7 @@ function use(
 
     set(value);
 
-    return { set, value };
+    return output;
   })
 }
 
