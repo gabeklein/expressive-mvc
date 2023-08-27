@@ -1,7 +1,6 @@
 import { Context } from '../context';
 import { add, Control, LIFECYCLE } from '../control';
 import { Model, PARENT } from '../model';
-import { fetch } from './set';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
@@ -104,7 +103,7 @@ function get<R, T extends Model>(
 
     source(got => control.set(key, got));
 
-    return fetch(control, key, arg1 !== false);
+    return () => control.get(key, arg1 !== false);
   })
 }
 
@@ -173,7 +172,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = fetch(control, key);
+      output.get = () => control.get(key);
       source(connect);
       isAsync = true;
       return output.get();

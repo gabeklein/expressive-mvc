@@ -59,6 +59,40 @@ class Control<T extends {} = any> {
     }
   }
 
+  get(property: string, required?: boolean){
+    const { subject, state } = this;
+    
+    if(property in state || required === false){
+      const value = state[property];
+
+      if(value !== undefined || !required)
+        return value;
+    }
+
+    const error = new Error(`${subject}.${property} is not yet available.`);
+    const promise = new Promise<void>((resolve, reject) => {
+      function release(){
+        remove();
+        resolve();
+      }
+  
+      const remove = this.addListener(key => {
+        if(key === property)
+          return release;
+  
+        if(key === null)
+          reject(new Error(`${subject} is destroyed.`));
+      });
+    });
+  
+    throw Object.assign(promise, {
+      toString: () => String(error),
+      name: "Suspense",
+      message: error.message,
+      stack: error.stack
+    });
+  }
+
   set(
     key: string | boolean | null,
     value?: unknown,
