@@ -50,6 +50,9 @@ class Control<T extends {} = any> {
   addListener(fn: Control.OnUpdate){
     const subs = LISTENER.get(this.subject)!;
 
+    if(READY.has(this))
+      fn(true, this.subject);
+
     subs.set(fn, undefined);
     return () => {
       subs.delete(fn);
@@ -267,9 +270,6 @@ function effect<T extends Model>(
     }
     return refresh;
   });
-
-  if(READY.has(self))
-    invoke();
 
   self.addListener(key => {
     if(key === true)

@@ -77,7 +77,7 @@ class Model {
   get(effect: Model.Effect<this>): Callback;
 
   get(arg1?: Model.Effect<this>){
-    if(typeof arg1 == "function")
+    if(arg1)
       return effect(this, arg1);
 
     const cache = new WeakMap<Model, any>();
