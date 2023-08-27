@@ -8,9 +8,7 @@ type NoVoid<T> = T extends undefined | void ? null : T;
 
 declare module '@expressive/mvc' {
   namespace Model {
-    namespace get {
-      type Factory<T extends Model, R> = (this: T, current: T, refresh: Refresh) => R;
-  
+    namespace GetFactory {
       type Refresh = {
         /** Request a refresh for current component. */
         (): void;
@@ -34,23 +32,23 @@ declare module '@expressive/mvc' {
       };
     }
 
+    type GetFactory<T extends Model, R> = (this: T, current: T, refresh: GetFactory.Refresh) => R;
+
+    type UseCallback<T extends Model> = (instance: T) => void;
+
     /** Fetch instance of this class from context. */
     function get <T extends Model> (this: Model.Type<T>, ignore?: true): T;
   
     /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
     function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
   
-    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, Promise<R> | R>): NoVoid<R>;
+    function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, Promise<R> | R>): NoVoid<R>;
   
-    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, null>): NoVoid<R> | null;
-
-    namespace use {
-      type OnCreate<T extends Model> = (instance: T) => void;
-    }
+    function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, null>): NoVoid<R> | null;
 
     function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: use.OnCreate<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.New<T>, callback?: UseCallback<T>, repeat?: boolean): T;
   }
 }
 
