@@ -64,47 +64,7 @@ class Control<T extends {} = any> {
     value?: unknown,
     callback?: boolean | Control.Setter<any>){
 
-    let { frame, state, subject } = this;
-
-    if(typeof key == "string"){
-      if(1 in arguments){
-        const previous = state[key];
-    
-        if(typeof callback == "function"){
-          const result = callback.call(subject, value, previous);
-    
-          if(result === false)
-            return;
-            
-          if(typeof result == "function")
-            value = result();
-        }
-    
-        if(value === previous)
-          return true;
-    
-        state[key] = value;
-  
-        if(callback === true)
-          return;
-      }
-
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
-  
-        queue(() => {
-          update(subject, false);
-          Object.freeze(frame);
-        })
-      }
-
-      if(key in frame)
-        return;
-  
-      frame[key] = state[key];
-    }
-
-    update(subject, key);
+    assign(this.subject, key, value, callback);
   }
 
   init(){
@@ -209,6 +169,56 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
+function assign(
+  to: {},
+  key: string | boolean | null,
+  value?: unknown,
+  intercept?: boolean | Control.Setter<any>){
+
+  const self = control(to);
+  let { frame, state, subject } = self;
+
+  if(typeof key == "string"){
+    if(1 in arguments){
+      const previous = state[key];
+  
+      if(typeof intercept == "function"){
+        const result = intercept.call(subject, value, previous);
+  
+        if(result === false)
+          return;
+          
+        if(typeof result == "function")
+          value = result();
+      }
+  
+      if(value === previous)
+        return true;
+  
+      state[key] = value;
+
+      if(intercept === true)
+        return;
+    }
+
+    if(Object.isFrozen(frame)){
+      frame = self.frame = {};
+
+      queue(() => {
+        update(subject, false);
+        Object.freeze(frame);
+      })
+    }
+
+    if(key in frame)
+      return;
+
+    frame[key] = state[key];
+  }
+
+  update(subject, key);
+}
+
 function update(from: {}, key: string | boolean | null){
   LISTENER.get(from)!.forEach((select, callback, subs) => {
     if(!select || typeof key == "string" && select.has(key)){
@@ -289,6 +299,7 @@ function effect<T extends Model>(
 
 export {
   add,
+  assign,
   control,
   Control,
   effect,
