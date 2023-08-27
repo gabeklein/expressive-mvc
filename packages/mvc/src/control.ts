@@ -111,48 +111,6 @@ class Control<T extends {} = any> {
       }
     });
   }
-
-  init(){
-    const { state, subject } = this;
-
-    for(const key in subject){
-      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
-      const instruction = INSTRUCT.get(value);
-      let desc: Control.Descriptor = { value };
-
-      if(instruction){
-        INSTRUCT.delete(value);
-        delete subject[key];
-
-        const output = instruction.call(this, key, this);
-
-        if(!output)
-          continue;
-
-        desc = typeof output == "function" ? { get: output } : output;
-      }
-
-      const { enumerable = true } = desc;
-
-      if("value" in desc)
-        state[key] = desc.value;
-
-      Object.defineProperty(subject, key, {
-        enumerable,
-        set: (next) => {
-          if(desc.set === false)
-            throw new Error(`${subject}.${key} is read-only.`);
-
-          this.update(key, next, desc.set);
-        },
-        get(){
-          const value = desc.get ? desc.get(this) : state[key];
-
-          return observe(this, key, value);
-        }
-      });
-    }
-  }
 }
 
 function add<T = any>(instruction: Model.Instruction<T>){
@@ -188,7 +146,44 @@ function control<T extends Model>(subject: T, ready?: boolean){
 
   if(ready && !self.state){
     self.state = {};
-    self.update(true);
+
+    for(const key in subject){
+      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
+      const instruction = INSTRUCT.get(value);
+      let desc: Control.Descriptor = { value };
+
+      if(instruction){
+        INSTRUCT.delete(value);
+        delete subject[key];
+
+        const output = instruction.call(self, key, self);
+
+        if(!output)
+          continue;
+
+        desc = typeof output == "function" ? { get: output } : output;
+      }
+
+      const { enumerable = true } = desc;
+
+      if("value" in desc)
+        self.state[key] = desc.value;
+
+      Object.defineProperty(subject, key, {
+        enumerable,
+        set: (next) => {
+          if(desc.set === false)
+            throw new Error(`${subject}.${key} is read-only.`);
+
+          self.update(key, next, desc.set);
+        },
+        get(){
+          const value = desc.get ? desc.get(this) : self.state[key];
+
+          return observe(this, key, value);
+        }
+      });
+    }
   }
 
   if(ready === false){
