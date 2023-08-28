@@ -516,13 +516,17 @@ describe("compute mode", () => {
       expect(test.value).toBe(2);
       expect(didGetNewValue).toBeCalledWith(2);
       expect(didGetOldValue).toBeCalledWith(undefined);
+
+      await test.set();
     
       test.input = 2;
     
       expect(test.value).toBe(3);
+      expect(didGetNewValue).toBeCalledWith(2);
       expect(didGetOldValue).toBeCalledWith(2);
     
-      await expect(test).toUpdate();
+      await test.set(0);
+
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     })
