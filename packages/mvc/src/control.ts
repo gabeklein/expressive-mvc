@@ -96,30 +96,20 @@ class Control<T extends {} = any> {
   set(
     key: string | boolean | null,
     value?: unknown,
-    callback?: boolean | Control.Setter<any>){
+    silent?: boolean){
 
     let { frame, state, subject } = this;
 
     if(typeof key == "string"){
       if(1 in arguments){
         const previous = state[key];
-    
-        if(typeof callback == "function"){
-          const result = callback.call(subject, value, previous);
-    
-          if(result === false)
-            return;
-            
-          if(typeof result == "function")
-            value = result();
-        }
-    
+
         if(value === previous)
           return true;
     
         state[key] = value;
   
-        if(callback === true)
+        if(silent === true)
           return;
       }
 
@@ -171,10 +161,24 @@ class Control<T extends {} = any> {
       Object.defineProperty(subject, key, {
         enumerable,
         set: (next) => {
-          if(desc.set === false)
+          let { set } = desc;
+
+          if(set === false)
             throw new Error(`${subject}.${key} is read-only.`);
 
-          this.set(key, next, desc.set);
+          if(typeof set == "function"){
+            const result = set.call(subject, next, state[key]);
+      
+            if(result === false)
+              return;
+              
+            if(typeof result == "function")
+              next = result();
+
+            set = undefined;
+          }
+
+          this.set(key, next, set);
         },
         get(){
           const value = desc.get ? desc.get(this) : state[key];
