@@ -493,21 +493,19 @@ describe("compute mode", () => {
     })
 
     it("will not trigger itself", async () => {
+      const didGetOldValue = jest.fn();
+      const didGetNewValue = jest.fn();
+
       class Test extends Model {
         input = 1;
-        value = get(() => this.computeValue);
-    
-        computeValue(){
-          const { input, value } = this;
+        value = get(this, state => {
+          const { input, value } = state;
     
           didGetOldValue(value);
     
           return input + 1;
-        }
+        });
       }
-    
-      const didGetOldValue = jest.fn();
-      const didGetNewValue = jest.fn();
     
       const test = Test.new();
     
