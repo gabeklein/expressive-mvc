@@ -1,4 +1,4 @@
-import { Control, control, effect } from './control';
+import { Control, control, effect, update } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -159,7 +159,7 @@ class Model {
       })
 
     if(typeof arg1 == "string")
-      return 1 in arguments ? self.set(arg1, arg2, arg3) : self.set(arg1);
+      return 1 in arguments ? update(this, arg1, arg2, arg3) : update(this, arg1);
 
     return new Promise<any>((resolve, reject) => {
       if(typeof arg1 != "number" && Object.isFrozen(self.frame)){

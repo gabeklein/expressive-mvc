@@ -93,46 +93,6 @@ class Control<T extends Model = any> {
     });
   }
 
-  set(
-    key: string | boolean | null,
-    value?: unknown,
-    silent?: boolean){
-
-    let { frame, state, subject } = this;
-
-    if(typeof key == "string"){
-      if(1 in arguments){
-        const previous = state[key];
-
-        if(value === previous)
-          return true;
-    
-        state[key] = value;
-  
-        if(silent === true)
-          return;
-      }
-
-      if(Object.isFrozen(frame)){
-        frame = this.frame = {};
-  
-        queue(() => {
-          update(subject, false);
-          Object.freeze(frame);
-        })
-      }
-
-      const pending = key in frame;
-  
-      frame[key] = state[key];
-
-      if(pending)
-        return;
-    }
-
-    update(subject, key);
-  }
-
   init(){
     const { state, subject } = this;
 
@@ -178,7 +138,7 @@ class Control<T extends Model = any> {
             set = undefined;
           }
 
-          this.set(key, next, set);
+          update(subject, key, next, set);
         },
         get(){
           const value = desc.get ? desc.get(this) : state[key];
@@ -226,12 +186,12 @@ function control<T extends Model>(subject: T, ready?: boolean){
   if(ready && !READY.has(self)){
     READY.add(self);
     self.init();
-    update(subject, true);
+    event(subject, true);
   }
 
   if(ready === false){
     Object.freeze(self.state);
-    update(subject, null);
+    event(subject, null);
     subs.clear();
   }
 
@@ -249,10 +209,52 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
-function update(from: {}, key: string | boolean | null){
-  LISTENER.get(from)!.forEach((select, callback, subs) => {
+function update(
+  subject: Model,
+  key: string | boolean | null,
+  value?: unknown,
+  silent?: boolean){
+
+  const self = REGISTER.get(subject)!;
+  let { frame, state } = self;
+
+  if(typeof key == "string"){
+    if(2 in arguments){
+      const previous = state[key];
+
+      if(value === previous)
+        return true;
+  
+      state[key] = value;
+
+      if(silent === true)
+        return;
+    }
+
+    if(Object.isFrozen(frame)){
+      frame = self.frame = {};
+
+      queue(() => {
+        event(subject, false);
+        Object.freeze(frame);
+      })
+    }
+
+    const pending = key in frame;
+
+    frame[key] = state[key];
+
+    if(pending)
+      return;
+  }
+
+  event(subject, key);
+}
+
+function event(source: {}, key: string | boolean | null){
+  LISTENER.get(source)!.forEach((select, callback, subs) => {
     if(!select || typeof key == "string" && select.has(key)){
-      const after = callback(key, from);
+      const after = callback(key, source);
   
       if(after === null)
         subs.delete(callback);
@@ -333,5 +335,6 @@ export {
   Control,
   effect,
   observe,
+  update,
   LIFECYCLE
 }
