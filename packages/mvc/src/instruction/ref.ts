@@ -1,4 +1,4 @@
-import { add, Control } from '../control';
+import { add, control } from '../control';
 import { Model } from '../model';
 
 declare namespace ref {
@@ -68,8 +68,8 @@ function ref<T>(
 
   const def = Object.defineProperty;
 
-  return add<T>((key, source) => {
-    const { subject, state } = source;
+  return add<T>((key, subject) => {
+    const { state } = control(subject);
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(arg === subject)
@@ -83,7 +83,7 @@ function ref<T>(
               return out;
             }
           } : {
-            value: createRef(source, key)
+            value: createRef(subject, key)
           }
         )
 
@@ -120,12 +120,14 @@ function ref<T>(
 
 export { ref }
 
-function createRef(control: Control, key: string){
-  const refObjectFunction = (value: unknown) => control.subject.set(key, value);
+function createRef(subject: Model, key: string){
+  const refObjectFunction = (value: any) => {
+    subject.set(key, value);
+  };
 
   Object.defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,
-    get: () => control.state[key]
+    get: () => control(subject).state[key]
   })
 
   return refObjectFunction as ref.Object;

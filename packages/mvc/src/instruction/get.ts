@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { add, Control, LIFECYCLE } from '../control';
+import { add, control, Control, LIFECYCLE } from '../control';
 import { Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -60,9 +60,7 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return add((key, control) => {
-    let { subject } = control;
-
+  return add((key, subject) => {
     if(typeof arg0 == "symbol")
       throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`)
 
@@ -96,14 +94,16 @@ function get<R, T extends Model>(
     }
 
     else if(typeof arg0 == "function")
-      arg1 = arg0.call(subject, key, subject);
+      arg1 = arg0.call(subject as T, key, subject as T);
 
     if(typeof arg1 == "function")
-      return compute(control, key, source, arg1);
+      return compute(subject, key, source, arg1);
 
-    source(got => control.subject.set(key, got));
+    source(got => subject.set(key, got));
 
-    return () => control.get(key, arg1 !== false);
+    const self = control(subject);
+
+    return () => self.get(key, arg1 !== false);
   })
 }
 
@@ -113,12 +113,12 @@ const PENDING = new Set<Callback>();
 let OFFSET = 0;
 
 function compute<T>(
-  control: Control,
+  subject: Model,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
 
-  const { state, subject } = control;
+  const self = control(subject);
 
   let proxy: any;
   let isAsync: boolean;
@@ -134,7 +134,7 @@ function compute<T>(
         if(PENDING.delete(compute))
           compute();
     
-        return state[key] as T;
+        return self.state[key] as T;
       }
     }
 
@@ -172,7 +172,7 @@ function compute<T>(
 
   const output = {
     get(): any {
-      output.get = () => control.get(key);
+      output.get = () => self.get(key);
       source(connect);
       isAsync = true;
       return output.get();

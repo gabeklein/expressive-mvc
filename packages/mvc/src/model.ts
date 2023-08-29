@@ -23,7 +23,7 @@ declare namespace Model {
     R extends Model ? Export<R> :
     R;
 
-  type ValueOf<T extends Model, K extends Any<T>> = K extends keyof T ? T[K] : T;
+  type ValueOf<T extends Model, K extends Any<T>> = K extends keyof T ? T[K] : unknown;
 
   /**
    * Values from current state of given controller.
@@ -50,7 +50,7 @@ declare namespace Model {
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
-  type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
+  type Instruction<T = any> = (this: Model, key: string, thisArg: Model) =>
     | Control.Descriptor<T>
     | Control.Getter<T>
     | void;
@@ -137,7 +137,7 @@ class Model {
    * This is useful where a property value internally has changed, but the object remains the same.
    * For example: an array which has pushed a new value, or change to nested properties.
    */
-  set(key: string): void;
+  set(key: string): boolean;
 
   /**
    * Update a property programatically within state. 
@@ -147,7 +147,7 @@ class Model {
    * @param silent - if true, will not notify listeners of an update
    */
   // set<K extends Model.Any<this>>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
-  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
+  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): boolean;
 
   set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
     const self = control(this);
@@ -159,7 +159,7 @@ class Model {
       })
 
     if(typeof arg1 == "string")
-      return 1 in arguments ? update(this, arg1, arg2, arg3) : update(this, arg1);
+      return !(1 in arguments ? update(this, arg1, arg2, arg3) : update(this, arg1));
 
     return new Promise<any>((resolve, reject) => {
       if(typeof arg1 != "number" && Object.isFrozen(self.frame)){

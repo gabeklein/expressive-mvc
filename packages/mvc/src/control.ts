@@ -105,7 +105,7 @@ class Control<T extends Model = any> {
         INSTRUCT.delete(value);
         delete subject[key];
 
-        const output = instruction.call(this, key, this);
+        const output = instruction.call(subject, key, subject);
 
         if(!output)
           continue;

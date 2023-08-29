@@ -1,4 +1,4 @@
-import { add, Control } from '../control';
+import { add, control, Control } from '../control';
 import { attempt } from './run';
 
 declare namespace set {
@@ -47,8 +47,8 @@ function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean){
 
-  return add<T>((key, control) => {
-    const { state, subject } = control;
+  return add<T>((key, subject) => {
+    const self = control(subject);
     const output: Control.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
@@ -89,13 +89,13 @@ function set <T> (
       }
 
       output.get = argument ? init() : () => {
-        const get = key in state ? null : init();
-        return get ? get() : state[key];
+        const get = key in self.state ? null : init();
+        return get ? get() : self.state[key];
       };
     }
     else {
       if(value === undefined)
-        output.get = () => control.get(key);
+        output.get = () => self.get(key);
       else
         output.value = value;
 
