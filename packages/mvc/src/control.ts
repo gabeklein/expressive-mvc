@@ -37,7 +37,7 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>()
 }
 
-class Control<T extends {} = any> {
+class Control<T extends Model = any> {
   public state: { [property: string]: unknown } = {};
 
   public frame: { [property: string]: unknown } = Object.freeze({});

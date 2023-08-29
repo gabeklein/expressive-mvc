@@ -54,7 +54,7 @@ function use <T = any> (
             set(value){
               if(value != next[key]){
                 next[key] = value;
-                source.set(property)
+                subject.set(property)
               }
             }
           });

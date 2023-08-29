@@ -19,6 +19,8 @@ function run <T, Y extends any[]> (action: (...args: Y) => T | Promise<T>): Asyn
 
 function run(task: Function){
   return add((key, control) => {
+    const { subject } = control;
+
     let pending = false;
 
     async function invoke(...args: any[]){
@@ -28,14 +30,14 @@ function run(task: Function){
         )
 
       pending = true;
-      control.set(key);
+      subject.set(key);
 
       try {
-        return await attempt(() => task.apply(control.subject, args))
+        return await attempt(() => task.apply(subject, args))
       }
       finally {
         pending = false;
-        control.set(key);
+        subject.set(key);
       }
     }
 

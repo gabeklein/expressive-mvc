@@ -94,7 +94,7 @@ function ref<T>(
       let unSet: ((next: T) => void) | undefined;
 
       const set = (value?: any) => {
-        if(source.set(key, value) || !arg)
+        if(subject.set(key, value) || !arg)
           return;
 
         if(unSet)
@@ -121,7 +121,7 @@ function ref<T>(
 export { ref }
 
 function createRef(control: Control, key: string){
-  const refObjectFunction = (value: unknown) => control.set(key, value);
+  const refObjectFunction = (value: unknown) => control.subject.set(key, value);
 
   Object.defineProperty(refObjectFunction, "current", {
     set: refObjectFunction,

@@ -15,11 +15,15 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Key<T> = Exclude<keyof T, keyof Model> & string;
 
+  type Any<T> = Exclude<keyof T, keyof Model> | (string & {});
+
   /** Actual value stored in state. */
   type Value<R> =
     R extends Ref<infer T> ? T :
     R extends Model ? Export<R> :
     R;
+
+  type ValueOf<T extends Model, K extends Any<T>> = K extends keyof T ? T[K] : T;
 
   /**
    * Values from current state of given controller.
@@ -98,21 +102,24 @@ class Model {
     return get(this);
   }
 
-  /** Assert update is in progress. Returns a promise which resolves updated keys. */
+  /**
+   * Check if update is in progress.
+   * Returns a promise which resolves updated keys. If no update, will resolve `false`.
+   **/
   set(): Promise<Model.Values<this> | false>;
 
   /**
-   * Expect an update to state within timeout.
+   * Expect an update to state within a set timeout.
    * 
    * @param timeout - milliseconds to wait for update
-   * @param predicate - optional function to filter updates. If returns true, update is accepted.
+   * @param predicate - optional function to filter for specific updates. If returns true, update is accepted.
    * 
-   * @returns a promise which resolves full update.
+   * @returns a promise to resolve when next accepted update has occured.
    */
   set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
 
   /**
-   * Call a function when an update to state has occured.
+   * Call a function whenever an update to state has occured.
    * 
    * @param callback - Function to call when any update occurs. 
    *   Note: This will be called for every assignment which changes the value.
@@ -124,7 +131,25 @@ class Model {
   */
   set(callback: Model.Event): Callback;
 
-  set(arg1?: Model.Event | number, arg2?: Predicate){
+  /**
+   * Push an update without changing the value of associated property.
+   * 
+   * This is useful where a property value internally has changed, but the object remains the same.
+   * For example: an array which has pushed a new value, or change to nested properties.
+   */
+  set(key: string): void;
+
+  /**
+   * Update a property programatically within state. 
+   * 
+   * @param key - property to update
+   * @param value - value to update property with (if the same as current, no update will occur)
+   * @param silent - if true, will not notify listeners of an update
+   */
+  // set<K extends Model.Any<this>>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
+  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
+
+  set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
     const self = control(this);
 
     if(typeof arg1 == "function")
@@ -132,6 +157,9 @@ class Model {
         if(typeof key == "string")
           return arg1(key)
       })
+
+    if(typeof arg1 == "string")
+      return 1 in arguments ? self.set(arg1, arg2, arg3) : self.set(arg1);
 
     return new Promise<any>((resolve, reject) => {
       if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
@@ -141,7 +169,7 @@ class Model {
   
       const callback = () => resolve(self.frame);
       const remove = self.addListener((key) => {
-        if(key === true || arg2 && typeof key == "string" && arg2(key) !== true)
+        if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
   
         if(timeout)

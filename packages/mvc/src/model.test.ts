@@ -830,6 +830,49 @@ describe("get method", () => {
 })
 
 describe("set method", () => {
+  describe("update", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+
+    it("will force update key", async () => {
+
+      const test = Test.new();
+
+      expect(test.foo).toBe("foo");
+
+      test.set("foo");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("foo");
+    })
+
+    it("will update value", async () => {
+      const test = Test.new();
+
+      expect(test.foo).toBe("foo");
+
+      test.set("foo", "bar");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+    })
+
+    it("will ignore update with same value", async () => {
+      const test = Test.new();
+
+      expect(test.foo).toBe("foo");
+
+      test.set("foo", "foo");
+
+      await expect(test).not.toUpdate();
+      
+      expect(test.foo).toBe("foo");
+    })
+  })
+
   describe("timeout", () => {
     it.todo("will not break if defined before init")
 

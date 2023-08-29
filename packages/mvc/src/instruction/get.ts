@@ -101,7 +101,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(control, key, source, arg1);
 
-    source(got => control.set(key, got));
+    source(got => control.subject.set(key, got));
 
     return () => control.get(key, arg1 !== false);
   })
@@ -150,7 +150,7 @@ function compute<T>(
       console.error(err);
     }
 
-    control.set(key, next, !isAsync);
+    subject.set(key, next, !isAsync);
   }
 
   function connect(model: Model){
@@ -165,7 +165,7 @@ function compute<T>(
 
       return () => {
         PENDING.add(compute);
-        control.set(key);
+        subject.set(key);
       };
     })
   }
