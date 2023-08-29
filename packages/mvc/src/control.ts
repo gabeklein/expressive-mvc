@@ -12,7 +12,7 @@ declare namespace Control {
   type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
 
   type Descriptor<T = any> = {
-    get?: Getter<T>;
+    get?: Getter<T> | boolean;
     set?: Setter<T> | false;
     enumerable?: boolean;
     value?: T;
@@ -95,6 +95,7 @@ class Control<T extends Model = any> {
 
   init(){
     const { state, subject } = this;
+    const self = this;
 
     for(const key in subject){
       const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
@@ -110,7 +111,7 @@ class Control<T extends Model = any> {
         if(!output)
           continue;
 
-        desc = typeof output == "function" ? { get: output } : output;
+        desc = typeof output == "object" ? output : { get: output };
       }
 
       const { enumerable = true } = desc;
@@ -141,7 +142,9 @@ class Control<T extends Model = any> {
           update(subject, key, next, set);
         },
         get(){
-          const value = desc.get ? desc.get(this) : state[key];
+          const value = typeof desc.get == "function"
+            ? desc.get(this)
+            : self.get(key, desc.get)
 
           return observe(this, key, value);
         }

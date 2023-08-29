@@ -95,7 +95,7 @@ function set <T> (
     }
     else {
       if(value === undefined)
-        output.get = () => control.get(key);
+        output.get = undefined;
       else
         output.value = value;
 

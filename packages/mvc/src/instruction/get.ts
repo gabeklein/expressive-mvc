@@ -103,7 +103,7 @@ function get<R, T extends Model>(
 
     source(got => control.subject.set(key, got));
 
-    return () => control.get(key, arg1 !== false);
+    return { get: arg1 };
   })
 }
 
