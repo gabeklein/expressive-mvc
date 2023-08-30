@@ -23,7 +23,8 @@ declare namespace Model {
     R extends Model ? Export<R> :
     R;
 
-  type ValueOf<T extends Model, K extends Any<T>> = K extends keyof T ? T[K] : T;
+  type ValueOf<T extends Model, K extends Any<T>> =
+    K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
   /**
    * Values from current state of given controller.
