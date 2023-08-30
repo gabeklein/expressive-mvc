@@ -1,6 +1,6 @@
 import { Model } from './model';
 
-const READY = new WeakSet<Control>();
+const READY = new WeakSet<Model>();
 const DISPATCH = new Set<Callback>();
 const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
@@ -39,24 +39,11 @@ const LIFECYCLE = {
 
 class Control<T extends Model = any> {
   public state: { [property: string]: unknown } = {};
-
   public frame: { [property: string]: unknown } = Object.freeze({});
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
     LISTENER.set(subject, new Map());
-  }
-
-  addListener(fn: Control.OnUpdate){
-    const subs = LISTENER.get(this.subject)!;
-
-    if(READY.has(this))
-      fn(true, this.subject);
-
-    subs.set(fn, undefined);
-    return () => {
-      subs.delete(fn);
-    }
   }
 
   get(property: string, required?: boolean){
@@ -76,7 +63,7 @@ class Control<T extends Model = any> {
         resolve();
       }
   
-      const remove = this.addListener(key => {
+      const remove = addListener(subject, key => {
         if(key === property)
           return release;
   
@@ -92,65 +79,74 @@ class Control<T extends Model = any> {
       stack: error.stack
     });
   }
+}
 
-  init(){
-    const { state, subject } = this;
-    const self = this;
+function addListener(to: Model, fn: Control.OnUpdate){
+  to = to.is;
 
-    for(const key in subject){
-      const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
-      const instruction = INSTRUCT.get(value);
-      let desc: Control.Descriptor = { value };
+  const subs = LISTENER.get(to)!;
 
-      if(instruction){
-        INSTRUCT.delete(value);
-        delete subject[key];
+  if(READY.has(to as any))
+    fn(true, to);
 
-        const output = instruction.call(this, key, this);
-
-        if(!output)
-          continue;
-
-        desc = typeof output == "object" ? output : { get: output };
-      }
-
-      const { enumerable = true } = desc;
-
-      if("value" in desc)
-        state[key] = desc.value;
-
-      Object.defineProperty(subject, key, {
-        enumerable,
-        set: (next) => {
-          let { set } = desc;
-
-          if(set === false)
-            throw new Error(`${subject}.${key} is read-only.`);
-
-          if(typeof set == "function"){
-            const result = set.call(subject, next, state[key]);
-      
-            if(result === false)
-              return;
-              
-            if(typeof result == "function")
-              next = result();
-
-            set = undefined;
-          }
-
-          update(subject, key, next, set);
-        },
-        get(){
-          const value = typeof desc.get == "function"
-            ? desc.get(this)
-            : self.get(key, desc.get)
-
-          return observe(this, key, value);
-        }
-      });
-    }
+  subs.set(fn, undefined);
+  return () => {
+    subs.delete(fn);
   }
+}
+
+function instruct(subject: Model, key: string, value: any){
+  const instruction = INSTRUCT.get(value);
+
+  if(!instruction)
+    return false;
+
+  INSTRUCT.delete(value);
+  delete (subject as any)[key];
+
+  const self = control(subject);
+  const output = instruction.call(self, key, self);
+
+  if(output){
+    const desc = typeof output == "object" ? output : { get: output };
+    const { enumerable = true } = desc;
+  
+    if("value" in desc)
+      self.state[key] = desc.value;
+  
+    Object.defineProperty(subject, key, {
+      enumerable,
+      set: (next) => {
+        let { set } = desc;
+  
+        if(set === false)
+          throw new Error(`${subject}.${key} is read-only.`);
+  
+        if(typeof set == "function"){
+          const result = set.call(subject, next, self.state[key]);
+    
+          if(result === false)
+            return;
+            
+          if(typeof result == "function")
+            next = result();
+  
+          set = undefined;
+        }
+  
+        update(subject, key, next, set);
+      },
+      get(){
+        const value = typeof desc.get == "function"
+          ? desc.get(this)
+          : self.get(key, desc.get)
+  
+        return observe(this, key, value);
+      }
+    });
+  }
+
+  return true;
 }
 
 function add<T = any>(instruction: Model.Instruction<T>){
@@ -186,9 +182,8 @@ function control<T extends Model>(subject: T, ready?: boolean){
   const self = REGISTER.get(subject) as Control<T>;
   const subs = LISTENER.get(subject)!;
 
-  if(ready && !READY.has(self)){
-    READY.add(self);
-    self.init();
+  if(ready && !READY.has(subject)){
+    READY.add(subject);
     event(subject, true);
   }
 
@@ -285,7 +280,6 @@ function effect<T extends Model>(
   target: T,
   callback: Model.Effect<T>){
 
-  const self = control(target);
   let refresh: (() => void) | null | undefined;
   let unSet: Callback | false | undefined;
 
@@ -316,7 +310,7 @@ function effect<T extends Model>(
     return refresh;
   });
 
-  self.addListener(key => {
+  addListener(target, key => {
     if(key === true)
       invoke();
 
@@ -334,9 +328,11 @@ function effect<T extends Model>(
 
 export {
   add,
+  addListener,
   control,
   Control,
   effect,
+  instruct,
   observe,
   update,
   LIFECYCLE

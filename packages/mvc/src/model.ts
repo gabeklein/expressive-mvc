@@ -1,4 +1,4 @@
-import { Control, control, effect, update } from './control';
+import { Control, addListener, control, effect, instruct, observe, update } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -69,7 +69,27 @@ class Model {
     Object.defineProperty(this, "is", { value: this });
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-    new Control(this);
+    const { state } = new Control(this);
+    
+    addListener(this, () => {
+      for(const key in this){
+        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
+
+        if(instruct(this, key, value))
+          continue;
+
+        state[key] = value;
+        Object.defineProperty(this, key, {
+          enumerable: true,
+          set: update.bind(this, this, key),
+          get(){
+            return observe(this, key, state[key]);
+          }
+        });
+      }
+
+      return null;
+    });
   }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
@@ -153,7 +173,7 @@ class Model {
     const self = control(this);
 
     if(typeof arg1 == "function")
-      return self.addListener(key => {
+      return addListener(this, key => {
         if(typeof key == "string")
           return arg1(key)
       })
@@ -168,7 +188,7 @@ class Model {
       }
   
       const callback = () => resolve(self.frame);
-      const remove = self.addListener((key) => {
+      const remove = addListener(this, (key) => {
         if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
   
