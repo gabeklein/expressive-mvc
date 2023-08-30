@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { add, Control, LIFECYCLE } from '../control';
+import { add, LIFECYCLE } from '../control';
 import { Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -99,7 +99,7 @@ function get<R, T extends Model>(
       arg1 = arg0.call(subject, key, subject);
 
     if(typeof arg1 == "function")
-      return compute(control, key, source, arg1);
+      return compute(control.subject, key, source, arg1);
 
     source(got => control.subject.set(key, got));
 
@@ -113,12 +113,10 @@ const PENDING = new Set<Callback>();
 let OFFSET = 0;
 
 function compute<T>(
-  control: Control,
+  subject: Model,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
-
-  const { subject } = control;
 
   let proxy: any;
   let isAsync: boolean;
@@ -170,7 +168,7 @@ function compute<T>(
     if(PENDING.delete(compute))
       compute();
 
-    return control.get(key, !proxy);
+    return subject.get(key, !proxy);
   }
 }
 

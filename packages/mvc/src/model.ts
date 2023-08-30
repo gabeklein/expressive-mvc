@@ -99,9 +99,52 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): Callback;
 
-  get(arg1?: Model.Effect<this>){
-    if(arg1)
+  /**
+   * Fetches value from state, for this key.
+   * 
+   * - For special properties, this may not be the value presented by model.
+   * - If the value is a model, it's exported state is returned instead.
+   * - If value does not exist in state, will return suspense which resolves when value is present.
+   **/
+  get<K extends string>(key: K, required?: boolean): Model.ValueOf<this, K>;
+
+  get(arg1?: Model.Effect<this> | string, arg2?: boolean){
+    if(typeof arg1 == "function")
       return effect(this, arg1);
+
+    if(typeof arg1 == "string"){
+      const { state } = control(this);
+
+      if(arg1 in state || arg2 === false){
+        const value = state[arg1];
+
+        if(value !== undefined || !arg2)
+          return value;
+      }
+
+      const error = new Error(`${this}.${arg1} is not yet available.`);
+      const promise = new Promise<void>((resolve, reject) => {
+        function release(){
+          remove();
+          resolve();
+        }
+    
+        const remove = addListener(this, key => {
+          if(key === arg1)
+            return release;
+    
+          if(key === null)
+            reject(new Error(`${this} is destroyed.`));
+        });
+      });
+    
+      throw Object.assign(promise, {
+        toString: () => String(error),
+        name: "Suspense",
+        message: error.message,
+        stack: error.stack
+      });
+    }
 
     const cache = new WeakMap<Model, any>();
 
