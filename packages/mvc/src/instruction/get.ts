@@ -118,7 +118,7 @@ function compute<T>(
   source: get.Source,
   setter: get.Function<T, any>){
 
-  const { state, subject } = control;
+  const { subject } = control;
 
   let proxy: any;
   let isAsync: boolean;
@@ -126,17 +126,6 @@ function compute<T>(
 
   function compute(initial?: boolean){
     let next: T | undefined;
-
-    if(initial){
-      ORDER.set(compute, OFFSET++);
-
-      output.get = () => {
-        if(PENDING.delete(compute))
-          compute();
-    
-        return state[key] as T;
-      }
-    }
 
     try {
       next = setter.call(proxy, proxy);
@@ -160,8 +149,10 @@ function compute<T>(
     reset = model.get(current => {
       proxy = current;
 
-      if(!reset)
+      if(!reset){
         compute(true);
+        ORDER.set(compute, OFFSET++);
+      }
 
       return () => {
         PENDING.add(compute);
@@ -170,16 +161,17 @@ function compute<T>(
     })
   }
 
-  const output = {
-    get(): any {
-      output.get = () => control.get(key);
+  return () => {
+    if(!proxy){
       source(connect);
       isAsync = true;
-      return output.get();
     }
-  }
 
-  return output as Control.Descriptor;
+    if(PENDING.delete(compute))
+      compute();
+
+    return control.get(key, !proxy);
+  }
 }
 
 LIFECYCLE.update.add(() => {
