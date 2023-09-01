@@ -1,4 +1,4 @@
-import { addListener, Control, control, effect, event, observe, queue, REGISTER } from './control';
+import { addListener, Control, control, event, observe, queue, REGISTER, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -401,6 +401,56 @@ function update(
   }
 
   event(subject, key);
+}
+
+function effect<T extends Model>(
+  target: T,
+  callback: Model.Effect<T>){
+
+  let refresh: (() => void) | null | undefined;
+  let unSet: Callback | false | undefined;
+
+  function invoke(){
+    try {
+      const out = callback.call(target, target);
+
+      unSet = typeof out == "function" && out;
+      refresh = out === null ? out : invoke;
+    }
+    catch(err){
+      if(err instanceof Promise){
+        refresh = undefined;
+        err.then(invoke).catch(console.error);
+      }
+      else if(refresh)
+        console.error(err);
+      else
+        throw err;
+    }
+  }
+
+  target = watch(target, () => {
+    if(refresh && unSet){
+      unSet();
+      unSet = undefined;
+    }
+    return refresh;
+  });
+
+  addListener(target, key => {
+    if(key === true)
+      invoke();
+
+    else if(!refresh)
+      return refresh;
+
+    if(key === null && unSet)
+      unSet();
+  });
+
+  return () => {
+    refresh = null;
+  };
 }
 
 /** Random alphanumberic of length 6. Will always start with a letter. */

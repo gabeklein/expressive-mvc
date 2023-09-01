@@ -129,64 +129,14 @@ function observe(from: any, key: string, value: any){
   return watch(value, observer);
 }
 
-function effect<T extends Model>(
-  target: T,
-  callback: Model.Effect<T>){
-
-  let refresh: (() => void) | null | undefined;
-  let unSet: Callback | false | undefined;
-
-  function invoke(){
-    try {
-      const out = callback.call(target, target);
-
-      unSet = typeof out == "function" && out;
-      refresh = out === null ? out : invoke;
-    }
-    catch(err){
-      if(err instanceof Promise){
-        refresh = undefined;
-        err.then(invoke).catch(console.error);
-      }
-      else if(refresh)
-        console.error(err);
-      else
-        throw err;
-    }
-  }
-
-  target = watch(target, () => {
-    if(refresh && unSet){
-      unSet();
-      unSet = undefined;
-    }
-    return refresh;
-  });
-
-  addListener(target, key => {
-    if(key === true)
-      invoke();
-
-    else if(!refresh)
-      return refresh;
-
-    if(key === null && unSet)
-      unSet();
-  });
-
-  return () => {
-    refresh = null;
-  };
-}
-
 export {
   addListener,
   control,
   Control,
-  effect,
   event,
   observe,
   queue,
   REGISTER,
-  LIFECYCLE
+  LIFECYCLE,
+  watch
 }
