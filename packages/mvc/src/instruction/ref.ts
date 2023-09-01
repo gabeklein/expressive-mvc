@@ -68,7 +68,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  return add<T>((key, { subject, state }) => {
+  return add<T>((key, subject, state) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(arg === subject)
