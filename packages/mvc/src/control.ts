@@ -72,10 +72,10 @@ function fetch(subject: Model, property: string, required?: boolean){
   }
 
   const error = new Error(`${subject}.${property} is not yet available.`);
-  const promise = new Promise<void>((resolve, reject) => {
+  const promise = new Promise<any>((resolve, reject) => {
     addListener(subject, key => {
       if(key === property){
-        resolve();
+        resolve(state[key]);
         return null;
       }
 
