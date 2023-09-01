@@ -58,14 +58,11 @@ class Control<T extends Model = any> {
 
     const error = new Error(`${subject}.${property} is not yet available.`);
     const promise = new Promise<void>((resolve, reject) => {
-      function release(){
-        remove();
-        resolve();
-      }
-  
-      const remove = addListener(subject, key => {
-        if(key === property)
-          return release;
+      addListener(subject, key => {
+        if(key === property){
+          resolve();
+          return null;
+        }
   
         if(key === null)
           reject(new Error(`${subject} is destroyed.`));
