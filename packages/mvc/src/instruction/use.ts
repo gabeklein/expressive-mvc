@@ -1,4 +1,4 @@
-import { add, Control, control } from '../control';
+import { add, control } from '../control';
 import { Model, PARENT } from '../model';
 
 namespace use {
@@ -32,7 +32,7 @@ function use <T = any> (
     if(typeof value === "function")
       value = new value();
 
-    const output: Control.Descriptor = { set, value };
+    const output: Model.Instruction.Descriptor = { set, value };
 
     function set(next: Record<string, unknown> | undefined){
       if(value instanceof Model && !(next instanceof value.constructor))

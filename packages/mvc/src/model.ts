@@ -47,13 +47,25 @@ declare namespace Model {
 
   type Event = (key: string) => Callback | void;
 
+  namespace Instruction {
+    type Getter<T> = (source: Model) => T;
+    type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+    type Descriptor<T = any> = {
+      get?: Getter<T> | boolean;
+      set?: Setter<T> | false;
+      enumerable?: boolean;
+      value?: T;
+    }
+  }
+
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
-    | Control.Descriptor<T>
-    | Control.Getter<T>
+    | Instruction.Descriptor<T>
+    | Instruction.Getter<T>
     | void;
 }
 

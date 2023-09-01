@@ -8,16 +8,6 @@ const LISTENER = new WeakMap<{}, Map<Control.OnUpdate, Set<string> | undefined>>
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 declare namespace Control {
-  type Getter<T> = (source: Model) => T;
-  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-  type Descriptor<T = any> = {
-    get?: Getter<T> | boolean;
-    set?: Setter<T> | false;
-    enumerable?: boolean;
-    value?: T;
-  }
-
   /**
    * Update callback function.
    * 

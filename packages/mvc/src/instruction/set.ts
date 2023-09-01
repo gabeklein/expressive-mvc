@@ -1,4 +1,5 @@
-import { add, Control } from '../control';
+import { add } from '../control';
+import { Model } from '../model';
 import { attempt } from './run';
 
 declare namespace set {
@@ -48,7 +49,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return add<T>((key, { subject }) => {
-    const output: Control.Descriptor = {};
+    const output: Model.Instruction.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){
