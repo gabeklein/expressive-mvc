@@ -1,7 +1,8 @@
-import { Control, addListener, control, effect, fetch, instruct, observe, update } from './control';
+import { Control, addListener, control, effect, fetch, observe, update } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
+const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 type Predicate = (key: string) => boolean | void;
 
@@ -87,7 +88,7 @@ class Model {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
 
-        if(instruct(this, key, value))
+        if(apply(this, key, value))
           continue;
 
         state[key] = value;
@@ -269,12 +270,73 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
+function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M>){
+  const placeholder = Symbol("instruction");
+  INSTRUCT.set(placeholder, instruction);
+  return placeholder as unknown as T;
+}
+
+function apply(subject: Model, key: string, value: any){
+  const instruction = INSTRUCT.get(value);
+
+  if(!instruction)
+    return false;
+
+  INSTRUCT.delete(value);
+  delete (subject as any)[key];
+
+  const { state } = control(subject);
+  const output = instruction.call(subject, key, subject, state);
+
+  if(output){
+    const desc = typeof output == "object" ? output : { get: output };
+    const { enumerable = true } = desc;
+  
+    if("value" in desc)
+      state[key] = desc.value;
+  
+    Object.defineProperty(subject, key, {
+      enumerable,
+      set(next){
+        let { set } = desc;
+  
+        if(set === false)
+          throw new Error(`${subject}.${key} is read-only.`);
+  
+        if(typeof set == "function"){
+          const result = set.call(subject, next, state[key]);
+    
+          if(result === false)
+            return;
+            
+          if(typeof result == "function")
+            next = result();
+  
+          set = undefined;
+        }
+  
+        update(subject, key, next, set);
+      },
+      get(){
+        const value = typeof desc.get == "function"
+          ? desc.get(this)
+          : fetch(subject, key, desc.get)
+  
+        return observe(this, key, value);
+      }
+    });
+  }
+
+  return true;
+}
+
 /** Random alphanumberic of length 6. Will always start with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }
 
 export {
+  add,
   Model,
   PARENT,
   uid

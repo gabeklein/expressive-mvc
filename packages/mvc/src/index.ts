@@ -4,6 +4,6 @@ export { ref } from './instruction/ref';
 export { set } from './instruction/set';
 export { use } from './instruction/use';
 
-export { Model, Model as default } from './model';
-export { add, Control } from './control';
+export { add, Model, Model as default } from './model';
+export { Control } from './control';
 export { Context } from './context';

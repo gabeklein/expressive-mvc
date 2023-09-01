@@ -1,5 +1,4 @@
-import { add } from '../control';
-import { Model } from '../model';
+import { add, Model } from '../model';
 import { attempt } from './run';
 
 declare namespace set {
