@@ -113,7 +113,7 @@ function instruct(subject: Model, key: string, value: any){
   
     Object.defineProperty(subject, key, {
       enumerable,
-      set: (next) => {
+      set(next){
         let { set } = desc;
   
         if(set === false)
