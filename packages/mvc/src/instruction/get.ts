@@ -98,12 +98,12 @@ function get<R, T extends Model>(
     else if(typeof arg0 == "function")
       arg1 = arg0.call(subject, key, subject);
 
-    if(typeof arg1 == "function")
-      return compute(control, key, source, arg1);
+    if(typeof arg1 != "function"){
+      source(got => control.subject.set(key, got));
+      return { get: arg1 };
+    }
 
-    source(got => control.subject.set(key, got));
-
-    return { get: arg1 };
+    return compute(control, key, source, arg1);
   })
 }
 
@@ -124,24 +124,6 @@ function compute<T>(
   let isAsync: boolean;
   let reset: (() => void) | undefined;
 
-  function compute(initial?: boolean){
-    let next: T | undefined;
-
-    try {
-      next = setter.call(proxy, proxy);
-    }
-    catch(err){
-      console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
-
-      if(initial)
-        throw err;
-
-      console.error(err);
-    }
-
-    subject.set(key, next, !isAsync);
-  }
-
   function connect(model: Model){
     if(reset)
       reset();
@@ -159,6 +141,24 @@ function compute<T>(
         subject.set(key);
       };
     })
+  }
+
+  function compute(initial?: boolean){
+    let next: T | undefined;
+
+    try {
+      next = setter.call(proxy, proxy);
+    }
+    catch(err){
+      console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
+
+      if(initial)
+        throw err;
+
+      console.error(err);
+    }
+
+    subject.set(key, next, !isAsync);
   }
 
   return () => {
