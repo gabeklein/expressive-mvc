@@ -668,8 +668,7 @@ describe("async", () => {
       caught = err;
     }
 
-    await expect(caught).resolves.toBe(undefined);
-  
+    await expect(caught).resolves.toBeInstanceOf(Foo);
     expect(bar.foo).toBeInstanceOf(Foo);
   })
   
@@ -689,7 +688,7 @@ describe("async", () => {
       caught = err;
     }
 
-    await expect(caught).resolves.toBe(undefined);
+    await expect(caught).resolves.toBe("foobar");
   
     expect(bar.foo).toBe("foobar");
   })

@@ -155,7 +155,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await expect(pending).resolves.toBeUndefined();
+    await expect(pending).resolves.toBeInstanceOf(Foo);
   })
 
   it("will refresh an effect when assigned to", async () => {
