@@ -29,6 +29,28 @@ describe("placeholder", () => {
     expect(mockEffect).toBeCalledTimes(2);
     expect(result).toBe("foo!");
   })
+
+  it("will resolve suspense after latest value", async () => {
+    const test = Test.new();
+    const foobar = jest.fn();
+    const effect = jest.fn((state: Test) => {
+      foobar(state.foobar);
+    });
+
+    test.get(effect);
+
+    expect(effect).toBeCalledTimes(1);
+    expect(foobar).not.toBeCalled();
+    
+    test.foobar = "foo";
+    test.foobar = "bar";
+
+    await expect(test).toHaveUpdated("foobar")
+
+    expect(effect).toBeCalledTimes(2);
+    expect(foobar).not.toBeCalledWith("foo");
+    expect(foobar).toBeCalledWith("bar");
+  })
   
   it('will not suspend if value is defined', async () => {
     const instance = Test.new();
@@ -276,7 +298,7 @@ describe("factory", () => {
     }
     catch(error){
       if(error instanceof Promise)
-        await expect(error).resolves.toBe("Hello World");
+        await error;
       else
         throw error;
     }
@@ -348,11 +370,9 @@ describe("factory", () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(
-      (_key: string, $: Test) => {
-        return $.greet + " " + $.name;
-      }
-    );
+    const didEvaluate = jest.fn((_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    });
 
     class Test extends Model {
       greet = set(greet);
@@ -372,18 +392,16 @@ describe("factory", () => {
     await test.set(0);
 
     expect(didEvaluate).toBeCalledTimes(3);
-    expect(didEvaluate).toHaveReturnedWith("Hello World");
+    expect(test.value).toBe("Hello World");
   })
 
   it("will suspend another factory (async)", async () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(
-      async (_key: string, $: Test) => {
-        return $.greet + " " + $.name;
-      }
-    );
+    const didEvaluate = jest.fn(async (_key: string, $: Test) => {
+      return $.greet + " " + $.name;
+    });
 
     class Test extends Model {
       greet = set(() => greet);

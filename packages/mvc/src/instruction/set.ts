@@ -48,7 +48,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return add<T>((key, control) => {
-    const { state, subject } = control;
+    const { subject } = control;
     const output: Control.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
@@ -62,60 +62,55 @@ function set <T> (
             throw err;
           }
 
+        output.get = typeof argument == "boolean" ? argument : undefined;
+
         if(value instanceof Promise){
-          const pending = value
+          value
             .then(value => {
-              output.get = undefined;
               subject.set(key, value);
               return value;
             })
             .catch(err => {
-              output.get = () => { throw err };
               subject.set(key);
+              output.get = () => { throw err };
             })
-
-          Object.assign(pending, {
-            message: `${subject}.${key} is not yet available.`,
-            stack: new Error().stack
-          });
-
-          return () => {
-            if(argument !== false)
-              throw pending;
-          };
         }
+        else
+          subject.set(key, value);
 
+        if(0 in arguments)
+          return subject[key];
+      }
+
+      if(argument)
+        init();
+      else
+        output.get = init;
+    }
+    else if(value !== undefined)
+      output.value = value;
+
+    if(typeof argument == "function"){
+      let unSet: ((next: T) => void) | undefined;
+
+      output.set = function(this: any, value: any, previous: any){
+        const out = argument.call(this, value, previous);
+
+        if(out === false)
+          return out;
+
+        if(typeof unSet == "function")
+          unSet = void unSet(value);
+    
+        if(typeof out == "function")
+          unSet = out;
+      }
+    }
+    else
+      output.set = value => {
+        output.get = undefined;
         subject.set(key, value);
       }
-
-      output.get = argument ? init() : () => {
-        const get = key in state ? null : init();
-        return get ? get() : state[key];
-      };
-    }
-    else {
-      if(value === undefined)
-        output.get = undefined;
-      else
-        output.value = value;
-
-      if(typeof argument == "function"){
-        let unSet: ((next: T) => void) | undefined;
-
-        output.set = function(this: any, value: any, previous: any){
-          const out = argument.call(this, value, previous);
-
-          if(out === false)
-            return out;
-
-          if(typeof unSet == "function")
-            unSet = void unSet(value);
-      
-          if(typeof out == "function")
-            unSet = out;
-        }
-      }
-    }
 
     return output;
   })
