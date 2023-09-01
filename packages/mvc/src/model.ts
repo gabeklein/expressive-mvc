@@ -1,4 +1,4 @@
-import { Control, addListener, control, effect, observe, update } from './control';
+import { addListener, Control, control, effect, event, observe, queue, REGISTER } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -359,6 +359,48 @@ function fetch(subject: Model, property: string, required?: boolean){
     message: error.message,
     stack: error.stack
   });
+}
+
+function update(
+  subject: Model,
+  key: string | boolean | null,
+  value?: unknown,
+  silent?: boolean){
+
+  const self = REGISTER.get(subject)!;
+  let { frame, state } = self;
+
+  if(typeof key == "string"){
+    if(2 in arguments){
+      const previous = state[key];
+
+      if(value === previous)
+        return true;
+  
+      state[key] = value;
+
+      if(silent === true)
+        return;
+    }
+
+    if(Object.isFrozen(frame)){
+      frame = self.frame = {};
+
+      queue(() => {
+        event(subject, false);
+        Object.freeze(frame);
+      })
+    }
+
+    const pending = key in frame;
+
+    frame[key] = state[key];
+
+    if(pending)
+      return;
+  }
+
+  event(subject, key);
 }
 
 /** Random alphanumberic of length 6. Will always start with a letter. */

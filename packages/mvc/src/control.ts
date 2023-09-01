@@ -102,48 +102,6 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   return value;
 }
 
-function update(
-  subject: Model,
-  key: string | boolean | null,
-  value?: unknown,
-  silent?: boolean){
-
-  const self = REGISTER.get(subject)!;
-  let { frame, state } = self;
-
-  if(typeof key == "string"){
-    if(2 in arguments){
-      const previous = state[key];
-
-      if(value === previous)
-        return true;
-  
-      state[key] = value;
-
-      if(silent === true)
-        return;
-    }
-
-    if(Object.isFrozen(frame)){
-      frame = self.frame = {};
-
-      queue(() => {
-        event(subject, false);
-        Object.freeze(frame);
-      })
-    }
-
-    const pending = key in frame;
-
-    frame[key] = state[key];
-
-    if(pending)
-      return;
-  }
-
-  event(subject, key);
-}
-
 function event(source: {}, key: string | boolean | null){
   LISTENER.get(source)!.forEach((select, callback, subs) => {
     if(!select || typeof key == "string" && select.has(key)){
@@ -226,7 +184,9 @@ export {
   control,
   Control,
   effect,
+  event,
   observe,
-  update,
+  queue,
+  REGISTER,
   LIFECYCLE
 }
