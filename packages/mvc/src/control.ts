@@ -50,37 +50,6 @@ function addListener(to: Model, fn: Control.OnUpdate){
   }
 }
 
-function fetch(subject: Model, property: string, required?: boolean){
-  const { state } = control(subject);
-  
-  if(property in state || required === false){
-    const value = state[property];
-
-    if(value !== undefined || !required)
-      return value;
-  }
-
-  const error = new Error(`${subject}.${property} is not yet available.`);
-  const promise = new Promise<any>((resolve, reject) => {
-    addListener(subject, key => {
-      if(key === property){
-        resolve(state[key]);
-        return null;
-      }
-
-      if(key === null)
-        reject(new Error(`${subject} is destroyed.`));
-    });
-  });
-
-  throw Object.assign(promise, {
-    toString: () => String(error),
-    name: "Suspense",
-    message: error.message,
-    stack: error.stack
-  });
-}
-
 function queue(event: Callback){
   const { update, didUpdate } = LIFECYCLE;
 
@@ -254,7 +223,6 @@ function effect<T extends Model>(
 
 export {
   addListener,
-  fetch,
   control,
   Control,
   effect,

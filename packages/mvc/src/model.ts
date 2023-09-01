@@ -1,4 +1,4 @@
-import { Control, addListener, control, effect, fetch, observe, update } from './control';
+import { Control, addListener, control, effect, observe, update } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -330,6 +330,37 @@ function apply(subject: Model, key: string, value: any){
   return true;
 }
 
+function fetch(subject: Model, property: string, required?: boolean){
+  const { state } = control(subject);
+  
+  if(property in state || required === false){
+    const value = state[property];
+
+    if(value !== undefined || !required)
+      return value;
+  }
+
+  const error = new Error(`${subject}.${property} is not yet available.`);
+  const promise = new Promise<any>((resolve, reject) => {
+    addListener(subject, key => {
+      if(key === property){
+        resolve(state[key]);
+        return null;
+      }
+
+      if(key === null)
+        reject(new Error(`${subject} is destroyed.`));
+    });
+  });
+
+  throw Object.assign(promise, {
+    toString: () => String(error),
+    name: "Suspense",
+    message: error.message,
+    stack: error.stack
+  });
+}
+
 /** Random alphanumberic of length 6. Will always start with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
@@ -337,6 +368,7 @@ function uid(){
 
 export {
   add,
+  fetch,
   Model,
   PARENT,
   uid

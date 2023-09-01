@@ -1,6 +1,6 @@
 import { Context } from '../context';
-import { fetch, LIFECYCLE } from '../control';
-import { add, Model, PARENT } from '../model';
+import { LIFECYCLE } from '../control';
+import { add, fetch, Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
