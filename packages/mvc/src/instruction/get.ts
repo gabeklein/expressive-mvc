@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { add, Control, fetch, LIFECYCLE } from '../control';
+import { add, fetch, LIFECYCLE } from '../control';
 import { Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -60,50 +60,50 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return add((key, control) => {
-    let { subject } = control;
+  return add((key, { subject }) => {
+    let from = subject;
 
     if(typeof arg0 == "symbol")
-      throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${subject}.${key}. This is not allowed.`)
+      throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${from}.${key}. This is not allowed.`)
 
-    let source: get.Source = resolve => resolve(subject);
+    let source: get.Source = resolve => resolve(from);
 
     if(arg0 instanceof Model)
-      subject = arg0;
+      from = arg0;
 
     else if(Model.is(arg0)){
-      const hasParent = PARENT.get(subject);
+      const hasParent = PARENT.get(from);
 
       if(!hasParent){
         if(arg1 === true)
-          throw new Error(`${subject} may only exist as a child of type ${arg0}.`);
+          throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          Context.resolve(subject, context => {
+          Context.resolve(from, context => {
             const model = context.get(arg0);
 
             if(model)
               resolve(model);
             else if(arg1 !== false)
-              throw new Error(`Required ${arg0} not found in context for ${subject}.`)
+              throw new Error(`Required ${arg0} not found in context for ${from}.`)
           });
         }
       }
       else if(!arg0 || hasParent instanceof arg0)
-        subject = hasParent;
+        from = hasParent;
       else
-        throw new Error(`New ${subject} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
+        throw new Error(`New ${from} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
     }
 
     else if(typeof arg0 == "function")
-      arg1 = arg0.call(subject, key, subject);
+      arg1 = arg0.call(from, key, from);
 
     if(typeof arg1 != "function"){
-      source(got => control.subject.set(key, got));
+      source(got => subject.set(key, got));
       return { get: arg1 };
     }
 
-    return compute(control, key, source, arg1);
+    return compute(subject, key, source, arg1);
   })
 }
 
@@ -113,12 +113,10 @@ const PENDING = new Set<Callback>();
 let OFFSET = 0;
 
 function compute<T>(
-  control: Control,
+  subject: Model,
   key: string,
   source: get.Source,
   setter: get.Function<T, any>){
-
-  const { subject } = control;
 
   let proxy: any;
   let isAsync: boolean;
@@ -170,7 +168,7 @@ function compute<T>(
     if(PENDING.delete(compute))
       compute();
 
-    return fetch(control.subject, key, !proxy);
+    return fetch(subject, key, !proxy);
   }
 }
 

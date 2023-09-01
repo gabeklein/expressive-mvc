@@ -47,8 +47,7 @@ function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean){
 
-  return add<T>((key, control) => {
-    const { subject } = control;
+  return add<T>((key, { subject }) => {
     const output: Control.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){

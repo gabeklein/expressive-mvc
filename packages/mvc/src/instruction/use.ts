@@ -28,9 +28,7 @@ function use <T = any> (
   value?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
-  return add((property, source) => {
-    const { subject } = source;
-
+  return add((property, { subject }) => {
     if(typeof value === "function")
       value = new value();
 

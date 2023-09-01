@@ -18,9 +18,7 @@ type Async<T = any, Y extends any[] = any> = {
 function run <T, Y extends any[]> (action: (...args: Y) => T | Promise<T>): Async<T, Y>;
 
 function run(task: Function){
-  return add((key, control) => {
-    const { subject } = control;
-
+  return add((key, { subject }) => {
     let pending = false;
 
     async function invoke(...args: any[]){

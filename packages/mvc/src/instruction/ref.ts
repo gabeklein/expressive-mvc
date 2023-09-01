@@ -1,5 +1,7 @@
-import { add, Control } from '../control';
+import { add } from '../control';
 import { Model } from '../model';
+
+const define = Object.defineProperty;
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -66,26 +68,30 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  const def = Object.defineProperty;
-
-  return add<T>((key, source) => {
-    const { subject, state } = source;
+  return add<T>((key, { subject, state }) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(arg === subject)
       for(const key in state)
-        def(value, key,
-          typeof arg2 == "function" ? {
+        if(typeof arg2 == "function")
+          define(value, key, {
             configurable: true,
             get(){
               const out = arg2(key);
-              def(value, key, { value: out });
+              define(value, key, { value: out });
               return out;
             }
-          } : {
-            value: createRef(source, key)
-          }
-        )
+          })
+        else {
+          const ref = (value: unknown) => subject.set(key, value);
+        
+          define(ref, "current", {
+            get: () => state[key],
+            set: ref
+          })
+
+          define(value, key, { value: ref })
+        }
 
     else if(typeof arg == "object")
       throw new Error("ref instruction does not support object which is not 'this'");
@@ -108,25 +114,14 @@ function ref<T>(
         }
       };
   
-      value = def(set, "current", {
+      value = define(set, "current", {
         get: () => state[key],
         set
       }) as ref.Object<T>;
     }
 
-    def(subject, key, { value });
+    define(subject, key, { value });
   })
 }
 
 export { ref }
-
-function createRef(control: Control, key: string){
-  const refObjectFunction = (value: unknown) => control.subject.set(key, value);
-
-  Object.defineProperty(refObjectFunction, "current", {
-    set: refObjectFunction,
-    get: () => control.state[key]
-  })
-
-  return refObjectFunction as ref.Object;
-}
