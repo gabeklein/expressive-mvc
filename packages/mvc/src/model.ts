@@ -1,8 +1,9 @@
-import { addListener, Control, control, effect, event, observe, queue, REGISTER } from './control';
+import { addListener, control, effect, event, observe, queue, REGISTER } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
+const STATE = new WeakMap<Model, Model.Export<any>>();
 
 type Predicate = (key: string) => boolean | void;
 
@@ -79,10 +80,12 @@ interface Model {
 
 class Model {
   constructor(id?: string | number){
+    const state: any = {};
+
     Object.defineProperty(this, "is", { value: this });
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-    const { state } = new Control(this);
+    STATE.set(this, state);
     
     addListener(this, () => {
       for(const key in this){
@@ -129,7 +132,8 @@ class Model {
         if(cache.has(value))
           return cache.get(value);
 
-        const { state } = control(value);
+        const state = STATE.get(value)!;
+
         cache.set(value, value = {});
 
         for(const key in state)
@@ -285,7 +289,7 @@ function apply(subject: Model, key: string, value: any){
   INSTRUCT.delete(value);
   delete (subject as any)[key];
 
-  const { state } = control(subject);
+  const state = STATE.get(subject.is)!;
   const output = instruction.call(subject, key, subject, state);
 
   if(output){
@@ -331,7 +335,8 @@ function apply(subject: Model, key: string, value: any){
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
-  const { state } = control(subject);
+  // const { state } = control(subject);
+  const state = STATE.get(subject.is)!;
   
   if(property in state || required === false){
     const value = state[property];
@@ -413,5 +418,6 @@ export {
   fetch,
   Model,
   PARENT,
+  STATE,
   uid
 }

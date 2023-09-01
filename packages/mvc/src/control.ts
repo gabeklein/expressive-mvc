@@ -83,7 +83,7 @@ function control<T extends Model>(subject: T, ready?: boolean){
   }
 
   if(ready === false){
-    Object.freeze(self.state);
+    // Object.freeze(self.state);
     event(subject, null);
     subs.clear();
   }
