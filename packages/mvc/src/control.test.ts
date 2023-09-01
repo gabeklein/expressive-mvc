@@ -1,4 +1,4 @@
-import { add, Control, LIFECYCLE } from './control';
+import { add, LIFECYCLE } from './control';
 import { set } from './instruction/set';
 import { Model } from './model';
 import { mockError } from './mocks';
@@ -170,9 +170,7 @@ describe("instruction", () => {
 
     const instance = Test.new();
 
-    expect(mockApply).toBeCalledWith(
-      "property", expect.any(Control)
-    );
+    expect(mockApply).toBeCalledWith("property", expect.any(Test), {});
     expect(mockAccess).not.toBeCalled();
     expect(instance.property).toBe("foobar");
     expect(mockAccess).toBeCalledWith(instance);
@@ -222,9 +220,9 @@ it("will run effect after properties", () => {
   const mock = jest.fn();
 
   class Test extends Model {
-    property = add((_key, control) => {
+    property = add((_key, _model, state) => {
       this.get(() => {
-        mock(control.state);
+        mock(state);
       })
     })
 
@@ -234,10 +232,7 @@ it("will run effect after properties", () => {
 
   Test.new();
 
-  expect(mock).toBeCalledWith({
-    foo: 1,
-    bar: 2
-  });
+  expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
 })
 
 describe("suspense", () => {

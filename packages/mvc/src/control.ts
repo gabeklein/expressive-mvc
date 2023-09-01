@@ -91,15 +91,15 @@ function instruct(subject: Model, key: string, value: any){
   INSTRUCT.delete(value);
   delete (subject as any)[key];
 
-  const self = control(subject);
-  const output = instruction.call(self, key, self);
+  const { state } = control(subject);
+  const output = instruction.call(subject, key, subject, state);
 
   if(output){
     const desc = typeof output == "object" ? output : { get: output };
     const { enumerable = true } = desc;
   
     if("value" in desc)
-      self.state[key] = desc.value;
+      state[key] = desc.value;
   
     Object.defineProperty(subject, key, {
       enumerable,
@@ -110,7 +110,7 @@ function instruct(subject: Model, key: string, value: any){
           throw new Error(`${subject}.${key} is read-only.`);
   
         if(typeof set == "function"){
-          const result = set.call(subject, next, self.state[key]);
+          const result = set.call(subject, next, state[key]);
     
           if(result === false)
             return;
@@ -136,7 +136,7 @@ function instruct(subject: Model, key: string, value: any){
   return true;
 }
 
-function add<T = any>(instruction: Model.Instruction<T>){
+function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M>){
   const placeholder = Symbol("instruction");
   INSTRUCT.set(placeholder, instruction);
   return placeholder as unknown as T;

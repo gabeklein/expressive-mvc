@@ -63,10 +63,9 @@ declare namespace Model {
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
    */
-  type Instruction<T = any> = (this: Control, key: string, thisArg: Control) =>
-    | Instruction.Descriptor<T>
-    | Instruction.Getter<T>
-    | void;
+  type Instruction<T = any, M extends Model = any> =
+    (this: M, key: Model.Key<M>, thisArg: M, state: Model.Export<M>) =>
+      Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
 interface Model {

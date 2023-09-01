@@ -60,19 +60,19 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return add((key, { subject }) => {
+  return add<R, T>((key, subject) => {
     let from = subject;
 
     if(typeof arg0 == "symbol")
       throw new Error(`Attempted to use an instruction result (probably use or get) as computed source for ${from}.${key}. This is not allowed.`)
 
-    let source: get.Source = resolve => resolve(from);
+    let source: get.Source<T> = resolve => resolve(from);
 
     if(arg0 instanceof Model)
       from = arg0;
 
     else if(Model.is(arg0)){
-      const hasParent = PARENT.get(from);
+      const hasParent = PARENT.get(from) as T;
 
       if(!hasParent){
         if(arg1 === true)
@@ -99,7 +99,7 @@ function get<R, T extends Model>(
       arg1 = arg0.call(from, key, from);
 
     if(typeof arg1 != "function"){
-      source(got => subject.set(key, got));
+      source((got: any) => subject.set(key, got));
       return { get: arg1 };
     }
 
@@ -168,7 +168,7 @@ function compute<T>(
     if(PENDING.delete(compute))
       compute();
 
-    return fetch(subject, key, !proxy);
+    return fetch(subject, key, !proxy) as T;
   }
 }
 
