@@ -1,6 +1,7 @@
 import { get } from './instruction/get';
 import { set } from './instruction/set';
 import { use } from './instruction/use';
+import { ref } from './instruction/ref';
 import { Model } from './model';
 import { mockError } from './mocks';
 
@@ -826,6 +827,75 @@ describe("get method", () => {
       })
     });
 
+  })
+
+  describe("fetch", () => {
+    it("will get value", () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      expect(test.get("foo")).toBe("foo");
+    })
+
+    it("will get ref value", () => {
+      class Test extends Model {
+        foo = ref<string>();
+      }
+
+      const test = Test.new();
+
+      test.foo("foobar");
+
+      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
+      expect<string>(test.get("foo")).toBe("foobar");
+    })
+
+    it("will throw suspense if not yet available", async () => {
+      class Test extends Model {
+        foo = set<string>();
+      }
+
+      const test = Test.new("ID");
+      let suspense;
+
+      try {
+        void test.get("foo");
+      }
+      catch(error){
+        expect(error).toBeInstanceOf(Promise);
+        expect(String(error)).toMatch("Error: Test-ID.foo is not yet available.");
+        suspense = error;
+      }
+
+      test.foo = "foobar";
+      
+      await expect(suspense).resolves.toBe("foobar");
+    })
+
+    it("will suspend if undefined in strict mode", async () => {
+      class Test extends Model {
+        foo?: string = undefined;
+      }
+
+      const test = Test.new("ID");
+      let suspense;
+
+      try {
+        void test.get("foo", true)
+      }
+      catch(error){
+        expect(error).toBeInstanceOf(Promise);
+        expect(String(error)).toMatch("Error: Test-ID.foo is not yet available.")
+        suspense = error;
+      }
+
+      test.foo = "foobar";
+      
+      await expect(suspense).resolves.toBe("foobar");
+    })
   })
 })
 
