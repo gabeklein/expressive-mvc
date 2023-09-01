@@ -3,6 +3,7 @@ import { addListener, Control, control, event, observe, queue, REGISTER, watch }
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
+const FRAME = new WeakMap<{}, { [property: string]: unknown }>();
 
 type Predicate = (key: string) => boolean | void;
 
@@ -190,8 +191,6 @@ class Model {
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
-    const self = control(this);
-
     if(typeof arg1 == "function")
       return addListener(this, key => {
         if(typeof key == "string")
@@ -202,12 +201,14 @@ class Model {
       return 1 in arguments ? update(this, arg1, arg2, arg3) : update(this, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
+      const self = this.is;
+
+      if(typeof arg1 != "number" && Object.isFrozen(FRAME.get(self))){
         resolve(false);
         return;
       }
   
-      const callback = () => resolve(self.frame);
+      const callback = () => resolve(FRAME.get(self));
       const remove = addListener(this, (key) => {
         if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
@@ -368,7 +369,8 @@ function update(
   silent?: boolean){
 
   const self = REGISTER.get(subject)!;
-  let { frame, state } = self;
+  let frame = FRAME.get(subject.is)!;
+  let { state } = self;
 
   if(typeof key == "string"){
     if(2 in arguments){
@@ -384,7 +386,7 @@ function update(
     }
 
     if(Object.isFrozen(frame)){
-      frame = self.frame = {};
+      FRAME.set(subject.is, frame = { ...frame });
 
       queue(() => {
         event(subject, false);
