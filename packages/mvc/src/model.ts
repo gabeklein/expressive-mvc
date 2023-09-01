@@ -1,4 +1,4 @@
-import { Control, addListener, control, effect, instruct, observe, update } from './control';
+import { Control, addListener, control, effect, fetch, instruct, observe, update } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -99,7 +99,13 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): Callback;
 
-  get(arg1?: Model.Effect<this>){
+  get<T extends string>(key: T, required: false): Model.ValueOf<this, T> | undefined;
+  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
+
+  get(arg1?: Model.Effect<this>, arg2?: boolean){
+    if(typeof arg1 == "string")
+      return fetch(this, arg1, arg2);
+
     if(arg1)
       return effect(this, arg1);
 

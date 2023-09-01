@@ -45,37 +45,6 @@ class Control<T extends Model = any> {
     REGISTER.set(subject, this);
     LISTENER.set(subject, new Map());
   }
-
-  get(property: string, required?: boolean){
-    const { subject, state } = this;
-    
-    if(property in state || required === false){
-      const value = state[property];
-
-      if(value !== undefined || !required)
-        return value;
-    }
-
-    const error = new Error(`${subject}.${property} is not yet available.`);
-    const promise = new Promise<void>((resolve, reject) => {
-      addListener(subject, key => {
-        if(key === property){
-          resolve();
-          return null;
-        }
-  
-        if(key === null)
-          reject(new Error(`${subject} is destroyed.`));
-      });
-    });
-  
-    throw Object.assign(promise, {
-      toString: () => String(error),
-      name: "Suspense",
-      message: error.message,
-      stack: error.stack
-    });
-  }
 }
 
 function addListener(to: Model, fn: Control.OnUpdate){
@@ -90,6 +59,37 @@ function addListener(to: Model, fn: Control.OnUpdate){
   return () => {
     subs.delete(fn);
   }
+}
+
+function fetch(subject: Model, property: string, required?: boolean){
+  const { state } = control(subject);
+  
+  if(property in state || required === false){
+    const value = state[property];
+
+    if(value !== undefined || !required)
+      return value;
+  }
+
+  const error = new Error(`${subject}.${property} is not yet available.`);
+  const promise = new Promise<void>((resolve, reject) => {
+    addListener(subject, key => {
+      if(key === property){
+        resolve();
+        return null;
+      }
+
+      if(key === null)
+        reject(new Error(`${subject} is destroyed.`));
+    });
+  });
+
+  throw Object.assign(promise, {
+    toString: () => String(error),
+    name: "Suspense",
+    message: error.message,
+    stack: error.stack
+  });
 }
 
 function instruct(subject: Model, key: string, value: any){
@@ -136,7 +136,7 @@ function instruct(subject: Model, key: string, value: any){
       get(){
         const value = typeof desc.get == "function"
           ? desc.get(this)
-          : self.get(key, desc.get)
+          : fetch(subject, key, desc.get)
   
         return observe(this, key, value);
       }
@@ -326,6 +326,7 @@ function effect<T extends Model>(
 export {
   add,
   addListener,
+  fetch,
   control,
   Control,
   effect,

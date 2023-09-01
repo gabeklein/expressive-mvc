@@ -1,5 +1,5 @@
 import { Context } from '../context';
-import { add, Control, LIFECYCLE } from '../control';
+import { add, Control, fetch, LIFECYCLE } from '../control';
 import { Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -170,7 +170,7 @@ function compute<T>(
     if(PENDING.delete(compute))
       compute();
 
-    return control.get(key, !proxy);
+    return fetch(control.subject, key, !proxy);
   }
 }
 
