@@ -99,7 +99,8 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): Callback;
 
-  get<T extends string>(key: T, required: false): Model.ValueOf<this, T> | undefined;
+  get<T extends string>(key: T, required: true): Exclude<Model.ValueOf<this, T>, undefined>;
+
   get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
   get(arg1?: Model.Effect<this>, arg2?: boolean){
