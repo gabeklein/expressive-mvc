@@ -1,4 +1,4 @@
-import { LISTENER, addListener, control, event, observe, queue, watch } from './control';
+import { addListener, control, event, observe, queue, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -91,7 +91,6 @@ class Model {
     Object.defineProperty(this, "is", { value: this });
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-    LISTENER.set(this, new Map());
     STATE.set(this, state);
 
     addListener(this, () => {

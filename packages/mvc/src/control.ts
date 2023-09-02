@@ -26,7 +26,10 @@ const LIFECYCLE = {
 }
 
 function addListener(to: Model, fn: Control.OnUpdate){
-  const subs = LISTENER.get(to = to.is)!;
+  let subs = LISTENER.get(to = to.is)!;
+
+  if(!subs)
+    LISTENER.set(to, subs = new Map());
 
   if(READY.has(to as any))
     fn(true, to);
@@ -118,6 +121,5 @@ export {
   observe,
   queue,
   LIFECYCLE,
-  LISTENER,
   watch
 }
