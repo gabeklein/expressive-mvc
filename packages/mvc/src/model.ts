@@ -84,15 +84,14 @@ interface Model {
 
 class Model {
   constructor(id?: string | number){
-    Object.defineProperty(this, "is", { value: this });
-
-    LISTENER.set(this, new Map());
-
-    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
     const state = {} as Record<string, unknown>;
 
+    Object.defineProperty(this, "is", { value: this });
+
+    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
+    LISTENER.set(this, new Map());
     STATE.set(this, state);
-    
+
     addListener(this, () => {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
