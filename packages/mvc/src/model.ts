@@ -1,4 +1,4 @@
-import { addListener, control, event, observe, queue, watch } from './control';
+import { addListener, event, observe, queue, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -245,7 +245,7 @@ class Model {
   /** Mark this instance for garbage collection. */
   null(){
     Object.freeze(STATE.get(this.is));
-    control(this, false);
+    event(this, null);
   }
 
   /** Iterate over managed properties in this instance of Model. */
@@ -264,7 +264,7 @@ class Model {
     this: T, ...args: ConstructorParameters<T>
   ){
     const instance = new this(...args);
-    control(instance, true);
+    event(instance, true);
     return instance as InstanceType<T>;
   }
 

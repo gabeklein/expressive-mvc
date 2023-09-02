@@ -29,7 +29,9 @@ function addListener(to: Model, fn: Control.OnUpdate){
   let subs = LISTENER.get(to = to.is)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map());
+    LISTENER.set(to, subs =
+      new Map().set(() => READY.add(to) && null, undefined)
+    );
 
   if(READY.has(to as any))
     fn(true, to);
@@ -61,20 +63,6 @@ function queue(event: Callback){
   DISPATCH.add(event);
 }
 
-function control<T extends Model>(subject: T, ready?: boolean){
-  const subs = LISTENER.get(subject = subject.is)!;
-
-  if(ready && !READY.has(subject)){
-    READY.add(subject);
-    event(subject, true);
-  }
-
-  if(ready === false){
-    event(subject, null);
-    subs.clear();
-  }
-}
-
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
   const listeners = LISTENER.get(value);
 
@@ -88,14 +76,14 @@ function watch<T extends {}>(value: T, argument: Control.OnUpdate){
 
 function event(source: {}, key: string | boolean | null){
   LISTENER.get(source)!.forEach((select, callback, subs) => {
-    if(!select || typeof key == "string" && select.has(key)){
-      const after = callback(key, source);
-  
-      if(after === null)
-        subs.delete(callback);
-      else if(after)
+    let after;
+
+    if(!select || typeof key == "string" && select.has(key))
+      if(after = callback(key, source))
         queue(after);
-    }
+
+    if(after === null || key === null)
+      subs.delete(callback);
   });
 }
 
@@ -115,7 +103,6 @@ function observe(from: any, key: string, value: any){
 
 export {
   addListener,
-  control,
   Control,
   event,
   observe,

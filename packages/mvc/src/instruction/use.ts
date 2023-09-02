@@ -1,4 +1,4 @@
-import { control } from '../control';
+import { event } from '../control';
 import { add, Model, PARENT } from '../model';
 
 namespace use {
@@ -40,7 +40,7 @@ function use <T = any> (
 
       if(next instanceof Model){
         PARENT.set(next, subject);
-        control(next, true);
+        event(next, true);
       }
       else if(next){
         const proxy = Object.create(next); 
