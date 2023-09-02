@@ -76,6 +76,9 @@ interface Model {
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is: this;
+
+  /** Iterate over managed properties in this instance of Model. */
+  [Symbol.iterator](): Iterator<[string, unknown]>;
 }
 
 class Model {
@@ -230,6 +233,10 @@ class Model {
   /** Mark this instance for garbage collection. */
   null(){
     control(this, false);
+  }
+
+  [Symbol.iterator](){
+    return Object.entries(control(this).state)[Symbol.iterator]();
   }
 
   /**

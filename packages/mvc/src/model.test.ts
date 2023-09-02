@@ -124,6 +124,24 @@ describe("model", () => {
     expect(mockFunction2).toBeCalled();
     expect(mockFunction).toBeCalledTimes(1);
   });
+
+  it('will iterate over properties', () => {
+    class Test extends Model {
+      foo = "foo";
+      bar = "bar";
+      baz = "baz";
+    }
+
+    const test = Test.new();
+    const mock = jest.fn<void, [string, unknown]>();
+
+    for(const [key, value] of test)
+      mock(key, value);
+
+    expect(mock).toBeCalledWith("foo", "foo")
+    expect(mock).toBeCalledWith("bar", "bar")
+    expect(mock).toBeCalledWith("baz", "baz")
+  })
 })
 
 describe("subscriber", () => {
