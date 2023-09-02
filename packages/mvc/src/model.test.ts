@@ -127,9 +127,9 @@ describe("model", () => {
 
   it('will iterate over properties', () => {
     class Test extends Model {
-      foo = "foo";
-      bar = "bar";
-      baz = "baz";
+      foo = 1;
+      bar = 2;
+      baz = 3;
     }
 
     const test = Test.new();
@@ -138,9 +138,9 @@ describe("model", () => {
     for(const [key, value] of test)
       mock(key, value);
 
-    expect(mock).toBeCalledWith("foo", "foo")
-    expect(mock).toBeCalledWith("bar", "bar")
-    expect(mock).toBeCalledWith("baz", "baz")
+    expect(mock).toBeCalledWith("foo", 1)
+    expect(mock).toBeCalledWith("bar", 2)
+    expect(mock).toBeCalledWith("baz", 3)
   })
 })
 
