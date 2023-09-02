@@ -1,12 +1,17 @@
 import { LISTENER, addListener, control, event, observe, queue, watch } from './control';
 
+type Predicate = (key: string) => boolean | void;
+type InstructionRunner = (
+  on: Model,
+  key: string,
+  state: Record<string, unknown>
+) => PropertyDescriptor | void;
+
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
-const INSTRUCT = new Map<symbol, Model.Instruction>();
+const INSTRUCT = new Map<symbol, InstructionRunner>();
 const FRAME = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
-
-type Predicate = (key: string) => boolean | void;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
@@ -95,18 +100,25 @@ class Model {
     addListener(this, () => {
       for(const key in this){
         const { value } = Object.getOwnPropertyDescriptor(this, key)!;
-
-        if(apply(this, key, value))
-          continue;
-
-        state[key] = value;
-        Object.defineProperty(this, key, {
+        const instruction = INSTRUCT.get(value);
+        let desc: PropertyDescriptor | void = {
           enumerable: true,
-          set: update.bind(this, this, key),
+          set: update.bind(null, this, key),
           get(){
             return observe(this, key, state[key]);
           }
-        });
+        }
+
+        if(instruction){
+          INSTRUCT.delete(value);
+          delete (this as any)[key];
+          desc = instruction(this, key, state);
+        }
+        else
+          state[key] = value;
+
+        if(desc)
+          Object.defineProperty(this, key, desc);
       }
 
       return null;
@@ -284,62 +296,52 @@ Object.defineProperty(Model, "toString", {
 
 function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M>){
   const placeholder = Symbol("instruction");
-  INSTRUCT.set(placeholder, instruction);
-  return placeholder as unknown as T;
-}
 
-function apply(subject: Model, key: string, value: any){
-  const instruction = INSTRUCT.get(value);
+  INSTRUCT.set(placeholder, (subject, key, state) => {
+    const output = (instruction as any).call(subject, key, subject, state);
+  
+    if(!output)
+      return;
 
-  if(!instruction)
-    return false;
-
-  INSTRUCT.delete(value);
-  delete (subject as any)[key];
-
-  const state = STATE.get(subject)!;
-  const output = instruction.call(subject, key, subject, state);
-
-  if(output){
     const desc = typeof output == "object" ? output : { get: output };
     const { enumerable = true } = desc;
-  
+
     if("value" in desc)
       state[key] = desc.value;
-  
-    Object.defineProperty(subject, key, {
+
+    return {
       enumerable,
       set(next){
         let { set } = desc;
-  
+
         if(set === false)
           throw new Error(`${subject}.${key} is read-only.`);
-  
+
         if(typeof set == "function"){
-          const result = set.call(subject, next, state[key]);
-    
+          const result = set.call(subject, next, state[key] as T);
+
           if(result === false)
             return;
-            
+
           if(typeof result == "function")
             next = result();
-  
+
           set = undefined;
         }
-  
+
         update(subject, key, next, set);
       },
-      get(){
+      get(this: M){
         const value = typeof desc.get == "function"
           ? desc.get(this)
           : fetch(subject, key, desc.get)
-  
+
         return observe(this, key, value);
       }
-    });
-  }
+    }
+  });
 
-  return true;
+  return placeholder as unknown as T;
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
