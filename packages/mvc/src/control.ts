@@ -28,7 +28,6 @@ const LIFECYCLE = {
 
 class Control<T extends Model = any> {
   public state: { [property: string]: unknown } = {};
-  public frame: { [property: string]: unknown } = Object.freeze({});
 
   constructor(public subject: T){
     REGISTER.set(subject, this);
@@ -136,7 +135,6 @@ export {
   event,
   observe,
   queue,
-  REGISTER,
   LIFECYCLE,
   watch
 }

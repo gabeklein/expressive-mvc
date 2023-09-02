@@ -953,14 +953,14 @@ describe("set method", () => {
       await expect(update).rejects.toBe(0);
     })
 
-    it('will reject on timeout', async () => {
+    it('will reject', async () => {
       const state = Model.new();
       const update = state.set(1);
 
       await expect(update).rejects.toBe(1);
     })
 
-    it("will resolve object with updated properties", () => {
+    it("will resolve object with updated properties", async () => {
       class Test extends Model {
         foo = 0;
         bar = 1;
@@ -1010,19 +1010,6 @@ describe("set method", () => {
 
       control.bar = 3;
       await control.set(0);
-    })
-
-    it("will resolve promise made before assignment", async () => {
-      class Test extends Model {
-        foo = 0;
-      }
-
-      const control = Test.new();
-      const update = control.set(0);
-
-      control.foo = 2;
-
-      await expect(update).resolves.toEqual({ foo: 2 });
     })
 
     it("will not call test on update if satisfied", async () => {

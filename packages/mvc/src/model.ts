@@ -1,8 +1,9 @@
-import { addListener, Control, control, event, observe, queue, REGISTER, watch } from './control';
+import { addListener, Control, control, event, observe, queue, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
+const FRAME = new WeakMap<Model, Record<string, unknown>>();
 
 type Predicate = (key: string) => boolean | void;
 
@@ -190,8 +191,6 @@ class Model {
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
-    const self = control(this);
-
     if(typeof arg1 == "function")
       return addListener(this, key => {
         if(typeof key == "string")
@@ -199,15 +198,16 @@ class Model {
       })
 
     if(typeof arg1 == "string")
-      return 1 in arguments ? update(this, arg1, arg2, arg3) : update(this, arg1);
+      return 1 in arguments
+        ? update(this.is, arg1, arg2, arg3)
+        : update(this.is, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && Object.isFrozen(self.frame)){
+      if(typeof arg1 != "number" && !FRAME.has(this.is)){
         resolve(false);
         return;
       }
   
-      const callback = () => resolve(self.frame);
       const remove = addListener(this, (key) => {
         if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
@@ -217,7 +217,7 @@ class Model {
   
         remove();
   
-        return callback;
+        return resolve.bind(null, FRAME.get(this.is));
       });
   
       const timeout = typeof arg1 == "number" && setTimeout(() => {
@@ -367,8 +367,8 @@ function update(
   value?: unknown,
   silent?: boolean){
 
-  const self = REGISTER.get(subject)!;
-  let { frame, state } = self;
+  const { state } = control(subject);
+  let frame = FRAME.get(subject);
 
   if(typeof key == "string"){
     if(2 in arguments){
@@ -383,12 +383,12 @@ function update(
         return;
     }
 
-    if(Object.isFrozen(frame)){
-      frame = self.frame = {};
+    if(!frame){
+      FRAME.set(subject, frame = {});
 
       queue(() => {
         event(subject, false);
-        Object.freeze(frame);
+        FRAME.delete(subject)
       })
     }
 
