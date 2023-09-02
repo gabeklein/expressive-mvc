@@ -1212,4 +1212,18 @@ describe("string coercion", () => {
     expect(a).toBe("Model-ID");
   })
 
+  it("will work within subscriber", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+
+    const test = Test.new("ID");
+    const mock = jest.fn();
+
+    test.get(state => {
+      mock(String(state));
+    })
+
+    expect(mock).toBeCalledWith("Test-ID");
+  })
 })

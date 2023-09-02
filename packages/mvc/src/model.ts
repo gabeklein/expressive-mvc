@@ -273,7 +273,7 @@ class Model {
 
 Object.defineProperty(Model.prototype, "toString", {
   value(){
-    return ID.get(this);
+    return ID.get(this.is);
   }
 });
 
