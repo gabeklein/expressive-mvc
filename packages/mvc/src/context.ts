@@ -1,4 +1,3 @@
-import { control } from './control';
 import { Model, PARENT, uid } from './model';
 
 declare namespace Context {
@@ -64,12 +63,11 @@ class Context {
     }
 
     for(const [ model ] of init)
-      Object.values(control(model).state).forEach(value => {
+      for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
         }
-      });
 
     return init;
   }

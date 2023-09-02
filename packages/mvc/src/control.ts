@@ -2,7 +2,6 @@ import { Model } from './model';
 
 const READY = new WeakSet<Model>();
 const DISPATCH = new Set<Callback>();
-const REGISTER = new WeakMap<{}, Control>();
 const OBSERVER = new WeakMap<{}, Control.OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<Control.OnUpdate, Set<string> | undefined>>;
 
@@ -26,19 +25,8 @@ const LIFECYCLE = {
   didUpdate: new Set<Callback>()
 }
 
-class Control<T extends Model = any> {
-  public state: { [property: string]: unknown } = {};
-
-  constructor(public subject: T){
-    REGISTER.set(subject, this);
-    LISTENER.set(subject, new Map());
-  }
-}
-
 function addListener(to: Model, fn: Control.OnUpdate){
-  to = to.is;
-
-  const subs = LISTENER.get(to)!;
+  const subs = LISTENER.get(to = to.is)!;
 
   if(READY.has(to as any))
     fn(true, to);
@@ -71,10 +59,7 @@ function queue(event: Callback){
 }
 
 function control<T extends Model>(subject: T, ready?: boolean){
-  subject = subject.is;
-
-  const self = REGISTER.get(subject) as Control<T>;
-  const subs = LISTENER.get(subject)!;
+  const subs = LISTENER.get(subject = subject.is)!;
 
   if(ready && !READY.has(subject)){
     READY.add(subject);
@@ -82,12 +67,9 @@ function control<T extends Model>(subject: T, ready?: boolean){
   }
 
   if(ready === false){
-    Object.freeze(self.state);
     event(subject, null);
     subs.clear();
   }
-
-  return self;
 }
 
 function watch<T extends {}>(value: T, argument: Control.OnUpdate){
@@ -136,5 +118,6 @@ export {
   observe,
   queue,
   LIFECYCLE,
+  LISTENER,
   watch
 }

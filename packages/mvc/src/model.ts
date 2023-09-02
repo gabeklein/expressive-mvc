@@ -1,9 +1,10 @@
-import { addListener, Control, control, event, observe, queue, watch } from './control';
+import { LISTENER, addListener, control, event, observe, queue, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, Model.Instruction>();
 const FRAME = new WeakMap<Model, Record<string, unknown>>();
+const STATE = new WeakMap<Model, Record<string, unknown>>();
 
 type Predicate = (key: string) => boolean | void;
 
@@ -85,8 +86,12 @@ class Model {
   constructor(id?: string | number){
     Object.defineProperty(this, "is", { value: this });
 
+    LISTENER.set(this, new Map());
+
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-    const { state } = new Control(this);
+    const state = {} as Record<string, unknown>;
+
+    STATE.set(this, state);
     
     addListener(this, () => {
       for(const key in this){
@@ -133,7 +138,7 @@ class Model {
         if(cache.has(value))
           return cache.get(value);
 
-        const { state } = control(value);
+        const state = STATE.get(value);
         cache.set(value, value = {});
 
         for(const key in state)
@@ -232,11 +237,12 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
+    Object.freeze(STATE.get(this.is));
     control(this, false);
   }
 
   [Symbol.iterator](){
-    return Object.entries(control(this).state)[Symbol.iterator]();
+    return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
   }
 
   /**
@@ -292,7 +298,7 @@ function apply(subject: Model, key: string, value: any){
   INSTRUCT.delete(value);
   delete (subject as any)[key];
 
-  const { state } = control(subject);
+  const state = STATE.get(subject)!;
   const output = instruction.call(subject, key, subject, state);
 
   if(output){
@@ -338,7 +344,7 @@ function apply(subject: Model, key: string, value: any){
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
-  const { state } = control(subject);
+  const state = STATE.get(subject.is)!;
   
   if(property in state || required === false){
     const value = state[property];
@@ -374,7 +380,7 @@ function update(
   value?: unknown,
   silent?: boolean){
 
-  const { state } = control(subject);
+  const state = STATE.get(subject)!;
   let frame = FRAME.get(subject);
 
   if(typeof key == "string"){
