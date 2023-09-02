@@ -10,7 +10,7 @@ type InstructionRunner = (
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, InstructionRunner>();
-const FRAME = new WeakMap<Model, Record<string, unknown>>();
+const PENDING = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 
 declare namespace Model {
@@ -219,7 +219,7 @@ class Model {
         : update(this.is, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && !FRAME.has(this.is)){
+      if(typeof arg1 != "number" && !PENDING.has(this.is)){
         resolve(false);
         return;
       }
@@ -233,7 +233,7 @@ class Model {
   
         remove();
   
-        return resolve.bind(null, FRAME.get(this.is));
+        return resolve.bind(null, PENDING.get(this.is));
       });
   
       const timeout = typeof arg1 == "number" && setTimeout(() => {
@@ -380,7 +380,7 @@ function update(
   silent?: boolean){
 
   const state = STATE.get(subject)!;
-  let frame = FRAME.get(subject);
+  let pending = PENDING.get(subject);
 
   if(typeof key == "string"){
     if(2 in arguments){
@@ -395,20 +395,20 @@ function update(
         return;
     }
 
-    if(!frame){
-      FRAME.set(subject, frame = {});
+    if(!pending){
+      PENDING.set(subject, pending = {});
 
       queue(() => {
         event(subject, false);
-        FRAME.delete(subject)
+        PENDING.delete(subject)
       })
     }
 
-    const pending = key in frame;
+    const skip = key in pending;
 
-    frame[key] = state[key];
+    pending[key] = state[key];
 
-    if(pending)
+    if(skip)
       return;
   }
 
