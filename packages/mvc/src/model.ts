@@ -146,11 +146,12 @@ class Model {
         if(cache.has(value))
           return cache.get(value);
 
-        const state = STATE.get(value);
+        const model = value;
+
         cache.set(value, value = {});
 
-        for(const key in state)
-          value[key] = get(state[key]);
+        for(const [key, val] of model)
+          value[key] = get(val);
       }
 
       return value;
@@ -203,7 +204,6 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  // set<K extends Model.Any<this>>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
