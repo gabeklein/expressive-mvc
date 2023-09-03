@@ -69,8 +69,30 @@ function watch(from: any, key: string, value: any){
   return subscribe(value, observer);
 }
 
+// const PENDING = new WeakMap<{}, Set<any>>();
+
 function event(source: {}, key: string | boolean | null){
-  LISTENER.get(source)!.forEach((select, callback, subs) => {
+  // let pending = PENDING.get(source);
+
+  // if(!pending){
+  //   PENDING.set(source, pending = new Set());
+
+  //   queue(() => {
+  //     event(source, false);
+  //     PENDING.delete(source);
+  //   })
+  // }
+
+  // const skip = pending.has(key);
+
+  // pending.add(key)
+
+  // if(skip)
+  //   return;
+
+  const subs = LISTENER.get(source)!;
+
+  for(const [callback, select] of subs){
     let after;
 
     if(!select || select.has(key as string))
@@ -79,7 +101,7 @@ function event(source: {}, key: string | boolean | null){
 
     if(after === null || key === null)
       subs.delete(callback);
-  });
+  };
 }
 
 function queue(event: Callback){

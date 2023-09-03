@@ -10,7 +10,7 @@ type InstructionRunner = (
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, InstructionRunner>();
-const PENDING = new WeakMap<Model, Record<string, unknown>>();
+const PENDING = new WeakMap<Model, Set<string>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 
 declare namespace Model {
@@ -122,6 +122,7 @@ class Model {
           Object.defineProperty(this, key, desc);
       }
 
+      PENDING.set(this, new Set());
       addListener(this, onNull);
       return null;
     });
@@ -383,7 +384,6 @@ function update(
   silent?: boolean){
 
   const state = STATE.get(subject)!;
-  let pending = PENDING.get(subject);
 
   if(typeof key == "string"){
     if(2 in arguments){
@@ -398,18 +398,20 @@ function update(
         return;
     }
 
+    let pending = PENDING.get(subject);
+
     if(!pending){
-      PENDING.set(subject, pending = {});
+      PENDING.set(subject, pending = new Set());
 
       queue(() => {
         event(subject, false);
-        PENDING.delete(subject)
+        PENDING.delete(subject);
       })
     }
 
-    const skip = key in pending;
+    const skip = pending.has(key);
 
-    pending[key] = state[key];
+    pending.add(key);
 
     if(skip)
       return;
