@@ -221,9 +221,7 @@ it("will run effect after properties", () => {
 
   class Test extends Model {
     property = add((_key, _model, state) => {
-      this.get(() => {
-        mock(state);
-      })
+      this.get(() => mock(state))
     })
 
     foo = 1;
@@ -269,7 +267,7 @@ describe("suspense", () => {
       didThrow = err;
     }
   
-    instance.null();
+    instance.set(null);
   
     await expect(didThrow).rejects.toThrowError(`Test-ID is destroyed.`);
   })

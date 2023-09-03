@@ -53,7 +53,7 @@ it("will not update on death event", async () => {
     return Test.get().foo;
   });
 
-  test.null();
+  test.set(null);
 
   expect(hook).toBeCalledTimes(1);
 })

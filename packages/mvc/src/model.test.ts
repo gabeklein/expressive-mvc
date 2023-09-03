@@ -488,7 +488,7 @@ describe("get method", () => {
       const test = Test.new();
 
       test.get(() => willDestroy);
-      test.null();
+      test.set(null);
 
       expect(willDestroy).toBeCalled();
     })
@@ -1163,7 +1163,7 @@ describe("set method", () => {
       test.set(callback);
       test.foo++;
 
-      test.null();
+      test.set(null);
 
       expect(() => test.foo++).toThrowError();
       expect(callback).toBeCalledTimes(1);

@@ -127,7 +127,7 @@ class Context {
     }
 
     for(const model of items)
-      model.null();
+      model.set(null);
 
     this.layer.clear();
   }

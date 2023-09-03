@@ -48,7 +48,7 @@ function useLocal <T extends Model> (
         enabled = true;
         return () => {
           detach();
-          instance.null();
+          instance.set(null);
         }
       }, []);
 

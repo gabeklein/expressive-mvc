@@ -23,15 +23,14 @@ describe("component", () => {
   })
   
   it("will destroy instance of given model", async () => {
-    const willDestroy = jest.fn();
-  
     class Test extends Model {
-      null(){
-        willDestroy();
-        super.null();
+      constructor(){
+        super();
+        this.get(() => willDestroy);
       }
     };
   
+    const willDestroy = jest.fn();
     const element = create(
       <Provider for={Test} />
     );

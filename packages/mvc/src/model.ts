@@ -200,7 +200,7 @@ class Model {
    * This is useful where a property value internally has changed, but the object remains the same.
    * For example: an array which has pushed a new value, or change to nested properties.
    */
-  set(key: string): void;
+  set(key: string | null): void;
 
   /**
    * Update a property programatically within state. 
@@ -211,14 +211,14 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event | number | string, arg2?: Predicate | unknown, arg3?: boolean){
+  set(arg1?: Model.Event | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     if(typeof arg1 == "function")
       return addListener(this, key => {
         if(typeof key == "string")
           return arg1(key)
       })
 
-    if(typeof arg1 == "string")
+    if(typeof arg1 == "string" || arg1 === null)
       return 1 in arguments
         ? update(this.is, arg1, arg2, arg3)
         : update(this.is, arg1);
@@ -246,11 +246,6 @@ class Model {
         reject(arg1);
       }, arg1);
     });
-  }
-
-  /** Mark this instance for garbage collection. */
-  null(){
-    event(this, null);
   }
 
   /** Iterate over managed properties in this instance of Model. */

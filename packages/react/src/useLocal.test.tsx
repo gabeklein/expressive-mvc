@@ -57,9 +57,9 @@ it("will destroy instance of given class", async () => {
   const didDestroy = mockPromise();
 
   class Test extends Model {
-    null(){
-      super.null();
-      didDestroy.resolve();
+    constructor(){
+      super();
+      this.get(() => didDestroy.resolve);
     }
   }
 
