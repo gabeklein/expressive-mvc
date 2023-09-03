@@ -26,7 +26,7 @@ const LIFECYCLE = {
 }
 
 function addListener(to: Model, fn: Control.OnUpdate){
-  let subs = LISTENER.get(to = to.is)!;
+  let subs = LISTENER.get(to)!;
 
   if(!subs)
     LISTENER.set(to, subs =

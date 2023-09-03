@@ -138,11 +138,13 @@ class Model {
   get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
   get(arg1?: Model.Effect<this>, arg2?: boolean){
+    const self = this.is;
+
     if(typeof arg1 == "string")
-      return fetch(this, arg1, arg2);
+      return fetch(self, arg1, arg2);
 
     if(arg1)
-      return effect(this, arg1);
+      return effect(self, arg1);
 
     const cache = new WeakMap<Model, any>();
 
@@ -162,7 +164,7 @@ class Model {
       return value;
     }
 
-    return get(this);
+    return get(self);
   }
 
   /**
@@ -212,19 +214,21 @@ class Model {
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
+    const self = this.is;
+
     if(typeof arg1 == "function")
-      return addListener(this, key => {
+      return addListener(self, key => {
         if(typeof key == "string")
           return arg1(key)
       })
 
     if(typeof arg1 == "string" || arg1 === null)
       return 1 in arguments
-        ? update(this.is, arg1, arg2, arg3)
-        : update(this.is, arg1);
+        ? update(self, arg1, arg2, arg3)
+        : update(self, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && !PENDING.has(this.is)){
+      if(typeof arg1 != "number" && !PENDING.has(self)){
         resolve(false);
         return;
       }
@@ -238,7 +242,7 @@ class Model {
   
         remove();
   
-        return resolve.bind(null, PENDING.get(this.is));
+        return resolve.bind(null, PENDING.get(self));
       });
   
       const timeout = typeof arg1 == "number" && setTimeout(() => {
@@ -342,7 +346,7 @@ function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M
 }
 
 function fetch(subject: Model, property: string, required?: boolean){
-  const state = STATE.get(subject.is)!;
+  const state = STATE.get(subject)!;
   
   if(property in state || required === false){
     const value = state[property];
