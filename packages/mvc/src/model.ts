@@ -92,6 +92,11 @@ class Model {
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
     STATE.set(this, state);
+    
+    function onNull(key: unknown){
+      if(key === null)
+        Object.freeze(state);
+    }
 
     addListener(this, () => {
       for(const key in this){
@@ -117,6 +122,7 @@ class Model {
           Object.defineProperty(this, key, desc);
       }
 
+      addListener(this, onNull);
       return null;
     });
   }
@@ -244,7 +250,6 @@ class Model {
 
   /** Mark this instance for garbage collection. */
   null(){
-    Object.freeze(STATE.get(this.is));
     event(this, null);
   }
 
