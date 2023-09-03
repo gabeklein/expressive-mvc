@@ -59,11 +59,11 @@ it("will emit method key before/after activity", async () => {
   expect(output).toBe("foobar");
 })
 
-it("will throw immediately if already in-progress", () => {
+it("will throw immediately if already in-progress", async () => {
   const { test } = Test.new();
 
   test();
-  expect(() => test()).rejects.toThrowError(`Invoked action test but one is already active.`);
+  await expect(() => test()).rejects.toThrowError(`Invoked action test but one is already active.`);
 })
 
 it("will throw and reset if action fails", async () => {

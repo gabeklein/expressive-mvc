@@ -990,13 +990,13 @@ describe("set method", () => {
       test.foo = 1;
       test.bar = 2;
 
-      expect(update).resolves.toEqual({
+      await expect(update).resolves.toEqual({
         foo: 1,
         bar: 2
       })
     })
 
-    it("will include overridden updates", () => {
+    it("will include overridden updates", async () => {
       class Test extends Model {
         foo = 0;
         bar = 1;
@@ -1009,7 +1009,7 @@ describe("set method", () => {
       test.bar = 2;
       test.bar = 3;
 
-      expect(update).resolves.toEqual({
+      await expect(update).resolves.toEqual({
         foo: 1,
         bar: 3
       })
