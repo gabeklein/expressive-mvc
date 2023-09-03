@@ -269,7 +269,7 @@ describe("suspense", () => {
       didThrow = err;
     }
   
-    instance.null();
+    instance.set(null);
   
     await expect(didThrow).rejects.toThrowError(`Test-ID is destroyed.`);
   })
