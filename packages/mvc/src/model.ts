@@ -1,4 +1,4 @@
-import { addListener, event, observe, queue, watch } from './control';
+import { addListener, event, watch, queue, subscribe } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -106,7 +106,7 @@ class Model {
           enumerable: true,
           set: update.bind(null, this, key),
           get(){
-            return observe(this, key, state[key]);
+            return watch(this, key, state[key]);
           }
         }
 
@@ -192,9 +192,9 @@ class Model {
    *   Returning the same function for the same (or multiple for that matter)
    *   will ensure it is only called once.
    *
-   * @returns a function to remove listener
+   * @returns a function to remove listener. Will return true if listener did exist.
   */
-  set(callback: Model.Event): Callback;
+  set(callback: Model.Event): () => boolean;
 
   /**
    * Push an update without changing the value of associated property.
@@ -295,11 +295,11 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M>){
+function add<T = any, M extends Model = any>(instruction: Model.Instruction){
   const placeholder = Symbol("instruction");
 
   INSTRUCT.set(placeholder, (subject, key, state) => {
-    const output = (instruction as any).call(subject, key, subject, state);
+    const output = instruction.call(subject, key, subject, state);
   
     if(!output)
       return;
@@ -319,7 +319,7 @@ function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M
           throw new Error(`${subject}.${key} is read-only.`);
 
         if(typeof set == "function"){
-          const result = set.call(subject, next, state[key] as T);
+          const result = set.call(subject, next, state[key]);
 
           if(result === false)
             return;
@@ -327,17 +327,17 @@ function add<T = any, M extends Model = any>(instruction: Model.Instruction<T, M
           if(typeof result == "function")
             next = result();
 
-          set = undefined;
+          set = false;
         }
 
-        update(subject, key, next, set);
+        update(subject, key, next, !!set);
       },
       get(this: M){
-        const value = typeof desc.get == "function"
-          ? desc.get(this)
-          : fetch(subject, key, desc.get)
-
-        return observe(this, key, value);
+        return watch(this, key, 
+          typeof desc.get == "function"
+            ? desc.get(this)
+            : fetch(subject, key, desc.get)
+        );
       }
     }
   });
@@ -444,7 +444,7 @@ function effect<T extends Model>(
     }
   }
 
-  target = watch(target, () => {
+  target = subscribe(target, () => {
     if(refresh && unSet){
       unSet();
       unSet = undefined;
