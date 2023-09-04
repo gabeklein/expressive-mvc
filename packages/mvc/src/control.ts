@@ -1,5 +1,3 @@
-import { Model } from './model';
-
 /**
  * Update callback function.
  * 
@@ -8,29 +6,26 @@ import { Model } from './model';
  *   - `true` - the initial event, instance is now ready.
  *   - `false` - non-initial update has completed.
  *   - `null` - model is marked for garbage collection.
- * 
  * @param source - Instance of Model for which update has occured.
  */
 type OnUpdate<T = any> = (
-  this: T,
-  key: string | null | boolean,
-  source: T
+  this: T, key: unknown | null | boolean, source: T
 ) => (() => void) | null | void;
 
 const DISPATCH = new Set<Callback>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<string> | null>>;
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
 
 const LIFECYCLE = {
   update: new Set<Callback>(),
   didUpdate: new Set<Callback>()
 }
 
-function onReady(this: Model){
+function onReady(this: {}){
   return null;
 }
 
-function addListener(to: Model, fn: OnUpdate){
+function addListener(to: {}, fn: OnUpdate){
   let subs = LISTENER.get(to)!;
 
   if(!subs)
@@ -55,21 +50,24 @@ function subscribe<T extends {}>(value: T, argument: OnUpdate){
   return value;
 }
 
-function watch(from: any, key: string, value: any){
+function watch(from: any, key?: unknown, value?: any){
   const listeners = LISTENER.get(from)!;
   const observer = OBSERVER.get(from);
 
-  if(!observer)
-    return value;
-    
-  listeners.set(observer,
-    new Set(listeners.get(observer)).add(key)
-  );
+  if(observer){
+    listeners.set(observer, 1 in arguments
+      ? new Set(listeners.get(observer)).add(key)
+      : null
+    );
+  
+    if(value)
+      return subscribe(value, observer);
+  }
 
-  return subscribe(value, observer);
+  return value;
 }
 
-function event(source: {}, key: string | boolean | null){
+function event(source: {}, key: unknown | boolean | null){
   LISTENER.get(source)!.forEach((select, callback, subs) => {
     let after;
 
