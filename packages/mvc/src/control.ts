@@ -101,11 +101,61 @@ function queue(event: Callback){
   DISPATCH.add(event);
 }
 
+function effect<T extends {}>(
+  target: T,
+  callback: (this: T, argument: T) => Callback | Promise<void> | null | void){
+
+  let refresh: (() => void) | null | undefined;
+  let unSet: Callback | false | undefined;
+
+  function invoke(){
+    try {
+      const out = callback.call(target, target);
+
+      unSet = typeof out == "function" && out;
+      refresh = out === null ? out : invoke;
+    }
+    catch(err){
+      if(err instanceof Promise){
+        refresh = undefined;
+        err.then(invoke).catch(console.error);
+      }
+      else if(refresh)
+        console.error(err);
+      else
+        throw err;
+    }
+  }
+
+  target = subscribe(target, () => {
+    if(refresh && unSet){
+      unSet();
+      unSet = undefined;
+    }
+    return refresh;
+  });
+
+  addListener(target, key => {
+    if(key === true)
+      invoke();
+
+    else if(!refresh)
+      return refresh;
+
+    if(key === null && unSet)
+      unSet();
+  });
+
+  return () => {
+    refresh = null;
+  };
+}
+
 export {
   addListener,
+  effect,
   event,
   watch,
   queue,
-  LIFECYCLE,
-  subscribe
+  LIFECYCLE
 }
