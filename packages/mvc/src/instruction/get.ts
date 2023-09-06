@@ -1,5 +1,4 @@
 import { Context } from '../context';
-import { LIFECYCLE } from '../control';
 import { add, fetch, Model, PARENT } from '../model';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -98,19 +97,16 @@ function get<R, T extends Model>(
     else if(typeof arg0 == "function")
       arg1 = arg0.call(from, key, from);
 
-    if(typeof arg1 != "function"){
-      source((got: any) => subject.set(key, got));
-      return { get: arg1 };
-    }
+    if(typeof arg1 == "function")
+      return compute(subject, key, source, arg1);
 
-    return compute(subject, key, source, arg1);
+    source((got: any) => subject.set(key, got));
+
+    return { get: arg1 };
   })
 }
 
-const ORDER = new WeakMap<Callback, number>();
-const PENDING = new Set<Callback>();
-
-let OFFSET = 0;
+const STALE = new WeakSet<Callback>();
 
 function compute<T>(
   subject: Model,
@@ -118,9 +114,9 @@ function compute<T>(
   source: get.Source,
   setter: get.Function<T, any>){
 
-  let proxy: any;
-  let isAsync: boolean;
   let reset: (() => void) | undefined;
+  let isAsync: boolean;
+  let proxy: any;
 
   function connect(model: Model){
     if(reset)
@@ -129,13 +125,13 @@ function compute<T>(
     reset = model.get(current => {
       proxy = current;
 
-      if(!reset){
+      if(!reset)
         compute(true);
-        ORDER.set(compute, OFFSET++);
-      }
+      else if(STALE.delete(compute))
+        compute();
 
       return () => {
-        PENDING.add(compute);
+        STALE.add(compute);
         subject.set(key);
       };
     })
@@ -165,24 +161,11 @@ function compute<T>(
       isAsync = true;
     }
 
-    if(PENDING.delete(compute))
+    if(STALE.delete(compute))
       compute();
 
     return fetch(subject, key, !proxy) as T;
   }
 }
-
-LIFECYCLE.update.add(() => {
-  while(PENDING.size){
-    let compute!: Callback;
-
-    for(const item of PENDING)
-      if(!compute || ORDER.get(item)! < ORDER.get(compute)!)
-        compute = item;
-
-    PENDING.delete(compute);
-    compute();
-  }
-});
 
 export { get };

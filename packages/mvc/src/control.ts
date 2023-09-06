@@ -16,11 +16,6 @@ const DISPATCH = new Set<Callback>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
 
-const LIFECYCLE = {
-  update: new Set<Callback>(),
-  didUpdate: new Set<Callback>()
-}
-
 function onReady(this: {}){
   return null;
 }
@@ -81,11 +76,8 @@ function event(source: {}, key: unknown | boolean | null){
 }
 
 function queue(event: Callback){
-  const { update, didUpdate } = LIFECYCLE;
-
   if(!DISPATCH.size)
     setTimeout(() => {
-      update.forEach(x => x());
       DISPATCH.forEach(event => {
         try {
           event();
@@ -95,7 +87,6 @@ function queue(event: Callback){
         }
       });
       DISPATCH.clear();
-      didUpdate.forEach(x => x());
     }, 0);
 
   DISPATCH.add(event);
@@ -156,6 +147,5 @@ export {
   effect,
   event,
   watch,
-  queue,
-  LIFECYCLE
+  queue
 }

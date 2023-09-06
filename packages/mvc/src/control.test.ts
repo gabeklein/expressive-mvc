@@ -1,4 +1,3 @@
-import { LIFECYCLE } from './control';
 import { set } from './instruction/set';
 import { add, Model } from './model';
 import { mockError } from './mocks';
@@ -191,29 +190,6 @@ describe("instruction", () => {
 
     expect(didGetValue).toBeCalledWith(state);
   });
-})
-
-it("will call dispatch callbacks", async () => {
-  const didUpdate = jest.fn();
-  const willUpdate = jest.fn();
-
-  LIFECYCLE.update.add(willUpdate);
-  LIFECYCLE.didUpdate.add(didUpdate);
-
-  class Test extends Model {
-    value = 1;
-  }
-
-  const test = Test.new();
-
-  test.value += 1;
-  await expect(test).toUpdate();
-
-  expect(willUpdate).toBeCalledTimes(1);
-  expect(didUpdate).toBeCalledTimes(1);
-
-  LIFECYCLE.update.delete(willUpdate);
-  LIFECYCLE.didUpdate.delete(didUpdate);
 })
 
 it("will run effect after properties", () => {
