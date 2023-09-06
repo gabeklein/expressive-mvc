@@ -15,7 +15,7 @@ type OnUpdate<T = any> = (
 const DISPATCH = new Set<Callback>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
-const IGNORE = new WeakSet<OnUpdate>();
+const EXPIRED = new WeakSet<OnUpdate>();
 
 function onReady(this: {}){
   return null;
@@ -97,10 +97,10 @@ function effect<T extends {}>(
   function invoke(){
     const local = Object.create(target);
     const update = () => {
-      if(IGNORE.has(update))
+      if(EXPIRED.has(update))
         return null;
 
-      IGNORE.add(update);
+      EXPIRED.add(update);
 
       if(refresh && unSet){
         unSet();
