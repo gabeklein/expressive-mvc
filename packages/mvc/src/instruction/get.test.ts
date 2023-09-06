@@ -223,12 +223,6 @@ describe("compute mode", () => {
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
       child = use(Child);
-      seconds = 0;
-    
-      minutes = get(this, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    
       nested = get(this, state => {
         return state.child.value;
       })
@@ -246,11 +240,10 @@ describe("compute mode", () => {
 
     await expect(subject).toUpdate();
     expect(subject.nested).toBe("bar");
-  
+
     subject.child = new Child();
+
     await expect(subject).toUpdate();
-  
-    // sanity check
     expect(subject.child.value).toBe("foo");
     expect(subject.nested).toBe("foo");
   })
