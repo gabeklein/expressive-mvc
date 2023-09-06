@@ -333,11 +333,11 @@ function add<T = any, M extends Model = any>(instruction: Model.Instruction){
         update(subject, key, next, !!set);
       },
       get(this: M){
-        return watch(this, key, 
-          typeof desc.get == "function"
-            ? desc.get(this)
-            : fetch(subject, key, desc.get)
-        );
+        const value = typeof desc.get == "function"
+          ? desc.get(this)
+          : fetch(subject, key, desc.get)
+
+        return watch(this, key, value);
       }
     }
   });

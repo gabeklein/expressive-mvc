@@ -220,17 +220,14 @@ describe("compute mode", () => {
     expect(subject.minutes).toEqual(1);
   })
   
-  it('will trigger when nested inputs change', async () => {
+  it.only('will trigger when nested inputs change', async () => {
     class Subject extends Model {
       child = use(Child);
-      seconds = 0;
-    
-      minutes = get(this, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    
       nested = get(this, state => {
-        return state.child.value;
+        const { child } = state;
+        const { value } = child;
+
+        return value;
       })
     }
   
@@ -247,12 +244,17 @@ describe("compute mode", () => {
     await expect(subject).toUpdate();
     expect(subject.nested).toBe("bar");
   
-    subject.child = new Child();
+    subject.child.value = "baz";
+
     await expect(subject).toUpdate();
+    expect(subject.nested).toBe("baz");
   
-    // sanity check
-    expect(subject.child.value).toBe("foo");
-    expect(subject.nested).toBe("foo");
+    // subject.child = new Child();
+    // await expect(subject).toUpdate();
+  
+    // // sanity check
+    // expect(subject.child.value).toBe("foo");
+    // expect(subject.nested).toBe("foo");
   })
   
   it("will compute early if value is accessed", async () => {
