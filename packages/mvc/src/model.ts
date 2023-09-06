@@ -82,50 +82,6 @@ interface Model {
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is: this;
-}
-
-class Model {
-  constructor(id?: string | number){
-    const state = {} as Record<string, unknown>;
-
-    Object.defineProperty(this, "is", { value: this });
-
-    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
-    STATE.set(this, state);
-    
-    function onNull(key: unknown){
-      if(key === null)
-        Object.freeze(state);
-    }
-
-    addListener(this, () => {
-      for(const key in this){
-        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
-        const instruction = INSTRUCT.get(value);
-        let desc: PropertyDescriptor | void = {
-          enumerable: true,
-          set: (x) => update(this, key, x),
-          get(){
-            return watch(this, key, state[key]);
-          }
-        }
-
-        if(instruction){
-          INSTRUCT.delete(value);
-          delete (this as any)[key];
-          desc = instruction(this, key, state);
-        }
-        else
-          state[key] = value;
-
-        if(desc)
-          Object.defineProperty(this, key, desc);
-      }
-
-      addListener(this, onNull);
-      return null;
-    });
-  }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
   get(): Model.Export<this>;
@@ -136,36 +92,6 @@ class Model {
   get<T extends string>(key: T, required: true): Exclude<Model.ValueOf<this, T>, undefined>;
 
   get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
-
-  get(arg1?: Model.Effect<this>, arg2?: boolean){
-    const self = this.is;
-
-    if(typeof arg1 == "string")
-      return fetch(self, arg1, arg2);
-
-    if(arg1)
-      return effect(self, arg1);
-
-    const cache = new WeakMap<Model, any>();
-
-    function get(value: any){
-      if(value instanceof Model){
-        if(cache.has(value))
-          return cache.get(value);
-
-        const model = value;
-
-        cache.set(value, value = {});
-
-        for(const [key, val] of model)
-          value[key] = get(val);
-      }
-
-      return value;
-    }
-
-    return get(self);
-  }
 
   /**
    * Check if update is in progress.
@@ -213,6 +139,83 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
+  /** Iterate over managed properties in this instance of Model. */
+  [Symbol.iterator](): Iterator<[string, unknown]> ;
+}
+
+class Model {
+  constructor(id?: string | number){
+    const state = {} as Record<string, unknown>;
+
+    Object.defineProperty(this, "is", { value: this });
+
+    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
+    STATE.set(this, state);
+    
+    function onNull(key: unknown){
+      if(key === null)
+        Object.freeze(state);
+    }
+
+    addListener(this, () => {
+      for(const key in this){
+        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
+        const instruction = INSTRUCT.get(value);
+        let desc: PropertyDescriptor | void = {
+          enumerable: true,
+          set: (x) => update(this, key, x),
+          get(){
+            return watch(this, key, state[key]);
+          }
+        }
+
+        if(instruction){
+          INSTRUCT.delete(value);
+          delete (this as any)[key];
+          desc = instruction(this, key, state);
+        }
+        else
+          state[key] = value;
+
+        if(desc)
+          Object.defineProperty(this, key, desc);
+      }
+
+      addListener(this, onNull);
+      return null;
+    });
+  }
+
+  get(arg1?: Model.Effect<this>, arg2?: boolean){
+    const self = this.is;
+
+    if(typeof arg1 == "string")
+      return fetch(self, arg1, arg2);
+
+    if(arg1)
+      return effect(self, arg1);
+
+    const cache = new WeakMap<Model, any>();
+
+    function get(value: any){
+      if(value instanceof Model){
+        if(cache.has(value))
+          return cache.get(value);
+
+        const model = value;
+
+        cache.set(value, value = {});
+
+        for(const [key, val] of model)
+          value[key] = get(val);
+      }
+
+      return value;
+    }
+
+    return get(self);
+  }
+
   set(arg1?: Model.Event | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
@@ -252,7 +255,6 @@ class Model {
     });
   }
 
-  /** Iterate over managed properties in this instance of Model. */
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
   }
