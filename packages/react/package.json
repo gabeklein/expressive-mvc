@@ -12,20 +12,22 @@
     "access": "public"
   },
   "keywords": [
+    "expressive",
     "react",
     "mvc"
   ],
-  "main": "lib/index.js",
-  "module": "lib/index.esm.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "files": [
-    "lib"
+    "dist/index.js",
+    "dist/index.mjs",
+    "dist/index.d.ts"
   ],
   "scripts": {
-    "build": "rollup --config",
-    "watch": "jest --watchAll",
-    "test": "jest --collectCoverage",
-    "prebuild": "rm -rf lib/",
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "test": "tsc --noEmit && jest --collectCoverage",
+    "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {

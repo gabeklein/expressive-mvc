@@ -2,7 +2,7 @@
     "compilerOptions": {
         "baseUrl": ".",
         "rootDir": ".",
-        "target": "ES6",
+        "target": "es2020",
         "esModuleInterop": true,
         "jsx": "react",
         "lib": ["ES2018", "DOM"],
@@ -10,7 +10,7 @@
         "noUnusedLocals": true,
         "sourceMap": true,
         "strict": true,
-        "types": [ "node", "jest" ],
+        "types": [ "jest" ],
         "paths": {
             "@expressive/*": [
               "packages/*/src"

@@ -2,7 +2,7 @@
 .next
 .vercel
 coverage
-lib
+dist
 node_modules
 pnpm-lock.yaml
 README_OLD.md
