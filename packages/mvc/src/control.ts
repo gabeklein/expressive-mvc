@@ -15,6 +15,7 @@ type OnUpdate<T = any> = (
 const DISPATCH = new Set<Callback>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
+const IGNORE = new WeakSet<OnUpdate>();
 
 function onReady(this: {}){
   return null;
@@ -34,17 +35,6 @@ function addListener(to: {}, fn: OnUpdate){
   return () => subs.delete(fn);
 }
 
-function subscribe<T extends {}>(value: T, argument: OnUpdate){
-  const listeners = LISTENER.get(value);
-
-  if(listeners){
-    LISTENER.set(value = Object.create(value), listeners);
-    OBSERVER.set(value, argument);
-  }
-
-  return value;
-}
-
 function watch(from: any, key?: unknown, value?: any){
   const listeners = LISTENER.get(from)!;
   const observer = OBSERVER.get(from);
@@ -54,9 +44,13 @@ function watch(from: any, key?: unknown, value?: any){
       ? new Set(listeners.get(observer)).add(key)
       : null
     );
-  
-    if(value)
-      return subscribe(value, observer);
+
+    const nested = LISTENER.get(value);
+
+    if(nested){
+      LISTENER.set(value = Object.create(value), nested);
+      OBSERVER.set(value, observer);
+    }
   }
 
   return value;
@@ -96,12 +90,31 @@ function effect<T extends {}>(
   target: T,
   callback: (this: T, argument: T) => Callback | Promise<void> | null | void){
 
+  const listeners = LISTENER.get(target)!;
   let refresh: (() => void) | null | undefined;
   let unSet: Callback | false | undefined;
 
   function invoke(){
+    const local = Object.create(target);
+    const update = () => {
+      if(IGNORE.has(update))
+        return null;
+
+      IGNORE.add(update);
+
+      if(refresh && unSet){
+        unSet();
+        unSet = undefined;
+      }
+
+      return refresh;
+    }
+
+    LISTENER.set(local, listeners);
+    OBSERVER.set(local, update);
+
     try {
-      const out = callback.call(target, target);
+      const out = callback.call(local, local);
 
       unSet = typeof out == "function" && out;
       refresh = out === null ? out : invoke;
@@ -117,14 +130,6 @@ function effect<T extends {}>(
         throw err;
     }
   }
-
-  target = subscribe(target, () => {
-    if(refresh && unSet){
-      unSet();
-      unSet = undefined;
-    }
-    return refresh;
-  });
 
   addListener(target, key => {
     if(key === true)
