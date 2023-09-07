@@ -45,7 +45,7 @@ describe("placeholder", () => {
     test.foobar = "foo";
     test.foobar = "bar";
 
-    await expect(test).toHaveUpdated("foobar")
+    await expect(test).toUpdate("foobar")
 
     expect(effect).toBeCalledTimes(2);
     expect(foobar).not.toBeCalledWith("foo");

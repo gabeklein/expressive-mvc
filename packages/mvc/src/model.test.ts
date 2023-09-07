@@ -931,7 +931,7 @@ describe("set method", () => {
 
       test.set("foo");
 
-      await expect(test).toHaveUpdated("foo");
+      await expect(test).toUpdate("foo");
 
       expect(test.foo).toBe("foo");
     })
@@ -943,7 +943,7 @@ describe("set method", () => {
 
       test.set("foo", "bar");
 
-      await expect(test).toHaveUpdated("foo");
+      await expect(test).toUpdate("foo");
 
       expect(test.foo).toBe("bar");
     })
