@@ -324,6 +324,20 @@ describe("async", () => {
     foo = "bar";
   };
 
+  it("will convert void to null", async () => {
+    const promise = mockPromise<void>();
+
+    const hook = mockHook(Test, () => {
+      return Test.get(async () => promise);
+    });
+
+    await hook.act(() => {
+      promise.resolve();
+    })
+
+    expect(hook.output).toBe(null);
+  })
+
   it('will not subscribe to values', async () => {
     const promise = mockPromise<string>();
 
