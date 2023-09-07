@@ -10,7 +10,7 @@
         "noUnusedLocals": true,
         "sourceMap": true,
         "strict": true,
-        "types": [ "jest" ],
+        "types": [ "jest", "react" ],
         "paths": {
             "@expressive/*": [
               "packages/*/src"

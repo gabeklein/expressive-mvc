@@ -4,7 +4,8 @@
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
   "coveragePathIgnorePatterns": [
-    "/src/index.ts"
+    "/src/index.ts",
+    "/src/mocks.tsx"
   ],
   "setupFilesAfterEnv": [
     "../../jest.setup.ts"

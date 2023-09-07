@@ -350,6 +350,31 @@ describe("async", () => {
 
     expect(hook).toBeCalledTimes(2);
   });
+  
+  it('will refresh and throw if async rejects', async () => {
+    class Test extends Model {}
+    
+    const promise = mockPromise();
+    const hook = mockHook(Test, () => {
+      try {
+        Test.get(async () => {
+          await promise;
+          throw "oh no";
+        })
+      }
+      catch(err: any){
+        return err;
+      }
+    });
+
+    expect(hook.output).toBeUndefined();
+  
+    promise.resolve();
+
+    await hook.act(() => {});
+
+    expect(hook.output).toBe("oh no");
+  })
 })
 
 describe("get instruction", () => {
