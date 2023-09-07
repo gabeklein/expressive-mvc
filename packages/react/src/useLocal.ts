@@ -9,7 +9,7 @@ function useLocal <T extends Model> (
   apply?: Model.Values<T> | Model.UseCallback<T>,
   repeat?: boolean){
 
-  const state = useState(0);
+  const state = useState(() => Math.random());
   const hook = useMemo(() => {
     const instance = this.new() as T;
 

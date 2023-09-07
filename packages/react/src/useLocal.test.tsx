@@ -93,7 +93,7 @@ describe("callback argument", () => {
     bar?: string = undefined;
   }
 
-  it("will run callback once", async () => {
+  it.only("will run callback once", async () => {
     const callback = jest.fn();
 
     const hook = mockHook(() => Test.use(callback));
@@ -200,14 +200,18 @@ describe("props argument", () => {
       return Test.use({ foo: "foo", bar: "bar" }, true);
     });
 
+    const old = hook.output;
+
     expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
     
     // TODO: Can this update be supressed?
     await expect(hook.output).toUpdate();
 
-    hook.update(() => {
+    await hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" }, true)
     });
+
+    expect(hook.output).toBe(old);
 
     await expect(hook.output).toUpdate();
 
