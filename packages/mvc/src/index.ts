@@ -1,4 +1,3 @@
-export { run } from './instruction/run';
 export { get } from './instruction/get';
 export { ref } from './instruction/ref';
 export { set } from './instruction/set';

@@ -1,5 +1,4 @@
 import { add, Model } from '../model';
-import { attempt } from './run';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
@@ -113,6 +112,30 @@ function set <T> (
 
     return output;
   })
+}
+
+function attempt(fn: () => any): any {
+  function retry(err: unknown){
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  function compute(): any {
+    try {
+      const output = fn();
+
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
 }
 
 export { set }
