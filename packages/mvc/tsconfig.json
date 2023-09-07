@@ -1,3 +1,10 @@
 {
-    "extends": "../../tsconfig.json"
+    "compilerOptions": {
+        "target": "ES6",
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "noUnusedLocals": true,
+        "strict": true,
+        "types": [ "jest" ]
+    }
 }
