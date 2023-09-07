@@ -119,9 +119,6 @@ function compute<T>(
   let proxy: any;
 
   function connect(model: Model){
-    if(reset)
-      reset();
-
     reset = model.get(current => {
       proxy = current;
 

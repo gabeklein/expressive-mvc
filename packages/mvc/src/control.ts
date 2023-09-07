@@ -40,9 +40,8 @@ function watch(from: any, key?: unknown, value?: any){
   const observer = OBSERVER.get(from);
 
   if(observer){
-    listeners.set(observer, 1 in arguments
-      ? new Set(listeners.get(observer)).add(key)
-      : null
+    listeners.set(observer, 
+      new Set(listeners.get(observer)).add(key)  
     );
 
     const nested = LISTENER.get(value);
