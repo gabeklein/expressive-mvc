@@ -86,7 +86,11 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.New, arg2?: () => T)
       </Provider>
     );
 
-  const render = create(element);
+  const render = create(
+    <React.StrictMode>
+      {element}
+    </React.StrictMode>
+  );
 
   mock.unmount = () => {
     render.unmount();
