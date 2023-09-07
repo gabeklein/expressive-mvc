@@ -1,10 +1,10 @@
 {
-    "compilerOptions": {
-        "target": "ES6",
-        "esModuleInterop": true,
-        "moduleResolution": "node",
-        "noUnusedLocals": true,
-        "strict": true,
-        "types": [ "jest" ]
-    }
+  "compilerOptions": {
+    "target": "ES6",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "strict": true,
+    "types": [ "jest" ]
+  }
 }
