@@ -55,7 +55,13 @@ function watch(from: any, key?: unknown, value?: any){
   return value;
 }
 
-function event(source: {}, key: unknown | boolean | null){
+const PENDING = new WeakSet<{}>();
+
+function event(
+  source: {},
+  key: unknown | boolean | null,
+  cb?: Callback){
+
   const subs = LISTENER.get(source)!;
 
   subs.forEach((select, callback) => {
@@ -68,6 +74,21 @@ function event(source: {}, key: unknown | boolean | null){
     if(after === null || key === null)
       subs.delete(callback);
   });
+
+  if(!PENDING.has(source)){
+    PENDING.add(source);
+    DISPATCH.add(() => {
+      PENDING.delete(source);
+      event(source, false);
+      // subs.forEach((_, callback) => {
+      //   callback.call(source, false, source);
+      // })
+
+      if(cb)
+        cb();
+    });
+  }
+  
 }
 
 function queue(event: Callback){

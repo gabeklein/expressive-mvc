@@ -1,4 +1,4 @@
-import { addListener, event, watch, queue, effect } from './control';
+import { addListener, effect, event, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -398,19 +398,15 @@ function update(
         return;
     }
 
-    if(!pending){
+    if(!pending)
       PENDING.set(subject, pending = {});
-
-      queue(() => {
-        event(subject, false);
-        PENDING.delete(subject)
-      })
-    }
 
     pending[key] = state[key];
   }
 
-  event(subject, key);
+  event(subject, key, () => {
+    PENDING.delete(subject)
+  });
 }
 
 /** Random alphanumberic of length 6. Will always start with a letter. */
