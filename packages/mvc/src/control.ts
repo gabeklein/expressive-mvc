@@ -56,7 +56,9 @@ function watch(from: any, key?: unknown, value?: any){
 }
 
 function event(source: {}, key: unknown | boolean | null){
-  LISTENER.get(source)!.forEach((select, callback, subs) => {
+  const subs = LISTENER.get(source)!;
+
+  subs.forEach((select, callback) => {
     let after;
 
     if(!select || select.has(key as string))
