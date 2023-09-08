@@ -961,6 +961,25 @@ describe("set method", () => {
     })
   })
 
+  describe("callback", () => {
+    it("will call callback on update", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.set(mock);
+
+      test.foo = "bar";
+      test.foo = "baz";
+
+      expect(mock).toBeCalledWith("foo", "bar");
+      expect(mock).toBeCalledWith("foo", "baz");
+    })
+  })
+
   describe("timeout", () => {
     it.todo("will not break if defined before init")
 
@@ -1087,9 +1106,9 @@ describe("set method", () => {
       test.foo = 2;
       test.bar = 2;
 
-      expect(mock).toBeCalledWith("foo");
-      expect(mock).toBeCalledWith("foo");
-      expect(mock).toBeCalledWith("bar");
+      expect(mock).toBeCalledWith("foo", 1);
+      expect(mock).toBeCalledWith("foo", 2);
+      expect(mock).toBeCalledWith("bar", 2);
 
       done();
     })
@@ -1149,7 +1168,7 @@ describe("set method", () => {
 
       subject.bar = 2;
 
-      expect(callback).toBeCalledWith("bar");
+      expect(callback).toBeCalledWith("bar", 2);
     })
 
     it('will disallow update if model is destroyed', () => {

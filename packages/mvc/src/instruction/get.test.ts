@@ -321,7 +321,11 @@ describe("compute mode", () => {
     await expect(state).toUpdate();
   
     expect(exec).toBeCalledTimes(2);
-    expect(emit).toBeCalledWith("c");
+
+    expect(emit).toBeCalledTimes(4);
+    expect(emit).toBeCalledWith("a", 2);
+    expect(emit).toBeCalledWith("b", 2);
+    expect(emit).toBeCalledWith("c", 3);
   })
   
   it("will be evaluated in order", async () => {

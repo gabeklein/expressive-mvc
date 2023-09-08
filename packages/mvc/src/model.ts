@@ -53,7 +53,7 @@ declare namespace Model {
   /** A callback function which is subscribed to parent and updates when values change. */
   type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | null | void;
 
-  type Event = (key: string) => Callback | void;
+  type Event = (this: Model, key: string, value: unknown) => Callback | void;
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
@@ -219,7 +219,7 @@ class Model {
     if(typeof arg1 == "function")
       return addListener(self, key => {
         if(typeof key == "string")
-          return arg1(key)
+          return arg1.call(this, key, STATE.get(self)![key])
       })
 
     if(typeof arg1 == "string" || arg1 === null)
@@ -407,12 +407,7 @@ function update(
       })
     }
 
-    const skip = key in pending;
-
     pending[key] = state[key];
-
-    if(skip)
-      return;
   }
 
   event(subject, key);
