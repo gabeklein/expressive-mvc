@@ -29,11 +29,6 @@ function use <T = any> (
   argument?: any[] | ((i: {} | undefined) => void)){
 
   return add((property, subject) => {
-    if(typeof value === "function")
-      value = new value();
-
-    const output: Model.Instruction.Descriptor = { set, value };
-
     function set(next: Record<string, unknown> | undefined){
       if(value instanceof Model && !(next instanceof value.constructor))
         throw new Error(`${subject}.${property} expected Model of type ${value.constructor} but got ${next}.`)
@@ -63,6 +58,11 @@ function use <T = any> (
       if(typeof argument == "function")
         argument(next);
     }
+
+    if(typeof value === "function")
+      value = new value();
+
+    const output: Model.Instruction.Descriptor = { set, value };
 
     set(value);
 
