@@ -169,12 +169,12 @@ class Model {
 
   /**
    * Check if update is in progress.
-   * Returns a promise which resolves updated keys. If no update, will resolve `false`.
+   * Returns a promise which resolves updated keys. If no update, will resolve to `false`.
    **/
   set(): Promise<Model.Values<this> | false>;
 
   /**
-   * Expect an update to state within a set timeout.
+   * Expect an update to state within a set time.
    * 
    * @param timeout - milliseconds to wait for update
    * @param predicate - optional function to filter for specific updates. If returns true, update is accepted.
@@ -184,15 +184,14 @@ class Model {
   set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
 
   /**
-   * Call a function whenever an update to state has occured.
+   * Call a function whenever an update occurs.
    * 
-   * @param callback - Function to call when any update occurs. 
+   * @param callback
    *   Note: This will be called for every assignment which changes the value.
    *   To run logic on final value only, this callback may return a function.
-   *   Returning the same function for the same (or multiple for that matter)
-   *   will ensure it is only called once.
+   *   Returning the same function for a key will ensure it is only called once.
    *
-   * @returns a function to remove listener. Will return true if listener did exist.
+   * @returns a function to remove listener. Returns true if listener isn't removed already.
   */
   set(callback: Model.Event): () => boolean;
 
@@ -200,12 +199,17 @@ class Model {
    * Push an update without changing the value of associated property.
    * 
    * This is useful where a property value internally has changed, but the object remains the same.
-   * For example: an array which has pushed a new value, or change to nested properties.
+   * For example: An array which has pushed a new value, or a change to nested property.
    */
-  set(key: string | null): void;
+  set(key: string): void;
 
   /**
-   * Update a property programatically within state. 
+   * Declare an end to updates. This event will freeze state.
+   */
+  set(key: null): void;
+
+  /**
+   * Update a property with value. 
    * 
    * @param key - property to update
    * @param value - value to update property with (if the same as current, no update will occur)
@@ -407,7 +411,7 @@ function update(
       })
     }
 
-    pending[key] = state[key];
+    pending[key] = value;
   }
 
   event(subject, key);
