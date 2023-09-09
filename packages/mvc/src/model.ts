@@ -13,6 +13,8 @@ const INSTRUCT = new Map<symbol, InstructionRunner>();
 const PENDING = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 
+const define = Object.defineProperty;
+
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> = abstract new (...args: any[]) => T
@@ -88,7 +90,7 @@ class Model {
   constructor(id?: string | number){
     const state = {} as Record<string, unknown>;
 
-    Object.defineProperty(this, "is", { value: this });
+    define(this, "is", { value: this });
 
     ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
     STATE.set(this, state);
@@ -103,21 +105,18 @@ class Model {
         const property = Object.getOwnPropertyDescriptor(this, key)!;
         const instruction = INSTRUCT.get(property.value);
 
-        let desc: PropertyDescriptor | void = {
-          enumerable: true,
-          set: (x) => update(this, key, x),
-          get(){
-            return watch(this, key, state[key]);
-          }
-        }
-
         if(instruction)
-          desc = instruction(this, key, state);
-        else
+          instruction(this, key, state);
+        else {
           state[key] = property.value;
-
-        if(desc)
-          Object.defineProperty(this, key, desc);
+          define(this, key, {
+            enumerable: true,
+            set: (x) => update(this, key, x),
+            get(){
+              return watch(this, key, state[key]);
+            }
+          });
+        }
       }
 
       addListener(this, onNull);
@@ -285,13 +284,13 @@ class Model {
   }
 }
 
-Object.defineProperty(Model.prototype, "toString", {
+define(Model.prototype, "toString", {
   value(){
     return ID.get(this.is);
   }
 });
 
-Object.defineProperty(Model, "toString", {
+define(Model, "toString", {
   value(){
     return this.name;
   }

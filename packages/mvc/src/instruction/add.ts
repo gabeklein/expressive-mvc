@@ -19,7 +19,7 @@ export function add<T = any, M extends Model = any>(instruction: Model.Instructi
     if("value" in desc)
       state[key] = desc.value;
 
-    return {
+    Object.defineProperty(subject, key, {
       enumerable,
       set(next){
         let { set } = desc;
@@ -48,7 +48,7 @@ export function add<T = any, M extends Model = any>(instruction: Model.Instructi
             : fetch(subject, key, desc.get)
         );
       }
-    }
+    })
   });
 
   return placeholder as unknown as T;
