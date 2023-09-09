@@ -1,5 +1,6 @@
 import { event } from '../control';
-import { add, Model, PARENT } from '../model';
+import { Model, PARENT } from '../model';
+import { add } from './add';
 
 namespace use {
   export type Object<T extends {}> = T;

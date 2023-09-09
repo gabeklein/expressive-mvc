@@ -1,4 +1,5 @@
-import { add, Model } from '../model';
+import { Model } from '../model';
+import { add } from './add';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>

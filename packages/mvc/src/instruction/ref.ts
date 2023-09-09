@@ -1,4 +1,5 @@
-import { add, Model } from '../model';
+import { Model } from '../model';
+import { add } from './add';
 
 const define = Object.defineProperty;
 

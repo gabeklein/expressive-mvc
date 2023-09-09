@@ -1,6 +1,7 @@
+import { add } from './instruction/add';
 import { set } from './instruction/set';
-import { add, Model } from './model';
 import { mockError } from './mocks';
+import { Model } from './model';
 
 describe("instruction", () => {
   class Test extends Model {

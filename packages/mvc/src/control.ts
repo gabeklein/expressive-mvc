@@ -25,7 +25,7 @@ function addListener(to: {}, fn: OnUpdate){
   let subs = LISTENER.get(to)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map([[onReady, null]]));
+    LISTENER.set(to, subs = new Map().set(onReady, null));
 
   if(!subs.has(onReady))
     fn(true, to);

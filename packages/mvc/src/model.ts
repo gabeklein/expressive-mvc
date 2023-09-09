@@ -1,4 +1,4 @@
-import { addListener, event, watch, queue, effect } from './control';
+import { addListener, effect, event, queue, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -100,8 +100,9 @@ class Model {
 
     addListener(this, () => {
       for(const key in this){
-        const { value } = Object.getOwnPropertyDescriptor(this, key)!;
-        const instruction = INSTRUCT.get(value);
+        const property = Object.getOwnPropertyDescriptor(this, key)!;
+        const instruction = INSTRUCT.get(property.value);
+
         let desc: PropertyDescriptor | void = {
           enumerable: true,
           set: (x) => update(this, key, x),
@@ -110,13 +111,10 @@ class Model {
           }
         }
 
-        if(instruction){
-          INSTRUCT.delete(value);
-          delete (this as any)[key];
+        if(instruction)
           desc = instruction(this, key, state);
-        }
         else
-          state[key] = value;
+          state[key] = property.value;
 
         if(desc)
           Object.defineProperty(this, key, desc);
@@ -299,56 +297,6 @@ Object.defineProperty(Model, "toString", {
   }
 });
 
-function add<T = any, M extends Model = any>(instruction: Model.Instruction){
-  const placeholder = Symbol("instruction");
-
-  INSTRUCT.set(placeholder, (subject, key, state) => {
-    const output = instruction.call(subject, key, subject, state);
-  
-    if(!output)
-      return;
-
-    const desc = typeof output == "object" ? output : { get: output };
-    const { enumerable = true } = desc;
-
-    if("value" in desc)
-      state[key] = desc.value;
-
-    return {
-      enumerable,
-      set(next){
-        let { set } = desc;
-
-        if(set === false)
-          throw new Error(`${subject}.${key} is read-only.`);
-
-        if(typeof set == "function"){
-          const result = set.call(subject, next, state[key]);
-
-          if(result === false)
-            return;
-
-          if(typeof result == "function")
-            next = result();
-
-          set = false;
-        }
-
-        update(subject, key, next, !!set);
-      },
-      get(this: M){
-        return watch(this, key, 
-          typeof desc.get == "function"
-            ? desc.get(this)
-            : fetch(subject, key, desc.get)
-        );
-      }
-    }
-  });
-
-  return placeholder as unknown as T;
-}
-
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
   
@@ -423,9 +371,10 @@ function uid(){
 }
 
 export {
-  add,
+  update,
   fetch,
   Model,
   PARENT,
+  INSTRUCT,
   uid
 }
