@@ -66,6 +66,7 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.New, arg2?: () => T)
   }
 
   const Pending = () => {
+    /* istanbul ignore next */
     if(waiting)
       waiting();
 
