@@ -12,7 +12,7 @@ type OnUpdate<T = any> = (
   this: T, key: unknown | null | boolean, source: T
 ) => (() => void) | null | void;
 
-const DISPATCH = new Set<Callback>();
+const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
 
@@ -69,7 +69,7 @@ function event(source: {}, key: unknown | boolean | null){
   });
 }
 
-function queue(event: Callback){
+function queue(event: (() => void)){
   if(!DISPATCH.size)
     setTimeout(() => {
       DISPATCH.forEach(event => {
@@ -88,11 +88,11 @@ function queue(event: Callback){
 
 function effect<T extends {}>(
   target: T,
-  callback: (this: T, argument: T) => Callback | Promise<void> | null | void){
+  callback: (this: T, argument: T) => (() => void) | Promise<void> | null | void){
 
   const listeners = LISTENER.get(target)!;
   let refresh: (() => void) | null | undefined;
-  let unSet: Callback | false | undefined;
+  let unSet: (() => void) | false | undefined;
 
   function invoke(){
     let expired: boolean | undefined;

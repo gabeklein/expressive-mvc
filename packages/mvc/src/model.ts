@@ -53,9 +53,9 @@ declare namespace Model {
   }
 
   /** A callback function which is subscribed to parent and updates when values change. */
-  type Effect<T> = (this: T, argument: T) => Callback | Promise<void> | null | void;
+  type Effect<T> = (this: T, argument: T) => (() => void) | Promise<void> | null | void;
 
-  type Event = (this: Model, key: string, value: unknown) => Callback | void;
+  type Event = (this: Model, key: string, value: unknown) => (() => void) | void;
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
@@ -128,7 +128,7 @@ class Model {
   get(): Model.Export<this>;
 
   /** Run a function which will run automatically when accessed values change. */
-  get(effect: Model.Effect<this>): Callback;
+  get(effect: Model.Effect<this>): () => void;
 
   get<T extends string>(key: T, required: true): Exclude<Model.ValueOf<this, T>, undefined>;
 

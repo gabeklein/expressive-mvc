@@ -6,5 +6,9 @@
     "noUnusedLocals": true,
     "strict": true,
     "types": [ "jest" ]
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "./dist"
+  ]
 }

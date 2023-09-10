@@ -108,7 +108,7 @@ function get<R, T extends Model>(
   })
 }
 
-const STALE = new WeakSet<Callback>();
+const STALE = new WeakSet<() => void>();
 
 function compute<T>(
   subject: Model,

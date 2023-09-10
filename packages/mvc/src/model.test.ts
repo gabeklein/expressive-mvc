@@ -533,7 +533,7 @@ describe("get method", () => {
       const test = Test.new();
       const cleanup = jest.fn();
 
-      let callback: Callback | null = cleanup;
+      let callback: (() => void) | null = cleanup;
 
       const didEffect = jest.fn((test: Test) => {
         void test.value1;
