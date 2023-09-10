@@ -1,7 +1,7 @@
 {
   "lerna": "2.8.0",
   "useWorkspaces": true,
-  "version": "0.35.0-alpha.0",
+  "version": "0.35.0",
   "npmClient": "npm",
   "packages": [
     "packages/*",
