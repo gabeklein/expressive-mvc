@@ -14,7 +14,7 @@ export function useRemote<T extends Model, R>(
     const refresh = () => state[1](x => x+1);
 
     let value: any;
-    let release: Callback | undefined;
+    let release: (() => void);
 
     if(!instance)
       if(argument !== false)
@@ -49,8 +49,7 @@ export function useRemote<T extends Model, R>(
       else
         value = current;
 
-      if(release)
-        refresh();
+      refresh();
     });
 
     if(value === null){

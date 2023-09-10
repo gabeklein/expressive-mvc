@@ -1,6 +1,4 @@
 declare global {
-  type Callback = () => void;
-
   namespace jest {
     interface Matchers<R> {
       /** Assert model does have one or more updates pending. */
