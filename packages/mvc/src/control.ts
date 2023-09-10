@@ -14,7 +14,7 @@ type OnUpdate<T = any> = (
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>;
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>();
 
 function onReady(this: {}){
   return null;
