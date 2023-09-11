@@ -1,5 +1,5 @@
 {
-  "name": "basic",
+  "name": "counter-example",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@expressive/mvc": "0.35.1",
+    "@expressive/react": "0.35.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
