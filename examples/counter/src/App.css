@@ -1,5 +1,5 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+body {
+  font-family: system-ui, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -7,24 +7,6 @@
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-body {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -46,17 +28,17 @@ body {
   justify-content: center;
 }
 
+h1 {
+  font-size: 1.1em;
+  line-height: 1.1;
+  text-align: center;
+}
+
 pre {
   padding: 0 20px;
   min-width: 60px;
   text-align: center;
   user-select: none;
-}
-
-h1 {
-  font-size: 1.1em;
-  line-height: 1.1;
-  text-align: center;
 }
 
 button {

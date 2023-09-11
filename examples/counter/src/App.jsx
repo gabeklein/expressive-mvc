@@ -1,4 +1,4 @@
-import './index.css';
+import './App.css';
 
 import { createRoot } from 'react-dom/client';
 
