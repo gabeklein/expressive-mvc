@@ -1,6 +1,6 @@
-import { UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default <UserConfig> {
+/** @type {import('vite').UserConfig} */
+export default {
   plugins: [react()]
 }
