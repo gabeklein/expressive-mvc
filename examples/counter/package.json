@@ -1,8 +1,9 @@
 {
-  "name": "counter-example",
+  "name": "@example/counter",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/Counter.jsx",
   "scripts": {
     "dev": "vite"
   },

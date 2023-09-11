@@ -1,12 +1,12 @@
 import Model from "@expressive/react";
 
-// When we create a model, we're defining a set of values to be tracked.
+// When we create a Model, we're defining a set of values to be tracked.
 // It is recommended any Model specific to a component is called 'Control'.
 
 class Control extends Model {
-  // Here we only need one property, `current`, which initial value is 1.
-  // This value will be tracked by the model, and any changes to it will
-  // trigger a re-render.
+  // Here we only need one property, `current` whose initial value will be 1.
+  // All properties are tracked by a controller, so any changes to a value
+  // used by a component, will intelligently re-render that component.
   current = 1;
 
   // For convenience, we define two methods to increment and decrement the
@@ -31,9 +31,4 @@ const Counter = () => {
   );
 };
 
-export default () => (
-  <div className="container">
-    <h1>Simplest Example: Counter</h1>
-    <Counter />
-  </div>
-)
+export default Counter;
