@@ -915,6 +915,48 @@ describe("get method", () => {
       await expect(suspense).resolves.toBe("foobar");
     })
   })
+
+  describe("callback", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+
+    it("will call callback on update", async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("foo", mock);
+
+      test.foo = "bar";
+      test.foo = "baz";
+
+      expect(mock).toBeCalledWith("bar", "foo", test);
+      expect(mock).toBeCalledWith("baz", "foo", test);
+    })
+
+    it("will call immediately if defined", () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("foo", mock);
+
+      expect(mock).toBeCalledWith("foo", "foo", test);
+    })
+
+    it("will call on event if not defined", async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("baz", mock);
+
+      expect(mock).not.toBeCalled();
+      
+      // dispatch explicit event
+      test.set("baz");
+
+      expect(mock).toBeCalledWith("baz", "baz", test);
+    })
+  })
 })
 
 describe("set method", () => {

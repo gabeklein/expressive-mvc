@@ -36,6 +36,9 @@ declare namespace Model {
   type ValueOf<T extends Model, K extends Any<T>> =
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
+  type ValueCallback<T extends Model, K extends Any<T>> =
+    (this: T, value: Model.ValueOf<T, K>, key: K, thisArg: K) => (() => void) | void;
+
   /**
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill
@@ -130,15 +133,27 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
-  get<T extends string>(key: T, required: true): Exclude<Model.ValueOf<this, T>, undefined>;
+  get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
 
   get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
-  get(arg1?: Model.Effect<this>, arg2?: boolean){
+  get(arg1?: Model.Effect<this> | string, arg2?: boolean | Function){
     const self = this.is;
 
     if(typeof arg1 == "string")
-      return fetch(self, arg1, arg2);
+      if(typeof arg2 == "function"){
+        const state = STATE.get(self)!;
+
+        if(arg1 in state)
+          arg2.call(this, state[arg1], arg1, this)
+        
+        return addListener(self, key => {
+          if(key === arg1)
+            return arg2.call(this, arg1 in state ? state[key] : key, key, this)
+        })
+      }
+      else
+        return fetch(self, arg1, arg2);
 
     if(arg1)
       return effect(self, arg1);
@@ -217,11 +232,14 @@ class Model {
   set(arg1?: Model.Event | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
-    if(typeof arg1 == "function")
+    if(typeof arg1 == "function"){
+      const state = STATE.get(self)!;
+
       return addListener(self, key => {
-        if(typeof key == "string")
-          return arg1.call(this, key, STATE.get(self)![key])
+        if( typeof key == "string")
+          return arg1.call(this, key, state[key]);
       })
+    }
 
     if(typeof arg1 == "string" || arg1 === null)
       return 1 in arguments
