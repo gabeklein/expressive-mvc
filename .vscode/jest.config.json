@@ -1,34 +1,14 @@
 {
   "testTimeout": 1000,
-  "projects": [
-    {
-      "displayName": "MVC",
-      "rootDir": "./",
-      "testMatch": [
-        "<rootDir>/packages/mvc/src/**/*.test.*"
-      ],
-      "transform": {
-        "^.+\\.[tj]sx?$": "@swc/jest"
-      },
-      "setupFilesAfterEnv": [
-        "<rootDir>/jest.setup.ts"
-      ]
-    },
-    {
-      "displayName": "React",
-      "rootDir": "./",
-      "testMatch": [
-        "<rootDir>/packages/react/src/**/*.test.*"
-      ],
-      "transform": {
-        "^.+\\.[tj]sx?$": "@swc/jest"
-      },
-      "moduleNameMapper": {
-        "@expressive/(.*)$": "<rootDir>/packages/$1/src"
-      },
-      "setupFilesAfterEnv": [
-        "<rootDir>/jest.setup.ts"
-      ]
-    }
+  "rootDir": "../",
+  "roots": [
+    "<rootDir>/packages/mvc",
+    "<rootDir>/packages/react"
+  ],
+  "transform": {
+    "^.+\\.[tj]sx?$": "@swc/jest"
+  },
+  "setupFilesAfterEnv": [
+    "<rootDir>/jest.setup.ts"
   ]
 }
