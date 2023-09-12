@@ -1,10 +1,13 @@
 import { Provider } from '@expressive/react';
 import React from 'react';
 
-import { Alert, Form, Input } from './Form';
+import { Form, Input } from './Form';
 
-// You can extend Form for the basic logic and load up on
-// methods and values which fulfill your business logic.
+/*
+  Form here facilitates logic and context for any given form.
+  By extending it, we can inherit features and focus on values
+  we actually care about.
+*/
 class Control extends Form {
   firstname = "";
   lastname = "";
@@ -12,9 +15,11 @@ class Control extends Form {
 }
 
 const MyForm = () => {
-  // In order to for this to work, we will need to provide a
-  // controller downstream. Here that's pretty easy as <Provider />
-  // will both create and add a new Control instance to context.
+  /*
+    In order to for this to work, we will need to provide a
+    controller downstream. Here that's pretty easy as <Provider />
+    will both create and add a new Control instance to context.
+  */
   return (
     <Provider for={Control}>
       <h1>Example Form</h1>
@@ -25,5 +30,24 @@ const MyForm = () => {
     </Provider>
   );
 };
+
+/*
+  For CTA we create a button to respond to a click y alerting the
+  current values in the form. This is a one-off so we can use Form.get directly.
+*/
+const Alert = () => {
+  const alertValues = Form.get(form => () => {
+    const values = JSON
+      .stringify(form.get(), null, 2)
+      .replace(/[",]/g, "")
+      .slice(2, -2);
+
+    alert(`Current values in form are:\n\n` + values);
+  })
+
+  return (
+    <button onClick={alertValues}>Show Values</button>
+  );
+}
 
 export default MyForm;

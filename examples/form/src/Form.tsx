@@ -13,48 +13,53 @@ import React, { InputHTMLAttributes, Ref } from 'react';
 */
 class Form extends Model {
   /*
-    For reusability, we'll create a static method that will
-    abstract away the process of binding any particular <input>
-    to a property on the model.
+    For reusability, we create a static method to abstract
+    the process of binding an <input> to a property on the model.
 
-    Here the `this.get()` [read: Model.get static method]
-    will create a Ref function that will be used by React.
+    Here the `this.get()` [read: Form.get static method]
+    will create a ref-function that will be used by React.
 
     Not only will `.get()` fetch the nearest instance of Form,
     it will pass that instance to a function, which will then
-    create the ref to be memoized by component going forward.
+    return result and be memoized by component going forward.
   */
   static createRef(property: string): Ref<HTMLInputElement> {
     return this.get(self => {
-      let done: (() => void) | undefined;
+      let reset: (() => void) | undefined;
 
       return (input) => {
-        if(done)
-          done();
+        if(reset)
+          reset();
 
-        if(input && property in self){
-          const unfollow = self.get((state) => {
-            input.value = state[property];          });
+        if(!input)
+          return;
 
-          const onInput = () => self[property] = input.value;
+        if(property in self == false)
+          throw new Error(`${self} has no property "${property}"`);
 
-          input.addEventListener("input", onInput);
+        const unfollow = self.get(current => {
+          input.value = current[property];
+        });
 
-          done = () => {
-            input.removeEventListener("input", onInput);
-            unfollow();
-          };
-        }
+        const onInput = () => self[property] = input.value;
+
+        input.addEventListener("input", onInput);
+
+        reset = () => {
+          input.removeEventListener("input", onInput);
+          unfollow();
+        };
       }
     })
   }
 }
 
 /*
-  Next, we create a reusable Input component to be used
+  Next, we create a reusable Input component to used
   in conjunction with Form. This allows us to create a
   reusable component which can communicate with any Model
-  to extend (or contains) the Form class.
+  to extend (or contains) the Form class. This way, there's
+  no need to pass props for controlling the input.
 */
 const Input = (props: InputHTMLAttributes<HTMLInputElement>) => {
   const ref = Form.createRef(props.name!);
@@ -64,26 +69,4 @@ const Input = (props: InputHTMLAttributes<HTMLInputElement>) => {
   );
 };
 
-/*
-  Likewise we create a button which will respond to a click
-  by alerting the current values in the form. This is a one-off
-  so we'll use the Form.get directly.
-*/
-const Alert = () => {
-  const alertValues = Form.get(form => {
-    return () => {
-      const values = JSON
-        .stringify(form.get(), null, 2)
-        .replace(/[",]/g, "")
-        .slice(2, -2);
-
-      alert(`Current values in form are:\n\n` + values);
-    }
-  })
-
-  return (
-    <button onClick={alertValues}>Show Values</button>
-  );
-}
-
-export { Alert, Input, Form };
+export { Input, Form };
