@@ -1,5 +1,5 @@
 {
-  "name": "@example/counter",
+  "name": "@example/async",
   "private": true,
   "version": "0.0.0",
   "type": "module",
