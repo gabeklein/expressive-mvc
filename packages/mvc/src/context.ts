@@ -95,7 +95,7 @@ class Context {
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || I !== this[key] && !implicit)
-      Object.defineProperty(this, key, {
+        Object.defineProperty(this, key, {
           configurable: true,
           value,
           writable
