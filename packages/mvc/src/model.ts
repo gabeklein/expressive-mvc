@@ -59,26 +59,6 @@ declare namespace Model {
   type Effect<T> = (this: T, argument: T) => (() => void) | Promise<void> | null | void;
 
   type Event = (this: Model, key: string, value: unknown) => (() => void) | void;
-
-  namespace Instruction {
-    type Getter<T> = (source: Model) => T;
-    type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-    type Descriptor<T = any> = {
-      get?: Getter<T> | boolean;
-      set?: Setter<T> | false;
-      enumerable?: boolean;
-      value?: T;
-    }
-  }
-
-  /**
-   * Property initializer, will run upon instance creation.
-   * Optional returned callback will run when once upon first access.
-   */
-  type Instruction<T = any, M extends Model = any> =
-    (this: M, key: Model.Key<M>, thisArg: M, state: Model.Export<M>) =>
-      Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
 interface Model {

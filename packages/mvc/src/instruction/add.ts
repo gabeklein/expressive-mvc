@@ -1,7 +1,30 @@
 import { watch } from '../control';
 import { fetch, INSTRUCT, Model, update } from '../model';
 
-export function add<T = any, M extends Model = any>(instruction: Model.Instruction){
+declare const VALUE: unique symbol;
+
+declare namespace add {
+  /**
+   * Property initializer, will run upon instance creation.
+   * Optional returned callback will run when once upon first access.
+   */
+  type Special<T = any, M extends Model = any> =
+    (this: M, key: Model.Key<M>, thisArg: M, state: Model.Export<M>) =>
+      Descriptor<T> | Getter<T> | void;
+
+  type Getter<T> = (source: Model) => T;
+
+  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+  type Descriptor<T = any> = {
+    get?: Getter<T> | boolean;
+    set?: Setter<T> | false;
+    enumerable?: boolean;
+    value?: T;
+  }
+}
+
+function add<T = any, S = T>(instruction: add.Special){
   const placeholder = Symbol("instruction");
 
   INSTRUCT.set(placeholder, (subject, key, state) => {
@@ -41,7 +64,7 @@ export function add<T = any, M extends Model = any>(instruction: Model.Instructi
 
         update(subject, key, next, !!set);
       },
-      get(this: M){
+      get(this: Model){
         return watch(this, key, 
           typeof desc.get == "function"
             ? desc.get(this)
@@ -51,5 +74,7 @@ export function add<T = any, M extends Model = any>(instruction: Model.Instructi
     })
   });
 
-  return placeholder as unknown as T;
+  return placeholder as unknown as S extends T ? T : T & { [VALUE]: S };
 }
+
+export { add }
