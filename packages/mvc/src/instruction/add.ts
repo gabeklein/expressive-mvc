@@ -1,7 +1,7 @@
 import { watch } from '../control';
 import { fetch, INSTRUCT, Model, update } from '../model';
 
-export function add<T = any, M extends Model = any>(instruction: Model.Instruction){
+export function add<T = any>(instruction: Model.Instruction){
   const placeholder = Symbol("instruction");
 
   INSTRUCT.set(placeholder, (subject, key, state) => {
@@ -41,7 +41,7 @@ export function add<T = any, M extends Model = any>(instruction: Model.Instructi
 
         update(subject, key, next, !!set);
       },
-      get(this: M){
+      get(this: Model){
         return watch(this, key, 
           typeof desc.get == "function"
             ? desc.get(this)
