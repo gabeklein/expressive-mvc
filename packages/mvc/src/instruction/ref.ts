@@ -72,26 +72,28 @@ function ref<T>(
     let value: ref.Object | ref.Proxy<any> = {};
 
     if(arg === subject)
-      for(const key in state)
-        if(typeof arg2 == "function")
-          define(value, key, {
-            configurable: true,
-            get(){
-              const out = arg2(key);
-              define(value, key, { value: out });
-              return out;
-            }
-          })
-        else {
-          const ref = (value: unknown) => subject.set(key, value);
-        
-          define(ref, "current", {
-            get: () => state[key],
-            set: ref
-          })
-
-          define(value, key, { value: ref })
-        }
+      subject.get(() => {
+        for(const key in state)
+          if(typeof arg2 == "function")
+            define(value, key, {
+              configurable: true,
+              get(){
+                const out = arg2(key);
+                define(value, key, { value: out });
+                return out;
+              }
+            })
+          else {
+            const ref = (value: unknown) => subject.set(key, value);
+          
+            define(ref, "current", {
+              get: () => state[key],
+              set: ref
+            })
+  
+            define(value, key, { value: ref })
+          }
+      })
 
     else if(typeof arg == "object")
       throw new Error("ref instruction does not support object which is not 'this'");
