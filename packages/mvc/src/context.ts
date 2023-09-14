@@ -97,8 +97,8 @@ class Context {
       if(value || I !== this[key] && !implicit)
         Object.defineProperty(this, key, {
           configurable: true,
-          value,
-          writable
+          writable,
+          value
         });
 
       T = Object.getPrototypeOf(T);
