@@ -58,7 +58,8 @@ declare namespace Model {
   /** A callback function which is subscribed to parent and updates when values change. */
   type Effect<T> = (this: T, argument: T) => (() => void) | Promise<void> | null | void;
 
-  type Event = (this: Model, key: string, value: unknown) => (() => void) | void;
+  type Event<T extends Model> =
+    (this: T, key: unknown, state: Model.Export<T>, source: T) => (() => void) | void | null;
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
@@ -205,7 +206,7 @@ class Model {
    *
    * @returns a function to remove listener. Returns true if listener isn't removed already.
   */
-  set(callback: Model.Event): () => boolean;
+  set(callback: Model.Event<this>): () => boolean;
 
   /**
    * Push an update without changing the value of associated property.
@@ -229,15 +230,15 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function"){
-      const state = STATE.get(self)!;
+      const state = STATE.get(self) as Model.Export<this>;
 
       return addListener(self, key => {
-        if( typeof key == "string")
-          return arg1.call(this, key, state[key]);
+        if(typeof key == "string")
+          return arg1.call(self, key, state, self);
       })
     }
 

@@ -1017,8 +1017,8 @@ describe("set method", () => {
       test.foo = "bar";
       test.foo = "baz";
 
-      expect(mock).toBeCalledWith("foo", "bar");
-      expect(mock).toBeCalledWith("foo", "baz");
+      expect(mock).toBeCalledWith("foo", expect.anything(), test);
+      expect(mock).toBeCalledWith("foo", expect.anything(), test);
     })
   })
 
@@ -1142,22 +1142,24 @@ describe("set method", () => {
       const test = Test.new();
       const mock = jest.fn();
 
-      const done = test.set(mock);
+      const done = test.set((a, b) => {
+        mock(a, Object.assign({}, b))
+      });
 
       test.foo = 1;
       test.foo = 2;
       test.bar = 2;
 
-      expect(mock).toBeCalledWith("foo", 1);
-      expect(mock).toBeCalledWith("foo", 2);
-      expect(mock).toBeCalledWith("bar", 2);
+      expect(mock).toBeCalledWith("foo", { foo: 1, bar: 1, baz: 2 });
+      expect(mock).toBeCalledWith("foo", { foo: 2, bar: 1, baz: 2 });
+      expect(mock).toBeCalledWith("bar", { foo: 2, bar: 2, baz: 2 });
 
       done();
     })
 
     it("will callback after frame", async () => {
       const test = Test.new();
-      const didUpdate = jest.fn<any, [string]>(() => didUpdateAsync);
+      const didUpdate = jest.fn(() => didUpdateAsync);
       const didUpdateAsync = jest.fn();
 
       const done = test.set(didUpdate);
@@ -1206,11 +1208,11 @@ describe("set method", () => {
       }
 
       const callback = jest.fn();
-      const subject = Subject.new();
+      const test = Subject.new();
 
-      subject.bar = 2;
+      test.bar = 2;
 
-      expect(callback).toBeCalledWith("bar", 2);
+      expect(callback).toBeCalledWith("bar", { bar: 2, foo: 0 }, test);
     })
 
     it('will disallow update if model is destroyed', () => {

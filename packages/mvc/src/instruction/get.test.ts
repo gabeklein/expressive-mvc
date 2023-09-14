@@ -307,25 +307,25 @@ describe("compute mode", () => {
       x = use(Inner);
     }
   
-    const state = Test.new();
+    const test = Test.new();
   
-    expect(state.c).toBe(3);
+    expect(test.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.set(emit)
+    test.set(emit)
   
-    state.a++;
-    state.b++;
-    state.x.value++;
+    test.a++;
+    test.b++;
+    test.x.value++;
   
-    await expect(state).toUpdate();
+    await expect(test).toUpdate();
   
     expect(exec).toBeCalledTimes(2);
 
     expect(emit).toBeCalledTimes(4);
-    expect(emit).toBeCalledWith("a", 2);
-    expect(emit).toBeCalledWith("b", 2);
-    expect(emit).toBeCalledWith("c", 3);
+    expect(emit).toBeCalledWith("a", expect.anything(), test);
+    expect(emit).toBeCalledWith("b", expect.anything(), test);
+    expect(emit).toBeCalledWith("c", expect.anything(), test);
   })
   
   it("will be evaluated in order", async () => {
