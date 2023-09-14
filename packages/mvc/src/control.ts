@@ -14,7 +14,7 @@ type OnUpdate<T = any> = (
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | null>>();
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | undefined>>();
 
 function onReady(this: {}){
   return null;
@@ -24,12 +24,12 @@ function addListener(to: {}, fn: OnUpdate){
   let subs = LISTENER.get(to)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map().set(onReady, null));
+    LISTENER.set(to, subs = new Map().set(onReady, undefined));
 
   if(!subs.has(onReady))
     fn(true, to);
 
-  subs.set(fn, null);
+  subs.set(fn, undefined);
 
   return () => subs.delete(fn);
 }
