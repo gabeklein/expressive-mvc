@@ -12,6 +12,7 @@ const PARENT = new WeakMap<Model, Model>();
 const INSTRUCT = new Map<symbol, InstructionRunner>();
 const PENDING = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
+const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 
 const define = Object.defineProperty;
 
@@ -92,16 +93,26 @@ interface Model {
 
 class Model {
   constructor(id?: string | number){
+    let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
 
     define(this, "is", { value: this });
 
-    ID.set(this, `${this.constructor}-${id ? String(id) : uid()}`);
+    ID.set(this, `${Type}-${id ? String(id) : uid()}`);
     STATE.set(this, state);
     
     function onNull(key: unknown){
       if(key === null)
         Object.freeze(state);
+    }
+
+    while(true){
+      new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
+
+      if(Type === Model)
+        break;
+
+      Type = Object.getPrototypeOf(Type);
     }
 
     addListener(this, () => {
@@ -297,6 +308,17 @@ class Model {
    */
   static is<T extends Model.Type>(this: T, maybe: any): maybe is T {
     return typeof maybe == "function" && maybe.prototype instanceof this;
+  }
+
+  static on<T extends Model>(this: Model.Type<T>, event: Model.Event<T>){
+    let notify = NOTIFY.get(this);
+
+    if(!notify)
+      NOTIFY.set(this, notify = new Set());
+
+    notify.add(event);
+
+    return () => notify!.delete(event);
   }
 }
 

@@ -1236,7 +1236,7 @@ describe("set method", () => {
   })
 })
 
-describe("static is", () => {
+describe("is method (static)", () => {
   class Test extends Model {}
 
   it("will assert if Model extends another", () => {
@@ -1251,6 +1251,83 @@ describe("static is", () => {
     expect(Model.is(NotATest)).toBe(true);
     expect(Test.is(NotATest)).toBe(false);
   })
+})
+
+describe("on method (static)", () => {
+  class Test extends Model {
+    foo = "bar";
+  }
+
+  it("will run callback on create", () => {
+    const mock = jest.fn();
+
+    Test.on(mock);
+
+    const test = Test.new();
+
+    expect(mock).toBeCalledWith(true, test);
+  });
+
+  it("will run callback for inherited classes", () => {
+    class Test2 extends Test {}
+    
+    const createModel = jest.fn();
+    const createTest = jest.fn();
+    const createTest2 = jest.fn();
+
+    Test.on(createTest);
+    Test2.on(createTest2);
+    Model.on(createModel);
+
+    const test = Test2.new();
+
+    expect(createModel).toBeCalledWith(true, test);
+    expect(createTest).toBeCalledWith(true, test);
+    expect(createTest2).toBeCalledWith(true, test);
+  });
+
+  it("will squash same callback for multiple classes", () => {
+    class Test2 extends Test {}
+    
+    const didCreate = jest.fn();
+
+    Test.on(didCreate);
+    Test2.on(didCreate);
+    Model.on(didCreate);
+
+    Test2.new();
+
+    expect(didCreate).toBeCalledTimes(1);
+
+  })
+
+  it("will remove callback", () => {
+    const mock = jest.fn();
+    const done = Test.on(mock);
+
+    Test.new();
+    expect(mock).toBeCalled();
+    
+    done();
+    Test.new();
+    expect(mock).toBeCalledTimes(1);
+  });
+
+  it("will run callback on event", () => {
+    const mock = jest.fn();
+    
+    Test.on((key: any, state: any) => {
+      mock(key, state[key]);
+    });
+
+    const test = Test.new();
+
+    expect(mock).toBeCalledWith(true, undefined);
+
+    test.foo = "baz";
+
+    expect(mock).toBeCalledWith("foo", "baz");
+  });
 })
 
 describe("string coercion", () => {
