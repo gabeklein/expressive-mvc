@@ -1,13 +1,15 @@
 import { watch } from '../control';
-import { fetch, INSTRUCT, Model, update } from '../model';
+import { fetch, Model, STATE, update } from '../model';
 
-export function add<T = any>(instruction: Model.Instruction){
+type InstructionRunner<T extends Model = any> =
+  (on: T, key: string, state: Model.Export<T>) => PropertyDescriptor | void;
+
+const INSTRUCT = new Map<symbol, InstructionRunner>();
+
+function add<T = any>(instruction: Model.Instruction){
   const placeholder = Symbol("instruction");
 
   INSTRUCT.set(placeholder, (subject, key, state) => {
-    INSTRUCT.delete(placeholder);
-    delete (subject as any)[key];
-
     const output = instruction.call(subject, key, subject, state);
   
     if(!output)
@@ -53,3 +55,23 @@ export function add<T = any>(instruction: Model.Instruction){
 
   return placeholder as unknown as T;
 }
+
+Model.on(function(){
+  const state = STATE.get(this)!;
+
+  for(const key in this){
+    const { value } = Object.getOwnPropertyDescriptor(this, key)!;
+    const instruction = INSTRUCT.get(value);
+
+    if(!instruction)
+      continue;
+
+    INSTRUCT.delete(value);
+    delete (this as any)[key];
+    instruction(this, key, state);
+  }
+
+  return null;
+})
+
+export { add }

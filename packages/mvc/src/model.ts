@@ -1,15 +1,9 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
-type InstructionRunner = (
-  on: Model,
-  key: string,
-  state: Record<string, unknown>
-) => PropertyDescriptor | void;
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
-const INSTRUCT = new Map<symbol, InstructionRunner>();
 const PENDING = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
@@ -117,13 +111,10 @@ class Model {
 
     addListener(this, () => {
       for(const key in this){
-        const property = Object.getOwnPropertyDescriptor(this, key)!;
-        const instruction = INSTRUCT.get(property.value);
+        const desc = Object.getOwnPropertyDescriptor(this, key)!;
 
-        if(instruction)
-          instruction(this, key, state);
-        else {
-          state[key] = property.value;
+        if("value" in desc){
+          state[key] = desc.value;
           define(this, key, {
             enumerable: true,
             set: (x) => update(this, key, x),
