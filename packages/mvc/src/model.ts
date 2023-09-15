@@ -1,4 +1,4 @@
-import { addListener, effect, event, queue, watch } from './control';
+import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 type Predicate = (key: string) => boolean | void;
 type InstructionRunner = (
@@ -59,7 +59,7 @@ declare namespace Model {
   type Effect<T> = (this: T, argument: T) => (() => void) | Promise<void> | null | void;
 
   type Event<T extends Model> =
-    (this: T, key: unknown, state: Model.Export<T>, source: T) => (() => void) | void | null;
+    (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
@@ -233,14 +233,11 @@ class Model {
   set(arg1?: Model.Event<this> | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
-    if(typeof arg1 == "function"){
-      const state = STATE.get(self) as Model.Export<this>;
-
+    if(typeof arg1 == "function")
       return addListener(self, key => {
         if(typeof key == "string")
-          return arg1.call(self, key, state, self);
+          return arg1.call(self, key, self);
       })
-    }
 
     if(typeof arg1 == "string" || arg1 === null)
       return 1 in arguments
@@ -393,6 +390,6 @@ export {
   fetch,
   Model,
   PARENT,
-  INSTRUCT,
+  STATE,
   uid
 }

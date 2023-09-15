@@ -323,9 +323,9 @@ describe("compute mode", () => {
     expect(exec).toBeCalledTimes(2);
 
     expect(emit).toBeCalledTimes(4);
-    expect(emit).toBeCalledWith("a", expect.anything(), test);
-    expect(emit).toBeCalledWith("b", expect.anything(), test);
-    expect(emit).toBeCalledWith("c", expect.anything(), test);
+    expect(emit).toBeCalledWith("a", test);
+    expect(emit).toBeCalledWith("b", test);
+    expect(emit).toBeCalledWith("c", test);
   })
   
   it("will be evaluated in order", async () => {

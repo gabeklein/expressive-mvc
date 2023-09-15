@@ -1017,8 +1017,8 @@ describe("set method", () => {
       test.foo = "bar";
       test.foo = "baz";
 
-      expect(mock).toBeCalledWith("foo", expect.anything(), test);
-      expect(mock).toBeCalledWith("foo", expect.anything(), test);
+      expect(mock).toBeCalledWith("foo", test);
+      expect(mock).toBeCalledWith("foo", test);
     })
   })
 
@@ -1212,7 +1212,7 @@ describe("set method", () => {
 
       test.bar = 2;
 
-      expect(callback).toBeCalledWith("bar", { bar: 2, foo: 0 }, test);
+      expect(callback).toBeCalledWith("bar", test);
     })
 
     it('will disallow update if model is destroyed', () => {

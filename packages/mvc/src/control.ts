@@ -9,7 +9,7 @@
  * @param source - Instance of Model for which update has occured.
  */
 type OnUpdate<T = any> = (
-  this: T, key: unknown | null | boolean, source: T
+  this: T, key: unknown, source: T
 ) => (() => void) | null | void;
 
 const DISPATCH = new Set<() => void>();
@@ -153,6 +153,7 @@ export {
   addListener,
   effect,
   event,
-  watch,
-  queue
+  OnUpdate,
+  queue,
+  watch
 }
