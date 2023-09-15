@@ -84,14 +84,10 @@ function ref<T>(
               }
             })
           else {
-            const ref = (value: unknown) => subject.set(key, value);
+            const set = (value: unknown) => subject.set(key, value);
           
-            define(ref, "current", {
-              get: () => state[key],
-              set: ref
-            })
-  
-            define(value, key, { value: ref })
+            define(set, "current", { get: () => state[key], set });
+            define(value, key, { value: set });
           }
       })
 

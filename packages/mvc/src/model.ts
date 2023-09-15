@@ -92,8 +92,8 @@ class Model {
 
     define(this, "is", { value: this });
 
-    ID.set(this, `${Type}-${id ? String(id) : uid()}`);
     STATE.set(this, state);
+    ID.set(this, `${Type}-${id ? String(id) : uid()}`);
     
     function onNull(key: unknown){
       if(key === null)
