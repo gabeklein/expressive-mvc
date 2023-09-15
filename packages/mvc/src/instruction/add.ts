@@ -1,15 +1,27 @@
 import { watch } from '../control';
 import { fetch, Model, STATE, update } from '../model';
 
-type InstructionRunner<T extends Model = any> =
-  (on: T, key: string, state: Model.Export<T>) => PropertyDescriptor | void;
-
-const INSTRUCT = new Map<symbol, InstructionRunner>();
+const INSTRUCT = new Map<symbol, Model.Instruction>();
 
 function add<T = any>(instruction: Model.Instruction){
-  const placeholder = Symbol("instruction");
+  const token = Symbol("instruction");
+  INSTRUCT.set(token, instruction);
+  return token as unknown as T;
+}
 
-  INSTRUCT.set(placeholder, (subject, key, state) => {
+Model.on((_, subject) => {
+  const state = STATE.get(subject)!;
+
+  for(const key in subject){
+    const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
+    const instruction = INSTRUCT.get(value);
+
+    if(!instruction)
+      continue;
+
+    INSTRUCT.delete(value);
+    delete (subject as any)[key];
+
     const output = instruction.call(subject, key, subject, state);
   
     if(!output)
@@ -51,24 +63,6 @@ function add<T = any>(instruction: Model.Instruction){
         );
       }
     })
-  });
-
-  return placeholder as unknown as T;
-}
-
-Model.on(function(){
-  const state = STATE.get(this)!;
-
-  for(const key in this){
-    const { value } = Object.getOwnPropertyDescriptor(this, key)!;
-    const instruction = INSTRUCT.get(value);
-
-    if(!instruction)
-      continue;
-
-    INSTRUCT.delete(value);
-    delete (this as any)[key];
-    instruction(this, key, state);
   }
 
   return null;
