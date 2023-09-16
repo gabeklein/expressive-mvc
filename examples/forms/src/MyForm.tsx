@@ -1,5 +1,4 @@
 import { Provider } from '@expressive/react';
-import React from 'react';
 
 import { Form, Input } from './Form';
 

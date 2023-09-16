@@ -1,4 +1,3 @@
-import React from "react";
 import Model, { Provider } from "@expressive/react";
 
 /*

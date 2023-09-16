@@ -1,5 +1,5 @@
 import { Model } from '@expressive/react';
-import React, { InputHTMLAttributes, Ref } from 'react';
+import { InputHTMLAttributes, Ref } from 'react';
 
 /*
   Form here will be an abstract Model which might be used to control
