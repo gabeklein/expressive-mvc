@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@expressive/*": [
+        "./packages/*/src"
+      ]
+    }
+  }
+}
