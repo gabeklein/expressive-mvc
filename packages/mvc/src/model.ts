@@ -189,16 +189,6 @@ class Model {
   set(): Promise<Model.Values<this> | false>;
 
   /**
-   * Expect an update to state within a set time.
-   * 
-   * @param timeout - milliseconds to wait for update
-   * @param predicate - optional function to filter for specific updates. If returns true, update is accepted.
-   * 
-   * @returns a promise to resolve when next accepted update has occured.
-   */
-  set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
-
-  /**
    * Call a function whenever an update occurs.
    * 
    * @param callback
@@ -232,7 +222,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -247,7 +237,7 @@ class Model {
         : update(self, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && !PENDING.has(self)){
+      if(!PENDING.has(self)){
         resolve(false);
         return;
       }
@@ -256,18 +246,10 @@ class Model {
         if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
   
-        if(timeout)
-          clearTimeout(timeout);
-  
         remove();
   
         return resolve.bind(null, PENDING.get(self));
       });
-  
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
-        remove();
-        reject(arg1);
-      }, arg1);
     });
   }
 

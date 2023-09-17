@@ -160,10 +160,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     expect(effect).toBeCalledTimes(3);
   })
@@ -177,10 +177,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     /**
      * we did not access value2 in above accessor,
@@ -385,7 +385,7 @@ describe("get method", () => {
       test.value1 = 2;
       test.value2 = 3;
 
-      await test.set(0);
+      await expect(test).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -403,7 +403,7 @@ describe("get method", () => {
 
       test.value3 = 4;
 
-      await test.set(0);
+      await expect(test).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -627,7 +627,7 @@ describe("get method", () => {
       state.value1 = 2;
       state.value2 = 3;
 
-      await state.set(0);
+      await expect(state).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -645,7 +645,7 @@ describe("get method", () => {
 
       state.value3 = 4;
 
-      await state.set(0);
+      await expect(state).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -1019,113 +1019,6 @@ describe("set method", () => {
 
       expect(mock).toBeCalledWith("foo", test);
       expect(mock).toBeCalledWith("foo", test);
-    })
-  })
-
-  describe("timeout", () => {
-    it.todo("will not break if defined before init")
-
-    it('will reject if not pending', async () => {
-      const control = Model.new();
-      const update = control.set(0);
-
-      await expect(update).rejects.toBe(0);
-    })
-
-    it('will reject', async () => {
-      const state = Model.new();
-      const update = state.set(1);
-
-      await expect(update).rejects.toBe(1);
-    })
-
-    it("will resolve object with updated properties", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-      
-      const test = Test.new();
-      const update = test.set(0);
-
-      test.foo = 1;
-      test.bar = 2;
-
-      await expect(update).resolves.toEqual({
-        foo: 1,
-        bar: 2
-      })
-    })
-
-    it("will include overridden updates", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-      
-      const test = Test.new();
-      const update = test.set(0);
-
-      test.foo = 1;
-      test.bar = 2;
-      test.bar = 3;
-
-      await expect(update).resolves.toEqual({
-        foo: 1,
-        bar: 3
-      })
-    })
-
-    it("will resolve promise made after assignment", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-
-      const control = Test.new();
-
-      control.foo = 2;
-      await control.set(0);
-
-      control.bar = 3;
-      await control.set(0);
-    })
-
-    it("will not call test on update if satisfied", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-        baz = 2;
-      }
-
-      const control = Test.new();
-      const test = jest.fn((key: string) => key === "bar");
-      const update = control.set(0, test);
-
-      control.foo = 2;
-      control.bar = 3;
-      control.baz = 4;
-
-      expect(test).toBeCalledWith("foo");
-      expect(test).toBeCalledWith("bar");
-      expect(test).not.toBeCalledWith("baz");
-
-      await expect(update).resolves.toEqual({ foo: 2, bar: 3, baz: 4 });
-    })
-
-    it("will still timeout if test returns false", async () => {
-      class Test extends Model {
-        foo = 0;
-      }
-
-      const control = Test.new();
-      const test = jest.fn(() => false);
-      const update = control.set(0, test);
-
-      control.foo = 2;
-
-      expect(test).toBeCalledWith("foo");
-      await expect(update).rejects.toBe(0);
     })
   })
 
