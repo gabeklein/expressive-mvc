@@ -284,7 +284,7 @@ describe("errors", () => {
 
     test.value = 2;
 
-    await test.set(0);
+    await expect(test).toUpdate();
 
     expect(error).toBeCalledWith(expected);
   });
