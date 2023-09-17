@@ -169,7 +169,7 @@ describe("computed", () => {
     expect(compute).toBeCalled();
 
     test.foo = 2;
-    await test.set(0);
+    await expect(test).toUpdate();
 
     // did attempt a second compute
     expect(compute).toBeCalledTimes(2);

@@ -160,10 +160,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     expect(effect).toBeCalledTimes(3);
   })
@@ -177,10 +177,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     state.value2 = 3;
-    await state.set(0);
+    await expect(state).toUpdate();
 
     /**
      * we did not access value2 in above accessor,
@@ -385,7 +385,7 @@ describe("get method", () => {
       test.value1 = 2;
       test.value2 = 3;
 
-      await test.set(0);
+      await expect(test).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -403,7 +403,7 @@ describe("get method", () => {
 
       test.value3 = 4;
 
-      await test.set(0);
+      await expect(test).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -627,7 +627,7 @@ describe("get method", () => {
       state.value1 = 2;
       state.value2 = 3;
 
-      await state.set(0);
+      await expect(state).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -645,7 +645,7 @@ describe("get method", () => {
 
       state.value3 = 4;
 
-      await state.set(0);
+      await expect(state).toUpdate();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)

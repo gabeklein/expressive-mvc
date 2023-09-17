@@ -373,7 +373,7 @@ describe("compute mode", () => {
     // change value of X, will trigger A & C;
     test.X = 2;
 
-    await test.set(0);
+    await expect(test).toUpdate();
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
