@@ -2,17 +2,17 @@ import Model from "@expressive/react";
 
 class Control extends Model {
   agent = "Bond";
-  remaining = 60;
+  remaining = 30;
   dead = undefined;
 
   constructor() {
     super();
 
-    // the `get` method will be called when a model
+    // The `get` method will be called when a model
     // becomes ready to be observed. Assuming no properties
     // are accessed from subscriber (first parameter), the
     // function will only be called once and return function
-    // will be called on `null` event (model is destoryed).
+    // will be called on `null` event, when model is destroyed.
     this.get(this.missionStart, []);
   }
 
@@ -33,7 +33,7 @@ class Control extends Model {
   }
 
   getSomebodyElse = async () => {
-    const res = await fetch("https://randomuser.me/api/");
+    const res = await fetch("https://randomuser.me/api?nat=gb&results=1");
     const data = await res.json();
     const recruit = data.results[0];
 
