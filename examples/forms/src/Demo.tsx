@@ -14,7 +14,7 @@ class Control extends Form {
   email = "";
 }
 
-const MyForm = () => {
+const Demo = () => {
   /*
     In order to for this to work, we will need to provide a
     controller downstream. Here that's pretty easy as <Provider />
@@ -32,8 +32,10 @@ const MyForm = () => {
 };
 
 /*
-  For CTA we create a button to respond to a click y alerting the
-  current values in the form. This is a one-off so we can use Form.get directly.
+  For CTA we create a button to respond to a click, alerting current
+  values in the form. This is a one-off so we'll use Form.get directly.
+  Returned value will be the callback function itself, memoized with
+  access to the nearest instance of Form via closure.
 */
 const Alert = () => {
   const alertValues = Form.get(form => () => {
@@ -46,8 +48,10 @@ const Alert = () => {
   })
 
   return (
-    <button onClick={alertValues}>Show Values</button>
+    <button onClick={alertValues}>
+      Show Values
+    </button>
   );
 }
 
-export default MyForm;
+export default Demo;

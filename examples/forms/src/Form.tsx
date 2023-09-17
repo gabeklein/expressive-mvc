@@ -2,26 +2,26 @@ import { Model } from '@expressive/react';
 import React, { InputHTMLAttributes, Ref } from 'react';
 
 /*
-  Form here will be an abstract Model which might be used to control
+  Form here will be a Model which may be used to control
   *any* form in a hypothetical application. It will be used to
   demonstrate how to extend the Model.get static method to make a
   custom Model usable in different ways.
 
   How this works can be completely up to you.
-  Mainly we want to show you might not need to delegate to library
+  Mainly we want to show there's no need to delegate
   for simple features as you build an app.
 */
 class Form extends Model {
   /*
-    For reusability, we create a static method to abstract
-    the process of binding an <input> to a property on the model.
+    For reusability, create a static method to wrap process
+    for binding an <input> (or textarea) to a property on a model.
 
-    Here the `this.get()` [read: Form.get static method]
+    Here `this.get()` [read: Form.get static method]
     will create a ref-function that will be used by React.
 
     Not only will `.get()` fetch the nearest instance of Form,
     it will pass that instance to a function, which will then
-    return result and be memoized by component going forward.
+    return a result and be memoized by component going forward.
   */
   static createRef(property: string): Ref<HTMLInputElement> {
     return this.get(self => {
@@ -57,9 +57,9 @@ class Form extends Model {
 /*
   Next, we create a reusable Input component to used
   in conjunction with Form. This allows us to create a
-  reusable component which can communicate with any Model
+  styled component which can communicate with any Model
   to extend (or contains) the Form class. This way, there's
-  no need to pass props for controlling the input.
+  no need to pass any props for controlling the input.
 */
 const Input = (props: InputHTMLAttributes<HTMLInputElement>) => {
   const ref = Form.createRef(props.name!);
