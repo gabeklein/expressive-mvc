@@ -189,16 +189,6 @@ class Model {
   set(): Promise<Model.Values<this> | false>;
 
   /**
-   * Expect an update to state within a set time.
-   * 
-   * @param timeout - milliseconds to wait for update
-   * @param predicate - optional function to filter for specific updates. If returns true, update is accepted.
-   * 
-   * @returns a promise to resolve when next accepted update has occured.
-   */
-  set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
-
-  /**
    * Call a function whenever an update occurs.
    * 
    * @param callback
@@ -211,9 +201,11 @@ class Model {
   set(callback: Model.Event<this>): () => boolean;
 
   /**
-   * Push an update without changing the value of associated property.
+   * Push an update without changing property value, or requiring one exists.
    * 
-   * This is useful where a property value internally has changed, but the object remains the same.
+   * This method can dispatch arbitrary updates which can be listened for by a corresponding `get`.
+   * 
+   * If a property, this is useful where a property value internally has changed, but the object remains the same.
    * For example: An array which has pushed a new value, or a change to nested property.
    */
   set(key: string): void;
@@ -230,9 +222,9 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
+  set<K extends string>(key: K, value: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | string | null, arg2?: Predicate | unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -247,7 +239,7 @@ class Model {
         : update(self, arg1);
 
     return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && !PENDING.has(self)){
+      if(!PENDING.has(self)){
         resolve(false);
         return;
       }
@@ -256,18 +248,10 @@ class Model {
         if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
           return;
   
-        if(timeout)
-          clearTimeout(timeout);
-  
         remove();
   
         return resolve.bind(null, PENDING.get(self));
       });
-  
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
-        remove();
-        reject(arg1);
-      }, arg1);
     });
   }
 

@@ -278,7 +278,7 @@ describe("factory", () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await test.set(0);
+    await expect(test).toUpdate();
 
     expect(test.value).toBe("foobar");
   })
@@ -346,7 +346,7 @@ describe("factory", () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.set(0);
+    await test.set();
 
     expect(mock).toBeCalledWith("foobar");
   })
@@ -386,10 +386,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set(0);
+    await expect(test).toUpdate();
 
     name.resolve("World");
-    await test.set(0);
+    await expect(test).toUpdate();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
@@ -414,10 +414,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set(0);
+    await test.set();
 
     name.resolve("World");
-    await test.set(0);
+    await test.set();
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
