@@ -25,11 +25,11 @@ describe("model", () => {
     parent.get(mock);
   
     parent.value = "bar";
-    await expect(parent).toUpdate();
+    await expect(parent).toHaveUpdated();
     expect(mock).toHaveBeenCalledTimes(2)
   
     parent.child.value = "bar";
-    await expect(parent.child).toUpdate();
+    await expect(parent.child).toHaveUpdated();
     expect(mock).toHaveBeenCalledTimes(3)
   })
   
@@ -136,7 +136,7 @@ describe("model", () => {
     expect(state.child.value).toBe("foo");
   
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
   
     expect(mock).toBeCalledTimes(2);
     expect(state.child.value).toBe("bar");
@@ -167,19 +167,19 @@ describe("model", () => {
   
     // Will refresh on sub-value change.
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
     expect(state.child.value).toBe("bar");
     expect(mock).toBeCalledTimes(2);
   
     // Will refresh on repalcement.
     state.child = new Child();
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(state.child.value).toBe("foo");
     expect(mock).toBeCalledTimes(3);
   
     // New subscription still works.
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
     expect(state.child.value).toBe("bar");
     expect(mock).toBeCalledTimes(4);
   })
@@ -201,28 +201,28 @@ describe("model", () => {
     state.get(mock);
   
     state.child = new Child();
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(mock).toBeCalledTimes(2)
   
     // Will refresh on sub-value change.
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
     expect(mock).toBeCalledTimes(3);
   
     // Will refresh on undefined.
     state.child = undefined;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(state.child).toBeUndefined();
     expect(mock).toBeCalledTimes(4);
   
     // Will refresh on repalcement.
     state.child = new Child();
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(mock).toBeCalledTimes(5);
   
     // New subscription still works.
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
     expect(mock).toBeCalledTimes(6);
   })
   
@@ -245,17 +245,17 @@ describe("model", () => {
   
     // Will refresh on repalcement.
     state.child = new Child();
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(mock).toBeCalledTimes(2)
   
     // New subscription does work.
     state.child.value = "bar";
-    await expect(state.child).toUpdate();
+    await expect(state.child).toHaveUpdated();
     expect(mock).toBeCalledTimes(3)
   
     // Will refresh on deletion.
     state.child = undefined;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(mock).toBeCalledTimes(4)
   })
   
@@ -293,7 +293,7 @@ describe("object", () => {
     test.get(effect);
     test.info.foo = "bar";
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(effect).toBeCalledTimes(2);
   })
@@ -311,7 +311,7 @@ describe("object", () => {
     test.get(effect);
     test.info.foo = "foo";
 
-    await expect(test).not.toUpdate();
+    await expect(test).not.toHaveUpdated();
   })
 
   // may be reimplemented in future

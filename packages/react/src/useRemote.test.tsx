@@ -74,7 +74,7 @@ describe("passive mode", () => {
 
     test.value++;
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(hook).toBeCalledTimes(1);
   });
@@ -169,7 +169,7 @@ describe("computed", () => {
     expect(compute).toBeCalled();
 
     test.foo = 2;
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     // did attempt a second compute
     expect(compute).toBeCalledTimes(2);
@@ -205,7 +205,7 @@ describe("computed", () => {
 
     test.foo = 2;
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(factory).toBeCalledTimes(1);
     expect(render).toBeCalledTimes(1);
@@ -360,7 +360,7 @@ describe("async", () => {
     expect(hook.output).toBe("foobar");
 
     test.foo = "foo";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(hook).toBeCalledTimes(2);
   });

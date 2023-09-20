@@ -70,7 +70,7 @@ describe("model", () => {
     expect(state.value).toBe(1);
 
     state.value = 2
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     expect(state.value).toBe(2);
   })
@@ -81,7 +81,7 @@ describe("model", () => {
     expect(state.value).toBe(1);
 
     state.value = 1
-    await expect(state).not.toUpdate();
+    await expect(state).not.toHaveUpdated();
   })
 
   it('accepts update from within a method', async () => {
@@ -96,7 +96,7 @@ describe("model", () => {
     const state = Subject.new();
 
     state.setValue(3);
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     expect(state.value).toBe(3)
   })
@@ -119,7 +119,7 @@ describe("model", () => {
 
     test.fn = mockFunction2;
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(mockFunction2).toBeCalled();
     expect(mockFunction).toBeCalledTimes(1);
@@ -160,10 +160,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     state.value2 = 3;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     expect(effect).toBeCalledTimes(3);
   })
@@ -177,10 +177,10 @@ describe("subscriber", () => {
     state.get(effect);
 
     state.value = 2;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     state.value2 = 3;
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
 
     /**
      * we did not access value2 in above accessor,
@@ -302,13 +302,13 @@ describe("get method", () => {
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       test.value2 = 3;
       test.value3 = 4;
 
       // wait for update event to flush queue
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(3)
@@ -333,7 +333,7 @@ describe("get method", () => {
       expect(effect).toBeCalledTimes(1);
       test.nested.value = "bar";
 
-      await expect(test.nested).toUpdate();
+      await expect(test.nested).toHaveUpdated();
 
       expect(effect).toBeCalledTimes(2);
     })
@@ -356,18 +356,18 @@ describe("get method", () => {
       expect(effect).toBeCalledTimes(1);
 
       test.nested.value++;
-      await expect(test.nested).toUpdate();
+      await expect(test.nested).toHaveUpdated();
       expect(effect).toBeCalledTimes(2);
 
       const old = test.nested;
 
       test.nested = Nested.new();
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       // Updates because nested property is new.
       expect(effect).toBeCalledTimes(3);
 
       old.value++;
-      await expect(old).toUpdate();
+      await expect(old).toHaveUpdated();
       // Should not update on new event from previous.
       expect(effect).toBeCalledTimes(3);
     })
@@ -385,7 +385,7 @@ describe("get method", () => {
       test.value1 = 2;
       test.value2 = 3;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -403,7 +403,7 @@ describe("get method", () => {
 
       test.value3 = 4;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -427,7 +427,7 @@ describe("get method", () => {
       expect(mock).not.toBeCalled();
 
       state.value1 = 2;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalled();
     })
@@ -448,12 +448,12 @@ describe("get method", () => {
       const state = Test2.new();
 
       state.value1++;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalled();
 
       state.value3++;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       // expect pre-existing listener to hit
       expect(mock).toBeCalledTimes(3);
@@ -503,13 +503,13 @@ describe("get method", () => {
 
       test.value1 += 1;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(didEffect).toBeCalledTimes(2);
 
       done();
 
       test.value1 += 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       expect(didEffect).toBeCalledTimes(2);
     })
@@ -524,7 +524,7 @@ describe("get method", () => {
       test.get(didEffect);
 
       test.value1 += 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       expect(didEffect).toBeCalledTimes(1);
     })
@@ -544,12 +544,12 @@ describe("get method", () => {
 
       callback = null;
       test.value1 += 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       expect(didEffect).toBeCalledTimes(2);
 
       test.value1 += 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       expect(didEffect).toBeCalledTimes(2);
       expect(cleanup).toBeCalledTimes(1);
@@ -567,14 +567,14 @@ describe("get method", () => {
       });
 
       state.value1 = 2;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       state.value2 = 3;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       state.value2 = 4;
       state.value3 = 4;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       /**
        * must invoke once to detect subscription
@@ -602,14 +602,14 @@ describe("get method", () => {
       state.get(testEffect);
 
       state.value1 = 2;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       state.value2 = 3;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       state.value2 = 4;
       state.value3 = 4;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalledTimes(4);
     })
@@ -627,7 +627,7 @@ describe("get method", () => {
       state.value1 = 2;
       state.value2 = 3;
 
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -645,7 +645,7 @@ describe("get method", () => {
 
       state.value3 = 4;
 
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       // expect two syncronous groups of updates.
       expect(mock).toBeCalledTimes(2)
@@ -672,12 +672,12 @@ describe("get method", () => {
       expect(mock).toBeCalled();
 
       state.value1++;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalledTimes(2);
 
       state.value3++;
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalledTimes(3);
     })
@@ -722,7 +722,7 @@ describe("get method", () => {
 
         test.value = "foobar";
 
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(didInvoke).toBeCalledWith("foobar");
       })
 
@@ -738,12 +738,12 @@ describe("get method", () => {
 
         test.value = "foo";
 
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(didInvoke).toBeCalledWith("foo");
 
         test.value = "bar";
 
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(didInvoke).toBeCalledWith("bar");
         expect(didTry).toBeCalledTimes(3);
       })
@@ -764,12 +764,12 @@ describe("get method", () => {
 
         test.other = "bar";
 
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(willUpdate).toBeCalledTimes(1);
 
         test.value = "foo";
 
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(didUpdate).toBeCalledWith("foo");
         expect(willUpdate).toBeCalledTimes(2);
       })
@@ -790,7 +790,7 @@ describe("get method", () => {
         const state = Test.new();
 
         state.value1++;
-        await expect(state).toUpdate();
+        await expect(state).toHaveUpdated();
 
         expect(mock).toBeCalledTimes(2);
       })
@@ -813,7 +813,7 @@ describe("get method", () => {
         const state = Test.new();
 
         state.value1++;
-        await expect(state).toUpdate();
+        await expect(state).toHaveUpdated();
 
         expect(mock).toBeCalled();
       })
@@ -830,17 +830,17 @@ describe("get method", () => {
         const test = Test.new();
 
         test.value++;
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(mock).toBeCalledTimes(2);
 
         test.value++;
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(mock).toBeCalledTimes(3);
 
         test.done();
 
         test.value++;
-        await expect(test).toUpdate();
+        await expect(test).toHaveUpdated();
         expect(mock).toBeCalledTimes(3);
       })
     });
@@ -973,7 +973,7 @@ describe("set method", () => {
 
       test.set("foo");
 
-      await expect(test).toUpdate("foo");
+      await expect(test).toHaveUpdated("foo");
 
       expect(test.foo).toBe("foo");
     })
@@ -985,7 +985,7 @@ describe("set method", () => {
 
       test.set("foo", "bar");
 
-      await expect(test).toUpdate("foo");
+      await expect(test).toHaveUpdated("foo");
 
       expect(test.foo).toBe("bar");
     })
@@ -997,7 +997,7 @@ describe("set method", () => {
 
       test.set("foo", "foo");
 
-      await expect(test).not.toUpdate();
+      await expect(test).not.toHaveUpdated();
       
       expect(test.foo).toBe("foo");
     })
@@ -1027,9 +1027,8 @@ describe("set method", () => {
 
     it('will reject if not pending', async () => {
       const control = Model.new();
-      const update = control.set(0);
 
-      await expect(update).rejects.toBe(0);
+      await expect(control).not.toUpdate(0);
     })
 
     it('will reject', async () => {
@@ -1085,10 +1084,10 @@ describe("set method", () => {
       const control = Test.new();
 
       control.foo = 2;
-      await control.set(0);
+      await expect(control).toHaveUpdated();
 
       control.bar = 3;
-      await control.set(0);
+      await expect(control).toHaveUpdated();
     })
 
     it("will not call test on update if satisfied", async () => {
@@ -1170,7 +1169,7 @@ describe("set method", () => {
       expect(didUpdate).toBeCalledTimes(2);
       expect(didUpdateAsync).not.toBeCalled();
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       expect(didUpdateAsync).toBeCalledTimes(1);
 
@@ -1187,7 +1186,7 @@ describe("set method", () => {
 
       test.foo = 1;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(error).toBeCalledWith(oops);
 
       done();

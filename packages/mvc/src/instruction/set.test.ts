@@ -45,7 +45,7 @@ describe("placeholder", () => {
     test.foobar = "foo";
     test.foobar = "bar";
 
-    await expect(test).toUpdate("foobar")
+    await expect(test).toHaveUpdated("foobar")
 
     expect(effect).toBeCalledTimes(2);
     expect(foobar).not.toBeCalledWith("foo");
@@ -105,11 +105,11 @@ describe("callback", () => {
 
     state.test = 2;
 
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(callback).not.toBeCalled();
     state.test = 3;
 
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(callback).toBeCalledWith(true);
   })
 
@@ -126,7 +126,7 @@ describe("callback", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(callback).toBeCalledWith("bar");
   })
 
@@ -173,7 +173,7 @@ describe("intercept", () => {
     expect(state.test).toBe("foo");
     state.test = "bar";
 
-    await expect(state).not.toUpdate();
+    await expect(state).not.toHaveUpdated();
     expect(callback).toBeCalledWith("bar");
     expect(state.test).toBe("foo");
   })
@@ -193,14 +193,14 @@ describe("intercept", () => {
     subject.value = 2;
 
     expect(setter).toBeCalledWith(2, 1);
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
     expect(subject.value).toBe(2);
 
     // this update will be supressed by setter
     subject.value = 3;
 
     expect(setter).toBeCalledWith(3, 2);
-    await expect(subject).not.toUpdate();
+    await expect(subject).not.toHaveUpdated();
     expect(cleanup).not.toBeCalled();
 
     subject.value = 4;
@@ -223,7 +223,7 @@ describe("factory", () => {
 
     test.value = "bar";
 
-    expect(test).toUpdate();
+    expect(test).toHaveUpdated();
     expect(test.value).toBe("bar");
     expect(getValue).not.toBeCalled();
   })
@@ -278,7 +278,7 @@ describe("factory", () => {
 
     expect(() => test.value).toThrow(expect.any(Promise));
 
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     expect(test.value).toBe("foobar");
   })
@@ -346,7 +346,7 @@ describe("factory", () => {
     expect(mock).toBeCalledWith(undefined);
 
     promise.resolve("foobar");
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     expect(mock).toBeCalledWith("foobar");
   })
@@ -386,10 +386,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     name.resolve("World");
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");
@@ -414,10 +414,10 @@ describe("factory", () => {
     test.get($ => void $.value);
 
     greet.resolve("Hello");
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     name.resolve("World");
-    await test.set(0);
+    await expect(test).toUpdate(0);
 
     expect(didEvaluate).toBeCalledTimes(3);
     expect(test.value).toBe("Hello World");

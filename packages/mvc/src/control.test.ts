@@ -77,12 +77,12 @@ describe("instruction", () => {
       test.property = "test";
       expect(didSetValue).toBeCalledWith("test", "foobar");
       expect(test.property).toBe("test");
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
   
       test.property = "ignore";
       expect(didSetValue).toBeCalledWith("ignore", "test");
       expect(test.property).toBe("test");
-      await expect(test).not.toUpdate();
+      await expect(test).not.toHaveUpdated();
     })
   
     // duplicate test?
@@ -106,13 +106,13 @@ describe("instruction", () => {
   
       instance.property = 10;
       expect(instance.property).toBe(20);
-      await expect(instance).toUpdate();
+      await expect(instance).toHaveUpdated();
 
       ignore = true;
 
       instance.property = 0;
       expect(instance.property).toBe(20);
-      await expect(instance).not.toUpdate();
+      await expect(instance).not.toHaveUpdated();
     })
 
     it("will not duplicate explicit update", () => {
@@ -284,7 +284,7 @@ describe("errors", () => {
 
     test.value = 2;
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(error).toBeCalledWith(expected);
   });

@@ -77,7 +77,7 @@ describe("useContext", () => {
   
     expect(didPushToValues).toBeCalledTimes(3);
   
-    await expect(parent).toUpdate();
+    await expect(parent).toHaveUpdated();
   
     // Expect updates to have bunched up before new frame.
     expect(didUpdateValues).toBeCalledTimes(2);
@@ -178,7 +178,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await expect(bar).toUpdate();
+    await expect(bar).toHaveUpdated();
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);

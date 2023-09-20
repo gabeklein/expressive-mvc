@@ -11,7 +11,7 @@ describe("property", () => {
   
     state.ref.current = "foobar";
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(state.ref.current).toBe("foobar");
   })
   
@@ -30,7 +30,7 @@ describe("property", () => {
 
     state.ref.current = "foobar";
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(didCallback).toBeCalledWith();
   })
   
@@ -49,7 +49,7 @@ describe("property", () => {
 
     state.ref("foobar");
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(didUpdate).toBeCalledWith();
   })
   
@@ -73,7 +73,7 @@ describe("property", () => {
     state.ref.current = "foobar";
     expect(didTrigger).toBeCalledWith("foobar");
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(didUpdate).toBeCalledWith();
   })
   
@@ -87,11 +87,11 @@ describe("property", () => {
   
     state.ref.current = 1;
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(didTrigger).not.toBeCalled();
     state.ref.current = 2;
   
-    await expect(state).toUpdate();
+    await expect(state).toHaveUpdated();
     expect(didTrigger).toBeCalled();
   })
 
@@ -183,7 +183,7 @@ describe("proxy", () => {
     test.refs.foo("bar");
     test.refs.bar("foo");
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
 
     expect(test.foo).toBe("bar");
     expect(test.bar).toBe("foo");

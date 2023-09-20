@@ -35,6 +35,6 @@ it("will not throw suspense if get (required) is false", async () => {
   test.get(effect);
   test.value = "foo";
 
-  await expect(test).toUpdate();
+  await expect(test).toHaveUpdated();
   expect(effect).toBeCalledTimes(2);
 })

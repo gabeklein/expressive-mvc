@@ -28,7 +28,7 @@ it('will assign `is` as a circular reference', async () => {
   expect(output.is.value).toBe("foo");
 
   output.value = "bar";
-  await expect(output).toUpdate();
+  await expect(output).toHaveUpdated();
 
   expect(output.is.value).toBe("bar")
 })
@@ -179,13 +179,13 @@ describe("props argument", () => {
     expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
 
     // TODO: Can this update be supressed?
-    await expect(hook.output).toUpdate();
+    await expect(hook.output).toHaveUpdated();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" })
     });
 
-    await expect(hook.output).not.toUpdate();
+    await expect(hook.output).not.toHaveUpdated();
 
     await hook.act(() => {
       hook.output.foo = "bar";
@@ -203,13 +203,13 @@ describe("props argument", () => {
     expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
     
     // TODO: Can this update be supressed?
-    await expect(hook.output).toUpdate();
+    await expect(hook.output).toHaveUpdated();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" }, true)
     });
 
-    await expect(hook.output).toUpdate();
+    await expect(hook.output).toHaveUpdated();
 
     expect(hook.output.foo).toBe("bar");
     expect(hook).toBeCalledTimes(2);
@@ -260,7 +260,7 @@ describe("props argument", () => {
       return Test.use({ foo: "bar" }, true);
     })
 
-    await expect(hook.output).toUpdate();
+    await expect(hook.output).toHaveUpdated();
 
     expect(hook).toBeCalledTimes(2);
   })

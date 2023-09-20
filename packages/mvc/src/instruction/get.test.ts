@@ -151,11 +151,11 @@ describe("fetch mode", () => {
     child.get(effect);
   
     child.value = "bar";
-    await expect(child).toUpdate();
+    await expect(child).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(2)
   
     child.parent.value = "bar";
-    await expect(child.parent).toUpdate();
+    await expect(child.parent).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(3)
   })
 
@@ -175,7 +175,7 @@ describe("fetch mode", () => {
   
     foo.seconds = 30;
   
-    await expect(foo).toUpdate();
+    await expect(foo).toHaveUpdated();
   
     expect(foo.seconds).toEqual(30);
     expect(foo.bar.minutes).toEqual(0);
@@ -184,8 +184,8 @@ describe("fetch mode", () => {
   
     // make sure both did declare an update
     await Promise.all([
-      expect(foo.bar).toUpdate(),
-      expect(foo).toUpdate()
+      expect(foo.bar).toHaveUpdated(),
+      expect(foo).toHaveUpdated()
     ])
   
     expect(foo.seconds).toEqual(60);
@@ -207,14 +207,14 @@ describe("compute mode", () => {
   
     subject.seconds = 30;
   
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
   
     expect(subject.seconds).toEqual(30);
     expect(subject.minutes).toEqual(0);
   
     subject.seconds = 60;
   
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
   
     expect(subject.seconds).toEqual(60);
     expect(subject.minutes).toEqual(1);
@@ -238,12 +238,12 @@ describe("compute mode", () => {
   
     subject.child.value = "bar";
 
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
     expect(subject.nested).toBe("bar");
 
     subject.child = new Child();
 
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
     expect(subject.child.value).toBe("foo");
     expect(subject.nested).toBe("foo");
   })
@@ -269,7 +269,7 @@ describe("compute mode", () => {
     expect(didCompute).not.toBeCalledWith(2)
   
     // does compute eventually
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(didCompute).toBeCalledWith(2)
     expect(test.plusOne).toBe(2);
   
@@ -283,7 +283,7 @@ describe("compute mode", () => {
     expect(didCompute).toBeCalledWith(3);
   
     // update should still occur
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   })
   
   it('will be squashed with regular updates', async () => {
@@ -318,7 +318,7 @@ describe("compute mode", () => {
     test.b++;
     test.x.value++;
   
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   
     expect(exec).toBeCalledTimes(2);
 
@@ -373,7 +373,7 @@ describe("compute mode", () => {
     // change value of X, will trigger A & C;
     test.X = 2;
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
@@ -395,7 +395,7 @@ describe("compute mode", () => {
     expect(test.greeting).toBe("Hello World!");
   
     test.friend = "Foo";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   
     expect(test.greeting).toBe("Hello Foo!");
   })
@@ -432,7 +432,7 @@ describe("compute mode", () => {
       void state.value;
       state.shouldFail = true;
 
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
       expect(warn).toBeCalledWith(`An exception was thrown while refreshing ${state}.value.`);
       expect(error).toBeCalled();
@@ -482,7 +482,7 @@ describe("compute mode", () => {
 
       // change upstream value to trigger re-compute
       test.multiplier = 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       // getter should see current value while producing new one
       expect(test.previous).toBe(initial);
@@ -519,7 +519,7 @@ describe("compute mode", () => {
       expect(test.value).toBe(3);
       expect(didGetOldValue).toBeCalledWith(2);
     
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     })
@@ -542,7 +542,7 @@ describe("compute mode", () => {
 
       test.foo++;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(test.bar).toBe(3);
     })
 
@@ -607,16 +607,16 @@ describe.skip("replaced source", () => {
     expect(test.greeting).toBe("Hello Foo!");
 
     oldSource.value = "Baz";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
 
     const newSource = Source.new("Bar");
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
     newSource.value = "Baz";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
   })
 
@@ -628,11 +628,11 @@ describe.skip("replaced source", () => {
 
     Source.new("Bar");
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
     oldSource.value = "Baz";
-    await expect(test).not.toUpdate();
+    await expect(test).not.toHaveUpdated();
   })
 })
 
