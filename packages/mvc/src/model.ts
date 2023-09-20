@@ -32,7 +32,7 @@ declare namespace Model {
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
   type ValueCallback<T extends Model, K extends Any<T>> =
-    (this: T, value: Model.ValueOf<T, K>, key: K, thisArg: K) => (() => void) | void;
+    (this: T, value: Model.ValueOf<T, K>, key: K, thisArg: K) => void;
 
   /**
    * Values from current state of given controller.
@@ -152,7 +152,7 @@ class Model {
         
         return addListener(self, key => {
           if(key === arg1)
-            return arg2.call(this, arg1 in state ? state[key] : key, key, this)
+            arg2.call(this, arg1 in state ? state[key] : key, key, this)
         })
       }
       else
