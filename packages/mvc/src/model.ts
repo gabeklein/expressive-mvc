@@ -1,7 +1,5 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
-type Predicate = (key: string) => boolean | void;
-
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const PENDING = new WeakMap<Model, Record<string, unknown>>();
@@ -133,12 +131,12 @@ class Model {
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
   get(): Model.Export<this>;
 
+  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
+
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
   get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
-
-  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
   get(arg1?: Model.Effect<this> | string, arg2?: boolean | Function){
     const self = this.is;
@@ -192,11 +190,10 @@ class Model {
    * Expect an update to state within a set time.
    * 
    * @param timeout - milliseconds to wait for update
-   * @param predicate - optional function to filter for specific updates. If returns true, update is accepted.
    * 
    * @returns a promise to resolve when next accepted update has occured.
    */
-  set(timeout: number, predicate?: Predicate): Promise<Model.Values<this>>;
+  set(timeout: number): Promise<Model.Values<this>>;
 
   /**
    * Call a function whenever an update occurs.
@@ -232,7 +229,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | number | string | null, arg2?: Predicate | unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | number | string | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -253,7 +250,7 @@ class Model {
       }
   
       const remove = addListener(this, (key) => {
-        if(key === true || typeof arg2 == "function" && typeof key == "string" && arg2(key) !== true)
+        if(key === true)
           return;
   
         if(timeout)

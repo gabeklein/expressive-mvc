@@ -1089,43 +1089,6 @@ describe("set method", () => {
       control.bar = 3;
       await expect(control).toHaveUpdated();
     })
-
-    it("will not call test on update if satisfied", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-        baz = 2;
-      }
-
-      const control = Test.new();
-      const test = jest.fn((key: string) => key === "bar");
-      const update = control.set(0, test);
-
-      control.foo = 2;
-      control.bar = 3;
-      control.baz = 4;
-
-      expect(test).toBeCalledWith("foo");
-      expect(test).toBeCalledWith("bar");
-      expect(test).not.toBeCalledWith("baz");
-
-      await expect(update).resolves.toEqual({ foo: 2, bar: 3, baz: 4 });
-    })
-
-    it("will still timeout if test returns false", async () => {
-      class Test extends Model {
-        foo = 0;
-      }
-
-      const control = Test.new();
-      const test = jest.fn(() => false);
-      const update = control.set(0, test);
-
-      control.foo = 2;
-
-      expect(test).toBeCalledWith("foo");
-      await expect(update).rejects.toBe(0);
-    })
   })
 
   describe("effect", () => {
