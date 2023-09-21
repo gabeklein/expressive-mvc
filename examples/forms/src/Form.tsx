@@ -23,8 +23,8 @@ class Form extends Model {
     it will pass that instance to a function, which will then
     return a result and be memoized by component going forward.
   */
-  static createRef(property: string): Ref<HTMLInputElement> {
-    return this.get(self => {
+  static bind(property: string): Ref<HTMLInputElement> {
+    return this.get(form => {
       let reset: (() => void) | undefined;
 
       return (input) => {
@@ -34,14 +34,11 @@ class Form extends Model {
         if(!input)
           return;
 
-        if(property in self == false)
-          throw new Error(`${self} has no property "${property}"`);
+        if(!(property in form))
+          throw new Error(`${form} has no property "${property}"`);
 
-        const unfollow = self.get(current => {
-          input.value = current[property];
-        });
-
-        const onInput = () => self[property] = input.value;
+        const unfollow = form.get(property, x => input.value = x as string);
+        const onInput = () => form.set(property, input.value);
 
         input.addEventListener("input", onInput);
 
@@ -62,7 +59,7 @@ class Form extends Model {
   no need to pass any props for controlling the input.
 */
 const Input = (props: InputHTMLAttributes<HTMLInputElement>) => {
-  const ref = Form.createRef(props.name!);
+  const ref = Form.bind(props.name!);
 
   return (
     <input {...props} ref={ref} />
