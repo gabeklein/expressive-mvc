@@ -1003,6 +1003,34 @@ describe("set method", () => {
     })
   })
 
+  describe("promise", () => {
+    it("will resolve update frame", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      test.foo = "bar";
+
+      const update = test.set();
+
+      expect(update).toBeInstanceOf(Promise);
+      await expect(update).resolves.toEqual({ foo: "bar" });
+    })
+
+    it("will be undefined if no update", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+      const update = test.set();
+
+      expect(update).toBeUndefined();
+    })
+  })
+
   describe("callback", () => {
     it("will call callback on update", async () => {
       class Test extends Model {
@@ -1019,75 +1047,6 @@ describe("set method", () => {
 
       expect(mock).toBeCalledWith("foo", test);
       expect(mock).toBeCalledWith("foo", test);
-    })
-  })
-
-  describe("timeout", () => {
-    it.todo("will not break if defined before init")
-
-    it('will reject if not pending', async () => {
-      const control = Model.new();
-
-      await expect(control).not.toUpdate(0);
-    })
-
-    it('will reject', async () => {
-      const state = Model.new();
-      const update = state.set(1);
-
-      await expect(update).rejects.toBe(1);
-    })
-
-    it("will resolve object with updated properties", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-      
-      const test = Test.new();
-      const update = test.set(0);
-
-      test.foo = 1;
-      test.bar = 2;
-
-      await expect(update).resolves.toEqual({
-        foo: 1,
-        bar: 2
-      })
-    })
-
-    it("will include overridden updates", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-      
-      const test = Test.new();
-      const update = test.set(0);
-
-      test.foo = 1;
-      test.bar = 2;
-      test.bar = 3;
-
-      await expect(update).resolves.toEqual({
-        foo: 1,
-        bar: 3
-      })
-    })
-
-    it("will resolve promise made after assignment", async () => {
-      class Test extends Model {
-        foo = 0;
-        bar = 1;
-      }
-
-      const control = Test.new();
-
-      control.foo = 2;
-      await expect(control).toHaveUpdated();
-
-      control.bar = 3;
-      await expect(control).toHaveUpdated();
     })
   })
 

@@ -181,19 +181,11 @@ class Model {
   }
 
   /**
-   * Check if update is in progress.
-   * Returns a promise which resolves updated keys. If no update, will resolve to `false`.
+   * Get update in progress.
+   *
+   * @returns a promise which resolves object with updated values; `undefined` if no update.
    **/
-  set(): Promise<Model.Values<this> | false>;
-
-  /**
-   * Expect an update to state within a set time.
-   * 
-   * @param timeout - milliseconds to wait for update
-   * 
-   * @returns a promise to resolve when next accepted update has occured.
-   */
-  set(timeout: number): Promise<Model.Values<this>>;
+  set(): Promise<Model.Values<this>> | undefined;
 
   /**
    * Call a function whenever an update occurs.
@@ -229,7 +221,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | number | string | null, arg2?: unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | string | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -238,33 +230,23 @@ class Model {
           return arg1.call(self, key, self);
       })
 
-    if(typeof arg1 == "string" || arg1 === null)
+    if(arg1 !== undefined)
       return 1 in arguments
         ? update(self, arg1, arg2, arg3)
         : update(self, arg1);
 
-    return new Promise<any>((resolve, reject) => {
-      if(typeof arg1 != "number" && !PENDING.has(self)){
-        resolve(false);
-        return;
-      }
-  
+    if(!PENDING.has(self))
+      return;
+
+    return new Promise(resolve => {
       const remove = addListener(this, (key) => {
         if(key === true)
           return;
-  
-        if(timeout)
-          clearTimeout(timeout);
   
         remove();
   
         return resolve.bind(null, PENDING.get(self));
       });
-  
-      const timeout = typeof arg1 == "number" && setTimeout(() => {
-        remove();
-        reject(arg1);
-      }, arg1);
     });
   }
 
