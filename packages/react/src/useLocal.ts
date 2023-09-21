@@ -39,7 +39,12 @@ function useLocal <T extends Model> (
         if(!repeat)
           shouldApply = false;
 
-        instance.set().then(() => enabled = true);
+        const update = instance.set();
+
+        if(update)
+          update.then(() => enabled = true);
+        else
+          enabled = true;
       }
 
       setContext(instance, useContext(Shared));
