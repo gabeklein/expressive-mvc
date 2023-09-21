@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "rootDir": ".",
+    "outDir": "lib",
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react",
@@ -18,7 +19,11 @@
     },
   },
   "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/mocks.tsx",
     "node_modules",
-    "./dist"
+    "dist",
+    "lib"
   ]
 }

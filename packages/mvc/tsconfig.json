@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
+    "outDir": "lib",
     "esModuleInterop": true,
     "moduleResolution": "node",
     "noUnusedLocals": true,
@@ -8,7 +9,10 @@
     "types": [ "jest" ]
   },
   "exclude": [
+    "**/*.test.ts",
+    "**/mocks.ts",
     "node_modules",
-    "./dist"
+    "dist",
+    "lib"
   ]
 }
