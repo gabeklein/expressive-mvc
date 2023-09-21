@@ -56,16 +56,23 @@ async function toHaveUpdated(received: Model, ...keys: string[]){
       message: () => `Expected ${received} not to have pending updates.`
     }
 
-  const got = Object.keys(didUpdate);
-  const equal = JSON.stringify(got.sort()) === JSON.stringify(keys.sort());
+  for(const key of keys)
+    if(!(key in didUpdate))
+      return {
+        pass: false,
+        message: () => {
+          const got = [
+            ...Object.getOwnPropertyNames(didUpdate),
+            ...Object.getOwnPropertySymbols(didUpdate).map(String)
+          ]
 
-  return equal ? {
+          return `Expected ${received} to have updated keys [${keys.map(String).join(", ")}] but got [${got.join(", ")}].`
+        }
+      }
+
+  return {
     pass: true,
     message: () =>
-      `Expected ${received} not to have updated keys [${keys.join(", ")}].`
-  } : {
-    pass: false,
-    message: () =>
-      `Expected ${received} to have updated keys [${keys.join(", ")}] but got [${got.join(", ")}].`
-  };
+      `Expected ${received} not to have updated keys [${keys.map(String).join(", ")}].`
+  }
 }

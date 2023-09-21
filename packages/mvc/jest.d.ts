@@ -5,7 +5,7 @@ declare global {
       toUpdate(timeout?: number): Promise<R>;
 
       /** Assert model did update with keys specified. */
-      toHaveUpdated<R>(...keys: string[]): Promise<R>; 
+      toHaveUpdated<R>(...keys: (string | symbol)[]): Promise<R>; 
     }
   }
 }

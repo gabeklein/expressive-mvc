@@ -965,19 +965,6 @@ describe("set method", () => {
       foo = "foo";
     }
 
-    it("will force update key", async () => {
-
-      const test = Test.new();
-
-      expect(test.foo).toBe("foo");
-
-      test.set("foo");
-
-      await expect(test).toHaveUpdated("foo");
-
-      expect(test.foo).toBe("foo");
-    })
-
     it("will update value", async () => {
       const test = Test.new();
 
@@ -1001,7 +988,36 @@ describe("set method", () => {
       
       expect(test.foo).toBe("foo");
     })
-  })
+
+    it("will force update", async () => {
+      const test = Test.new();
+
+      expect(test.foo).toBe("foo");
+
+      test.set("foo");
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("foo");
+    })
+
+    it("will update for untracked key", async () => {
+      const test = Test.new();
+
+      test.set("bar");
+
+      await expect(test).toHaveUpdated("bar");
+    });
+
+    it("will update for symbol", async () => {
+      const test = Test.new();
+      const event = Symbol("event");
+
+      test.set(event);
+
+      await expect(test).toHaveUpdated(event);
+    });
+  });
 
   describe("promise", () => {
     it("will resolve update frame", async () => {
@@ -1017,6 +1033,19 @@ describe("set method", () => {
 
       expect(update).toBeInstanceOf(Promise);
       await expect(update).resolves.toEqual({ foo: "bar" });
+    })
+
+    it("will resolve with symbols", async () => {
+      class Test extends Model {}
+
+      const test = Test.new();
+      const event = Symbol("event");
+
+      test.set(event);
+
+      const update = test.set();
+
+      await expect(update).resolves.toEqual({ [event]: true });
     })
 
     it("will be undefined if no update", async () => {

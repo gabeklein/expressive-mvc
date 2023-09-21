@@ -2,9 +2,12 @@ import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
-const PENDING = new WeakMap<Model, Record<string, unknown>>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
+const PENDING = new WeakMap<Model, {
+  [key: string]: unknown;
+  [symbol: symbol]: true;
+}>();
 
 const define = Object.defineProperty;
 
@@ -205,7 +208,7 @@ class Model {
    * This is useful where a property value internally has changed, but the object remains the same.
    * For example: An array which has pushed a new value, or a change to nested property.
    */
-  set(key: string): void;
+  set(key: string | symbol): void;
 
   /**
    * Declare an end to updates. This event will freeze state.
@@ -221,7 +224,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | string | null, arg2?: unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | string | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -337,26 +340,26 @@ function fetch(subject: Model, property: string, required?: boolean){
 
 function update(
   subject: Model,
-  key: string | boolean | null,
+  key: string | symbol | boolean | null,
   value?: unknown,
   silent?: boolean){
 
   const state = STATE.get(subject)!;
   let pending = PENDING.get(subject);
 
-  if(typeof key == "string"){
-    if(2 in arguments){
-      const previous = state[key];
+  if(typeof key == "string" && 2 in arguments){
+    const previous = state[key];
 
-      if(value === previous)
-        return true;
+    if(value === previous)
+      return true;
   
-      state[key] = value;
+    state[key] = value;
 
-      if(silent === true)
-        return;
-    }
+    if(silent === true)
+      return;
+  }
 
+  if(key !== true && key){
     if(!pending){
       PENDING.set(subject, pending = {});
 
@@ -366,7 +369,7 @@ function update(
       })
     }
 
-    pending[key] = value;
+    pending[key as string] = key in state ? value : true;
   }
 
   event(subject, key);
