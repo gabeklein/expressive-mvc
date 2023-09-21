@@ -134,10 +134,10 @@ class Model {
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
   get(): Model.Export<this>;
 
-  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
-
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
+
+  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
   get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
 
