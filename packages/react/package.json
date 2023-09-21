@@ -17,17 +17,15 @@
     "mvc"
   ],
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/index.js",
-    "dist/index.mjs",
-    "dist/index.d.ts"
+    "dist",
+    "lib"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "build": "tsc && tsup src/index.ts --dts",
     "test": "tsc --noEmit && jest --collectCoverage",
-    "prebuild": "rm -rf dist",
+    "prebuild": "rm -rf dist lib",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
