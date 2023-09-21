@@ -243,12 +243,10 @@ class Model {
 
     return new Promise(resolve => {
       const remove = addListener(this, (key) => {
-        if(key === true)
-          return;
-  
-        remove();
-  
-        return resolve.bind(null, PENDING.get(self));
+        if(key !== true){
+          remove();
+          return resolve.bind(null, PENDING.get(self));
+        }
       });
     });
   }
