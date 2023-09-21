@@ -186,7 +186,7 @@ class Model {
   /**
    * Get update in progress.
    *
-   * @returns a promise which resolves object with updated values; `undefined` if no update.
+   * @returns a promise which resolves object with updated values. Is `undefined` if no update.
    **/
   set(): Promise<Model.Values<this>> | undefined;
 
@@ -196,9 +196,9 @@ class Model {
    * @param callback
    *   Note: This will be called for every assignment which changes the value.
    *   To run logic on final value only, this callback may return a function.
-   *   Returning the same function for a key will ensure it is only called once.
+   *   Returning the same function for one or more will ensure it is only called once.
    *
-   * @returns a function to remove listener. Returns true if listener isn't removed already.
+   * @returns a function to remove listener. Will return `true` if removed, `false` if inactive already.
   */
   set(callback: Model.Event<this>): () => boolean;
 
