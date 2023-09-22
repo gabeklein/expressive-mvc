@@ -1,6 +1,6 @@
 {
   "name": "@expressive/demo",
-  "version": "0.35.3",
+  "version": "0.35.4",
   "description": "Development server for expressive examples.",
   "publishConfig": {
     "access": "public"

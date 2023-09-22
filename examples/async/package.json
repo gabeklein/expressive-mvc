@@ -11,7 +11,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@expressive/demo": "^0.35.3"
+    "@expressive/demo": "^0.35.4"
   },
-  "version": "0.35.3"
+  "version": "0.35.4"
 }
