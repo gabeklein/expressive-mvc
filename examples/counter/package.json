@@ -3,7 +3,7 @@
   "private": true,
   "module": "./src/Counter.tsx",
   "scripts": {
-    "start": "demo ./src/Counter.tsx"
+    "dev": "demo ./src/Counter.tsx"
   },
   "dependencies": {
     "@expressive/react": "0.35.1",

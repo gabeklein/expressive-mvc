@@ -3,7 +3,7 @@
   "private": true,
   "module": "src/SayHello.tsx",
   "scripts": {
-    "start": "demo ./src/App.tsx"
+    "dev": "demo ./src/App.tsx"
   },
   "dependencies": {
     "@expressive/react": "0.35.1",
