@@ -1,7 +1,9 @@
 {
   "name": "@example/counter",
   "private": true,
-  "module": "./src/Counter.tsx",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/Counter.tsx",
   "scripts": {
     "dev": "demo ./src/Counter.tsx"
   },
