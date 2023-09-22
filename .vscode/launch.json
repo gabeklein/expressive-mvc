@@ -25,6 +25,21 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "runtimeExecutable": "/usr/local/bin/node"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Demo",
+      "program": "${workspaceFolder}/packages/demo/serve.js",
+      "cwd": "${workspaceFolder}/examples/context",
+      "args": [
+        "./src/App.tsx",
+        "--port",
+        "3000"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "runtimeExecutable": "/usr/local/bin/node"
     }
   ],
   "inputs": [
