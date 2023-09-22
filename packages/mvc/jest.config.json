@@ -3,6 +3,10 @@
   "transform": {
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
+  "coveragePathIgnorePatterns": [
+    "index.ts",
+    "dist"
+  ],
   "setupFilesAfterEnv": [
     "../../jest.setup.ts"
   ],
