@@ -1,11 +1,9 @@
 {
   "name": "@example/counter",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "main": "src/Counter.jsx",
+  "module": "./src/Counter.tsx",
   "scripts": {
-    "dev": "vite"
+    "start": "demo ./src/Counter.tsx"
   },
   "dependencies": {
     "@expressive/react": "0.35.1",
@@ -13,7 +11,6 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.4",
-    "vite": "^4.4.5"
+    "@expressive/demo": "0.35.1"
   }
 }
