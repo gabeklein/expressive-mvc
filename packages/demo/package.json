@@ -1,0 +1,27 @@
+{
+  "name": "@expressive/demo",
+  "version": "0.35.1",
+  "description": "Development server for expressive examples.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "demo": "./serve.js"
+  },
+  "files": [
+    "serve.js",
+    "index.html",
+    "README.md"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@swc/core": "^1.3.87",
+    "css-loader": "^6.8.1",
+    "html-webpack-plugin": "^5.5.3",
+    "simple-argv": "^2.0.4",
+    "style-loader": "^3.3.3",
+    "swc-loader": "^0.2.3",
+    "webpack": "^5.88.2",
+    "webpack-dev-server": "^4.15.1"
+  }
+}
