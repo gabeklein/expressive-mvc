@@ -1,13 +1,14 @@
 import './App.css';
 
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import Counter from './Counter';
+import Situation from './Situation';
 
 const App = () => (
   <div className="container">
-    <h1>Simplest Example: Counter</h1>
-    <Counter />
+    <h1>Simple Example: Async</h1>
+    <Situation />
   </div>
 )
 

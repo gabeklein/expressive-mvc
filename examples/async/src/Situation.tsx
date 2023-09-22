@@ -1,22 +1,25 @@
-import Model from "@expressive/react";
+import Model from '@expressive/react';
+import React from 'react';
 
 class Control extends Model {
   agent = "Bond";
   remaining = 30;
-  dead = undefined;
+  dead?: boolean = undefined;
 
   constructor() {
     super();
-
-    // The `get` method will be called when a model
-    // becomes ready to be observed. Assuming no properties
-    // are accessed from subscriber (first parameter), the
-    // function will only be called once and return function
-    // will be called on `null` event, when model is destroyed.
-    this.get(this.missionStart, []);
+    this.get(this.start);
   }
 
-  missionStart() {
+  /**
+   * This method will be called when the model is ready to be observed.
+   * Assuming no properties are accessed from subscriber (first parameter),
+   * the function will only be called once
+   * 
+   * @returns A function to be called when the model is destroyed.
+   *          This is useful for cleaning up any side-effects.
+   */
+  protected start() {
     const tickTock = () => {
       const remains = this.remaining--;
 

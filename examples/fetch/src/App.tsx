@@ -1,16 +1,17 @@
 import './App.css';
 
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import Situation from './Situation';
+import SayHello from './SayHello';
 
 const App = () => (
   <div className="container">
-    <h1>Simplest Example: Async</h1>
-    <Situation />
+    <h1>Simple Example: Fetch</h1>
+    <SayHello />
   </div>
 )
 
 createRoot(
   document.getElementById('root')
-).render(<App />);
+).render(<App />)

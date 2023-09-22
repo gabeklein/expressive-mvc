@@ -1,5 +1,5 @@
-import React from "react";
-import Model, { Provider } from "@expressive/react";
+import Model, { Provider } from '@expressive/react';
+import React from 'react';
 
 /*
   When using context the first step is to make some model

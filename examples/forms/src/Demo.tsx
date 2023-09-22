@@ -22,7 +22,6 @@ const Demo = () => {
   */
   return (
     <Provider for={Control}>
-      <h1>Example Form</h1>
       <Input name="firstname" placeholder="Firstname" />
       <Input name="lastname" placeholder="Lastname" />
       <Input name="email" placeholder="Email Address" />
