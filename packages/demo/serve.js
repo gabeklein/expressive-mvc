@@ -38,10 +38,23 @@ const CONFIG = {
   },
   module: {
     rules: [
+      // {
+      //   test: /\.[jt]sx?$/,
+      //   exclude: /node_modules/,
+      //   use: "swc-loader"
+      // },
       {
         test: /\.[jt]sx?$/,
         exclude: /node_modules/,
-        use: "swc-loader"
+        use: {
+          loader: "babel-loader",
+          options: {
+            presets: [
+              "@babel/typescript",
+              "@expressive/babel-preset-react"
+            ]
+          }
+        }
       },
       {
         test: /\.css$/,

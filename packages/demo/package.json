@@ -15,6 +15,9 @@
   ],
   "license": "ISC",
   "dependencies": {
+    "@babel/preset-typescript": "^7.22.15",
+    "@expressive/babel-preset-react": "^1.2.3",
+    "babel-loader": "^9.1.3",
     "@swc/core": "^1.3.87",
     "css-loader": "^6.8.1",
     "html-webpack-plugin": "^5.5.3",
