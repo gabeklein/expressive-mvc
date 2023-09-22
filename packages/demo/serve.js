@@ -12,11 +12,12 @@ const {
   ]
 } = require('simple-argv');
 
+/** @type {WebpackDevServer.Configuration} */
 const SERVER_OPTIONS = {
   port,
   host: "0.0.0.0",
   historyApiFallback: true,
-  disableHostCheck: true,
+  allowedHosts: "all",
   hot: true
 };
 
