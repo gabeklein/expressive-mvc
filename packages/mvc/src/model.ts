@@ -23,7 +23,7 @@ declare namespace Model {
   /** Actual value stored in state. */
   type Value<R> =
     R extends Ref<infer T> ? T :
-    R extends Model ? Export<R> :
+    R extends Model ? State<R> :
     R;
 
   type ValueOf<T extends Model, K extends Any<T>> =
@@ -37,7 +37,7 @@ declare namespace Model {
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.
    */
-  type Export<T> = { [P in Key<T>]: Value<T[P]> };
+  type State<T> = { [P in Key<T>]: Value<T[P]> };
 
   /** Object comperable to data found in T. */
   type Values<T> = { [P in Key<T>]?: Value<T[P]> };
@@ -71,7 +71,7 @@ declare namespace Model {
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T = any, M extends Model = any> =
-    (this: M, key: Model.Key<M>, thisArg: M, state: Model.Export<M>) =>
+    (this: M, key: Model.Key<M>, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
@@ -129,7 +129,7 @@ class Model {
   }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */
-  get(): Model.Export<this>;
+  get(): Model.State<this>;
 
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
