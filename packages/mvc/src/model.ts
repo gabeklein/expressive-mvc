@@ -4,10 +4,7 @@ const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const STATE = new WeakMap<Model, Record<string, unknown>>();
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
-const PENDING = new WeakMap<Model, {
-  [key: string]: unknown;
-  [symbol: symbol]: true;
-}>();
+const PENDING = new WeakMap<Model, Record<symbol | string, unknown>>();
 
 const define = Object.defineProperty;
 
