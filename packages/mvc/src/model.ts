@@ -191,7 +191,7 @@ class Model {
   set(): Promise<Model.Values<this>> | undefined;
 
   /**
-   * Call a function whenever an update occurs.
+   * Call a function when update occurs.
    * 
    * @param callback
    *   Note: This will be called for every assignment which changes the value.
@@ -259,7 +259,7 @@ class Model {
   /**
    * Creates a new instance of this controller.
    * 
-   * Beyond `new this(...)`, method will activate managed-state.
+   * **Important** - Use instead of `new this(...)` as this method also activates state.
    * 
    * @param args - arguments sent to constructor
    */
