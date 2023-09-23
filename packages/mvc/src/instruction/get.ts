@@ -102,7 +102,7 @@ function get<R, T extends Model>(
     if(typeof arg1 == "function")
       return compute(subject, key, source, arg1);
 
-    source((got: any) => subject.set(key, got));
+    source((got) => subject.set(key, got));
 
     return { get: arg1 };
   })
