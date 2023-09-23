@@ -29,6 +29,9 @@ function use <T = any> (
   value?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
+  if(typeof value === "function")
+    value = new value();
+
   return add((property, subject) => {
     function set(next: Record<string, unknown> | undefined){
       if(value instanceof Model && !(next instanceof value.constructor))
@@ -59,9 +62,6 @@ function use <T = any> (
       if(typeof argument == "function")
         argument(next);
     }
-
-    if(typeof value === "function")
-      value = new value();
 
     const output: Model.Instruction.Descriptor = { set, value };
 
