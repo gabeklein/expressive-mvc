@@ -18,14 +18,16 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
-    children?: ReactNode;
+    //TODO: use a more strict type for this
+    children?: unknown;
     use?: Model.Values<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    children?: ReactNode;
+    //TODO: use a more strict type for this
+    children?: unknown;
     use?: Model.Values<Instance<T>>;
   }
 }
@@ -60,7 +62,7 @@ function Provider<T extends Provider.Item>(
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(Shared.Provider, { key: value.key, value }, children);
+  return createElement(Shared.Provider, { key: value.key, value }, children as ReactNode);
 }
 
 function reject(argument: any){
