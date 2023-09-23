@@ -12,5 +12,9 @@
     "@expressive/demo": "0.35.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.4",
+    "vite": "^4.4.5"
   }
 }
