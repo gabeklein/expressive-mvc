@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/Counter.jsx",
   "scripts": {
-    "dev": "vite"
+    "dev": "demo ./src/App.jsx"
   },
   "dependencies": {
     "@expressive/react": "0.35.1",
