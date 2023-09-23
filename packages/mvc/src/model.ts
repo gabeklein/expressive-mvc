@@ -78,20 +78,10 @@ declare namespace Model {
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
-interface Model {
-  /**
-   * Loopback to instance of this model. This is useful when in a subscribed context,
-   * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
-   **/
-  is: this;
-}
-
 class Model {
   constructor(id?: string | number){
     let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
-
-    define(this, "is", { value: this });
 
     STATE.set(this, state);
     ID.set(this, `${Type}-${id ? String(id) : uid()}`);
@@ -129,6 +119,14 @@ class Model {
       addListener(this, onNull);
       return null;
     });
+  }
+
+  /**
+   * Loopback to instance of this model. This is useful when in a subscribed context,
+   * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
+   **/
+  get is(){
+    return this;
   }
 
   /** Pull current values from state. Flattens all models and exotic values amongst properties. */

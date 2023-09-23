@@ -1,3 +1,5 @@
+import { Model } from "./model";
+
 /**
  * Update callback function.
  * 
@@ -86,6 +88,34 @@ function queue(event: (() => void)){
   DISPATCH.add(event);
 }
 
+const PROXY = new WeakMap<Function, {}>();
+
+PROXY.set(Model, {
+  get is(){
+
+  },
+  get(){
+
+  },
+  set(){
+
+  },
+  [Symbol.iterator](){
+    
+  }
+})
+
+function proxy(target: {}): any {
+  let type = target.constructor;
+  let proxy = PROXY.get(type);
+
+  if(!proxy){
+
+  }
+
+  return Object.create(proxy || {});
+}
+
 function effect<T extends {}>(
   target: T,
   callback: (this: T, argument: T) => (() => void) | Promise<void> | null | void){
@@ -97,7 +127,7 @@ function effect<T extends {}>(
   function invoke(){
     let expired: boolean | undefined;
 
-    const local = Object.create(target);
+    const local = proxy(target);
     const update = () => {
       if(expired)
         return null;
