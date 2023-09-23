@@ -8,9 +8,12 @@
     "dev": "demo ./src/App.jsx"
   },
   "dependencies": {
-    "@expressive/react": "0.35.1",
     "@expressive/demo": "0.35.4",
+    "@expressive/react": "0.35.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9"
   }
 }
