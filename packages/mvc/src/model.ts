@@ -81,6 +81,57 @@ interface Model {
    * to keep write access to `this` after a destructure. You can use it to read variables silently as well.
    **/
   is: this;
+
+  /** Pull current values from state. Flattens all models and exotic values amongst properties. */
+  get(): Model.State<this>;
+
+  /** Run a function which will run automatically when accessed values change. */
+  get(effect: Model.Effect<this>): () => void;
+
+  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
+
+  get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
+
+  /**
+   * Get update in progress.
+   *
+   * @returns a promise which resolves object with updated values. Is `undefined` if no update.
+   **/
+  set(): Promise<Model.Values<this>> | undefined;
+
+  /**
+   * Call a function when update occurs.
+   * 
+   * @param callback
+   *   Note: This will be called for every assignment which changes the value.
+   *   To run logic on final value only, this callback may return a function.
+   *   Returning the same function for one or more will ensure it is only called once.
+   *
+   * @returns a function to remove listener. Will return `true` if removed, `false` if inactive already.
+  */
+  set(callback: Model.Event<this>): () => boolean;
+
+  /**
+   * Push an update without changing the value of associated property.
+   * 
+   * This is useful where a property value internally has changed, but the object remains the same.
+   * For example: An array which has pushed a new value, or a change to nested property.
+   */
+  set(key: string | symbol): void;
+
+  /**
+   * Declare an end to updates. This event will freeze state.
+   */
+  set(key: null): void;
+
+  /**
+   * Update a property with value. 
+   * 
+   * @param key - property to update
+   * @param value - value to update property with (if the same as current, no update will occur)
+   * @param silent - if true, will not notify listeners of an update
+   */
+  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 }
 
 class Model {
@@ -128,16 +179,6 @@ class Model {
     });
   }
 
-  /** Pull current values from state. Flattens all models and exotic values amongst properties. */
-  get(): Model.State<this>;
-
-  /** Run a function which will run automatically when accessed values change. */
-  get(effect: Model.Effect<this>): () => void;
-
-  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
-
-  get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
-
   get(arg1?: Model.Effect<this> | string, arg2?: boolean | Function){
     const self = this.is;
 
@@ -179,47 +220,6 @@ class Model {
 
     return get(self);
   }
-
-  /**
-   * Get update in progress.
-   *
-   * @returns a promise which resolves object with updated values. Is `undefined` if no update.
-   **/
-  set(): Promise<Model.Values<this>> | undefined;
-
-  /**
-   * Call a function when update occurs.
-   * 
-   * @param callback
-   *   Note: This will be called for every assignment which changes the value.
-   *   To run logic on final value only, this callback may return a function.
-   *   Returning the same function for one or more will ensure it is only called once.
-   *
-   * @returns a function to remove listener. Will return `true` if removed, `false` if inactive already.
-  */
-  set(callback: Model.Event<this>): () => boolean;
-
-  /**
-   * Push an update without changing the value of associated property.
-   * 
-   * This is useful where a property value internally has changed, but the object remains the same.
-   * For example: An array which has pushed a new value, or a change to nested property.
-   */
-  set(key: string | symbol): void;
-
-  /**
-   * Declare an end to updates. This event will freeze state.
-   */
-  set(key: null): void;
-
-  /**
-   * Update a property with value. 
-   * 
-   * @param key - property to update
-   * @param value - value to update property with (if the same as current, no update will occur)
-   * @param silent - if true, will not notify listeners of an update
-   */
-  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event<this> | string | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
