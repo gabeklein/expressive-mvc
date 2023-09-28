@@ -142,6 +142,21 @@ describe("model", () => {
     expect(mock).toBeCalledWith("bar", 2)
     expect(mock).toBeCalledWith("baz", 3)
   })
+
+  it('will call null on all children', () => {
+    class Nested extends Model {}
+    class Test extends Model {
+      nested = use(Nested);
+    }
+
+    const test = Test.new();
+    const destroyed = jest.fn();
+
+    test.nested.get(() => destroyed);
+    test.set(null);
+
+    expect(destroyed).toBeCalled();
+  });
 })
 
 describe("subscriber", () => {
@@ -483,7 +498,7 @@ describe("get method", () => {
       expect(didCreate).toBeCalledWith(test);
     })
 
-    it('will callback on willDestroy by default', async () => {
+    it('will callback on null event', async () => {
       const willDestroy = jest.fn();
       const test = Test.new();
 

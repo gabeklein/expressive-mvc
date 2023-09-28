@@ -93,9 +93,14 @@ class Model {
     STATE.set(this, state);
     ID.set(this, `${Type}-${id ? String(id) : uid()}`);
     
-    function onNull(key: unknown){
-      if(key === null)
+    const onNull = (key: unknown) => {
+      if(key === null){
+        for(const [_, value] of this)
+          if(value instanceof Model && PARENT.get(value) === this)
+            value.set(null);
+        
         Object.freeze(state);
+      }
     }
 
     while(true){
