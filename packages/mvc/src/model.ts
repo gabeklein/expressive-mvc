@@ -30,7 +30,7 @@ declare namespace Model {
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
   type ValueCallback<T extends Model, K extends Any<T>> =
-    (this: T, value: Model.ValueOf<T, K>, key: K, thisArg: K) => void;
+    (this: T, value: ValueOf<T, K>, key: K, thisArg: K) => void;
 
   /**
    * Values from current state of given controller.
@@ -92,16 +92,6 @@ class Model {
 
     STATE.set(this, state);
     ID.set(this, `${Type}-${id ? String(id) : uid()}`);
-    
-    const onNull = (key: unknown) => {
-      if(key === null){
-        for(const [_, value] of this)
-          if(value instanceof Model && PARENT.get(value) === this)
-            value.set(null);
-        
-        Object.freeze(state);
-      }
-    }
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -128,7 +118,16 @@ class Model {
         }
       }
 
-      addListener(this, onNull);
+      addListener(this, (key: unknown) => {
+        if(key === null){
+          for(const [_, value] of this)
+            if(value instanceof Model && PARENT.get(value) === this)
+              value.set(null);
+          
+          Object.freeze(state);
+        }
+      });
+
       return null;
     });
   }
