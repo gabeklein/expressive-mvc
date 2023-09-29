@@ -1,5 +1,5 @@
 import { event } from '../control';
-import { Model, PARENT } from '../model';
+import { Model, PARENT, STATE } from '../model';
 import { add } from './add';
 
 namespace use {
@@ -42,10 +42,11 @@ function use <T = any> (
         event(next, true);
       }
       else if(next){
+        const record = new Model(false);
         const proxy = Object.create(next); 
 
-        for(const key in proxy)
-          Object.defineProperty(proxy, key, {
+        for(const key in next)
+          Object.defineProperty(record, key, {
             enumerable: true,
             get: () => next[key],
             set(value){

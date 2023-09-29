@@ -73,6 +73,8 @@ declare namespace Model {
   type Instruction<T = any, M extends Model = any> =
     (this: M, key: Model.Key<M>, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
+
+  type Record<T> = { [key: string | number | symbol]: T } & Model;
 }
 
 interface Model {
@@ -84,7 +86,10 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number){
+  constructor(id?: string | number | false){
+    if(id === false)
+      return;
+
     let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
 
