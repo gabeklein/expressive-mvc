@@ -84,14 +84,17 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number){
+  constructor(record: {});
+  constructor(id?: string | number);
+  constructor(arg?: string | number | {}){
     let Type = this.constructor as Model.Type;
-    const state = {} as Record<string, unknown>;
 
     define(this, "is", { value: this });
 
+    const state = {} as Record<string, unknown>;
+
     STATE.set(this, state);
-    ID.set(this, `${Type}-${id ? String(id) : uid()}`);
+    ID.set(this, `${Type}-${arg ? String(arg) : uid()}`);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -101,6 +104,11 @@ class Model {
 
       Type = Object.getPrototypeOf(Type);
     }
+
+    // if(typeof arg == "object"){
+    //   STATE.set(this, arg as Record<string, unknown>);
+    //   return;
+    // }
 
     addListener(this, () => {
       for(const key in this){
@@ -347,11 +355,21 @@ function update(
   let pending = PENDING.get(subject);
 
   if(typeof key == "string" && 2 in arguments){
-    const previous = state[key];
-
-    if(value === previous)
-      return true;
+    if(key in subject){
+      const previous = state[key];
   
+      if(value === previous)
+        return true;
+    }
+    else
+      define(subject, key, {
+        enumerable: true,
+        set: (x) => update(subject, key, x),
+        get(){
+          return watch(this, key, state[key]);
+        }
+      });
+
     state[key] = value;
 
     if(silent === true)
