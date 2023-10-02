@@ -16,9 +16,9 @@ declare namespace Model {
   type New<T extends Model = Model> = (new () => T) & typeof Model;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
-  type Key<T> = Exclude<keyof T, keyof Model> & string;
+  type Field<T> = Exclude<keyof T, keyof Model>;
 
-  type Any<T> = Exclude<keyof T, keyof Model> | (string & {});
+  type Key<T> = Exclude<keyof T, keyof Model> | (string & {}) | number | symbol;
 
   /** Actual value stored in state. */
   type Value<R> =
@@ -26,10 +26,10 @@ declare namespace Model {
     R extends Model ? State<R> :
     R;
 
-  type ValueOf<T extends Model, K extends Any<T>> =
+  type ValueOf<T extends Model, K extends Key<T>> =
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
-  type ValueCallback<T extends Model, K extends Any<T>> =
+  type ValueCallback<T extends Model, K extends Key<T>> =
     (this: T, value: ValueOf<T, K>, key: K, thisArg: K) => void;
 
   /**
@@ -37,10 +37,10 @@ declare namespace Model {
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.
    */
-  type State<T> = { [P in Key<T>]: Value<T[P]> };
+  type State<T> = { [P in Field<T>]: Value<T[P]> };
 
   /** Object comperable to data found in T. */
-  type Values<T> = { [P in Key<T>]?: Value<T[P]> };
+  type Values<T> = { [P in Field<T>]?: Value<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
@@ -71,7 +71,7 @@ declare namespace Model {
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T = any, M extends Model = any> =
-    (this: M, key: Model.Key<M>, thisArg: M, state: Model.State<M>) =>
+    (this: M, key: Model.Field<M>, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
@@ -142,9 +142,9 @@ class Model {
   /** Callback when model is destroyed. */
   get(key: null, callback: () => void): () => void;
 
-  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
+  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
-  get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
+  get<T extends Model.Key<this>>(key: T, callback: Model.ValueCallback<this, T>): () => void;
 
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
@@ -219,7 +219,7 @@ class Model {
    * This is useful where a property value internally has changed, but the object remains the same.
    * For example: An array which has pushed a new value, or a change to nested property.
    */
-  set(key: string | symbol): void;
+  set(key: Model.Key<this>): void;
 
   /**
    * Declare an end to updates. This event will freeze state.
@@ -235,7 +235,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | string | symbol | null, arg2?: unknown, arg3?: boolean){
+  set(arg1?: Model.Event<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -349,7 +349,7 @@ function fetch(subject: Model, property: string, required?: boolean){
 
 function update(
   subject: Model,
-  key: string | symbol | boolean | null,
+  key: string | number | symbol | boolean | null,
   value?: unknown,
   silent?: boolean){
 

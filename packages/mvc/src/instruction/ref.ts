@@ -14,11 +14,11 @@ declare namespace ref {
 
   /** Object with references to all managed values of `T`. */
   type Proxy<T extends Model> = {
-    [P in Model.Key<T>]-?: Model.Ref<T[P]>
+    [P in Model.Field<T>]-?: Model.Ref<T[P]>
   };
 
   type CustomProxy<T extends Model, R> = {
-    [P in Model.Key<T>]-?: R;
+    [P in Model.Field<T>]-?: R;
   }
 }
 
@@ -41,7 +41,7 @@ function ref <T extends Model> (target: T): ref.Proxy<T>;
  * @param mapper - Function producing the placeholder value for any given property.
  */
 function ref <O extends Model, R>
-  (target: O, mapper: (key: Model.Key<O>) => R): ref.CustomProxy<O, R>;
+  (target: O, mapper: (key: Model.Field<O>) => R): ref.CustomProxy<O, R>;
 
 /**
  * Creates a ref-compatible property.

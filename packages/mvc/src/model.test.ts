@@ -1057,6 +1057,14 @@ describe("set method", () => {
 
       await expect(test).toHaveUpdated(event);
     });
+
+    it("will update for number", async () => {
+      const test = Test.new();
+
+      test.set(42);
+
+      await expect(test).toHaveUpdated(42);
+    });
   });
 
   describe("promise", () => {
