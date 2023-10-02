@@ -315,7 +315,7 @@ describe("factory", () => {
 
     const instance = Test.new("ID");
 
-    expect(() => instance.value).toThrowError(`Test-ID.value is not yet available.`);
+    expect(() => instance.value).toThrowError(`ID.value is not yet available.`);
     promise.resolve();
   })
 
@@ -363,7 +363,7 @@ describe("factory", () => {
     const attempt = () => Test.new("ID");
 
     expect(attempt).toThrowError("Foobar");
-    expect(warn).toBeCalledWith(`Generating initial value for Test-ID.memoized failed.`);
+    expect(warn).toBeCalledWith(`Generating initial value for ID.memoized failed.`);
   })
 
   it("will suspend another factory", async () => {

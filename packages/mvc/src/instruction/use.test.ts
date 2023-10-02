@@ -270,12 +270,12 @@ describe("model", () => {
   
     expect(() => {
       parent.child = Unrelated.new("ID");
-    }).toThrowError(`Parent-ID.child expected Model of type Child but got Unrelated-ID.`)
+    }).toThrowError(`ID.child expected Model of type Child but got ID.`)
   
     expect(() => {
       // @ts-expect-error
       parent.child = undefined;
-    }).toThrowError(`Parent-ID.child expected Model of type Child but got undefined.`)
+    }).toThrowError(`ID.child expected Model of type Child but got undefined.`)
   })
 })
 

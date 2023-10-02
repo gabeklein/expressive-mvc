@@ -89,7 +89,7 @@ describe("fetch mode", () => {
   
     const attempt = () => Child.new("ID");
   
-    expect(attempt).toThrowError(`Child-ID may only exist as a child of type Parent.`);
+    expect(attempt).toThrowError(`ID may only exist as a child of type Parent.`);
   })
 
   it("will throw if not found in context", () => {
@@ -101,7 +101,7 @@ describe("fetch mode", () => {
     }
 
     // should this throw immediately, or only on access?
-    expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for Child-ID.`);
+    expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for ID.`);
   })
   
   it("retuns undefined if required is false", () => {
@@ -128,7 +128,7 @@ describe("fetch mode", () => {
   
     const attempt = () => Unexpected.new("ID");
   
-    expect(attempt).toThrowError(`New Adopted-ID created as child of Unexpected-ID, but must be instanceof Expected.`);
+    expect(attempt).toThrowError(`New ID created as child of ID, but must be instanceof Expected.`);
   })
 
   it('will track recursively', async () => {
@@ -446,7 +446,7 @@ describe("compute mode", () => {
         value = get(this.peer, () => {});
       }
 
-      expect(() => Test.new("ID")).toThrowError(`Attempted to use an instruction result (probably use or get) as computed source for Test-ID.value. This is not allowed.`);
+      expect(() => Test.new("ID")).toThrowError(`Attempted to use an instruction result (probably use or get) as computed source for ID.value. This is not allowed.`);
     })
   })
 

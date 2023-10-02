@@ -91,7 +91,7 @@ class Model {
     define(this, "is", { value: this });
 
     STATE.set(this, state);
-    ID.set(this, `${Type}-${id ? String(id) : uid()}`);
+    ID.set(this, id ? String(id) : `${Type}-${uid()}`)
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));

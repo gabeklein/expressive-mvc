@@ -899,7 +899,7 @@ describe("get method", () => {
       }
       catch(error){
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch("Error: Test-ID.foo is not yet available.");
+        expect(String(error)).toMatch("Error: ID.foo is not yet available.");
         suspense = error;
       }
 
@@ -921,7 +921,7 @@ describe("get method", () => {
       }
       catch(error){
         expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch("Error: Test-ID.foo is not yet available.")
+        expect(String(error)).toMatch("Error: ID.foo is not yet available.")
         suspense = error;
       }
 
@@ -1314,7 +1314,7 @@ describe("string coercion", () => {
   it("will be class name and supplied ID", () => {
     const a = String(Model.new("ID"));
 
-    expect(a).toBe("Model-ID");
+    expect(a).toBe("ID");
   })
 
   it("will work within subscriber", () => {
@@ -1329,6 +1329,6 @@ describe("string coercion", () => {
       mock(String(state));
     })
 
-    expect(mock).toBeCalledWith("Test-ID");
+    expect(mock).toBeCalledWith("ID");
   })
 })

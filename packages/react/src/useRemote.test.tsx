@@ -442,7 +442,7 @@ describe("get instruction", () => {
 
     const tryToRender = () => mockHook(() => Foo.use());
 
-    expect(tryToRender).toThrowError(`Required Bar not found in context for Foo-ID.`);
+    expect(tryToRender).toThrowError(`Required Bar not found in context for ID.`);
   })
 
   it("will prefer parent over context", () => {
@@ -468,7 +468,7 @@ describe("get instruction", () => {
   
     const attempt = () => Child.new("ID");
   
-    expect(attempt).toThrowError(`Child-ID may only exist as a child of type Ambient.`);
+    expect(attempt).toThrowError(`ID may only exist as a child of type Ambient.`);
   })
 })
 

@@ -226,7 +226,7 @@ describe("suspense", () => {
       didThrow = err;
     }
   
-    expect(String(didThrow)).toMatchInlineSnapshot(`"Error: Test-ID.value is not yet available."`);
+    expect(String(didThrow)).toMatchInlineSnapshot(`"Error: ID.value is not yet available."`);
   })
   
   it("will reject if model destroyed before resolved", async () => {
@@ -246,7 +246,7 @@ describe("suspense", () => {
   
     instance.set(null);
   
-    await expect(didThrow).rejects.toThrowError(`Test-ID is destroyed.`);
+    await expect(didThrow).rejects.toThrowError(`ID is destroyed.`);
   })
 })
 
