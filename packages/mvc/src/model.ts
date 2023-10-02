@@ -137,10 +137,10 @@ class Model {
   get(effect: Model.Effect<this>): () => void;
 
   /** Check if model has been destroyed. */
-  get(key: null): boolean;
+  get(event: null): boolean;
 
   /** Callback when model is destroyed. */
-  get(key: null, callback: () => void): () => void;
+  get(event: null, callback: () => void): () => void;
 
   get<T extends Model.Key<this>>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
