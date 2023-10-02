@@ -972,6 +972,31 @@ describe("get method", () => {
       expect(mock).toBeCalledWith("baz", "baz", test);
     })
   })
+
+  describe("null", () => {
+    it("will return true if model is not destroyed", () => {
+      const test = Model.new();
+
+      expect(test.get(null)).toBe(false);
+
+      test.set(null);
+
+      expect(test.get(null)).toBe(true);
+    })
+
+    it("will callback when model is destroyed", () => {
+      const test = Model.new();
+      const mock = jest.fn();
+
+      test.get(null, mock);
+
+      expect(mock).not.toBeCalled();
+
+      test.set(null);
+
+      expect(mock).toBeCalled();
+    })
+  })
 })
 
 describe("set method", () => {

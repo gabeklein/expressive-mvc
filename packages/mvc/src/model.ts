@@ -138,68 +138,84 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
+  /** Check if model has been destroyed. */
+  get(key: null): boolean;
+
+  /** Callback when model is destroyed. */
+  get(key: null, callback: () => void): () => void;
+
   get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
   get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
 
-  get(arg1?: Model.Effect<this> | string, arg2?: boolean | Function){
+  get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
 
-    if(typeof arg1 == "string")
-      if(typeof arg2 == "function"){
-        const state = STATE.get(self)!;
-
-        if(arg1 in state)
-          arg2.call(this, state[arg1], arg1, this)
-        
-        return addListener(self, key => {
-          if(key === arg1)
-            arg2.call(this, arg1 in state ? state[key] : key, key, this)
-        })
-      }
-      else
-        return fetch(self, arg1, arg2);
-
-    if(arg1)
+    if(typeof arg1 == "function")
       return effect(self, arg1);
 
-    const cache = new WeakMap<Model, any>();
+    if(arg1 === undefined){
+      const cache = new WeakMap<Model, any>();
 
-    function get(value: any){
-      if(value instanceof Model){
-        if(cache.has(value))
-          return cache.get(value);
+      function get(value: any){
+        if(value instanceof Model){
+          if(cache.has(value))
+            return cache.get(value);
 
-        const model = value;
+          const model = value;
 
-        cache.set(value, value = {});
+          cache.set(value, value = {});
 
-        for(const [key, val] of model)
-          value[key] = get(val);
+          for(const [key, val] of model)
+            value[key] = get(val);
+        }
+
+        return value;
       }
 
-      return value;
+      return get(self);
     }
 
-    return get(self);
+    if(arg1 === null)
+      if(typeof arg2 == "function")
+        return addListener(self, key => {
+          if(key === null)
+            arg2.call(this, this);
+        });
+      else
+        return Object.isFrozen(STATE.get(self));
+
+    if(typeof arg2 == "function"){
+      const state = STATE.get(self)!;
+
+      if(arg1 in state)
+        arg2.call(this, state[arg1], arg1, this)
+      
+      return addListener(self, key => {
+        if(key === arg1)
+          arg2.call(this, arg1 in state ? state[key] : key, key, this)
+      })
+    }
+    else
+      return fetch(self, arg1, arg2);
   }
 
   /**
    * Get update in progress.
    *
-   * @returns a promise which resolves object with updated values. Is `undefined` if no update.
+   * @returns a promise which resolves object with updated values. Is `undefined` if there is no update.
    **/
   set(): Promise<Model.Values<this>> | undefined;
 
   /**
    * Call a function when update occurs.
    * 
-   * @param callback
-   *   Note: This will be called for every assignment which changes the value.
-   *   To run logic on final value only, this callback may return a function.
-   *   Returning the same function for one or more will ensure it is only called once.
-   *
-   * @returns a function to remove listener. Will return `true` if removed, `false` if inactive already.
+   * Given function is called for every assignment (which changes value) or explicit `set`.
+   * To run logic on final value only, callback itself may return a function.
+   * Returning the same function for one or more events will ensure a side-effect is called only when settled.
+   * 
+   * @param callback - Function to call when update occurs.
+   * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
   */
   set(callback: Model.Event<this>): () => boolean;
 
