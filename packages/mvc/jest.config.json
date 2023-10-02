@@ -1,5 +1,8 @@
 {
   "testTimeout": 1000,
+  "coveragePathIgnorePatterns": [
+    "dist"
+  ],
   "transform": {
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
