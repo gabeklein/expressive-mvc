@@ -12,22 +12,24 @@ type OnUpdate<T = any> = (this: T, key: unknown, source: T) => (() => void) | nu
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | undefined>>();
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
 
 function onReady(this: {}){
   return null;
 }
 
-function addListener(to: {}, fn: OnUpdate){
+function addListener(to: {}, fn: OnUpdate, select?: number | string | null){
   let subs = LISTENER.get(to)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map().set(onReady, undefined));
+    LISTENER.set(to, subs = new Map().set(onReady, false));
 
-  if(!subs.has(onReady))
+  const filter = 2 in arguments && new Set([select]);
+
+  if(!filter && !subs.has(onReady))
     fn(true, to);
 
-  subs.set(fn, undefined);
+  subs.set(fn, filter);
 
   return () => subs.delete(fn);
 }

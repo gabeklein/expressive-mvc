@@ -118,15 +118,13 @@ class Model {
         }
       }
 
-      addListener(this, (key: unknown) => {
-        if(key === null){
-          for(const [_, value] of this)
-            if(value instanceof Model && PARENT.get(value) === this)
-              value.set(null);
-          
-          Object.freeze(state);
-        }
-      });
+      addListener(this, () => {
+        for(const [_, value] of this)
+          if(value instanceof Model && PARENT.get(value) === this)
+            value.set(null);
+        
+        Object.freeze(state);
+      }, null);
 
       return null;
     });
@@ -178,10 +176,7 @@ class Model {
 
     if(arg1 === null)
       if(typeof arg2 == "function")
-        return addListener(self, key => {
-          if(key === null)
-            arg2.call(this, this);
-        });
+        return addListener(self, arg2.bind(this, this), null);
       else
         return Object.isFrozen(STATE.get(self));
 
@@ -191,10 +186,9 @@ class Model {
       if(arg1 in state)
         arg2.call(this, state[arg1], arg1, this)
       
-      return addListener(self, key => {
-        if(key === arg1)
-          arg2.call(this, arg1 in state ? state[key] : key, key, this)
-      })
+      return addListener(self, () => {
+        arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
+      }, arg1)
     }
     else
       return fetch(self, arg1, arg2);
