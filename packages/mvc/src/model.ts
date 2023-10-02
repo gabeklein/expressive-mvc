@@ -26,10 +26,10 @@ declare namespace Model {
     R extends Model ? State<R> :
     R;
 
-  type ValueOf<T extends Model, K extends Any<T>> =
+  type ValueOf<T extends Model, K> =
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
-  type ValueCallback<T extends Model, K extends Any<T>> =
+  type ValueCallback<T extends Model, K extends Any<T> | null> =
     (this: T, value: ValueOf<T, K>, key: K, thisArg: K) => void;
 
   /**
@@ -84,9 +84,12 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number){
+  constructor(state: {});
+  constructor(id: string | number);
+  constructor(callback?: Model.Effect<Model>);
+  constructor(arg?: string | number | {} | Model.Effect<Model>){
+    const state = (typeof arg == "object" ? arg : {}) as Record<string, unknown>;
     let Type = this.constructor as Model.Type;
-    const state = {} as Record<string, unknown>;
 
     define(this, "is", { value: this });
 
@@ -138,9 +141,9 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
-  get<T extends string>(key: T, required?: boolean): Model.ValueOf<this, T>;
+  get<T extends Model.Any<this>>(key: T, required?: boolean): Model.ValueOf<this, T>;
 
-  get<T extends string>(key: T, callback: Model.ValueCallback<this, T>): () => void;
+  get<T extends Model.Any<this>>(key: T | null, callback: Model.ValueCallback<this, T>): () => void;
 
   get(arg1?: Model.Effect<this> | string, arg2?: boolean | Function){
     const self = this.is;
@@ -209,7 +212,7 @@ class Model {
    * This is useful where a property value internally has changed, but the object remains the same.
    * For example: An array which has pushed a new value, or a change to nested property.
    */
-  set(key: string | symbol): void;
+  set(key: string | number | symbol): void;
 
   /**
    * Declare an end to updates. This event will freeze state.
@@ -225,7 +228,11 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
 
-  set(arg1?: Model.Event<this> | string | symbol | null, arg2?: unknown, arg3?: boolean){
+  set(
+    arg1?: Model.Event<this> | string | number | symbol | null,
+    arg2?: unknown,
+    arg3?: boolean){
+
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -339,7 +346,7 @@ function fetch(subject: Model, property: string, required?: boolean){
 
 function update(
   subject: Model,
-  key: string | symbol | boolean | null,
+  key: string | number | symbol | boolean | null,
   value?: unknown,
   silent?: boolean){
 
