@@ -21,7 +21,7 @@ it("will throw error if set is false", () => {
   const test = Test.new('ID');
   const assign = () => test.value = "foo";
 
-  expect(assign).toThrowError(`Test-ID.value is read-only.`);
+  expect(assign).toThrowError(`ID.value is read-only.`);
 })
 
 it("will not throw suspense if get (required) is false", async () => {
