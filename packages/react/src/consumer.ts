@@ -8,17 +8,19 @@ declare namespace Consumer {
     for: Model.Type<T>;
 
     /**
-     * Getter function. Is called on every natural render of this component.
+     * If boolean, will assert controller of type `for` is present in context.
+     * 
+     * If function, will called on every natural render of this component.
      * Will throw if usable instance cannot be found in context.
      */
-    has: (value: T) => void;
+    has: ((value: T) => void) | boolean;
   }
 
   type GetProps<T extends Model> = {
     /** Type of controller to fetch from context. */
     for: Model.Type<T>;
 
-    /** Getter function. Is called on every natural render of this component. */
+    /** Function called on every natural render of this component. */
     get: (value: T | undefined) => void;
   }
 
@@ -45,18 +47,16 @@ function Consumer<T extends Model>(
 
   const { children, has, get, for: Type } = props as {
     for: For<T>;
-    has?: (value: T) => void;
+    has?: ((value: T) => void) | boolean;
     get?: (value: T | undefined) => void;
     children?: (value: T) => ReactElement<any, any> | null;
   }
 
-  if(typeof children == "function")
-    return children(Type.get());
-
-  const callback = has || get;
+  const instance = Type.get(!!has) as T;
+  const callback = children || has || get;
 
   if(typeof callback == "function")
-    callback(Type.get(!!has) as T);
+    callback(instance);
 
   return null;
 }
