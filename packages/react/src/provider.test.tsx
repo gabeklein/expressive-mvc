@@ -1,4 +1,4 @@
-import React, { Fragment, Suspense } from 'react';
+import React, { Component, Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
 import { get, Model, set } from '.';
@@ -7,6 +7,46 @@ import { Provider } from './provider';
 import { Consumer } from './consumer';
 
 const timeout = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+describe("built-in", () => {
+  // class Whatever extends Component<{ foo: string }> {
+  //   static propTypes?: {
+  //     foo: string;
+  //   }
+  // }
+
+  it("will create new instance", () => {
+    class Control extends Model {
+      foo = "bar";
+    }
+
+    create(
+      <Control>
+        <Consumer for={Control} has={true} />
+      </Control>
+    );
+  })
+
+  it.only("will render multiple times", () => {
+    class Control extends Model {
+      foo = "bar";
+    }
+
+    const render = create(
+      <Control>
+        <Consumer for={Control} has={true} />
+      </Control>
+    );
+
+    render.update(
+      <Control>
+        <Consumer for={Control} has={control => {
+          debugger
+        }} />
+      </Control>
+    )
+  })
+})
 
 describe("component", () => {
   class Foo extends Model {
@@ -336,6 +376,7 @@ describe("get instruction", () => {
     x.update(
       <Provider for={Bar}>
         <Inner />
+        <div />
       </Provider>
     );
 

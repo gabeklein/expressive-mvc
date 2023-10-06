@@ -1,5 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-import { createElement, useContext, useEffect, useMemo } from 'react';
+import { Component, createElement, useContext, useEffect, useMemo } from 'react';
 
 import { Shared, setContext } from './useLocal';
 
@@ -52,6 +52,8 @@ function Provider<T extends Provider.Item>(
   })
   
   value.include(included).forEach((isExplicit, model) => {
+    model.set(PROVIDE);
+
     if(assign && isExplicit)
       for(const K in assign)
         if(K in model)
@@ -62,11 +64,96 @@ function Provider<T extends Provider.Item>(
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(Shared.Provider, { key: value.key, value }, children as ReactNode);
+  return createElement(Shared.Provider, { value, key: value.key }, children as ReactNode);
 }
 
 function reject(argument: any){
   throw new Error(`Provider expects a Model instance or class but got ${argument}.`);
 }
+
+const PROVIDE = Symbol("Provider");
+
+declare module '@expressive/mvc' {
+  // Prevent Models from implementing a render method.
+  class Model {
+    /** @internal Impersonates a React.Component to instead spawn a Provider.  */
+    readonly render: never;
+  }
+}
+
+declare module 'react' {
+  // TODO: Seek a more elegant solution. This is a hack.
+  // This will force JSX.ElementType (defined by react) to accept a Model.
+  // We do this by overriding the Component interface, making what are
+  // required properties optional instead. This makes Model constructor
+  // a valid (enough) React.ComponentType.
+  interface Component<P, S> {
+    // @ts-expect-error
+    context?: unknown;
+
+    // @ts-expect-error
+    setState?<K extends keyof S>(
+      state: ((prevState: Readonly<S>, props: Readonly<P>) => (Pick<S, K> | S | null)) | (Pick<S, K> | S | null),
+      callback?: () => void
+    ): void;
+
+    // @ts-expect-error
+    forceUpdate?(callback?: () => void): void;
+
+    // @ts-expect-error
+    readonly props?: Readonly<P>;
+
+    // @ts-expect-error
+    state?: {};
+
+    // @ts-expect-error
+    refs?: {
+      [key: string]: React.ReactInstance
+    };
+  }
+}
+
+// This will trick react into thinking Model is a component.
+Object.setPrototypeOf(Model.prototype, Component.prototype);
+
+// Block methods/getters which are inherited otherwise.
+for(const key in Component.prototype)
+  if(key !== "constructor"){
+    Object.defineProperty(Model.prototype, key, {
+      ...Object.getOwnPropertyDescriptor(Component.prototype, key),
+      enumerable: false
+    });
+  }
+
+// With React thinking Model is a component, implement render method.
+Object.defineProperties(Model.prototype, {
+  isMounted: {
+    value: undefined,
+    enumerable: false
+  },
+  replaceState: {
+    value: undefined,
+    enumerable: false
+  },
+  isPureReactComponent: {
+    value: true,
+    enumerable: false
+  },
+  render: {
+    value(this: any){
+      const { props } = this;
+
+      delete this.props;
+      delete this.refs;
+      delete this.state;
+      delete this.updater;
+      delete this.context;
+      delete this._reactInternalInstance;
+      delete this._reactInternals;
+
+      return createElement(Provider, { for: this, ...props });
+    }
+  }
+})
 
 export { Provider };
