@@ -18,29 +18,29 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
-  type Key<T> = Exclude<keyof T, keyof Model> | (string & {}) | number | symbol;
+  type Key<T> = Field<T> | (string & {}) | number | symbol;
 
   /** Actual value stored in state. */
-  type Value<R> =
+  type Actual<R> =
     R extends Ref<infer T> ? T :
     R extends Model ? State<R> :
     R;
 
-  type ValueOf<T extends Model, K extends Key<T>> =
+  type Value<T extends Model, K extends Key<T>> =
     K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
 
-  type ValueCallback<T extends Model, K extends Key<T>> =
-    (this: T, value: ValueOf<T, K>, key: K, thisArg: K) => void;
+  type OnUpdate<T extends Model, K extends Key<T>> =
+    (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
 
   /**
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.
    */
-  type State<T> = { [P in Field<T>]: Value<T[P]> };
+  type State<T> = { [P in Field<T>]: Actual<T[P]> };
 
   /** Object comperable to data found in T. */
-  type Values<T> = { [P in Field<T>]?: Value<T[P]> };
+  type Values<T> = { [P in Field<T>]?: Actual<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
@@ -91,7 +91,7 @@ class Model {
     define(this, "is", { value: this });
 
     STATE.set(this, state);
-    ID.set(this, id ? String(id) : `${Type}-${uid()}`)
+    ID.set(this, id ? String(id) : `${Type}-${uid()}`);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -130,21 +130,21 @@ class Model {
     });
   }
 
-  /** Pull current values from state. Flattens all models and exotic values amongst properties. */
+  /** Pull current values from state. Flattens all models and exotic values recursively. */
   get(): Model.State<this>;
 
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
-  /** Check if model has been destroyed. */
+  /** Check if model is expired. */
   get(event: null): boolean;
 
-  /** Callback when model is destroyed. */
+  /** Callback when model is to be destroyed. */
   get(event: null, callback: () => void): () => void;
 
-  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.ValueOf<this, T>;
+  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
 
-  get<T extends Model.Key<this>>(key: T, callback: Model.ValueCallback<this, T>): () => void;
+  get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
@@ -197,7 +197,7 @@ class Model {
   /**
    * Get update in progress.
    *
-   * @returns a promise which resolves object with updated values. Is `undefined` if there is no update.
+   * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
    **/
   set(): Promise<Model.Values<this>> | undefined;
 
@@ -214,17 +214,17 @@ class Model {
   set(callback: Model.Event<this>): () => boolean;
 
   /**
-   * Push an update without changing the value of associated property.
-   * 
-   * This is useful where a property value internally has changed, but the object remains the same.
-   * For example: An array which has pushed a new value, or a change to nested property.
+   * Declare an end to updates. This event is final and will freeze state.
    */
-  set(key: Model.Key<this>): void;
+  set(event: null): void;
 
   /**
-   * Declare an end to updates. This event will freeze state.
+   * Push an update. This will not change the value of associated property.
+   * 
+   * Useful where a property value internally has changed, but the object is the same.
+   * For example: An array has pushed a new value, or a nested property is updated.
    */
-  set(key: null): void;
+  set(key: Model.Key<this>): void;
 
   /**
    * Update a property with value. 
@@ -233,7 +233,7 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(key: K, value?: Model.ValueOf<this, K>, silent?: boolean): void;
+  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): void;
 
   set(arg1?: Model.Event<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
