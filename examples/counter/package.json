@@ -3,17 +3,10 @@
   "private": true,
   "version": "0.35.2",
   "type": "module",
-  "main": "src/Counter.jsx",
-  "scripts": {
-    "dev": "vite"
-  },
+  "main": "src/Counter.tsx",
   "dependencies": {
     "@expressive/react": "^0.35.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.4",
-    "vite": "^4.4.5"
   }
 }

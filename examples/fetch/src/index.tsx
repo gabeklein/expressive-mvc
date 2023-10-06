@@ -1,16 +1,15 @@
-import './App.css';
+import './index.css';
 
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import SayHello from './SayHello';
 
-const App = () => (
+createRoot(
+  document.getElementById('root')
+).render(
   <div className="container">
     <h1>Simplest Fetch Example</h1>
     <SayHello />
   </div>
 )
-
-createRoot(
-  document.getElementById('root')
-).render(<App />)

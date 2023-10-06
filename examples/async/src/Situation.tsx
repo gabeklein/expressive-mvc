@@ -1,9 +1,10 @@
-import Model from "@expressive/react";
+import Model from '@expressive/react';
+import React from 'react';
 
 class Control extends Model {
   agent = "Bond";
   remaining = 30;
-  dead = undefined;
+  dead?: boolean = undefined;
 
   constructor() {
     super();
@@ -13,10 +14,10 @@ class Control extends Model {
     // are accessed from subscriber (first parameter), the
     // function will only be called once and return function
     // will be called on `null` event, when model is destroyed.
-    this.get(this.missionStart, []);
+    this.get(this.start);
   }
 
-  missionStart() {
+  start = () => {
     const tickTock = () => {
       const remains = this.remaining--;
 

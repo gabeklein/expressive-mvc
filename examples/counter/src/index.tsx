@@ -1,16 +1,15 @@
-import './App.css';
+import './index.css';
 
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import Counter from './Counter';
 
-const App = () => (
+createRoot(
+  document.getElementById('root')
+).render(
   <div className="container">
     <h1>Simplest Example: Counter</h1>
     <Counter />
   </div>
-)
-
-createRoot(
-  document.getElementById('root')
-).render(<App />);
+);

@@ -1,4 +1,5 @@
-import Model from "@expressive/react";
+import Model from '@expressive/react';
+import React from 'react';
 
 // Here we want just an MVP which fetches a name from `randomuser.me`.
 // We don't need anything fancy, so let instead of installing a library,
@@ -8,8 +9,8 @@ import Model from "@expressive/react";
 class Query extends Model {
   // All we need to track are response, error and whether request is pending.
 
-  response = undefined;
-  error = undefined;
+  response?: string = undefined;
+  error?: Error = undefined;
   waiting = false;
 
   // To activate the flow, just call an async method as normal.
