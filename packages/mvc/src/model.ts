@@ -71,7 +71,8 @@ declare namespace Model {
    * Optional returned callback will run when once upon first access.
    */
   type Instruction<T = any, M extends Model = any> =
-    (this: M, key: Model.Field<M>, thisArg: M, state: Model.State<M>) =>
+    // TODO: Should this allow for numbers/symbol properties?
+    (this: M, key: Model.Field<M> & string, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
