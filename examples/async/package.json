@@ -2,8 +2,8 @@
   "name": "@example/async",
   "private": true,
   "version": "0.35.2",
-  "type": "module",
-  "main": "src/Situation.tsx",
+  "main": "src/index.tsx",
+  "module": "src/Situation.tsx",
   "dependencies": {
     "@expressive/react": "^0.35.2",
     "react": "^18.2.0",

@@ -2,8 +2,8 @@
   "name": "@example/forms",
   "private": true,
   "version": "0.35.2",
-  "type": "module",
-  "main": "src/Demo.tsx",
+  "main": "src/index.tsx",
+  "module": "src/Demo.tsx",
   "dependencies": {
     "@expressive/react": "^0.35.2",
     "react": "^18.2.0",
