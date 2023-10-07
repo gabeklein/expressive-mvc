@@ -27,7 +27,10 @@
 		"typescript": "^4.9.5"
 	},
 	"dependencies": {
+		"@expressive/vite-plugin-jsx": "^1.5.1",
 		"@swc/core": "^1.3.80",
-		"@swc/jest": "^0.2.29"
+		"@swc/jest": "^0.2.29",
+		"@vitejs/plugin-react": "^4.1.0",
+		"vite": "^4.4.11"
 	}
 }
