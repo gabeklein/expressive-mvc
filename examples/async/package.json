@@ -1,7 +1,6 @@
 {
   "name": "@example/async",
   "private": true,
-  "version": "0.35.2",
   "main": "src/index.tsx",
   "module": "src/Situation.tsx",
   "dependencies": {
