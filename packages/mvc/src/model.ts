@@ -138,10 +138,10 @@ class Model {
   get(effect: Model.Effect<this>): () => void;
 
   /** Check if model is expired. */
-  get(event: null): boolean;
+  get(status: null): boolean;
 
   /** Callback when model is to be destroyed. */
-  get(event: null, callback: () => void): () => void;
+  get(status: null, callback: () => void): () => void;
 
   get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
 
@@ -217,7 +217,7 @@ class Model {
   /**
    * Declare an end to updates. This event is final and will freeze state.
    */
-  set(event: null): void;
+  set(status: null): void;
 
   /**
    * Push an update. This will not change the value of associated property.
