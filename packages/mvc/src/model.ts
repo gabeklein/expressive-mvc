@@ -275,9 +275,7 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends typeof Model> (
-    this: T, ...args: ConstructorParameters<T>
-  ){
+  static new <T extends typeof Model> (this: T, ...args: ConstructorParameters<T>){
     const instance = new this(...args);
     event(instance, true);
     return instance as InstanceType<T>;
@@ -289,7 +287,7 @@ class Model {
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type>(this: T, maybe: any): maybe is T {
+  static is<T extends Model.Type> (this: T, maybe: any): maybe is T {
     return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
