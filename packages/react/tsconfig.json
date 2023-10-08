@@ -17,6 +17,9 @@
       ]
     },
   },
+  "references": [
+    { "path": "../mvc" }
+  ],
   "exclude": [
     "node_modules",
     "./dist"
