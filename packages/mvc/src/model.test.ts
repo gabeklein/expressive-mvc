@@ -1266,6 +1266,26 @@ describe("on method (static)", () => {
     done();
   });
 
+  it("will run on various events", async () => {
+    const mock = jest.fn();
+    const done = Test.on(mock);
+    const test = Test.new();
+
+    test.set("event")
+    test.foo = "baz";
+
+    expect(mock).toBeCalledWith("event", test);
+    expect(mock).toBeCalledWith("foo", test);
+
+    await test.set();
+    expect(mock).toBeCalledWith(false, test);
+
+    test.set(null);
+    expect(mock).toBeCalledWith(null, test);
+
+    done();
+  })
+
   it("will run callback for inherited classes", () => {
     class Test2 extends Test {}
     
