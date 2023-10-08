@@ -1258,12 +1258,12 @@ describe("on method (static)", () => {
 
   it("will run callback on create", () => {
     const mock = jest.fn();
-
-    Test.on(mock);
-
+    const done = Test.on(mock);
     const test = Test.new();
 
     expect(mock).toBeCalledWith(true, test);
+
+    done();
   });
 
   it("will run callback for inherited classes", () => {
@@ -1273,30 +1273,36 @@ describe("on method (static)", () => {
     const createTest = jest.fn();
     const createTest2 = jest.fn();
 
-    Test.on(createTest);
-    Test2.on(createTest2);
-    Model.on(createModel);
+    const done = [
+      Test.on(createTest),
+      Test2.on(createTest2),
+      Model.on(createModel)
+    ]
 
     const test = Test2.new();
 
     expect(createModel).toBeCalledWith(true, test);
     expect(createTest).toBeCalledWith(true, test);
     expect(createTest2).toBeCalledWith(true, test);
+
+    done.forEach(done => done());
   });
 
   it("will squash same callback for multiple classes", () => {
     class Test2 extends Test {}
     
     const didCreate = jest.fn();
-
-    Test.on(didCreate);
-    Test2.on(didCreate);
-    Model.on(didCreate);
+    const done = [
+      Test.on(didCreate),
+      Test2.on(didCreate),
+      Model.on(didCreate)
+    ]
 
     Test2.new();
 
     expect(didCreate).toBeCalledTimes(1);
 
+    done.forEach(done => done());
   })
 
   it("will remove callback", () => {
@@ -1307,14 +1313,14 @@ describe("on method (static)", () => {
     expect(mock).toBeCalled();
     
     done();
+
     Test.new();
     expect(mock).toBeCalledTimes(1);
   });
 
   it("will run callback on event", () => {
     const mock = jest.fn();
-    
-    Test.on((key: any, state: any) => {
+    const done = Test.on((key: any, state: any) => {
       mock(key, state[key]);
     });
 
@@ -1325,15 +1331,17 @@ describe("on method (static)", () => {
     test.foo = "baz";
 
     expect(mock).toBeCalledWith("foo", "baz");
+
+    done();
   });
 })
 
 describe("string coercion", () => {
   it("will output a unique ID", () => {
-    const a = String(Model.new());
-    const b = String(Model.new());
+    const foo = String(Model.new());
+    const bar = String(Model.new());
 
-    expect(a).not.toBe(b);
+    expect(foo).not.toBe(bar);
   })
 
   it("will be class name and 6 random characters", () => {
@@ -1345,9 +1353,9 @@ describe("string coercion", () => {
   })
 
   it("will be class name and supplied ID", () => {
-    const a = String(Model.new("ID"));
+    const a = Model.new("ID");
 
-    expect(a).toBe("ID");
+    expect(String(a)).toBe("ID");
   })
 
   it("will work within subscriber", () => {
