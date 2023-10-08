@@ -49,7 +49,7 @@ declare namespace Model {
   }
 
   /** A callback function which is subscribed to parent and updates when values change. */
-  type Effect<T> = (this: T, argument: T) => (() => void) | Promise<void> | null | void;
+  type Effect<T> = (this: T, argument: T) => ((update: boolean | null) => void) | Promise<void> | null | void;
 
   type Event<T extends Model> =
     (this: T, key: unknown, source: T) => (() => void) | void | null;
@@ -348,12 +348,15 @@ function fetch(subject: Model, property: string, required?: boolean){
 
 function update(
   subject: Model,
-  key: string | number | symbol | boolean | null,
+  key: string | number | symbol | null,
   value?: unknown,
   silent?: boolean){
 
   const state = STATE.get(subject)!;
   let pending = PENDING.get(subject);
+
+  if(typeof key == "boolean")
+    throw new Error("Boolean keys are internal only.");
 
   if(typeof key == "string" && 2 in arguments){
     const previous = state[key];
@@ -367,7 +370,7 @@ function update(
       return;
   }
 
-  if(key !== true && key){
+  if(key){
     if(!pending){
       PENDING.set(subject, pending = {});
 

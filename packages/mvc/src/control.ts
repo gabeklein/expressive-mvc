@@ -88,11 +88,11 @@ function queue(event: (() => void)){
 
 function effect<T extends {}>(
   target: T,
-  callback: (this: T, argument: T) => (() => void) | Promise<void> | null | void){
+  callback: (this: T, argument: T) => ((update: boolean | null) => void) | Promise<void> | null | void){
 
   const listeners = LISTENER.get(target)!;
   let refresh: (() => void) | null | undefined;
-  let unSet: (() => void) | false | undefined;
+  let unSet: ((update: boolean | null) => void) | false | undefined;
 
   function invoke(){
     let expired: boolean | undefined;
@@ -105,7 +105,7 @@ function effect<T extends {}>(
       expired = true;
 
       if(refresh && unSet){
-        unSet();
+        unSet(true);
         unSet = undefined;
       }
 
@@ -141,10 +141,13 @@ function effect<T extends {}>(
       return refresh;
 
     if(key === null && unSet)
-      unSet();
+      unSet(null);
   });
 
   return () => {
+    if(unSet)
+      unSet(false);
+
     refresh = null;
   };
 }

@@ -445,6 +445,7 @@ describe("get method", () => {
       await expect(state).toHaveUpdated();
 
       expect(mock).toBeCalled();
+      expect(mock).toBeCalledWith(true);
     })
 
     it('will register before ready', async () => {
@@ -505,13 +506,15 @@ describe("get method", () => {
       test.get(() => willDestroy);
       test.set(null);
 
-      expect(willDestroy).toBeCalled();
+      expect(willDestroy).toBeCalledWith(null);
     })
 
     it('will cancel effect on callback', async () => {
       const test = Test.new();
+      const mock = jest.fn();
       const didEffect = jest.fn((test: Test) => {
         void test.value1;
+        return mock;
       });
 
       const done = test.get(didEffect);
@@ -521,7 +524,11 @@ describe("get method", () => {
       await expect(test).toHaveUpdated();
       expect(didEffect).toBeCalledTimes(2);
 
+      mock.mockReset();
+
       done();
+
+      expect(mock).toBeCalledWith(false);
 
       test.value1 += 1;
       await expect(test).toHaveUpdated();
