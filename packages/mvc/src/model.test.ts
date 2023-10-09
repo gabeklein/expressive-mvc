@@ -677,13 +677,11 @@ describe("get method", () => {
       class Test2 extends Test {
         constructor() {
           super();
-          this.get(this.test);
-        }
-
-        test() {
-          void this.value1;
-          void this.value3;
-          mock();
+          this.get($ => {
+            void $.value1;
+            void $.value3;
+            mock();
+          });
         }
       }
 
