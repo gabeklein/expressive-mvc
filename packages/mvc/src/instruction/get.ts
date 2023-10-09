@@ -80,7 +80,7 @@ function get<R, T extends Model>(
           throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          Context.resolve(from, context => {
+          Context.get(from, context => {
             const model = context.get(arg0);
 
             if(model)

@@ -7,7 +7,8 @@ declare namespace Context {
 }
 
 class Context {
-  static resolve(from: Model, callback: (context: Context) => void){
+  static get(from: Model, callback: (context: Context) => void): void
+  static get(){
     throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
   }
 
