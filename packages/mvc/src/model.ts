@@ -358,6 +358,9 @@ function update(
   if(typeof key == "boolean")
     throw new Error("Boolean keys are internal only.");
 
+  if(Object.isFrozen(state))
+    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
+
   if(typeof key == "string" && 2 in arguments){
     const previous = state[key];
 

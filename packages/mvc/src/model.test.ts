@@ -1226,14 +1226,14 @@ describe("set method", () => {
       }
 
       const callback = jest.fn();
-      const test = Test.new();
+      const test = Test.new("ID");
 
       test.set(callback);
       test.foo++;
 
       test.set(null);
 
-      expect(() => test.foo++).toThrowError();
+      expect(() => test.foo++).toThrowError("Tried to update foo but ID is destroyed.");
       expect(callback).toBeCalledTimes(1);
     })
 
