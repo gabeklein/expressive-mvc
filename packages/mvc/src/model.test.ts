@@ -704,6 +704,19 @@ describe("get method", () => {
       expect(mock).toBeCalledTimes(3);
     })
 
+    it('will initialize without Model.new', async () => {
+      const test = new Test();
+      const mock = jest.fn();
+
+      test.get(mock);
+
+      expect(mock).not.toBeCalled();
+
+      test.set("EVENT");
+
+      expect(mock).toBeCalled();
+    })
+
     it("will ignore if get returns non-function", () => {
       const state = Test.new();
       const attempt = () => {
