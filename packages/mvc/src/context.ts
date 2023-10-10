@@ -109,9 +109,13 @@ class Context {
     return I;
   }
 
-  public push(){
+  public push(inputs?: Context.Inputs){
     const next = Object.create(this) as this;
     next.layer = new Map();
+
+    if(inputs)
+      next.include(inputs);
+
     return next;
   }
 
