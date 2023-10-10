@@ -12,17 +12,17 @@ class Context {
     throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
   }
 
+  public key!: string;
+
+  protected table = new WeakMap<Model.Type, symbol>();
+  protected layer = new Map<string | number, Model | Model.Type>();
+
   constructor(inputs?: Context.Inputs){
     if(inputs)
       this.include(inputs);
   }
 
-  public key!: string;
-
-  private table = new WeakMap<Model.Type, symbol>();
-  private layer = new Map<string | number, Model | Model.Type>();
-
-  private has(T: Model.Type){
+  protected has(T: Model.Type){
     let key = this.table.get(T);
 
     if(!key){
