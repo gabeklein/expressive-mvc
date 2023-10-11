@@ -55,7 +55,7 @@ declare module '@expressive/mvc' {
 Model.get = useRemote;
 Model.use = useLocal;
 
-Context.resolve = getContext;
+Context.get = getContext;
 
 export * from '@expressive/mvc';
 

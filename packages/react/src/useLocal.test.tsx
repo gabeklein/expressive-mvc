@@ -54,12 +54,12 @@ it("will run callback", () => {
 })
 
 it("will destroy instance of given class", async () => {
-  const didDestroy = mockPromise();
+  const didDestroy = mockPromise<any>();
 
   class Test extends Model {
     constructor(){
       super();
-      this.get(() => didDestroy.resolve);
+      this.get(didDestroy.resolve);
     }
   }
 

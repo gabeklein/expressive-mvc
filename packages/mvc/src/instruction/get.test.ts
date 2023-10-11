@@ -12,10 +12,10 @@ it.todo("will add pending compute to frame immediately");
 it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
-  const { resolve } = Context;
+  const resolve = Context.get;
 
   afterEach(() => {
-    Context.resolve = resolve;
+    Context.get = resolve;
   })
 
   it("will throw if no adapter", () => {
@@ -93,7 +93,7 @@ describe("fetch mode", () => {
   })
 
   it("will throw if not found in context", () => {
-    Context.resolve = (_, cb) => cb(new Context());
+    Context.get = (_, cb) => cb(new Context());
 
     class Parent extends Model {}
     class Child extends Model {
@@ -105,7 +105,7 @@ describe("fetch mode", () => {
   })
   
   it("retuns undefined if required is false", () => {
-    Context.resolve = (_, cb) => cb(new Context());
+    Context.get = (_, cb) => cb(new Context());
 
     class MaybeParent extends Model {}
     class StandAlone extends Model {
