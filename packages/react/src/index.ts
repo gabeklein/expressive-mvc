@@ -34,8 +34,6 @@ declare module '@expressive/mvc' {
 
     type GetFactory<T extends Model, R> = (this: T, current: T, refresh: GetFactory.Refresh) => R;
 
-    type UseCallback<T extends Model> = (instance: T) => void;
-
     /** Fetch instance of this class from context. */
     function get <T extends Model> (this: Model.Type<T>, ignore?: true): T;
   
@@ -46,9 +44,11 @@ declare module '@expressive/mvc' {
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: GetFactory<T, null>): NoVoid<R> | null;
 
+    type UseCallback<T extends Model> = (instance: T) => void;
+
     function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: UseCallback<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.New<T>, callback?: UseCallback<T>): T;
   }
 }
 
