@@ -15,7 +15,7 @@ function useLocal <T extends Model> (
 
     let local: T;
     let enabled: boolean | undefined;
-    let shouldApply = !!apply;
+    let shouldApply: boolean | undefined = !!apply;
 
     const detach = instance.get(current => {
       local = current;
@@ -26,6 +26,7 @@ function useLocal <T extends Model> (
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
       if(shouldApply){
+        shouldApply = repeat;
         enabled = false;
 
         if(typeof props == "function")
@@ -35,9 +36,6 @@ function useLocal <T extends Model> (
           for(const key in instance)
             if(props.hasOwnProperty(key))
               instance[key] = (props as any)[key];
-
-        if(!repeat)
-          shouldApply = false;
 
         const update = instance.set();
 
