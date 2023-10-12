@@ -82,9 +82,7 @@ it("will destroy modules created by layer", () => {
   const test2 = Test2.new();
 
   const context1 = new Context({ Test1 });
-  const context2 = context1.push();
-
-  context2.include({ test2, Test3 });
+  const context2 = context1.push({ test2, Test3 });
 
   const test1 = context2.get(Test1)!;
   const test3 = context2.get(Test3)!;

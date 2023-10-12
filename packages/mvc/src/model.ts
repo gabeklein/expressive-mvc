@@ -358,9 +358,6 @@ function update(
   const state = STATE.get(subject)!;
   let pending = PENDING.get(subject);
 
-  if(typeof key == "boolean")
-    throw new Error("Boolean keys are internal only.");
-
   if(Object.isFrozen(state))
     throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
 

@@ -59,7 +59,7 @@ it("will destroy instance of given class", async () => {
   class Test extends Model {
     constructor(){
       super();
-      this.get(() => didDestroy.resolve);
+      this.get(() => () => didDestroy.resolve());
     }
   }
 
