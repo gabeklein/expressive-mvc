@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "jsx": "react",
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "types": [ "jest", "react" ],
+    "paths": {
+      "@expressive/*": [
+        "packages/*/src"
+      ]
+    },
+  },
+  "exclude": [
+    "node_modules",
+    "./dist"
+  ]
+}
