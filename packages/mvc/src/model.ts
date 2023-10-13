@@ -20,27 +20,29 @@ declare namespace Model {
 
   type Key<T> = Field<T> | (string & {}) | number | symbol;
 
-  /** Actual value stored in state. */
-  type Actual<R> =
-    R extends Ref<infer T> ? T :
-    R extends Model ? State<R> :
-    R;
-
   type Value<T extends Model, K extends Key<T>> =
-    K extends keyof T ? T[K] extends Ref<infer V> ? V : T[K] : unknown;
+    K extends keyof T
+      ? T[K] extends Ref<infer V> ? V : T[K]
+      : unknown;
 
   type OnUpdate<T extends Model, K extends Key<T>> =
     (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
+
+  /** Export/Import compatible value for a given property in a Model. */
+  type Export<R> =
+    R extends Ref<infer T> ? T :
+    R extends Model ? State<R> :
+    R;
 
   /**
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill
    * into "real" values held by exotics like ref.
    */
-  type State<T> = { [P in Field<T>]: Actual<T[P]> };
+  type State<T> = { [P in Field<T>]: Export<T[P]> };
 
   /** Object comperable to data found in T. */
-  type Values<T> = { [P in Field<T>]?: Actual<T[P]> };
+  type Values<T> = { [P in Field<T>]?: Export<T[P]> };
 
   /** Exotic value, where actual value is contained within. */
   type Ref<T = any> = {
