@@ -48,7 +48,7 @@ declare module '@expressive/mvc' {
 
     function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: UseCallback<T>): T;
+    function use <T extends Model> (this: Model.New<T>, callback?: UseCallback<T>, repeat?: boolean): T;
   }
 }
 
