@@ -129,9 +129,11 @@ function compute<T>(
       else if(STALE.delete(compute))
         compute();
 
-      return () => {
-        STALE.add(compute);
-        subject.set(key);
+      return (reason) => {
+        if(reason){
+          STALE.add(compute);
+          subject.set(key);
+        }
       };
     })
   }
