@@ -1,5 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const Shared = createContext(new Context());
 const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
@@ -9,8 +9,7 @@ function useLocal <T extends Model> (
   apply?: Model.Values<T> | Model.UseCallback<T>,
   repeat?: boolean){
 
-  const state = useState(0);
-  const hook = useMemo(() => {
+  const state = useState(() => {
     const instance = this.new() as T;
 
     let local: T;
@@ -21,7 +20,7 @@ function useLocal <T extends Model> (
       local = current;
 
       if(enabled)
-        state[1](x => x+1);
+        state[1]((x: Function) => x.bind(null));
     });
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
@@ -57,11 +56,11 @@ function useLocal <T extends Model> (
         }
       }, []);
 
-      return local;
-    }
-  }, []);
+      return local; 
+    };
+  });
 
-  return hook(apply);
+  return state[0](apply);
 }
 
 function getContext(from: Model, resolve: (got: Context) => void){

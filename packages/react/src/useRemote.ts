@@ -1,5 +1,5 @@
 import { Model } from '@expressive/mvc';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import { Shared } from './useLocal';
 
@@ -8,10 +8,9 @@ export function useRemote<T extends Model, R>(
   argument?: boolean | Model.GetFactory<T, any>
 ){
   const context = useContext(Shared)
-  const state = useState(0);
-  const hook = useMemo(() => {
+  const state = useState(() => {
     const instance = context.get(this);
-    const refresh = () => state[1](x => x+1);
+    const refresh = () => state[1](x => x.bind(null));
 
     let value: any;
     let release: (() => void) | undefined;
@@ -20,7 +19,7 @@ export function useRemote<T extends Model, R>(
       if(argument !== false)
         throw new Error(`Could not find ${this} in context.`);
       else
-        return undefined;
+        return new Function();
 
     if(typeof argument === "boolean")
       return () => instance;
@@ -79,7 +78,7 @@ export function useRemote<T extends Model, R>(
       useEffect(() => release, []);
       return value === undefined ? null : value;
     }
-  }, []);
+  });
 
-  return hook && hook();
+  return state[0]();
 }
