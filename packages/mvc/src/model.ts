@@ -2,9 +2,9 @@ import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
-const STATE = new WeakMap<Model, Record<string, unknown>>();
+const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
-const PENDING = new WeakMap<Model, Record<symbol | string, unknown>>();
+const PENDING = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 
 const define = Object.defineProperty;
 
@@ -250,22 +250,24 @@ class Model {
           return arg1.call(self, key, self);
       })
 
-    if(arg1 !== undefined)
-      return 1 in arguments
-        ? update(self, arg1, arg2, arg3)
-        : update(self, arg1);
+    if(arg1 === null)
+      event(this, null);
 
-    if(!PENDING.has(self))
-      return;
+    else if(arg1 !== undefined)
+      if(1 in arguments)
+        update(self, arg1, arg2, arg3)
+      else
+        update(self, arg1);
 
-    return new Promise(resolve => {
-      const remove = addListener(this, (key) => {
-        if(key !== true){
-          remove();
-          return resolve.bind(null, PENDING.get(self));
-        }
+    else if(PENDING.has(self))
+      return new Promise(resolve => {
+        const remove = addListener(this, (key) => {
+          if(key !== true){
+            remove();
+            return resolve.bind(null, PENDING.get(self));
+          }
+        });
       });
-    });
   }
 
   /** Iterate over managed properties in this instance of Model. */
@@ -353,20 +355,17 @@ function fetch(subject: Model, property: string, required?: boolean){
 
 function update(
   subject: Model,
-  key: string | number | symbol | null,
+  key: string | number | symbol,
   value?: unknown,
   silent?: boolean){
 
   const state = STATE.get(subject)!;
   let pending = PENDING.get(subject);
 
-  if(typeof key == "boolean")
-    throw new Error("Boolean keys are internal only.");
+  if(2 in arguments){
+    if(Object.isFrozen(state))
+      throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
 
-  if(Object.isFrozen(state))
-    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
-
-  if(typeof key == "string" && 2 in arguments){
     const previous = state[key];
 
     if(value === previous)
@@ -378,18 +377,16 @@ function update(
       return;
   }
 
-  if(key){
-    if(!pending){
-      PENDING.set(subject, pending = {});
+  if(!pending){
+    PENDING.set(subject, pending = {});
 
-      queue(() => {
-        event(subject, false);
-        PENDING.delete(subject)
-      })
-    }
-
-    pending[key as string] = key in state ? value : true;
+    queue(() => {
+      event(subject, false);
+      PENDING.delete(subject)
+    })
   }
+
+  pending[key] = key in state ? value : true;
 
   event(subject, key);
 }
