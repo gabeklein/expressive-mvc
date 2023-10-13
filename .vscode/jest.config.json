@@ -10,5 +10,8 @@
   },
   "setupFilesAfterEnv": [
     "<rootDir>/jest.setup.ts"
-  ]
+  ],
+  "moduleNameMapper": {
+    "^@expressive/(.*)$": "<rootDir>/packages/$1/src"
+  }
 }
