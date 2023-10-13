@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2020",
+    "rootDir": "./src",
     "esModuleInterop": true,
     "moduleResolution": "node",
     "noUnusedLocals": true,
@@ -9,6 +10,6 @@
   },
   "exclude": [
     "node_modules",
-    "./dist"
+    "dist"
   ]
 }

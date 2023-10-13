@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "rootDir": ".",
+    "rootDir": "./src",
     "target": "es2020",
     "esModuleInterop": true,
     "jsx": "react",
@@ -15,10 +15,10 @@
       "@expressive/*": [
         "packages/*/src"
       ]
-    },
+    }
   },
   "exclude": [
     "node_modules",
-    "./dist"
+    "dist"
   ]
 }
