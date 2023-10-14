@@ -1,19 +1,5 @@
 import Model from "@expressive/mvc";
 
-const cache = new Set<Model>();
-
-afterEach(() => {
-  for(const model of cache)
-    model.set(null);
-
-  cache.clear();
-});
-
-Model.on(function(){
-  cache.add(this);
-  return null;
-});
-
 expect.extend({
   toUpdate,
   toHaveUpdated
