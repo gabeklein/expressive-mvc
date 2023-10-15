@@ -121,7 +121,7 @@ export function mockHook<T>(arg1: (() => T) | Model | Model.New, arg2?: () => T)
 }
 
 export interface MockPromise<T> extends Promise<T> {
-  resolve: (value: T | PromiseLike<T>) => void;
+  resolve: (value: T) => void;
   reject: (reason?: any) => void;
 }
 
