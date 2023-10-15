@@ -3,7 +3,12 @@ import { createElement, useContext, useEffect, useMemo } from 'react';
 
 import { Shared, setContext } from './useLocal';
 
-import type { FunctionComponentElement, ProviderProps, ReactNode } from 'react';
+import type { FunctionComponentElement, ReactNode } from 'react';
+
+interface ProviderProps<T> {
+  value: T;
+  children?: ReactNode | undefined;
+}
 
 declare namespace Provider {
   type Element = FunctionComponentElement<ProviderProps<Context>>;
@@ -32,19 +37,17 @@ declare namespace Provider {
   }
 }
 
-function Provider<T extends Provider.Item>(
-  props: Provider.Props<T>): Provider.Element {
-
-  let { for: included, use: assign, children } = props;
+function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
+  let { for: included, use: assign } = props;
 
   const context = useContext(Shared)
   const value = useMemo(() => context.push(), []);
 
-  if(!included)
-    reject(included);
-
   if(typeof included == "function" || included instanceof Model)
     included = { [0]: included };
+
+  else if(!included)
+    reject(included);
 
   Object.entries(included).forEach(([K, V]) => {
     if(!(Model.is(V) || V instanceof Model))
@@ -62,7 +65,7 @@ function Provider<T extends Provider.Item>(
 
   useEffect(() => () => value.pop(), []);
 
-  return createElement(Shared.Provider, { key: value.key, value }, children as ReactNode);
+  return createElement(Shared.Provider, { key: value.key, value }, props.children as ReactNode);
 }
 
 function reject(argument: any){

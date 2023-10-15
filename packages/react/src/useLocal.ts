@@ -10,12 +10,11 @@ function useLocal <T extends Model> (
   repeat?: boolean){
 
   const state = useState(() => {
-    const instance = this.new() as T;
-
-    let local: T;
-    let enabled: boolean | undefined;
     let shouldApply = !!apply;
+    let enabled: boolean | undefined;
+    let local: T;
 
+    const instance = this.new() as T;
     const detach = instance.get(current => {
       local = current;
 

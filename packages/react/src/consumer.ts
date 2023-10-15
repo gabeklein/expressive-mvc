@@ -43,10 +43,8 @@ declare namespace Consumer {
 function Consumer<T extends Model>(
   props: Consumer.Props<T>): ReactElement<any, any> | null {
 
-  type For<T extends Model> = Model.Type<T> & typeof Model;
-
   const { children, has, get, for: Type } = props as {
-    for: For<T>;
+    for: Model.Type<T> & typeof Model;
     has?: ((value: T) => void) | boolean;
     get?: (value: T | undefined) => void;
     children?: (value: T) => ReactElement<any, any> | null;

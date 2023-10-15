@@ -12,14 +12,11 @@ export function useRemote<T extends Model, R>(
     const instance = context.get(this);
     const refresh = () => state[1](x => x.bind(null));
 
-    let value: any;
-    let release: (() => void) | undefined;
-
     if(!instance)
-      if(argument !== false)
-        throw new Error(`Could not find ${this} in context.`);
-      else
+      if(argument === false)
         return new Function();
+      else
+        throw new Error(`Could not find ${this} in context.`);
 
     if(typeof argument === "boolean")
       return () => instance;
@@ -35,6 +32,9 @@ export function useRemote<T extends Model, R>(
       if(action)
         return action.finally(refresh);
     }
+
+    let release: (() => void) | undefined;
+    let value: any;
 
     release = instance.get(current => {
       if(typeof argument === "function"){
@@ -52,11 +52,6 @@ export function useRemote<T extends Model, R>(
         refresh();
     });
 
-    if(value === null){
-      release();
-      return () => null;
-    }
-
     if(value instanceof Promise){
       let error: Error | undefined;
 
@@ -72,6 +67,11 @@ export function useRemote<T extends Model, R>(
 
         return value === undefined ? null : value;
       }
+    }
+
+    if(value === null){
+      release();
+      return () => null;
     }
 
     return () => {
