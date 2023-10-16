@@ -166,3 +166,19 @@ describe("include", () => {
     expect(context.get(Foo)).toBe(foo);
   })
 })
+
+it("will throw on bad include", () => {
+  const context = new Context();
+
+  const render = () => context.include(undefined as any);
+
+  expect(render).toThrowError("Context can only include Model or instance but got undefined.");
+})
+
+it("will throw on bad include property", () => {
+  const context = new Context();
+
+  const render = () => context.include({ Thing: undefined as any });
+
+  expect(render).toThrowError("Context can only include Model or instance but got undefined as Thing.");
+})

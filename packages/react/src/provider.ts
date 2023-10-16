@@ -42,17 +42,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
 
   const context = useContext();
   const value = React.useMemo(() => context.push(), []);
-
-  if(typeof included == "function" || included instanceof Model)
-    included = { [0]: included };
-
-  else if(!included)
-    reject(included);
-
-  Object.entries(included).forEach(([K, V]) => {
-    if(!(Model.is(V) || V instanceof Model))
-      reject(`${V} as ${K}`);
-  })
   
   value.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
@@ -66,10 +55,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
   React.useEffect(() => () => value.pop(), []);
 
   return createContext(value, props.children as ReactNode);
-}
-
-function reject(argument: any){
-  throw new Error(`Provider expects a Model instance or class but got ${argument}.`);
 }
 
 export { Provider };

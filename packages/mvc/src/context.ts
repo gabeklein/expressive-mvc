@@ -1,9 +1,10 @@
 import { Model, PARENT, uid } from './model';
 
 declare namespace Context {
-  type Inputs = {
-    [key: string | number]: Model | Model.New
-  }
+  type Input = 
+    | Model
+    | Model.New<Model>
+    | Record<string | number, Model | Model.New<Model>>
 }
 
 class Context {
@@ -17,7 +18,7 @@ class Context {
   protected table = new WeakMap<Model.Type, symbol>();
   protected layer = new Map<string | number, Model | Model.Type>();
 
-  constructor(inputs?: Context.Inputs){
+  constructor(inputs?: Context.Input){
     if(inputs)
       this.include(inputs);
   }
@@ -42,8 +43,19 @@ class Context {
     return result;
   }
 
-  public include(inputs: Context.Inputs): Map<Model, boolean> {
+  public include(inputs: Context.Input): Map<Model, boolean> {
     const init = new Map<Model, boolean>();
+
+    if(typeof inputs == "function" || inputs instanceof Model)
+      inputs = { [0]: inputs };
+
+    else if(!inputs)
+      reject(inputs);
+
+    Object.entries(inputs).forEach(([K, V]) => {
+      if(!(Model.is(V) || V instanceof Model))
+        reject(`${V} as ${K}`);
+    })
 
     for(const key in inputs){
       const input = inputs[key];
@@ -109,7 +121,7 @@ class Context {
     return I;
   }
 
-  public push(inputs?: Context.Inputs){
+  public push(inputs?: Context.Input){
     const next = Object.create(this) as this;
     next.layer = new Map();
 
@@ -136,6 +148,10 @@ class Context {
 
     this.layer.clear();
   }
+}
+
+function reject(argument: any){
+  throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
 export { Context }

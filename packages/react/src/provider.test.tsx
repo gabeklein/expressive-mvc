@@ -139,28 +139,6 @@ describe("component", () => {
   
     expect(Consumer).toHaveBeenCalled();
   })
-
-  const error = jest
-    .spyOn(console, "error")
-    .mockImplementation(() => {});
-
-  afterAll(() => error.mockRestore());
-
-  it("will throw on bad for prop", () => {
-    const render = () => create(
-      <Provider for={undefined as any} />
-    )
-    
-    expect(render).toThrowError("Provider expects a Model instance or class but got undefined.");
-  })
-
-  it("will throw on bad property in for prop", () => {
-    const render = () => create(
-      <Provider for={{ Thing: undefined as any }} />
-    )
-    
-    expect(render).toThrowError("Provider expects a Model instance or class but got undefined as Thing.");
-  })
 })
 
 describe("use prop", () => {
