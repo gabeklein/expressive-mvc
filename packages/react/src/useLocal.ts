@@ -1,15 +1,14 @@
-import { Context, Model } from '@expressive/mvc';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { Model } from '@expressive/mvc';
+import React from 'react';
 
-const Shared = createContext(new Context());
-const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
+import { setContext } from './useContext';
 
-function useLocal <T extends Model> (
+export function useLocal <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Values<T> | Model.UseCallback<T>,
   repeat?: boolean){
 
-  const state = useState(() => {
+  const state = React.useState(() => {
     let shouldApply = !!apply;
     let enabled: boolean | undefined;
     let local: T;
@@ -45,9 +44,9 @@ function useLocal <T extends Model> (
           enabled = true;
       }
 
-      setContext(instance, useContext(Shared));
+      setContext(instance);
 
-      useEffect(() => {
+      React.useEffect(() => {
         enabled = true;
         return () => {
           detach();
@@ -60,31 +59,4 @@ function useLocal <T extends Model> (
   });
 
   return state[0](apply);
-}
-
-function getContext(from: Model, resolve: (got: Context) => void){
-  const context = Register.get(from);
-
-  if(context instanceof Context)
-    resolve(context);
-  else if(context)
-    context.push(resolve);
-  else
-    Register.set(from, [resolve]);
-}
-
-function setContext(model: Model, context: Context){
-  const waiting = Register.get(model);
-
-  if(waiting instanceof Array)
-    waiting.forEach(cb => cb(context));
-
-  Register.set(model, context);
-}
-
-export {
-  useLocal,
-  getContext,
-  setContext,
-  Shared
 }

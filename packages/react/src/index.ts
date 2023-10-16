@@ -1,6 +1,7 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { getContext, useLocal } from './useLocal';
+import { getContext } from './useContext';
+import { useLocal } from './useLocal';
 import { useRemote } from './useRemote';
 
 /** Type may not be undefined - instead will be null.  */

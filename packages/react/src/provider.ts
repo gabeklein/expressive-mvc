@@ -1,7 +1,7 @@
 import { Context, Model } from '@expressive/mvc';
-import { createElement, useContext, useEffect, useMemo } from 'react';
+import React from 'react';
 
-import { Shared, setContext } from './useLocal';
+import { createContext, setContext, useContext } from './useContext';
 
 import type { FunctionComponentElement, ReactNode } from 'react';
 
@@ -40,8 +40,8 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
   let { for: included, use: assign } = props;
 
-  const context = useContext(Shared)
-  const value = useMemo(() => context.push(), []);
+  const context = useContext();
+  const value = React.useMemo(() => context.push(), []);
 
   if(typeof included == "function" || included instanceof Model)
     included = { [0]: included };
@@ -63,9 +63,9 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
     setContext(model, value);
   });
 
-  useEffect(() => () => value.pop(), []);
+  React.useEffect(() => () => value.pop(), []);
 
-  return createElement(Shared.Provider, { key: value.key, value }, props.children as ReactNode);
+  return createContext(value, props.children as ReactNode);
 }
 
 function reject(argument: any){
