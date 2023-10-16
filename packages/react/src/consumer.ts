@@ -44,7 +44,7 @@ function Consumer<T extends Model>(
   props: Consumer.Props<T>): ReactElement<any, any> | null {
 
   const { children, has, get, for: Type } = props as {
-    for: Model.Type<T> & typeof Model;
+    for: Model.New<T>;
     has?: ((value: T) => void) | boolean;
     get?: (value: T | undefined) => void;
     children?: (value: T) => ReactElement<any, any> | null;
