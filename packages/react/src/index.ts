@@ -58,8 +58,7 @@ Model.use = useLocal;
 
 Context.get = getContext;
 
-export * from '@expressive/mvc';
-
-export { Model as default };
+export { Model, Model as default };
+export { add, get, use, ref, set } from '@expressive/mvc';
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
