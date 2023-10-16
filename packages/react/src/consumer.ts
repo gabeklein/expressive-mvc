@@ -1,7 +1,5 @@
 import { Model } from '@expressive/mvc';
 
-import type { ReactElement } from 'react';
-
 declare namespace Consumer {
   type HasProps<T extends Model> = {
     /** Type of controller to fetch from context. */
@@ -34,20 +32,20 @@ declare namespace Consumer {
      * Similar to `get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => ReactElement<any, any> | null;
+    children: (value: T) => JSX.Element | null;
   }
 
   type Props<T extends Model> = HasProps<T> | GetProps<T> | RenderProps<T>
 }
 
 function Consumer<T extends Model>(
-  props: Consumer.Props<T>): ReactElement<any, any> | null {
+  props: Consumer.Props<T>): JSX.Element | null {
 
   const { children, has, get, for: Type } = props as {
     for: Model.New<T>;
     has?: ((value: T) => void) | boolean;
     get?: (value: T | undefined) => void;
-    children?: (value: T) => ReactElement<any, any> | null;
+    children?: (value: T) => JSX.Element | null;
   }
 
   const instance = Type.get(!!has) as T;

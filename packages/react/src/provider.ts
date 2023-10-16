@@ -7,7 +7,7 @@ import type { FunctionComponentElement, ReactNode } from 'react';
 
 interface ProviderProps<T> {
   value: T;
-  children?: ReactNode | undefined;
+  children?: ReactNode;
 }
 
 declare namespace Provider {
