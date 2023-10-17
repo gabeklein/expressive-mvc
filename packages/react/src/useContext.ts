@@ -12,15 +12,15 @@ export function createContext(value: Context, children?: React.ReactNode){
   return React.createElement(Shared.Provider, { key: value.key, value }, children);
 }
 
-export function getContext(from: Model, resolve: (got: Context) => void){
-  const context = Register.get(from);
+export function getContext(model: Model, resolve: (got: Context) => void){
+  const waiting = Register.get(model);
 
-  if(context instanceof Context)
-    resolve(context);
-  else if(context)
-    context.push(resolve);
+  if(waiting instanceof Context)
+    resolve(waiting);
+  else if(waiting)
+    waiting.push(resolve);
   else
-    Register.set(from, [resolve]);
+    Register.set(model, [resolve]);
 }
 
 export function setContext(model: Model, context = useContext()){

@@ -14,7 +14,7 @@ export function useLocal <T extends Model> (
     let local: T;
 
     const instance = this.new() as T;
-    const detach = instance.get(current => {
+    const release = instance.get(current => {
       local = current;
 
       if(enabled)
@@ -49,7 +49,7 @@ export function useLocal <T extends Model> (
       React.useEffect(() => {
         enabled = true;
         return () => {
-          detach();
+          release();
           instance.set(null);
         }
       }, []);
