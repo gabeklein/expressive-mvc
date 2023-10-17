@@ -1,14 +1,13 @@
 import { Model } from '@expressive/mvc';
-import React from 'react';
 
-import { setContext } from './useContext';
+import { setContext, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.New<T>,
   apply?: Model.Values<T> | Model.UseCallback<T>,
   repeat?: boolean){
 
-  const state = React.useState(() => {
+  const state = useState(() => {
     let shouldApply = !!apply;
     let enabled: boolean | undefined;
     let local: T;
@@ -46,7 +45,7 @@ export function useLocal <T extends Model> (
 
       setContext(instance);
 
-      React.useEffect(() => {
+      useEffect(() => {
         enabled = true;
         return () => {
           release();

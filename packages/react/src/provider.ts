@@ -1,17 +1,14 @@
 import { Context, Model } from '@expressive/mvc';
-import React from 'react';
 
-import { createContext, setContext, useContext } from './useContext';
+import { createContext, setContext, useContext, useEffect, useMemo } from './useContext';
 
 import type { FunctionComponentElement, ReactNode } from 'react';
 
-interface ProviderProps<T> {
-  value: T;
-  children?: ReactNode;
-}
-
 declare namespace Provider {
-  type Element = FunctionComponentElement<ProviderProps<Context>>;
+  type Element = FunctionComponentElement<{
+    value: Context;
+    children?: ReactNode;
+  }>;
 
   type Item = Model | Model.New;
 
@@ -41,20 +38,20 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
   let { for: included, use: assign } = props;
 
   const context = useContext();
-  const value = React.useMemo(() => context.push(), []);
+  const value = useMemo(() => context.push(), []);
   
   value.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
       for(const K in assign)
         if(K in model)
-          (model as any)[K] = (assign as any)[K];
+          model.set(K, (assign as any)[K]);
 
     setContext(model, value);
   });
 
-  React.useEffect(() => () => value.pop(), []);
+  useEffect(() => () => value.pop(), []);
 
-  return createContext(value, props.children as ReactNode);
+  return createContext(value, props.children);
 }
 
 export { Provider };

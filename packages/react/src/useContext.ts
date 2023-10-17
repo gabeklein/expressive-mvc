@@ -31,3 +31,5 @@ export function setContext(model: Model, context = useContext()){
 
   Register.set(model, context);
 }
+
+export { useState, useEffect, useMemo } from 'react';

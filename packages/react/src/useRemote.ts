@@ -1,14 +1,13 @@
 import { Model } from '@expressive/mvc';
-import React from 'react';
 
-import { useContext } from './useContext';
+import { useContext, useEffect, useState } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.GetFactory<T, any>
-){
+  argument?: boolean | Model.GetFactory<T, any>){
+
   const context = useContext()
-  const state = React.useState(() => {
+  const state = useState(() => {
     const instance = context.get(this);
     const refresh = () => state[1](x => x.bind(null));
 
@@ -75,7 +74,7 @@ export function useRemote<T extends Model, R>(
     }
 
     return () => {
-      React.useEffect(() => release, []);
+      useEffect(() => release, []);
       return value === undefined ? null : value;
     }
   });
