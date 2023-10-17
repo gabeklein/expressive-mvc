@@ -4,6 +4,8 @@ import { createContext, setContext, useContext, useEffect, useMemo } from './use
 
 import type { FunctionComponentElement, ReactNode } from 'react';
 
+type Node = JSX.Element | Iterable<Node> | string | number | boolean | null | undefined;
+
 declare namespace Provider {
   type Element = FunctionComponentElement<{
     value: Context;
@@ -20,16 +22,14 @@ declare namespace Provider {
 
   type NormalProps<E, I = Instance<E>> = {
     for: E;
-    //TODO: use a more strict type for this
-    children?: unknown;
+    children?: Node;
     use?: Model.Values<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
-    //TODO: use a more strict type for this
-    children?: unknown;
+    children?: Node;
     use?: Model.Values<Instance<T>>;
   }
 }
