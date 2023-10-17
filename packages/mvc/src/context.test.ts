@@ -7,12 +7,22 @@ class Example2 extends Example {};
 
 it("will add instance to context", () => {
   const example = Example.new();
-  const context = new Context({ example });
+  const context = new Context();
+
+  context.include(example);
 
   expect(context.get(Example)).toBe(example);
 })
 
-it("will access upstream model", () => {
+it("will create instance in context", () => {
+  const context = new Context();
+
+  context.include(Example);
+
+  expect(context.get(Example)).toBeInstanceOf(Example);
+})
+
+it("will access upstream controller", () => {
   const example = Example.new();
 
   const context = new Context({ example });
@@ -27,12 +37,6 @@ it("will register all subtypes", () => {
 
   expect(context.get(Example2)).toBe(example2);
   expect(context.get(Example)).toBe(example2);
-})
-
-it("will create instance in context", () => {
-  const context = new Context({ Example });
-
-  expect(context.get(Example)).toBeInstanceOf(Example);
 })
 
 it("will return undefined if not found", () => {
@@ -67,11 +71,11 @@ it("will ignore if multiple but same", () => {
 
 it("will destroy modules created by layer", () => {
   class Test extends Model {
-    didDestroy = jest.fn();
+    destroyed = jest.fn();
 
     constructor(){
       super();
-      this.get(() => this.didDestroy);
+      this.get(null, this.destroyed);
     }
   }
 
@@ -82,18 +86,16 @@ it("will destroy modules created by layer", () => {
   const test2 = Test2.new();
 
   const context1 = new Context({ Test1 });
-  const context2 = context1.push();
-
-  context2.include({ test2, Test3 });
+  const context2 = context1.push({ test2, Test3 });
 
   const test1 = context2.get(Test1)!;
   const test3 = context2.get(Test3)!;
 
   context2.pop();
 
-  expect(test1.didDestroy).not.toBeCalled();
-  expect(test2.didDestroy).not.toBeCalled();
-  expect(test3.didDestroy).toBeCalled();
+  expect(test1.destroyed).not.toBeCalled();
+  expect(test2.destroyed).not.toBeCalled();
+  expect(test3.destroyed).toBeCalled();
 })
 
 describe("include", () => {
