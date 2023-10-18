@@ -43,16 +43,11 @@ async function toHaveUpdated(received: Model, ...keys: string[]){
     }
 
   for(const key of keys)
-    if(!(key in didUpdate))
+    if(!didUpdate.includes(key))
       return {
         pass: false,
         message: () => {
-          const got = [
-            ...Object.getOwnPropertyNames(didUpdate),
-            ...Object.getOwnPropertySymbols(didUpdate).map(String)
-          ]
-
-          return `Expected ${received} to have updated keys [${keys.map(String).join(", ")}] but got [${got.join(", ")}].`
+          return `Expected ${received} to have updated keys [${keys.map(String).join(", ")}] but got [${didUpdate.join(", ")}].`
         }
       }
 

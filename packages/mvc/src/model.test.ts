@@ -1098,7 +1098,7 @@ describe("set method", () => {
       const update = test.set();
 
       expect(update).toBeInstanceOf(Promise);
-      await expect(update).resolves.toEqual({ foo: "bar" });
+      await expect(update).resolves.toEqual(["foo"]);
     })
 
     it("will resolve with symbols", async () => {
@@ -1109,9 +1109,9 @@ describe("set method", () => {
 
       test.set(event);
 
-      const update = test.set();
+      const update = await test.set();
 
-      await expect(update).resolves.toEqual({ [event]: true });
+      expect(update).toEqual([event]);
     })
 
     it("will be undefined if no update", async () => {
