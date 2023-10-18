@@ -158,46 +158,26 @@ class Model {
     if(typeof arg1 == "function")
       return effect(self, arg1);
 
-    if(arg1 === undefined){
-      const cache = new WeakMap<Model, any>();
-
-      function get(value: any){
-        if(value instanceof Model){
-          if(cache.has(value))
-            return cache.get(value);
-
-          const model = value;
-
-          cache.set(value, value = {});
-
-          for(const [key, val] of model)
-            value[key] = get(val);
-        }
-
-        return value;
-      }
-
-      return get(self);
-    }
-
-    if(arg1 === null)
-      if(typeof arg2 == "function")
-        return addListener(self, arg2.bind(this, this), null);
-      else
-        return Object.isFrozen(STATE.get(self));
+    if(arg1 === undefined)
+      return extract(self);
 
     if(typeof arg2 == "function"){
+      if(arg1 === null)
+        return addListener(self, arg2.bind(this, this), null);
+
       const state = STATE.get(self)!;
 
       if(arg1 in state)
         arg2.call(this, state[arg1], arg1, this)
-      
+
       return addListener(self, () => {
         arg2.call(this, arg1 in state ? state[arg1] : arg1, arg1, this)
       }, arg1)
     }
-    else
-      return fetch(self, arg1, arg2);
+
+    return arg1 === null
+      ? Object.isFrozen(STATE.get(self))
+      : fetch(self, arg1, arg2);
   }
 
   /**
@@ -389,6 +369,28 @@ function update(
   pending[key] = key in state ? value : true;
 
   event(subject, key);
+}
+
+function extract<T extends Model>(from: T): Model.State<T> {
+  const cache = new WeakMap<Model, any>();
+
+  function get(value: any){
+    if(value instanceof Model){
+      if(cache.has(value))
+        return cache.get(value);
+
+      const model = value;
+
+      cache.set(value, value = {});
+
+      for(const [key, val] of model)
+        value[key] = get(val);
+    }
+
+    return value;
+  }
+
+  return get(from);
 }
 
 /** Random alphanumberic of length 6. Will always start with a letter. */
