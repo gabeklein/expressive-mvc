@@ -1,8 +1,9 @@
 import React from 'react';
 import { create } from 'react-test-renderer';
 
-import { Model, Provider, get } from '.';
-import { mockHook } from './tests';
+import { get, Model } from '.';
+import { Provider } from './provider';
+import { mockHook } from './mocks';
 
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
@@ -11,14 +12,13 @@ describe("useContext", () => {
     }
   
     const test = Test.new();
-    const render = mockHook(() => {
-      return Test.get().foo;
-    }, test);
+    const render = mockHook(test, () => Test.get().foo);
   
-    expect(render.result.current).toBe("foo");
-    test.foo = "bar";
-  
-    await render.waitForNextUpdate();
+    expect(render.output).toBe("foo");
+
+    await render.act(() => {
+      test.foo = "bar"
+    });
   })
   
   it("will return instance", () => {
@@ -26,20 +26,20 @@ describe("useContext", () => {
       value = 1;
     }
   
-    const instance = Test.new();
-    const render = mockHook(() => Test.get(), instance);
+    const test = Test.new();
+    const render = mockHook(test, () => Test.get());
   
-    expect(render.result.current).toBeInstanceOf(Test);
-    expect(render.result.current.value).toBe(1);
+    expect(render.output).toBeInstanceOf(Test);
+    expect(render.output.value).toBe(1);
   })
 
   it("will return null if factory does", () => {
     class Test extends Model {}
   
-    const instance = Test.new();
-    const render = mockHook(() => Test.get(() => null), instance);
+    const test = Test.new();
+    const render = mockHook(test, () => Test.get(() => null));
 
-    expect(render.result.current).toBe(null);
+    expect(render.output).toBe(null);
   })
   
   it("will run initial callback syncronously", async () => {
@@ -51,23 +51,21 @@ describe("useContext", () => {
       value: string;
     }
   
-    const Child = (props: ChildProps) => {
+    const Child = (props: ChildProps) => (
       Parent.get($ => {
         didPushToValues();
-        $.values.push(props.value);
-        $.set("values");
-  
-        return () => null;
-      });
-  
-      return null;
-    }
+        $.values = [...$.values, props.value];
+        return null;
+      })
+    )
   
     const parent = Parent.new();
     const didUpdateValues = jest.fn();
     const didPushToValues = jest.fn();
-  
-    parent.get("values", didUpdateValues, false);
+
+    parent.get(state => {
+      didUpdateValues(state.values.length);
+    })
   
     const element = create(
       <Provider for={parent}>
@@ -79,19 +77,18 @@ describe("useContext", () => {
   
     expect(didPushToValues).toBeCalledTimes(3);
   
-    await expect(parent).toUpdate();
-  
-    expect(parent.values.length).toBe(3);
+    await expect(parent).toHaveUpdated();
   
     // Expect updates to have bunched up before new frame.
-    expect(didUpdateValues).toBeCalledTimes(1);
+    expect(didUpdateValues).toBeCalledTimes(2);
+    expect(didUpdateValues).toBeCalledWith(3);
   
     element.unmount();
   })
 });
 
 describe("useModel", () => {
-  it("will subscriber to created instance", async () => {
+  it("will subscribe to created instance", async () => {
     class Test extends Model {
       value = 1;
     }
@@ -103,13 +100,13 @@ describe("useModel", () => {
       return test.value;
     });
 
-    expect(render.result.current).toBe(1);
+    expect(render.output).toBe(1);
 
-    test.value = 2;
+    await render.act(() => {
+      test.value = 2;
+    });
 
-    await render.waitForNextUpdate();
-
-    expect(render.result.current).toBe(2);
+    expect(render.output).toBe(2);
   })
 })
 
@@ -158,7 +155,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await expect(pending).resolves.toBeUndefined();
+    await expect(pending).resolves.toBeInstanceOf(Foo);
   })
 
   it("will refresh an effect when assigned to", async () => {
@@ -181,7 +178,7 @@ describe("suspense", () => {
       </Provider>
     );
 
-    await bar.set();
+    await expect(bar).toHaveUpdated();
     
     expect(effect).toHaveBeenCalledTimes(2);
     expect(effect).toHaveReturnedTimes(1);

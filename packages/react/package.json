@@ -12,34 +12,35 @@
     "access": "public"
   },
   "keywords": [
+    "expressive",
     "react",
     "mvc"
   ],
-  "main": "lib/index.js",
-  "module": "lib/index.esm.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "files": [
-    "lib"
+    "dist/index.js",
+    "dist/index.mjs",
+    "dist/index.d.ts"
   ],
   "scripts": {
-    "build": "rollup --config",
-    "watch": "jest --watchAll",
-    "test": "jest --collectCoverage",
-    "prebuild": "rm -rf lib/",
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "test": "tsc --noEmit && jest --collectCoverage",
+    "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
   "dependencies": {
-    "@expressive/mvc": "^0.33.0"
+    "@expressive/mvc": "^0.35.5"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <19.0.0"
   },
   "devDependencies": {
-    "@testing-library/react-hooks": "^8.0.0",
-    "@types/react": "^17.0.11",
+    "@types/react": "^18.2.14",
     "@types/react-test-renderer": "^18.0.0",
-    "react": ">=17.0.2",
-    "react-test-renderer": "^17.0.2"
+    "react": "^18.2.0",
+    "react-test-renderer": "^18.2.0"
   },
-  "version": "0.33.0"
+  "version": "0.35.5"
 }

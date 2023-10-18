@@ -1,3 +1,24 @@
 {
-    "extends": "../../tsconfig.json"
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "./src",
+    "target": "es2020",
+    "esModuleInterop": true,
+    "jsx": "react",
+    "lib": ["ES2018", "DOM"],
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "sourceMap": true,
+    "strict": true,
+    "types": [ "jest", "react" ],
+    "paths": {
+      "@expressive/*": [
+        "packages/*/src"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

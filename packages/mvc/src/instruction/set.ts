@@ -1,19 +1,8 @@
-import { Control, apply } from '../control';
-import { createValueEffect } from '../effect';
-import { issues } from '../helper/issues';
-import { assign } from '../helper/object';
-import { mayRetry, suspense } from '../suspense';
-
-export const Oops = issues({
-  ComputeFailed: (model, key) =>
-    `Generating initial value for ${model}.${key} failed.`,
-
-  NotReady: (model, key) =>
-    `Value ${model}.${key} value is not yet available.`
-});
+import { Model } from '../model';
+import { add } from './add';
 
 declare namespace set {
-  type Callback<T, S = any> = (this: S, argument: T) =>
+  type Callback<T, S = any> = (this: S, next: T, previous: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
   type Factory<T, S = any> = (this: S, key: string, thisArg: S) => Promise<T> | T;
@@ -29,109 +18,125 @@ function set <T = any>(): T;
 
 /**
  * Set property with a factory function.
- *
- * If async, poperty cannot be accessed until resolves, yeilding a result.
- * If accessed while still processing, React Suspense will be thrown.
- *
- * - `required: true` (default) -
- *      Run factory immediately upon creation of model instance.
- * - `required: false` -
- *      Run factory only if/when accessed.
- *      Value will always throw suspense at least once - use with caution.
- *
- * @param factory - Callback run to derrive property value.
- * @param required - (default: true) Run factory immediately on creation, otherwise on access.
+ * 
+ * Run factory only if/when accessed. Value will be undefined until
+ * factory resolves, which will also dispatch an update for the property.
  */
 function set <T> (factory: set.Factory<T> | Promise<T>, required: false): T | undefined;
+
+/**
+ * Set property with a factory function.
+ *
+ * If async, property cannot be accessed until resolves, yeilding a result.
+ * If accessed while still processing, React Suspense will be thrown.
+ *
+ * @param factory - Callback run to derrive property value.
+ * @param required - If true run factory immediately on creation, otherwise on access.
+ */
 function set <T> (factory: set.Factory<T> | Promise<T>, required?: boolean): T;
 
-function set <T> (value: undefined, onUpdate: set.Callback<T>): T;
-function set <T> (value: T, onUpdate: set.Callback<T>): T;
+/**
+ * Set a property with empty placeholder and update callback.
+ * 
+ * @param value - Starting value for property. If undefined, suspense will be thrown on access, until value is set and accepted by callback.
+ * @param onUpdate - Callback run when property is set. If returns false, update is not accepted and property will keep previous value.
+ */
+function set <T> (value: T | undefined, onUpdate: set.Callback<T>): T;
 
 function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean){
 
-  return apply<T>((key, control) => {
-    const { state, subject } = control;
+  return add<T>((key, subject) => {
+    const output: Model.Instruction.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
-      const output: Control.PropertyDescriptor = {};
-
-      const init = () => {
-        try {
-          if(typeof value == "function")
-            value = mayRetry(value.bind(subject, key, subject));
-
-          if(value instanceof Promise){
-            const pending = value
-              .then(value => {
-                output.get = undefined;
-                state[key] = value;
-                return value;
-              })
-              .catch(err => {
-                output.get = () => { throw err };
-              })
-              .finally(() => {
-                control.update(key);
-              })
-
-            if(argument !== false)
-              return () => {
-                const { message, stack } = Oops.NotReady(subject, key);
-                throw assign(pending, { message, stack });
-              }
+      function init(){
+        if(typeof value == "function")
+          try {
+            value = attempt(value.bind(subject, key, subject));
           }
-          else
-            state[key] = value;
+          catch(err){
+            console.warn(`Generating initial value for ${subject}.${key} failed.`);
+            throw err;
+          }
+
+        output.get = typeof argument == "boolean" ? argument : undefined;
+
+        if(value instanceof Promise){
+          value
+            .then(value => {
+              subject.set(key, value);
+              return value;
+            })
+            .catch(err => {
+              subject.set(key);
+              output.get = () => { throw err };
+            })
         }
-        catch(err){
-          Oops.ComputeFailed(subject, key).warn();
-          throw err;
-        }
+        else
+          subject.set(key, value);
+
+        if(0 in arguments)
+          return subject[key];
       }
 
       if(argument)
         init();
       else
-        output.get = () => {
-          const get = output.get =
-            key in state ? undefined : init();
-
-          return get ? get() : state[key];
-        }
-
-      return output;
+        output.get = init;
     }
+    else if(value !== undefined)
+      output.value = value;
 
-    const set = typeof argument == "function"
-      ? createValueEffect(argument)
-      : undefined;
+    if(typeof argument == "function"){
+      let unSet: ((next: T) => void) | undefined;
 
-    if(value !== undefined){
-      state[key] = value;
-      return { set };
-    }
+      output.set = function(this: any, value: any, previous: any){
+        const out = argument.call(this, value, previous);
 
-    const output: Control.PropertyDescriptor = {
-      get(){
-        if(key in state)
-          return state[key];
+        if(out === false)
+          return out;
 
-        throw suspense(control, key);
+        if(typeof unSet == "function")
+          unSet = void unSet(value);
+    
+        if(typeof out == "function")
+          unSet = out;
       }
-    };
-
-    if(set)
-      output.set = function(this: any, value: any){
-        output.set = set;
-        state[key] = state[key];
-        return set.call(this, value);
+    }
+    else
+      output.set = value => {
+        output.get = undefined;
+        subject.set(key, value);
       }
 
     return output;
   })
+}
+
+function attempt(fn: () => any): any {
+  function retry(err: unknown){
+    if(err instanceof Promise)
+      return err.then(compute);
+    else
+      throw err;
+  }
+
+  function compute(): any {
+    try {
+      const output = fn();
+
+      return output instanceof Promise
+        ? output.catch(retry)
+        : output;
+    }
+    catch(err){
+      return retry(err);
+    }
+  }
+
+  return compute();
 }
 
 export { set }

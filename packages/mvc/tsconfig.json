@@ -1,3 +1,15 @@
 {
-    "extends": "../../tsconfig.json"
+  "compilerOptions": {
+    "target": "es2020",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "strict": true,
+    "types": [ "jest" ]
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

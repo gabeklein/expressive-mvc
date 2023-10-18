@@ -1,35 +1,64 @@
-import { Model } from "@expressive/mvc";
+import Model from "@expressive/mvc";
 
 expect.extend({
-  async toUpdate(received: Model){
-    const didUpdate = await received.set(0);
+  toUpdate,
+  toHaveUpdated
+});
 
-    return didUpdate ? {
-      pass: true,
-      message: () => `Expected ${received} not to have pending updates.`
-    } : {
+async function toUpdate(received: Model, timeout = 0){
+  return new Promise<jest.CustomMatcherResult>((resolve) => {
+    const removeListener = received.set(() => {
+      clearTimeout(timer);
+      return () => {
+        resolve({
+          pass: true,
+          message: () => `Expected ${received} not to update.`
+        })
+      };
+    });
+
+    const timer = setTimeout(() => {
+      removeListener();
+      resolve({
+        pass: false,
+        message: () => `Expected ${received} to update within ${timeout}ms.`
+      });
+    }, timeout);
+  })
+}
+
+async function toHaveUpdated(received: Model, ...keys: string[]){
+  const didUpdate = await received.set();
+
+  if(!didUpdate)
+    return {
       pass: false,
       message: () => `Expected ${received} to have pending updates.`
-    };
-  },
+    }
 
-  async toHaveUpdated(received: Model, keys: string[]){
-    const didUpdate = await received.set(0);
-    const equal = JSON.stringify(didUpdate) === JSON.stringify(keys);
-
-    return equal ? {
+  if(!keys.length)
+    return {
       pass: true,
-      message: () => {
-        return `Expected ${received} not to have updated keys [${keys.join(", ")}].`;
-      }
-    } : {
-      pass: false,
-      message: () => {
-        const expected = keys.join(", ");
-        const actual = didUpdate ? `[${didUpdate.join(", ")}]` : "no update" 
+      message: () => `Expected ${received} not to have pending updates.`
+    }
 
-        return `Expected ${received} to have updated keys [${expected}] but got ${actual}.`;
+  for(const key of keys)
+    if(!(key in didUpdate))
+      return {
+        pass: false,
+        message: () => {
+          const got = [
+            ...Object.getOwnPropertyNames(didUpdate),
+            ...Object.getOwnPropertySymbols(didUpdate).map(String)
+          ]
+
+          return `Expected ${received} to have updated keys [${keys.map(String).join(", ")}] but got [${got.join(", ")}].`
+        }
       }
-    };
+
+  return {
+    pass: true,
+    message: () =>
+      `Expected ${received} not to have updated keys [${keys.map(String).join(", ")}].`
   }
-})
+}

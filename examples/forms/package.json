@@ -1,0 +1,11 @@
+{
+  "name": "@example/forms",
+  "private": true,
+  "main": "src/index.tsx",
+  "module": "src/Demo.tsx",
+  "dependencies": {
+    "@expressive/react": "^0.35.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

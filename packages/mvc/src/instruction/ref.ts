@@ -1,13 +1,7 @@
-import { apply, Control } from '../control';
-import { createValueEffect } from '../effect';
-import { issues } from '../helper/issues';
-import { defineProperty } from '../helper/object';
 import { Model } from '../model';
+import { add } from './add';
 
-export const Oops = issues({
-  BadRefObject: () =>
-    `ref instruction does not support object which is not 'this'`
-})
+const define = Object.defineProperty;
 
 declare namespace ref {
   type Callback<T> = (argument: T) =>
@@ -20,11 +14,11 @@ declare namespace ref {
 
   /** Object with references to all managed values of `T`. */
   type Proxy<T extends Model> = {
-    [P in Model.Key<T>]-?: Model.Ref<T[P]>
+    [P in Model.Field<T>]-?: Model.Ref<T[P]>
   };
 
   type CustomProxy<T extends Model, R> = {
-    [P in Model.Key<T>]-?: R;
+    [P in Model.Field<T>]-?: R;
   }
 }
 
@@ -47,7 +41,7 @@ function ref <T extends Model> (target: T): ref.Proxy<T>;
  * @param mapper - Function producing the placeholder value for any given property.
  */
 function ref <O extends Model, R>
-  (target: O, mapper: (key: Model.Key<O>) => R): ref.CustomProxy<O, R>;
+  (target: O, mapper: (key: Model.Field<O>) => R): ref.CustomProxy<O, R>;
 
 /**
  * Creates a ref-compatible property.
@@ -74,50 +68,58 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  return apply<T>((key, source) => {
+  return add<T>((key, subject, state) => {
     let value: ref.Object | ref.Proxy<any> = {};
 
-    if(typeof arg != "object")
-      value = createRef(source, key,
-        arg && createValueEffect(arg, arg2 !== false)
-      );
-
-    else if(arg !== source.subject)
-      throw Oops.BadRefObject();
-    else
-      for(const key in source.state)
-        defineProperty(value, key,
-          typeof arg2 == "function" ? {
-            configurable: true,
-            get(){
-              const out = arg2(key);
-              defineProperty(value, key, { value: out });
-              return out;
-            }
-          } : {
-            value: createRef(source, key)
+    if(arg === subject)
+      subject.get(() => {
+        for(const key in state)
+          if(typeof arg2 == "function")
+            define(value, key, {
+              configurable: true,
+              get(){
+                const out = arg2(key);
+                define(value, key, { value: out });
+                return out;
+              }
+            })
+          else {
+            const set = (value: unknown) => subject.set(key, value);
+          
+            define(set, "current", { get: () => state[key], set });
+            define(value, key, { value: set });
           }
-        )
+      })
 
-    source.state[key] = undefined;
-    source.observers.set(key, new Set());
-    defineProperty(source.subject, key, { value });
+    else if(typeof arg == "object")
+      throw new Error("ref instruction does not support object which is not 'this'");
+
+    else {
+      let unSet: ((next: T) => void) | undefined;
+
+      const set = (value?: any) => {
+        if(subject.set(key, value) || !arg)
+          return;
+
+        if(unSet)
+          unSet = void unSet(value);
+    
+        if(value !== null || arg2 === false){  
+          const out = arg.call(subject, value);
+      
+          if(typeof out == "function")
+            unSet = out;
+        }
+      };
+  
+      value = define(set, "current", {
+        get: () => state[key],
+        set
+      }) as ref.Object<T>;
+    }
+
+    define(subject, key, { value });
   })
 }
 
 export { ref }
-
-function createRef(
-  src: Control,
-  key: string,
-  cb?: (x: any) => boolean | void){
-
-  const refObjectFunction = src.ref(key, cb);
-
-  defineProperty(refObjectFunction, "current", {
-    set: refObjectFunction,
-    get: () => src.state[key]
-  })
-
-  return refObjectFunction as ref.Object;
-}

@@ -1,9 +1,11 @@
 {
-  "preset": "ts-jest",
   "testTimeout": 1000,
   "coveragePathIgnorePatterns": [
-    "/src/index.ts"
+    "dist"
   ],
+  "transform": {
+    "^.+\\.[tj]sx?$": "@swc/jest"
+  },
   "setupFilesAfterEnv": [
     "../../jest.setup.ts"
   ],

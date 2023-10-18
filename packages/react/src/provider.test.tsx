@@ -1,16 +1,19 @@
 import React, { Fragment, Suspense } from 'react';
 import { create } from 'react-test-renderer';
 
-import { Consumer, Model, get, set } from '.';
+import { get, Model, set } from '.';
+import { mockAsync } from './mocks';
 import { Provider } from './provider';
-import { mockAsync } from './tests';
+import { Consumer } from './consumer';
+
+const timeout = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 describe("component", () => {
   class Foo extends Model {
     value?: string = undefined;
   }
   class Bar extends Model {}
-  
+
   it("will create instance of given model", () => {
     create(
       <Provider for={Foo}>
@@ -20,20 +23,20 @@ describe("component", () => {
   })
   
   it("will destroy instance of given model", async () => {
-    const willDestroy = jest.fn();
-  
     class Test extends Model {
-      null(){
-        willDestroy();
-        super.null();
+      constructor(){
+        super();
+        this.get(() => willDestroy);
       }
     };
   
+    const willDestroy = jest.fn();
     const element = create(
       <Provider for={Test} />
     );
   
     element.unmount();
+    await timeout(20);
     expect(willDestroy).toBeCalledTimes(1);
   });
   
@@ -46,7 +49,7 @@ describe("component", () => {
     )
   })
   
-  it("will destroy created model on unmount", () => {
+  it("will destroy created model on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Test extends Model {}
@@ -61,10 +64,11 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(10);
     expect(willDestroy).toBeCalled();
   })
   
-  it("will destroy multiple created on unmount", () => {
+  it("will destroy multiple created on unmount", async () => {
     const willDestroy = jest.fn();
   
     class Foo extends Model {}
@@ -82,10 +86,11 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(10);
     expect(willDestroy).toBeCalledTimes(2);
   })
   
-  it("will not destroy given instance on unmount", () => {
+  it("will not destroy given instance on unmount", async () => {
     const didUnmount = jest.fn();
   
     class Test extends Model {}
@@ -101,6 +106,7 @@ describe("component", () => {
     );
   
     rendered.unmount();
+    await timeout(10);
     expect(didUnmount).not.toBeCalled();
   })
   
@@ -133,22 +139,6 @@ describe("component", () => {
   
     expect(Consumer).toHaveBeenCalled();
   })
-
-  it("will throw on bad for prop", () => {
-    const render = () => create(
-      <Provider for={undefined as any} />
-    )
-    
-    expect(render).toThrowError("Provider expects a Model instance or class but got undefined.");
-  })
-
-  it("will throw on bad property in for prop", () => {
-    const render = () => create(
-      <Provider for={{ Thing: undefined as any }} />
-    )
-    
-    expect(render).toThrowError("Provider expects a Model instance or class but got undefined as Thing.");
-  })
 })
 
 describe("use prop", () => {
@@ -179,10 +169,10 @@ describe("use prop", () => {
 
   it("will not assign foreign values", () => {
     create(
-      /// @ts-ignore - type-checking warns against this
+      // @ts-expect-error - type-checking warns against this
       <Provider for={Foo} use={{ nonValue: "foobar" }}>
         <Consumer for={Foo} has={i => {
-          // @ts-ignore
+          // @ts-expect-error
           expect(i.nonValue).toBeUndefined();
         }} />
       </Provider>
@@ -200,12 +190,10 @@ describe("suspense", () => {
     return null;
   }
 
-  const TestComponent = (
-    props: { fallback?: React.ReactNode }) => {
-
+  const TestComponent = (props: {}) => {
     willRender();
     return (
-      <Provider for={Test} fallback={props.fallback}>
+      <Provider for={Test}>
         <GetValue />
       </Provider>
     )
@@ -225,7 +213,7 @@ describe("suspense", () => {
   const didRender = jest.fn();
   const didSuspend = jest.fn();
 
-  beforeEach(() => {
+  afterEach(() => {
     willRender.mockClear();
     didSuspend.mockClear();
     didRender.mockClear();
@@ -233,7 +221,9 @@ describe("suspense", () => {
 
   it("will apply fallback", async () => {
     const element = create(
-      <TestComponent fallback={<DidSuspend />} />
+      <Suspense fallback={<DidSuspend />}>
+        <TestComponent />
+      </Suspense>
     )
 
     expect(willRender).toBeCalledTimes(1);
@@ -249,46 +239,6 @@ describe("suspense", () => {
 
     element.unmount();
   });
-
-  it("will apply fallback implicitly", async () => {
-    const element = create(
-      <Suspense fallback={<DidSuspend />}>
-        <TestComponent />
-      </Suspense>
-    )
-  
-    // Provider itself suspended with default null.
-    expect(didSuspend).not.toBeCalled();
-    expect(didRender).not.toBeCalled();
-
-    promise.resolve("hello!");
-    await didRefresh.pending();
-
-    expect(didRender).toBeCalledWith("hello!");
-
-    element.unmount();
-  })
-
-  it("will not apply fallback", async () => {
-    const element = create(
-      <Suspense fallback={<DidSuspend />}>
-        <TestComponent fallback={false} />
-      </Suspense>
-    )
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).not.toBeCalled();
-
-    promise.resolve("hello!");
-    await didRefresh.pending();
-
-    expect(willRender).toBeCalledTimes(1);
-    expect(didSuspend).toBeCalledTimes(1);
-    expect(didRender).toBeCalledWith("hello!");
-
-    element.unmount();
-  })
 })
 
 describe("get instruction", () => {

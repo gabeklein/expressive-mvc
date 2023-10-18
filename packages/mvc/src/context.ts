@@ -1,26 +1,29 @@
-import { control, parent } from './control';
-import { issues } from './helper/issues';
-import { create, defineProperty, getOwnPropertyDescriptor, getOwnPropertySymbols, getPrototypeOf } from './helper/object';
-import { Model, uid } from './model';
-
-export const Oops = issues({
-  MultipleExist: (name) =>
-    `Did find ${name} in context, but multiple were defined.`
-})
+import { Model, PARENT, uid } from './model';
 
 declare namespace Context {
-  type Inputs = {
-    [key: string | number]: Model | Model.New
-  }
+  type Input = 
+    | Model
+    | Model.New<Model>
+    | Record<string | number, Model | Model.New<Model>>
 }
 
 class Context {
+  static get(from: Model, callback: (context: Context) => void): void
+  static get(){
+    throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
+  }
+
   public key!: string;
 
-  private table = new WeakMap<Model.Type, symbol>();
-  private layer = new Map<string | number, Model | Model.Type>();
+  protected table = new WeakMap<Model.Type, symbol>();
+  protected layer = new Map<string | number, Model | Model.Type>();
 
-  private has(T: Model.Type){
+  constructor(inputs?: Context.Input){
+    if(inputs)
+      this.include(inputs);
+  }
+
+  protected has(T: Model.Type){
     let key = this.table.get(T);
 
     if(!key){
@@ -35,13 +38,24 @@ class Context {
     const result = this[this.has(Type)] as T | undefined;
 
     if(result === null)
-      throw Oops.MultipleExist(Type);
+      throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
     return result;
   }
 
-  public include(inputs: Context.Inputs): Map<Model, boolean> {
+  public include(inputs: Context.Input): Map<Model, boolean> {
     const init = new Map<Model, boolean>();
+
+    if(typeof inputs == "function" || inputs instanceof Model)
+      inputs = { [0]: inputs };
+
+    else if(!inputs)
+      reject(inputs);
+
+    Object.entries(inputs).forEach(([K, V]) => {
+      if(!(Model.is(V) || V instanceof Model))
+        reject(`${V} as ${K}`);
+    })
 
     for(const key in inputs){
       const input = inputs[key];
@@ -61,22 +75,19 @@ class Context {
       }
     }
 
-    for(const [ model ] of init){
-      const { state } = control(model, true);
-  
-      Object.values(state).forEach(value => {
-        if(parent(value) === model){
-          this.add(value, true);
-          init.set(value, false);
+    for(const [ model ] of init)
+      for(const [_key, value] of model)
+        if(PARENT.get(value as Model) === model){
+          this.add(value as Model, true);
+          init.set(value as Model, false);
         }
-      });
-    }
 
     return init;
   }
 
-  public add<T extends Model>(
-    input: T | Model.New<T>, implicit?: boolean){
+  protected add<T extends Model>(
+    input: T | Model.New<T>,
+    implicit?: boolean){
 
     let writable = true;
     let T: Model.New<T>;
@@ -84,10 +95,10 @@ class Context {
 
     if(typeof input == "function"){
       T = input;
-      I = new input();
+      I = input.new() as T;
     }
     else {
-      I = control(input).subject;
+      I = input;
       T = I.constructor as Model.New<T>;
       writable = false;
     }
@@ -97,30 +108,34 @@ class Context {
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || I !== this[key] && !implicit)
-        defineProperty(this, key, {
+        Object.defineProperty(this, key, {
           configurable: true,
-          value,
-          writable
+          writable,
+          value
         });
 
-      T = getPrototypeOf(T);
+      T = Object.getPrototypeOf(T);
     }
     while(T !== Model);
 
     return I;
   }
 
-  public push(){
-    const next = create(this) as this;
+  public push(inputs?: Context.Input){
+    const next = Object.create(this) as this;
     next.layer = new Map();
+
+    if(inputs)
+      next.include(inputs);
+
     return next;
   }
 
   public pop(){
     const items = new Set<Model>();
 
-    for(const key of getOwnPropertySymbols(this)){
-      const entry = getOwnPropertyDescriptor(this, key)!;
+    for(const key of Object.getOwnPropertySymbols(this)){
+      const entry = Object.getOwnPropertyDescriptor(this, key)!;
 
       if(entry.writable && entry.value)
         items.add(entry.value);
@@ -129,10 +144,14 @@ class Context {
     }
 
     for(const model of items)
-      model.null();
+      model.set(null);
 
     this.layer.clear();
   }
+}
+
+function reject(argument: any){
+  throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
 export { Context }
