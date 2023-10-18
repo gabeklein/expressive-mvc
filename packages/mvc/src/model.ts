@@ -4,7 +4,7 @@ const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
-const PENDING = new WeakMap<Model, Record<string | number | symbol, unknown>>();
+const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 
 const define = Object.defineProperty;
 
@@ -185,7 +185,7 @@ class Model {
    *
    * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
    **/
-  set(): Promise<Model.Values<this>> | undefined;
+  set(): Promise<[string | number | symbol]> | undefined;
 
   /**
    * Call a function when update occurs.
@@ -237,14 +237,14 @@ class Model {
       if(1 in arguments)
         update(self, arg1, arg2, arg3)
       else
-        update(self, arg1);
+        push(self, arg1);
 
     else if(PENDING.has(self))
       return new Promise(resolve => {
         const remove = addListener(this, (key) => {
           if(key !== true){
             remove();
-            return resolve.bind(null, PENDING.get(self));
+            return resolve.bind(null, Array.from(PENDING.get(self)!));
           }
         });
       });
@@ -336,29 +336,32 @@ function fetch(subject: Model, property: string, required?: boolean){
 function update(
   subject: Model,
   key: string | number | symbol,
-  value?: unknown,
+  value: unknown,
   silent?: boolean){
 
   const state = STATE.get(subject)!;
+
+  if(Object.isFrozen(state))
+    throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
+
+  const previous = state[key];
+
+  if(value === previous)
+    return true;
+
+  state[key] = value;
+
+  if(silent === true)
+    return;
+  
+  push(subject, key);
+}
+
+function push(subject: Model, key: string | number | symbol){
   let pending = PENDING.get(subject);
 
-  if(2 in arguments){
-    if(Object.isFrozen(state))
-      throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
-
-    const previous = state[key];
-
-    if(value === previous)
-      return true;
-  
-    state[key] = value;
-
-    if(silent === true)
-      return;
-  }
-
   if(!pending){
-    PENDING.set(subject, pending = {});
+    PENDING.set(subject, pending = new Set());
 
     queue(() => {
       event(subject, false);
@@ -366,7 +369,7 @@ function update(
     })
   }
 
-  pending[key] = key in state ? value : true;
+  pending.add(key);
 
   event(subject, key);
 }
