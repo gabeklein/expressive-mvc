@@ -1085,7 +1085,7 @@ describe("set method", () => {
     });
   });
 
-  describe("promise", () => {
+  describe("promise-like", () => {
     it("will resolve update frame", async () => {
       class Test extends Model {
         foo = "foo";
@@ -1097,7 +1097,6 @@ describe("set method", () => {
 
       const update = test.set();
 
-      expect(update).toBeInstanceOf(Promise);
       await expect(update).resolves.toEqual(["foo"]);
     })
 

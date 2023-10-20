@@ -65,7 +65,7 @@ describe("property", () => {
   
     expect(didTrigger).not.toBeCalled();
 
-    state.set((key, ) => {
+    state.set(key => {
       if(key == "ref")
         didUpdate();
     })

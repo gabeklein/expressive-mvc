@@ -142,15 +142,15 @@ class Model {
   /** Run a function which will run automatically when accessed values change. */
   get(effect: Model.Effect<this>): () => void;
 
+  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
+
+  get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
+
   /** Check if model is expired. */
   get(status: null): boolean;
 
   /** Callback when model is to be destroyed. */
   get(status: null, callback: () => void): () => void;
-
-  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
-
-  get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
@@ -185,7 +185,7 @@ class Model {
    *
    * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
    **/
-  set(): Promise<[string | number | symbol]> | undefined;
+  set(): PromiseLike<Model.Key<this>[]> | undefined;
 
   /**
    * Call a function when update occurs.
@@ -201,6 +201,7 @@ class Model {
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
+   * This event can be watched for as well, to run cleanup logic and internally will remove all listeners.
    */
   set(status: null): void;
 
@@ -209,8 +210,13 @@ class Model {
    * 
    * Useful where a property value internally has changed, but the object is the same.
    * For example: An array has pushed a new value, or a nested property is updated.
+   * 
+   * You can also use this to dispatch arbitrary events as well. Symbols are generally
+   * recommended as non-property events, however you can use any string. If doing so,
+   * be sure to avoid collisions with property names - an easy way to do this will be to
+   * prefix your event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
    */
-  set(key: Model.Key<this>): void;
+  set(key: Model.Key<this>): PromiseLike<Model.Key<this>[]>;
 
   /**
    * Update a property with value. 
@@ -219,7 +225,7 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): void;
+  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Key<this>[]> | undefined;
 
   set(arg1?: Model.Event<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
@@ -231,23 +237,25 @@ class Model {
       })
 
     if(arg1 === null)
-      event(this, null);
+      return event(this, null);
 
-    else if(arg1 !== undefined)
+    if(arg1 !== undefined)  
       if(1 in arguments)
-        update(self, arg1, arg2, arg3)
+        update(self, arg1, arg2, arg3);
       else
         push(self, arg1);
 
-    else if(PENDING.has(self))
-      return new Promise(resolve => {
-        const remove = addListener(this, (key) => {
-          if(key !== true){
-            remove();
-            return resolve.bind(null, Array.from(PENDING.get(self)!));
-          }
-        });
-      });
+    if(PENDING.has(self))
+      return <PromiseLike<Model.Key<this>[]>> {
+        then: (res) => new Promise<any>(res => {
+          const remove = addListener(self, key => {
+            if(key !== true){
+              remove();
+              return res.bind(null, Array.from(PENDING.get(self)!));
+            }
+          });
+        }).then(res)
+      }
   }
 
   /** Iterate over managed properties in this instance of Model. */
