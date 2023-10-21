@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.GetFactory<T, any>){
+  argument?: boolean | Model.get.Factory<T, any>){
 
   const context = useContext()
   const state = useState(() => {

@@ -4,7 +4,7 @@ import { setContext, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.New<T>,
-  apply?: Model.Values<T> | Model.UseCallback<T>,
+  apply?: Model.Values<T> | Model.use.Callback<T>,
   repeat?: boolean){
 
   const state = useState(() => {
