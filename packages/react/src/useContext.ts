@@ -4,15 +4,15 @@ import React from 'react';
 const Shared = React.createContext(new Context());
 const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
-export function useContext(){
+function useContext(){
   return React.useContext(Shared);
 }
 
-export function createContext(value: Context, children?: React.ReactNode){
+function createContext(value: Context, children?: React.ReactNode){
   return React.createElement(Shared.Provider, { key: value.key, value }, children);
 }
 
-export function getContext(model: Model, resolve: (got: Context) => void){
+function getContext(model: Model, resolve: (got: Context) => void){
   const waiting = Register.get(model);
 
   if(waiting instanceof Context)
@@ -23,7 +23,7 @@ export function getContext(model: Model, resolve: (got: Context) => void){
     Register.set(model, [resolve]);
 }
 
-export function setContext(model: Model, context = useContext()){
+function setContext(model: Model, context = useContext()){
   const waiting = Register.get(model);
 
   if(waiting instanceof Array)
@@ -32,4 +32,5 @@ export function setContext(model: Model, context = useContext()){
   Register.set(model, context);
 }
 
+export { createContext, getContext, setContext, useContext };
 export { useState, useEffect, useMemo } from 'react';
