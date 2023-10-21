@@ -51,7 +51,7 @@ function ref <O extends Model, R>
  *
  * @param callback - Optional callback to synchronously fire when reference is first set or does update.
  */
-function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
+function ref <T = HTMLElement> (callback?: ref.Callback<T>, ignoreNull?: true): ref.Object<T>;
 
 /**
  * Creates a ref-compatible property.
