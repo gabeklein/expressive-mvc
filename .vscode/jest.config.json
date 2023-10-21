@@ -9,7 +9,7 @@
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
   "setupFilesAfterEnv": [
-    "<rootDir>/jest.setup.ts"
+    "@expressive/mvc/jest"
   ],
   "moduleNameMapper": {
     "^@expressive/(.*)$": "<rootDir>/packages/$1/src"

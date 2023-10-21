@@ -1,13 +1,14 @@
 {
   "testTimeout": 1000,
-  "coveragePathIgnorePatterns": [
-    "dist"
-  ],
   "transform": {
     "^.+\\.[tj]sx?$": "@swc/jest"
   },
+  "coveragePathIgnorePatterns": [
+    "index.ts",
+    "dist"
+  ],
   "setupFilesAfterEnv": [
-    "../../jest.setup.ts"
+    "@expressive/mvc/jest"
   ],
   "coverageThreshold": {
     "global": {
@@ -16,5 +17,8 @@
       "lines": 100,
       "statements": 100
     }
+  },
+  "moduleNameMapper": {
+    "@expressive/(.*)$": "<rootDir>/../$1/src"
   }
 }
