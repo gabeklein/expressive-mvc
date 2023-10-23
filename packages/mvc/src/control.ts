@@ -14,24 +14,28 @@ const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
 
-function onReady(this: {}){
+function onReady(){
   return null;
 }
 
-function addListener(to: {}, fn: OnUpdate, select?: number | string | null){
-  let subs = LISTENER.get(to)!;
+function addListener(
+  subject: {},
+  callback: OnUpdate,
+  select?: number | string | null | true){
+
+  let subs = LISTENER.get(subject)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map().set(onReady, false));
+    LISTENER.set(subject, subs = new Map().set(onReady, false));
 
   const filter = 2 in arguments && new Set([select]);
 
   if(!filter && !subs.has(onReady))
-    fn(true, to);
+    callback(true, subject);
 
-  subs.set(fn, filter);
+  subs.set(callback, filter);
 
-  return () => subs.delete(fn);
+  return () => subs.delete(callback);
 }
 
 function watch(from: any, key?: unknown, value?: any){
@@ -54,6 +58,8 @@ function watch(from: any, key?: unknown, value?: any){
   return value;
 }
 
+const PENDING = new WeakMap<{}, Set<unknown>>();
+
 function event(source: {}, key: unknown | boolean | null){
   const subs = LISTENER.get(source)!;
 
@@ -68,6 +74,47 @@ function event(source: {}, key: unknown | boolean | null){
       subs.delete(callback);
   });
 }
+
+// function event(source: {}, key: unknown | boolean | null){
+//   const subs = LISTENER.get(source)!;
+
+//   if(key !== true && subs.has(onReady))
+//     event(source, true);
+
+//   let pending = PENDING.get(source);
+
+//   if(!pending)
+//     PENDING.set(source, pending = new Set());
+//   else {
+//     pending.add(key)
+//     return;
+//   }
+
+//   pending.forEach(key => {
+//     pending!.delete(key)
+
+//     const log = key === true && String(source).startsWith("Output");
+  
+//     if(log)
+//       console.log(`Readying ${source}`);
+
+//     subs.forEach((select, callback) => {
+//       let after;
+
+//       if(log)
+//         console.log(`Calling ${callback.name || callback} on ${source}`);
+
+//       if(!select || select.has(key as string))
+//         if(after = callback.call(source, key, source))
+//           queue(after);
+
+//       if(after === null || key === null)
+//         subs.delete(callback);
+//     });
+//   })
+
+//   PENDING.delete(source);
+// }
 
 function queue(event: (() => void)){
   if(!DISPATCH.size)

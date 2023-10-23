@@ -91,6 +91,8 @@ class Model {
     let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
 
+    const log = String(this).startsWith("Output");
+
     define(this, "is", { value: this });
 
     STATE.set(this, state);
@@ -105,11 +107,11 @@ class Model {
       Type = Object.getPrototypeOf(Type);
     }
 
-    const remove = addListener(this, (key) => {
+    function startup(this: Model, key: unknown){
       remove();
 
-      if(key !== true)
-        event(this, true);
+      if(log)
+        console.log(`Setting up ${this}`);
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -123,17 +125,26 @@ class Model {
               return watch(this, key, state[key]);
             }
           });
+
+          if(log)
+            console.log(`Setup up ${this}.${key}`);
         }
+        else if(log)
+          console.log(`Skip up ${this}.${key}`);
       }
 
-      addListener(this, () => {
-        for(const [_, value] of this)
-          if(value instanceof Model && PARENT.get(value) === this)
-            value.set(null);
-        
-        Object.freeze(state);
-      }, null);
-    });
+      addListener(this, cleanup, null);
+    }
+
+    function cleanup(this: Model){
+      for(const [_, value] of this)
+        if(value instanceof Model && PARENT.get(value) === this)
+          value.set(null);
+      
+      Object.freeze(state);
+    }
+
+    const remove = addListener(this, startup);
   }
 
   /** Pull current values from state. Flattens all models and exotic values recursively. */

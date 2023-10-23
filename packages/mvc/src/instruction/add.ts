@@ -9,12 +9,22 @@ function add<T = any>(instruction: Model.Instruction){
   return token as unknown as T;
 }
 
-Model.on((_, subject) => {
+function instructions(key: unknown, subject: Model){
+  if(key !== true)
+    return;
+
   const state = STATE.get(subject)!;
+  const log = String(subject).startsWith("Output");
+
+  if(log)
+    console.log(`Do instructions for ${subject}`);
 
   for(const key in subject){
     const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
     const instruction = INSTRUCT.get(value);
+
+    if(log)
+      console.log(`Do instruction for ${subject}.${key}`);
 
     if(!instruction)
       continue;
@@ -65,7 +75,12 @@ Model.on((_, subject) => {
     })
   }
 
+  if(log)
+    console.log(`Did instructions for ${subject}`);
+
   return null;
-})
+}
+
+Model.on(instructions)
 
 export { add }
