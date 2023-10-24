@@ -12,12 +12,11 @@ function add<T = any>(instruction: Model.Instruction){
 Model.on((_, subject) => {
   const state = STATE.get(subject)!;
 
-  for(const key in subject){
-    const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
+  Object.entries(Object.getOwnPropertyDescriptors(subject)).forEach(([key, { value }]) => {
     const instruction = INSTRUCT.get(value);
 
     if(!instruction)
-      continue;
+      return;
 
     INSTRUCT.delete(value);
     delete (subject as any)[key];
@@ -63,7 +62,7 @@ Model.on((_, subject) => {
         );
       }
     })
-  }
+  });
 
   return null;
 })
