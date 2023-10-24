@@ -58,19 +58,37 @@ function watch(from: any, key?: unknown, value?: any){
   return value;
 }
 
+const PENDING = new WeakMap<{}, Set<unknown>>();
+
 function event(source: {}, key: unknown | boolean | null){
   const subs = LISTENER.get(source)!;
 
-  subs.forEach((select, callback) => {
-    let after;
+  let pending = PENDING.get(source);
 
-    if(!select || select.has(key as string))
-      if(after = callback.call(source, key, source))
-        queue(after);
+  if(pending){
+    pending.add(key);
+    return;
+  }
 
-    if(after === null || key === null)
-      subs.delete(callback);
-  });
+  PENDING.set(source, pending = new Set(
+    key !== true && subs.has(onReady) ? [true, key] : [key]
+  ));
+
+  pending.forEach(key => {
+    pending!.delete(key);
+    subs.forEach((select, callback) => {
+      let after;
+      
+      if(!select || select.has(key as string))
+        if(after = callback.call(source, key, source))
+          queue(after);
+  
+      if(after === null || key === null)
+        subs.delete(callback);
+    });
+  })
+  
+  PENDING.delete(source);
 }
 
 function queue(event: (() => void)){

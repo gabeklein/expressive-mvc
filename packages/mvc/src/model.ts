@@ -105,12 +105,7 @@ class Model {
       Type = Object.getPrototypeOf(Type);
     }
 
-    const remove = addListener(this, (key) => {
-      remove();
-
-      if(key !== true)
-        event(this, true);
-
+    addListener(this, () => {
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
 
@@ -133,6 +128,8 @@ class Model {
         
         Object.freeze(state);
       }, null);
+
+      return null;
     });
   }
 
