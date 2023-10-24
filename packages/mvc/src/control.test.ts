@@ -191,6 +191,24 @@ describe("instruction", () => {
 
     expect(didGetValue).toBeCalledWith(state);
   });
+
+  it.only("will defer events until after work", async () => {
+    const event = jest.fn();
+
+    class Test extends Model {
+      property = add(() => {
+        this.set("hello")
+      })
+
+      property2 = add(() => {
+        this.set("world")
+      })
+    }
+
+    const state = Test.new();
+
+    state.set(event);
+  })
 })
 
 it("will run effect after properties", () => {

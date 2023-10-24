@@ -14,24 +14,31 @@ const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
 
-function onReady(this: {}){
+function onReady(this: {}, key: unknown){
+  if(String(this).startsWith("Output"))
+    console.log(`onReady ${key}`);
+
   return null;
 }
 
-function addListener(to: {}, fn: OnUpdate, select?: number | string | null){
-  let subs = LISTENER.get(to)!;
+function addListener(
+  subject: {},
+  callback: OnUpdate,
+  select?: number | string | null | true){
+
+  let subs = LISTENER.get(subject)!;
 
   if(!subs)
-    LISTENER.set(to, subs = new Map().set(onReady, false));
+    LISTENER.set(subject, subs = new Map().set(onReady, false));
 
   const filter = 2 in arguments && new Set([select]);
 
   if(!filter && !subs.has(onReady))
-    fn(true, to);
+    callback(true, subject);
 
-  subs.set(fn, filter);
+  subs.set(callback, filter);
 
-  return () => subs.delete(fn);
+  return () => subs.delete(callback);
 }
 
 function watch(from: any, key?: unknown, value?: any){
@@ -54,19 +61,46 @@ function watch(from: any, key?: unknown, value?: any){
   return value;
 }
 
+const PENDING = new WeakMap<{}, Set<unknown>>();
+
 function event(source: {}, key: unknown | boolean | null){
   const subs = LISTENER.get(source)!;
+  const log = String(source).startsWith("Output");
 
-  subs.forEach((select, callback) => {
-    let after;
+  if(log){
+    console.log(`Got event ${key} from ${source}`)
+  }
 
-    if(!select || select.has(key as string))
-      if(after = callback.call(source, key, source))
-        queue(after);
+  let pending = PENDING.get(source);
 
-    if(after === null || key === null)
-      subs.delete(callback);
-  });
+  if(pending){
+    pending.add(key);
+
+    if(log)
+      console.log(`Event queued`)
+
+    return;
+  }
+
+  PENDING.set(source, pending = new Set(
+    key !== true && subs.has(onReady) ? [true, key] : [key]
+  ));
+
+  pending.forEach(key => {
+    pending!.delete(key);
+    subs.forEach((select, callback) => {
+      let after;
+      
+      if(!select || select.has(key as string))
+        if(after = callback.call(source, key, source))
+          queue(after);
+  
+      if(after === null || key === null)
+        subs.delete(callback);
+    });
+  })
+  
+  PENDING.delete(source);
 }
 
 function queue(event: (() => void)){

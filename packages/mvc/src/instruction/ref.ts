@@ -98,6 +98,9 @@ function ref<T>(
       let unSet: ((next: T) => void) | undefined;
 
       const set = (value?: any) => {
+        if(String(subject).startsWith("Output"))
+          console.log(`did assign ref ${key}`)
+
         if(!subject.set(key, value) || !arg)
           return;
 

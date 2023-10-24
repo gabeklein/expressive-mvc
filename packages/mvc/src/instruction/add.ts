@@ -9,15 +9,27 @@ function add<T = any>(instruction: Model.Instruction){
   return token as unknown as T;
 }
 
-Model.on((_, subject) => {
+function instructions(_: unknown, subject: Model){
   const state = STATE.get(subject)!;
+  const log = String(subject).startsWith("Output");
+  const properties = Object.entries(Object.getOwnPropertyDescriptors(subject));
 
-  for(const key in subject){
-    const { value } = Object.getOwnPropertyDescriptor(subject, key)!;
+  if(log){
+    console.log(`Do instructions for ${subject}`);
+  }
+
+  properties.forEach(([key, { value }]) => {
     const instruction = INSTRUCT.get(value);
 
-    if(!instruction)
-      continue;
+    if(!instruction){
+      if(log)
+        console.log(`${subject}.${key} not instruction`);
+
+      return;
+    }
+
+    if(log)
+      console.log(`${subject}.${key} instruction`);
 
     INSTRUCT.delete(value);
     delete (subject as any)[key];
@@ -63,9 +75,14 @@ Model.on((_, subject) => {
         );
       }
     })
-  }
+  })
+
+  if(log)
+    console.log(`Did instructions for ${subject}`);
 
   return null;
-})
+}
+
+Model.on(instructions)
 
 export { add }
