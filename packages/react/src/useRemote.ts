@@ -13,7 +13,7 @@ export function useRemote<T extends Model, R>(
 
     if(!instance)
       if(argument === false)
-        return new Function();
+        return () => {};
       else
         throw new Error(`Could not find ${this} in context.`);
 
