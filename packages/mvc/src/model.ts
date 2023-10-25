@@ -87,7 +87,17 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number | (() => void | (() => void))){
+  /**
+   * @param id - Unique identifier for this instance. If not provided, one generated for you.
+   */
+  constructor(id?: string);
+
+  /**
+   * @param lifecycle - Function to run when instance is created. If function is returned, is called when instance is destroyed.
+   */
+  constructor(lifecycle: () => void | (() => void));
+
+  constructor(arg?: string | (() => void | (() => void))){
     let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
 
