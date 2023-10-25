@@ -49,14 +49,14 @@ describe("model", () => {
 
   it('will send arguments to constructor', () => {
     class Test extends Model {
-      constructor(public value: number){
-        super();
+      constructor(public value: string){
+        super(value);
       }
     }
 
-    const test = Test.new(3);
+    const test = Test.new("ID");
 
-    expect(test.value).toBe(3);
+    expect(test.value).toBe("ID");
   })
 
   it("will ignore getters and setters", () => {
