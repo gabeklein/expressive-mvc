@@ -87,11 +87,17 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number){
+  constructor(id?: string | number | (() => void | (() => void))){
     let Type = this.constructor as Model.Type;
     const state = {} as Record<string, unknown>;
 
     define(this, "is", { value: this });
+
+    if(typeof id == "function"){
+      const cb = id;
+      id = undefined;
+      this.get(() => cb());
+    }
 
     STATE.set(this, state);
     ID.set(this, id ? String(id) : `${Type}-${uid()}`);
@@ -105,12 +111,7 @@ class Model {
       Type = Object.getPrototypeOf(Type);
     }
 
-    const remove = addListener(this, (key) => {
-      remove();
-
-      if(key !== true)
-        event(this, true);
-
+    addListener(this, () => {
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
 
@@ -133,6 +134,8 @@ class Model {
         
         Object.freeze(state);
       }, null);
+
+      return null;
     });
   }
 

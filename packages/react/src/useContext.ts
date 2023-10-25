@@ -1,15 +1,20 @@
 import Model, { Context } from '@expressive/mvc';
-import React from 'react';
+import {
+  createContext as reactCreateContext,
+  useContext as reactUseContext,
+  createElement,
+  ReactNode
+} from 'react';
 
-const Shared = React.createContext(new Context());
+const Shared = reactCreateContext(new Context());
 const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
 function useContext(){
-  return React.useContext(Shared);
+  return reactUseContext(Shared);
 }
 
-function createContext(value: Context, children?: React.ReactNode){
-  return React.createElement(Shared.Provider, { key: value.key, value }, children);
+function createContext(value: Context, children?: ReactNode){
+  return createElement(Shared.Provider, { key: value.key, value }, children);
 }
 
 function getContext(model: Model, resolve: (got: Context) => void){
