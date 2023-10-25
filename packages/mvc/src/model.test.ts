@@ -16,6 +16,20 @@ describe("model", () => {
     expect(state.value).toBe(1);
   })
 
+  it("will call constructor argument as lifecycle", () => {
+    const didCreate = jest.fn(() => didDestroy);
+    const didDestroy = jest.fn();
+  
+    const state = Model.new(didCreate);
+
+    expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
+
+    state.set(null);
+
+    expect(didDestroy).toBeCalledTimes(1);
+  })
+
   it('will enumerate properties', () => {
     class Test extends Subject {
       /* value is inherited */

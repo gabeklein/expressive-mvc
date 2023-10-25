@@ -1,4 +1,4 @@
-import Model from '.';
+import Model, { set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
 const error = jest
@@ -16,75 +16,77 @@ class Test extends Model {
   value = "foo";
 };
 
-it("will create instance given a class", () => {
-  const hook = mockHook(() => Test.use());
-
-  expect(hook.output).toBeInstanceOf(Test);
-})
+describe("hook", () => {
+  it("will create instance given a class", () => {
+    const hook = mockHook(() => Test.use());
   
-it('will assign `is` as a circular reference', async () => {
-  const { output } = mockHook(() => Test.use());
-
-  expect(output.is.value).toBe("foo");
-
-  output.value = "bar";
-  await expect(output).toHaveUpdated();
-
-  expect(output.is.value).toBe("bar")
-})
-
-it("will subscribe to instance of controller", async () => {
-  const hook = mockHook(() => Test.use());
-
-  expect(hook.output.value).toBe("foo");
-
-  await hook.act(() => {
-    hook.output.value = "bar";
-  });
-
-  expect(hook.output.value).toBe("bar");
-})
-
-it("will run callback", () => {
-  const callback = jest.fn();
-
-  mockHook(() => Test.use(callback));
-
-  expect(callback).toHaveBeenCalledWith(expect.any(Test));
-})
-
-it("will destroy instance of given class", async () => {
-  const didDestroy = mockPromise();
-
-  class Test extends Model {
-    constructor(){
-      super();
-      this.get(() => () => didDestroy.resolve());
+    expect(hook.output).toBeInstanceOf(Test);
+  })
+    
+  it('will assign `is` as a circular reference', async () => {
+    const { output } = mockHook(() => Test.use());
+  
+    expect(output.is.value).toBe("foo");
+  
+    output.value = "bar";
+    await expect(output).toHaveUpdated();
+  
+    expect(output.is.value).toBe("bar")
+  })
+  
+  it("will subscribe to instance of controller", async () => {
+    const hook = mockHook(() => Test.use());
+  
+    expect(hook.output.value).toBe("foo");
+  
+    await hook.act(() => {
+      hook.output.value = "bar";
+    });
+  
+    expect(hook.output.value).toBe("bar");
+  })
+  
+  it("will run callback", () => {
+    const callback = jest.fn();
+  
+    mockHook(() => Test.use(callback));
+  
+    expect(callback).toHaveBeenCalledWith(expect.any(Test));
+  })
+  
+  it("will destroy instance of given class", async () => {
+    const didDestroy = mockPromise();
+  
+    class Test extends Model {
+      constructor(){
+        super();
+        this.get(null, didDestroy.resolve);
+      }
     }
-  }
-
-  const hook = mockHook(() => Test.use());
-
-  hook.unmount();
-
-  await didDestroy;
-})
-
-it("will ignore updates after unmount", async () => {
-  const hook = mockHook(() => {
-    const test = Test.use();
-    void test.value;
-    return test.is;
-  });
-
-  const test = hook.output;
-
-  await hook.act(() => {
-    test.value = "bar";
-  });
-
-  hook.unmount();
-  test.value = "baz";
+  
+    const hook = mockHook(() => Test.use());
+  
+    hook.unmount();
+  
+    await didDestroy;
+  })
+  
+  it("will ignore updates after unmount", async () => {
+    const hook = mockHook(() => {
+      const test = Test.use();
+      void test.value;
+      return test.is;
+    });
+  
+    const test = hook.output;
+  
+    await hook.act(() => {
+      test.value = "bar";
+    });
+  
+    hook.unmount();
+    test.value = "baz";
+  })
 })
 
 describe("callback argument", () => {
@@ -263,5 +265,20 @@ describe("props argument", () => {
     await expect(hook.output).toHaveUpdated();
 
     expect(hook).toBeCalledTimes(2);
+  })
+
+  it("will trigger set instruction", () => {
+    const mock = jest.fn();
+
+    class Test extends Model {
+      foo = set("foo", mock);
+    }
+
+    const { output } = mockHook(() => {
+      return Test.use({ foo: "bar" });
+    });
+
+    expect(output.foo).toBe("bar");
+    expect(mock).toHaveBeenCalledWith("bar", "foo");
   })
 })

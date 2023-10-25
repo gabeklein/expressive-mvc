@@ -1,12 +1,22 @@
-import Model from "@expressive/mvc";
+import { Model } from "@expressive/mvc";
 
 expect.extend({
   toUpdate,
   toHaveUpdated
 });
 
-async function toUpdate(received: Model, timeout = 0){
-  return new Promise<jest.CustomMatcherResult>((resolve) => {
+/**
+ * @param {Model} received
+ * @param {number} timeout
+ */
+async function toUpdate(received, timeout = 0){
+  if(!(received instanceof Model))
+    return {
+      pass: false,
+      message: () => `Expected Model but got ${received}.`
+    }
+
+  return new Promise((resolve) => {
     const removeListener = received.set(() => {
       clearTimeout(timer);
       return () => {
@@ -27,7 +37,17 @@ async function toUpdate(received: Model, timeout = 0){
   })
 }
 
-async function toHaveUpdated(received: Model, ...keys: string[]){
+/**
+ * @param {Model} received
+ * @param {string[]} keys
+ */
+async function toHaveUpdated(received, ...keys){
+  if(!(received instanceof Model))
+    return {
+      pass: false,
+      message: () => `Expected Model but got ${received}.`
+    }
+
   const didUpdate = await received.set();
 
   if(!didUpdate)
