@@ -1,3 +1,4 @@
+import { addListener } from '../control';
 import { Model } from '../model';
 import { add } from './add';
 
@@ -104,12 +105,15 @@ function ref<T>(
         if(unSet)
           unSet = void unSet(value);
     
-        if(value !== null || arg2 === false){  
-          const out = arg.call(subject, value);
-      
-          if(typeof out == "function")
-            unSet = out;
-        }
+        if(value !== null || arg2 === false)
+          addListener(subject, () => {
+            const out = arg.call(subject, value);
+        
+            if(typeof out == "function")
+              unSet = out;
+
+            return null;
+          })
       };
   
       value = define(set, "current", {

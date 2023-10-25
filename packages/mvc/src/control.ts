@@ -30,8 +30,8 @@ function addListener(
 
   const filter = 2 in arguments && new Set([select]);
 
-  if(!filter && !subs.has(onReady))
-    callback(true, subject);
+  if(!filter && !subs.has(onReady) && callback(true, subject) === null)
+    return () => {};
 
   subs.set(callback, filter);
 

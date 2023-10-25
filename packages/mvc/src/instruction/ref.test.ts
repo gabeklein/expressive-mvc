@@ -76,6 +76,24 @@ describe("property", () => {
     await expect(state).toHaveUpdated();
     expect(didUpdate).toBeCalledWith();
   })
+
+  it('will wait for parent to be ready', () => {
+    const didTrigger = jest.fn<any, [string]>();
+
+    class Subject extends Model {
+      ref = ref(didTrigger);
+    }
+
+    const state = new Subject();
+
+    state.ref("foobar");
+
+    expect(didTrigger).not.toBeCalled();
+
+    state.set("any");
+
+    expect(didTrigger).toBeCalledWith("foobar");
+  })
   
   it('will invoke return-callback on overwrite', async () => {
     class Subject extends Model {
