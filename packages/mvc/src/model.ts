@@ -87,20 +87,13 @@ interface Model {
 }
 
 class Model {
-  constructor(id?: string | number | (() => void | (() => void))){
+  constructor(arg?: string | (() => void | (() => void))){
     let Type = this.constructor as Model.Type;
-    const state = {} as Record<string, unknown>;
 
     define(this, "is", { value: this });
 
-    if(typeof id == "function"){
-      const cb = id;
-      id = undefined;
-      this.get(() => cb());
-    }
-
-    STATE.set(this, state);
-    ID.set(this, id ? String(id) : `${Type}-${uid()}`);
+    STATE.set(this, {});
+    ID.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -111,32 +104,17 @@ class Model {
       Type = Object.getPrototypeOf(Type);
     }
 
-    addListener(this, () => {
-      for(const key in this){
-        const desc = Object.getOwnPropertyDescriptor(this, key)!;
+    addListener(this, bootstrap);
 
-        if("value" in desc){
-          state[key] = desc.value;
-          define(this, key, {
-            enumerable: true,
-            set: (x) => update(this, key, x),
-            get(){
-              return watch(this, key, state[key]);
-            }
-          });
-        }
-      }
-
+    if(typeof arg == "function")
       addListener(this, () => {
-        for(const [_, value] of this)
-          if(value instanceof Model && PARENT.get(value) === this)
-            value.set(null);
-        
-        Object.freeze(state);
-      }, null);
+        const cleanup = arg();
 
-      return null;
-    });
+        if(typeof cleanup == "function")
+          addListener(this, cleanup, null);
+
+        return null;
+      });
   }
 
   /** Pull current values from state. Flattens all models and exotic values recursively. */
@@ -312,6 +290,35 @@ define(Model, "toString", {
     return this.name;
   }
 });
+
+function bootstrap(this: Model){
+  const state = STATE.get(this)!;
+
+  for(const key in this){
+    const desc = Object.getOwnPropertyDescriptor(this, key)!;
+
+    if("value" in desc){
+      state[key] = desc.value;
+      define(this, key, {
+        configurable: false,
+        set: (x) => update(this, key, x),
+        get(){
+          return watch(this, key, state[key]);
+        }
+      });
+    }
+  }
+
+  addListener(this, () => {
+    for(const [_, value] of this)
+      if(value instanceof Model && PARENT.get(value) === this)
+        value.set(null);
+    
+    Object.freeze(state);
+  }, null);
+
+  return null;
+}
 
 function fetch(subject: Model, property: string, required?: boolean){
   const state = STATE.get(subject)!;
