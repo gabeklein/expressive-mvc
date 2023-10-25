@@ -5,6 +5,26 @@ import { get, Model } from '.';
 import { Provider } from './provider';
 import { mockHook } from './mocks';
 
+it("will call constructor argument as lifecycle", () => {
+  const didCreate = jest.fn(() => didDestroy);
+  const didDestroy = jest.fn();
+
+  class Test extends Model {
+    constructor(){
+      super(didCreate);
+    }
+  }
+
+  const test = Test.new();
+
+  expect(didCreate).toBeCalledTimes(1);
+  expect(didDestroy).not.toBeCalled();
+
+  test.set(null);
+
+  expect(didDestroy).toBeCalledTimes(1);
+})
+
 describe("useContext", () => {
   it("will refresh for values accessed", async () => {
     class Test extends Model {
