@@ -12,7 +12,9 @@ function add<T = any>(instruction: Model.Instruction){
 Model.on((_, subject) => {
   const state = STATE.get(subject)!;
 
-  Object.entries(Object.getOwnPropertyDescriptors(subject)).forEach(([key, { value }]) => {
+  Object.entries(
+    Object.getOwnPropertyDescriptors(subject)
+  ).forEach(([key, { value }]) => {
     const instruction = INSTRUCT.get(value);
 
     if(!instruction)
