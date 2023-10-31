@@ -51,7 +51,8 @@ declare namespace Model {
   }
 
   /** A callback function which is subscribed to parent and updates when values change. */
-  type Effect<T> = (this: T, argument: T) => ((update: boolean | null) => void) | Promise<void> | null | void;
+  type Effect<T> = (this: T, current: T, updated: Set<Model.Key<T>>) =>
+    ((update: boolean | null) => void) | Promise<void> | null | void;
 
   type Event<T extends Model> =
     (this: T, key: unknown, source: T) => (() => void) | void | null;
@@ -136,8 +137,19 @@ class Model {
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
     const self = this.is;
 
-    if(typeof arg1 == "function")
-      return effect(self, arg1);
+    if(typeof arg1 == "function"){
+      let pending = new Set<Model.Key<this>>();
+
+      return effect(self, (state) => {
+        const cb = arg1.call(state, state, pending);
+
+        return cb === null ? null : ((update) => {
+          pending = PENDING.get(self)!;
+          if(typeof cb == "function")
+            return cb(update);
+        })
+      });
+    }
 
     if(arg1 === undefined)
       return extract(self);

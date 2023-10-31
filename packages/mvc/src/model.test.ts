@@ -318,20 +318,23 @@ describe("get method", () => {
 
     it('will watch values', async () => {
       const test = Test.new();
-      const mock = jest.fn();
-
-      test.get(state => {
+      const mock = jest.fn((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
         void state.value4;
-        mock();
       });
+
+      test.get(mock);
+
+      expect(mock).toBeCalledWith(test, new Set());
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated();
+
+      expect(mock).toBeCalledWith(test, new Set(["value1"]));
 
       test.value2 = 3;
       test.value3 = 4;
@@ -339,8 +342,10 @@ describe("get method", () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated();
 
+      expect(mock).toBeCalledWith(test, new Set(["value2", "value3", "value4"]));
+
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(3)
+      expect(mock).toBeCalledTimes(3);
     })
 
     it("will update for nested values", async () => {
@@ -441,24 +446,22 @@ describe("get method", () => {
     it("will call return-function on subsequent update", async () => {
       class Test extends Model {
         value1 = 1;
-
-        testEffect() {
-          void this.value1;
-          return mock;
-        }
       }
 
       const state = Test.new();
       const mock = jest.fn();
 
-      state.get(state.testEffect);
+      state.get(state => {
+        void state.value1;
+        return mock;
+      });
 
       expect(mock).not.toBeCalled();
 
       state.value1 = 2;
+
       await expect(state).toHaveUpdated();
 
-      expect(mock).toBeCalled();
       expect(mock).toBeCalledWith(true);
     })
 
