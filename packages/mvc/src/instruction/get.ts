@@ -59,7 +59,7 @@ function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) =
  
 function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
-  arg1?: get.Function<R, T> | boolean){
+  arg1?: get.Function<R, T> | boolean | Model.Key<T>){
 
   return add<R>((key, subject) => {
     let from = subject;
@@ -99,8 +99,18 @@ function get<R, T extends Model>(
     else if(typeof arg0 == "function")
       arg1 = arg0.call(from, key, from);
 
-    if(typeof arg1 == "function")
-      return compute(subject, key, source, arg1);
+    switch(typeof arg1){
+      case "function":
+        return compute(subject, key, source, arg1);
+        
+      case "string":
+      case "number":
+      case "symbol": {
+        return () => {
+          
+        };
+      }  
+    }
 
     source((got) => subject.set(key, got));
 
