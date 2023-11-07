@@ -1,5 +1,4 @@
 import { Model } from '@expressive/mvc';
-import { ReactElement } from 'react';
 
 declare namespace Consumer {
   type HasProps<T extends Model> = {
@@ -7,17 +6,19 @@ declare namespace Consumer {
     for: Model.Type<T>;
 
     /**
-     * Getter function. Is called on every natural render of this component.
+     * If boolean, will assert controller of type `for` is present in context.
+     * 
+     * If function, will called on every natural render of this component.
      * Will throw if usable instance cannot be found in context.
      */
-    has: (value: T) => void;
+    has: ((value: T) => void) | boolean;
   }
 
   type GetProps<T extends Model> = {
     /** Type of controller to fetch from context. */
     for: Model.Type<T>;
 
-    /** Getter function. Is called on every natural render of this component. */
+    /** Function called on every natural render of this component. */
     get: (value: T | undefined) => void;
   }
 
@@ -31,34 +32,27 @@ declare namespace Consumer {
      * Similar to `get()`, updates to properties accessed in
      * this function will cause a refresh when they change.
      */
-    children: (value: T) => ReactElement<any, any> | null;
+    children: (value: T) => JSX.Element | null;
   }
 
   type Props<T extends Model> = HasProps<T> | GetProps<T> | RenderProps<T>
 }
 
-type For<T extends Model> = Model.Type<T> & typeof Model;
-
-/** Internal props for this component. Saves on assertions. */
-type ConsumerProps<T extends Model> = {
-  for: For<T>;
-  has?: (value: T) => void;
-  get?: (value: T | undefined) => void;
-  children?: (value: T) => ReactElement<any, any> | null;
-}
-
 function Consumer<T extends Model>(
-  props: Consumer.Props<T>): ReactElement<any, any> | null {
+  props: Consumer.Props<T>): JSX.Element | null {
 
-  const { children, has, get, for: Type } = props as ConsumerProps<T>;
+  const { children, has, get, for: Type } = props as {
+    for: Model.New<T>;
+    has?: ((value: T) => void) | boolean;
+    get?: (value: T | undefined) => void;
+    children?: (value: T) => JSX.Element | null;
+  }
 
-  if(typeof children == "function")
-    return children(Type.get());
-
-  const callback = has || get;
+  const instance = Type.get(!!has) as T;
+  const callback = children || has || get;
 
   if(typeof callback == "function")
-    callback(Type.get(!!has) as T);
+    callback(instance);
 
   return null;
 }

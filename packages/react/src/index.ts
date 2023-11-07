@@ -1,66 +1,68 @@
-import { Context, Control, Model } from '@expressive/mvc';
-import { useEffect, useMemo, useState } from 'react';
+import { Context, Model } from '@expressive/mvc';
 
-import { Pending, useLookup } from './provider';
+import { getContext } from './useContext';
+import { useLocal } from './useLocal';
+import { useRemote } from './useRemote';
 
-const Applied = new WeakMap<Model, Context>();
+/** Type may not be undefined - instead will be null.  */
+type NoVoid<T> = T extends undefined | void ? null : T;
 
-Control.use = (adapter) => {
-  const state = useState(0);
-  const hook = useMemo(() => adapter(state[1]), []);
-  const applied = Applied.get(hook.instance);
+declare module '@expressive/mvc' {
+  namespace Model {
+    namespace get {
+      type Factory<T extends Model, R> = (this: T, current: T, refresh: ForceRefresh) => R;
 
-  if(applied)
-    useLookup();
-
-  else if(applied === undefined){
-    const pending = Pending.get(hook.instance);
-
-    if(pending){
-      const local = useLookup();
-
-      pending.forEach(init => init(local));
-      Applied.set(hook.instance, local);
-      Pending.delete(hook.instance);
+      type ForceRefresh = {
+        /** Request a refresh for current component. */
+        (): void;
+        
+        /**
+         * Request a refresh and again after promise either resolves or rejects.
+         * 
+         * @param waitFor Promise to wait for.
+         * @returns Promise which resolves, after refresh, to same value as `waitFor`.
+         */
+        <T = void>(waitFor: Promise<T>): Promise<T>;
+    
+        /**
+         * Request refresh before and after async function.
+         * A refresh will occur both before and after the given function.
+         * 
+         * **Note:** Any actions performed before first `await` will occur prior to refresh.
+         * 
+         * @param invoke Async function to invoke.
+         * @returns Promise which resolves returned value after refresh.
+         */
+        <T = void>(invoke: () => Promise<T>): Promise<T>;
+      };
     }
+
+    namespace use {
+      type Callback<T extends Model> = (instance: T) => void;
+    }
+
+    /** Fetch instance of this class from context. */
+    function get <T extends Model> (this: Model.Type<T>, ignore?: true): T;
+  
+    /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
+    function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
+  
+    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, Promise<R> | R>): NoVoid<R>;
+  
+    function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, null>): NoVoid<R> | null;
+
+    function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
+
+    function use <T extends Model> (this: Model.New<T>, callback?: use.Callback<T>, repeat?: boolean): T;
   }
-
-  useEffect(hook.mount, []);
-
-  return hook.render;
 }
 
-Control.get = (adapter) => {
-  const context = useLookup();
-  const state = useState(0);
-  const hook = useMemo(() => adapter(state[1], context), []);
+Model.get = useRemote;
+Model.use = useLocal;
 
-  if(!hook)
-    return null;
-
-  useEffect(hook.mount, []);
-
-  return hook.render();
-}
-
-Control.has = (model) => {
-  let pending = Pending.get(model)!;
-
-  if(!pending)
-    Pending.set(model, pending = []);
-
-  return (callback: (got: Context) => void) => {
-    const applied = Applied.get(model);
-
-    if(applied)
-      callback(applied);
-    else
-      pending.push(callback);
-  }
-};
-
-export * from '@expressive/mvc';
+Context.get = getContext;
 
 export { Model, Model as default };
+export { add, get, use, ref, set } from '@expressive/mvc';
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";

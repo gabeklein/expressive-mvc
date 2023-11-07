@@ -111,7 +111,7 @@ Models use property access to know what needs an update when something changes. 
 
 ```jsx
 class Info extends Model {
-  info = new Extra();
+  info = use(Extra);
   foo = 1;
   bar = 2;
   baz = 3;

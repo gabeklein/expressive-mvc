@@ -18,6 +18,8 @@
       "args": [
         "--watchAll",
         "--runInBand",
+        "--config",
+        "${workspaceFolder}/.vscode/jest.config.json",
         "${input:pattern}"
       ],
       "console": "integratedTerminal",

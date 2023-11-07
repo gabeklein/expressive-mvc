@@ -1,0 +1,17 @@
+{
+  "testTimeout": 1000,
+  "rootDir": "../",
+  "roots": [
+    "<rootDir>/packages/mvc",
+    "<rootDir>/packages/react"
+  ],
+  "transform": {
+    "^.+\\.[tj]sx?$": "@swc/jest"
+  },
+  "setupFilesAfterEnv": [
+    "@expressive/mvc/jest"
+  ],
+  "moduleNameMapper": {
+    "^@expressive/(.*)$": "<rootDir>/packages/$1/src"
+  }
+}

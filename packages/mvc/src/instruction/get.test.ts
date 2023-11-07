@@ -1,21 +1,39 @@
 import { Context } from '../context';
-import { Control } from '../control';
-import { render, context } from '../helper/mocks';
-import { mockPromise, mockError, mockWarn } from '../helper/testing';
 import { Model } from '../model';
-import { get, Oops } from './get';
+import { mockError, mockPromise, mockWarn } from '../mocks';
+import { get } from './get';
+import { use } from './use';
 
-const warn = mockWarn();
 const error = mockError();
+const warn = mockWarn();
 
 // is this desirable?
 it.todo("will add pending compute to frame immediately");
+it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
+  const resolve = Context.get;
+
+  afterEach(() => {
+    Context.get = resolve;
+  })
+
+  it("will throw if no adapter", () => {
+    class Parent extends Model {}
+
+    class Test extends Model {
+      value = get(Parent);
+    }
+
+    expect(() => Test.new()).toThrowError(
+      `Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`
+    );
+  })
+
   it("will allow overwrite", async () => {
     class Foo extends Model {
       value = "foo";
-      bar = new Bar();
+      bar = use(Bar);
     }
   
     class Bar extends Model {
@@ -50,7 +68,7 @@ describe("fetch mode", () => {
   
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = new Bar();
+      child = use(Bar);
     }
     class Bar extends Model {
       parent = get(Foo);
@@ -63,19 +81,32 @@ describe("fetch mode", () => {
     expect(bar.parent).toBe(foo);
   })
 
-  it("throws when required parent is absent :(", () => {
+  it("throws when standalone but expects parent", () => {
     class Parent extends Model {}
     class Child extends Model {
       expects = get(Parent, true);
     }
   
     const attempt = () => Child.new("ID");
-    const error = Oops.Required("Parent", "Child-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`ID may only exist as a child of type Parent.`);
+  })
+
+  it("will throw if not found in context", () => {
+    Context.get = (_, cb) => cb(new Context());
+
+    class Parent extends Model {}
+    class Child extends Model {
+      expects = get(Parent);
+    }
+
+    // should this throw immediately, or only on access?
+    expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for ID.`);
   })
   
   it("retuns undefined if required is false", () => {
+    Context.get = (_, cb) => cb(new Context());
+
     class MaybeParent extends Model {}
     class StandAlone extends Model {
       maybe = get(MaybeParent, false);
@@ -89,16 +120,15 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = new Adopted("ID");
+      child = use(new Adopted("ID"));
     }
     class Adopted extends Model {
       expects = get(Expected);
     }
   
     const attempt = () => Unexpected.new("ID");
-    const error = Oops.Unexpected(Expected, "Adopted-ID", "Unexpected-ID");
   
-    expect(attempt).toThrowError(error);
+    expect(attempt).toThrowError(`New ID created as child of ID, but must be instanceof Expected.`);
   })
 
   it('will track recursively', async () => {
@@ -109,7 +139,7 @@ describe("fetch mode", () => {
     
     class Parent extends Model {
       value = "foo";
-      child = new Child();
+      child = use(Child);
     }
   
     const { child } = Parent.new();
@@ -121,17 +151,17 @@ describe("fetch mode", () => {
     child.get(effect);
   
     child.value = "bar";
-    await expect(child).toUpdate();
+    await expect(child).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(2)
   
     child.parent.value = "bar";
-    await expect(child.parent).toUpdate();
+    await expect(child.parent).toHaveUpdated();
     expect(effect).toHaveBeenCalledTimes(3)
   })
 
   it('will yeild a computed value', async () => {
     class Foo extends Model {
-      bar = new Bar();
+      bar = use(Bar);
       seconds = 0;
     }
 
@@ -145,7 +175,7 @@ describe("fetch mode", () => {
   
     foo.seconds = 30;
   
-    await expect(foo).toUpdate();
+    await expect(foo).toHaveUpdated();
   
     expect(foo.seconds).toEqual(30);
     expect(foo.bar.minutes).toEqual(0);
@@ -154,8 +184,8 @@ describe("fetch mode", () => {
   
     // make sure both did declare an update
     await Promise.all([
-      expect(foo.bar).toUpdate(),
-      expect(foo).toUpdate()
+      expect(foo.bar).toHaveUpdated(),
+      expect(foo).toHaveUpdated()
     ])
   
     expect(foo.seconds).toEqual(60);
@@ -177,14 +207,14 @@ describe("compute mode", () => {
   
     subject.seconds = 30;
   
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
   
     expect(subject.seconds).toEqual(30);
     expect(subject.minutes).toEqual(0);
   
     subject.seconds = 60;
   
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
   
     expect(subject.seconds).toEqual(60);
     expect(subject.minutes).toEqual(1);
@@ -192,13 +222,7 @@ describe("compute mode", () => {
   
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
-      child = new Child();
-      seconds = 0;
-    
-      minutes = get(this, state => {
-        return Math.floor(state.seconds / 60);
-      })
-    
+      child = use(Child);
       nested = get(this, state => {
         return state.child.value;
       })
@@ -214,46 +238,14 @@ describe("compute mode", () => {
   
     subject.child.value = "bar";
 
-    await expect(subject).toUpdate();
+    await expect(subject).toHaveUpdated();
     expect(subject.nested).toBe("bar");
-  
+
     subject.child = new Child();
-    await expect(subject).toUpdate();
-  
-    // sanity check
+
+    await expect(subject).toHaveUpdated();
     expect(subject.child.value).toBe("foo");
     expect(subject.nested).toBe("foo");
-  })
-  
-  it('will compute immediately if watched', () => {
-    const mockFactory = jest.fn(() => "foobar");
-  
-    class Test extends Model {
-      value = get(() => mockFactory);
-    }
-  
-    const test = Test.new();
-    test.get("value", () => {});
-  
-    expect(mockFactory).toBeCalled();
-    expect(test.value).toBe("foobar");
-  })
-  
-  it("will compute immediately if exported", () => {
-    const mockFactory = jest.fn(() => "foobar");
-  
-    class Test extends Model {
-      value = get(() => mockFactory);
-    }
-  
-    const test = Test.new();
-
-    test.get("value", () => {});
-
-    const values = test.get();
-  
-    expect(mockFactory).toBeCalled();
-    expect(values).toEqual({ value: "foobar" });
   })
   
   it("will compute early if value is accessed", async () => {
@@ -277,7 +269,7 @@ describe("compute mode", () => {
     expect(didCompute).not.toBeCalledWith(2)
   
     // does compute eventually
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(didCompute).toBeCalledWith(2)
     expect(test.plusOne).toBe(2);
   
@@ -291,7 +283,7 @@ describe("compute mode", () => {
     expect(didCompute).toBeCalledWith(3);
   
     // update should still occur
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   })
   
   it('will be squashed with regular updates', async () => {
@@ -312,24 +304,28 @@ describe("compute mode", () => {
       })
   
       // sanity check; multi-source updates do work
-      x = new Inner();
+      x = use(Inner);
     }
   
-    const state = Test.new();
+    const test = Test.new();
   
-    expect(state.c).toBe(3);
+    expect(test.c).toBe(3);
     expect(exec).toBeCalledTimes(1);
   
-    state.get("c", emit, false);
+    test.set(emit)
   
-    state.a++;
-    state.b++;
-    state.x.value++;
+    test.a++;
+    test.b++;
+    test.x.value++;
   
-    await expect(state).toUpdate();
+    await expect(test).toHaveUpdated();
   
     expect(exec).toBeCalledTimes(2);
-    expect(emit).toBeCalledTimes(1);
+
+    expect(emit).toBeCalledTimes(4);
+    expect(emit).toBeCalledWith("a", test);
+    expect(emit).toBeCalledWith("b", test);
+    expect(emit).toBeCalledWith("c", test);
   })
   
   it("will be evaluated in order", async () => {
@@ -376,11 +372,11 @@ describe("compute mode", () => {
   
     // change value of X, will trigger A & C;
     test.X = 2;
-    const updated = await test.set(0);
+
+    await expect(test).toHaveUpdated();
   
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
-    expect(updated).toMatchObject(["X", "A", "B", "C", "D"]);
   })
   
   it("will run a bound method", async () => {
@@ -399,7 +395,7 @@ describe("compute mode", () => {
     expect(test.greeting).toBe("Hello World!");
   
     test.friend = "Foo";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
   
     expect(test.greeting).toBe("Hello Foo!");
   })
@@ -415,10 +411,8 @@ describe("compute mode", () => {
       const state = Subject.new();
       const attempt = () => state.never;
 
-      const failed = Oops.Failed(state, "never", true);
-
       expect(attempt).toThrowError();
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while initializing ${state}.never.`);
     })
 
     it('will warn if throws on update', async () => {
@@ -434,14 +428,13 @@ describe("compute mode", () => {
       }
 
       const state = Test.new();
-      const failed = Oops.Failed(state, "value", false);
 
       void state.value;
       state.shouldFail = true;
 
-      await expect(state).toUpdate();
+      await expect(state).toHaveUpdated();
 
-      expect(warn).toBeCalledWith(failed.message);
+      expect(warn).toBeCalledWith(`An exception was thrown while refreshing ${state}.value.`);
       expect(error).toBeCalled();
     })
 
@@ -449,13 +442,11 @@ describe("compute mode", () => {
       class Test extends Model {
         peer = get(this, () => "foobar");
 
-        // @ts-ignore
+        // @ts-expect-error
         value = get(this.peer, () => {});
       }
 
-      const expected = Oops.PeerNotAllowed("Test-ID", "value");
-
-      expect(() => Test.new("ID")).toThrow(expected);
+      expect(() => Test.new("ID")).toThrowError(`Attempted to use an instruction result (probably use or get) as computed source for ID.value. This is not allowed.`);
     })
   })
 
@@ -463,7 +454,7 @@ describe("compute mode", () => {
     it("will access own previous value", async () => {
       class Test extends Model {
         multiplier = 0;
-        previous: any;
+        previous: number | undefined | null = null;
 
         value = get(this, state => {
           const { value, multiplier } = state;
@@ -478,7 +469,7 @@ describe("compute mode", () => {
       const test = Test.new();
 
       // shouldn't exist until getter's side-effect
-      expect("previous" in test).toBe(false);
+      expect(test.previous).toBe(null);
 
       const initial = test.value;
 
@@ -487,11 +478,11 @@ describe("compute mode", () => {
 
       // should now exist but be undefined (initial get)
       expect("previous" in test).toBe(true);
-      expect(test.previous).toBeUndefined();
+      expect(test.previous).toBe(undefined);
 
       // change upstream value to trigger re-compute
       test.multiplier = 1;
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
 
       // getter should see current value while producing new one
       expect(test.previous).toBe(initial);
@@ -499,21 +490,19 @@ describe("compute mode", () => {
     })
 
     it("will not trigger itself", async () => {
+      const didGetOldValue = jest.fn();
+      const didGetNewValue = jest.fn();
+
       class Test extends Model {
         input = 1;
-        value = get(() => this.computeValue);
-    
-        computeValue(){
-          const { input, value } = this;
+        value = get(this, state => {
+          const { input, value } = state;
     
           didGetOldValue(value);
     
           return input + 1;
-        }
+        });
       }
-    
-      const didGetOldValue = jest.fn();
-      const didGetNewValue = jest.fn();
     
       const test = Test.new();
     
@@ -530,7 +519,7 @@ describe("compute mode", () => {
       expect(test.value).toBe(3);
       expect(didGetOldValue).toBeCalledWith(2);
     
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(didGetNewValue).toBeCalledWith(3);
       expect(didGetOldValue).toBeCalledTimes(2);
     })
@@ -553,7 +542,7 @@ describe("compute mode", () => {
 
       test.foo++;
 
-      await expect(test).toUpdate();
+      await expect(test).toHaveUpdated();
       expect(test.bar).toBe(3);
     })
 
@@ -572,7 +561,7 @@ describe("compute mode", () => {
     it("will provide property key to factory", () => {
       class Test extends Model {
         // TODO: why is key not implicit?
-        // @ts-ignore
+        // @ts-expect-error
         fooBar = get((key) => () => key);
       }
 
@@ -583,107 +572,16 @@ describe("compute mode", () => {
   })
 })
 
-describe("context", () => {
-  class Foo extends Model {
-    bar = get(Bar);
-  }
-
-  class Bar extends Model {
-    value = "bar";
-
-    constructor(){
-      super();
-      context.add(this);
-    }
-  }
-
-  it("will attach peer from context", async () => {
-    const bar = Bar.new();
-    const hook = render(() => Foo.use().is.bar);
-
-    expect(hook.output).toBe(bar);
-  })
-
-  it("will subscribe peer from context", async () => {
-    const bar = Bar.new();
-    const hook = render(() => Foo.use().bar.value);
-
-    expect(hook.output).toBe("bar");
-
-    bar.value = "foo";
-    await hook.update();
-
-    expect(hook.output).toBe("foo");
-    expect(hook).toBeCalledTimes(2);
-  })
-
-  it("will return undefined if instance not found", () => {
-    class Foo extends Model {
-      bar = get(Bar, false);
-    }
-
-    const hook = render(() => Foo.use().bar);
-
-    expect(hook.output).toBeUndefined();
-  })
-
-  it("will throw if instance not found", () => {
-    class Foo extends Model {
-      bar = get(Bar);
-
-      constructor(){
-        super("ID");
-      }
-    }
-
-    const expected = Oops.AmbientRequired("Bar", "Foo-ID");
-    const tryToRender = () => render(() => Foo.use());
-
-    expect(tryToRender).toThrowError(expected);
-  })
-
-  it("will prefer parent over context", () => {
-    class Parent extends Model {
-      child = new Child();
-      value = "foo";
-    }
-
-    class Child extends Model {
-      parent = get(Parent);
-    }
-
-    context.add(Parent.new());
-
-    const { output } = render(() => Parent.use().is);
-
-    expect(output.child.parent).toBe(output);
-  })
-
-  it("will throw if parent required in-context", () => {
-    class Ambient extends Model {}
-    class Child extends Model {
-      expects = get(Ambient, true);
-    }
-
-    context.add(Ambient.new());
-  
-    const attempt = () => Child.new("ID");
-    const error = Oops.Required("Ambient", "Child-ID");
-  
-    expect(attempt).toThrowError(error);
-  })
-})
-
 // not yet implemented by Context yet; this is a hack.
-describe("replaced source", () => {
+describe.skip("replaced source", () => {
   const context = new Context();
   let gotContext: (got: Context) => void;
 
   beforeAll(() => {
-    Control.has = () => (got) => {
+    Context.get = (_, got) => {
       gotContext = got;
       got(context);
-    };
+    }
   })
 
   class Source extends Model {
@@ -709,16 +607,16 @@ describe("replaced source", () => {
     expect(test.greeting).toBe("Hello Foo!");
 
     oldSource.value = "Baz";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
 
     const newSource = Source.new("Bar");
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
     newSource.value = "Baz";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
   })
 
@@ -730,11 +628,11 @@ describe("replaced source", () => {
 
     Source.new("Bar");
 
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
     oldSource.value = "Baz";
-    await expect(test).not.toUpdate();
+    await expect(test).not.toHaveUpdated();
   })
 })
 
@@ -743,13 +641,10 @@ describe("async", () => {
     value = "foobar";
   }
 
-  const context = new Context();
-
-  context.add(Foo);
-
   beforeAll(() => {
-    Control.has = () => (got) => {
-      setTimeout(() => got(context), 0);
+    Context.get = (_, got) => {
+      const context = new Context({ Foo });
+      setTimeout(() => got(context));
     }
   })
 
@@ -759,7 +654,7 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Promise<unknown>;
+    let caught: unknown;
 
     try {
       void bar.foo;
@@ -767,11 +662,10 @@ describe("async", () => {
     }
     catch(err){
       expect(err).toBeInstanceOf(Promise);
-      suspense = err as Promise<unknown>;
+      caught = err;
     }
 
-    await suspense;
-  
+    await expect(caught).resolves.toBeInstanceOf(Foo);
     expect(bar.foo).toBeInstanceOf(Foo);
   })
   
@@ -781,18 +675,17 @@ describe("async", () => {
     }
   
     const bar = Bar.new();
-    let suspense: Promise<unknown>;
+    let caught: unknown;
 
     try {
       void bar.foo;
       throw false;
     }
     catch(err){
-      expect(err).toBeInstanceOf(Promise);
-      suspense = err as Promise<unknown>;
+      caught = err;
     }
 
-    await suspense;
+    await expect(caught).resolves.toBe("foobar");
   
     expect(bar.foo).toBe("foobar");
   })

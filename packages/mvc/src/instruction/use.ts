@@ -1,13 +1,9 @@
-import { apply, Control, control, parent } from '../control';
-import { assign, create } from '../helper/object';
-import { Model } from '../model';
-import { getMethod, Observable, setMethod } from '../observable';
-
-type Empty = Record<string, never>;
+import { event } from '../control';
+import { Model, PARENT } from '../model';
+import { add } from './add';
 
 namespace use {
-  export type Record<T> = { [key: string | number]: T } & Observable;
-  export type Object<T extends {}> = T & Observable;
+  export type Object<T extends {}> = T;
 }
 
 /** Create a placeholder for specified Model type. */
@@ -26,56 +22,53 @@ function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
  **/
 function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 
-/** Create a managed record with observable entries. */
-function use <T = any, C = use.Record<T>> (record: Empty, ready?: (object: C) => void): C;
-
 /** Create a managed object with observable entries. */
 function use <T extends {}, O = use.Object<T>> (data: T, ready?: (object: O) => void): O;
 
-function use(
-  input?: any,
+function use <T = any> (
+  value?: any,
   argument?: any[] | ((i: {} | undefined) => void)){
 
-  return apply((key, source) => {
-    const { state, subject } = source;
+  if(typeof value === "function")
+    value = new value();
 
-    if(typeof input === "function")
-      input = new input();
+  return add((property, subject) => {
+    function set(next: Record<string, unknown> | undefined){
+      if(value instanceof Model && !(next instanceof value.constructor))
+        throw new Error(`${subject}.${property} expected Model of type ${value.constructor} but got ${next}.`)
 
-    function set(next: {} | undefined){
       if(next instanceof Model){
-        parent(next, subject);
-        control(next, true);
+        PARENT.set(next, subject);
+        event(next, true);
       }
-      else if(next)
-        next = manage(next);
+      else if(next){
+        const proxy = Object.create(next); 
 
-      state[key] = next;
+        for(const key in proxy)
+          Object.defineProperty(proxy, key, {
+            enumerable: true,
+            get: () => next[key],
+            set(value){
+              if(value != next[key]){
+                next[key] = value;
+                subject.set(property)
+              }
+            }
+          });
+
+        output.get = () => proxy;
+      }
 
       if(typeof argument == "function")
         argument(next);
-
-      return true;
     }
 
-    set(input);
+    const output: Model.Instruction.Descriptor = { set, value };
 
-    return { set };
+    set(value);
+
+    return output;
   })
-}
-
-function manage<T extends {}>(next: T){
-  const subject = assign(create(next), {
-    get: getMethod,
-    set: setMethod
-  });
-
-  const control = new Control<T>(subject, false);
-
-  for(const key in control.state = next)
-    control.watch(key, {});
-
-  return subject as T & Observable;
 }
 
 export { use }

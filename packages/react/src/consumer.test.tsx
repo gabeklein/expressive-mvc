@@ -66,6 +66,14 @@ it("will pass undefined if not found for get-prop", () => {
   )
 })
 
+it("will throw if not found if has is true", () => {
+  const test = () => create(
+    <Consumer for={Bar} has={true} />
+  )
+
+  expect(test).toThrowError("Could not find Bar in context.");
+})
+
 it("will throw if not found where required", () => {
   const test = () => create(
     <Consumer for={Bar} has={i => void i} />
