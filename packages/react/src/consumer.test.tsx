@@ -37,7 +37,7 @@ it("will handle complex arrangement", () => {
 
 it("will render with instance for child-function", async () => {
   class Test extends Model {
-    value = "foobar";
+    value = "foo";
   }
 
   const instance = Test.new();
@@ -57,11 +57,21 @@ it("will render with instance for child-function", async () => {
     </Provider>
   )
 
-  expect(didRender).toBeCalledWith("foobar");
+  expect(didRender).toBeCalledWith("foo");
   expect(result.toJSON()).toEqual({
     type: "span",
     props: {},
-    children: ["foobar"]
+    children: ["foo"]
+  });
+  
+  instance.value = "bar";
+  await instance.set();
+
+  expect(didRender).toBeCalledWith("bar");
+  expect(result.toJSON()).toEqual({
+    type: "span",
+    props: {},
+    children: ["bar"]
   });
 })
 
