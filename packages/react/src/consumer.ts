@@ -48,8 +48,11 @@ function Consumer<T extends Model>(
     children?: (value: T) => JSX.Element | null;
   }
 
+  if(typeof children == "function")
+    return children(Type.get() as T);
+
   const instance = Type.get(!!has) as T;
-  const callback = children || has || get;
+  const callback = has || get;
 
   if(typeof callback == "function")
     callback(instance);
