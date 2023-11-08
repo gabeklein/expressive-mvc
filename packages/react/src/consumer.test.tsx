@@ -49,7 +49,7 @@ it("will render with instance for child-function", async () => {
     return <span>{value}</span>;
   }
 
-  create(
+  const result = create(
     <Provider for={instance}>
       <Consumer for={Test}>
         {onRender}
@@ -58,6 +58,11 @@ it("will render with instance for child-function", async () => {
   )
 
   expect(didRender).toBeCalledWith("foobar");
+  expect(result.toJSON()).toEqual({
+    type: "span",
+    props: {},
+    children: ["foobar"]
+  });
 })
 
 it("will pass undefined if not found for get-prop", () => {

@@ -25,15 +25,6 @@
                 "[typescriptreact]": {
                     "editor.defaultFormatter": "esbenp.prettier-vscode"
                 },
-                "[python]": {
-                    "editor.tabSize": 4,
-                    "editor.codeActionsOnSave": {
-                        "source.organizeImports": true,
-                        "source.fixAll": true
-                    },
-                    // "editor.defaultFormatter": "ms-python.black-formatter",
-                    "editor.formatOnSave": true
-                },
                 "terminal.integrated.profiles.linux": {
                     "zsh": {
                         "path": "zsh"
@@ -56,5 +47,5 @@
     "service": "dev",
     "workspaceFolder": "/workspace",
     "userEnvProbe": "loginInteractiveShell",
-    "remoteUser": "user"
+    "remoteUser": "node"
 }
