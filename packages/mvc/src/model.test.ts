@@ -5,173 +5,159 @@ import { ref } from './instruction/ref';
 import { Model } from './model';
 import { mockError } from './mocks';
 
-describe("model", () => {
+it('will extend custom class', () => {
   class Subject extends Model {
     value = 1;
   }
-
-  it('will instantiate from custom class', () => {
-    const state = Subject.new();
-
-    expect(state.value).toBe(1);
-  })
-
-  it("will call constructor argument as lifecycle", () => {
-    const didCreate = jest.fn(() => didDestroy);
-    const didDestroy = jest.fn();
   
-    const state = Model.new(didCreate);
+  const state = Subject.new();
 
-    expect(didCreate).toBeCalledTimes(1);
-    expect(didDestroy).not.toBeCalled();
-
-    state.set(null);
-
-    expect(didDestroy).toBeCalledTimes(1);
-  })
-
-  it('will enumerate properties', () => {
-    class Test extends Subject {
-      /* value is inherited */
-      value2 = 2;
-      method = () => {};
-    }
-
-    const state = Test.new();
-    const keys = Object.keys(state);
-
-    expect(keys).toEqual([
-      "value",
-      "value2",
-      "method"
-    ]);
-  });
-
-  it('will send arguments to constructor', () => {
-    class Test extends Model {
-      constructor(public value: string){
-        super(value);
-      }
-    }
-
-    const test = Test.new("ID");
-
-    expect(test.value).toBe("ID");
-  })
-
-  it("will ignore getters and setters", () => {
-    class Test extends Model {
-      foo = "foo";
-
-      get bar(){
-        return "bar";
-      }
-
-      set baz(value: string){
-        this.foo = value;
-      }
-    }
-
-    const test = Test.new();
-
-    expect(test.bar).toBe("bar");
-    expect(test.get()).not.toContain("bar");
-  })
-
-  it('will update when a value changes', async () => {
-    const state = Subject.new();
-
-    expect(state.value).toBe(1);
-
-    state.value = 2
-    await expect(state).toHaveUpdated();
-
-    expect(state.value).toBe(2);
-  })
-
-  it('will not update if value is same', async () => {
-    const state = Subject.new();
-
-    expect(state.value).toBe(1);
-
-    state.value = 1
-    await expect(state).not.toHaveUpdated();
-  })
-
-  it('accepts update from within a method', async () => {
-    class Subject extends Model {
-      value = 1;
-
-      setValue = (to: number) => {
-        this.value = to;
-      }
-    }
-
-    const state = Subject.new();
-
-    state.setValue(3);
-    await expect(state).toHaveUpdated();
-
-    expect(state.value).toBe(3)
-  })
-
-  it('will watch function properties', async () => {
-    const mockFunction = jest.fn();
-    const mockFunction2 = jest.fn();
-    
-    class Test extends Model {
-      fn = mockFunction;
-    }
-
-    const test = Test.new();
-
-    test.get(state => {
-      state.fn();
-    });
-
-    expect(mockFunction).toBeCalled();
-
-    test.fn = mockFunction2;
-
-    await expect(test).toHaveUpdated();
-
-    expect(mockFunction2).toBeCalled();
-    expect(mockFunction).toBeCalledTimes(1);
-  });
-
-  it('will iterate over properties', () => {
-    class Test extends Model {
-      foo = 1;
-      bar = 2;
-      baz = 3;
-    }
-
-    const test = Test.new();
-    const mock = jest.fn<void, [string, unknown]>();
-
-    for(const [key, value] of test)
-      mock(key, value);
-
-    expect(mock).toBeCalledWith("foo", 1)
-    expect(mock).toBeCalledWith("bar", 2)
-    expect(mock).toBeCalledWith("baz", 3)
-  })
-
-  it('will call null on all children', () => {
-    class Nested extends Model {}
-    class Test extends Model {
-      nested = use(Nested);
-    }
-
-    const test = Test.new();
-    const destroyed = jest.fn();
-
-    test.nested.get(() => destroyed);
-    test.set(null);
-
-    expect(destroyed).toBeCalled();
-  });
+  expect(state.value).toBe(1);
 })
+
+it('will send arguments to constructor', () => {
+  const gotValue = jest.fn();
+
+  class Test extends Model {
+    constructor(value: string){
+      gotValue(value);
+      super();
+    }
+  }
+
+  Test.new("Hello World!");
+
+  expect(gotValue).toBeCalledWith("Hello World!");
+})
+
+it("will use string argument as ID", () => {
+  const state = Model.new("ID");
+
+  expect(String(state)).toBe("ID");
+})
+
+it("will call constructor argument as lifecycle", () => {
+  const didDestroy = jest.fn();
+  const didCreate = jest.fn(() => didDestroy);
+
+  const state = Model.new(didCreate);
+
+  expect(didCreate).toBeCalledTimes(1);
+  expect(didDestroy).not.toBeCalled();
+
+  state.set(null);
+
+  expect(didDestroy).toBeCalledTimes(1);
+})
+
+it('will update on assignment', async () => {
+  class Subject extends Model {
+    value = 1;
+  }
+  
+  const state = Subject.new();
+
+  expect(state.value).toBe(1);
+
+  state.value = 2
+
+  const update = await state.set();
+
+  expect(update).toEqual(["value"]);
+  expect(state.value).toBe(2);
+})
+
+it('will ignore assignment with same value', async () => {
+  class Subject extends Model {
+    value = 1;
+  }
+  
+  const state = Subject.new();
+
+  expect(state.value).toBe(1);
+
+  state.value = 1;
+
+  const update = await state.set();
+
+  expect(update).toBeUndefined();
+})
+
+it('will update from within a method', async () => {
+  class Subject extends Model {
+    value = 1;
+
+    setValue(to: number){
+      this.value = to;
+    }
+  }
+
+  const state = Subject.new();
+
+  state.setValue(3);
+
+  const update = await state.set();
+
+  expect(update).toEqual(["value"]);
+  expect(state.value).toBe(3)
+})
+
+it('will not ignore function properties', async () => {
+  const mockFunction = jest.fn();
+  const mockFunction2 = jest.fn();
+  
+  class Test extends Model {
+    fn = mockFunction;
+  }
+
+  const test = Test.new();
+
+  test.get(state => {
+    state.fn();
+  });
+
+  expect(mockFunction).toBeCalled();
+
+  test.fn = mockFunction2;
+
+  await expect(test).toHaveUpdated();
+
+  expect(mockFunction2).toBeCalled();
+  expect(mockFunction).toBeCalledTimes(1);
+});
+
+it('will iterate over properties', () => {
+  class Test extends Model {
+    foo = 1;
+    bar = 2;
+    baz = 3;
+  }
+
+  const test = Test.new();
+  const mock = jest.fn<void, [string, unknown]>();
+
+  for(const [key, value] of test)
+    mock(key, value);
+
+  expect(mock).toBeCalledWith("foo", 1)
+  expect(mock).toBeCalledWith("bar", 2)
+  expect(mock).toBeCalledWith("baz", 3)
+})
+
+it('will destroy children with it', () => {
+  class Nested extends Model {}
+  class Test extends Model {
+    nested = use(Nested);
+  }
+
+  const test = Test.new();
+  const destroyed = jest.fn();
+
+  test.nested.get(() => destroyed);
+  test.set(null);
+
+  expect(destroyed).toBeCalled();
+});
 
 describe("subscriber", () => {
   class Subject extends Model {
@@ -255,6 +241,25 @@ describe("get method", () => {
         bar: "bar",
         baz: "baz"
       })
+    })
+
+    it("will ignore getters", () => {
+      class Test extends Model {
+        foo = "foo";
+  
+        get bar(){
+          return "bar";
+        }
+  
+        set baz(value: string){
+          this.foo = value;
+        }
+      }
+  
+      const test = Test.new();
+  
+      expect(test.bar).toBe("bar");
+      expect(test.get()).not.toContain("bar");
     })
 
     it("will export values recursively", () => {
@@ -1412,7 +1417,7 @@ describe("string coercion", () => {
     expect(String(a)).toBe("ID");
   })
 
-  it("will work within subscriber", () => {
+  it("will work inside subscriber", () => {
     class Test extends Model {
       foo = "foo";
     }
