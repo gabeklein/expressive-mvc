@@ -108,10 +108,10 @@ function queue(event: (() => void)){
   DISPATCH.add(event);
 }
 
-function effect<T extends {}>(
-  target: T,
-  callback: (this: T, argument: T) => ((update: boolean | null) => void) | Promise<void> | null | void){
+type Effect<T extends {}> = (this: T, argument: T) =>
+  ((update: boolean | null) => void) | Promise<void> | null | void;
 
+function effect<T extends {}>(target: T, callback: Effect<T>){
   const listeners = LISTENER.get(target)!;
   let refresh: (() => void) | null | undefined;
   let unSet: ((update: boolean | null) => void) | false | undefined;
