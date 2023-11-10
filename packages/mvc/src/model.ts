@@ -129,7 +129,7 @@ class Model {
   get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
   /** Check if model is expired. */
-  get(status: null): boolean;
+  get(status: null): boolean | undefined;
 
   /** Callback when model is to be destroyed. */
   get(status: null, callback: () => void): () => void;
@@ -168,9 +168,10 @@ class Model {
       }, arg1)
     }
 
-    return arg1 === null
-      ? Object.isFrozen(STATE.get(self))
-      : fetch(self, arg1, arg2);
+    if(arg1 !== null)
+      return fetch(self, arg1, arg2);
+
+    return Object.isFrozen(STATE.get(self));
   }
 
   /**

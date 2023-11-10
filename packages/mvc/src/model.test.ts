@@ -463,7 +463,7 @@ describe("get method", () => {
   })
 
   describe("null", () => {
-    it("will return true if model is not destroyed", () => {
+    it("will return true if model is destroyed", () => {
       const test = Model.new();
 
       expect(test.get(null)).toBe(false);
@@ -471,6 +471,12 @@ describe("get method", () => {
       test.set(null);
 
       expect(test.get(null)).toBe(true);
+    })
+
+    it("will return undefined if not yet initialized", () => {
+      const test = new Model();
+
+      expect(test.get(null)).toBeUndefined();
     })
 
     it("will callback when model is destroyed", () => {
