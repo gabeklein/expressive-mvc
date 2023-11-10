@@ -18,12 +18,17 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
+  /** Any valid key for controller, including but not limited to keyof T. */
   type Key<T> = Field<T> | (string & {}) | number | symbol;
 
+  /** Value for a given property managed by a controller. */
   type Value<T extends Model, K extends Key<T>> =
     K extends keyof T
       ? T[K] extends Ref<infer V> ? V : T[K]
       : unknown;
+
+  type Event<T extends Model> =
+    (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   type OnUpdate<T extends Model, K extends Key<T>> =
     (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
@@ -53,9 +58,6 @@ declare namespace Model {
   /** A callback function which is subscribed to parent and updates when values change. */
   type Effect<T> = (this: T, current: T, updated: Set<Model.Key<T>>) =>
     ((update: boolean | null) => void) | Promise<void> | null | void;
-
-  type Event<T extends Model> =
-    (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
