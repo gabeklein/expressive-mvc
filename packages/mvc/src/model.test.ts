@@ -224,6 +224,44 @@ describe("subscriber", () => {
   })
 })
 
+describe("string coercion", () => {
+  it("will output a unique ID", () => {
+    const foo = String(Model.new());
+    const bar = String(Model.new());
+
+    expect(foo).not.toBe(bar);
+  })
+
+  it("will be class name and 6 random characters", () => {
+    class FooBar extends Model {}
+
+    const foobar = String(FooBar.new());
+
+    expect(foobar).toMatch(/^FooBar-\w{6}/)
+  })
+
+  it("will be class name and supplied ID", () => {
+    const a = Model.new("ID");
+
+    expect(String(a)).toBe("ID");
+  })
+
+  it("will work inside subscriber", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+
+    const test = Test.new("ID");
+    const mock = jest.fn();
+
+    test.get(state => {
+      mock(String(state));
+    })
+
+    expect(mock).toBeCalledWith("ID");
+  })
+})
+
 describe("get method", () => {
   describe("export", () => {
     class Test extends Model {
@@ -313,6 +351,142 @@ describe("get method", () => {
     })
   })
 
+  describe("fetch", () => {
+    it("will get value", () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      expect(test.get("foo")).toBe("foo");
+    })
+
+    it("will get ref value", () => {
+      class Test extends Model {
+        foo = ref<string>();
+      }
+
+      const test = Test.new();
+
+      test.foo("foobar");
+
+      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
+      expect<string>(test.get("foo")).toBe("foobar");
+    })
+
+    it("will throw suspense if not yet available", async () => {
+      class Test extends Model {
+        foo = set<string>();
+      }
+
+      const test = Test.new("ID");
+      let suspense;
+
+      try {
+        void test.get("foo");
+      }
+      catch(error){
+        expect(error).toBeInstanceOf(Promise);
+        expect(String(error)).toMatch("Error: ID.foo is not yet available.");
+        suspense = error;
+      }
+
+      test.foo = "foobar";
+      
+      await expect(suspense).resolves.toBe("foobar");
+    })
+
+    it("will suspend if undefined in strict mode", async () => {
+      class Test extends Model {
+        foo?: string = undefined;
+      }
+
+      const test = Test.new("ID");
+      let suspense;
+
+      try {
+        void test.get("foo", true)
+      }
+      catch(error){
+        expect(error).toBeInstanceOf(Promise);
+        expect(String(error)).toMatch("Error: ID.foo is not yet available.")
+        suspense = error;
+      }
+
+      test.foo = "foobar";
+      
+      await expect(suspense).resolves.toBe("foobar");
+    })
+  })
+
+  describe("callback", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+
+    it("will call callback on update", async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("foo", mock);
+
+      test.foo = "bar";
+      test.foo = "baz";
+
+      expect(mock).toBeCalledWith("bar", "foo", test);
+      expect(mock).toBeCalledWith("baz", "foo", test);
+    })
+
+    it("will call immediately if defined", () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("foo", mock);
+
+      expect(mock).toBeCalledWith("foo", "foo", test);
+    })
+
+    it("will call on event if not defined", async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get("baz", mock);
+
+      expect(mock).not.toBeCalled();
+      
+      // dispatch explicit event
+      test.set("baz");
+
+      expect(mock).toBeCalledWith("baz", "baz", test);
+    })
+  })
+
+  describe("null", () => {
+    it("will return true if model is not destroyed", () => {
+      const test = Model.new();
+
+      expect(test.get(null)).toBe(false);
+
+      test.set(null);
+
+      expect(test.get(null)).toBe(true);
+    })
+
+    it("will callback when model is destroyed", () => {
+      const test = Model.new();
+      const mock = jest.fn();
+
+      test.get(null, mock);
+
+      expect(mock).not.toBeCalled();
+
+      test.set(null);
+
+      expect(mock).toBeCalled();
+    })
+  })
+
   describe("effect", () => {
     class Test extends Model {
       value1 = 1;
@@ -323,23 +497,23 @@ describe("get method", () => {
 
     it('will watch values', async () => {
       const test = Test.new();
-      const mock = jest.fn((state: Test) => {
+      const effect = jest.fn((state: Test) => {
         void state.value1;
         void state.value2;
         void state.value3;
         void state.value4;
       });
 
-      test.get(mock);
+      test.get(effect);
 
-      expect(mock).toBeCalledWith(test, new Set());
+      expect(effect).toBeCalledWith(test, new Set());
 
       test.value1 = 2;
 
       // wait for update event, thus queue flushed
       await expect(test).toHaveUpdated();
 
-      expect(mock).toBeCalledWith(test, new Set(["value1"]));
+      expect(effect).toBeCalledWith(test, new Set(["value1"]));
 
       test.value2 = 3;
       test.value3 = 4;
@@ -347,10 +521,47 @@ describe("get method", () => {
       // wait for update event to flush queue
       await expect(test).toHaveUpdated();
 
-      expect(mock).toBeCalledWith(test, new Set(["value2", "value3", "value4"]));
+      expect(effect).toBeCalledWith(test, new Set(["value2", "value3", "value4"]));
 
       // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(3);
+      expect(effect).toBeCalledTimes(3);
+    })
+
+    it('will squash simultaneous updates', async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get(state => {
+        void state.value1;
+        void state.value2;
+        mock();
+      });
+
+      test.value1 = 2;
+      test.value2 = 3;
+
+      await expect(test).toHaveUpdated();
+
+      // expect two syncronous groups of updates.
+      expect(mock).toBeCalledTimes(2)
+    })
+
+    it('will squash computed updates', async () => {
+      const test = Test.new();
+      const mock = jest.fn();
+
+      test.get(state => {
+        void state.value3;
+        void state.value4;
+        mock();
+      });
+
+      test.value3 = 4;
+
+      await expect(test).toHaveUpdated();
+
+      // expect two syncronous groups of updates.
+      expect(mock).toBeCalledTimes(2)
     })
 
     it("will update for nested values", async () => {
@@ -402,75 +613,27 @@ describe("get method", () => {
 
       test.nested = Nested.new();
       await expect(test).toHaveUpdated();
+
       // Updates because nested property is new.
       expect(effect).toBeCalledTimes(3);
 
       old.value++;
       await expect(old).toHaveUpdated();
+
       // Should not update on new event from previous.
       expect(effect).toBeCalledTimes(3);
     })
 
-    it('will squash simultaneous updates', async () => {
+    it('will call immediately', async () => {
+      const testEffect = jest.fn();
       const test = Test.new();
-      const mock = jest.fn();
 
-      test.get(state => {
-        void state.value1;
-        void state.value2;
-        mock();
-      });
+      test.get(testEffect);
 
-      test.value1 = 2;
-      test.value2 = 3;
-
-      await expect(test).toHaveUpdated();
-
-      // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2)
+      expect(testEffect).toBeCalled();
     })
 
-    it('will squash simultaneous compute update', async () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get(state => {
-        void state.value3;
-        void state.value4;
-        mock();
-      });
-
-      test.value3 = 4;
-
-      await expect(test).toHaveUpdated();
-
-      // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2)
-    })
-
-    it("will call return-function on subsequent update", async () => {
-      class Test extends Model {
-        value1 = 1;
-      }
-
-      const state = Test.new();
-      const mock = jest.fn();
-
-      state.get(state => {
-        void state.value1;
-        return mock;
-      });
-
-      expect(mock).not.toBeCalled();
-
-      state.value1 = 2;
-
-      await expect(state).toHaveUpdated();
-
-      expect(mock).toBeCalledWith(true);
-    })
-
-    it('will register before ready', async () => {
+    it('will only when ready', async () => {
       class Test2 extends Test {
         constructor() {
           super();
@@ -497,15 +660,6 @@ describe("get method", () => {
       expect(mock).toBeCalledTimes(3);
     })
 
-    it('will call immediately', async () => {
-      const testEffect = jest.fn();
-      const test = Test.new();
-
-      test.get(testEffect);
-
-      expect(testEffect).toBeCalled();
-    })
-
     it("will bind to model called upon", () => {
       class Test extends Model {}
 
@@ -521,210 +675,129 @@ describe("get method", () => {
       expect(didCreate).toBeCalledWith(test);
     })
 
-    it('will callback on null event', async () => {
-      const willDestroy = jest.fn();
-      const test = Test.new();
-
-      test.get(() => willDestroy);
-      test.set(null);
-
-      expect(willDestroy).toBeCalledWith(null);
-    })
-
-    it('will cancel effect on callback', async () => {
-      const test = Test.new();
-      const mock = jest.fn();
-      const didEffect = jest.fn((test: Test) => {
-        void test.value1;
-        return mock;
-      });
-
-      const done = test.get(didEffect);
-
-      test.value1 += 1;
-
-      await expect(test).toHaveUpdated();
-      expect(didEffect).toBeCalledTimes(2);
-
-      mock.mockReset();
-
-      done();
-
-      expect(mock).toBeCalledWith(false);
-
-      test.value1 += 1;
-      await expect(test).toHaveUpdated();
-
-      expect(didEffect).toBeCalledTimes(2);
-    })
-
-    it('will cancel effect if returns null', async () => {
-      const test = Test.new();
-      const didEffect = jest.fn((test: Test) => {
-        void test.value1;
-        return null;
-      });
-
-      test.get(didEffect);
-
-      test.value1 += 1;
-      await expect(test).toHaveUpdated();
-
-      expect(didEffect).toBeCalledTimes(1);
-    })
-
-    it('will cancel if returns null after callback', async () => {
-      const test = Test.new();
-      const cleanup = jest.fn();
-
-      let callback: (() => void) | null = cleanup;
-
-      const didEffect = jest.fn((test: Test) => {
-        void test.value1;
-        return callback;
-      });
-
-      test.get(didEffect);
-
-      callback = null;
-      test.value1 += 1;
-      await expect(test).toHaveUpdated();
-
-      expect(didEffect).toBeCalledTimes(2);
-
-      test.value1 += 1;
-      await expect(test).toHaveUpdated();
-
-      expect(didEffect).toBeCalledTimes(2);
-      expect(cleanup).toBeCalledTimes(1);
-    })
-
-    it('will watch values via arrow function', async () => {
-      const state = Test.new();
-      const mock = jest.fn();
-
-      state.get(state => {
-        // destructure values to indicate access.
-        const { value1, value2, value3 } = state;
-        void value1, value2, value3;
-        mock();
-      });
-
-      state.value1 = 2;
-      await expect(state).toHaveUpdated();
-
-      state.value2 = 3;
-      await expect(state).toHaveUpdated();
-
-      state.value2 = 4;
-      state.value3 = 4;
-      await expect(state).toHaveUpdated();
-
-      /**
-       * must invoke once to detect subscription
-       * 
-       * invokes three more times:
-       * - value 1
-       * - value 2
-       * - value 2 & 3 (squashed)
-       */
-      expect(mock).toBeCalledTimes(4);
-    })
-
-    it('will watch values from method', async () => {
-      const state = Test.new();
-      const mock = jest.fn();
-
-      function testEffect(this: Test) {
-        // destructure values to indicate access.
-        const { value1, value2, value3 } = this;
-        void value1, value2, value3;
-        mock();
-
-      }
-
-      state.get(testEffect);
-
-      state.value1 = 2;
-      await expect(state).toHaveUpdated();
-
-      state.value2 = 3;
-      await expect(state).toHaveUpdated();
-
-      state.value2 = 4;
-      state.value3 = 4;
-      await expect(state).toHaveUpdated();
-
-      expect(mock).toBeCalledTimes(4);
-    })
-
-    it('will squash simultaneous updates', async () => {
-      const state = Test.new();
-      const mock = jest.fn();
-
-      state.get(state => {
-        void state.value1
-        void state.value2;
-        mock();
-      });
-
-      state.value1 = 2;
-      state.value2 = 3;
-
-      await expect(state).toHaveUpdated();
-
-      // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2)
-    })
-
-    it('will squash simultaneous compute', async () => {
-      const state = Test.new();
-      const mock = jest.fn();
-
-      state.get(state => {
-        void state.value3;
-        void state.value4;
-        mock();
-      });
-
-      state.value3 = 4;
-
-      await expect(state).toHaveUpdated();
-
-      // expect two syncronous groups of updates.
-      expect(mock).toBeCalledTimes(2)
-    })
-
-    it('will register before ready', async () => {
-      class Test2 extends Test {
-        constructor() {
-          super();
-          this.get($ => {
-            void $.value1;
-            void $.value3;
-            mock();
-          });
+    describe("return value", () => {
+      it("will callback on next update", async () => {
+        class Test extends Model {
+          value1 = 1;
         }
-      }
+  
+        const state = Test.new();
+        const mock = jest.fn();
+  
+        state.get(state => {
+          void state.value1;
+          return mock;
+        });
+  
+        expect(mock).not.toBeCalled();
+  
+        state.value1 = 2;
+  
+        await expect(state).toHaveUpdated();
+  
+        expect(mock).toBeCalledWith(true);
+      })
 
-      const mock = jest.fn();
-      const state = Test2.new();
+      it('will callback on null event', async () => {
+        const willDestroy = jest.fn();
+        const test = Test.new();
 
-      // runs immediately to aquire subscription
-      expect(mock).toBeCalled();
+        test.get(() => willDestroy);
+        test.set(null);
 
-      state.value1++;
-      await expect(state).toHaveUpdated();
+        expect(willDestroy).toBeCalledWith(null);
+      })
 
-      expect(mock).toBeCalledTimes(2);
+      it('will cancel effect on callback', async () => {
+        const test = Test.new();
+        const mock = jest.fn();
+        const didEffect = jest.fn((test: Test) => {
+          void test.value1;
+          return mock;
+        });
 
-      state.value3++;
-      await expect(state).toHaveUpdated();
+        const done = test.get(didEffect);
 
-      expect(mock).toBeCalledTimes(3);
+        test.value1 += 1;
+
+        await expect(test).toHaveUpdated();
+        expect(didEffect).toBeCalledTimes(2);
+
+        mock.mockReset();
+
+        done();
+
+        expect(mock).toBeCalledWith(false);
+
+        test.value1 += 1;
+        await expect(test).toHaveUpdated();
+
+        expect(didEffect).toBeCalledTimes(2);
+      })
+
+      it('will cancel if null', async () => {
+        const test = Test.new();
+        const didEffect = jest.fn((test: Test) => {
+          void test.value1;
+          return null;
+        });
+
+        test.get(didEffect);
+
+        test.value1 += 1;
+        await expect(test).toHaveUpdated();
+
+        expect(didEffect).toBeCalledTimes(1);
+      })
+
+      it('will cancel if null after callback', async () => {
+        const test = Test.new();
+        const cleanup = jest.fn();
+
+        let callback: (() => void) | null = cleanup;
+
+        const didEffect = jest.fn((test: Test) => {
+          void test.value1;
+          return callback;
+        });
+
+        test.get(didEffect);
+
+        callback = null;
+        test.value1 += 1;
+        await expect(test).toHaveUpdated();
+
+        expect(didEffect).toBeCalledTimes(2);
+
+        test.value1 += 1;
+        await expect(test).toHaveUpdated();
+
+        expect(didEffect).toBeCalledTimes(2);
+        expect(cleanup).toBeCalledTimes(1);
+      })
+
+      // TODO: should this complain?
+      it("will void return value", () => {
+        const state = Test.new();
+        const attempt = () => {
+          // @ts-expect-error
+          state.get(() => "foobar");
+        }
+  
+        expect(attempt).not.toThrowError();
+      })
+  
+      it("will ignore returned promise", () => {
+        const state = Test.new();
+        const attempt = () => {
+          state.get(async () => {});
+        }
+  
+        expect(attempt).not.toThrowError();
+      })
     })
 
-    it('will initialize without Model.new', async () => {
+    it('will work without Model.new', async () => {
       const test = new Test();
       const mock = jest.fn();
 
@@ -735,25 +808,6 @@ describe("get method", () => {
       test.set("EVENT");
 
       expect(mock).toBeCalled();
-    })
-
-    it("will ignore if get returns non-function", () => {
-      const state = Test.new();
-      const attempt = () => {
-        // @ts-expect-error
-        state.get(() => "foobar");
-      }
-
-      expect(attempt).not.toThrowError();
-    })
-
-    it("will not throw if get returns promise", () => {
-      const state = Test.new();
-      const attempt = () => {
-        state.get(async () => { });
-      }
-
-      expect(attempt).not.toThrowError();
     })
 
     describe("suspense", () => {
@@ -900,142 +954,6 @@ describe("get method", () => {
       })
     });
 
-  })
-
-  describe("fetch", () => {
-    it("will get value", () => {
-      class Test extends Model {
-        foo = "foo";
-      }
-
-      const test = Test.new();
-
-      expect(test.get("foo")).toBe("foo");
-    })
-
-    it("will get ref value", () => {
-      class Test extends Model {
-        foo = ref<string>();
-      }
-
-      const test = Test.new();
-
-      test.foo("foobar");
-
-      expect<ref.Object>(test.foo).toBeInstanceOf(Function);
-      expect<string>(test.get("foo")).toBe("foobar");
-    })
-
-    it("will throw suspense if not yet available", async () => {
-      class Test extends Model {
-        foo = set<string>();
-      }
-
-      const test = Test.new("ID");
-      let suspense;
-
-      try {
-        void test.get("foo");
-      }
-      catch(error){
-        expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch("Error: ID.foo is not yet available.");
-        suspense = error;
-      }
-
-      test.foo = "foobar";
-      
-      await expect(suspense).resolves.toBe("foobar");
-    })
-
-    it("will suspend if undefined in strict mode", async () => {
-      class Test extends Model {
-        foo?: string = undefined;
-      }
-
-      const test = Test.new("ID");
-      let suspense;
-
-      try {
-        void test.get("foo", true)
-      }
-      catch(error){
-        expect(error).toBeInstanceOf(Promise);
-        expect(String(error)).toMatch("Error: ID.foo is not yet available.")
-        suspense = error;
-      }
-
-      test.foo = "foobar";
-      
-      await expect(suspense).resolves.toBe("foobar");
-    })
-  })
-
-  describe("callback", () => {
-    class Test extends Model {
-      foo = "foo";
-    }
-
-    it("will call callback on update", async () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get("foo", mock);
-
-      test.foo = "bar";
-      test.foo = "baz";
-
-      expect(mock).toBeCalledWith("bar", "foo", test);
-      expect(mock).toBeCalledWith("baz", "foo", test);
-    })
-
-    it("will call immediately if defined", () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get("foo", mock);
-
-      expect(mock).toBeCalledWith("foo", "foo", test);
-    })
-
-    it("will call on event if not defined", async () => {
-      const test = Test.new();
-      const mock = jest.fn();
-
-      test.get("baz", mock);
-
-      expect(mock).not.toBeCalled();
-      
-      // dispatch explicit event
-      test.set("baz");
-
-      expect(mock).toBeCalledWith("baz", "baz", test);
-    })
-  })
-
-  describe("null", () => {
-    it("will return true if model is not destroyed", () => {
-      const test = Model.new();
-
-      expect(test.get(null)).toBe(false);
-
-      test.set(null);
-
-      expect(test.get(null)).toBe(true);
-    })
-
-    it("will callback when model is destroyed", () => {
-      const test = Model.new();
-      const mock = jest.fn();
-
-      test.get(null, mock);
-
-      expect(mock).not.toBeCalled();
-
-      test.set(null);
-
-      expect(mock).toBeCalled();
-    })
   })
 })
 
@@ -1393,42 +1311,4 @@ describe("on method (static)", () => {
 
     done();
   });
-})
-
-describe("string coercion", () => {
-  it("will output a unique ID", () => {
-    const foo = String(Model.new());
-    const bar = String(Model.new());
-
-    expect(foo).not.toBe(bar);
-  })
-
-  it("will be class name and 6 random characters", () => {
-    class FooBar extends Model {}
-
-    const foobar = String(FooBar.new());
-
-    expect(foobar).toMatch(/^FooBar-\w{6}/)
-  })
-
-  it("will be class name and supplied ID", () => {
-    const a = Model.new("ID");
-
-    expect(String(a)).toBe("ID");
-  })
-
-  it("will work inside subscriber", () => {
-    class Test extends Model {
-      foo = "foo";
-    }
-
-    const test = Test.new("ID");
-    const mock = jest.fn();
-
-    test.get(state => {
-      mock(String(state));
-    })
-
-    expect(mock).toBeCalledWith("ID");
-  })
 })
