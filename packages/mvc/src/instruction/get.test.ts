@@ -18,6 +18,81 @@ describe("fetch mode", () => {
     Context.get = resolve;
   })
 
+  it("will not update on noop", async () => {
+    class Remote extends Model {
+      value = "foo";
+    }
+
+    const remote = Remote.new();
+    const context = new Context({ remote });
+
+    Context.get = (_, cb) => cb(context);
+
+    class Test extends Model {
+      value = get(Remote, ({ value }) => {
+        void value;
+        return "foo";
+      });
+    }
+
+    const test = Test.new();
+    const effect = jest.fn();
+
+    test.get($ => effect($.value));
+
+    expect(effect).toBeCalledWith("foo");
+
+    remote.value = "bar";
+    await expect(test).not.toUpdate();
+
+    remote.value = "baz";
+    await expect(test).not.toUpdate();
+
+    expect(effect).toBeCalledTimes(1);
+  })
+  
+  it("will maintain subscription", async () => {
+    class Remote extends Model {
+      remote = "foo";
+    }
+
+    const remote = Remote.new();
+    const context = new Context({ remote });
+
+    const effect = jest.fn();
+    const compute = jest.fn();
+
+    Context.get = (_, cb) => cb(context);
+
+    class Test extends Model {
+      value = get(Remote, ({ remote }) => {
+        compute(remote);
+        return remote;
+      });
+    }
+
+    const test = Test.new();
+
+    test.get($ => effect($.value));
+
+    expect(effect).toBeCalledWith("foo");
+
+    remote.remote = "bar";
+    await expect(test).toUpdate();
+    expect(compute).toBeCalledTimes(2);
+    expect(effect).toBeCalledWith("bar");
+
+    remote.remote = "baz";
+    await expect(test).toUpdate();
+    expect(compute).toBeCalledTimes(3);
+    expect(effect).toBeCalledWith("baz");
+
+    remote.remote = "boo";
+    await expect(test).toUpdate();
+    expect(compute).toBeCalledTimes(4);
+    expect(effect).toBeCalledWith("boo");
+  })
+
   it("will throw if no adapter", () => {
     class Parent extends Model {}
 
