@@ -1,5 +1,6 @@
 import { Context } from '../context';
 import { effect } from '../control';
+import { log } from '../log';
 import { fetch, Model, PARENT, push, update } from '../model';
 import { add } from './add';
 
@@ -142,6 +143,7 @@ function compute<T>(
     let next: T | undefined;
 
     try {
+      log(`${subject} computes ${key}.`)
       next = setter.call(proxy, proxy);
     }
     catch(err){

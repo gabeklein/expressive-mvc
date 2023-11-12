@@ -3,6 +3,7 @@ import { Model } from '../model';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { get } from './get';
 import { use } from './use';
+import { log } from '../log';
 
 const error = mockError();
 const warn = mockWarn();
@@ -41,9 +42,13 @@ describe("fetch mode", () => {
     test.get($ => effect($.value));
 
     expect(effect).toBeCalledWith("foo");
+  
+    log("---");
 
     remote.value = "bar";
     await expect(test).not.toUpdate();
+
+    log("---");
 
     remote.value = "baz";
     await expect(test).not.toUpdate();

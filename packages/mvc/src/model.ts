@@ -1,4 +1,5 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
+import { log } from './log';
 
 const ID = new WeakMap<Model, string>();
 const PARENT = new WeakMap<Model, Model>();
@@ -378,8 +379,12 @@ function update(
 
   const previous = state[key];
 
-  if(value === previous)
+  if(value === previous){
+    log(`${subject} ignored update to "${String(key)}"`);
     return true;
+  }
+
+  log(`${subject} got new value "${String(key)}" = "${value}"`);
 
   state[key] = value;
 

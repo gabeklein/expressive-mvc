@@ -1,3 +1,5 @@
+import { log } from './log';
+
 /**
  * Update callback function.
  * 
@@ -39,10 +41,14 @@ function addListener(
 }
 
 function watch(from: any, key?: unknown, value?: any){
+  // log(`Accessed ${from}.${key}.`);
+
   const listeners = LISTENER.get(from)!;
   const observer = OBSERVER.get(from);
 
   if(observer){
+    // log(`Accessed ${from}.${key}.`);
+
     listeners.set(observer, 
       (listeners.get(observer) || new Set).add(key)  
     );
@@ -79,9 +85,15 @@ function event(source: {}, key: unknown | boolean | null){
     subs.forEach((select, callback) => {
       let after;
       
-      if(!select || select.has(key as string))
-        if(after = callback.call(source, key, source))
+      if(!select || select.has(key as string)){
+        if(key !== true && source.toString().startsWith("Test"))
+          log(`${source} calls ${callback.name || "anonymous"} with "${key}".`)
+
+        after = callback.call(source, key, source);
+
+        if(after)
           queue(after);
+      }
   
       if(after === null || key === null)
         subs.delete(callback);
@@ -116,28 +128,34 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
   let refresh: (() => void) | null | undefined;
   let unSet: ((update: boolean | null) => void) | false | undefined;
 
+  let index = 0;
+
   function invoke(){
     let expired: boolean | undefined;
+    const uid = `observer #${++index}`;
 
     const local = Object.create(target);
-    const update = () => {
-      if(expired)
-        return null;
-
-      expired = true;
-
-      if(refresh && unSet){
-        unSet(true);
-        unSet = undefined;
+    const o = {
+      [uid](){
+        if(expired)
+          return null;
+  
+        expired = true;
+  
+        if(refresh && unSet){
+          unSet(true);
+          unSet = undefined;
+        }
+  
+        return refresh;
       }
-
-      return refresh;
     }
 
     LISTENER.set(local, listeners);
-    OBSERVER.set(local, update);
+    OBSERVER.set(local, o[uid]);
 
     try {
+      log(`${target} will invoke effect #${index}.`);
       const out = callback.call(local, local);
 
       unSet = typeof out == "function" && out;
@@ -155,7 +173,7 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
     }
   }
 
-  addListener(target, key => {
+  function effectEvent(key: unknown){
     if(key === true)
       invoke();
 
@@ -164,9 +182,15 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
 
     if(key === null && unSet)
       unSet(null);
-  });
+  }
+
+  const done = addListener(target, effectEvent);
+
+  // log(`${target} creates effect.`);
 
   return () => {
+    done();
+
     if(unSet)
       unSet(false);
 
