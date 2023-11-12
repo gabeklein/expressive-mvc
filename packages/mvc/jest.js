@@ -17,9 +17,10 @@ async function toUpdate(received, timeout = 0){
     }
 
   return new Promise((resolve) => {
-    const removeListener = received.set(() => {
+    const remove = received.set(() => {
       clearTimeout(timer);
       return () => {
+        remove();
         resolve({
           pass: true,
           message: () => `Expected ${received} not to update.`
@@ -28,7 +29,7 @@ async function toUpdate(received, timeout = 0){
     });
 
     const timer = setTimeout(() => {
-      removeListener();
+      remove();
       resolve({
         pass: false,
         message: () => `Expected ${received} to update within ${timeout}ms.`
