@@ -78,17 +78,17 @@ describe("fetch mode", () => {
     expect(effect).toBeCalledWith("foo");
 
     remote.remote = "bar";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated("value");
     expect(compute).toBeCalledTimes(2);
     expect(effect).toBeCalledWith("bar");
 
     remote.remote = "baz";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated("value");
     expect(compute).toBeCalledTimes(3);
     expect(effect).toBeCalledWith("baz");
 
     remote.remote = "boo";
-    await expect(test).toUpdate();
+    await expect(test).toHaveUpdated("value");
     expect(compute).toBeCalledTimes(4);
     expect(effect).toBeCalledWith("boo");
   })
