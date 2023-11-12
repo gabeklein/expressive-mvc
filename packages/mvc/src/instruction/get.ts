@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { effect } from '../control';
-import { fetch, Model, PARENT } from '../model';
+import { fetch, Model, PARENT, push, update } from '../model';
 import { add } from './add';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -129,10 +129,10 @@ function compute<T>(
       else if(STALE.delete(compute))
         compute();
 
-      return (reason) => {
-        if(reason){
+      return (didUpdate) => {
+        if(didUpdate){
           STALE.add(compute);
-          subject.set(key);
+          push(subject, key, true);
         }
       };
     })
@@ -153,7 +153,7 @@ function compute<T>(
       console.error(err);
     }
 
-    subject.set(key, next, !isAsync);
+    update(subject, key, next, !isAsync);
   }
 
   return () => {

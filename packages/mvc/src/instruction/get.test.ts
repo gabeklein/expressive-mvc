@@ -390,16 +390,19 @@ describe("compute mode", () => {
     test.set(emit)
   
     test.a++;
+    expect(emit).toBeCalledTimes(1);
+    expect(emit).toBeCalledWith("a", test);
+
     test.b++;
+    expect(emit).toBeCalledTimes(2);
+    expect(emit).toBeCalledWith("b", test);
+
     test.x.value++;
   
     await expect(test).toHaveUpdated();
-  
-    expect(exec).toBeCalledTimes(2);
 
-    expect(emit).toBeCalledTimes(4);
-    expect(emit).toBeCalledWith("a", test);
-    expect(emit).toBeCalledWith("b", test);
+    expect(exec).toBeCalledTimes(2);
+    expect(emit).toBeCalledTimes(3);
     expect(emit).toBeCalledWith("c", test);
   })
   

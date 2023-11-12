@@ -389,21 +389,27 @@ function update(
   push(subject, key);
 }
 
-function push(subject: Model, key: string | number | symbol){
+function push(
+  subject: Model,
+  key: string | number | symbol,
+  silent?: boolean){
+
   let pending = PENDING.get(subject);
 
   if(!pending){
     PENDING.set(subject, pending = new Set());
 
-    queue(() => {
-      event(subject, false);
-      PENDING.delete(subject)
-    })
+    if(!silent)
+      queue(() => {
+        event(subject, false);
+        PENDING.delete(subject)
+      })
   }
 
   pending.add(key);
 
-  event(subject, key);
+  if(!silent)
+    event(subject, key);
 }
 
 function extract<T extends Model>(from: T): Model.State<T> {
@@ -436,6 +442,7 @@ function uid(){
 export {
   update,
   fetch,
+  push,
   Model,
   PARENT,
   STATE,
