@@ -26,6 +26,50 @@ it("will call constructor argument as lifecycle", () => {
 })
 
 describe("useContext", () => {
+  it.only("will not mess up again!!", async () => {
+    let remote!: Remote;
+    
+    class Remote extends Model {
+      value = "foo";
+  
+      constructor(){
+        super();
+        remote = this;
+      }
+    }
+  
+    const gotValue = jest.fn();
+    
+    class Local extends Model {
+      value = get(Remote, remote => {
+        return remote.value;
+      })
+    
+      constructor(){
+        super();
+        this.get(({ value }) => {
+          gotValue(value);
+        })
+      }
+    }
+  
+    const render = mockHook(Remote, () => Local.use().value);
+
+    await render.act(() => {
+      remote.value = "bar";
+    })
+  
+    expect(gotValue).toBeCalledWith("bar");
+    expect(render.output).toBe("bar");
+
+    await render.act(() => {
+      remote.value = "baz";
+    })
+  
+    expect(gotValue).toBeCalledWith("baz");
+    expect(render.output).toBe("baz");
+  })
+
   it("will refresh for values accessed", async () => {
     class Test extends Model {
       foo = "foo";
