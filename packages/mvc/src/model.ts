@@ -1,10 +1,19 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
+/** Register for string identifiers (usually unique). */
 const ID = new WeakMap<Model, string>();
-const PARENT = new WeakMap<Model, Model>();
+
+/** Internal state assigned to controllers. */
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
+
+/** External listeners for any given Model. */
 const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
+
+/** Update register. */
 const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
+
+/** Parent-child controller references. */
+const PARENT = new WeakMap<Model, Model>();
 
 const define = Object.defineProperty;
 
@@ -27,7 +36,7 @@ declare namespace Model {
       ? T[K] extends Ref<infer V> ? V : T[K]
       : unknown;
 
-  type Event<T extends Model> =
+  type OnEvent<T extends Model> =
     (this: T, key: unknown, source: T) => (() => void) | void | null;
 
   type OnUpdate<T extends Model, K extends Key<T>> =
@@ -55,9 +64,25 @@ declare namespace Model {
     current: T | null;
   }
 
-  /** A callback function which is subscribed to parent and updates when values change. */
-  type Effect<T> = (this: T, current: T, updated: Set<Model.Key<T>>) =>
-    ((update: boolean | null) => void) | Promise<void> | null | void;
+  /**
+   * A callback function which is subscribed to parent and updates when accessed properties change.
+   * 
+   * @param current - Current state of this controller. This is a proxy which detects properties which
+   * where accessed, and thus depended upon to stay current.
+   * 
+   * @param update - Set of properties which have changed, and events fired, since last update.
+   * 
+   * @returns A callback function which will be called when this effect is stale.
+   */
+  type Effect<T> = (this: T, current: T, update: Set<Model.Key<T>>) =>
+    EffectCallback | Promise<void> | null | void;
+
+  /**
+   * A callback function returned by effect. Will be called when effect is stale.
+   * 
+   * @param update - `true` if update is pending, `false` effect has been cancelled, `null` if controller is destroyed.
+   */
+  type EffectCallback = ((update: boolean | null) => void);
 
   namespace Instruction {
     type Getter<T> = (source: Model) => T;
@@ -123,17 +148,46 @@ class Model {
   /** Pull current values from state. Flattens all models and exotic values recursively. */
   get(): Model.State<this>;
 
-  /** Run a function which will run automatically when accessed values change. */
+  /**
+   * Run a function which will run automatically when accessed values change.
+   * 
+   * @param effect - Function to run, and again whenever accessed values change.
+   * If effect returns a function, it will be called when a change occurs (syncronously),
+   * effect is cancelled, or parent controller is destroyed.
+   * 
+   * @returns Function to cancel listener.
+   */
   get(effect: Model.Effect<this>): () => void;
 
+  /**
+   * Get value of a property.
+   * 
+   * @param key - Property to get value of.
+   * @param required - If true, will throw an error if property is not available.
+   */
   get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
 
+  /**
+   * Run a function when a property is updated.
+   * 
+   * @param key - Property to watch for updates.
+   * @param callback - Function to call when property is updated.
+   */
   get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
-  /** Check if model is expired. */
+  /**
+   * Check if model is expired.
+   * 
+   * @returns `true` if model is expired, `false` otherwise.
+   */
   get(status: null): boolean;
 
-  /** Callback when model is to be destroyed. */
+  /**
+   * Callback when model is to be destroyed.
+   * 
+   * @param callback - Function to call when model is destroyed.
+   * @returns Function to cancel listener.
+   */
   get(status: null, callback: () => void): () => void;
 
   get(arg1?: Model.Effect<this> | string | null, arg2?: boolean | Function){
@@ -154,7 +208,7 @@ class Model {
     }
 
     if(arg1 === undefined)
-      return extract(self);
+      return unwrap(self);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -186,13 +240,15 @@ class Model {
    * Call a function when update occurs.
    * 
    * Given function is called for every assignment (which changes value) or explicit `set`.
-   * To run logic on final value only, callback itself may return a function.
-   * Returning the same function for one or more events will ensure a side-effect is called only when settled.
+   * 
+   * To run logic on final value only, callback may return a function. Using the same
+   * function for one or more events will ensure it is called only when events are settled.
    * 
    * @param callback - Function to call when update occurs.
    * @returns Function to remove listener. Will return `true` if removed, `false` if inactive already.
+   * 
   */
-  set(callback: Model.Event<this>): () => boolean;
+  set(callback: Model.OnEvent<this>): () => boolean;
 
   /**
    * Declare an end to updates. This event is final and will freeze state.
@@ -206,10 +262,13 @@ class Model {
    * Useful where a property value internally has changed, but the object is the same.
    * For example: An array has pushed a new value, or a nested property is updated.
    * 
-   * You can also use this to dispatch arbitrary events as well. Symbols are generally
-   * recommended as non-property events, however you can use any string. If doing so,
-   * be sure to avoid collisions with property names - an easy way to do this will be to
-   * prefix your event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
+   * You can also use this to dispatch arbitrary events.
+   * Symbols are recommended as non-property events, however you can use any string.
+   * If doing so, be sure to avoid collisions with property names! An easy way to do this is
+   * to prefix an event with "!" and/or use dash-case. e.g. `set("!event")` or `set("my-event")`.
+   * 
+   * @param key - Property or event to dispatch.
+   * @returns Promise which resolves an array of keys which were updated.
    */
   set(key: Model.Key<this>): PromiseLike<Model.Key<this>[]>;
 
@@ -220,9 +279,13 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Key<this>[]> | undefined;
+  set<K extends string>(
+    key: K,
+    value?: Model.Value<this, K>,
+    silent?: boolean
+  ): PromiseLike<Model.Key<this>[]> | undefined;
 
-  set(arg1?: Model.Event<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
+  set(arg1?: Model.OnEvent<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -281,15 +344,20 @@ class Model {
     return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
-  static on<T extends Model>(this: Model.Type<T>, event: Model.Event<T>){
+  /**
+   * Register a callback to run when any instance of this Model is updated. 
+   */
+  static on<T extends Model>(
+    this: Model.Type<T>, listener: Model.OnEvent<T>){
+
     let notify = NOTIFY.get(this);
 
     if(!notify)
       NOTIFY.set(this, notify = new Set());
 
-    notify.add(event);
+    notify.add(listener);
 
-    return () => notify!.delete(event);
+    return () => notify!.delete(listener);
   }
 }
 
@@ -383,10 +451,8 @@ function update(
 
   state[key] = value;
 
-  if(silent === true)
-    return;
-  
-  push(subject, key);
+  if(silent !== true)
+    push(subject, key);
 }
 
 function push(
@@ -412,7 +478,7 @@ function push(
     event(subject, key);
 }
 
-function extract<T extends Model>(from: T): Model.State<T> {
+function unwrap<T extends Model>(from: T): Model.State<T> {
   const cache = new WeakMap<Model, any>();
 
   function get(value: any){
@@ -434,7 +500,7 @@ function extract<T extends Model>(from: T): Model.State<T> {
   return get(from);
 }
 
-/** Random alphanumberic of length 6. Will always start with a letter. */
+/** Random alphanumberic of length 6; always starts with a letter. */
 function uid(){
   return (Math.random() * 0.722 + 0.278).toString(36).substring(2, 8).toUpperCase();
 }

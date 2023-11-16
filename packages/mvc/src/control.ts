@@ -11,6 +11,8 @@
 type OnUpdate<T = any> = 
   (this: T, key: unknown, source: T) => (() => void) | null | void;
 
+type Event = number | string | null | boolean | symbol;
+
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
@@ -21,7 +23,7 @@ const onReady = () => null;
 function addListener(
   subject: {},
   callback: OnUpdate,
-  select?: number | string | null | true){
+  select?: Event){
 
   let subs = LISTENER.get(subject)!;
 
@@ -61,7 +63,7 @@ function watch(from: any, key?: unknown, value?: any){
 
 const PENDING = new WeakMap<{}, Set<unknown>>();
 
-function event(source: {}, key: unknown | boolean | null){
+function event(source: {}, key: Event){
   const subs = LISTENER.get(source)!;
 
   let pending = PENDING.get(source);
