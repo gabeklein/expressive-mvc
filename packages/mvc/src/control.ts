@@ -3,12 +3,13 @@
  * 
  * @param key -
  *   - `string` - property which has updated.
- *   - `true` - initial event; instance is now ready.
  *   - `false` - a normal update has completed.
+ *   - `true` - initial event; instance is ready.
  *   - `null` - terminal event; instance is expired.
  * @param source - Instance of Model for which update has occured.
  */
-type OnUpdate<T = any> = (this: T, key: unknown, source: T) => (() => void) | null | void;
+type OnUpdate<T = any> = 
+  (this: T, key: unknown, source: T) => (() => void) | null | void;
 
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
