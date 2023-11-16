@@ -14,9 +14,8 @@ const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
 
-function onReady(){
-  return null;
-}
+/** Placeholder event determines if initialized or not. */
+const onReady = () => null;
 
 function addListener(
   subject: {},
