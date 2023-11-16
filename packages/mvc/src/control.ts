@@ -80,7 +80,7 @@ function event(source: {}, key: unknown | boolean | null){
     subs.forEach((select, callback) => {
       let after;
       
-      if(!select || select.has(key as string))
+      if(!select || select.has(key))
         if(after = callback.call(source, key, source))
           queue(after);
   
@@ -115,42 +115,40 @@ type Effect<T extends {}> = (this: T, argument: T) =>
 function effect<T extends {}>(target: T, callback: Effect<T>){
   const listeners = LISTENER.get(target)!;
 
-  let unSet: ((update: boolean | null) => void) | false = false;
-  let refresh: (() => void) | null | undefined;
+  let unset: ((update: boolean | null) => void) | undefined;
+  let reset: (() => void) | null | undefined;
 
   function invoke(){
-    let expired: boolean | undefined;
+    let stale: boolean | undefined;
 
     const subscriber = Object.create(target);
 
     LISTENER.set(subscriber, listeners);
     OBSERVER.set(subscriber, () => {
-      if(expired)
+      if(stale)
         return null;
 
-      expired = true;
+      stale = true;
 
-      if(refresh && unSet){
-        unSet(true);
-        unSet = false;
+      if(reset && unset){
+        unset(true);
+        unset = undefined;
       }
 
-      return refresh;
+      return reset;
     });
 
     try {
       const out = callback.call(subscriber, subscriber);
 
-      unSet = typeof out == "function" && out;
-      refresh = out === null ? out : invoke;
+      unset = typeof out == "function" ? out : undefined;
+      reset = out === null ? out : invoke;
     }
     catch(err){
       if(err instanceof Promise){
-        refresh = undefined;
-        err.then(invoke).catch(console.error);
+        reset = undefined;
+        err.then(invoke);
       }
-      else if(refresh)
-        console.error(err);
       else
         throw err;
     }
@@ -160,18 +158,18 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
     if(key === true)
       invoke();
 
-    else if(!refresh)
-      return refresh;
+    else if(!reset)
+      return reset;
 
-    if(key === null && unSet)
-      unSet(null);
+    if(key === null && unset)
+      unset(null);
   });
 
   return () => {
-    if(unSet)
-      unSet(false);
+    if(unset)
+      unset(false);
 
-    refresh = null;
+    reset = null;
   };
 }
 

@@ -1,9 +1,8 @@
-import { mockError, mockPromise, mockWarn } from '../mocks';
+import { mockPromise, mockWarn } from '../mocks';
 import { Model } from '../model';
 import { set } from './set';
 import { use } from './use';
 
-const error = mockError();
 const warn = mockWarn();
 
 describe("placeholder", () => {
@@ -572,30 +571,29 @@ describe("factory", () => {
     const promise = mockPromise();
 
     class Test extends Model {
-      value = set(async () => {
-        await promise;
-        throw "oh no";
-      })
+      value = set(() => promise);
     }
 
     const instance = Test.new();
-    let didThrow: Error | undefined;
+    let didThrow: Promise<unknown> | undefined;
     
     instance.get(state => {
       try {
         void state.value;
       }
       catch(err: any){
-        throw didThrow = err;
+        didThrow = err;
+
+        if(err instanceof Promise)
+          throw err;
       }
     });
 
     expect(didThrow).toBeInstanceOf(Promise);
 
-    promise.resolve();
+    promise.reject("oh no");
     await new Promise(res => setTimeout(res, 10))
 
     expect(didThrow).toBe("oh no");
-    expect(error).toBeCalledWith("oh no");
   })
 })
