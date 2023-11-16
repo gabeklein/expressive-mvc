@@ -26,7 +26,7 @@ function addListener(
   let subs = LISTENER.get(subject)!;
 
   if(!subs)
-    LISTENER.set(subject, subs = new Map().set(onReady, false));
+    LISTENER.set(subject, subs = new Map([[onReady, false]]));
 
   const filter = 2 in arguments && new Set([select]);
 
@@ -39,10 +39,11 @@ function addListener(
 }
 
 function watch(from: any, key?: unknown, value?: any){
-  const listeners = LISTENER.get(from)!;
   const observer = OBSERVER.get(from);
 
   if(observer){
+    const listeners = LISTENER.get(from)!;
+
     listeners.set(observer, 
       (listeners.get(observer) || new Set).add(key)  
     );
@@ -113,14 +114,17 @@ type Effect<T extends {}> = (this: T, argument: T) =>
 
 function effect<T extends {}>(target: T, callback: Effect<T>){
   const listeners = LISTENER.get(target)!;
+
+  let unSet: ((update: boolean | null) => void) | false = false;
   let refresh: (() => void) | null | undefined;
-  let unSet: ((update: boolean | null) => void) | false | undefined;
 
   function invoke(){
     let expired: boolean | undefined;
 
-    const local = Object.create(target);
-    const update = () => {
+    const subscriber = Object.create(target);
+
+    LISTENER.set(subscriber, listeners);
+    OBSERVER.set(subscriber, () => {
       if(expired)
         return null;
 
@@ -128,17 +132,14 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
 
       if(refresh && unSet){
         unSet(true);
-        unSet = undefined;
+        unSet = false;
       }
 
       return refresh;
-    }
-
-    LISTENER.set(local, listeners);
-    OBSERVER.set(local, update);
+    });
 
     try {
-      const out = callback.call(local, local);
+      const out = callback.call(subscriber, subscriber);
 
       unSet = typeof out == "function" && out;
       refresh = out === null ? out : invoke;
