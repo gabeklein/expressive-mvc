@@ -223,7 +223,7 @@ class Model {
       return effect(self, (state) => {
         const cb = arg1.call(state, state, pending);
 
-        return cb === null ? null : ((update) => {
+        return cb === null ? cb : ((update) => {
           pending = PENDING.get(self)!;
           if(typeof cb == "function")
             return cb(update);
