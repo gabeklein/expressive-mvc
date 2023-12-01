@@ -2,7 +2,7 @@ import { Model } from '../model';
 import { ref } from './ref';
 
 describe("property", () => {
-  it('will fetch value from ref-object', async () => {
+  it('will contain value from ref-object', async () => {
     class Subject extends Model {
       ref = ref<string>();
     }
@@ -13,6 +13,20 @@ describe("property", () => {
   
     await expect(state).toHaveUpdated();
     expect(state.ref.current).toBe("foobar");
+  })
+
+  it('will get value from ref-object', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
+    const state = Subject.new();
+
+    expect(state.ref.get()).toBeNull()
+  
+    state.ref.current = "foobar";
+  
+    expect(state.ref.get()).toBe("foobar");
   })
   
   it('will watch "current" of property', async () => {
@@ -116,6 +130,9 @@ describe("property", () => {
     }
 
     const state = Subject.new();
+
+    state.ref("hello");
+    expect(callback).toBeCalledWith("hello");
 
     state.ref(null);
     expect(callback).toBeCalledWith(null);

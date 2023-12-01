@@ -9,7 +9,12 @@ declare namespace ref {
 
   interface Object<T = any> {
     (next: T | null): void;
+
+    /** Current value held by this reference. */
     current: T | null;
+
+    /** Retrieve current value. */
+    get(): T | null;
   }
 
   /** Object with references to all managed values of `T`. */
@@ -97,6 +102,7 @@ function ref<T>(
     else {
       let unSet: ((next: T) => void) | undefined;
 
+      const get = () => state[key];
       const set = (value?: any) => {
         if(!subject.set(key, value) || !arg)
           return;
@@ -112,9 +118,10 @@ function ref<T>(
         }
       };
   
-      value = define(set, "current", {
-        get: () => state[key],
-        set
+      state[key] = null;
+      value = Object.defineProperties(set, {
+        current: { get, set },
+        get: { value: get }
       }) as ref.Object<T>;
     }
 
