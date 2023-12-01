@@ -1,7 +1,7 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
-/** Register for string identifiers (usually unique). */
-const ID = new WeakMap<Model, string>();
+/** Register for all active models via string identifiers (usually unique). */
+const REGISTER = new WeakMap<Model, string>();
 
 /** Internal state assigned to controllers. */
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
@@ -12,7 +12,7 @@ const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 /** Update register. */
 const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 
-/** Parent-child controller references. */
+/** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model>();
 
 const define = Object.defineProperty;
@@ -27,10 +27,10 @@ declare namespace Model {
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
-  /** Any valid key for controller, including but not limited to keyof T. */
+  /** Any valid key for controller, including but not limited to Field<T>. */
   type Key<T> = Field<T> | (string & {}) | number | symbol;
 
-  /** Value for a given property managed by a controller. */
+  /** Value for a property managed by a controller. */
   type Value<T extends Model, K extends Key<T>> =
     K extends keyof T
       ? T[K] extends Ref<infer V> ? V : T[K]
@@ -122,7 +122,7 @@ class Model {
     define(this, "is", { value: this });
 
     STATE.set(this, state);
-    ID.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
+    REGISTER.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -232,7 +232,7 @@ class Model {
     }
 
     if(arg1 === undefined)
-      return unwrap(self);
+      return values(self);
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -387,7 +387,7 @@ class Model {
 
 define(Model.prototype, "toString", {
   value(){
-    return ID.get(this.is);
+    return REGISTER.get(this.is);
   }
 });
 
@@ -473,7 +473,7 @@ function push(
     event(subject, key);
 }
 
-function unwrap<T extends Model>(from: T): Model.State<T> {
+function values<T extends Model>(from: T): Model.State<T> {
   const cache = new WeakMap<Model, any>();
 
   function get(value: any){
