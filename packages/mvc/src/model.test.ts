@@ -340,6 +340,33 @@ describe("get method", () => {
       })
     })
 
+    it("will defer to get method exporting properties", () => {
+      class Bar extends Model {
+        foo = "foo";
+      }
+
+      class Test extends Model {
+        foo = { get: () => 3 }
+        bar = ref<boolean>();
+        baz = use(Bar);
+      }
+
+      const test = Test.new();
+      const exported = test.get();
+
+      type Expected = {
+        foo: number;
+        bar: boolean | null;
+        baz: { foo: string };
+      }
+
+      expect<Expected>(exported).toEqual({
+        foo: 3,
+        bar: null,
+        baz: { foo: "foo" },
+      });
+    })
+
     it("will export infinite loop", () => {
       class Parent extends Model {
         child = use(Child);
@@ -376,10 +403,12 @@ describe("get method", () => {
 
       const test = Test.new();
 
+      expect(test.get("foo")).toBe(null);
+
       test.foo("foobar");
 
       expect<ref.Object>(test.foo).toBeInstanceOf(Function);
-      expect<string>(test.get("foo")).toBe("foobar");
+      expect<string | null>(test.get("foo")).toBe("foobar");
     })
 
     it("will throw suspense if not yet available", async () => {

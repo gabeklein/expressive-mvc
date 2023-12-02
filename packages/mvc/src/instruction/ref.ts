@@ -18,35 +18,14 @@ declare namespace ref {
   }
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> = {
-    [P in Model.Field<T>]-?: Model.Ref<T[P]>
-  };
+  type Proxy<T extends Model> =
+    & { [P in Model.Field<T>]-?: Object<T[P]> }
+    & { get(): T };
 
-  type CustomProxy<T extends Model, R> = {
-    [P in Model.Field<T>]-?: R;
-  }
+  type CustomProxy<T extends Model, R> =
+    & { [P in Model.Field<T>]-?: R }
+    & { get(): T };
 }
-
-/**
- * Creates an object with references to all managed values.
- * Each property is a function to set value in state when invoked.
- *
- * *Properties are simultaneously a ref-function and ref-object, use as needed.*
- *
- * @param target - Source model from which to reference values.
- */
-function ref <T extends Model> (target: T): ref.Proxy<T>;
-
-/**
- * Creates an object with values based on managed values.
- * Each property will invoke mapper function on first access supply
- * the its return value going forward.
- *
- * @param target - Source model from which to reference values.
- * @param mapper - Function producing the placeholder value for any given property.
- */
-function ref <O extends Model, R>
-  (target: O, mapper: (key: Model.Field<O>) => R): ref.CustomProxy<O, R>;
 
 /**
  * Creates a ref-compatible property.
@@ -69,12 +48,32 @@ function ref <T = HTMLElement> (callback?: ref.Callback<T>): ref.Object<T>;
  */
 function ref <T = HTMLElement> (callback: ref.Callback<T | null>, ignoreNull: boolean): ref.Object<T>;
 
+/**
+ * Creates an object with references to all managed values.
+ * Each property is a function to set value in state when invoked.
+ *
+ * *Properties are simultaneously a ref-function and ref-object, use as needed.*
+ *
+ * @param target - Source model from which to reference values.
+ */
+function ref <T extends Model> (target: T): ref.Proxy<T>;
+
+/**
+ * Creates an object with values based on managed values.
+ * Each property will invoke mapper function on first access supply
+ * the its return value going forward.
+ *
+ * @param target - Source model from which to reference values.
+ * @param mapper - Function producing the placeholder value for any given property.
+ */
+function ref <T extends Model, R> (target: T, mapper: (key: Model.Field<T>) => R): ref.CustomProxy<T, R>;
+
 function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
   return add<T>((key, subject, state) => {
-    let value: ref.Object | ref.Proxy<any> = {};
+    let value = {};
 
     if(arg === subject)
       subject.get(() => {
@@ -89,9 +88,11 @@ function ref<T>(
               }
             })
           else {
+            const get = () => state[key];
             const set = (value: unknown) => subject.set(key, value);
           
-            define(set, "current", { get: () => state[key], set });
+            define(set, "current", { get, set });
+            define(set, "get", { value: get });
             define(value, key, { value: set });
           }
       })
