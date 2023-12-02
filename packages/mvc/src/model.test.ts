@@ -281,6 +281,13 @@ describe("get method", () => {
       })
     })
 
+    it("will export frozen object", () => {
+      const test = Test.new();
+      const values = test.get();
+
+      expect(Object.isFrozen(values)).toBe(true);
+    })
+
     it("will ignore getters", () => {
       class Test extends Model {
         foo = "foo";

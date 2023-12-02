@@ -489,7 +489,7 @@ function values<T extends Model>(from: T): Model.State<T> {
         value[key] = get(val);
     }
 
-    return value;
+    return Object.freeze(value);
   }
 
   return get(from);
