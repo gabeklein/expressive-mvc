@@ -260,4 +260,13 @@ describe("mapped", () => {
 
     expect(() => Test.new()).toThrowError(`ref instruction does not support object which is not 'this'`);
   })
+
+  it.skip("will not break on recursive", () => {
+    class Test extends Model {
+      foo = ref<boolean>();
+      bar = ref(this);
+    }
+
+    Test.new();
+  })
 })

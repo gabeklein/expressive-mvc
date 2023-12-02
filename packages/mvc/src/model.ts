@@ -1,5 +1,7 @@
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
+let FLATTEN: Map<any, any> | undefined;
+
 /** Register for all active models via string identifiers (usually unique). */
 const REGISTER = new WeakMap<Model, string>();
 
@@ -30,11 +32,12 @@ declare namespace Model {
   /** Any valid key for controller, including but not limited to Field<T>. */
   type Key<T> = Field<T> | (string & {}) | number | symbol;
 
+  /** Export/Import compatible value for a given property in a Model. */
+  type Export<R> = R extends { get(): infer T } ? T : R;
+
   /** Value for a property managed by a controller. */
   type Value<T extends Model, K extends Key<T>> =
-    K extends keyof T
-      ? T[K] extends Ref<infer V> ? V : T[K]
-      : unknown;
+    K extends keyof T ? Export<T[K]> : unknown;
 
   type OnEvent<T extends Model> =
     (this: T, key: unknown, source: T) => (() => void) | void | null;
@@ -42,16 +45,10 @@ declare namespace Model {
   type OnUpdate<T extends Model, K extends Key<T>> =
     (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
 
-  /** Export/Import compatible value for a given property in a Model. */
-  type Export<R> =
-    R extends Ref<infer T> ? T :
-    R extends Model ? State<R> :
-    R;
-
   /**
    * Values from current state of given controller.
    * Differs from `Values` as values here will drill
-   * into "real" values held by exotics like ref.
+   * into "real" values held by exotics like ref.Object.
    */
   type State<T> = { [P in Field<T>]: Export<T[P]> };
 
@@ -231,8 +228,26 @@ class Model {
       });
     }
 
-    if(arg1 === undefined)
-      return values(self);
+    if(arg1 === undefined){
+      const values = {} as any;
+      const current = !FLATTEN && (FLATTEN = new Map([[self, values]]));
+
+      type Exportable = Iterable<[string, { get?: () => any }]>;
+
+      for(let [key, value] of self as Exportable){
+        if(FLATTEN.has(value))
+          value = FLATTEN.get(value);
+        else if(value && typeof value.get === "function")
+          FLATTEN.set(value, value = value.get());
+
+        values[key] = value;
+      }
+
+      if(current)
+        FLATTEN = undefined;
+
+      return Object.freeze(values);
+    }
 
     if(typeof arg2 == "function"){
       if(arg1 === null)
@@ -471,28 +486,6 @@ function push(
 
   if(!silent)
     event(subject, key);
-}
-
-function values<T extends Model>(from: T): Model.State<T> {
-  const cache = new WeakMap<Model, any>();
-
-  function get(value: any){
-    if(value instanceof Model){
-      if(cache.has(value))
-        return cache.get(value);
-
-      const model = value;
-
-      cache.set(value, value = {});
-
-      for(const [key, val] of model)
-        value[key] = get(val);
-    }
-
-    return Object.freeze(value);
-  }
-
-  return get(from);
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */

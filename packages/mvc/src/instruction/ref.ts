@@ -18,13 +18,15 @@ declare namespace ref {
   }
 
   /** Object with references to all managed values of `T`. */
-  type Proxy<T extends Model> = {
-    [P in Model.Field<T>]-?: Model.Ref<T[P]>
-  };
 
-  type CustomProxy<T extends Model, R> = {
-    [P in Model.Field<T>]-?: R;
-  }
+  /** Object with references to all managed values of `T`. */
+  type Proxy<T extends Model> =
+    & { [P in Model.Field<T>]-?: Object<T[P]> }
+    & { get(): T };
+
+  type CustomProxy<T extends Model, R> =
+    & { [P in Model.Field<T>]-?: R }
+    & { get(): T };
 }
 
 /**
@@ -74,7 +76,7 @@ function ref<T>(
   arg2?: ((key: string) => any) | boolean){
 
   return add<T>((key, subject, state) => {
-    let value: ref.Object | ref.Proxy<any> = {};
+    let value = {};
 
     if(arg === subject)
       subject.get(() => {
@@ -89,9 +91,11 @@ function ref<T>(
               }
             })
           else {
+            const get = () => state[key];
             const set = (value: unknown) => subject.set(key, value);
           
-            define(set, "current", { get: () => state[key], set });
+            define(set, "current", { get, set });
+            define(set, "get", { value: get });
             define(value, key, { value: set });
           }
       })
