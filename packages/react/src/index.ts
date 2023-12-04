@@ -1,5 +1,6 @@
 import { Context, Model } from '@expressive/mvc';
 
+import { component } from './component';
 import { getContext } from './useContext';
 import { useLocal } from './useLocal';
 import { useRemote } from './useRemote';
@@ -41,6 +42,13 @@ declare module '@expressive/mvc' {
       type Callback<T extends Model> = (instance: T) => void;
     }
 
+    interface Component<P extends Model.Values<T>, T extends Model> {
+      (props: P): React.ReactNode;
+
+      using: Model.Type<T>;
+      displayName: string;
+    }
+
     /** Fetch instance of this class from context. */
     function get <T extends Model> (this: Model.Type<T>, ignore?: true): T;
   
@@ -54,11 +62,21 @@ declare module '@expressive/mvc' {
     function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
     function use <T extends Model> (this: Model.New<T>, callback?: use.Callback<T>, repeat?: boolean): T;
+
+    /**
+     * Creates a component which reflects this Model. All managed properties may be assigned using props.
+     * 
+     * @param render Function which renders component. This function receives all Model state merged with props. Normal subscription behavior still applies.
+     */
+    function as <P extends Model.Values<T>, T extends Model> (
+      this: Model.New<T>, render: (using: T & P) => React.ReactNode
+    ): Component<P, T>;
   }
 }
 
 Model.get = useRemote;
 Model.use = useLocal;
+Model.as = component;
 
 Context.get = getContext;
 
