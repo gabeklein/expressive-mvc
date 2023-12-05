@@ -6,32 +6,29 @@ const PENDING = new WeakMap<Model, () => void>();
 
 export function useLocal <T extends Model> (
   this: Model.New<T>,
-  argument?: Model.Values<T> | Model.use.Callback<T>,
+  argument?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
   const state = useState(() => {
-    let apply: ((arg?: Model.Values<T> | Model.use.Callback<T>) => void) | undefined;
+    let apply: ((arg?: Model.Values<T> | ((instance: T) => void)) => void) | undefined;
     let enabled: boolean | undefined;
     let local: T;
 
     const instance = new this();
 
-    if(argument){
-      apply = arg => {
-        if(typeof arg == "function")
-          arg(instance);
+    if(argument)
+      PENDING.set(instance, apply = () => {
+        if(typeof argument == "function")
+          argument(instance);
   
-        else if(arg)
+        else if(argument)
           for(const key in instance)
-            if(arg.hasOwnProperty(key))
-              instance[key] = (arg as any)[key];
+            if(argument.hasOwnProperty(key))
+              instance[key] = (argument as any)[key];
   
         if(!repeat)
           apply = undefined;
-      }
-
-      PENDING.set(instance, apply.bind(null, argument));
-    }
+      });
 
     instance.set(0);
 
@@ -43,10 +40,11 @@ export function useLocal <T extends Model> (
     });
 
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
+      argument = props;
+
       if(apply && enabled){
         enabled = false;
-
-        apply(props);
+        apply();
 
         const update = instance.set();
 
@@ -73,6 +71,7 @@ export function useLocal <T extends Model> (
   return state[0](argument);
 }
 
+// This occurs after instructions but before state loads values.
 Model.on((_, subject) => {
   const pending = PENDING.get(subject);
 

@@ -38,10 +38,6 @@ declare module '@expressive/mvc' {
       };
     }
 
-    namespace use {
-      type Callback<T extends Model> = (instance: T) => void;
-    }
-
     interface Component<T extends Model, P extends Model.Values<T>> {
       (props: P): JSX.Element;
 
@@ -61,7 +57,7 @@ declare module '@expressive/mvc' {
 
     function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: use.Callback<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.New<T>, callback?: ((instance: T) => void), repeat?: boolean): T;
 
     /**
      * Creates a component which reflects this Model. All managed properties may be assigned using props.
