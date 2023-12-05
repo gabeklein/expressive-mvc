@@ -109,7 +109,9 @@ describe("callback argument", () => {
 
   it("will run callback on every render", async () => {
     const callback = jest.fn();
-    const hook = mockHook(() => Test.use(callback, true));
+    const hook = mockHook(() => {
+      Test.use(callback, true);
+    });
 
     expect(callback).toHaveBeenCalledTimes(1);
     expect(hook).toHaveBeenCalledTimes(1);
@@ -149,6 +151,26 @@ describe("callback argument", () => {
     expect(hook).toHaveBeenCalledTimes(2);
     expect(hook.output.foo).toBe(2);
   });
+
+  it("will run argument before effects", () => {
+    const effect = jest.fn();
+    const argument = jest.fn(() => {
+      expect(effect).not.toHaveBeenCalled();
+    });
+
+    class Test extends Model {
+      constructor(){
+        super(effect);
+      }
+    }
+
+    mockHook(() => {
+      Test.use(argument);
+    });
+
+    expect(argument).toHaveBeenCalled();
+    expect(effect).toHaveBeenCalled();
+  })
 })
 
 describe("props argument", () => {
@@ -280,5 +302,25 @@ describe("props argument", () => {
 
     expect(output.foo).toBe("bar");
     expect(mock).toHaveBeenCalledWith("bar", "foo");
+  })
+
+  it("will apply props before effects", () => {
+    const init = jest.fn();
+
+    class Test extends Model {
+      foo = "foo";
+
+      constructor(){
+        super(() => {
+          init(this.foo);
+        });
+      }
+    }
+
+    mockHook(() => {
+      return Test.use({ foo: "bar" });
+    });
+
+    expect(init).toHaveBeenCalledWith("bar");
   })
 })
