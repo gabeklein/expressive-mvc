@@ -1,20 +1,19 @@
 import Model from '@expressive/mvc';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
 
-export function component<P extends Model.Values<T>, T extends Model> (
+export function component<T extends Model, P extends Model.Values<T>> (
   this: Model.New<T>,
   render: (using: T & P) => ReactNode){
 
   const Component = ((inputProps: P) => {
-    const props = this.use(inputProps) as T & P;
-    const keys = useMemo(() => new Set(Object.keys(props)), []);
+    const props = this.use(inputProps, true) as T & P;
 
     for(const key in inputProps)
-      if(!keys.has(key))
+      if(!(key in props))
         Object.defineProperty(props, key, { value: inputProps[key] });
 
     return render(props);
-  }) as Model.Component<P, T>;
+  }) as Model.Component<T, P>;
 
   Component.using = this;
   Component.displayName = this.name;

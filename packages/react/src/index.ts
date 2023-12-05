@@ -42,8 +42,8 @@ declare module '@expressive/mvc' {
       type Callback<T extends Model> = (instance: T) => void;
     }
 
-    interface Component<P extends Model.Values<T>, T extends Model> {
-      (props: P): React.ReactNode;
+    interface Component<T extends Model, P extends Model.Values<T>> {
+      (props: P): JSX.Element;
 
       using: Model.Type<T>;
       displayName: string;
@@ -68,9 +68,9 @@ declare module '@expressive/mvc' {
      * 
      * @param render Function which renders component. This function receives all Model state merged with props. Normal subscription behavior still applies.
      */
-    function as <P extends Model.Values<T>, T extends Model> (
+    function as <T extends Model, P = {}> (
       this: Model.New<T>, render: (using: T & P) => React.ReactNode
-    ): Component<P, T>;
+    ): Component<T, P & Model.Values<T>>;
   }
 }
 
