@@ -5,7 +5,6 @@ import { Model } from '.';
 type RegisterCallback<T = any> = (model: T) => void | boolean | (() => void);
 
 const Expects = new WeakMap<Model, Map<Model.Type, RegisterCallback>>();
-const Downstream = new WeakMap<Model.Type, symbol>();
 
 export function has <T extends Model> (type: Model.Type<T>, one: true): T;
 export function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
@@ -13,7 +12,7 @@ export function has <T extends Model> (type: Model.Type<T>, arg?: RegisterCallba
   
 export function has <T extends Model> (
   type: Model.Type<T>,
-  arg?: boolean | RegisterCallback<T>){
+  argument?: boolean | RegisterCallback<T>){
 
   return add<T>((key, subject, state) => {
     let map = Expects.get(subject);
@@ -21,7 +20,7 @@ export function has <T extends Model> (
     if(!map)
       Expects.set(subject, map = new Map());
 
-    if(typeof arg == "boolean"){
+    if(typeof argument == "boolean"){
       map.set(type, (model: T) => {
         // if(state[key])
         //   throw new Error(`Tried to register new ${model.constructor} in ${subject}.${key} but one already exists.`);
@@ -34,9 +33,7 @@ export function has <T extends Model> (
         })
       });
 
-      return {
-        get: arg
-      }
+      return { get: argument }
     }
 
     const children = new Set<T>();
@@ -45,7 +42,9 @@ export function has <T extends Model> (
       if(children.has(model))
         return;
 
-      const remove = typeof arg == "function" ? arg(model) : undefined;
+      const remove = typeof argument == "function"
+        ? argument(model)
+        : undefined;
 
       if(remove === false)
         return;
@@ -68,38 +67,10 @@ export function has <T extends Model> (
   })
 }
 
-export function apply(model: Model, context: Context){
-  const key = Downstream.get(model.constructor as Model.Type);
-  const callback = key && (context as any)[key];
-
-  if(callback)
-    callback(model);
-}
-
 export function inject(model: Model, context: Context){
   const expects = Expects.get(model);
 
-  if(!expects)
-    return;
-
-  for(let [T, callback] of expects)
-    do {
-      let key = Downstream.get(T);
-  
-      if(!key){
-        key = Symbol(T.name);
-        Downstream.set(T, key);
-      }
-
-      const value = context.hasOwnProperty(key) ? null : callback;
-  
-      if(value || (context as any)[key] !== callback)
-        Object.defineProperty(context, key, {
-          configurable: true,
-          value
-        });
-  
-      T = Object.getPrototypeOf(T);
-    }
-    while(T !== Model);
+  if(expects)
+    for(let [T, callback] of expects)
+      context.put(T as Model.New, callback);
 }

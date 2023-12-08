@@ -15,7 +15,9 @@ class Context {
 
   public key!: string;
 
-  protected table = new WeakMap<Model.Type, symbol>();
+  protected downstream = new WeakMap<Model.Type, symbol>();
+  protected upstream = new WeakMap<Model.Type, symbol>();
+
   protected layer = new Map<string | number, Model | Model.Type>();
 
   constructor(inputs?: Context.Input){
@@ -23,19 +25,22 @@ class Context {
       this.include(inputs);
   }
 
-  protected has(T: Model.Type){
-    let key = this.table.get(T);
+  public has(T: Model.Type, upstream?: boolean){
+    const table = upstream ? this.upstream : this.downstream;
+    let key = table.get(T);
 
     if(!key){
       key = Symbol(T.name);
-      this.table.set(T, key);
+      table.set(T, key);
     }
 
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Type<T>){
-    const result = this[this.has(Type)] as T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, upstream: true): (model: T) => void;
+  public get<T extends Model>(Type: Model.Type<T>, upstream?: false): T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, upstream?: boolean){
+    const result = this[this.has(Type, upstream)] as T | undefined;
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
@@ -85,7 +90,29 @@ class Context {
     return init;
   }
 
-  protected add<T extends Model>(
+  public put<T extends Model>(
+    T: Model.New<T>,
+    I: T | ((model: T) => void),
+    implicit?: boolean,
+    writable?: boolean){
+
+    do {
+      const key = this.has(T, typeof I == "function");
+      const value = this.hasOwnProperty(key) ? null : I;
+
+      if(value || this[key] !== I && !implicit)
+        Object.defineProperty(this, key, {
+          configurable: true,
+          writable,
+          value
+        });
+
+      T = Object.getPrototypeOf(T);
+    }
+    while(T !== Model);
+  }
+
+  public add<T extends Model>(
     input: T | Model.New<T>,
     implicit?: boolean){
 
@@ -103,20 +130,7 @@ class Context {
       writable = false;
     }
 
-    do {
-      const key = this.has(T);
-      const value = this.hasOwnProperty(key) ? null : I;
-
-      if(value || I !== this[key] && !implicit)
-        Object.defineProperty(this, key, {
-          configurable: true,
-          writable,
-          value
-        });
-
-      T = Object.getPrototypeOf(T);
-    }
-    while(T !== Model);
+    this.put(T, I, implicit, writable);
 
     return I;
   }
