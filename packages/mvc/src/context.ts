@@ -90,35 +90,34 @@ class Context {
     implicit?: boolean){
 
     let writable = true;
-    let T: Model.New<T>;
-    let I: T;
+    let type: Model.New<T>;
 
     if(typeof input == "function"){
-      T = input;
-      I = input.new() as T;
+      type = input;
+      input = input.new() as T;
     }
     else {
-      I = input;
-      T = I.constructor as Model.New<T>;
+      input = input;
+      type = input.constructor as Model.New<T>;
       writable = false;
     }
 
     do {
-      const key = this.has(T);
-      const value = this.hasOwnProperty(key) ? null : I;
+      const key = this.has(type);
+      const value = this.hasOwnProperty(key) ? null : input;
 
-      if(value || I !== this[key] && !implicit)
+      if(value || this[key] !== input && !implicit)
         Object.defineProperty(this, key, {
           configurable: true,
           writable,
           value
         });
 
-      T = Object.getPrototypeOf(T);
+      type = Object.getPrototypeOf(type);
     }
-    while(T !== Model);
+    while(type !== Model);
 
-    return I;
+    return input;
   }
 
   public push(inputs?: Context.Input){

@@ -82,24 +82,24 @@ export function inject(model: Model, context: Context){
   if(!expects)
     return;
 
-  for(let [T, callback] of expects)
+  for(let [type, input] of expects)
     do {
-      let key = Downstream.get(T);
+      let key = Downstream.get(type);
   
       if(!key){
-        key = Symbol(T.name);
-        Downstream.set(T, key);
+        key = Symbol(type.name);
+        Downstream.set(type, key);
       }
 
-      const value = context.hasOwnProperty(key) ? null : callback;
+      const value = context.hasOwnProperty(key) ? null : input;
   
-      if(value || (context as any)[key] !== callback)
+      if(value || (context as any)[key] !== input)
         Object.defineProperty(context, key, {
           configurable: true,
           value
         });
   
-      T = Object.getPrototypeOf(T);
+      type = Object.getPrototypeOf(type);
     }
-    while(T !== Model);
+    while(type !== Model);
 }
