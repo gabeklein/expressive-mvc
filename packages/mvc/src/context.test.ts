@@ -130,13 +130,13 @@ describe("include", () => {
     const bar = Bar.new();
     const context = new Context({ foo, bar, Baz });
 
-    const keyPriorUpdate = context.key;
+    const idPriorToUpdate = context.id;
     const baz = context.get(Baz);
 
     context.include({ foo, bar: Bar.new(), Baz });
 
     // key should change despite technically same layer.
-    expect(context.key).not.toBe(keyPriorUpdate);
+    expect(context.id).not.toBe(idPriorToUpdate);
 
     // expect all instances did get replaced.
     expect(context.get(Bar)).not.toBe(bar);

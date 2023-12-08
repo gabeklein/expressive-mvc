@@ -13,7 +13,7 @@ class Context {
     throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
   }
 
-  public key!: string;
+  public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
   protected upstream = new WeakMap<Model.Type, symbol>();
@@ -25,7 +25,7 @@ class Context {
       this.include(inputs);
   }
 
-  public has(T: Model.Type, upstream?: boolean){
+  public key(T: Model.Type, upstream?: boolean){
     const table = upstream ? this.upstream : this.downstream;
     let key = table.get(T);
 
@@ -37,10 +37,16 @@ class Context {
     return key as keyof this;
   }
 
-  public get<T extends Model>(Type: Model.Type<T>, upstream: true): (model: T) => void;
-  public get<T extends Model>(Type: Model.Type<T>, upstream?: false): T | undefined;
-  public get<T extends Model>(Type: Model.Type<T>, upstream?: boolean){
-    const result = this[this.has(Type, upstream)] as T | undefined;
+  public has(model: Model){
+    const key = this.key(model.constructor as Model.New, true);
+    const result = this[key] as ((model: Model) => void) | undefined;
+
+    if(typeof result == "function")
+      result(model);
+  }
+
+  public get<T extends Model>(Type: Model.Type<T>){
+    const result = this[this.key(Type)] as T | undefined;
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
@@ -75,7 +81,7 @@ class Context {
       // Context must force-reset becasue inputs are no longer safe.
       else if(exists !== input){    
         this.pop();
-        this.key = uid();
+        this.id = uid();
         return this.include(inputs);
       }
     }
@@ -97,7 +103,7 @@ class Context {
     writable?: boolean){
 
     do {
-      const key = this.has(T, typeof I == "function");
+      const key = this.key(T, typeof I == "function");
       const value = this.hasOwnProperty(key) ? null : I;
 
       if(value || this[key] !== I && !implicit)

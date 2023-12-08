@@ -9,7 +9,7 @@ function useContext(){
 }
 
 function createContext(value: Context, children?: ReactNode){
-  return createElement(Shared.Provider, { key: value.key, value }, children);
+  return createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
 function getContext(model: Model, resolve: (got: Context) => void){
@@ -25,10 +25,8 @@ function getContext(model: Model, resolve: (got: Context) => void){
 
 function setContext(model: Model, context = useContext()){
   const waiting = Register.get(model);
-  const callback = context.get(model.constructor as Model.Type, true);
 
-  if(callback)
-    callback(model);
+  context.has(model);
     
   if(waiting instanceof Array)
     waiting.forEach(cb => cb(context));
