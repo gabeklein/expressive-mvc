@@ -110,6 +110,27 @@ describe("single", () => {
       </Provider>
     )
   })
+
+  it("will register own type", async () => {
+    class Test extends Model {
+      child = has(Test, false);
+    }
+
+    const test = Test.new();
+    const test2 = Test.new();
+    const test3 = Test.new();
+
+    create(
+      <Provider for={test}>
+        <Provider for={test2}>
+          <Provider for={test3} />
+        </Provider>
+      </Provider>
+    )
+
+    expect(test.child).toBe(test2);
+    expect(test2.child).toBe(test3);
+  })
 })
 
 describe("collection", () => {
