@@ -1,7 +1,6 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { inject } from './has';
-import { createContext, setContext, useContext, useEffect, useMemo } from './useContext';
+import { createContext, inject, setContext, useContext, useEffect, useMemo } from './useContext';
 
 import type { FunctionComponentElement, ReactNode } from 'react';
 

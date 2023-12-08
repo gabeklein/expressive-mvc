@@ -1,10 +1,6 @@
-import { Context, add } from '@expressive/mvc';
+import { add, Model } from '@expressive/mvc';
 
-import { Model } from '.';
-
-type RegisterCallback<T = any> = (model: T) => void | boolean | (() => void);
-
-const Expects = new WeakMap<Model, Map<Model.Type, RegisterCallback>>();
+import { expect, RegisterCallback } from './useContext';
 
 export function has <T extends Model> (type: Model.Type<T>, one: true): T;
 export function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
@@ -15,13 +11,8 @@ export function has <T extends Model> (
   argument?: boolean | RegisterCallback<T>){
 
   return add<T>((key, subject, state) => {
-    let map = Expects.get(subject);
-  
-    if(!map)
-      Expects.set(subject, map = new Map());
-
     if(typeof argument == "boolean"){
-      map.set(type, (model: T) => {
+      expect(subject, type, (model: T) => {
         // if(state[key])
         //   throw new Error(`Tried to register new ${model.constructor} in ${subject}.${key} but one already exists.`);
         
@@ -31,14 +22,14 @@ export function has <T extends Model> (
           if(state[key] === model)
             delete state[key];
         })
-      });
+      })
 
       return { get: argument }
     }
 
     const children = new Set<T>();
   
-    map.set(type, (model: T) => {
+    expect(subject, type, (model: T) => {
       if(children.has(model))
         return;
 
@@ -65,12 +56,4 @@ export function has <T extends Model> (
       value: children
     }
   })
-}
-
-export function inject(model: Model, context: Context){
-  const expects = Expects.get(model);
-
-  if(expects)
-    for(let [T, callback] of expects)
-      context.put(T as Model.New, callback);
 }
