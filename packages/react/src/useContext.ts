@@ -1,10 +1,7 @@
 import Model, { Context } from '@expressive/mvc';
-import {
-  createContext as reactCreateContext,
-  useContext as reactUseContext,
-  createElement,
-  ReactNode
-} from 'react';
+import { createContext as reactCreateContext, createElement, ReactNode, useContext as reactUseContext } from 'react';
+
+import { apply, inject } from './has';
 
 const Shared = reactCreateContext(new Context());
 const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
@@ -28,11 +25,16 @@ function getContext(model: Model, resolve: (got: Context) => void){
     Register.set(model, [resolve]);
 }
 
-function setContext(model: Model, context = useContext()){
+function setContext(model: Model, context?: Context){
   const waiting = Register.get(model);
 
+  if(context)
+    inject(model, context);
+  else
+    apply(model, context = useContext());
+    
   if(waiting instanceof Array)
-    waiting.forEach(cb => cb(context));
+    waiting.forEach(cb => cb(context!));
 
   Register.set(model, context);
 }
