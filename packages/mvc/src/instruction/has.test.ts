@@ -1,6 +1,7 @@
 import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
+import { use } from './use';
 
 describe("single", () => {
   it("will register child", async () => {
@@ -96,6 +97,38 @@ describe("single", () => {
     expect(test.child).toBe(test2);
     expect(test2.child).toBe(test3);
   })
+
+  it("will register implicit", () => {
+    class Baz extends Model {}
+    class Foo extends Model {
+      bar = use(Bar);
+    }
+    class Bar extends Model {
+      baz = has(Baz, true);
+    }
+  
+    const foo = Foo.new();
+  
+    new Context(foo).push(Baz);
+
+    expect(foo.bar.baz).toBeInstanceOf(Baz);
+  });
+
+  it("will register for implicit", () => {
+    class Baz extends Model {}
+    class Foo extends Model {
+      baz = has(Baz, true);
+    }
+    class Bar extends Model {
+      baz = use(Baz);
+    }
+  
+    const foo = Foo.new();
+  
+    new Context(foo).push(Bar);
+
+    expect(foo.baz).toBeInstanceOf(Baz);
+  });
 })
 
 describe("collection", () => {
@@ -195,10 +228,8 @@ describe("collection", () => {
       children = has(Child, hasChild);
     }
   
-    // const Element = Child.as(() => null);
     const hasChild = jest.fn(() => false);
     const parent = Parent.new();
-
     const context = new Context(parent);
 
     context.has(new Child());
@@ -213,9 +244,8 @@ describe("collection", () => {
     expect(hasChild).toHaveBeenCalledTimes(3);
     expect(parent.children.size).toBe(0);
   });
+
+  it.todo("will unwrap children on export")
 })
 
-it.todo("will unwrap children on export")
 it.todo("will require values as props if has-instruction");
-it.todo("will register implicit");
-it.todo("will register for implicit");
