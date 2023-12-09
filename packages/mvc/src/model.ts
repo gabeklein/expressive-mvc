@@ -383,6 +383,15 @@ class Model {
     return typeof maybe == "function" && maybe.prototype instanceof this;
   }
 
+  static at<T extends Model> (
+    this: Model.Type<T>, _model: Model, _callback: (got: T | undefined) => void){
+    
+    Context.get(model, context => {
+      callback(context.get(this) as T | undefined);
+    })
+    throw new Error(`Using context requires an adapter. If you are only testing, define \`Model.at\` to simulate one.`);
+  }
+
   /**
    * Register a callback to run when any instance of this Model is updated. 
    */

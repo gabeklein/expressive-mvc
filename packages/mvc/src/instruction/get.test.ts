@@ -12,10 +12,10 @@ it.todo("will add pending compute to frame immediately");
 it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
-  const resolve = Context.get;
+  const resolve = Model.at;
 
   afterEach(() => {
-    Context.get = resolve;
+    Model.at = resolve;
   })
 
   it("will not update on noop", async () => {
@@ -26,7 +26,9 @@ describe("fetch mode", () => {
     const remote = Remote.new();
     const context = new Context({ remote });
 
-    Context.get = (_, cb) => cb(context);
+    Model.at = function(_, cb){
+      return cb(context.get(this))
+    };
 
     class Test extends Model {
       value = get(Remote, ({ value }) => {
@@ -62,7 +64,9 @@ describe("fetch mode", () => {
     const effect = jest.fn();
     const compute = jest.fn();
 
-    Context.get = (_, cb) => cb(context);
+    Model.at = function(_, cb){
+      return cb(context.get(this))
+    };
 
     class Test extends Model {
       value = get(Remote, ({ remote }) => {
@@ -168,7 +172,10 @@ describe("fetch mode", () => {
   })
 
   it("will throw if not found in context", () => {
-    Context.get = (_, cb) => cb(new Context());
+    // Model.at = (_, cb) => cb(new Context());
+    Model.at = function(_, callback){
+      callback(undefined);
+    }
 
     class Parent extends Model {}
     class Child extends Model {
@@ -180,7 +187,7 @@ describe("fetch mode", () => {
   })
   
   it("retuns undefined if required is false", () => {
-    Context.get = (_, cb) => cb(new Context());
+    Model.at = (_, cb) => cb(undefined);
 
     class MaybeParent extends Model {}
     class StandAlone extends Model {
@@ -651,68 +658,68 @@ describe("compute mode", () => {
 })
 
 // not yet implemented by Context yet; this is a hack.
-describe.skip("replaced source", () => {
-  const context = new Context();
-  let gotContext: (got: Context) => void;
+// describe.skip("replaced source", () => {
+//   const context = new Context();
+//   let gotContext: (got: Model) => void;
 
-  beforeAll(() => {
-    Context.get = (_, got) => {
-      gotContext = got;
-      got(context);
-    }
-  })
+//   beforeAll(() => {
+//     Model.at = function(_, got){
+//       gotContext = got;
+//       got(context);
+//     }
+//   })
 
-  class Source extends Model {
-    constructor(public value: string){
-      super();
-      context.include({ source: this });
+//   class Source extends Model {
+//     constructor(public value: string){
+//       super();
+//       context.include({ source: this });
 
-      if(gotContext)
-        gotContext(context);
-    }
-  }
+//       if(gotContext)
+//         gotContext(context);
+//     }
+//   }
 
-  class Test extends Model {
-    greeting = get(Source, source => {
-      return `Hello ${source.value}!`;
-    })
-  }
+//   class Test extends Model {
+//     greeting = get(Source, source => {
+//       return `Hello ${source.value}!`;
+//     })
+//   }
 
-  it("will update", async () => {
-    const test = Test.new();
-    const oldSource = Source.new("Foo");
+//   it("will update", async () => {
+//     const test = Test.new();
+//     const oldSource = Source.new("Foo");
   
-    expect(test.greeting).toBe("Hello Foo!");
+//     expect(test.greeting).toBe("Hello Foo!");
 
-    oldSource.value = "Baz";
-    await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Baz!");
+//     oldSource.value = "Baz";
+//     await expect(test).toHaveUpdated();
+//     expect(test.greeting).toBe("Hello Baz!");
 
-    const newSource = Source.new("Bar");
+//     const newSource = Source.new("Bar");
 
-    await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Bar!");
+//     await expect(test).toHaveUpdated();
+//     expect(test.greeting).toBe("Hello Bar!");
 
-    newSource.value = "Baz";
-    await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Baz!");
-  })
+//     newSource.value = "Baz";
+//     await expect(test).toHaveUpdated();
+//     expect(test.greeting).toBe("Hello Baz!");
+//   })
 
-  it("will not update from previous source", async () => {
-    const test = Test.new();
-    const oldSource = Source.new("Foo");
+//   it("will not update from previous source", async () => {
+//     const test = Test.new();
+//     const oldSource = Source.new("Foo");
   
-    expect(test.greeting).toBe("Hello Foo!");
+//     expect(test.greeting).toBe("Hello Foo!");
 
-    Source.new("Bar");
+//     Source.new("Bar");
 
-    await expect(test).toHaveUpdated();
-    expect(test.greeting).toBe("Hello Bar!");
+//     await expect(test).toHaveUpdated();
+//     expect(test.greeting).toBe("Hello Bar!");
 
-    oldSource.value = "Baz";
-    await expect(test).not.toHaveUpdated();
-  })
-})
+//     oldSource.value = "Baz";
+//     await expect(test).not.toHaveUpdated();
+//   })
+// })
 
 describe("async", () => {
   class Foo extends Model {
@@ -720,9 +727,9 @@ describe("async", () => {
   }
 
   beforeAll(() => {
-    Context.get = (_, got) => {
+    Model.at = function(_, got){
       const context = new Context({ Foo });
-      setTimeout(() => got(context));
+      setTimeout(() => got(context.get(this)));
     }
   })
 

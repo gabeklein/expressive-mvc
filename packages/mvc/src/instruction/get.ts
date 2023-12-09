@@ -1,4 +1,3 @@
-import { Context } from '../context';
 import { effect } from '../control';
 import { fetch, Model, PARENT, push, update } from '../model';
 import { add } from './add';
@@ -80,9 +79,7 @@ function get<R, T extends Model>(
           throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          Context.get(from, context => {
-            const model = context.get(arg0);
-
+          arg0.at(from, model => {
             if(model)
               resolve(model);
             else if(arg1 !== false)

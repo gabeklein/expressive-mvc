@@ -12,7 +12,11 @@ function createContext(value: Context, children?: ReactNode){
   return createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
-function getContext(model: Model, resolve: (got: Context) => void){
+function getContext<T extends Model = any>(
+  this: Model.Type<T>,
+  model: Model,
+  resolve: (got: Context) => void){
+
   const waiting = Register.get(model);
 
   if(waiting instanceof Context)
