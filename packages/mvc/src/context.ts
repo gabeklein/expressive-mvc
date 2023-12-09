@@ -10,6 +10,19 @@ declare namespace Context {
 }
 
 class Context {
+  static request<T extends Model>(
+    type: Model.Type<T>,
+    from: Model,
+    callback: (got: T) => void){
+  
+    let map = Expects.get(from);
+  
+    if(!map)
+      Expects.set(from, map = new Map());
+  
+    map.set(type, callback);
+  }
+
   public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
@@ -180,4 +193,4 @@ function reject(argument: any){
   throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
-export { Context, Expects }
+export { Context }

@@ -1,20 +1,22 @@
-import { Expects } from '../context';
+import { Context } from '../context';
 import { Model } from '../model';
 import { add } from './add';
 
-type Callback<T = any> = (model: T) => void | boolean | (() => void);
+declare namespace has {
+  type Callback<T = any> = (model: T) => void | boolean | (() => void);
+}
 
 function has <T extends Model> (type: Model.Type<T>, one: true): T;
 function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
-function has <T extends Model> (type: Model.Type<T>, arg?: Callback<T>): Set<T>;
+function has <T extends Model> (type: Model.Type<T>, arg?: has.Callback<T>): Set<T>;
   
 function has <T extends Model> (
   type: Model.Type<T>,
-  argument?: boolean | Callback<T>){
+  argument?: boolean | has.Callback<T>){
 
   return add<T>((key, subject, state) => {
     if(typeof argument == "boolean"){
-      request(type, subject, model => {
+      Context.request(type, subject, model => {
         const remove = () => {
           drop();
 
@@ -36,7 +38,7 @@ function has <T extends Model> (
 
     const children = new Set<T>();
   
-    request(type, subject, model => {
+    Context.request(type, subject, model => {
       if(children.has(model))
         return;
 
@@ -69,17 +71,6 @@ function has <T extends Model> (
       value: children
     }
   })
-}
-
-function request<T extends Model>(
-  type: Model.Type<T>, from: Model, cb: (got: T) => void){
-
-  let map = Expects.get(from);
-
-  if(!map)
-    Expects.set(from, map = new Map());
-
-  map.set(type, cb);
 }
 
 export { has }
