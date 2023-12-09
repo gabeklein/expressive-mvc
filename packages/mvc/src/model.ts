@@ -398,6 +398,14 @@ class Model {
 
     return () => notify!.delete(listener);
   }
+
+  static at<T extends Model>(
+    this: Model.Type<T>,
+    from: Model, 
+    cb: (got: T | undefined) => void){
+
+    throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
+  }
 }
 
 define(Model.prototype, "toString", {

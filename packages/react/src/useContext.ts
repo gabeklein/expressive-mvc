@@ -12,15 +12,22 @@ function createContext(value: Context, children?: ReactNode){
   return createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
-function getContext(model: Model, resolve: (got: Context) => void){
-  const waiting = Register.get(model);
+function fromContext<T extends Model>(
+  this: Model.Type<T>,
+  from: Model,
+  resolve: (got: T | undefined) => void){
+
+  const waiting = Register.get(from);
+  const context = (context: Context) => {
+    resolve(context.get(this));
+  }
 
   if(waiting instanceof Context)
-    resolve(waiting);
+    context(waiting);
   else if(waiting)
-    waiting.push(resolve);
+    waiting.push(context);
   else
-    Register.set(model, [resolve]);
+    Register.set(from, [context]);
 }
 
 function setContext(model: Model, context: Context){
@@ -32,5 +39,5 @@ function setContext(model: Model, context: Context){
   Register.set(model, context);
 }
 
-export { createContext, getContext, setContext, useContext };
+export { createContext, fromContext, setContext, useContext };
 export { useState, useEffect, useMemo } from 'react';

@@ -1,4 +1,3 @@
-import { Context } from '../context';
 import { Model } from '../model';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { get } from './get';
@@ -12,21 +11,14 @@ it.todo("will add pending compute to frame immediately");
 it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
-  const resolve = Context.get;
-
-  afterEach(() => {
-    Context.get = resolve;
-  })
-
   it("will not update on noop", async () => {
     class Remote extends Model {
       value = "foo";
     }
 
     const remote = Remote.new();
-    const context = new Context({ remote });
 
-    Context.get = (_, cb) => cb(context);
+    Remote.at = (_, callback) => callback(remote as any);
 
     class Test extends Model {
       value = get(Remote, ({ value }) => {
@@ -57,12 +49,10 @@ describe("fetch mode", () => {
     }
 
     const remote = Remote.new();
-    const context = new Context({ remote });
-
     const effect = jest.fn();
     const compute = jest.fn();
 
-    Context.get = (_, cb) => cb(context);
+    Remote.at = (_, callback) => callback(remote as any);
 
     class Test extends Model {
       value = get(Remote, ({ remote }) => {
@@ -168,24 +158,24 @@ describe("fetch mode", () => {
   })
 
   it("will throw if not found in context", () => {
-    Context.get = (_, cb) => cb(new Context());
-
     class Parent extends Model {}
     class Child extends Model {
       expects = get(Parent);
     }
+
+    Parent.at = (_, callback) => callback(undefined);
 
     // should this throw immediately, or only on access?
     expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for ID.`);
   })
   
   it("retuns undefined if required is false", () => {
-    Context.get = (_, cb) => cb(new Context());
-
     class MaybeParent extends Model {}
     class StandAlone extends Model {
       maybe = get(MaybeParent, false);
     }
+
+    MaybeParent.at = (_, callback) => callback(undefined);
   
     const instance = StandAlone.new();
   
@@ -652,23 +642,23 @@ describe("compute mode", () => {
 
 // not yet implemented by Context yet; this is a hack.
 describe.skip("replaced source", () => {
-  const context = new Context();
-  let gotContext: (got: Context) => void;
+  let source: Source;
+  let gotContext: (got: any) => void;
 
   beforeAll(() => {
-    Context.get = (_, got) => {
+    Source.at = (_, got) => {
       gotContext = got;
-      got(context);
+      got(source as any);
     }
   })
 
   class Source extends Model {
     constructor(public value: string){
       super();
-      context.include({ source: this });
+      source = this;
 
       if(gotContext)
-        gotContext(context);
+        gotContext(this);
     }
   }
 
@@ -719,12 +709,11 @@ describe("async", () => {
     value = "foobar";
   }
 
-  beforeAll(() => {
-    Context.get = (_, got) => {
-      const context = new Context({ Foo });
-      setTimeout(() => got(context));
-    }
-  })
+  Foo.at = (_, callback) => {
+    setTimeout(() => {
+      callback(Foo.new() as any);
+    }, 0);
+  };
 
   it("will suspend if not ready", async () => {
     class Bar extends Model {

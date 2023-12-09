@@ -10,11 +10,6 @@ declare namespace Context {
 }
 
 class Context {
-  static get(from: Model, callback: (context: Context) => void): void
-  static get(){
-    throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
-  }
-
   public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
