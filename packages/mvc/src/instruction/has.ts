@@ -13,13 +13,8 @@ function has <T extends Model> (
   argument?: boolean | Callback<T>){
 
   return add<T>((key, subject, state) => {
-    let map = Expects.get(subject);
-  
-    if(!map)
-      Expects.set(subject, map = new Map());
-
     if(typeof argument == "boolean"){
-      map.set(type, (model: T) => {
+      request(type, subject, model => {
         const remove = () => {
           drop();
 
@@ -41,7 +36,7 @@ function has <T extends Model> (
 
     const children = new Set<T>();
   
-    map.set(type, (model: T) => {
+    request(type, subject, model => {
       if(children.has(model))
         return;
 
@@ -74,6 +69,17 @@ function has <T extends Model> (
       value: children
     }
   })
+}
+
+function request<T extends Model>(
+  type: Model.Type<T>, from: Model, cb: (got: T) => void){
+
+  let map = Expects.get(from);
+
+  if(!map)
+    Expects.set(from, map = new Map());
+
+  map.set(type, cb);
 }
 
 export { has }
