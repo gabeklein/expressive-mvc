@@ -11,10 +11,11 @@ describe("single", () => {
     }
   
     const parent = Parent.new();
-
-    new Context(parent).push(Child);
+    const context = new Context(parent).push(Child);
 
     expect(parent.child).toBeInstanceOf(Child);
+
+    context.pop();
   })
 
   it("will suspend if not registered", async () => {
@@ -244,6 +245,24 @@ describe("collection", () => {
     expect(hasChild).toHaveBeenCalledTimes(3);
     expect(parent.children.size).toBe(0);
   });
+
+  it("will ignore redundant child", async () => {
+    class Child extends Model {}
+    class Parent extends Model {
+      child = has(Child, gotChild);
+    }
+  
+    const gotChild = jest.fn();
+    const parent = Parent.new();
+    const child = Child.new();
+
+    const context = new Context(parent);
+
+    context.has(child);
+    context.has(child);
+
+    expect(gotChild).toHaveBeenCalledTimes(1);
+  })
 
   it.todo("will unwrap children on export")
 })
