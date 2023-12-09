@@ -37,21 +37,21 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
   let { for: included, use: assign } = props;
 
-  const context = useContext();
-  const value = useMemo(() => context.push(), []);
+  const ambient = useContext();
+  const context = useMemo(() => ambient.push(), []);
   
-  value.include(included).forEach((isExplicit, model) => {
+  context.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
       for(const K in assign)
         if(K in model)
           model.set(K, (assign as any)[K]);
 
-    setContext(model, value);
+    setContext(model, context);
   });
 
-  useEffect(() => () => value.pop(), []);
+  useEffect(() => () => context.pop(), []);
 
-  return createContext(value, props.children);
+  return createContext(context, props.children);
 }
 
 export { Provider };
