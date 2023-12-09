@@ -23,10 +23,8 @@ function getContext(model: Model, resolve: (got: Context) => void){
     Register.set(model, [resolve]);
 }
 
-function setContext(model: Model, context = useContext()){
+function setContext(model: Model, context: Context){
   const waiting = Register.get(model);
-
-  context.has(model);
     
   if(waiting instanceof Array)
     waiting.forEach(cb => cb(context));

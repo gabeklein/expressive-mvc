@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { setContext, useEffect, useState } from './useContext';
+import { setContext, useContext, useEffect, useState } from './useContext';
 
 const PENDING = new WeakMap<Model, () => void>();
 
@@ -53,8 +53,11 @@ export function useLocal <T extends Model> (
         else
           enabled = true;
       }
+      
+      const context = useContext();
 
-      setContext(instance);
+      setContext(instance, context);
+      context.has(instance);
 
       useEffect(() => {
         enabled = true;

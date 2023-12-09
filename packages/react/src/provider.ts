@@ -1,6 +1,5 @@
 import { Context, Model } from '@expressive/mvc';
 
-import { inject } from './has';
 import { createContext, setContext, useContext, useEffect, useMemo } from './useContext';
 
 import type { FunctionComponentElement, ReactNode } from 'react';
@@ -48,7 +47,6 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
           model.set(K, (assign as any)[K]);
 
     setContext(model, value);
-    inject(model, value);
   });
 
   useEffect(() => () => value.pop(), []);

@@ -1,5 +1,7 @@
 import { Model, PARENT, uid } from './model';
 
+const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) | void>>();
+
 declare namespace Context {
   type Input = 
     | Model
@@ -30,7 +32,7 @@ class Context {
     let key = table.get(T);
 
     if(!key){
-      key = Symbol(T.name);
+      key = Symbol(T.name + (upstream ? " request" : ""));
       table.set(T, key);
     }
 
@@ -39,10 +41,10 @@ class Context {
 
   public has(model: Model){
     const key = this.key(model.constructor as Model.New, true);
-    const result = this[key] as ((model: Model) => void) | undefined;
+    const result = this[key] as ((model: Model) => () => void) | undefined;
 
     if(typeof result == "function")
-      result(model);
+      return result(model);
   }
 
   public get<T extends Model>(Type: Model.Type<T>){
@@ -86,12 +88,21 @@ class Context {
       }
     }
 
-    for(const [ model ] of init)
+    for(const [ model ] of init){      
+      this.has(model);
+  
+      const expects = Expects.get(model);
+    
+      if(expects)
+        for(let [T, callback] of expects)
+          this.put(T as Model.New, callback);
+  
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
           init.set(value as Model, false);
         }
+    }
 
     return init;
   }
@@ -174,4 +185,4 @@ function reject(argument: any){
   throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
-export { Context }
+export { Context, Expects }

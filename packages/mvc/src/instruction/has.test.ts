@@ -1,43 +1,20 @@
-import React from 'react';
-import { create } from 'react-test-renderer';
-
-import Model, { has, Provider } from '.';
-import { mockHook } from './mocks';
+import { Context } from '../context';
+import { Model } from '../model';
+import { has } from './has';
 
 describe("single", () => {
-  it("will register child", () => {
+  it("will register child", async () => {
     class Child extends Model {}
     class Parent extends Model {
       child = has(Child, true);
     }
   
     const parent = Parent.new();
-  
-    mockHook(parent, () => Child.use());
+
+    new Context(parent).push(Child);
+
     expect(parent.child).toBeInstanceOf(Child);
   })
-  
-  it.skip("will throw if already registered", () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      child = has(Child, true);
-    }
-  
-    const parent = Parent.new("Parent-ID");
-    let error!: string;
-  
-    mockHook(parent, () => {
-      try {
-        Child.use();
-        Child.use();
-      }
-      catch(e: any){
-        error = e.message;
-      }
-    });
-
-    expect(error).toBe(`Tried to register new Child in Parent-ID.child but one already exists.`);
-  });
 
   it("will suspend if not registered", async () => {
     class Child extends Model {}
@@ -55,7 +32,7 @@ describe("single", () => {
     expect(childEffect).toHaveBeenCalled();
     expect(childEffect).not.toHaveReturned();
 
-    mockHook(parent, () => Child.use());
+    new Context(parent).push(Child);
 
     await expect(parent).toHaveUpdated();
 
@@ -77,7 +54,7 @@ describe("single", () => {
     expect(childEffect).toBeCalledTimes(1);
     expect(childEffect).toHaveBeenCalledWith(undefined);
 
-    mockHook(parent, () => Child.use());
+    new Context(parent).push(Child);
 
     await expect(parent).toHaveUpdated();
 
@@ -87,28 +64,22 @@ describe("single", () => {
 
   it("will replace child value", async () => {
     class Child extends Model {
-      value = 0;
+      constructor(public value: number){
+        super();
+      }
     }
     class Parent extends Model {
       child = has(Child, true);
     }
 
-    const Element = Child.as(() => null);
     const parent = Parent.new();
+    const context = new Context(parent).push();
 
-    const render = create(
-      <Provider for={parent}>
-        <Element key={1} value={1} />
-      </Provider>
-    )
-
+    context.include(new Child(1));
     expect(parent.child.value).toBe(1);
 
-    render.update(
-      <Provider for={parent}>
-        <Element key={2} value={2} />
-      </Provider>
-    )
+    context.include(new Child(2));
+    expect(parent.child.value).toBe(2);
   })
 
   it("will register own type", async () => {
@@ -120,13 +91,7 @@ describe("single", () => {
     const test2 = Test.new();
     const test3 = Test.new();
 
-    create(
-      <Provider for={test}>
-        <Provider for={test2}>
-          <Provider for={test3} />
-        </Provider>
-      </Provider>
-    )
+    new Context(test).push(test2).push(test3);
 
     expect(test.child).toBe(test2);
     expect(test2.child).toBe(test3);
@@ -142,7 +107,8 @@ describe("collection", () => {
   
     const parent = Parent.new();
   
-    mockHook(parent, () => Child.use());
+    new Context(parent).push(Child);
+
     expect(Array.from(parent.children)).toEqual([
       expect.any(Child)
     ]);
@@ -157,7 +123,7 @@ describe("collection", () => {
     const gotChild = jest.fn();
     const parent = Parent.new();
   
-    mockHook(parent, () => Child.use());
+    new Context(parent).push(Child);
     expect(gotChild).toHaveBeenCalledWith(expect.any(Child));
   })
   
@@ -167,17 +133,14 @@ describe("collection", () => {
       children = has(Child, hasChild);
     }
   
-    const Element = Child.as(() => null);
     const hasChild = jest.fn();
     const parent = Parent.new();
-    
-    create(
-      <Provider for={parent}>
-        <Element />
-        <Element />
-      </Provider>
-    )
-  
+
+    new Context(parent).push({
+      child1: new Child(),
+      child2: new Child()
+    });
+
     expect(hasChild).toHaveBeenCalledTimes(2);
     expect(Array.from(parent.children)).toEqual([
       expect.any(Child),
@@ -196,39 +159,34 @@ describe("collection", () => {
       children = has(Child, didAddChild);
     }
   
-    const Element = Child.as(() => null);
     const parent = Parent.new();
-    
-    const render = create(
-      <Provider for={parent}>
-        <Element value={1} />
-        <Element value={2} />
-      </Provider>
-    )
+    const context = new Context(parent).push();
+
+    const remove1 = context.has(new Child())!;
+    const remove2 = context.has(new Child())!;
   
     expect(didAddChild).toHaveBeenCalledTimes(2);
     expect(Array.from(parent.children)).toEqual([
       expect.any(Child),
       expect.any(Child)
     ]);
+
+    remove1();
+    remove2();
   
-    render.update(
-      <Provider for={parent}>
-        <Element value={1} />
-      </Provider>
-    )
+    await expect(parent).toHaveUpdated();
   
-    await expect(parent).toUpdate();
+    const remove3 = context.has(new Child())!;
   
-    expect(didRemove).toHaveBeenCalledTimes(1);
+    expect(didRemove).toHaveBeenCalledTimes(2);
     expect(Array.from(parent.children)).toEqual([
       expect.any(Child)
     ]);
   
-    render.unmount();
-  
-    await expect(parent).toUpdate();
+    await expect(parent).toHaveUpdated();
     expect(didRemove).toHaveBeenCalledTimes(2);
+
+    remove3();
   })
   
   it("will not register if returns false", async () => {
@@ -237,32 +195,27 @@ describe("collection", () => {
       children = has(Child, hasChild);
     }
   
-    const Element = Child.as(() => null);
+    // const Element = Child.as(() => null);
     const hasChild = jest.fn(() => false);
     const parent = Parent.new();
+
+    const context = new Context(parent);
+
+    context.has(new Child());
+    context.has(new Child());
     
-    const render = create(
-      <Provider for={parent}>
-        <Element key={1} />
-        <Element key={2} />
-      </Provider>
-    )
-  
     expect(hasChild).toHaveBeenCalledTimes(2);
     expect(parent.children.size).toBe(0);
-  
-    render.update(
-      <Provider for={parent}>
-        <Element key={3} />
-      </Provider>
-    )
+
+    context.has(new Child());
   
     await expect(parent).not.toUpdate();
     expect(hasChild).toHaveBeenCalledTimes(3);
     expect(parent.children.size).toBe(0);
   });
-
-  it.todo("will unwrap children on export")
 })
 
-it.todo("will require values as props if has-instruction")
+it.todo("will unwrap children on export")
+it.todo("will require values as props if has-instruction");
+it.todo("will register implicit");
+it.todo("will register for implicit");

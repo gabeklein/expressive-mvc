@@ -1,18 +1,16 @@
-import { Context, add } from '@expressive/mvc';
+import { Expects } from '../context';
+import { Model } from '../model';
+import { add } from './add';
 
-import { Model } from '.';
+type Callback<T = any> = (model: T) => void | boolean | (() => void);
 
-type RegisterCallback<T = any> = (model: T) => void | boolean | (() => void);
-
-const Expects = new WeakMap<Model, Map<Model.Type, RegisterCallback>>();
-
-export function has <T extends Model> (type: Model.Type<T>, one: true): T;
-export function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
-export function has <T extends Model> (type: Model.Type<T>, arg?: RegisterCallback<T>): Set<T>;
+function has <T extends Model> (type: Model.Type<T>, one: true): T;
+function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
+function has <T extends Model> (type: Model.Type<T>, arg?: Callback<T>): Set<T>;
   
-export function has <T extends Model> (
+function has <T extends Model> (
   type: Model.Type<T>,
-  argument?: boolean | RegisterCallback<T>){
+  argument?: boolean | Callback<T>){
 
   return add<T>((key, subject, state) => {
     let map = Expects.get(subject);
@@ -22,15 +20,20 @@ export function has <T extends Model> (
 
     if(typeof argument == "boolean"){
       map.set(type, (model: T) => {
+        const remove = () => {
+          drop();
+
+          if(state[key] === model)
+            delete state[key];
+        }
+
         // if(state[key])
         //   throw new Error(`Tried to register new ${model.constructor} in ${subject}.${key} but one already exists.`);
         
         subject.set(key as any, model);
-  
-        model.get(null, () => {
-          if(state[key] === model)
-            delete state[key];
-        })
+        const drop = model.get(null, remove);
+
+        return remove;
       });
 
       return { get: argument }
@@ -51,14 +54,20 @@ export function has <T extends Model> (
 
       children.add(model);
       subject.set(key);
+      
+      const done = () => {
+        drop();
 
-      model.get(null, () => {
         if(typeof remove == "function")
           remove();
 
         children.delete(model);
         subject.set(key);
-      })
+      }
+
+      const drop = model.get(null, done);
+
+      return done;
     });
 
     return {
@@ -67,10 +76,4 @@ export function has <T extends Model> (
   })
 }
 
-export function inject(model: Model, context: Context){
-  const expects = Expects.get(model);
-
-  if(expects)
-    for(let [T, callback] of expects)
-      context.put(T as Model.New, callback);
-}
+export { has }
