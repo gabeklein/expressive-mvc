@@ -12,7 +12,7 @@ function createContext(value: Context, children?: ReactNode){
   return createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
-function fromContext<T extends Model>(
+function usingContext<T extends Model>(
   this: Model.Type<T>,
   from: Model,
   resolve: (got: T | undefined) => void){
@@ -39,5 +39,5 @@ function setContext(model: Model, context: Context){
   Register.set(model, context);
 }
 
-export { createContext, fromContext, setContext, useContext };
+export { createContext, usingContext, setContext, useContext };
 export { useState, useEffect, useMemo } from 'react';
