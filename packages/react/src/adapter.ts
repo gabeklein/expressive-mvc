@@ -1,15 +1,15 @@
 import Model, { Context } from '@expressive/mvc';
-import { createContext as reactCreateContext, createElement, ReactNode, useContext as reactUseContext } from 'react';
+import React from 'react';
 
-const Shared = reactCreateContext(new Context());
+const Shared = React.createContext(new Context());
 const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
 function useContext(){
-  return reactUseContext(Shared);
+  return React.useContext(Shared);
 }
 
-function createContext(value: Context, children?: ReactNode){
-  return createElement(Shared.Provider, { key: value.id, value }, children);
+function createContext(value: Context, children?: React.ReactNode){
+  return React.createElement(Shared.Provider, { key: value.id, value }, children);
 }
 
 function usingContext<T extends Model>(
@@ -39,5 +39,13 @@ function setContext(model: Model, context: Context){
   Register.set(model, context);
 }
 
-export { createContext, usingContext, setContext, useContext };
-export { useState, useEffect, useMemo } from 'react';
+export const hooks = {
+  useContext,
+  setContext,
+  createContext,
+  useState: React.useState,
+  useEffect: React.useEffect,
+  useMemo: React.useMemo
+}
+
+export { createContext, usingContext, setContext };

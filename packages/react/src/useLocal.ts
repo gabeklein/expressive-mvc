@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { setContext, useContext, useEffect, useState } from './useContext';
+import { setContext, hooks } from './adapter';
 
 const PENDING = new WeakMap<Model, () => void>();
 
@@ -9,7 +9,7 @@ export function useLocal <T extends Model> (
   argument?: Model.Values<T> | ((instance: T) => void),
   repeat?: boolean){
 
-  const state = useState(() => {
+  const state = hooks.useState(() => {
     let apply: ((arg?: Model.Values<T> | ((instance: T) => void)) => void) | undefined;
     let enabled: boolean | undefined;
     let local: T;
@@ -54,12 +54,12 @@ export function useLocal <T extends Model> (
           enabled = true;
       }
       
-      const context = useContext();
+      const context = hooks.useContext();
 
       setContext(instance, context);
       context.has(instance);
 
-      useEffect(() => {
+      hooks.useEffect(() => {
         enabled = true;
         return () => {
           release();

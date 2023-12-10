@@ -1,15 +1,14 @@
 import { Context, Model } from '@expressive/mvc';
+import React from 'react';
 
-import { createContext, setContext, useContext, useEffect, useMemo } from './useContext';
-
-import type { FunctionComponentElement, ReactNode } from 'react';
+import { createContext, hooks } from './adapter';
 
 type Node = JSX.Element | Iterable<Node> | string | number | boolean | null | undefined;
 
 declare namespace Provider {
-  type Element = FunctionComponentElement<{
+  type Element = React.FunctionComponentElement<{
     value: Context;
-    children?: ReactNode;
+    children?: React.ReactNode;
   }>;
 
   type Item = Model | Model.New;
@@ -37,8 +36,8 @@ declare namespace Provider {
 function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.Element {
   let { for: included, use: assign } = props;
 
-  const ambient = useContext();
-  const context = useMemo(() => ambient.push(), []);
+  const ambient = hooks.useContext();
+  const context = hooks.useMemo(() => ambient.push(), []);
   
   context.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
@@ -46,10 +45,10 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
         if(K in model)
           model.set(K, (assign as any)[K]);
 
-    setContext(model, context);
+    hooks.setContext(model, context);
   });
 
-  useEffect(() => () => context.pop(), []);
+  hooks.useEffect(() => () => context.pop(), []);
 
   return createContext(context, props.children);
 }

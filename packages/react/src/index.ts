@@ -1,7 +1,7 @@
 import { Model } from '@expressive/mvc';
 
+import { usingContext } from './adapter';
 import { createComponent } from './component';
-import { usingContext } from './useContext';
 import { useLocal } from './useLocal';
 import { useRemote } from './useRemote';
 
