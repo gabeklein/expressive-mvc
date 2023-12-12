@@ -446,27 +446,6 @@ describe("compute mode", () => {
     // should evaluate by prioritiy
     expect(didCompute).toMatchObject(["A", "B", "C", "D"]);
   })
-  
-  it("will run a bound method", async () => {
-    class Hello extends Model {
-      friend = "World";
-  
-      greeting = get(() => this.generateGreeting);
-  
-      generateGreeting(){
-        return `Hello ${this.friend}!`;
-      }
-    }
-  
-    const test = Hello.new();
-  
-    expect(test.greeting).toBe("Hello World!");
-  
-    test.friend = "Foo";
-    await expect(test).toHaveUpdated();
-  
-    expect(test.greeting).toBe("Hello Foo!");
-  })
 
   describe("failures", () => {
     class Subject extends Model {
@@ -594,16 +573,16 @@ describe("compute mode", () => {
   })
 
   describe("method", () => {
-    class Test extends Model {
-      foo = 1;
-      bar = get(() => this.getBar);
-
-      getBar(){
-        return 1 + this.foo;
-      }
-    }
-
     it("will create computed via factory", async () => {
+      class Test extends Model {
+        foo = 1;
+        bar = get(this.getBar);
+  
+        getBar(){
+          return 1 + this.foo;
+        }
+      }
+
       const test = Test.new();
 
       expect(test.bar).toBe(2);
@@ -613,29 +592,79 @@ describe("compute mode", () => {
       await expect(test).toHaveUpdated();
       expect(test.bar).toBe(3);
     })
+  
+    it("will run a method bound to instance", async () => {
+      class Hello extends Model {
+        friend = "World";
+    
+        greeting = get(this.generateGreeting);
+    
+        generateGreeting(){
+          return `Hello ${this.friend}!`;
+        }
+      }
+    
+      const test = Hello.new();
+    
+      expect(test.greeting).toBe("Hello World!");
+    
+      test.friend = "Foo";
+      await expect(test).toHaveUpdated();
+    
+      expect(test.greeting).toBe("Hello Foo!");
+    })
 
     it("will use top-most method of class", () => {
-      class Extended extends Test {
+      class Test extends Model {
+        foo = 1;
+        bar = get(this.getBar);
+  
+        getBar(){
+          return 1 + this.foo;
+        }
+      }
+
+      class Test2 extends Test {
         getBar(){
           return 2 + this.foo;
         }
       }
 
-      const test = Extended.new();
+      const test = Test2.new();
 
       expect(test.bar).toBe(3);
     })
 
-    it("will provide property key to factory", () => {
+    it("will provide key and self to factory", () => {
+      const factory = jest.fn<"foo", [string, Test]>(() => "foo");
+
       class Test extends Model {
-        // TODO: why is key not implicit?
-        // @ts-expect-error
-        fooBar = get((key) => () => key);
+        fooBar = get(factory);
       }
 
       const test = Test.new();
 
-      expect(test.fooBar).toBe("fooBar");
+      expect(test.fooBar).toBe("foo");
+      expect(factory).toBeCalledWith("fooBar", test);
+    })
+
+    it("will subscribe from thisArg", async () => {
+      class Test extends Model {
+        foo = "foo";
+
+        fooBar = get((key: string, self: Test) => {
+          return self.foo;
+        });
+      }
+
+      const test = Test.new();
+
+      expect(test.fooBar).toBe("foo");
+
+      test.foo = "bar";
+      await expect(test).toHaveUpdated();
+
+      expect(test.foo).toBe("bar");
     })
   })
 })
