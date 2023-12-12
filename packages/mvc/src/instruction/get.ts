@@ -5,9 +5,7 @@ import { add } from './add';
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
 declare namespace get {
-  type Function<T, S = any> = (this: S, on: S) => T;
-
-  type Factory<R, T> = (this: T, property: string, on: T) => Function<R, T>;
+  type Function<T, S = any> = (this: S, on: S, key: string) => T;
 
   type Source<T extends Model = Model> = (resolve: (x: T) => void) => void;
 }
@@ -54,10 +52,10 @@ function get <R, T extends Model> (source: T, compute: (this: T, on: T) => R): R
  *
  * @param compute - Factory function to generate a getter to subscribe dependancies.
  */
-function get <R, T> (compute: (property: string, on: T) => (this: T, state: T) => R): R;
+function get <R, T> (compute: (this: T, state: T) => R): R;
  
 function get<R, T extends Model>(
-  arg0: T | get.Factory<R, T> | Type<T>,
+  arg0: T | get.Function<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
   return add<R>((key, subject) => {
@@ -94,7 +92,7 @@ function get<R, T extends Model>(
     }
 
     else if(typeof arg0 == "function")
-      arg1 = arg0.call(from, key, from);
+      arg1 = arg0;
 
     if(typeof arg1 == "function")
       return compute(subject, key, source, arg1);
@@ -139,7 +137,7 @@ function compute<T>(
     let next: T | undefined;
 
     try {
-      next = setter.call(proxy, proxy);
+      next = setter.call(proxy, proxy, key);
     }
     catch(err){
       console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
