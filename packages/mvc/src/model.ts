@@ -17,6 +17,8 @@ const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model>();
 
+const METHOD = new WeakMap<Function, Function>();
+
 const define = Object.defineProperty;
 
 declare namespace Model {
@@ -135,6 +137,19 @@ class Model {
 
       if(Type === Model)
         break;
+
+      const desc = Object.getOwnPropertyDescriptors(Type.prototype);
+
+      for(const key in desc){
+        let { value } = desc[key];
+
+        if(typeof value == "function" && key !== "constructor")
+          Object.defineProperty(Type.prototype, key, {
+            get(){
+              return value.bind(this.is);
+            }
+          });
+      }
 
       Type = Object.getPrototypeOf(Type);
     }
