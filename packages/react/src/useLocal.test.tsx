@@ -87,6 +87,32 @@ describe("hook", () => {
     hook.unmount();
     test.value = "baz";
   })
+
+  it("will bind methods to instance", async () => {
+    class Test extends Model {
+      current = 0;
+
+      action(){
+        this.current += 1;
+      }
+    }
+    
+    const hook = mockHook(() => {
+      const { action, current } = Test.use();
+
+      action();
+
+      return current;
+    });
+
+    expect(hook.output).toBe(0);    
+
+    await hook.update();
+
+    expect(hook.output).toBe(1);
+
+    hook.unmount();
+  });
 })
 
 describe("callback argument", () => {

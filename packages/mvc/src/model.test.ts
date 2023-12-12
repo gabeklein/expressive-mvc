@@ -724,6 +724,35 @@ describe("get method", () => {
       expect(mock).toBeCalled();
     })
 
+    it('will not subscribe from method', async () => {
+      class Test extends Model {
+        foo = 1;
+        bar = 2;
+        
+        action(){
+          void this.bar;
+        }
+      }
+
+      const test = Test.new();
+      const effect = jest.fn((self: Test) => {
+        self.action();
+        void self.foo;
+      })
+
+      test.get(effect);
+
+      test.foo++;
+
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
+
+      test.bar++;
+
+      await expect(test).toHaveUpdated();
+      expect(effect).toBeCalledTimes(2);
+    })
+
     describe("return value", () => {
       it("will callback on next update", async () => {
         class Test extends Model {

@@ -1,5 +1,5 @@
 import { effect } from '../control';
-import { fetch, Model, PARENT, push, update } from '../model';
+import { fetch, METHOD, Model, PARENT, push, update } from '../model';
 import { add } from './add';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
@@ -95,8 +95,10 @@ function get<R, T extends Model>(
         throw new Error(`New ${from} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
     }
 
-    else if(typeof arg0 == "function")
-      arg1 = (p, k) => arg0.call(p, k, p);
+    else if(typeof arg0 == "function"){
+      const fn = METHOD.get(arg0) || arg0;
+      arg1 = (p, k) => fn.call(p, k, p);
+    }
 
     if(typeof arg1 == "function")
       return compute(subject, key, source, arg1);
