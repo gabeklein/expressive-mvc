@@ -17,6 +17,9 @@ const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 /** Parent-child relationships. */
 const PARENT = new WeakMap<Model, Model>();
 
+/** Reference bound instance methods to real ones. */
+const METHOD = new WeakMap<any, any>();
+
 const define = Object.defineProperty;
 
 declare namespace Model {
@@ -135,6 +138,28 @@ class Model {
 
       if(Type === Model)
         break;
+
+      const desc = Object.getOwnPropertyDescriptors(Type.prototype);
+
+      for(const key in desc){
+        let { value } = desc[key];
+
+        if(typeof value == "function" && key !== "constructor")
+          Object.defineProperty(Type.prototype, key, {
+            get(){
+              const method = value.bind(this.is);
+              
+              METHOD.set(method, value);
+              
+              define(this.is, key, {
+                value: method,
+                configurable: false
+              });
+              
+              return method;
+            }
+          });
+      }
 
       Type = Object.getPrototypeOf(Type);
     }
@@ -514,6 +539,7 @@ export {
   update,
   fetch,
   push,
+  METHOD,
   Model,
   PARENT,
   STATE,
