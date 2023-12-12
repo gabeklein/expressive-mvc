@@ -711,6 +711,19 @@ describe("get method", () => {
       expect(didCreate).toBeCalledWith(test);
     })
 
+    it('will work without Model.new', async () => {
+      const test = new Test();
+      const mock = jest.fn();
+
+      test.get(mock);
+
+      expect(mock).not.toBeCalled();
+
+      test.set("EVENT");
+
+      expect(mock).toBeCalled();
+    })
+
     describe("return value", () => {
       it("will callback on next update", async () => {
         class Test extends Model {
@@ -831,19 +844,6 @@ describe("get method", () => {
   
         expect(attempt).not.toThrowError();
       })
-    })
-
-    it('will work without Model.new', async () => {
-      const test = new Test();
-      const mock = jest.fn();
-
-      test.get(mock);
-
-      expect(mock).not.toBeCalled();
-
-      test.set("EVENT");
-
-      expect(mock).toBeCalled();
     })
 
     describe("suspense", () => {
@@ -989,7 +989,6 @@ describe("get method", () => {
         expect(mock).toBeCalledTimes(3);
       })
     });
-
   })
 })
 
