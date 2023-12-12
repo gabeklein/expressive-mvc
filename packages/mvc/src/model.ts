@@ -101,6 +101,15 @@ declare namespace Model {
     // TODO: Should this allow for numbers/symbol properties?
     (this: M, key: Model.Field<M> & string, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
+
+  /**
+   * Model constructor callback - is called when Model finishes intializing.
+   * Returned function will call when model is destroyed.
+   */
+  type Callback = (() => void | (() => void));
+
+  /** Model constructor argument */
+  type Argument = string | Callback;
 }
 
 interface Model {
@@ -112,7 +121,7 @@ interface Model {
 }
 
 class Model {
-  constructor(arg?: string | (() => void | (() => void))){
+  constructor(arg?: Model.Argument){
     const state = {} as Record<string | number | symbol, unknown>;
     let Type = this.constructor as Model.Type;
 
