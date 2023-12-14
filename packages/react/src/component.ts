@@ -15,7 +15,7 @@ export function createComponent<T extends Model, P extends Model.Values<T>> (
     return render(props);
   }) as Model.Component<T, P>;
 
-  Component.using = this;
+  Component.Model = this;
   Component.displayName = this.name;
   
   return Component;

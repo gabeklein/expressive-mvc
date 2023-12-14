@@ -41,7 +41,7 @@ declare module '@expressive/mvc' {
     interface Component<T extends Model, P extends Model.Values<T>> {
       (props: P): JSX.Element;
 
-      using: Model.Type<T>;
+      Model: Model.Type<T>;
       displayName: string;
     }
 
