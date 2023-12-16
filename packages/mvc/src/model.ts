@@ -144,24 +144,25 @@ class Model {
       for(const key in desc){
         let { value } = desc[key];
 
-        if(typeof value == "function" && key !== "constructor")
-          Object.defineProperty(Type.prototype, key, {
-            get(){
-              if(this.hasOwnProperty(key))
-                return value;
+        if(typeof value == "function" && key !== "constructor"){
+          const bind = (value: any) => {
+            const method = value.bind(this);
+            
+            METHOD.set(method, value);
+            
+            define(this, key, {
+              value: method,
+              configurable: false
+            });
+            
+            return method;
+          }
 
-              const method = value.bind(this.is);
-              
-              METHOD.set(method, value);
-              
-              define(this.is, key, {
-                value: method,
-                configurable: false
-              });
-              
-              return method;
-            }
+          Object.defineProperty(Type.prototype, key, {
+            get: () => this.hasOwnProperty(key) ? value : bind(value),
+            set: bind
           });
+        }
       }
 
       Type = Object.getPrototypeOf(Type);

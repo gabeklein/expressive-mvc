@@ -191,6 +191,22 @@ it("will not break super calls", () => {
   expect(test.greeting).toBe("Foo Bar Baz");
 });
 
+it("will allow method to be overwritten", () => {
+  class Test extends Model {
+    foo = "foo";
+
+    method(){
+      return this.foo;
+    }
+  }
+
+  const test = Test.new();
+
+  test.method = () => "bar";
+
+  expect(test.method()).toBe("bar");
+})
+
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;
