@@ -159,6 +159,38 @@ it('will destroy children with it', () => {
   expect(destroyed).toBeCalled();
 });
 
+it("will not break super calls", () => {
+  class Test extends Model {
+    greeting = "";
+
+    action(){
+      this.greeting += "Foo ";
+    }
+  }
+  
+  class Test2 extends Test {
+    action(){
+      super.action();
+      this.greeting += "Bar ";
+    }
+  }
+
+  class Test3 extends Test2 {
+    action(){
+      super.action();
+      this.greeting += "Baz";
+    }
+  }
+
+  const { is: test, action } = Test3.new();
+
+  expect(test.greeting).toBe("");    
+
+  action();
+
+  expect(test.greeting).toBe("Foo Bar Baz");
+});
+
 describe("subscriber", () => {
   class Subject extends Model {
     value = 1;

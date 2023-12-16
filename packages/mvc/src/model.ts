@@ -147,6 +147,9 @@ class Model {
         if(typeof value == "function" && key !== "constructor")
           Object.defineProperty(Type.prototype, key, {
             get(){
+              if(this.hasOwnProperty(key))
+                return value;
+
               const method = value.bind(this.is);
               
               METHOD.set(method, value);
