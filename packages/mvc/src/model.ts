@@ -33,19 +33,19 @@ declare namespace Model {
   type Field<T> = Exclude<keyof T, keyof Model>;
 
   /** Any valid key for controller, including but not limited to Field<T>. */
-  type Key<T> = Field<T> | (string & {}) | number | symbol;
+  type Event<T> = Field<T> | (string & {}) | number | symbol;
 
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
   /** Value for a property managed by a controller. */
-  type Value<T extends Model, K extends Key<T>> =
+  type Value<T extends Model, K extends Event<T>> =
     K extends keyof T ? Export<T[K]> : unknown;
 
   type OnEvent<T extends Model> =
     (this: T, key: unknown, source: T) => (() => void) | void | null;
 
-  type OnUpdate<T extends Model, K extends Key<T>> =
+  type OnUpdate<T extends Model, K extends Event<T>> =
     (this: T, value: Value<T, K>, key: K, thisArg: K) => void;
 
   /**
@@ -74,7 +74,7 @@ declare namespace Model {
    * 
    * @returns A callback function which will be called when this effect is stale.
    */
-  type Effect<T> = (this: T, current: T, update: Set<Model.Key<T>>) =>
+  type Effect<T> = (this: T, current: T, update: Set<Model.Event<T>>) =>
     EffectCallback | Promise<void> | null | void;
 
   /**
@@ -220,7 +220,7 @@ class Model {
    * @param key - Property to get value of.
    * @param required - If true, will throw an error if property is not available.
    */
-  get<T extends Model.Key<this>>(key: T, required?: boolean): Model.Value<this, T>;
+  get<T extends Model.Event<this>>(key: T, required?: boolean): Model.Value<this, T>;
 
   /**
    * Run a function when a property is updated.
@@ -228,7 +228,7 @@ class Model {
    * @param key - Property to watch for updates.
    * @param callback - Function to call when property is updated.
    */
-  get<T extends Model.Key<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
+  get<T extends Model.Event<this>>(key: T, callback: Model.OnUpdate<this, T>): () => void;
 
   /**
    * Check if model is expired.
@@ -249,7 +249,7 @@ class Model {
     const self = this.is;
 
     if(typeof arg1 == "function"){
-      let pending = new Set<Model.Key<this>>();
+      let pending = new Set<Model.Event<this>>();
 
       return effect(self, (state) => {
         const cb = arg1.call(state, state, pending);
@@ -307,7 +307,7 @@ class Model {
    *
    * @returns Promise which resolves object with updated values. Is `undefined` if there is no update.
    **/
-  set(): PromiseLike<Model.Key<this>[]> | undefined;
+  set(): PromiseLike<Model.Event<this>[]> | undefined;
 
   /**
    * Call a function when update occurs.
@@ -343,7 +343,7 @@ class Model {
    * @param key - Property or event to dispatch.
    * @returns Promise which resolves an array of keys which were updated.
    */
-  set(key: Model.Key<this>): PromiseLike<Model.Key<this>[]>;
+  set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
    * Update a property with value. 
@@ -356,7 +356,7 @@ class Model {
     key: K,
     value?: Model.Value<this, K>,
     silent?: boolean
-  ): PromiseLike<Model.Key<this>[]> | undefined;
+  ): PromiseLike<Model.Event<this>[]> | undefined;
 
   set(arg1?: Model.OnEvent<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
@@ -377,7 +377,7 @@ class Model {
         push(self, arg1);
 
     if(PENDING.has(self))
-      return <PromiseLike<Model.Key<this>[]>> {
+      return <PromiseLike<Model.Event<this>[]>> {
         then: (res) => new Promise<any>(res => {
           const remove = addListener(self, key => {
             if(key !== true){
