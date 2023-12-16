@@ -443,6 +443,14 @@ class Model {
 
     throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
   }
+
+  static get key(): Model.Type | symbol {
+    return this;
+  }
+
+  static set key(value: symbol){
+    define(this, "key", { value });
+  }
 }
 
 define(Model.prototype, "toString", {

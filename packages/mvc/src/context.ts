@@ -37,11 +37,13 @@ class Context {
 
   public key(T: Model.Type, upstream?: boolean){
     const table = upstream ? this.upstream : this.downstream;
-    let key = table.get(T);
+    const { key: K } = T as typeof Model;
+
+    let key = table.get(K);
 
     if(!key){
-      key = Symbol(T.name + (upstream ? " request" : ""));
-      table.set(T, key);
+      key = Symbol(K.name + (upstream ? " request" : ""));
+      table.set(K, key);
     }
 
     return key as keyof this;
