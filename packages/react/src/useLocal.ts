@@ -65,7 +65,7 @@ export function useLocal <T extends Model> (
           release();
           instance.set(null);
         }
-      }, []);
+      }, [String(instance)]);
 
       return local; 
     };

@@ -17,6 +17,11 @@ function has <T extends Model> (
   return add<T>((key, subject, state) => {
     if(typeof argument == "boolean"){
       Context.request(type, subject, model => {
+        if(subject.get(null)){
+          debugger;
+          return;
+        }
+
         const remove = () => {
           drop();
 
@@ -24,9 +29,6 @@ function has <T extends Model> (
             delete state[key];
         }
 
-        // if(state[key])
-        //   throw new Error(`Tried to register new ${model.constructor} in ${subject}.${key} but one already exists.`);
-        
         subject.set(key as any, model);
         const drop = model.get(null, remove);
 

@@ -2,6 +2,8 @@ import { Model, PARENT, uid } from './model';
 
 const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) | void>>();
 
+export const Nope = new WeakSet<Function>();
+
 declare namespace Context {
   type Input = 
     | Model
@@ -19,6 +21,10 @@ class Context {
   
     if(!map)
       Expects.set(from, map = new Map());
+
+    from.get(null, () => {
+      Nope.add(callback);
+    })
   
     map.set(type, callback);
   }
@@ -102,9 +108,13 @@ class Context {
       const expects = Expects.get(model);
     
       if(expects)
-        for(let [T, callback] of expects)
+        for(let [T, callback] of expects){
+          if(Nope.has(callback))
+            debugger;
+      
           this.put(T as Model.New, callback);
-  
+        }
+
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
           this.add(value as Model, true);
