@@ -2,8 +2,6 @@ import { Model } from '@expressive/mvc';
 
 import { setContext, useContext, useEffect, useState } from './useContext';
 
-const PENDING = new WeakMap<Model, () => void>();
-
 export function useLocal <T extends Model> (
   this: Model.New<T>,
   argument?: Model.Values<T> | ((instance: T) => void),
@@ -13,22 +11,17 @@ export function useLocal <T extends Model> (
     let enabled: boolean | undefined;
     let local: T;
 
-    const instance = new this();
-    const apply = () => {
+    function apply(this: T){
       if(typeof argument == "function")
-        argument(instance);
+        argument(this);
 
       else if(argument)
-        for(const key in instance)
+        for(const key in this)
           if(argument.hasOwnProperty(key))
-            instance[key] = (argument as any)[key];
+            this[key] = (argument as any)[key];
     }
 
-    if(argument)
-      PENDING.set(instance, apply);
-
-    instance.set(0);
-
+    const instance = this.new(apply);
     const release = instance.get(current => {
       local = current;
 
@@ -41,7 +34,7 @@ export function useLocal <T extends Model> (
 
       if(repeat && enabled){
         enabled = false;
-        apply();
+        apply.call(instance);
 
         const update = instance.set();
 
@@ -70,13 +63,3 @@ export function useLocal <T extends Model> (
 
   return state[0](argument);
 }
-
-// This occurs after instructions but before state loads values.
-Model.on((_, subject) => {
-  const pending = PENDING.get(subject);
-
-  if(pending)
-    pending();
-
-  return null;
-})

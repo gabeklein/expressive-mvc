@@ -93,34 +93,6 @@ describe("model", () => {
     effect.mockClear();
   });
   
-  // Bug is covered by more generic test.
-  // Test is to cover refactor but may be removed in future.
-  it('will not duplicate update on assignment', () => {
-    class Parent extends Model {
-      child = use(Child);
-    }
-  
-    class Child extends Model {
-      constructor(public foo = "foo"){
-        super();
-      }
-    }
-  
-    const parent = Parent.new();
-    const onUpdate = jest.fn();
-  
-    parent.set(onUpdate);
-    
-    expect(parent.child.foo).toBe("foo");
-  
-    const child = Child.new("bar");
-  
-    parent.child = child;
-  
-    expect(parent.child.foo).toBe("bar");
-    expect(onUpdate).toBeCalledTimes(1);
-  })
-  
   it('will accept instance', async () => {
     class Parent extends Model {
       child = use(new Child());

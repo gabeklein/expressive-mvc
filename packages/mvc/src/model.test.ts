@@ -19,9 +19,9 @@ it('will send arguments to constructor', () => {
   const gotValue = jest.fn();
 
   class Test extends Model {
-    constructor(value: string){
-      gotValue(value);
-      super();
+    constructor(arg: Model.Argument){
+      gotValue(arg);
+      super(arg);
     }
   }
 

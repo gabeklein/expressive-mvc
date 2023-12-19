@@ -45,8 +45,8 @@ it("will pass props to model", () => {
   class Test extends Model {
     foo = "foo";
 
-    constructor(){
-      super();
+    constructor(arg?: Model.Argument){
+      super(arg);
       this.set(didUpdateFoo);
     }
   }

@@ -185,8 +185,9 @@ describe("callback argument", () => {
     });
 
     class Test extends Model {
-      constructor(){
-        super(effect);
+      constructor(arg?: Model.Argument){
+        super(arg);
+        this.get(effect);
       }
     }
 
@@ -228,8 +229,7 @@ describe("props argument", () => {
 
     expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
 
-    // TODO: Can this update be supressed?
-    await expect(hook.output).toHaveUpdated();
+    await expect(hook.output).not.toHaveUpdated();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" })
@@ -252,8 +252,7 @@ describe("props argument", () => {
 
     expect(hook.output).toMatchObject({ foo: "foo", bar: "bar" });
     
-    // TODO: Can this update be supressed?
-    await expect(hook.output).toHaveUpdated();
+    await expect(hook.output).not.toHaveUpdated();
 
     hook.update(() => {
       return Test.use({ foo: "bar", bar: "foo" }, true)
@@ -328,25 +327,5 @@ describe("props argument", () => {
 
     expect(output.foo).toBe("bar");
     expect(mock).toHaveBeenCalledWith("bar", "foo");
-  })
-
-  it("will apply props before effects", () => {
-    const init = jest.fn();
-
-    class Test extends Model {
-      foo = "foo";
-
-      constructor(){
-        super(() => {
-          init(this.foo);
-        });
-      }
-    }
-
-    mockHook(() => {
-      return Test.use({ foo: "bar" });
-    });
-
-    expect(init).toHaveBeenCalledWith("bar");
   })
 })

@@ -682,8 +682,8 @@ describe.skip("replaced source", () => {
   })
 
   class Source extends Model {
-    constructor(public value: string){
-      super();
+    constructor(public arg: Model.Argument){
+      super(arg);
       source = this;
 
       if(gotContext)
@@ -693,7 +693,7 @@ describe.skip("replaced source", () => {
 
   class Test extends Model {
     greeting = get(Source, source => {
-      return `Hello ${source.value}!`;
+      return `Hello ${source.arg}!`;
     })
   }
 
@@ -703,7 +703,7 @@ describe.skip("replaced source", () => {
   
     expect(test.greeting).toBe("Hello Foo!");
 
-    oldSource.value = "Baz";
+    oldSource.arg = "Baz";
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
 
@@ -712,7 +712,7 @@ describe.skip("replaced source", () => {
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
-    newSource.value = "Baz";
+    newSource.arg = "Baz";
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
   })
@@ -728,7 +728,7 @@ describe.skip("replaced source", () => {
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
-    oldSource.value = "Baz";
+    oldSource.arg = "Baz";
     await expect(test).not.toHaveUpdated();
   })
 })

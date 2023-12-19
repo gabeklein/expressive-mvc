@@ -27,7 +27,16 @@ declare namespace Model {
   type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
   /** A type of Model which may be created without constructor arguments. */
-  type New<T extends Model = Model> = (new () => T) & typeof Model;
+  type New<T extends Model = Model> = (new (arg?: Model.Argument) => T) & typeof Model;
+
+  /**
+   * Model constructor callback - is called when Model finishes intializing.
+   * Returned function will call when model is destroyed.
+   */
+  type Callback = (() => (() => void) | void);
+
+  /** Model constructor argument */
+  type Argument = string | Callback | undefined;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
@@ -104,15 +113,6 @@ declare namespace Model {
     // TODO: Should this allow for numbers/symbol properties?
     (this: M, key: Model.Field<M> & string, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
-
-  /**
-   * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will call when model is destroyed.
-   */
-  type Callback = (() => void | (() => void));
-
-  /** Model constructor argument */
-  type Argument = string | Callback;
 }
 
 interface Model {
@@ -171,6 +171,9 @@ class Model {
     addListener(this, () => {
       let onDone: (() => void) | void;
 
+      if(typeof arg == "function")
+        onDone = arg.call(this);
+
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
@@ -185,9 +188,6 @@ class Model {
           });
         }
       }
-
-      if(typeof arg == "function")
-        onDone = arg();
     
       addListener(this, () => {
         for(const [_, value] of this)
@@ -405,10 +405,10 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends typeof Model> (this: T, ...args: ConstructorParameters<T>){
-    const instance = new this(...args);
+  static new <T extends Model> (this: Model.New<T>, arg?: Model.Argument){
+    const instance = new this(arg);
     event(instance, true);
-    return instance as InstanceType<T>;
+    return instance;
   }
 
   /**
