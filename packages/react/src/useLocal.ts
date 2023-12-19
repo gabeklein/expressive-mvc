@@ -10,25 +10,22 @@ export function useLocal <T extends Model> (
   repeat?: boolean){
 
   const state = useState(() => {
-    let apply: ((arg?: Model.Values<T> | ((instance: T) => void)) => void) | undefined;
     let enabled: boolean | undefined;
     let local: T;
 
     const instance = new this();
+    const apply = () => {
+      if(typeof argument == "function")
+        argument(instance);
+
+      else if(argument)
+        for(const key in instance)
+          if(argument.hasOwnProperty(key))
+            instance[key] = (argument as any)[key];
+    }
 
     if(argument)
-      PENDING.set(instance, apply = () => {
-        if(typeof argument == "function")
-          argument(instance);
-  
-        else if(argument)
-          for(const key in instance)
-            if(argument.hasOwnProperty(key))
-              instance[key] = (argument as any)[key];
-  
-        if(!repeat)
-          apply = undefined;
-      });
+      PENDING.set(instance, apply);
 
     instance.set(0);
 
@@ -42,7 +39,7 @@ export function useLocal <T extends Model> (
     return (props?: Model.Values<T> | ((instance: T) => void)) => {
       argument = props;
 
-      if(apply && enabled){
+      if(repeat && enabled){
         enabled = false;
         apply();
 
