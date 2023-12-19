@@ -174,11 +174,21 @@ class Model {
       if(typeof arg == "function")
         onDone = arg.call(this);
 
+      if(typeof arg != "object")
+        arg = undefined;
+
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
         if("value" in desc){
-          state[key] = desc.value;
+          const value = arg && key in arg ? arg[key] : desc.value;
+
+          if(value instanceof Model){
+            PARENT.set(value, this);
+            event(value, true);
+          }
+          
+          state[key] = value;
           define(this, key, {
             configurable: false,
             set: (x) => update(this, key, x),

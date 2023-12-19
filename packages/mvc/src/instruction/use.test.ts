@@ -9,7 +9,7 @@ describe("model", () => {
   
   class Parent extends Model {
     value = "foo";
-    child = use(Child);
+    child = new Child();
   }
   
   it('will subscribe recursively', async () => {
@@ -37,12 +37,12 @@ describe("model", () => {
     class Parent extends Model {
       value = "foo";
       empty = undefined;
-      child = use(Child);
+      child = new Child();
     }
   
     class Child extends Model {
       value = "foo"
-      grandchild = use(GrandChild);
+      grandchild = new GrandChild();
     }
   
     class GrandChild extends Model {
@@ -235,7 +235,7 @@ describe("model", () => {
     class Child extends Model {}
     class Unrelated extends Model {};
     class Parent extends Model {
-      child = use(Child);
+      child = new Child();
     }
   
     const parent = Parent.new("ID");
