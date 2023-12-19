@@ -6,29 +6,14 @@ const PENDING = new WeakMap<Model, () => void>();
 
 export function useLocal <T extends Model> (
   this: Model.New<T>,
-  argument?: Model.Values<T> | ((instance: T) => void),
+  argument?: Model.Argument<T>,
   repeat?: boolean){
 
   const state = useState(() => {
-    let apply: ((arg?: Model.Values<T> | ((instance: T) => void)) => void) | undefined;
     let enabled: boolean | undefined;
     let local: T;
 
-    const instance = new this();
-
-    if(argument)
-      PENDING.set(instance, apply = () => {
-        if(typeof argument == "function")
-          argument(instance);
-  
-        else if(argument)
-          for(const key in instance)
-            if(argument.hasOwnProperty(key))
-              instance[key] = (argument as any)[key];
-  
-        if(!repeat)
-          apply = undefined;
-      });
+    const instance = new this(argument);
 
     instance.set(0);
 
@@ -39,12 +24,19 @@ export function useLocal <T extends Model> (
         state[1]((x: Function) => x.bind(null));
     });
 
-    return (props?: Model.Values<T> | ((instance: T) => void)) => {
+    return (props?: Model.Argument<T>) => {
       argument = props;
 
-      if(apply && enabled){
+      if(repeat && enabled){
         enabled = false;
-        apply();
+        
+      if(typeof props == "function")
+        props.call(instance, instance);
+
+      else if(argument)
+        for(const key in instance)
+          if(argument.hasOwnProperty(key))
+            instance[key] = (argument as any)[key];
 
         const update = instance.set();
 

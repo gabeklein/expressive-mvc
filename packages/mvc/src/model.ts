@@ -20,6 +20,8 @@ const PARENT = new WeakMap<Model, Model>();
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
 
+const SEEN = new WeakSet<Model.Type>();
+
 const define = Object.defineProperty;
 
 declare namespace Model {
@@ -27,7 +29,16 @@ declare namespace Model {
   type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
   /** A type of Model which may be created without constructor arguments. */
-  type New<T extends Model = Model> = (new () => T) & typeof Model;
+  type New<T extends Model = Model> = (new (arg?: Model.Argument<T>) => T) & typeof Model;
+
+  /**
+   * Model constructor callback - is called when Model finishes intializing.
+   * Returned function will call when model is destroyed.
+   */
+  type Callback<T extends Model> = (this: T, model: T) => (() => void) | void;
+
+  /** Model constructor argument */
+  type Argument<T extends Model = Model> = string | Callback<T> | { [key: string]: unknown };
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
@@ -104,15 +115,6 @@ declare namespace Model {
     // TODO: Should this allow for numbers/symbol properties?
     (this: M, key: Model.Field<M> & string, thisArg: M, state: Model.State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
-
-  /**
-   * Model constructor callback - is called when Model finishes intializing.
-   * Returned function will call when model is destroyed.
-   */
-  type Callback = (() => void | (() => void));
-
-  /** Model constructor argument */
-  type Argument = string | Callback;
 }
 
 interface Model {
@@ -136,6 +138,9 @@ class Model {
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
 
+      if(SEEN.has(Type))
+        continue;
+      
       if(Type === Model)
         break;
 
@@ -171,6 +176,12 @@ class Model {
     addListener(this, () => {
       let onDone: (() => void) | void;
 
+      if(typeof arg == "function")
+        onDone = arg.call(this, this);
+
+      if(typeof arg == "object")
+        Object.assign(this, arg);
+
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
@@ -185,9 +196,6 @@ class Model {
           });
         }
       }
-
-      if(typeof arg == "function")
-        onDone = arg();
     
       addListener(this, () => {
         for(const [_, value] of this)
