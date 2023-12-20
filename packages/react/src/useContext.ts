@@ -1,4 +1,4 @@
-import Model, { Context } from '@expressive/mvc';
+import { Context, Model } from '@expressive/mvc';
 import { createContext as reactCreateContext, createElement, ReactNode, useContext as reactUseContext } from 'react';
 
 const Shared = reactCreateContext(new Context());

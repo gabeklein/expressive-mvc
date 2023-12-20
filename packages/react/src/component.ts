@@ -1,4 +1,4 @@
-import Model from '@expressive/mvc';
+import { Model } from '@expressive/mvc';
 import { ReactNode } from 'react';
 
 export function createComponent<T extends Model, P extends Model.Values<T>> (

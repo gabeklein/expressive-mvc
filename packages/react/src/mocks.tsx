@@ -1,8 +1,7 @@
-import { Model } from '@expressive/mvc';
 import React, { Suspense } from 'react';
 import { act, create } from 'react-test-renderer';
 
-import { Provider } from './provider';
+import { Model, Provider } from '.';
 
 export function mockAsync<T = void>(){
   const pending = new Set<[Function, Function]>();
