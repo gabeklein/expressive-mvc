@@ -17,17 +17,17 @@ function has <T extends Model> (
   return add<T>((key, subject, state) => {
     if(typeof argument == "boolean"){
       Context.request(type, subject, model => {
+        // Might like to throw if already exists, but race-condition
+        // can prevent us from knowing if previous model is removed.
+
+        subject.set(key as any, model);
+
         const remove = () => {
           drop();
 
           if(state[key] === model)
             delete state[key];
         }
-
-        // if(state[key])
-        //   throw new Error(`Tried to register new ${model.constructor} in ${subject}.${key} but one already exists.`);
-        
-        subject.set(key as any, model);
         const drop = model.get(null, remove);
 
         return remove;
