@@ -36,13 +36,20 @@ declare namespace Model {
   type Callback = (() => (() => void) | void);
 
   /** Model constructor argument */
-  type Argument = string | Callback | undefined;
+  type Argument = string | Callback | Record<string, unknown> | undefined;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
 
   /** Any valid key for controller, including but not limited to Field<T>. */
   type Event<T> = Field<T> | (string & {}) | number | symbol;
+
+  /** Object overlay which may be used to override values and methods while creating model. */
+  type Assign<T> = {
+    [K in Exclude<keyof T, keyof Model>]?: T[K] extends (...args: any[]) => infer R 
+      ? (this: T, ...args: Parameters<T[K]>) => ReturnType<T[K]> 
+      : T[K];
+  };
 
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;
@@ -126,6 +133,8 @@ interface Model {
 class Model {
   constructor(arg?: Model.Argument){
     const state = {} as Record<string | number | symbol, unknown>;
+    const methods = [] as string[];
+
     let Type = this.constructor as Model.Type;
 
     define(this, "is", { value: this });
@@ -139,32 +148,7 @@ class Model {
       if(Type === Model)
         break;
 
-      const desc = Object.getOwnPropertyDescriptors(Type.prototype);
-
-      for(const key in desc){
-        let { value } = desc[key];
-
-        if(typeof value == "function" && key !== "constructor"){
-          const bind = (value: any) => {
-            const method = value.bind(this);
-            
-            METHOD.set(method, value);
-            
-            define(this, key, {
-              value: method,
-              configurable: false
-            });
-            
-            return method;
-          }
-
-          Object.defineProperty(Type.prototype, key, {
-            get: () => this.hasOwnProperty(key) ? value : bind(value),
-            set: bind
-          });
-        }
-      }
-
+      methods.push(...bindMethods(Type.prototype));
       Type = Object.getPrototypeOf(Type);
     }
 
@@ -173,6 +157,9 @@ class Model {
 
       if(typeof arg == "function")
         onDone = arg.call(this);
+      else if(typeof arg == "object")
+        for(const key of Object.keys(this).concat(methods))
+          (this as any)[key] = arg[key];
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -405,6 +392,8 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
+  static new <T extends Model> (this: Model.New<T>, assign: Model.Assign<T>): T;
+  static new <T extends Model> (this: Model.New<T>, arg?: string | Model.Callback): T;
   static new <T extends Model> (this: Model.New<T>, arg?: Model.Argument){
     const instance = new this(arg);
     event(instance, true);
@@ -532,6 +521,42 @@ function push(
 
   if(!silent)
     event(subject, key);
+}
+
+const SEEN = new WeakMap<{}, string[]>();
+
+function bindMethods(prototype: {}){
+  let keys = SEEN.get(prototype);
+
+  if(!keys){
+    const desc = Object.getOwnPropertyDescriptors(prototype);
+    
+    SEEN.set(prototype, keys = []);
+
+    for(const key in desc)
+      if(key != "constructor" && "value" in desc[key]){
+        let { value } = desc[key];
+
+        keys.push(key);
+        Object.defineProperty(prototype, key, {
+          set: bind,
+          get(){
+            return this.hasOwnProperty(key) ? value : bind.call(this, value)
+          }
+        });
+      
+        function bind(this: Model, method: Function){
+          const value = method.bind(this.is);
+          
+          METHOD.set(value, method);
+          define(this.is, key, { value, writable: true });
+          
+          return value;
+        }
+      }
+  }
+  
+  return keys;
 }
 
 /** Random alphanumberic of length 6; always starts with a letter. */

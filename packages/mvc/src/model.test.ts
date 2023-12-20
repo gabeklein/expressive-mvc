@@ -205,6 +205,10 @@ it("will allow method to be overwritten", () => {
   test.method = () => "bar";
 
   expect(test.method()).toBe("bar");
+
+  test.method = () => "baz";
+
+  expect(test.method()).toBe("baz");
 })
 
 describe("subscriber", () => {
@@ -1300,6 +1304,64 @@ describe("set method", () => {
     })
 
     it.todo("will throw clear error on bad update");
+  })
+})
+
+describe("new method (static)", () => {
+  it("will inject both properties and methods", () => {
+    class Test extends Model {
+      value = 1;
+
+      method(){
+        return this.value;
+      }
+    }
+
+    class Test2 extends Test {
+      method2(){
+        return this.value + 1;
+      }
+    }
+
+    const test = Test2.new({
+      value: 2,
+      method(){
+        return this.value + 1;
+      },
+      method2(){
+        return this.value - 1;
+      }
+    });
+
+    // expect are bound to instance
+    const { method, method2 } = test;
+
+    expect(test.value).toBe(2);
+    expect(method()).toBe(3);
+    expect(method2()).toBe(1);
+  })
+
+  it("will ignore non-applicable properties", () => {
+    class Test extends Model {
+      value = 1;
+
+      method(){
+        return this.value;
+      }
+    }
+
+    const test = Test.new({
+      value: 2,
+      method(){
+        return this.value + 1;
+      }
+    });
+    
+    expect(test.value).toBe(2);
+    expect(test.method()).toBe(3);
+
+    expect(test).not.toHaveProperty("notManaged");
+    expect(test).not.toHaveProperty("notMethod");
   })
 })
 
