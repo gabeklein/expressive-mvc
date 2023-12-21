@@ -343,11 +343,7 @@ class Model {
    * @param value - value to update property with (if the same as current, no update will occur)
    * @param silent - if true, will not notify listeners of an update
    */
-  set<K extends string>(
-    key: K,
-    value?: Model.Value<this, K>,
-    silent?: boolean
-  ): PromiseLike<Model.Event<this>[]> | undefined;
+  set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
 
   set(arg1?: Model.OnEvent<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
