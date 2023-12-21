@@ -33,7 +33,7 @@ declare namespace Model {
    * Model constructor callback - is called when Model finishes intializing.
    * Returned function will call when model is destroyed.
    */
-  type Callback<T extends Model = Model> = (this: T) => (() => void) | Assign<T> | void;
+  type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | void;
 
   /** Model constructor argument */
   type Argument = string | Callback | Record<string, unknown> | undefined;
@@ -152,7 +152,7 @@ class Model {
 
     addListener(this, () => {
       const apply = typeof arg == "function"
-        ? arg.call(this) : arg;
+        ? arg.call(this, this) : arg;
 
       if(typeof apply == "object")
         assign(this, apply as Model.Values<this>);
