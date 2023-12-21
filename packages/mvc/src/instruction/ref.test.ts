@@ -162,6 +162,26 @@ describe("property", () => {
       expect(state.ref).not.toBeUndefined();
     })
   })
+
+  it.skip('will subscribe if current accessed', async () => {
+    class Subject extends Model {
+      ref = ref<string>();
+    }
+
+    const test = Subject.new();
+    const effect = jest.fn(($: Subject) => {
+      void $.ref.current;
+    });
+    
+    test.get(effect);
+    
+    expect(effect).toBeCalledTimes(1);
+
+    test.ref("foobar");
+
+    await expect(test).toHaveUpdated();
+    expect(effect).toBeCalledTimes(2);
+  })
 })
 
 describe("proxy", () => {
