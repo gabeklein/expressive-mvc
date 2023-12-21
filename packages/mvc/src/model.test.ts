@@ -1305,6 +1305,66 @@ describe("set method", () => {
 
     it.todo("will throw clear error on bad update");
   })
+
+  describe("assign", () => {
+    it("will merge object into model", async () => {
+      class Test extends Model {
+        foo = "foo";
+        bar = "bar";
+      }
+
+      const test = Test.new();
+
+      test.set({ foo: "bar" });
+
+      await expect(test).toHaveUpdated("foo");
+
+      expect(test.foo).toBe("bar");
+      expect(test.bar).toBe("bar");
+    })
+
+    it("will merge methods into model", async () => {
+      class Test extends Model {
+        foo = "foo";
+
+        method(){
+          return this.foo;
+        }
+      }
+
+      const test = Test.new();
+
+      test.set({
+        foo: "bar",
+        method(){
+          return this.foo;
+        }
+      });
+      
+      await Promise.all([
+        expect(test).toHaveUpdated("foo"),
+        // method is not a managed property so will ignore update
+        // TODO: investigate if this behavior should change.
+        expect(test).not.toHaveUpdated("method")
+      ]);
+
+      expect(test.foo).toBe("bar");
+    })
+
+    it("will ignore properties not on model", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = Test.new();
+
+      test.set({ bar: "bar" });
+
+      await expect(test).not.toHaveUpdated();
+
+      expect(test).not.toHaveProperty("bar");
+    })
+  })
 })
 
 describe("new method (static)", () => {

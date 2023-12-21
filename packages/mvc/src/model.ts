@@ -133,10 +133,9 @@ interface Model {
 class Model {
   constructor(arg?: Model.Argument){
     const state = {} as Record<string | number | symbol, unknown>;
-    const methods = [] as string[];
-
     let Type = this.constructor as Model.Type;
-
+    
+    bind(Type);
     define(this, "is", { value: this });
 
     STATE.set(this, state);
@@ -148,7 +147,6 @@ class Model {
       if(Type === Model)
         break;
 
-      methods.push(...bindMethods(Type.prototype));
       Type = Object.getPrototypeOf(Type);
     }
 
@@ -158,8 +156,7 @@ class Model {
       if(typeof arg == "function")
         onDone = arg.call(this);
       else if(typeof arg == "object")
-        for(const key of Object.keys(this).concat(methods))
-          (this as any)[key] = arg[key];
+        assign(this, arg as Model.Values<this>);
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -337,6 +334,12 @@ class Model {
   set(key: Model.Event<this>): PromiseLike<Model.Event<this>[]>;
 
   /**
+   * Update mulitple properties at once. Merges argument with current state.
+   * Properties which are not managed by this controller will be ignored.
+   */
+  set(assign: Model.Assign<this>): PromiseLike<Model.Event<this>[]> | undefined;
+
+  /**
    * Update a property with value. 
    * 
    * @param key - property to update
@@ -345,7 +348,7 @@ class Model {
    */
   set<K extends string>(key: K, value?: Model.Value<this, K>, silent?: boolean): PromiseLike<Model.Event<this>[]> | undefined;
 
-  set(arg1?: Model.OnEvent<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
+  set(arg1?: Model.OnEvent<this> | Model.Assign<this> | string | number | symbol | null, arg2?: unknown, arg3?: boolean){
     const self = this.is;
 
     if(typeof arg1 == "function")
@@ -357,7 +360,10 @@ class Model {
     if(arg1 === null)
       return event(this, null);
 
-    if(arg1 !== undefined)  
+    if(typeof arg1 == "object")
+      assign(self, arg1 as Model.Values<this>);
+
+    else if(arg1 !== undefined)  
       if(1 in arguments)
         update(self, arg1, arg2, arg3);
       else
@@ -519,22 +525,31 @@ function push(
     event(subject, key);
 }
 
-const SEEN = new WeakMap<{}, string[]>();
+const METHODS = new WeakMap<Model.Type, string[]>([[Model, []]]);
 
-function bindMethods(prototype: {}){
-  let keys = SEEN.get(prototype);
+function assign<T extends Model>(to: T, values: Model.Values<T>){
+  const methods = METHODS.get(to.constructor as Model.Type)!;
+  const applicable = new Set(Object.keys(to).concat(methods));
+
+  for(const key in values)
+    if(applicable.has(key))
+      to[key as keyof T] = values[key as Model.Field<T>] as any;
+}
+
+function bind<T extends Model>(type: Model.Type<T>): string[] {
+  let keys = METHODS.get(type);
 
   if(!keys){
-    const desc = Object.getOwnPropertyDescriptors(prototype);
-    
-    SEEN.set(prototype, keys = []);
+    METHODS.set(type, keys = bind(Object.getPrototypeOf(type)).slice());
+
+    const desc = Object.getOwnPropertyDescriptors(type.prototype);
 
     for(const key in desc)
       if(key != "constructor" && "value" in desc[key]){
         let { value } = desc[key];
 
         keys.push(key);
-        Object.defineProperty(prototype, key, {
+        Object.defineProperty(type.prototype, key, {
           set: bind,
           get(){
             return this.hasOwnProperty(key) ? value : bind.call(this, value)
