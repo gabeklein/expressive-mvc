@@ -27,7 +27,7 @@ declare namespace Model {
   type Type<T extends Model = Model> = abstract new (...args: any[]) => T
 
   /** A type of Model which may be created without constructor arguments. */
-  type New<T extends Model = Model> = (new (arg?: Model.Argument) => T) & typeof Model;
+  type New<T extends Model = Model> = (new (arg?: Argument) => T) & typeof Model;
 
   /**
    * Model constructor callback - is called when Model finishes intializing.
@@ -90,7 +90,7 @@ declare namespace Model {
    * 
    * @returns A callback function which will be called when this effect is stale.
    */
-  type Effect<T> = (this: T, current: T, update: Set<Model.Event<T>>) =>
+  type Effect<T> = (this: T, current: T, update: Set<Event<T>>) =>
     EffectCallback | Promise<void> | null | void;
 
   /**
@@ -118,7 +118,7 @@ declare namespace Model {
    */
   type Instruction<T = any, M extends Model = any> =
     // TODO: Should this allow for numbers/symbol properties?
-    (this: M, key: Model.Field<M> & string, thisArg: M, state: Model.State<M>) =>
+    (this: M, key: Field<M> & string, thisArg: M, state: State<M>) =>
       Instruction.Descriptor<T> | Instruction.Getter<T> | void;
 }
 
