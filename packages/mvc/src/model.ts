@@ -49,7 +49,7 @@ declare namespace Model {
     [K in Exclude<keyof T, keyof Model>]?: T[K] extends (...args: any[]) => infer R 
       ? (this: T, ...args: Parameters<T[K]>) => ReturnType<T[K]> 
       : T[K];
-  };
+  } & Record<string, unknown>;
 
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;

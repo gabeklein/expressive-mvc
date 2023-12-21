@@ -1354,7 +1354,9 @@ describe("new method (static)", () => {
       value: 2,
       method(){
         return this.value + 1;
-      }
+      },
+      notManaged: 3,
+      notMethod: () => 4
     });
     
     expect(test.value).toBe(2);
