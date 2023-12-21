@@ -15,41 +15,6 @@ it('will extend custom class', () => {
   expect(state.value).toBe(1);
 })
 
-it('will send arguments to constructor', () => {
-  const gotValue = jest.fn();
-
-  class Test extends Model {
-    constructor(arg: Model.Argument){
-      gotValue(arg);
-      super(arg);
-    }
-  }
-
-  Test.new("Hello World!");
-
-  expect(gotValue).toBeCalledWith("Hello World!");
-})
-
-it("will use string argument as ID", () => {
-  const state = Model.new("ID");
-
-  expect(String(state)).toBe("ID");
-})
-
-it("will call constructor argument as lifecycle", () => {
-  const didDestroy = jest.fn();
-  const didCreate = jest.fn(() => didDestroy);
-
-  const state = Model.new(didCreate);
-
-  expect(didCreate).toBeCalledTimes(1);
-  expect(didDestroy).not.toBeCalled();
-
-  state.set(null);
-
-  expect(didDestroy).toBeCalledTimes(1);
-})
-
 it('will update on assignment', async () => {
   class Subject extends Model {
     value = 1;
@@ -144,7 +109,7 @@ it('will iterate over properties', () => {
   expect(mock).toBeCalledWith("baz", 3)
 })
 
-it('will destroy children with it', () => {
+it('will destroy children before self', () => {
   class Nested extends Model {}
   class Test extends Model {
     nested = use(Nested);
@@ -1368,6 +1333,55 @@ describe("set method", () => {
 })
 
 describe("new method (static)", () => {
+  it('will send arguments to constructor', () => {
+    const gotValue = jest.fn();
+  
+    class Test extends Model {
+      constructor(arg: Model.Argument){
+        gotValue(arg);
+        super(arg);
+      }
+    }
+  
+    Test.new("Hello World!");
+  
+    expect(gotValue).toBeCalledWith("Hello World!");
+  })
+  
+  it("will use string argument as ID", () => {
+    const state = Model.new("ID");
+  
+    expect(String(state)).toBe("ID");
+  })
+  
+  it("will call constructor argument as lifecycle", () => {
+    const didDestroy = jest.fn();
+    const didCreate = jest.fn(() => didDestroy);
+  
+    const state = Model.new(didCreate);
+  
+    expect(didCreate).toBeCalledTimes(1);
+    expect(didDestroy).not.toBeCalled();
+  
+    state.set(null);
+  
+    expect(didDestroy).toBeCalledTimes(1);
+  })
+  
+  it("will apply object returned by callback", () => {
+    class Test extends Model {
+      foo = "foo";
+    }
+  
+    const willCreate = jest.fn(() => ({
+      foo: "bar",
+    }));
+  
+    const state = Test.new(willCreate);
+    
+    expect(state.foo).toBe("bar");
+  })
+
   it("will inject both properties and methods", () => {
     class Test extends Model {
       value = 1;

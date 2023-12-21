@@ -33,7 +33,7 @@ declare namespace Model {
    * Model constructor callback - is called when Model finishes intializing.
    * Returned function will call when model is destroyed.
    */
-  type Callback = (() => (() => void) | void);
+  type Callback<T extends Model = Model> = (this: T) => (() => void) | Assign<T> | void;
 
   /** Model constructor argument */
   type Argument = string | Callback | Record<string, unknown> | undefined;
@@ -151,12 +151,11 @@ class Model {
     }
 
     addListener(this, () => {
-      let onDone: (() => void) | void;
+      const apply = typeof arg == "function"
+        ? arg.call(this) : arg;
 
-      if(typeof arg == "function")
-        onDone = arg.call(this);
-      else if(typeof arg == "object")
-        assign(this, arg as Model.Values<this>);
+      if(typeof apply == "object")
+        assign(this, apply as Model.Values<this>);
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -178,8 +177,8 @@ class Model {
           if(value instanceof Model && PARENT.get(value) === this)
             value.set(null);
 
-        if(typeof onDone == "function")
-          onDone();
+        if(typeof apply == "function")
+          apply();
         
         Object.freeze(state);
       }, null);
