@@ -3,7 +3,7 @@ import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 let FLATTEN: Map<any, any> | undefined;
 
 /** Register for all active models via string identifiers (usually unique). */
-const REGISTER = new WeakMap<Model, string>();
+const NAMES = new WeakMap<Model, string>();
 
 /** Internal state assigned to controllers. */
 const STATE = new WeakMap<Model, Record<string | number | symbol, unknown>>();
@@ -140,7 +140,7 @@ class Model {
     define(this, "is", { value: this });
 
     STATE.set(this, state);
-    REGISTER.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
+    NAMES.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -433,7 +433,7 @@ class Model {
 
 define(Model.prototype, "toString", {
   value(){
-    return REGISTER.get(this.is);
+    return NAMES.get(this.is);
   }
 });
 
