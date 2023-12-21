@@ -36,7 +36,7 @@ declare namespace Model {
   type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | void;
 
   /** Model constructor argument */
-  type Argument = string | Callback | Record<string, unknown> | undefined;
+  type Argument<T extends Model = Model> = string | Callback<T> | Assign<T> | undefined;
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
@@ -393,10 +393,8 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.New<T>, assign: Model.Assign<T>): T;
-  static new <T extends Model> (this: Model.New<T>, arg?: string | Model.Callback): T;
-  static new <T extends Model> (this: Model.New<T>, arg?: Model.Argument){
-    const instance = new this(arg);
+  static new <T extends Model> (this: Model.New<T>, arg?: Model.Argument<T>){
+    const instance = new this(arg as Model.Argument<Model>);
     event(instance, true);
     return instance;
   }
