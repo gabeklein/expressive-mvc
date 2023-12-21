@@ -23,14 +23,14 @@ declare namespace Provider {
   type NormalProps<E, I = Instance<E>> = {
     for: E;
     children?: Node;
-    use?: Model.Values<I>;
+    use?: Model.Assign<I>;
   }
 
   // FIX: This fails to exclude properties with same key but different type.
   type MultipleProps<T extends Item> = {
     for: Multiple<T>;
     children?: Node;
-    use?: Model.Values<Instance<T>>;
+    use?: Model.Assign<Instance<T>>;
   }
 }
 
@@ -42,9 +42,7 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
   
   context.include(included).forEach((isExplicit, model) => {
     if(assign && isExplicit)
-      for(const K in assign)
-        if(K in model)
-          model.set(K, (assign as any)[K]);
+      model.set(assign);
 
     setContext(model, context);
   });
