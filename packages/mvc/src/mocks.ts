@@ -25,6 +25,8 @@ export function mockWarn(){
 export function mockError(){
   const error = jest.spyOn(console, "error");
 
+  error.mockImplementation(() => {});
+
   afterEach(() => error.mockReset());
   afterAll(() => error.mockRestore());
 

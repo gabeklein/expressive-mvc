@@ -1381,6 +1381,37 @@ describe("new method (static)", () => {
     
     expect(state.foo).toBe("bar");
   })
+  
+  it("will ingore promise from lifecycle", () => {
+    const didCreate = jest.fn(() => Promise.resolve());
+  
+    Model.new(didCreate);
+  
+    expect(didCreate).toBeCalledTimes(1);
+  })
+  
+  it("will log error from rejected initializer", async () => {
+    // TODO: why does mock helper not work for this?
+    const error = jest.spyOn(console, "error");
+    const expects = new Error("Model lifecycle rejected.");
+    const didCreate = jest.fn(() => Promise.reject(expects));
+
+    error.mockImplementation(() => {});
+  
+    const test = Model.new(didCreate);
+  
+    expect(didCreate).toBeCalledTimes(1);
+    
+    await expect(test).not.toHaveUpdated();
+
+    // TODO: remove when hard ID can be applied.
+    expect(error).toBeCalledWith(
+      expect.stringMatching(/Async error in constructor for Model-\w{6}:/)
+    );
+    expect(error).toBeCalledWith(expects);
+
+    error.mockRestore();
+  })
 
   it("will inject both properties and methods", () => {
     class Test extends Model {

@@ -33,7 +33,7 @@ declare namespace Model {
    * Model constructor callback - is called when Model finishes intializing.
    * Returned function will call when model is destroyed.
    */
-  type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | void;
+  type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | Promise<void> | void;
 
   /** Model constructor argument */
   type Argument<T extends Model = Model> = string | Callback<T> | Assign<T> | undefined;
@@ -154,7 +154,12 @@ class Model {
       const apply = typeof arg == "function"
         ? arg.call(this, this) : arg;
 
-      if(typeof apply == "object")
+      if(apply instanceof Promise)
+        apply.catch(err => {
+          console.error(`Async error in constructor for ${this}:`);
+          console.error(err);
+        });
+      else if(typeof apply == "object")
         assign(this, apply as Model.Values<this>);
 
       for(const key in this){
