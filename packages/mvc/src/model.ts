@@ -135,7 +135,7 @@ class Model {
     const state = {} as Record<string | number | symbol, unknown>;
     let Type = this.constructor as Model.Type;
     
-    bind(Type);
+    bindMethods(Type);
     define(this, "is", { value: this });
 
     STATE.set(this, state);
@@ -533,11 +533,11 @@ function assign<T extends Model>(to: T, values: Model.Values<T>){
       to[key as keyof T] = values[key as Model.Field<T>] as any;
 }
 
-function bind<T extends Model>(type: Model.Type<T>): string[] {
+function bindMethods<T extends Model>(type: Model.Type<T>): string[] {
   let keys = METHODS.get(type);
 
   if(!keys){
-    METHODS.set(type, keys = bind(Object.getPrototypeOf(type)).slice());
+    METHODS.set(type, keys = bindMethods(Object.getPrototypeOf(type)).slice());
 
     const desc = Object.getOwnPropertyDescriptors(type.prototype);
 
