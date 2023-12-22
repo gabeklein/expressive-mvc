@@ -11,7 +11,7 @@ export function useLocal <T extends Model> (
     let enabled: boolean | undefined;
     let local: T;
 
-    const instance = this.new(argument);
+    const instance = new this(argument as Model.Argument);
     const release = instance.get(current => {
       local = current;
 
@@ -40,6 +40,9 @@ export function useLocal <T extends Model> (
 
       setContext(instance, context);
       context.has(instance);
+
+      if(!local)
+        instance.set();
 
       useEffect(() => {
         enabled = true;

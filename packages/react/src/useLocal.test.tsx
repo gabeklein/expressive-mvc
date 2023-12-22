@@ -1,4 +1,4 @@
-import Model, { set } from '.';
+import Model, { get, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
 const error = jest
@@ -327,5 +327,25 @@ describe("props argument", () => {
 
     expect(output.foo).toBe("bar");
     expect(mock).toHaveBeenCalledWith("bar", "foo");
+  })
+})
+
+describe("context", () => {
+  it.only("will attach before model initializes", () => {
+    class Ambient extends Model {
+      foo = "foo";
+    }
+
+    class Test extends Model {
+      ambient = get(Ambient);
+
+      constructor(){
+        super(() => {
+          expect(this.ambient).toBeInstanceOf(Ambient);
+        });
+      }
+    }
+
+    mockHook(Ambient, () => Test.use());
   })
 })
