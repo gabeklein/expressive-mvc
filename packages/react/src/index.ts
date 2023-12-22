@@ -38,7 +38,7 @@ declare module '@expressive/mvc' {
       };
     }
 
-    interface Component<T extends Model, P extends Model.Values<T>> {
+    interface Component<T extends Model, P extends Model.Assign<T>> {
       (props: P): JSX.Element;
 
       Model: Model.Type<T>;
@@ -52,7 +52,7 @@ declare module '@expressive/mvc' {
      */
     function as <T extends Model, P = {}> (
       this: Model.New<T>, render: (using: T & P) => React.ReactNode
-    ): Component<T, P & Model.Values<T>>;
+    ): Component<T, P & Model.Assign<T>>;
 
     /** Fetch instance of this class from context. */
     function get <T extends Model> (this: Model.Type<T>, passive?: true): T;
@@ -64,9 +64,9 @@ declare module '@expressive/mvc' {
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, null>): NoVoid<R> | null;
 
-    function use <T extends Model> (this: Model.New<T>, apply?: Model.Values<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.New<T>, apply?: Model.Assign<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: ((instance: T) => void), repeat?: boolean): T;
+    function use <T extends Model> (this: Model.New<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
   }
 }
 

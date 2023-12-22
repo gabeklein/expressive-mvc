@@ -160,7 +160,7 @@ class Model {
           console.error(err);
         });
       else if(typeof apply == "object")
-        assign(this, apply as Model.Values<this>);
+        assign(this, apply);
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -365,7 +365,7 @@ class Model {
       return event(this, null);
 
     if(typeof arg1 == "object")
-      assign(self, arg1 as Model.Values<this>);
+      assign(self, arg1);
 
     else if(arg1 !== undefined)  
       if(1 in arguments)
@@ -529,7 +529,7 @@ function push(
 
 const METHODS = new WeakMap<Model.Type, string[]>([[Model, []]]);
 
-function assign<T extends Model>(to: T, values: Model.Values<T>){
+function assign<T extends Model>(to: T, values: Model.Assign<T>){
   const methods = METHODS.get(to.constructor as Model.Type)!;
   const applicable = new Set(Object.keys(to).concat(methods));
 
