@@ -2,16 +2,19 @@ import { Model } from '@expressive/mvc';
 
 import { setContext, useContext, useEffect, useState } from './useContext';
 
-export function useLocal <T extends Model> (
+function useLocal <T extends Model> (
   this: Model.New<T>,
-  argument?: Model.Argument<T>,
+  arg?: Model.Assign<T> | ((i: T) => void),
   repeat?: boolean){
 
   const state = useState(() => {
     let enabled: boolean | undefined;
     let local: T;
 
-    const instance = this.new(argument);
+    const instance = this.new(
+      typeof arg == "function" ? x => { arg } : arg
+    );
+
     const release = instance.get(current => {
       local = current;
 
@@ -19,12 +22,12 @@ export function useLocal <T extends Model> (
         state[1]((x: Function) => x.bind(null));
     });
 
-    return (props?: Model.Argument<T>) => {
+    return (props?: Model.Assign<T> | ((i: T) => void)) => {
       if(repeat && enabled) {
         enabled = false;
 
         if(typeof props == "function")
-          props.call(instance, instance);
+          props(instance);
         else if(typeof props == "object")
           instance.set(props);
 
@@ -53,5 +56,7 @@ export function useLocal <T extends Model> (
     };
   });
 
-  return state[0](argument);
+  return state[0](arg);
 }
+
+export { useLocal }
