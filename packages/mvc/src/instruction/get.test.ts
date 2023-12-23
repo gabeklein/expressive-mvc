@@ -682,8 +682,10 @@ describe.skip("replaced source", () => {
   })
 
   class Source extends Model {
-    constructor(public arg: Model.Argument){
-      super(arg);
+    value = "";
+
+    constructor(...arg: Model.Args){
+      super(...arg);
       source = this;
 
       if(gotContext)
@@ -693,26 +695,26 @@ describe.skip("replaced source", () => {
 
   class Test extends Model {
     greeting = get(Source, source => {
-      return `Hello ${source.arg}!`;
+      return `Hello ${source.value}!`;
     })
   }
 
   it("will update", async () => {
     const test = Test.new();
-    const oldSource = Source.new("Foo");
+    const oldSource = Source.new({ value: "Foo" });
   
     expect(test.greeting).toBe("Hello Foo!");
 
-    oldSource.arg = "Baz";
+    oldSource.value = "Baz";
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
 
-    const newSource = Source.new("Bar");
+    const newSource = Source.new({ value: "Bar" });
 
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
-    newSource.arg = "Baz";
+    newSource.value = "Baz";
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
   })
@@ -728,7 +730,7 @@ describe.skip("replaced source", () => {
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
-    oldSource.arg = "Baz";
+    oldSource.value = "Baz";
     await expect(test).not.toHaveUpdated();
   })
 })
