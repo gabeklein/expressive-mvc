@@ -36,7 +36,10 @@ declare namespace Model {
   type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | Promise<void> | void;
 
   /** Model constructor argument */
-  type Argument<T extends Model = Model> = string | Callback<T> | Assign<T> | undefined;
+  type Argument<T extends Model = Model> = string | Callback<T> | Assign<T> | void;
+
+  /** Model constructor arguments */
+  type Args<T extends Model = any> = Argument<T>[];
 
   /** Subset of `keyof T` which are not methods or defined by base Model U. **/
   type Field<T> = Exclude<keyof T, keyof Model>;
@@ -131,7 +134,7 @@ interface Model {
 }
 
 class Model {
-  constructor(arg?: Model.Argument){
+  constructor(...args: Model.Args){
     const state = {} as Record<string | number | symbol, unknown>;
     let Type = this.constructor as Model.Type;
     
@@ -139,7 +142,11 @@ class Model {
     define(this, "is", { value: this });
 
     STATE.set(this, state);
-    NAMES.set(this, typeof arg == 'string' ? arg : `${Type}-${uid()}`);
+    NAMES.set(this, `${Type}-${uid()}`);
+
+    for(const arg of args)
+      if(typeof arg == "string")
+        NAMES.set(this, arg);
 
     while(true){
       new Set(NOTIFY.get(Type)).forEach(x => addListener(this, x));
@@ -151,16 +158,21 @@ class Model {
     }
 
     addListener(this, () => {
-      const apply = typeof arg == "function"
-        ? arg.call(this, this) : arg;
+      const cleanup = new Set<() => void>();
 
-      if(apply instanceof Promise)
-        apply.catch(err => {
+      for(const arg of args){
+        const use = typeof arg == "function" ? arg.call(this, this) : arg;
+
+        if(use instanceof Promise)
+          use.catch(err => {
           console.error(`Async error in constructor for ${this}:`);
           console.error(err);
         });
-      else if(typeof apply == "object")
-        assign(this, apply);
+        else if(typeof use == "object")
+          assign(this, use);
+        else if(typeof use == "function")
+          cleanup.add(use);
+      }
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -182,9 +194,7 @@ class Model {
           if(value instanceof Model && PARENT.get(value) === this)
             value.set(null);
 
-        if(typeof apply == "function")
-          apply();
-        
+        cleanup.forEach(x => x());
         Object.freeze(state);
       }, null);
     
@@ -398,8 +408,8 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.New<T>, arg?: Model.Argument<T>){
-    const instance = new this(arg as Model.Argument<Model>);
+  static new <T extends Model> (this: Model.New<T>, ...args: Model.Args<T>){
+    const instance = new this(...args) as T;
     event(instance, true);
     return instance;
   }

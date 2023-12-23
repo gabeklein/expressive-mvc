@@ -66,9 +66,7 @@ describe("single", () => {
 
   it("will replace child value", async () => {
     class Child extends Model {
-      constructor(public value: number){
-        super();
-      }
+      value = 0;
     }
     class Parent extends Model {
       child = has(Child, true);
@@ -77,10 +75,10 @@ describe("single", () => {
     const parent = Parent.new();
     const context = new Context(parent).push();
 
-    context.include(new Child(1));
+    context.include(Child.new({ value: 1 }));
     expect(parent.child.value).toBe(1);
 
-    context.include(new Child(2));
+    context.include(Child.new({ value: 2 }));
     expect(parent.child.value).toBe(2);
   })
 

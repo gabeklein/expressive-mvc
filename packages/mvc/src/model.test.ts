@@ -1333,21 +1333,6 @@ describe("set method", () => {
 })
 
 describe("new method (static)", () => {
-  it('will send arguments to constructor', () => {
-    const gotValue = jest.fn();
-  
-    class Test extends Model {
-      constructor(arg: Model.Argument){
-        gotValue(arg);
-        super(arg);
-      }
-    }
-  
-    Test.new("Hello World!");
-  
-    expect(gotValue).toBeCalledWith("Hello World!");
-  })
-  
   it("will use string argument as ID", () => {
     const state = Model.new("ID");
   
@@ -1381,8 +1366,75 @@ describe("new method (static)", () => {
     
     expect(state.foo).toBe("bar");
   })
+
+  it("will apply all constructor arguments", () => {
+    class Test extends Model {
+      foo = 0;
+      bar = 1;
+    }
+
+    const willCreate = jest.fn(() => ({ foo: 2 }));
+    const willDestroy = jest.fn();
+
+    const test = Test.new("Test-ID", willCreate, () => willDestroy, { bar: 3 });
+
+    expect(test.foo).toBe(2);
+    expect(test.bar).toBe(3);
+    expect(String(test)).toBe("Test-ID");
+    expect(willCreate).toBeCalledTimes(1);
+    expect(willDestroy).not.toBeCalled();
+
+    test.set(null);
+
+    expect(willDestroy).toBeCalledTimes(1);
+  })
+
+  it("will prefer last ID provided", () => {
+    const test = Model.new("ID", "ID2");
+
+    expect(String(test)).toBe("ID2");
+  })
+
+  it("will prefer later constructor assignments", () => {
+    class Test extends Model {
+      foo = 1;
+      bar = 2;
+    }
+
+    const test = Test.new(
+      { foo: 3 },
+      { foo: 4, bar: 5 },
+      () => ({ bar: 6 })
+    );
+    
+    expect(test.foo).toBe(4);
+    expect(test.bar).toBe(6);
+  })
   
-  it("will ingore promise from lifecycle", () => {
+  it("will run constructor callbacks in order", () => {
+    const willDestroy2 = jest.fn();
+    const willDestroy1 = jest.fn(() => {
+      expect(willDestroy2).not.toBeCalled();
+    });
+
+    const willCreate2 = jest.fn(() => willDestroy2);
+    const willCreate1 = jest.fn(() => {
+      expect(willDestroy1).not.toBeCalled();
+      return willDestroy1;
+    });
+
+    const test = Model.new(willCreate1, willCreate2);
+
+    expect(willCreate1).toBeCalledTimes(1);
+    expect(willCreate2).toBeCalledTimes(1);
+
+    test.set(null);
+    
+    expect(willDestroy1).toBeCalledTimes(1);
+    expect(willDestroy2).toBeCalledTimes(1);
+  })
+
+  it("will ingore promise from callback", () => {
     const didCreate = jest.fn(() => Promise.resolve());
   
     Model.new(didCreate);
@@ -1393,21 +1445,19 @@ describe("new method (static)", () => {
   it("will log error from rejected initializer", async () => {
     // TODO: why does mock helper not work for this?
     const error = jest.spyOn(console, "error");
-    const expects = new Error("Model lifecycle rejected.");
+    const expects = new Error("Model callback rejected.");
     const didCreate = jest.fn(() => Promise.reject(expects));
 
     error.mockImplementation(() => {});
   
-    const test = Model.new(didCreate);
+    const test = Model.new("ID", didCreate);
   
     expect(didCreate).toBeCalledTimes(1);
     
     await expect(test).not.toHaveUpdated();
 
     // TODO: remove when hard ID can be applied.
-    expect(error).toBeCalledWith(
-      expect.stringMatching(/Async error in constructor for Model-\w{6}:/)
-    );
+    expect(error).toBeCalledWith("Async error in constructor for ID:");
     expect(error).toBeCalledWith(expects);
 
     error.mockRestore();
