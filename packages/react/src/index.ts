@@ -51,7 +51,7 @@ declare module '@expressive/mvc' {
      * @param render Function which renders component. This function receives all Model state merged with props. Normal subscription behavior still applies.
      */
     function as <T extends Model, P = {}> (
-      this: Model.New<T>, render: (using: T & P) => React.ReactNode
+      this: Model.Type<T>, render: (using: T & P) => React.ReactNode
     ): Component<T, P & Model.Assign<T>>;
 
     /** Fetch instance of this class from context. */
@@ -64,9 +64,9 @@ declare module '@expressive/mvc' {
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, null>): NoVoid<R> | null;
 
-    function use <T extends Model> (this: Model.New<T>, apply?: Model.Assign<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.Type<T>, apply?: Model.Assign<T>, repeat?: boolean): T;
 
-    function use <T extends Model> (this: Model.New<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
+    function use <T extends Model> (this: Model.Type<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
   }
 }
 

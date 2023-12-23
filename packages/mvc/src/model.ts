@@ -24,10 +24,7 @@ const define = Object.defineProperty;
 
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
-  type Type<T extends Model = Model> = abstract new (...args: any[]) => T
-
-  /** A type of Model which may be created without constructor arguments. */
-  type New<T extends Model = Model> = (new (arg?: Argument) => T) & typeof Model;
+  type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
 
   /**
    * Model constructor callback - is called when Model finishes intializing.
@@ -165,9 +162,9 @@ class Model {
 
         if(use instanceof Promise)
           use.catch(err => {
-          console.error(`Async error in constructor for ${this}:`);
-          console.error(err);
-        });
+            console.error(`Async error in constructor for ${this}:`);
+            console.error(err);
+          });
         else if(typeof use == "object")
           assign(this, use);
         else if(typeof use == "function")
@@ -408,7 +405,7 @@ class Model {
    * 
    * @param args - arguments sent to constructor
    */
-  static new <T extends Model> (this: Model.New<T>, ...args: Model.Args<T>){
+  static new <T extends Model> (this: Model.Type<T>, ...args: Model.Args<T>){
     const instance = new this(...args) as T;
     event(instance, true);
     return instance;

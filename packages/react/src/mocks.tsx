@@ -45,8 +45,8 @@ interface MockHook<T> extends jest.Mock<T, []> {
 }
 
 export function mockHook<T>(implementation: () => T): MockHook<T>;
-export function mockHook<T>(provide: Model | Model.New, implementation: () => T): MockHook<T>;
-export function mockHook<T>(arg1: (() => T) | Model | Model.New, arg2?: () => T){
+export function mockHook<T>(provide: Model | Model.Type, implementation: () => T): MockHook<T>;
+export function mockHook<T>(arg1: (() => T) | Model | Model.Type, arg2?: () => T){
   let implementation = typeof arg1 === 'function' && !Model.is(arg1) ? arg1 : arg2!;
 
   const mock = jest.fn(() => implementation()) as MockHook<T>;

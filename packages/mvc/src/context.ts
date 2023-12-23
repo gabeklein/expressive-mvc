@@ -5,8 +5,8 @@ const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) 
 declare namespace Context {
   type Input = 
     | Model
-    | Model.New<Model>
-    | Record<string | number, Model | Model.New<Model>>
+    | Model.Type<Model>
+    | Record<string | number, Model | Model.Type<Model>>
 }
 
 class Context {
@@ -48,7 +48,7 @@ class Context {
   }
 
   public has(model: Model){
-    const key = this.key(model.constructor as Model.New, true);
+    const key = this.key(model.constructor as Model.Type, true);
     const result = this[key] as ((model: Model) => () => void) | undefined;
 
     if(typeof result == "function")
@@ -103,7 +103,7 @@ class Context {
     
       if(expects)
         for(let [T, callback] of expects)
-          this.put(T as Model.New, callback);
+          this.put(T as Model.Type, callback);
   
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
@@ -116,7 +116,7 @@ class Context {
   }
 
   public put<T extends Model>(
-    T: Model.New<T>,
+    T: Model.Type<T>,
     I: T | ((model: T) => void),
     implicit?: boolean,
     writable?: boolean){
@@ -138,11 +138,11 @@ class Context {
   }
 
   public add<T extends Model>(
-    input: T | Model.New<T>,
+    input: T | Model.Type<T>,
     implicit?: boolean){
 
     let writable = true;
-    let T: Model.New<T>;
+    let T: Model.Type<T>;
     let I: T;
 
     if(typeof input == "function"){
@@ -151,7 +151,7 @@ class Context {
     }
     else {
       I = input;
-      T = I.constructor as Model.New<T>;
+      T = I.constructor as Model.Type<T>;
       writable = false;
     }
 

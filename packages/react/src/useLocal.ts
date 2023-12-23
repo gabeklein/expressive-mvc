@@ -3,7 +3,7 @@ import { Model } from '@expressive/mvc';
 import { setContext, useContext, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
-  this: Model.New<T>,
+  this: Model.Type<T>,
   argument?: Model.Argument<T>,
   repeat?: boolean){
 

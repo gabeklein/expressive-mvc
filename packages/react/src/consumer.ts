@@ -42,7 +42,7 @@ function Consumer<T extends Model>(
   props: Consumer.Props<T>): JSX.Element | null {
 
   const { children, has, get, for: Type } = props as {
-    for: Model.New<T>;
+    for: Model.Type<T>;
     has?: ((value: T) => void) | boolean;
     get?: (value: T | undefined) => void;
     children?: (value: T) => JSX.Element | null;

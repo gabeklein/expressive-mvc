@@ -6,7 +6,7 @@ import { add } from './add';
 function use <T extends Model> (): T | undefined;
 
 /** Create a new child instance of model. */
-function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
+function use <T extends Model> (Type: Model.Type<T>, ready?: (i: T) => void): T;
 
 /**
  * Use existing model as a child of model assigned to.
@@ -19,7 +19,7 @@ function use <T extends Model> (Type: Model.New<T>, ready?: (i: T) => void): T;
 function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 
 function use <T extends Model> (
-  value?: T | Model.New<T>,
+  value?: T | Model.Type<T>,
   argument?: any[] | ((i: {} | undefined) => void)){
 
   return add((property, subject) => {

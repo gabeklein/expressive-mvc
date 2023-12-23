@@ -12,7 +12,7 @@ declare namespace Provider {
     children?: ReactNode;
   }>;
 
-  type Item = Model | Model.New;
+  type Item = Model | Model.Type;
 
   type Multiple<T extends Item = Item> = { [key: string | number]: T };
 
