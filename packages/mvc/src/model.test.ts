@@ -1339,7 +1339,7 @@ describe("new method (static)", () => {
     expect(String(state)).toBe("ID");
   })
   
-  it("will call constructor argument as lifecycle", () => {
+  it("will call argument as lifecycle", () => {
     const didDestroy = jest.fn();
     const didCreate = jest.fn(() => didDestroy);
   
@@ -1367,7 +1367,7 @@ describe("new method (static)", () => {
     expect(state.foo).toBe("bar");
   })
 
-  it("will apply all constructor arguments", () => {
+  it("will apply all arguments", () => {
     class Test extends Model {
       foo = 0;
       bar = 1;
@@ -1395,7 +1395,7 @@ describe("new method (static)", () => {
     expect(String(test)).toBe("ID2");
   })
 
-  it("will prefer later constructor assignments", () => {
+  it("will prefer later assignments", () => {
     class Test extends Model {
       foo = 1;
       bar = 2;
@@ -1411,7 +1411,7 @@ describe("new method (static)", () => {
     expect(test.bar).toBe(6);
   })
   
-  it("will run constructor callbacks in order", () => {
+  it("will run callbacks in order", () => {
     const willDestroy2 = jest.fn();
     const willDestroy1 = jest.fn(() => {
       expect(willDestroy2).not.toBeCalled();
