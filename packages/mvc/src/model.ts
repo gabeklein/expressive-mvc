@@ -46,8 +46,9 @@ declare namespace Model {
 
   /** Object overlay which may be used to override values and methods while creating model. */
   type Assign<T> = {
-    [K in Exclude<keyof T, keyof Model>]?: T[K] extends (...args: any[]) => infer R 
-      ? (this: T, ...args: Parameters<T[K]>) => ReturnType<T[K]> 
+    [K in Exclude<keyof T, keyof Model>]?:
+      T[K] extends (...args: infer A) => infer R 
+      ? (this: T, ...args: A) => R
       : T[K];
   } & Record<string, unknown>;
 

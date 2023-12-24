@@ -1481,9 +1481,11 @@ describe("new method (static)", () => {
     const test = Test2.new({
       value: 2,
       method(){
+        expect<Test2>(this);
         return this.value + 1;
       },
       method2(){
+        expect<Test2>(this);
         return this.value - 1;
       }
     });
@@ -1508,6 +1510,7 @@ describe("new method (static)", () => {
     const test = Test.new({
       value: 2,
       method(){
+        expect<Test>(this);
         return this.value + 1;
       },
       notManaged: 3,
