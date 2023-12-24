@@ -4,7 +4,7 @@ import { setContext, useContext, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.Type<T>,
-  argument?: Model.Argument<T>,
+  argument?: Model.Assign<T> | Model.Callback<T>,
   repeat?: boolean){
 
   const state = useState(() => {
@@ -19,7 +19,7 @@ export function useLocal <T extends Model> (
         state[1]((x: Function) => x.bind(null));
     });
 
-    return (props?: Model.Argument<T>) => {
+    return (props?: Model.Assign<T> | Model.Callback<T>) => {
       if(repeat && enabled) {
         enabled = false;
 
