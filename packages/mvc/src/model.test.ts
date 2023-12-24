@@ -3,7 +3,7 @@ import { set } from './instruction/set';
 import { use } from './instruction/use';
 import { ref } from './instruction/ref';
 import { Model } from './model';
-import { mockError } from './mocks';
+import { mockError, mockPromise } from './mocks';
 
 it('will extend custom class', () => {
   class Subject extends Model {
@@ -1419,7 +1419,7 @@ describe("new method (static)", () => {
 
     const willCreate2 = jest.fn(() => willDestroy2);
     const willCreate1 = jest.fn(() => {
-      expect(willDestroy1).not.toBeCalled();
+      expect(willCreate2).not.toBeCalled();
       return willDestroy1;
     });
 
@@ -1433,6 +1433,48 @@ describe("new method (static)", () => {
     expect(willDestroy1).toBeCalledTimes(1);
     expect(willDestroy2).toBeCalledTimes(1);
   })
+  
+  it("will run callbacks asyncronously in order", async () => {
+    const promise = mockPromise();
+
+    const willDestroy2 = jest.fn();
+    const willDestroy1 = jest.fn(() => {
+      expect(willDestroy2).not.toBeCalled();
+    });
+
+    const willCreate2 = jest.fn(() => willDestroy2);
+    const willCreate1 = jest.fn(async () => {
+      await promise;
+      expect(willDestroy1).not.toBeCalled();
+      return willDestroy1;
+    });
+
+    const test = Model.new(willCreate1, willCreate2);
+
+    expect(willCreate1).toBeCalledTimes(1);
+    expect(willCreate2).not.toBeCalled();
+    
+    promise.resolve();
+    await expect(test).not.toHaveUpdated();
+    
+    expect(willCreate2).toBeCalledTimes(1);
+
+    test.set(null);
+    
+    expect(willDestroy1).toBeCalledTimes(1);
+    expect(willDestroy2).toBeCalledTimes(1);
+  })
+
+  it("will throw if destroyed before ready", () => {
+    const promise = mockPromise();
+    const test = Model.new("ID", promise);
+
+    expect(() => test.set(null)).toThrowError(
+      "Tried to destroy ID but not fully initialized."
+    );
+
+    promise.resolve();
+  });
 
   it("will ingore promise from callback", () => {
     const didCreate = jest.fn(() => Promise.resolve());

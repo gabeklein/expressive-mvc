@@ -22,6 +22,8 @@ const METHOD = new WeakMap<any, any>();
 
 const define = Object.defineProperty;
 
+type MaybeAsync<T> = T | Promise<T>;
+
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
@@ -30,10 +32,16 @@ declare namespace Model {
    * Model constructor callback - is called when Model finishes intializing.
    * Returned function will call when model is destroyed.
    */
-  type Callback<T extends Model = Model> = (this: T, thisArg: T) => (() => void) | Assign<T> | Promise<void> | void;
+  type Callback<T extends Model = Model> =
+    (this: T, thisArg: T) => MaybeAsync<(() => void) | Assign<T> | void>;
 
   /** Model constructor argument */
-  type Argument<T extends Model = Model> = string | Callback<T> | Assign<T> | void;
+  type Argument<T extends Model = Model> =
+    | string
+    | Assign<T>
+    | Callback<T>
+    | Promise<Assign<T> | (() => void) | void>
+    | void;
 
   /** Model constructor arguments */
   type Args<T extends Model = any> = Argument<T>[];
@@ -48,8 +56,8 @@ declare namespace Model {
   type Assign<T> = {
     [K in Exclude<keyof T, keyof Model>]?:
       T[K] extends (...args: infer A) => infer R 
-      ? (this: T, ...args: A) => R
-      : T[K];
+        ? (this: T, ...args: A) => R
+        : T[K];
   } & Record<string, unknown>;
 
   /** Export/Import compatible value for a given property in a Model. */
@@ -156,21 +164,28 @@ class Model {
     }
 
     addListener(this, () => {
-      const cleanup = new Set<() => void>();
+      let done: Set<() => void> | undefined;
 
-      for(const arg of args){
-        const use = typeof arg == "function" ? arg.call(this, this) : arg;
+      (async () => {
+        const cleanup = new Set<() => void>();
+          
+        for(const arg of args){
+          let use = typeof arg == "function" ? arg.call(this, this) : arg;
+  
+          if(use instanceof Promise)
+            use = await use.catch(err => {
+              console.error(`Async error in constructor for ${this}:`);
+              console.error(err);
+            });
 
-        if(use instanceof Promise)
-          use.catch(err => {
-            console.error(`Async error in constructor for ${this}:`);
-            console.error(err);
-          });
-        else if(typeof use == "object")
-          assign(this, use);
-        else if(typeof use == "function")
-          cleanup.add(use);
-      }
+          if(typeof use == "object")
+            assign(this, use);
+          else if(typeof use == "function")
+            cleanup.add(use);
+        }
+
+        done = cleanup;
+      })();
 
       for(const key in this){
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
@@ -188,11 +203,14 @@ class Model {
       }
     
       addListener(this, () => {
+        if(!done)
+          throw new Error(`Tried to destroy ${this} but not fully initialized.`);
+
         for(const [_, value] of this)
           if(value instanceof Model && PARENT.get(value) === this)
             value.set(null);
 
-        cleanup.forEach(x => x());
+        done.forEach(x => x());
         Object.freeze(state);
       }, null);
     
