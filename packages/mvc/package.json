@@ -28,5 +28,5 @@
     "prebuild": "rm -rf dist",
     "preversion": "npm run test && npm run build"
   },
-  "version": "0.44.0"
+  "version": "0.45.0"
 }
