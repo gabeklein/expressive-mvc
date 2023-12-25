@@ -11,7 +11,7 @@ declare namespace Context {
 
 class Context {
   static request<T extends Model>(
-    type: Model.Type<T>,
+    type: Model.Key<T>,
     from: Model,
     callback: (got: T) => void){
   

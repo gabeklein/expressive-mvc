@@ -4,14 +4,16 @@ import { add } from './add';
 
 declare namespace has {
   type Callback<T = any> = (model: T) => void | boolean | (() => void);
+
+  type Type<T extends Model> = Model.Type<T> | Model.Key<T>;
 }
 
-function has <T extends Model> (type: Model.Type<T>, one: true): T;
-function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
-function has <T extends Model> (type: Model.Type<T>, arg?: has.Callback<T>): Set<T>;
+function has <T extends Model> (type: has.Type<T>, one: true): T;
+function has <T extends Model> (type: has.Type<T>, required: boolean): T | undefined;
+function has <T extends Model> (type: has.Type<T>, arg?: has.Callback<T>): Set<T>;
   
 function has <T extends Model> (
-  type: Model.Type<T>,
+  type: has.Type<T>,
   argument?: boolean | has.Callback<T>){
 
   return add<T>((key, subject, state) => {

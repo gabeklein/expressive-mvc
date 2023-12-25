@@ -17,6 +17,7 @@ export function createComponent<T extends Model, P extends Model.Assign<T>> (
 
   Component.Model = this;
   Component.displayName = this.name;
+  Component.toString = () => this.name;
   
   return Component;
 }

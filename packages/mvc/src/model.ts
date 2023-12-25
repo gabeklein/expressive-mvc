@@ -89,6 +89,8 @@ declare namespace Model {
     current: T | null;
   }
 
+  type Key<T extends Model> = Model.Type<T> | { key: Model.Type<T> };
+
   /**
    * A callback function which is subscribed to parent and updates when accessed properties change.
    * 
@@ -416,6 +418,9 @@ class Model {
   [Symbol.iterator](): Iterator<[string, unknown]> {
     return Object.entries(STATE.get(this.is)!)[Symbol.iterator]();
   }
+  
+  /** Optional key to resolve a Model in context. */
+  protected static key?: Symbol;
 
   /**
    * Creates a new instance of this controller.

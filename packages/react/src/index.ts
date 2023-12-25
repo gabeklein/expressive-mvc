@@ -43,6 +43,7 @@ declare module '@expressive/mvc' {
 
       Model: Model.Type<T>;
       displayName: string;
+      key: Model.Key<T>;
     }
 
     /**
