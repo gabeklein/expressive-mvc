@@ -52,7 +52,7 @@ declare namespace Model {
   /** Any valid key for controller, including but not limited to Field<T>. */
   type Event<T> = Field<T> | (string & {}) | number | symbol;
 
-  /** Object overlay which may be used to override values and methods while creating model. */
+  /** Object overlay which may be used to override values and methods on a model. */
   type Assign<T> = {
     [K in Exclude<keyof T, keyof Model>]?:
       T[K] extends (...args: infer A) => infer R 
