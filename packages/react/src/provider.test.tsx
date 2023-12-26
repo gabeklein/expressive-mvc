@@ -318,6 +318,28 @@ describe("get instruction", () => {
 
     expect(Inner).toBeCalledTimes(2);
   })
+
+  it("will attach before model init", () => {
+    class Ambient extends Model {
+      foo = "foo";
+    }
+
+    class Test extends Model {
+      ambient = get(Ambient);
+
+      constructor(){
+        super(() => {
+          expect(this.ambient).toBeInstanceOf(Ambient);
+        });
+      }
+    }
+
+    create(
+      <Provider for={Ambient}>
+        <Provider for={Test} />
+      </Provider>
+    )
+  })
 })
 
 describe("HMR", () => {

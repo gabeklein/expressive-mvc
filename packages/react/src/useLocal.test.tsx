@@ -1,4 +1,7 @@
-import Model, { set } from '.';
+import React from 'react';
+import { create } from 'react-test-renderer';
+
+import Model, { get, Provider, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
 const error = jest
@@ -327,5 +330,35 @@ describe("props argument", () => {
 
     expect(output.foo).toBe("bar");
     expect(mock).toHaveBeenCalledWith("bar", "foo");
+  })
+})
+
+describe("context", () => {
+  it("will attach before model init", () => {
+    class Ambient extends Model {
+      foo = "foo";
+    }
+
+    class Test extends Model {
+      ambient = get(Ambient);
+
+      constructor(){
+        super(() => {
+          expect(this.ambient).toBeInstanceOf(Ambient);
+        });
+      }
+    }
+
+    const Element = () => {
+      const test = Test.use();
+      expect(test.ambient.foo).toBe("foo");
+      return null;
+    }
+
+    create(
+      <Provider for={Ambient}>
+        <Element />
+      </Provider>
+    )
   })
 })
