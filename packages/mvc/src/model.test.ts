@@ -1329,6 +1329,23 @@ describe("set method", () => {
 
       expect(test).not.toHaveProperty("bar");
     })
+
+    it.skip("will assign from inside method", () => {
+      class Test extends Model {
+        foo = "foo";
+
+        method(){
+          // this.set({ foo: "bar" });
+        }
+      }
+
+      const test = Test.new();
+
+      test.method();
+
+      expect(test.foo).toBe("bar");
+    
+    })
   })
 })
 
