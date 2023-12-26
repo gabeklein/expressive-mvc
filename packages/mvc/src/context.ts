@@ -64,7 +64,10 @@ class Context {
     return result;
   }
 
-  public include(inputs: Context.Input): Map<Model, boolean> {
+  public include(
+    inputs: Context.Input,
+    forEach?: (added: Model, explicit: boolean) => void
+  ){
     const init = new Map<Model, boolean>();
 
     if(typeof inputs == "function" || inputs instanceof Model)
@@ -92,11 +95,16 @@ class Context {
       else if(exists !== input){    
         this.pop();
         this.id = uid();
-        return this.include(inputs);
+        this.include(inputs);
       }
     }
 
-    for(const [ model ] of init){      
+    for(const [model, explicit] of init){
+      if(forEach)
+        forEach(model, explicit);
+
+      model.set();
+
       this.has(model);
   
       const expects = Expects.get(model);
@@ -111,8 +119,6 @@ class Context {
           init.set(value as Model, false);
         }
     }
-
-    return init;
   }
 
   public put<T extends Model>(

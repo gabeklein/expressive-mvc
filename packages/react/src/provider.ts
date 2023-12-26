@@ -40,8 +40,8 @@ function Provider<T extends Provider.Item>(props: Provider.Props<T>): Provider.E
   const ambient = useContext();
   const context = useMemo(() => ambient.push(), []);
   
-  context.include(included).forEach((isExplicit, model) => {
-    if(assign && isExplicit)
+  context.include(included, (model, explicit) => {
+    if(assign && explicit)
       model.set(assign);
 
     setContext(model, context);
