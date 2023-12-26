@@ -178,6 +178,29 @@ describe("suspense", () => {
     await expect(pending).resolves.toBeInstanceOf(Foo);
   })
 
+  it("will resolve multiple", async () => {
+    class Foo extends Model {}
+    class Bar extends Model {
+      foo = get(Foo, false);
+      bar = get(Foo, false);
+    }
+
+    const foo = Foo.new();
+    const bar = Bar.new();
+
+    expect(bar.foo).toBeUndefined();
+    expect(bar.bar).toBeUndefined();
+
+    create(
+      <Provider for={foo}>
+        <Provider for={bar} />
+      </Provider>
+    );
+
+    expect(bar.foo).toBe(foo);
+    expect(bar.bar).toBe(foo);
+  })
+
   it("will refresh an effect when assigned to", async () => {
     class Foo extends Model {}
     class Bar extends Model {

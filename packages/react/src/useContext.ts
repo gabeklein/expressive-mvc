@@ -18,16 +18,16 @@ function usingContext<T extends Model>(
   resolve: (got: T | undefined) => void){
 
   const waiting = Register.get(from);
-  const context = (context: Context) => {
+  const callback = (context: Context) => {
     resolve(context.get(this));
   }
 
   if(waiting instanceof Context)
-    context(waiting);
+    callback(waiting);
   else if(waiting)
-    waiting.push(context);
+    waiting.push(callback);
   else
-    Register.set(from, [context]);
+    Register.set(from, [callback]);
 }
 
 function setContext(model: Model, context: Context){
