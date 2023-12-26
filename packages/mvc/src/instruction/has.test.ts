@@ -116,7 +116,7 @@ describe("single", () => {
   it("will register for implicit", () => {
     class Baz extends Model {}
     class Foo extends Model {
-      baz = has(Baz, true);
+      baz = has(Baz, false);
     }
     class Bar extends Model {
       baz = use(Baz);
