@@ -115,6 +115,31 @@ describe("include", () => {
     expect(context.get(Bar)).toBe(bar);
   })
 
+  it("will callback once per unique added", () => {
+    const foo = Foo.new();
+    const bar = Bar.new();
+    const cb = jest.fn();
+
+    const context = new Context();
+    
+    context.include({ foo, bar }, cb);
+  
+    expect(cb).toBeCalledWith(foo, true);
+    expect(cb).toBeCalledWith(bar, true);
+    expect(cb).toBeCalledTimes(2);
+
+    context.include({ foo, bar }, cb);
+
+    expect(cb).toBeCalledTimes(2);
+
+    const foo2 = Foo.new();
+
+    context.include({ foo, bar, foo2 }, cb);
+
+    expect(cb).toBeCalledWith(foo2, true);
+    expect(cb).toBeCalledTimes(3);
+  })
+
   // This will be made more elegant later.
   it("will hard-reset if inputs differ", () => {
     const bazDidDie = jest.fn();
