@@ -3,7 +3,7 @@ import { Model } from '../model';
 import { add } from './add';
 
 declare namespace has {
-  type Callback<T = any> = (model: T) => void | boolean | (() => void);
+  type Callback<T = any> = (model: T) => Promise<void | (() => void)> | boolean | (() => void) | void;
 }
 
 function has <T extends Model> (type: Model.Type<T>, one: true): T;
@@ -57,6 +57,9 @@ function has <T extends Model> (
 
         if(typeof remove == "function")
           remove();
+
+        else if(remove instanceof Promise)
+          remove.then(fn => fn && fn());
 
         children.delete(model);
         subject.set(key);
