@@ -392,12 +392,12 @@ class Model {
 
     if(typeof arg1 == "object")
       assign(self, arg1);
-
-    else if(arg1 !== undefined)  
-      if(1 in arguments)
-        update(self, arg1, arg2, arg3);
-      else
-        push(self, arg1);
+    else if(arg1 == undefined)  
+      event(this, true);
+    else if(1 in arguments)
+      update(self, arg1, arg2, arg3);
+    else
+      push(self, arg1);
 
     if(PENDING.has(self))
       return <PromiseLike<Model.Event<this>[]>> {

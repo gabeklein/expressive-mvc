@@ -65,6 +65,10 @@ const PENDING = new WeakMap<{}, Set<unknown>>();
 
 function event(source: {}, key: Event){
   const subs = LISTENER.get(source)!;
+  const ready = !subs.has(onReady);
+
+  if(key === true && ready)
+    return;
 
   let pending = PENDING.get(source);
 
@@ -74,7 +78,7 @@ function event(source: {}, key: Event){
   }
 
   PENDING.set(source, pending = new Set(
-    key !== true && subs.has(onReady) ? [true, key] : [key]
+    key !== true && ready ? [key] : [true, key]
   ));
 
   pending.forEach(key => {

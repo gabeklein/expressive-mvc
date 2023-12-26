@@ -1144,6 +1144,21 @@ describe("set method", () => {
 
       expect(update).toBeUndefined();
     })
+
+    it("will force initial update", async () => {
+      class Test extends Model {
+        foo = "foo";
+      }
+
+      const test = new Test();
+      const effect = jest.fn();
+
+      test.get(effect);
+      expect(effect).not.toBeCalled();
+
+      test.set();
+      expect(effect).toBeCalled();
+    })
   })
 
   describe("callback", () => {
