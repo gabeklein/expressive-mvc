@@ -72,10 +72,10 @@ function get<R, T extends Model>(
 
     let source: get.Source<T> = resolve => resolve(from);
 
-    if(arg0 instanceof Model)
+    if(arg0 instanceof Model){
       from = arg0;
-
-    else if(Model.is(arg0)){
+    }
+    else if(arg0.prototype instanceof Model){
       const hasParent = PARENT.get(from) as T;
 
       if(!hasParent){
@@ -83,7 +83,7 @@ function get<R, T extends Model>(
           throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
         source = (resolve) => {
-          arg0.at(from, got => {
+          (arg0 as Model.Type<T>).at(from, got => {
             if(got)
               resolve(got);
             else if(arg1 !== false)
@@ -96,69 +96,69 @@ function get<R, T extends Model>(
       else
         throw new Error(`New ${from} created as child of ${hasParent}, but must be instanceof ${arg0}.`);
     }
-
-    else if(typeof arg0 == "function"){
+    else {
       const fn = METHOD.get(arg0) || arg0;
       arg1 = (p, k) => fn.call(p, k, p);
     }
 
-    if(typeof arg1 != "function"){
-      source((got) => subject.set(key, got));
-      return { get: arg1 };
-    }
-
-    const setter: get.Function<R, T> = arg1;
-    let reset: (() => void) | undefined;
-    let isAsync: boolean;
-    let proxy: any;
-
-    function connect(model: Model){
-      reset = effect(model, current => {
-        proxy = current;
-
-        if(!reset)
-          compute(true);
-        else if(STALE.delete(compute))
+    if(typeof arg1 == "function"){
+      const getter: get.Function<R, T> = arg1;
+      let reset: (() => void) | undefined;
+      let isAsync: boolean;
+      let proxy: any;
+  
+      function connect(model: Model){
+        reset = effect(model, current => {
+          proxy = current;
+  
+          if(!reset)
+            compute(true);
+          else if(STALE.delete(compute))
+            compute();
+  
+          return (didUpdate) => {
+            if(didUpdate){
+              STALE.add(compute);
+              push(subject, key, true);
+            }
+          };
+        })
+      }
+  
+      function compute(initial?: boolean){
+        let next: R | undefined;
+  
+        try {
+          next = getter.call(proxy, proxy, key);
+        }
+        catch(err){
+          console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
+  
+          if(initial)
+            throw err;
+  
+          console.error(err);
+        }
+  
+        update(subject, key, next, !isAsync);
+      }
+  
+      return () => {
+        if(!proxy){
+          source(connect);
+          isAsync = true;
+        }
+  
+        if(STALE.delete(compute))
           compute();
-
-        return (didUpdate) => {
-          if(didUpdate){
-            STALE.add(compute);
-            push(subject, key, true);
-          }
-        };
-      })
-    }
-
-    function compute(initial?: boolean){
-      let next: R | undefined;
-
-      try {
-        next = setter.call(proxy, proxy, key);
+  
+        return fetch(subject, key, !proxy) as T;
       }
-      catch(err){
-        console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
-
-        if(initial)
-          throw err;
-
-        console.error(err);
-      }
-
-      update(subject, key, next, !isAsync);
     }
+    else 
+      source((got) => subject.set(key, got));
 
-    return () => {
-      if(!proxy){
-        source(connect);
-        isAsync = true;
-      }
-
-      if(STALE.delete(compute))
-        compute();
-
-      return fetch(subject, key, !proxy) as T;
-    }
+    return { get: arg1 };
   })
 }
 
