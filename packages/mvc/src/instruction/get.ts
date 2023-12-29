@@ -4,6 +4,8 @@ import { add } from './add';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
+const STALE = new WeakSet<() => void>();
+
 declare namespace get {
   type Function<T, S = any> = (on: S, key: string) => T;
 
@@ -100,74 +102,64 @@ function get<R, T extends Model>(
       arg1 = (p, k) => fn.call(p, k, p);
     }
 
-    if(typeof arg1 == "function")
-      return compute(subject, key, source, arg1);
+    if(typeof arg1 != "function"){
+      source((got) => subject.set(key, got));
+      return { get: arg1 };
+    }
 
-    source((got) => subject.set(key, got));
+    const setter: get.Function<R, T> = arg1;
+    let reset: (() => void) | undefined;
+    let isAsync: boolean;
+    let proxy: any;
 
-    return { get: arg1 };
-  })
-}
+    function connect(model: Model){
+      reset = effect(model, current => {
+        proxy = current;
 
-const STALE = new WeakSet<() => void>();
+        if(!reset)
+          compute(true);
+        else if(STALE.delete(compute))
+          compute();
 
-function compute<T>(
-  subject: Model,
-  key: string,
-  source: get.Source,
-  setter: get.Function<T, any>){
+        return (didUpdate) => {
+          if(didUpdate){
+            STALE.add(compute);
+            push(subject, key, true);
+          }
+        };
+      })
+    }
 
-  let reset: (() => void) | undefined;
-  let isAsync: boolean;
-  let proxy: any;
+    function compute(initial?: boolean){
+      let next: R | undefined;
 
-  function connect(model: Model){
-    reset = effect(model, current => {
-      proxy = current;
+      try {
+        next = setter.call(proxy, proxy, key);
+      }
+      catch(err){
+        console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
 
-      if(!reset)
-        compute(true);
-      else if(STALE.delete(compute))
+        if(initial)
+          throw err;
+
+        console.error(err);
+      }
+
+      update(subject, key, next, !isAsync);
+    }
+
+    return () => {
+      if(!proxy){
+        source(connect);
+        isAsync = true;
+      }
+
+      if(STALE.delete(compute))
         compute();
 
-      return (didUpdate) => {
-        if(didUpdate){
-          STALE.add(compute);
-          push(subject, key, true);
-        }
-      };
-    })
-  }
-
-  function compute(initial?: boolean){
-    let next: T | undefined;
-
-    try {
-      next = setter.call(proxy, proxy, key);
+      return fetch(subject, key, !proxy) as T;
     }
-    catch(err){
-      console.warn(`An exception was thrown while ${initial ? "initializing" : "refreshing"} ${subject}.${key}.`)
-
-      if(initial)
-        throw err;
-
-      console.error(err);
-    }
-
-    update(subject, key, next, !isAsync);
-  }
-
-  return () => {
-    if(!proxy){
-      source(connect);
-      isAsync = true;
-    }
-
-    if(STALE.delete(compute))
-      compute();
-
-    return fetch(subject, key, !proxy) as T;
-  }
+  })
 }
 
 export { get };
