@@ -11,14 +11,14 @@ function add<T = any>(instruction: Model.Instruction){
 
 Model.on((_, subject) => {
   const state = STATE.get(subject)!;
+  const props = Object.getOwnPropertyDescriptors(subject);
 
-  Object.entries(
-    Object.getOwnPropertyDescriptors(subject)
-  ).forEach(([key, { value }]) => {
+  for(const key in props){
+    const { value } = props[key];
     const instruction = INSTRUCT.get(value);
 
     if(!instruction)
-      return;
+      continue;
 
     INSTRUCT.delete(value);
     delete (subject as any)[key];
@@ -26,7 +26,7 @@ Model.on((_, subject) => {
     const output = instruction.call(subject, key, subject, state);
   
     if(!output)
-      return;
+      continue;
 
     const desc = typeof output == "object" ? output : { get: output };
     const { enumerable = true } = desc;
@@ -64,7 +64,7 @@ Model.on((_, subject) => {
         );
       }
     })
-  });
+  }
 
   return null;
 })
