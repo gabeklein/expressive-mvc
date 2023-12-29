@@ -1,7 +1,6 @@
 import { Model } from '../model';
 import { mockError, mockPromise, mockWarn } from '../mocks';
 import { get } from './get';
-import { use } from './use';
 
 const error = mockError();
 const warn = mockWarn();
@@ -97,8 +96,8 @@ describe("fetch mode", () => {
 
   it("will allow overwrite", async () => {
     class Foo extends Model {
+      bar = new Bar();
       value = "foo";
-      bar = use(Bar);
     }
   
     class Bar extends Model {
@@ -133,7 +132,7 @@ describe("fetch mode", () => {
   
   it("creates parent-child relationship", () => {
     class Foo extends Model {
-      child = use(Bar);
+      child = new Bar();
     }
     class Bar extends Model {
       parent = get(Foo);
@@ -185,7 +184,7 @@ describe("fetch mode", () => {
   it("throws if parent is of incorrect type", () => {
     class Expected extends Model {}
     class Unexpected extends Model {
-      child = use(new Adopted("ID"));
+      child = new Adopted("ID");
     }
     class Adopted extends Model {
       expects = get(Expected);
@@ -203,8 +202,8 @@ describe("fetch mode", () => {
     }
     
     class Parent extends Model {
+      child = new Child();
       value = "foo";
-      child = use(Child);
     }
   
     const { child } = Parent.new();
@@ -226,7 +225,7 @@ describe("fetch mode", () => {
 
   it('will yeild a computed value', async () => {
     class Foo extends Model {
-      bar = use(Bar);
+      bar = new Bar();
       seconds = 0;
     }
 
@@ -287,7 +286,7 @@ describe("compute mode", () => {
   
   it('will trigger when nested inputs change', async () => {
     class Subject extends Model {
-      child = use(Child);
+      child = new Child();
       nested = get(this, state => {
         return state.child.value;
       })
@@ -369,7 +368,7 @@ describe("compute mode", () => {
       })
   
       // sanity check; multi-source updates do work
-      x = use(Inner);
+      x = new Inner();
     }
   
     const test = Test.new();

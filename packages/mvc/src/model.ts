@@ -15,7 +15,7 @@ const NOTIFY = new WeakMap<Model.Type, Set<OnUpdate>>();
 const PENDING = new WeakMap<Model, Set<string | number | symbol>>();
 
 /** Parent-child relationships. */
-const PARENT = new WeakMap<Model, Model>();
+const PARENT = new WeakMap<Model, Model | null>();
 
 /** Reference bound instance methods to real ones. */
 const METHOD = new WeakMap<any, any>();
@@ -191,7 +191,7 @@ class Model {
         const desc = Object.getOwnPropertyDescriptor(this, key)!;
     
         if("value" in desc){
-          state[key] = desc.value;
+          update(this, key, desc.value, true);
           define(this, key, {
             configurable: false,
             set: (x) => update(this, key, x),
@@ -201,6 +201,9 @@ class Model {
           });
         }
       }
+
+      if(!PARENT.has(this))
+        PARENT.set(this, null);
     
       addListener(this, () => {
         if(!done)
@@ -523,6 +526,11 @@ function update(
 
   if(value === previous)
     return true;
+
+  if(value instanceof Model && !PARENT.has(value)){
+    PARENT.set(value, subject);
+    event(value, true);
+  }
 
   state[key] = value;
 

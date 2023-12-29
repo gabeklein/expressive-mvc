@@ -1,7 +1,6 @@
 import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
-import { use } from './use';
 
 describe("single", () => {
   it("will register child", async () => {
@@ -100,7 +99,7 @@ describe("single", () => {
   it("will register implicit", () => {
     class Baz extends Model {}
     class Foo extends Model {
-      bar = use(Bar);
+      bar = new Bar();
     }
     class Bar extends Model {
       baz = has(Baz, true);
@@ -119,7 +118,7 @@ describe("single", () => {
       baz = has(Baz, false);
     }
     class Bar extends Model {
-      baz = use(Baz);
+      baz = new Baz();
     }
   
     const foo = Foo.new();

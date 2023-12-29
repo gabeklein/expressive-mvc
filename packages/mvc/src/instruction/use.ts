@@ -20,7 +20,7 @@ function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 
 function use <T extends Model> (
   value?: T | Model.Type<T>,
-  argument?: any[] | ((i: {} | undefined) => void)){
+  argument?: (i: {} | undefined) => void){
 
   return add((property, subject) => {
     if(typeof value === "function")

@@ -1,6 +1,5 @@
 import { get } from './instruction/get';
 import { set } from './instruction/set';
-import { use } from './instruction/use';
 import { ref } from './instruction/ref';
 import { Model } from './model';
 import { mockError, mockPromise } from './mocks';
@@ -112,13 +111,13 @@ it('will iterate over properties', () => {
 it('will destroy children before self', () => {
   class Nested extends Model {}
   class Test extends Model {
-    nested = use(Nested);
+    nested = new Nested();
   }
 
   const test = Test.new();
   const destroyed = jest.fn();
 
-  test.nested.get(() => destroyed);
+  test.nested.get(null, destroyed);
   test.set(null);
 
   expect(destroyed).toBeCalled();
@@ -336,7 +335,7 @@ describe("get method", () => {
         bar = "bar";
         baz = "baz";
 
-        nested = use(Nested);
+        nested = new Nested();
       }
 
       const test = Test.new();
@@ -365,7 +364,7 @@ describe("get method", () => {
       class Test extends Model {
         foo = { get: () => 3 }
         bar = ref<boolean>();
-        baz = use(Bar);
+        baz = new Bar();
       }
 
       const test = Test.new();
@@ -386,7 +385,7 @@ describe("get method", () => {
 
     it("will export infinite loop", () => {
       class Parent extends Model {
-        child = use(Child);
+        child = new Child();
         foo = "foo";
       }
 
@@ -618,27 +617,133 @@ describe("get method", () => {
     })
 
     it("will update for nested values", async () => {
-      class Nested extends Model {
+      class Child extends Model {
         value = "foo";
       }
 
       class Test extends Model {
-        nested = use(Nested);
+        child = new Child();
       }
 
       const test = Test.new();
       const effect = jest.fn((state: Test) => {
-        void state.nested.value;
+        void state.child.value;
       });
 
       test.get(effect);
 
       expect(effect).toBeCalledTimes(1);
-      test.nested.value = "bar";
+      test.child.value = "bar";
 
-      await expect(test.nested).toHaveUpdated();
+      await expect(test.child).toHaveUpdated();
 
       expect(effect).toBeCalledTimes(2);
+    })
+  
+    it('will subscribe deeply', async () => {
+      class Parent extends Model {
+        value = "foo";
+        empty = undefined;
+        child = new Child();
+      }
+    
+      class Child extends Model {
+        value = "foo"
+        grandchild = new GrandChild();
+      }
+    
+      class GrandChild extends Model {
+        value = "bar"
+      }
+    
+      const parent = Parent.new();
+      const effect = jest.fn();
+      let promise = mockPromise();
+    
+      parent.get(state => {
+        const { child } = state;
+        const { grandchild } = child;
+    
+        effect(child.value, grandchild.value);
+        promise.resolve();
+      })
+    
+      expect(effect).toBeCalledWith("foo", "bar");
+      effect.mockClear();
+    
+      promise = mockPromise();
+      parent.child.value = "bar";
+      await promise;
+      
+      expect(effect).toBeCalledWith("bar", "bar");
+      effect.mockClear();
+    
+      promise = mockPromise();
+      parent.child = new Child();
+      await promise;
+      
+      expect(effect).toBeCalledWith("foo", "bar");
+      effect.mockClear();
+    
+      promise = mockPromise();
+      parent.child.value = "bar";
+      await promise;
+      
+      expect(effect).toBeCalledWith("bar", "bar");
+      effect.mockClear();
+    
+      promise = mockPromise();
+      parent.child.grandchild.value = "foo";
+      await promise;
+      
+      expect(effect).toBeCalledWith("bar", "foo");
+      effect.mockClear();
+    });
+  
+    it('will subscribe if value starts undefined', async () => {
+      class Child extends Model {
+        value = "foo"
+      }
+      
+      class Parent extends Model {
+        value = "foo";
+        child?: Child = undefined;
+      }
+    
+      const state = Parent.new();
+      const mock = jest.fn((it: Parent) => {
+        void it.value;
+    
+        if(it.child)
+          void it.child.value;
+      })
+    
+      state.get(mock);
+    
+      state.child = new Child();
+      await expect(state).toHaveUpdated();
+      expect(mock).toBeCalledTimes(2)
+    
+      // Will refresh on sub-value change.
+      state.child.value = "bar";
+      await expect(state.child).toHaveUpdated();
+      expect(mock).toBeCalledTimes(3);
+    
+      // Will refresh on undefined.
+      state.child = undefined;
+      await expect(state).toHaveUpdated();
+      expect(state.child).toBeUndefined();
+      expect(mock).toBeCalledTimes(4);
+    
+      // Will refresh on repalcement.
+      state.child = new Child();
+      await expect(state).toHaveUpdated();
+      expect(mock).toBeCalledTimes(5);
+    
+      // New subscription still works.
+      state.child.value = "bar";
+      await expect(state.child).toHaveUpdated();
+      expect(mock).toBeCalledTimes(6);
     })
 
     it("will not update for removed children", async () => {
@@ -647,7 +752,7 @@ describe("get method", () => {
       }
 
       class Test extends Model {
-        nested = use(Nested);
+        nested = new Nested();
       }
 
       const test = Test.new();

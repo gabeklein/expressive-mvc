@@ -1,7 +1,6 @@
 import { mockPromise, mockWarn } from '../mocks';
 import { Model } from '../model';
 import { set } from './set';
-import { use } from './use';
 
 const warn = mockWarn();
 
@@ -431,7 +430,7 @@ describe("factory", () => {
     }
 
     class Test extends Model {
-      child = use(Child);
+      child = new Child();
       
       childValue = set(() => {
         return this.child.value + " world!";

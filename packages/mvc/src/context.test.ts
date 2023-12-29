@@ -1,5 +1,4 @@
 import { Context } from './context';
-import { use } from './instruction/use';
 import { Model } from './model';
 
 class Example extends Model {};
@@ -102,7 +101,7 @@ describe("include", () => {
   class Foo extends Model {}
   class Bar extends Model {}
   class FooBar extends Model {
-    foo = use(Foo);
+    foo = new Foo();
   }
 
   it("will register in batch", () => {

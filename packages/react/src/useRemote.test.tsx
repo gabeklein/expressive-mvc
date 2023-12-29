@@ -1,4 +1,4 @@
-import Model, { get, set, use } from '.';
+import Model, { get, set } from '.';
 import { mockHook, mockPromise } from './mocks';
 
 const error = jest
@@ -447,7 +447,7 @@ describe("get instruction", () => {
 
   it("will prefer parent over context", () => {
     class Parent extends Model {
-      child = use(Child);
+      child = new Child();
       value = "foo";
     }
 
