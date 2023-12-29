@@ -1,6 +1,6 @@
 import { effect } from '../control';
 import { fetch, METHOD, Model, PARENT, push, update } from '../model';
-import { add } from './add';
+import { use } from './use';
 
 type Type<T extends Model> = Model.Type<T> & typeof Model;
 
@@ -64,7 +64,7 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return add<R>((key, subject) => {
+  return use<R>((key, subject) => {
     let from = subject;
 
     if(typeof arg0 == "symbol")

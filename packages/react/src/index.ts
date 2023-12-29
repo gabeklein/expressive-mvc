@@ -76,6 +76,6 @@ Model.get = useRemote;
 Model.use = useLocal;
 
 export { Model, Model as default };
-export { add, get, use, ref, set, has } from '@expressive/mvc';
+export { get, use, ref, set, has } from '@expressive/mvc';
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";

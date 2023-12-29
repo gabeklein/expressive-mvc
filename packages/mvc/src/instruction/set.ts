@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { add } from './add';
+import { use } from './use';
 
 declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
@@ -47,7 +47,7 @@ function set <T> (
   value?: set.Factory<T> | Promise<T> | T,
   argument?: set.Callback<any> | boolean){
 
-  return add<T>((key, subject) => {
+  return use<T>((key, subject) => {
     const output: Model.Instruction.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){

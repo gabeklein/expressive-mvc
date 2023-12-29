@@ -1,4 +1,4 @@
-import { add } from './instruction/add';
+import { use } from './instruction/use';
 import { set } from './instruction/set';
 import { mockError } from './mocks';
 import { Model } from './model';
@@ -8,7 +8,7 @@ describe("instruction", () => {
     didRunInstruction = jest.fn();
     didRunGetter = jest.fn();
 
-    property = add((key) => {
+    property = use((key) => {
       this.didRunInstruction(key);
 
       return () => {
@@ -62,7 +62,7 @@ describe("instruction", () => {
       });
   
       class Test extends Model {
-        property = add(() => {
+        property = use(() => {
           return {
             value: "foobar",
             set: didSetValue
@@ -90,7 +90,7 @@ describe("instruction", () => {
       let ignore = false;
 
       class Test extends Model {
-        property = add(() => {
+        property = use(() => {
           return {
             value: 0,
             set: (value) => ignore
@@ -117,7 +117,7 @@ describe("instruction", () => {
 
     it("will not duplicate explicit update", () => {
       class Test extends Model {
-        property = add<string>(() => ({
+        property = use<string>(() => ({
           value: "foobar",
           set: (value) => () => value + "!"
         }))
@@ -138,7 +138,7 @@ describe("instruction", () => {
 
     it("will not update on reassignment", () => {
       class Test extends Model {
-        property = add<string>((key) => ({
+        property = use<string>((key) => ({
           value: "foobar",
           set: (value: any) => {
             return () => value + "!";
@@ -165,7 +165,7 @@ describe("instruction", () => {
     const mockApply = jest.fn((_key) => mockAccess);
 
     class Test extends Model {
-      property = add(mockApply);
+      property = use(mockApply);
     }
 
     const instance = Test.new();
@@ -180,7 +180,7 @@ describe("instruction", () => {
     const didGetValue = jest.fn();
 
     class Test extends Model {
-      property = add(() => didGetValue)
+      property = use(() => didGetValue)
     }
 
     const state = Test.new();
@@ -197,7 +197,7 @@ it("will run effect after properties", () => {
   const mock = jest.fn();
 
   class Test extends Model {
-    property = add((_key, _model, state) => {
+    property = use((_key, _model, state) => {
       this.get(() => mock(state))
     })
 

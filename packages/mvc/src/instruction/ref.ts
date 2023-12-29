@@ -1,5 +1,5 @@
 import { Model } from '../model';
-import { add } from './add';
+import { use } from './use';
 
 const define = Object.defineProperty;
 
@@ -75,7 +75,7 @@ function ref<T>(
   arg?: ref.Callback<T> | Model,
   arg2?: ((key: string) => any) | boolean){
 
-  return add<T>((key, subject, state) => {
+  return use<T>((key, subject, state) => {
     let value = {};
 
     if(arg === subject)

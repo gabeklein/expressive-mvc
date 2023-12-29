@@ -1,6 +1,6 @@
 import { Context } from '../context';
 import { Model } from '../model';
-import { add } from './add';
+import { use } from './use';
 
 declare namespace has {
   type Callback<T = any> = (model: T) => void | boolean | (() => void);
@@ -14,7 +14,7 @@ function has <T extends Model> (
   type: Model.Type<T>,
   argument?: boolean | has.Callback<T>){
 
-  return add<T>((key, subject, state) => {
+  return use<T>((key, subject, state) => {
     if(typeof argument == "boolean"){
       Context.request(type, subject, model => {
         // Might like to throw if already exists, but race-condition
