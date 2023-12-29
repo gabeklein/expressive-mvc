@@ -1,5 +1,4 @@
-import { event } from '../control';
-import { Model, PARENT } from '../model';
+import { Model, update } from '../model';
 import { add } from './add';
 
 /** Create a placeholder for specified Model type. */
@@ -20,7 +19,7 @@ function use <T extends Model> (model: T, ready?: (i: T) => void): T;
 
 function use <T extends Model> (
   value?: T | Model.Type<T>,
-  argument?: (i: {} | undefined) => void){
+  argument?: (i: T | undefined) => void){
 
   return add((property, subject) => {
     if(typeof value === "function")
@@ -30,13 +29,12 @@ function use <T extends Model> (
       if(value instanceof Model && !(next instanceof value.constructor))
         throw new Error(`${subject}.${property} expected Model of type ${value.constructor} but got ${next}.`)
 
-      if(next instanceof Model){
-        PARENT.set(next, subject);
-        event(next, true);
-      }
+      update(subject, property, next);
 
       if(typeof argument == "function")
-        argument(next);
+        argument(next as T);
+
+      return false;
     }
 
     set(value);
