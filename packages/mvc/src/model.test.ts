@@ -1450,12 +1450,14 @@ describe("set method", () => {
       expect(test).not.toHaveProperty("bar");
     })
 
-    it.skip("will assign from inside method", () => {
+    it("will assign from inside method", () => {
       class Test extends Model {
         foo = "foo";
 
         method(){
-          // this.set({ foo: "bar" });
+          // TODO: Can this be fixed?
+          // @ts-expect-error
+          this.set({ foo: "bar" });
         }
       }
 
@@ -1464,7 +1466,6 @@ describe("set method", () => {
       test.method();
 
       expect(test.foo).toBe("bar");
-    
     })
   })
 })
