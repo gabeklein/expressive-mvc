@@ -24,6 +24,15 @@ const define = Object.defineProperty;
 
 type MaybeAsync<T> = T | Promise<T>;
 
+type IfEquals<X, Y, A = X, B = never> =
+    (<T>() => T extends X ? 1 : 2) extends
+    (<T>() => T extends Y ? 1 : 2) ? A : B;
+
+type Readonly<T> = {
+    [P in keyof T]-?:
+      IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, never, P>
+}[keyof T];
+
 declare namespace Model {
   /** Any type of Model, using own class constructor as its identifier. */
   type Type<T extends Model = Model> = (abstract new (...args: any[]) => T) & typeof Model;
@@ -52,9 +61,12 @@ declare namespace Model {
   /** Any valid key for controller, including but not limited to Field<T>. */
   type Event<T> = Field<T> | (string & {}) | number | symbol;
 
+  /** Any valid key which is not a `readonly` property. */
+  type Accept<T> = Exclude<keyof T, Readonly<T> | keyof Model>;
+
   /** Object overlay which may be used to override values and methods on a model. */
   type Assign<T> = {
-    [K in Exclude<keyof T, keyof Model>]?:
+    [K in Accept<T>]?:
       T[K] extends (...args: infer A) => infer R 
         ? (this: T, ...args: A) => R
         : T[K];
@@ -569,7 +581,7 @@ function assign<T extends Model>(to: T, values: Model.Assign<T>){
 
   for(const key in values)
     if(applicable.has(key))
-      to[key as keyof T] = values[key as Model.Field<T>] as any;
+      to[key as keyof T] = values[key as Model.Accept<T>] as any;
 }
 
 function bindMethods<T extends Model>(type: Model.Type<T>): string[] {
