@@ -37,11 +37,7 @@ declare namespace Model {
     (this: T, thisArg: T) => MaybeAsync<(() => void) | Assign<T> | void>;
 
   /** Model constructor argument */
-  type Argument<T extends Model = Model> =
-    | Assign<T>
-    | Callback<T>
-    | string
-    | void;
+  type Argument<T extends Model = Model> = Assign<T> | Callback<T> | string | void;
 
   /** Model constructor arguments */
   type Args<T extends Model = any> = Argument<T>[];
