@@ -1,28 +1,12 @@
 import { Model, PARENT, uid } from './model';
 
-const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) | void>>();
+const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 
 declare namespace Context {
-  type Input = 
-    | Model
-    | Model.Type<Model>
-    | Record<string | number, Model | Model.Type<Model>>
+  type Input = Record<string | number, Model | Model.Type<Model>>
 }
 
 class Context {
-  static request<T extends Model>(
-    type: Model.Type<T>,
-    from: Model,
-    callback: (got: T) => void){
-  
-    let map = Expects.get(from);
-  
-    if(!map)
-      Expects.set(from, map = new Map());
-  
-    map.set(type, callback);
-  }
-
   public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
@@ -50,6 +34,12 @@ class Context {
   public has(model: Model){
     const key = this.key(model.constructor as Model.Type, true);
     const result = this[key] as ((model: Model) => () => void) | undefined;
+    const waiting = Register.get(model);
+  
+    if(waiting instanceof Array)
+      waiting.forEach(cb => cb(this));
+
+    Register.set(model, this);
 
     if(typeof result == "function")
       return result(model);
@@ -70,15 +60,9 @@ class Context {
   ){
     const init = new Map<Model, boolean>();
 
-    if(typeof inputs == "function" || inputs instanceof Model)
-      inputs = { [0]: inputs };
-
-    else if(!inputs)
-      reject(inputs);
-
     Object.entries(inputs).forEach(([K, V]) => {
       if(!(Model.is(V) || V instanceof Model))
-        reject(`${V} as ${K}`);
+        throw new Error(`Context can only include Model or instance but got ${V}${K && (" as " + K)}.`);
     })
 
     for(const key in inputs){
@@ -100,18 +84,10 @@ class Context {
     }
 
     for(const [model, explicit] of init){
-      if(forEach)
-        forEach(model, explicit);
-
       model.set();
 
-      this.has(model);
-  
-      const expects = Expects.get(model);
-    
-      if(expects)
-        for(let [T, callback] of expects)
-          this.put(T as Model.Type, callback);
+      if(forEach)
+        forEach(model, explicit);
   
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
@@ -161,6 +137,7 @@ class Context {
       writable = false;
     }
 
+    this.has(I);
     this.put(T, I, implicit, writable);
 
     return I;
@@ -195,8 +172,4 @@ class Context {
   }
 }
 
-function reject(argument: any){
-  throw new Error(`Context can only include Model or instance but got ${argument}.`);
-}
-
-export { Context }
+export { Context, Register }

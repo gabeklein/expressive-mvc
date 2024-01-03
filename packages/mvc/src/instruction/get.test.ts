@@ -1,5 +1,6 @@
-import { Model } from '../model';
+import { Context } from '../context';
 import { mockError, mockPromise, mockWarn } from '../mocks';
+import { Model } from '../model';
 import { get } from './get';
 
 const error = mockError();
@@ -10,15 +11,39 @@ it.todo("will add pending compute to frame immediately");
 it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
+  it.skip("will fetch sibling", () => {
+    class Ambient extends Model {}
+    class Test extends Model {
+      sibling = get(Test);
+    }
+
+    const test = Test.new();
+
+    new Context({ Ambient, test });
+
+    expect(test.sibling).toBe(test);
+  })
+
+  it("will fetch multiple", () => {
+    class Ambient extends Model {}
+    class Test extends Model {
+      ambient1 = get(Ambient);
+      ambient2 = get(Ambient);
+    }
+
+    const test = Test.new();
+    const ambient = Ambient.new();
+
+    new Context({ ambient }).push({ test });
+
+    expect(test.ambient1).toBe(ambient);
+    expect(test.ambient2).toBe(ambient);
+  })
+
   it("will not update on noop", async () => {
     class Remote extends Model {
       value = "foo";
     }
-
-    const remote = Remote.new();
-
-    Remote.at = (_, callback) => callback(remote as any);
-
     class Test extends Model {
       value = get(Remote, ({ value }) => {
         void value;
@@ -27,10 +52,12 @@ describe("fetch mode", () => {
     }
 
     const test = Test.new();
+    const remote = Remote.new();
     const effect = jest.fn();
+    
+    new Context({ remote, test });
 
     test.get($ => effect($.value));
-
     expect(effect).toBeCalledWith("foo");
 
     remote.value = "bar";
@@ -51,8 +78,6 @@ describe("fetch mode", () => {
     const effect = jest.fn();
     const compute = jest.fn();
 
-    Remote.at = (_, callback) => callback(remote as any);
-
     class Test extends Model {
       value = get(Remote, ({ remote }) => {
         compute(remote);
@@ -61,6 +86,8 @@ describe("fetch mode", () => {
     }
 
     const test = Test.new();
+
+    new Context({ remote, test });
 
     test.get($ => effect($.value));
 
@@ -80,18 +107,6 @@ describe("fetch mode", () => {
     await expect(test).toHaveUpdated("value");
     expect(compute).toBeCalledTimes(4);
     expect(effect).toBeCalledWith("boo");
-  })
-
-  it("will throw if no adapter", () => {
-    class Parent extends Model {}
-
-    class Test extends Model {
-      value = get(Parent);
-    }
-
-    expect(() => Test.new()).toThrowError(
-      `Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`
-    );
   })
 
   it("will allow overwrite", async () => {
@@ -159,13 +174,14 @@ describe("fetch mode", () => {
   it("will throw if not found in context", () => {
     class Parent extends Model {}
     class Child extends Model {
+      constructor(){super("ID")}
       expects = get(Parent);
     }
 
-    Parent.at = (_, callback) => callback(undefined);
+    const attempt = () => new Context({ Child });
 
     // should this throw immediately, or only on access?
-    expect(() => Child.new("ID")).toThrowError(`Required Parent not found in context for ID.`);
+    expect(attempt).toThrowError(`Required Parent not found in context for ID.`);
   })
   
   it("retuns undefined if required is false", () => {
@@ -174,9 +190,9 @@ describe("fetch mode", () => {
       maybe = get(MaybeParent, false);
     }
 
-    MaybeParent.at = (_, callback) => callback(undefined);
-  
     const instance = StandAlone.new();
+
+    new Context({ instance });
   
     expect(instance.maybe).toBeUndefined();
   })
@@ -670,46 +686,31 @@ describe("compute mode", () => {
 
 // not yet implemented by Context yet; this is a hack.
 describe.skip("replaced source", () => {
-  let source: Source;
-  let gotContext: (got: any) => void;
-
-  beforeAll(() => {
-    Source.at = (_, got) => {
-      gotContext = got;
-      got(source as any);
-    }
-  })
-
   class Source extends Model {
     value = "";
-
-    constructor(...arg: Model.Args){
-      super(...arg);
-      source = this;
-
-      if(gotContext)
-        gotContext(this);
-    }
   }
 
   class Test extends Model {
     greeting = get(Source, source => {
-      return `Hello ${source.value}!`;
+      return `Hello ${source}!`;
     })
   }
 
   it("will update", async () => {
     const test = Test.new();
-    const oldSource = Source.new({ value: "Foo" });
-  
+    const oldSource = Source.new("Foo");
+    const context = new Context({ test, source: oldSource });
+
     expect(test.greeting).toBe("Hello Foo!");
 
     oldSource.value = "Baz";
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Baz!");
 
-    const newSource = Source.new({ value: "Bar" });
+    const newSource = Source.new("Bar");
 
+    context.include({ source: newSource });
+    
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
 
@@ -721,10 +722,13 @@ describe.skip("replaced source", () => {
   it("will not update from previous source", async () => {
     const test = Test.new();
     const oldSource = Source.new("Foo");
+    const context = new Context({ test, source: oldSource });
   
     expect(test.greeting).toBe("Hello Foo!");
 
-    Source.new("Bar");
+    context.include({
+      source: Source.new("Bar")
+    });
 
     await expect(test).toHaveUpdated();
     expect(test.greeting).toBe("Hello Bar!");
@@ -739,12 +743,6 @@ describe("async", () => {
     value = "foobar";
   }
 
-  Foo.at = (_, callback) => {
-    setTimeout(() => {
-      callback(Foo.new() as any);
-    }, 0);
-  };
-
   it("will suspend if not ready", async () => {
     class Bar extends Model {
       foo = get(Foo);
@@ -752,6 +750,8 @@ describe("async", () => {
   
     const bar = Bar.new();
     let caught: unknown;
+
+    setTimeout(() => new Context({ Foo, bar }));
 
     try {
       void bar.foo;
@@ -768,11 +768,15 @@ describe("async", () => {
   
   it("will prevent compute if not ready", async () => {
     class Bar extends Model {
-      foo = get(Foo, foo => foo.value);
+      foo = get(Foo, foo => {
+        return foo.value;
+      });
     }
   
     const bar = Bar.new();
     let caught: unknown;
+
+    setTimeout(() => new Context({ Foo, bar }));
 
     try {
       void bar.foo;

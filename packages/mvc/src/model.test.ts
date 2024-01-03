@@ -3,6 +3,7 @@ import { set } from './instruction/set';
 import { ref } from './instruction/ref';
 import { Model } from './model';
 import { mockError, mockPromise } from './mocks';
+import { Context } from './context';
 
 it('will extend custom class', () => {
   class Subject extends Model {
@@ -1605,7 +1606,7 @@ describe("new method (static)", () => {
 
   it("will throw if destroyed before ready", () => {
     const promise = mockPromise();
-    const test = Model.new("ID", promise);
+    const test = Model.new("ID", () => promise);
 
     expect(() => test.set(null)).toThrowError(
       "Tried to destroy ID but not fully initialized."
@@ -1624,19 +1625,16 @@ describe("new method (static)", () => {
   
   it("will log error from rejected initializer", async () => {
     // TODO: why does mock helper not work for this?
-    const error = jest.spyOn(console, "error");
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
     const expects = new Error("Model callback rejected.");
-    const didCreate = jest.fn(() => Promise.reject(expects));
 
-    error.mockImplementation(() => {});
+    const init = jest.fn(() => Promise.reject(expects));
+    const test = Model.new("ID", init);
   
-    const test = Model.new("ID", didCreate);
-  
-    expect(didCreate).toBeCalledTimes(1);
+    expect(init).toBeCalledTimes(1);
     
     await expect(test).not.toHaveUpdated();
 
-    // TODO: remove when hard ID can be applied.
     expect(error).toBeCalledWith("Async error in constructor for ID:");
     expect(error).toBeCalledWith(expects);
 
@@ -1824,5 +1822,34 @@ describe("on method (static)", () => {
     expect(mock).toBeCalledWith("foo", "baz");
 
     done();
+  });
+})
+
+describe("context method (static)", () => {
+  it("will get context", () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+
+    expect(Test.context(test)).toBeUndefined();
+
+    const context = new Context({ test })
+
+    expect(Test.context(test)).toBe(context);
+  });
+
+  it("will callback when attached", () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+    const mock = jest.fn();
+
+    Test.context(test, mock);
+
+    expect(mock).not.toBeCalled();
+
+    const context = new Context({ test });
+
+    expect(mock).toBeCalledWith(context);
   });
 })

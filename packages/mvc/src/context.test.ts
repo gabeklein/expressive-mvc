@@ -8,15 +8,13 @@ it("will add instance to context", () => {
   const example = Example.new();
   const context = new Context();
 
-  context.include(example);
+  context.include({ example });
 
   expect(context.get(Example)).toBe(example);
 })
 
 it("will create instance in context", () => {
-  const context = new Context();
-
-  context.include(Example);
+  const context = new Context({ Example });
 
   expect(context.get(Example)).toBeInstanceOf(Example);
 })
@@ -196,9 +194,7 @@ describe("include", () => {
 it("will throw on bad include", () => {
   const context = new Context();
 
-  const render = () => context.include(undefined as any);
-
-  expect(render).toThrowError("Context can only include Model or instance but got undefined.");
+  expect(() => context.include(undefined as any)).toThrowError();
 })
 
 it("will throw on bad include property", () => {

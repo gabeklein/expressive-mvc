@@ -1,4 +1,3 @@
-import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -16,55 +15,58 @@ function has <T extends Model> (
 
   return use<T>((key, subject, state) => {
     if(typeof argument == "boolean"){
-      Context.request(type, subject, model => {
-        // Might like to throw if already exists, but race-condition
-        // can prevent us from knowing if previous model is removed.
-
-        subject.set(key as any, model);
-
-        const remove = () => {
-          drop();
-
-          if(state[key] === model)
-            delete state[key];
-        }
-        const drop = model.get(null, remove);
-
-        return remove;
+      type.context(subject, context => {
+        context.put(type, (model) => {
+          // Might like to throw if already exists, but race-condition
+          // can prevent us from knowing if previous model is removed.
+          subject.set(key as any, model);
+  
+          const remove = () => {
+            drop();
+  
+            if(state[key] === model)
+              delete state[key];
+          }
+          const drop = model.get(null, remove);
+  
+          return remove;
+        })
       });
 
       return { get: argument }
     }
 
     const children = new Set<T>();
-  
-    Context.request(type, subject, model => {
-      if(children.has(model))
-        return;
 
-      const remove = typeof argument == "function"
-        ? argument(model)
-        : undefined;
+    type.context(subject, context => {
+      context.put(type, (model) => {
+        if(children.has(model))
+          return;
 
-      if(remove === false)
-        return;
+        const remove = typeof argument == "function"
+          ? argument(model)
+          : undefined;
 
-      children.add(model);
-      subject.set(key);
-      
-      const done = () => {
-        drop();
+        if(remove === false)
+          return;
 
-        if(typeof remove == "function")
-          remove();
-
-        children.delete(model);
+        children.add(model);
         subject.set(key);
-      }
+        
+        const done = () => {
+          drop();
 
-      const drop = model.get(null, done);
+          if(typeof remove == "function")
+            remove();
 
-      return done;
+          children.delete(model);
+          subject.set(key);
+        }
+
+        const drop = model.get(null, done);
+
+        return done;
+      })
     });
 
     return {
