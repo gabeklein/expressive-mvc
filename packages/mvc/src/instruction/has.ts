@@ -22,12 +22,10 @@ function has <T extends Model> (
           subject.set(key as any, model);
   
           const remove = () => {
-            drop();
-  
             if(state[key] === model)
               delete state[key];
           }
-          const drop = model.get(null, remove);
+          model.get(null, remove);
   
           return remove;
         })
