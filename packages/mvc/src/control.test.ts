@@ -19,7 +19,7 @@ describe("instruction", () => {
 
   it("will use symbol as placeholder", () => {
     const { property } = new Test();
-    const { description } = property as any;
+    const { description } = property;
 
     expect(typeof property).toBe("symbol");
     expect(description).toBe("instruction");

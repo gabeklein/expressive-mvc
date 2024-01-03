@@ -200,7 +200,8 @@ it("will throw on bad include", () => {
 it("will throw on bad include property", () => {
   const context = new Context();
 
-  const render = () => context.include({ Thing: undefined as any });
+  // @ts-ignore
+  const render = () => context.include({ Thing: undefined });
 
   expect(render).toThrowError("Context can only include Model or instance but got undefined as Thing.");
 })

@@ -19,7 +19,7 @@ function has <T extends Model> (
         context.put(type, (model) => {
           // Might like to throw if already exists, but race-condition
           // can prevent us from knowing if previous model is removed.
-          subject.set(key as any, model);
+          subject.set(key, model);
   
           const remove = () => {
             if(state[key] === model)
