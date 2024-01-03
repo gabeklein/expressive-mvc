@@ -1,4 +1,3 @@
-import { Context, Register } from './context';
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 let EXPORT: Map<any, any> | undefined;
@@ -453,27 +452,6 @@ class Model {
     notify.add(listener);
 
     return () => notify!.delete(listener);
-  }
-
-  static context<T extends Model>(this: Model.Type<T>, on: Model, callback: ((got: Context) => void)): void;
-  static context<T extends Model>(this: Model.Type<T>, on: Model): Context | undefined;
-
-  static context<T extends Model>(
-    this: Model.Type<T>,
-    on: Model, 
-    callback?: (got: Context) => void){
-
-    const waiting = Register.get(on);
-
-    if(!callback)
-      return waiting instanceof Context ? waiting : undefined;
-  
-    if(waiting instanceof Context)
-      callback(waiting);
-    else if(waiting)
-      waiting.push(callback);
-    else
-      Register.set(on, [callback]);
   }
 }
 

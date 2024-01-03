@@ -7,6 +7,22 @@ declare namespace Context {
 }
 
 class Context {
+  static get<T extends Model>(on: Model, callback: ((got: Context) => void)): void;
+  static get<T extends Model>(on: Model): Context | undefined;
+  static get(from: Model, callback?: (got: Context) => void){
+    const waiting = Register.get(from);
+
+    if(!callback)
+      return waiting instanceof Context ? waiting : undefined;
+  
+    if(waiting instanceof Context)
+      callback(waiting);
+    else if(waiting)
+      waiting.push(callback);
+    else
+      Register.set(from, [callback]);
+  }
+
   public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
@@ -172,4 +188,4 @@ class Context {
   }
 }
 
-export { Context, Register }
+export { Context }

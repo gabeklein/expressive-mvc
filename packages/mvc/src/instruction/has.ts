@@ -1,3 +1,4 @@
+import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
@@ -15,7 +16,7 @@ function has <T extends Model> (
 
   return use<T>((key, subject, state) => {
     const expect = (callback: (model: T) => (() => void) | void) =>
-      type.context(subject, ctx => ctx.put(type, callback));
+      Context.get(subject, context => context.put(type, callback));
 
     if(typeof argument == "boolean"){
       expect((model) => {
