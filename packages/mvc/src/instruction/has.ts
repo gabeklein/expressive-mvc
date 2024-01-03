@@ -14,8 +14,15 @@ function has <T extends Model> (
   argument?: boolean | has.Callback<T>){
 
   return use<T>((key, subject, state) => {
+    const find = (cb: (model: T) => (() => void) | void) => {
+      type.context(subject).then(ctx => {
+        // debugger;
+        ctx.put(type, cb);
+      });
+    }
+
     if(typeof argument == "boolean"){
-      type.context(subject, context => {
+      type.context(subject).then(context => {
         context.put(type, (model) => {
           // Might like to throw if already exists, but race-condition
           // can prevent us from knowing if previous model is removed.
@@ -36,7 +43,7 @@ function has <T extends Model> (
 
     const children = new Set<T>();
 
-    type.context(subject, context => {
+    type.context(subject).then(context => {
       context.put(type, (model) => {
         if(children.has(model))
           return;

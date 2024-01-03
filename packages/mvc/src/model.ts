@@ -455,25 +455,17 @@ class Model {
     return () => notify!.delete(listener);
   }
 
-  static context<T extends Model>(this: Model.Type<T>, on: Model, callback: ((got: Context) => void)): void;
-  static context<T extends Model>(this: Model.Type<T>, on: Model): Context | undefined;
-
-  static context<T extends Model>(
-    this: Model.Type<T>,
-    on: Model, 
-    callback?: (got: Context) => void){
-
+  static context<T extends Model>(this: Model.Type<T>, on: Model): Promise<Context>{
     const waiting = Register.get(on);
 
-    if(!callback)
-      return waiting instanceof Context ? waiting : undefined;
-  
-    if(waiting instanceof Context)
-      callback(waiting);
-    else if(waiting)
-      waiting.push(callback);
-    else
-      Register.set(on, [callback]);
+    return waiting instanceof Context
+      ? Promise.resolve(waiting)
+      : new Promise(resolve => {
+        if(waiting)
+          waiting.push(resolve);
+        else
+          Register.set(on, [resolve]);
+      });
   }
 }
 

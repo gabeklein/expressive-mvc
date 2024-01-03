@@ -82,15 +82,14 @@ function get<R, T extends Model>(
         if(arg1 === true)
           throw new Error(`${from} may only exist as a child of type ${arg0}.`);
 
-        source = (resolve) => {
-          arg0.context(from, (context) => {
-            const got = context.get(arg0);
+        source = async (resolve) => {
+          const context = await arg0.context(from);
+          const got = context.get(arg0);
 
-            if(got)
-              resolve(got);
-            else if(arg1 !== false)
-              throw new Error(`Required ${arg0} not found in context for ${from}.`)
-          });
+          if(got)
+            resolve(got);
+          else if(arg1 !== false)
+            throw new Error(`Required ${arg0} not found in context for ${from}.`)
         }
       }
       else if(!arg0 || hasParent instanceof arg0)
