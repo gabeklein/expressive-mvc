@@ -1,7 +1,7 @@
 import { Context, Register } from './context';
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
-let FLATTEN: Map<any, any> | undefined;
+let EXPORT: Map<any, any> | undefined;
 
 /** Register for all active models via string identifiers (usually unique). */
 const NAMES = new WeakMap<Model, string>();
@@ -281,21 +281,21 @@ class Model {
 
     if(arg1 === undefined){
       const values = {} as any;
-      const current = !FLATTEN && (FLATTEN = new Map([[self, values]]));
+      const current = !EXPORT && (EXPORT = new Map([[self, values]]));
 
       type Exportable = Iterable<[string, { get?: () => any }]>;
 
       for(let [key, value] of self as Exportable){
-        if(FLATTEN.has(value))
-          value = FLATTEN.get(value);
+        if(EXPORT.has(value))
+          value = EXPORT.get(value);
         else if(value && typeof value.get === "function")
-          FLATTEN.set(value, value = value.get());
+          EXPORT.set(value, value = value.get());
 
         values[key] = value;
       }
 
       if(current)
-        FLATTEN = undefined;
+        EXPORT = undefined;
 
       return Object.freeze(values);
     }
