@@ -1826,25 +1826,26 @@ describe("on method (static)", () => {
 })
 
 describe("context method (static)", () => {
-  it("will get context", () => {
+  it("will get context", async () => {
     class Test extends Model {}
 
     const test = Test.new();
-
-    expect(Test.context(test)).toBeUndefined();
+    const promisePending = Test.context(test);
 
     const context = new Context({ test })
+    const promiseResolved = Test.context(test);
 
-    expect(Test.context(test)).toBe(context);
+    await expect(promisePending).resolves.toBe(context);
+    await expect(promiseResolved).resolves.toBe(context);
   });
 
-  it("will callback when attached", () => {
+  it("will resolve when attached", () => {
     class Test extends Model {}
 
     const test = Test.new();
     const mock = jest.fn();
 
-    Test.context(test, mock);
+    Test.context(test).then(mock);
 
     expect(mock).not.toBeCalled();
 

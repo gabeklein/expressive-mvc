@@ -14,21 +14,26 @@ function has <T extends Model> (
   argument?: boolean | has.Callback<T>){
 
   return use<T>((key, subject, state) => {
+    const find = (cb: (model: T) => (() => void) | void) => {
+      type.context(subject).then(ctx => {
+        // debugger;
+        ctx.put(type, cb);
+      });
+    }
+
     if(typeof argument == "boolean"){
-      type.context(subject, context => {
-        context.put(type, (model) => {
-          // Might like to throw if already exists, but race-condition
-          // can prevent us from knowing if previous model is removed.
-          subject.set(key, model);
-  
-          const remove = () => {
-            if(state[key] === model)
-              delete state[key];
-          }
-          model.get(null, remove);
-  
-          return remove;
-        })
+      find((model) => {
+        // Might like to throw if already exists, but race-condition
+        // can prevent us from knowing if previous model is removed.
+        subject.set(key, model);
+
+        const remove = () => {
+          if(state[key] === model)
+            delete state[key];
+        }
+        model.get(null, remove);
+
+        return remove;
       });
 
       return { get: argument }
@@ -36,8 +41,7 @@ function has <T extends Model> (
 
     const children = new Set<T>();
 
-    type.context(subject, context => {
-      context.put(type, (model) => {
+      find((model) => {
         if(children.has(model))
           return;
 
@@ -64,8 +68,7 @@ function has <T extends Model> (
         const drop = model.get(null, done);
 
         return done;
-      })
-    });
+      });
 
     return {
       value: children
