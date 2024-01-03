@@ -38,10 +38,9 @@ declare namespace Model {
 
   /** Model constructor argument */
   type Argument<T extends Model = Model> =
-    | string
     | Assign<T>
     | Callback<T>
-    | Promise<Assign<T> | (() => void) | void>
+    | string
     | void;
 
   /** Model constructor arguments */

@@ -1605,7 +1605,7 @@ describe("new method (static)", () => {
 
   it("will throw if destroyed before ready", () => {
     const promise = mockPromise();
-    const test = Model.new("ID", promise);
+    const test = Model.new("ID", () => promise);
 
     expect(() => test.set(null)).toThrowError(
       "Tried to destroy ID but not fully initialized."
