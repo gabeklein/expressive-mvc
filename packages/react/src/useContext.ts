@@ -1,43 +1,12 @@
-import { Context, Model } from '@expressive/mvc';
+import { Context } from '@expressive/mvc';
 import { createContext as reactCreateContext, createElement, ReactNode, useContext as reactUseContext } from 'react';
 
 const Shared = reactCreateContext(new Context());
-const Register = new WeakMap<Model, Context | ((context: Context) => void)[]>();
 
-function useContext(){
-  return reactUseContext(Shared);
-}
+const useContext = () => reactUseContext(Shared);
 
-function createContext(value: Context, children?: ReactNode){
-  return createElement(Shared.Provider, { key: value.id, value }, children);
-}
+const createContext = (value: Context, children?: ReactNode) =>
+  createElement(Shared.Provider, { key: value.id, value }, children);
 
-function usingContext<T extends Model>(
-  this: Model.Type<T>,
-  from: Model,
-  resolve: (got: T | undefined) => void){
-
-  const waiting = Register.get(from);
-  const callback = (context: Context) => {
-    resolve(context.get(this));
-  }
-
-  if(waiting instanceof Context)
-    callback(waiting);
-  else if(waiting)
-    waiting.push(callback);
-  else
-    Register.set(from, [callback]);
-}
-
-function setContext(model: Model, context: Context){
-  const waiting = Register.get(model);
-    
-  if(waiting instanceof Array)
-    waiting.forEach(cb => cb(context));
-
-  Register.set(model, context);
-}
-
-export { createContext, usingContext, setContext, useContext };
+export { createContext, useContext };
 export { useState, useEffect, useMemo } from 'react';

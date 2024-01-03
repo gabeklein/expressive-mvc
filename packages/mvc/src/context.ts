@@ -1,6 +1,7 @@
 import { Model, PARENT, uid } from './model';
 
 const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) | void>>();
+const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 
 declare namespace Context {
   type Input = 
@@ -50,6 +51,12 @@ class Context {
   public has(model: Model){
     const key = this.key(model.constructor as Model.Type, true);
     const result = this[key] as ((model: Model) => () => void) | undefined;
+    const waiting = Register.get(model);
+  
+    if(waiting instanceof Array)
+      waiting.forEach(cb => cb(this));
+
+    Register.set(model, this);
 
     if(typeof result == "function")
       return result(model);
@@ -104,8 +111,6 @@ class Context {
         forEach(model, explicit);
 
       model.set();
-
-      this.has(model);
   
       const expects = Expects.get(model);
     
@@ -161,6 +166,7 @@ class Context {
       writable = false;
     }
 
+    this.has(I);
     this.put(T, I, implicit, writable);
 
     return I;
@@ -199,4 +205,4 @@ function reject(argument: any){
   throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
-export { Context }
+export { Context, Register }

@@ -1,7 +1,6 @@
 import { Model } from '@expressive/mvc';
 
 import { createComponent } from './component';
-import { usingContext } from './useContext';
 import { useLocal } from './useLocal';
 import { useRemote } from './useRemote';
 
@@ -70,7 +69,6 @@ declare module '@expressive/mvc' {
   }
 }
 
-Model.at = usingContext;
 Model.as = createComponent;
 Model.get = useRemote;
 Model.use = useLocal;

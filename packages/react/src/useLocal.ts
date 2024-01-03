@@ -1,6 +1,6 @@
 import { Model } from '@expressive/mvc';
 
-import { setContext, useContext, useEffect, useState } from './useContext';
+import { useContext, useEffect, useState } from './useContext';
 
 export function useLocal <T extends Model> (
   this: Model.Type<T>,
@@ -38,7 +38,6 @@ export function useLocal <T extends Model> (
       
       const context = useContext();
 
-      setContext(instance, context);
       context.has(instance);
 
       if(!local)

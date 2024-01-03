@@ -1,3 +1,4 @@
+import { Context, Register } from './context';
 import { addListener, effect, event, OnUpdate, queue, watch } from './control';
 
 let FLATTEN: Map<any, any> | undefined;
@@ -459,12 +460,25 @@ class Model {
     return () => notify!.delete(listener);
   }
 
-  static at<T extends Model>(
-    this: Model.Type<T>,
-    from: Model, 
-    cb: (got: T | undefined) => void){
+  static context<T extends Model>(this: Model.Type<T>, on: Model, callback: ((got: Context) => void)): void;
+  static context<T extends Model>(this: Model.Type<T>, on: Model): Context | undefined;
 
-    throw new Error(`Using context requires an adapter. If you are only testing, define \`get.context\` to simulate one.`);
+  static context<T extends Model>(
+    this: Model.Type<T>,
+    on: Model, 
+    callback?: (got: Context) => void){
+
+    const waiting = Register.get(on);
+
+    if(!callback)
+      return waiting instanceof Context ? waiting : undefined;
+  
+    if(waiting instanceof Context)
+      callback(waiting);
+    else if(waiting)
+      waiting.push(callback);
+    else
+      Register.set(on, [callback]);
   }
 }
 
