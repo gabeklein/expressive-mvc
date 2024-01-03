@@ -64,7 +64,7 @@ function get<R, T extends Model>(
   arg0: T | get.Factory<R, T> | Type<T>,
   arg1?: get.Function<R, T> | boolean){
 
-  return use<R>((key, subject) => {
+  return use<R>((key, subject, state) => {
     let from = subject;
 
     if(typeof arg0 == "symbol")
@@ -75,7 +75,7 @@ function get<R, T extends Model>(
     if(arg0 instanceof Model){
       from = arg0;
     }
-    else if(arg0.prototype instanceof Model){
+    else if(Model.is(arg0)){
       const hasParent = PARENT.get(from) as T;
 
       if(!hasParent){
@@ -111,10 +111,8 @@ function get<R, T extends Model>(
         reset = effect(model, current => {
           proxy = current;
   
-          if(!reset)
-            compute(true);
-          else if(STALE.delete(compute))
-            compute();
+          if(!(key in state) || STALE.delete(compute))
+            compute(!reset);
   
           return (didUpdate) => {
             if(didUpdate){
