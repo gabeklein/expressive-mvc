@@ -1,6 +1,5 @@
 import { Model, PARENT, uid } from './model';
 
-const Expects = new WeakMap<Model, Map<Model.Type, (model: any) => (() => void) | void>>();
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 
 declare namespace Context {
@@ -11,19 +10,6 @@ declare namespace Context {
 }
 
 class Context {
-  static request<T extends Model>(
-    type: Model.Type<T>,
-    from: Model,
-    callback: (got: T) => void){
-  
-    let map = Expects.get(from);
-  
-    if(!map)
-      Expects.set(from, map = new Map());
-  
-    map.set(type, callback);
-  }
-
   public id!: string;
 
   protected downstream = new WeakMap<Model.Type, symbol>();
@@ -107,16 +93,10 @@ class Context {
     }
 
     for(const [model, explicit] of init){
+      model.set();
+
       if(forEach)
         forEach(model, explicit);
-
-      model.set();
-  
-      const expects = Expects.get(model);
-    
-      if(expects)
-        for(let [T, callback] of expects)
-          this.put(T as Model.Type, callback);
   
       for(const [_key, value] of model)
         if(PARENT.get(value as Model) === model){
