@@ -456,7 +456,7 @@ class Model {
   }
 
   static context<T extends Model>(this: Model.Type<T>, on: Model, callback: ((got: Context) => void)): void;
-  static context<T extends Model>(this: Model.Type<T>, on: Model): Context | undefined;
+  static context<T extends Model>(this: Model.Type<T>, on: Model): PromiseLike<Context>;
 
   static context<T extends Model>(
     this: Model.Type<T>,
@@ -466,14 +466,16 @@ class Model {
     const waiting = Register.get(on);
 
     if(!callback)
-      return waiting instanceof Context ? waiting : undefined;
-  
-    if(waiting instanceof Context)
-      callback(waiting);
-    else if(waiting)
-      waiting.push(callback);
-    else
-      Register.set(on, [callback]);
+      return {
+        then(resolve: (value: Context) => void){
+          if(waiting instanceof Context)
+            resolve(waiting)
+          else if(waiting)
+            waiting.push(resolve);
+          else
+            Register.set(on, [resolve]);
+        }
+      }
   }
 }
 
