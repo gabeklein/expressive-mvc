@@ -10,7 +10,7 @@ describe("single", () => {
     }
   
     const parent = Parent.new();
-    const context = new Context(parent).push(Child);
+    const context = new Context({ parent }).push({ Child });
 
     expect(parent.child).toBeInstanceOf(Child);
 
@@ -33,7 +33,7 @@ describe("single", () => {
     expect(childEffect).toHaveBeenCalled();
     expect(childEffect).not.toHaveReturned();
 
-    new Context(parent).push(Child);
+    new Context({ parent }).push({ Child });
 
     await expect(parent).toHaveUpdated();
 
@@ -55,7 +55,7 @@ describe("single", () => {
     expect(childEffect).toBeCalledTimes(1);
     expect(childEffect).toHaveBeenCalledWith(undefined);
 
-    new Context(parent).push(Child);
+    new Context({ parent }).push({ Child });
 
     await expect(parent).toHaveUpdated();
 
@@ -72,12 +72,16 @@ describe("single", () => {
     }
 
     const parent = Parent.new();
-    const context = new Context(parent).push();
+    const context = new Context({ parent }).push({
+      child: Child.new({ value: 1 })
+    });
 
-    context.include(Child.new({ value: 1 }));
     expect(parent.child.value).toBe(1);
 
-    context.include(Child.new({ value: 2 }));
+    context.include({
+      child: Child.new({ value: 2 })
+    });
+
     expect(parent.child.value).toBe(2);
   })
 
@@ -90,7 +94,7 @@ describe("single", () => {
     const test2 = Test.new();
     const test3 = Test.new();
 
-    new Context(test).push(test2).push(test3);
+    new Context({ test }).push({ test2 }).push({ test3 });
 
     expect(test.child).toBe(test2);
     expect(test2.child).toBe(test3);
@@ -107,7 +111,7 @@ describe("single", () => {
   
     const foo = Foo.new();
   
-    new Context(foo).push(Baz);
+    new Context({ foo }).push({ Baz });
 
     expect(foo.bar.baz).toBeInstanceOf(Baz);
   });
@@ -123,7 +127,7 @@ describe("single", () => {
   
     const foo = Foo.new();
   
-    new Context(foo).push(Bar);
+    new Context({ foo }).push({ Bar });
 
     expect(foo.baz).toBeInstanceOf(Baz);
   });
@@ -138,7 +142,7 @@ describe("collection", () => {
   
     const parent = Parent.new();
   
-    new Context(parent).push(Child);
+    new Context({ parent }).push({ Child });
 
     expect(Array.from(parent.children)).toEqual([
       expect.any(Child)
@@ -154,7 +158,7 @@ describe("collection", () => {
     const gotChild = jest.fn();
     const parent = Parent.new();
   
-    new Context(parent).push(Child);
+    new Context({ parent }).push({ Child });
     expect(gotChild).toHaveBeenCalledWith(expect.any(Child));
   })
   
@@ -167,7 +171,7 @@ describe("collection", () => {
     const hasChild = jest.fn();
     const parent = Parent.new();
 
-    new Context(parent).push({
+    new Context({ parent }).push({
       child1: new Child(),
       child2: new Child()
     });
@@ -191,7 +195,7 @@ describe("collection", () => {
     }
   
     const parent = Parent.new();
-    const context = new Context(parent).push();
+    const context = new Context({ parent }).push();
 
     const remove1 = context.has(new Child())!;
     const remove2 = context.has(new Child())!;
@@ -228,7 +232,7 @@ describe("collection", () => {
   
     const hasChild = jest.fn(() => false);
     const parent = Parent.new();
-    const context = new Context(parent);
+    const context = new Context({ parent });
 
     context.has(new Child());
     context.has(new Child());
@@ -253,7 +257,7 @@ describe("collection", () => {
     const parent = Parent.new();
     const child = Child.new();
 
-    const context = new Context(parent);
+    const context = new Context({ parent });
 
     context.has(child);
     context.has(child);

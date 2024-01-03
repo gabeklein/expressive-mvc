@@ -3,10 +3,7 @@ import { Model, PARENT, uid } from './model';
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
 
 declare namespace Context {
-  type Input = 
-    | Model
-    | Model.Type<Model>
-    | Record<string | number, Model | Model.Type<Model>>
+  type Input = Record<string | number, Model | Model.Type<Model>>
 }
 
 class Context {
@@ -63,15 +60,9 @@ class Context {
   ){
     const init = new Map<Model, boolean>();
 
-    if(typeof inputs == "function" || inputs instanceof Model)
-      inputs = { [0]: inputs };
-
-    else if(!inputs)
-      reject(inputs);
-
     Object.entries(inputs).forEach(([K, V]) => {
       if(!(Model.is(V) || V instanceof Model))
-        reject(`${V} as ${K}`);
+        throw new Error(`Context can only include Model or instance but got ${V}${K && (" as " + K)}.`);
     })
 
     for(const key in inputs){
@@ -179,10 +170,6 @@ class Context {
 
     this.layer.clear();
   }
-}
-
-function reject(argument: any){
-  throw new Error(`Context can only include Model or instance but got ${argument}.`);
 }
 
 export { Context, Register }
