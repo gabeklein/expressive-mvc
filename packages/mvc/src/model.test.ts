@@ -1624,19 +1624,16 @@ describe("new method (static)", () => {
   
   it("will log error from rejected initializer", async () => {
     // TODO: why does mock helper not work for this?
-    const error = jest.spyOn(console, "error");
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
     const expects = new Error("Model callback rejected.");
-    const didCreate = jest.fn(() => Promise.reject(expects));
 
-    error.mockImplementation(() => {});
+    const init = jest.fn(() => Promise.reject(expects));
+    const test = Model.new("ID", init);
   
-    const test = Model.new("ID", didCreate);
-  
-    expect(didCreate).toBeCalledTimes(1);
+    expect(init).toBeCalledTimes(1);
     
     await expect(test).not.toHaveUpdated();
 
-    // TODO: remove when hard ID can be applied.
     expect(error).toBeCalledWith("Async error in constructor for ID:");
     expect(error).toBeCalledWith(expects);
 
