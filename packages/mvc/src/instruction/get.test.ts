@@ -11,6 +11,35 @@ it.todo("will add pending compute to frame immediately");
 it.todo("will suspend if necessary");
 
 describe("fetch mode", () => {
+  it.skip("will fetch sibling", () => {
+    class Ambient extends Model {}
+    class Test extends Model {
+      sibling = get(Test);
+    }
+
+    const test = Test.new();
+
+    new Context({ Ambient, test });
+
+    expect(test.sibling).toBe(test);
+  })
+
+  it("will fetch multiple", () => {
+    class Ambient extends Model {}
+    class Test extends Model {
+      ambient1 = get(Ambient);
+      ambient2 = get(Ambient);
+    }
+
+    const test = Test.new();
+    const ambient = Ambient.new();
+
+    new Context({ ambient }).push({ test });
+
+    expect(test.ambient1).toBe(ambient);
+    expect(test.ambient2).toBe(ambient);
+  })
+
   it("will not update on noop", async () => {
     class Remote extends Model {
       value = "foo";

@@ -3,6 +3,7 @@ import { set } from './instruction/set';
 import { ref } from './instruction/ref';
 import { Model } from './model';
 import { mockError, mockPromise } from './mocks';
+import { Context } from './context';
 
 it('will extend custom class', () => {
   class Subject extends Model {
@@ -1821,5 +1822,34 @@ describe("on method (static)", () => {
     expect(mock).toBeCalledWith("foo", "baz");
 
     done();
+  });
+})
+
+describe("context method (static)", () => {
+  it("will get context", () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+
+    expect(Test.context(test)).toBeUndefined();
+
+    const context = new Context({ test })
+
+    expect(Test.context(test)).toBe(context);
+  });
+
+  it("will callback when attached", () => {
+    class Test extends Model {}
+
+    const test = Test.new();
+    const mock = jest.fn();
+
+    Test.context(test, mock);
+
+    expect(mock).not.toBeCalled();
+
+    const context = new Context({ test });
+
+    expect(mock).toBeCalledWith(context);
   });
 })
