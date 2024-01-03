@@ -16,8 +16,6 @@ export function mockPromise<T = void>(){
 export function mockWarn(){
   const warn = jest.spyOn(console, "warn");
 
-  warn.mockImplementation(() => {});
-
   afterEach(() => warn.mockReset());
   afterAll(() => warn.mockRestore());
 
@@ -26,8 +24,6 @@ export function mockWarn(){
 
 export function mockError(){
   const error = jest.spyOn(console, "error");
-
-  error.mockImplementation(() => {});
 
   afterEach(() => error.mockReset());
   afterAll(() => error.mockRestore());
