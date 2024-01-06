@@ -122,6 +122,14 @@ function queue(event: (() => void)){
 type Effect<T extends {}> = (this: T, argument: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
+/**
+ * Create a side-effect which will update whenever values accessed change.
+ * Callback is called immediately and if ever values are stale.
+ * 
+ * @param target - Instance of Model to observe.
+ * @param callback - Function to invoke when values change.
+ * @param requireValues - If `true` will throw if accessing a value which is `undefined`.
+ */
 function effect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
 function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
 function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
