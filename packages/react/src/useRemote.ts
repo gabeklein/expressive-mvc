@@ -1,11 +1,11 @@
-import { Model } from '@expressive/mvc';
+import { Model, effect } from '@expressive/mvc';
 
 import { useContext, useEffect, useState } from './useContext';
 
 export function useRemote<T extends Model, R>(
   this: Model.Type<T>,
-  argument?: boolean | Model.get.Factory<T, any>){
-
+  argument?: boolean | Model.get.Factory<T, any>
+){
   const context = useContext()
   const state = useState(() => {
     const instance = context.get(this);
@@ -16,9 +16,6 @@ export function useRemote<T extends Model, R>(
         return () => {};
       else
         throw new Error(`Could not find ${this} in context.`);
-
-    if(typeof argument === "boolean")
-      return () => instance;
 
     function forceUpdate(): void;
     function forceUpdate<T>(action: Promise<T> | (() => Promise<T>)): Promise<T>;
@@ -35,7 +32,7 @@ export function useRemote<T extends Model, R>(
     let release: (() => void) | undefined;
     let value: any;
 
-    release = instance.get(current => {
+    release = effect(instance, current => {
       if(typeof argument === "function"){
         const next = argument.call(current, current, forceUpdate);
 
@@ -49,7 +46,7 @@ export function useRemote<T extends Model, R>(
 
       if(release)
         refresh();
-    });
+    }, argument === true);
 
     if(value instanceof Promise){
       let error: Error | undefined;
@@ -79,5 +76,5 @@ export function useRemote<T extends Model, R>(
     }
   });
 
-  return state[0]();
+  return state[0]() as R;
 }

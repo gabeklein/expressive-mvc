@@ -17,10 +17,10 @@ it("will fetch model", () => {
 
   const test = Test.new();
   const hook = mockHook(test, () => {
-    return Test.get(true);
+    return Test.get();
   });
 
-  expect(hook.output).toBe(test);
+  expect(hook.output.is).toBe(test);
 })
 
 it("will refresh for values accessed", async () => {
@@ -58,50 +58,45 @@ it("will not update on death event", async () => {
   expect(hook).toBeCalledTimes(1);
 })
 
-describe("passive mode", () => {
-  it("will not subscribe", async () => {
-    class Test extends Model {
-      value = 1;
-    }
+it("will throw if not found", () => {
+  class Test extends Model {
+    value = 1;
+  }
 
-    const test = Test.new();
-    const hook = mockHook(test, () => {
-      return Test.get(true).value;
-    });
-
-    expect(hook).toBeCalledTimes(1);
-    expect(hook.output).toBe(1);
-
-    test.value++;
-
-    await expect(test).toHaveUpdated();
-
-    expect(hook).toBeCalledTimes(1);
+  const useTest = jest.fn(() => {
+    expect(() => Test.get()).toThrow("Could not find Test in context.");
   });
+  
+  mockHook(useTest);
+  expect(useTest).toHaveReturned();
+});
 
-  it("will throw if not found", () => {
-    class Test extends Model {
-      value = 1;
-    }
+it("will not throw if optional", () => {
+  class Test extends Model {
+    value = 1;
+  }
 
-    const useTest = jest.fn(() => {
-      expect(() => Test.get()).toThrow("Could not find Test in context.");
-    });
-    
-    mockHook(useTest);
-    expect(useTest).toHaveReturned();
+  const useTest = jest.fn(() => {
+    expect(Test.get(false)).toBeUndefined();
   });
+  
+  mockHook(useTest);
+  expect(useTest).toHaveReturned();
+});
 
-  it("will return undefined if not requred", () => {
-    class Test extends Model {
-      value = 1;
+it("will throw if expected value undefined", () => {
+  class Test extends Model {
+    constructor(){
+      super('ID');
     }
+    value?: number = undefined;
+  }
 
-    const useTest = jest.fn(() => Test.get(false));
-    
-    mockHook(useTest);
-    expect(useTest).toHaveReturnedWith(undefined);
-  })
+  mockHook(Test, () => {
+    expect(() => {
+      void Test.get(true).value;
+    }).toThrow("ID.value is required in this context.");
+  });
 })
 
 describe("computed", () => {

@@ -1,5 +1,7 @@
 import { Model } from '@expressive/mvc';
 
+import { useContext, useMemo } from './useContext';
+
 declare namespace Consumer {
   type HasProps<T extends Model> = {
     /** Type of controller to fetch from context. */
@@ -49,9 +51,18 @@ function Consumer<T extends Model>(
   }
 
   if(typeof children == "function")
-    return children(Type.get() as T);
+    return children(Type.get() as T)
 
-  const instance = Type.get(!!has) as T;
+  const context = useContext();
+  const instance = useMemo(() => {
+    const instance = context.get(Type);
+
+    if(!instance && has)
+      throw new Error(`Could not find ${Type} in context.`);
+
+    return instance as T;
+  }, []);
+
   const callback = has || get;
 
   if(typeof callback == "function")

@@ -54,10 +54,13 @@ declare module '@expressive/mvc' {
     ): Component<T, P & Model.Assign<T>>;
 
     /** Fetch instance of this class from context. */
-    function get <T extends Model> (this: Model.Type<T>, passive?: true): T;
+    function get <T extends Model> (this: Model.Type<T>): T;
   
-    /** Fetch instance of this class optionally. May be undefined, but will never subscribe. */
-    function get <T extends Model> (this: Model.Type<T>, required: boolean): T | undefined;
+    /** Fetch instance of this class optionally. */
+    function get <T extends Model> (this: Model.Type<T>, expect: false): T | undefined;
+
+    /** Fetch instance of this class from context. */
+    function get <T extends Model> (this: Model.Type<T>, expectValues: true): Required<T>
   
     function get <T extends Model, R> (this: Model.Type<T>, factory: get.Factory<T, Promise<R> | R>): NoVoid<R>;
   
