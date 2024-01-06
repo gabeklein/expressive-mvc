@@ -63,7 +63,7 @@ function watch(from: any, key?: unknown, value?: any){
 
 const PENDING = new WeakMap<{}, Set<unknown>>();
 
-function event(source: {}, key: Event){
+function emit(source: {}, key: Event){
   const subs = LISTENER.get(source)!;
   const ready = !subs.has(onReady);
 
@@ -182,7 +182,7 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
 export {
   addListener,
   effect,
-  event,
+  emit,
   OnUpdate,
   queue,
   watch

@@ -1,4 +1,4 @@
-import { addListener, effect, event, OnUpdate, queue, watch } from './control';
+import { addListener, effect, emit, OnUpdate, queue, watch } from './control';
 
 let EXPORT: Map<any, any> | undefined;
 
@@ -386,12 +386,12 @@ class Model {
       })
 
     if(arg1 === null)
-      return event(this, null);
+      return emit(this, null);
 
     if(typeof arg1 == "object")
       assign(self, arg1);
     else if(arg1 == undefined)  
-      event(this, true);
+      emit(this, true);
     else if(1 in arguments)
       update(self, arg1, arg2, arg3);
     else
@@ -424,7 +424,7 @@ class Model {
    */
   static new <T extends Model> (this: Model.Type<T>, ...args: Model.Args<T>){
     const instance = new this(...args) as T;
-    event(instance, true);
+    emit(instance, true);
     return instance;
   }
 
@@ -516,7 +516,7 @@ function update(
 
   if(value instanceof Model && !PARENT.has(value)){
     PARENT.set(value, subject);
-    event(value, true);
+    emit(value, true);
   }
 
   state[key] = value;
@@ -537,7 +537,7 @@ function push(
 
     if(!silent)
       queue(() => {
-        event(subject, false);
+        emit(subject, false);
         PENDING.delete(subject)
       })
   }
@@ -545,7 +545,7 @@ function push(
   pending.add(key);
 
   if(!silent)
-    event(subject, key);
+    emit(subject, key);
 }
 
 const METHODS = new WeakMap<Model.Type, string[]>([[Model, []]]);
