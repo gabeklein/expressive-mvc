@@ -1,5 +1,6 @@
-import { use } from './instruction/use';
+import { effect } from './control';
 import { set } from './instruction/set';
+import { use } from './instruction/use';
 import { mockError } from './mocks';
 import { Model } from './model';
 
@@ -193,21 +194,38 @@ describe("instruction", () => {
   });
 })
 
-it("will run effect after properties", () => {
-  const mock = jest.fn();
+describe("effect", () => {
+  it("will run after properties", () => {
+    const mock = jest.fn();
+  
+    class Test extends Model {
+      property = use((_key, _model, state) => {
+        this.get(() => mock(state))
+      })
+  
+      foo = 1;
+      bar = 2;
+    }
+  
+    Test.new();
+  
+    expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
+  });
 
-  class Test extends Model {
-    property = use((_key, _model, state) => {
-      this.get(() => mock(state))
-    })
+  it("will enforce values if required", () => {
+    class Test extends Model {
+      property?: string = undefined;
+    }
 
-    foo = 1;
-    bar = 2;
-  }
+    const test = Test.new("ID");
+    const attempt = () =>  {
+      effect(test, $ => {
+        expect<string>($.property);
+      }, true);
+    }
 
-  Test.new();
-
-  expect(mock).toBeCalledWith({ foo: 1, bar: 2 });
+    expect(attempt).toThrowError(`ID.property is required in this context.`);
+  });
 })
 
 describe("suspense", () => {

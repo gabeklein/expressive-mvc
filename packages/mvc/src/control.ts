@@ -16,6 +16,7 @@ type Event = number | string | null | boolean | symbol;
 const DISPATCH = new Set<() => void>();
 const OBSERVER = new WeakMap<{}, OnUpdate>();
 const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
+const REQUIRED = new WeakSet();
 
 /** Placeholder event determines if initialized or not. */
 const onReady = () => null;
@@ -56,6 +57,9 @@ function watch(from: any, key?: unknown, value?: any){
       LISTENER.set(value = Object.create(value), nested);
       OBSERVER.set(value, observer);
     }
+
+    if(value === undefined && REQUIRED.has(from))
+      throw new Error(`${from}.${key} is required in this context.`);
   }
 
   return value;
@@ -118,7 +122,9 @@ function queue(event: (() => void)){
 type Effect<T extends {}> = (this: T, argument: T) =>
   ((update: boolean | null) => void) | Promise<void> | null | void;
 
-function effect<T extends {}>(target: T, callback: Effect<T>){
+function effect<T extends {}>(target: T, callback: Effect<Required<T>>, requireValues: true): () => void;
+function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean): () => void;
+function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: boolean){
   const listeners = LISTENER.get(target)!;
 
   let unset: ((update: boolean | null) => void) | undefined;
@@ -143,6 +149,9 @@ function effect<T extends {}>(target: T, callback: Effect<T>){
 
       return reset;
     });
+
+    if(requireValues)
+      REQUIRED.add(subscriber);
 
     try {
       const out = callback.call(subscriber, subscriber);
