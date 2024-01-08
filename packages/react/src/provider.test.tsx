@@ -181,7 +181,7 @@ describe("use prop", () => {
 
 describe("suspense", () => {
   class Test extends Model {
-    value = set(promise.pending);
+    value = set(promise.pending, true);
   }
 
   const DidSuspend = () => {

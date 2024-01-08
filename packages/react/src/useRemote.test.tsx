@@ -473,7 +473,7 @@ describe("set instruction", () => {
       const promise = mockPromise<string>();
   
       class Test extends Model {
-        value = set(() => promise);
+        value = set(() => promise, true);
       }
   
       const hook = mockHook(Test, () => {
@@ -495,10 +495,12 @@ describe("set instruction", () => {
       const promise = mockPromise();
     
       class Test extends Model {
-        value = set(async () => {
+        value = set(this.compute, true);
+
+        async compute(){
           await promise;
           throw "oh no";
-        })
+        }
       }
     
       const didThrow = mockPromise();
@@ -523,11 +525,11 @@ describe("set instruction", () => {
       expect(error).toBe("oh no");
     })
   
-    it('will suspend if value is promise', async () => {
+    it('will suspend if required value is promise', async () => {
       const promise = mockPromise<string>();
     
       class Test extends Model {
-        value = set(promise);
+        value = set(promise, true);
       }
   
       const hook = mockHook(Test, () => {

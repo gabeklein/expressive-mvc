@@ -269,7 +269,7 @@ describe("factory", () => {
 
   it("will emit when factory resolves", async () => {
     class Test extends Model {
-      value = set(async () => "foobar");
+      value = set(async () => "foobar", true);
     }
 
     const test = Test.new();
@@ -283,8 +283,8 @@ describe("factory", () => {
 
   it("will not suspend where already resolved", async () => {
     class Test extends Model {
-      greet = set(async () => "Hello");
-      name = set(async () => "World");
+      greet = set(async () => "Hello", true);
+      name = set(async () => "World", true);
 
       value = set(() => this.greet + " " + this.name);
     }
@@ -308,7 +308,7 @@ describe("factory", () => {
     const promise = mockPromise();
 
     class Test extends Model {
-      value = set(promise);
+      value = set(promise, true);
     }
 
     const instance = Test.new("ID");
@@ -317,7 +317,7 @@ describe("factory", () => {
     promise.resolve();
   })
 
-  it("will suspend required-compute while still pending", () => {
+  it("will suspend if required while still pending", () => {
     const promise = mockPromise();
 
     class Test extends Model {
@@ -330,12 +330,12 @@ describe("factory", () => {
     promise.resolve();
   })
 
-  it("will return undefined if not required", async () => {
+  it("will be undefined if not required", async () => {
     const promise = mockPromise<string>();
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise, false);
+      value = set(promise);
     }
 
     const test = Test.new();
@@ -373,10 +373,10 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      greet = set(greet);
-      name = set(name);
+      greet = set(greet, true);
+      name = set(name, true);
 
-      value = set(didEvaluate);
+      value = set(didEvaluate, true);
     }
 
     const test = Test.new();
@@ -402,9 +402,9 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      greet = set(() => greet);
-      name = set(() => name);
-      value = set(didEvaluate);
+      greet = set(() => greet, true);
+      name = set(() => name, true);
+      value = set(didEvaluate, true);
     }
 
     const test = Test.new();
@@ -426,7 +426,7 @@ describe("factory", () => {
     const didUpdate = mockPromise<string>();
 
     class Child extends Model {
-      value = set(promise);
+      value = set(promise, true);
     }
 
     class Test extends Model {
@@ -434,7 +434,7 @@ describe("factory", () => {
       
       childValue = set(() => {
         return this.child.value + " world!";
-      });
+      }, true);
     }
 
     const test = Test.new();
@@ -458,11 +458,11 @@ describe("factory", () => {
     const didEvaluate = mockPromise<string>();
 
     class Test extends Model {
-      asyncValue = set(() => promise);
+      asyncValue = set(() => promise, true);
 
       value = set(() => {
         return `Hello ${this.asyncValue}`;
-      });
+      }, true);
     }
 
     const test = Test.new();
@@ -494,7 +494,7 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      message = set(compute);
+      message = set(compute, true);
     }
 
     const test = Test.new();
@@ -534,10 +534,10 @@ describe("factory", () => {
     const promise2 = mockPromise<number>();
 
     class Test extends Model {
-      a = set(promise);
-      b = set(promise2);
+      a = set(promise, true);
+      b = set(promise2, true);
 
-      sum = set(this.getSum);
+      sum = set(this.getSum, true);
 
       getSum(){
         const { a, b } = this;
@@ -570,7 +570,7 @@ describe("factory", () => {
     const promise = mockPromise();
 
     class Test extends Model {
-      value = set(() => promise);
+      value = set(() => promise, true);
     }
 
     const instance = Test.new();

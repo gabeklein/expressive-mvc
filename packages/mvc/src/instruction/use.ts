@@ -17,7 +17,7 @@ function use(
 
   if(Model.is(model)){
     const type = model;
-    const value = new model();
+    const value = new type();
     model = (key, subject) => {
       function set(next: Model | undefined){
         if(next ? !(next instanceof type) : argument !== false)
@@ -43,10 +43,16 @@ function use(
 
 Model.on((_, subject) => {
   const state = STATE.get(subject)!;
-  const props = Object.getOwnPropertyDescriptors(subject);
+  const properties = Object.getOwnPropertyDescriptors(subject);
 
-  for(const key in props){
-    const { value } = props[key];
+  for(const key in properties){
+    const { value } = properties[key];
+
+    if(value instanceof Model){
+      update(subject, key, value, true);
+      continue;
+    }
+
     const instruction = INSTRUCT.get(value);
 
     if(!instruction)
