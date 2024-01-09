@@ -267,9 +267,39 @@ describe("factory", () => {
     const instance = Test.new();
   })
 
-  it("will emit when factory resolves", async () => {
+  it("will warn and rethrow error from factory", () => {
     class Test extends Model {
-      value = set(async () => "foobar");
+      memoized = set(this.failToGetSomething, true);
+
+      failToGetSomething(){
+        throw new Error("Foobar") 
+      }
+    }
+
+    const attempt = () => Test.new("ID");
+
+    expect(attempt).toThrowError("Foobar");
+    expect(warn).toBeCalledWith(`Generating initial value for ID.memoized failed.`);
+  })
+});
+
+describe("suspense", () => {
+  it("will throw suspense-promise resembling an error", () => {
+    const promise = mockPromise();
+
+    class Test extends Model {
+      value = set(promise, true);
+    }
+
+    const instance = Test.new("ID");
+
+    expect(() => instance.value).toThrowError(`ID.value is not yet available.`);
+    promise.resolve();
+  })
+
+  it("will resolve when factory does", async () => {
+    class Test extends Model {
+      value = set(async () => "foobar", true);
     }
 
     const test = Test.new();
@@ -283,8 +313,8 @@ describe("factory", () => {
 
   it("will not suspend where already resolved", async () => {
     class Test extends Model {
-      greet = set(async () => "Hello");
-      name = set(async () => "World");
+      greet = set(async () => "Hello", true);
+      name = set(async () => "World", true);
 
       value = set(() => this.greet + " " + this.name);
     }
@@ -304,20 +334,7 @@ describe("factory", () => {
     expect(() => test.value).not.toThrow();
   })
 
-  it("will throw suspense-promise resembling an error", () => {
-    const promise = mockPromise();
-
-    class Test extends Model {
-      value = set(promise);
-    }
-
-    const instance = Test.new("ID");
-
-    expect(() => instance.value).toThrowError(`ID.value is not yet available.`);
-    promise.resolve();
-  })
-
-  it("will suspend required-compute while still pending", () => {
+  it("will suspend if required while still pending", () => {
     const promise = mockPromise();
 
     class Test extends Model {
@@ -330,12 +347,12 @@ describe("factory", () => {
     promise.resolve();
   })
 
-  it("will return undefined if not required", async () => {
+  it("will be undefined if not required", async () => {
     const promise = mockPromise<string>();
     const mock = jest.fn();
 
     class Test extends Model {
-      value = set(promise, false);
+      value = set(promise);
     }
 
     const test = Test.new();
@@ -349,21 +366,6 @@ describe("factory", () => {
     expect(mock).toBeCalledWith("foobar");
   })
 
-  it("will warn and rethrow error from factory", () => {
-    class Test extends Model {
-      memoized = set(this.failToGetSomething, true);
-
-      failToGetSomething(){
-        throw new Error("Foobar") 
-      }
-    }
-
-    const attempt = () => Test.new("ID");
-
-    expect(attempt).toThrowError("Foobar");
-    expect(warn).toBeCalledWith(`Generating initial value for ID.memoized failed.`);
-  })
-
   it("will suspend another factory", async () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
@@ -373,10 +375,10 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      greet = set(greet);
-      name = set(name);
+      greet = set(greet, true);
+      name = set(name, true);
 
-      value = set(didEvaluate);
+      value = set(didEvaluate, true);
     }
 
     const test = Test.new();
@@ -402,9 +404,9 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      greet = set(() => greet);
-      name = set(() => name);
-      value = set(didEvaluate);
+      greet = set(() => greet, true);
+      name = set(() => name, true);
+      value = set(didEvaluate, true);
     }
 
     const test = Test.new();
@@ -426,7 +428,7 @@ describe("factory", () => {
     const didUpdate = mockPromise<string>();
 
     class Child extends Model {
-      value = set(promise);
+      value = set(promise, true);
     }
 
     class Test extends Model {
@@ -434,7 +436,7 @@ describe("factory", () => {
       
       childValue = set(() => {
         return this.child.value + " world!";
-      });
+      }, true);
     }
 
     const test = Test.new();
@@ -453,31 +455,21 @@ describe("factory", () => {
     expect(effect).toBeCalledTimes(2);
   })
 
-  it("will return undefined on suspense", async () => {
+  it("will return undefined on nested suspense", async () => {
     const promise = mockPromise<string>();
-    const didEvaluate = mockPromise<string>();
 
     class Test extends Model {
-      asyncValue = set(() => promise);
+      asyncValue = set(() => promise, true);
 
-      value = set(() => {
-        return `Hello ${this.asyncValue}`;
-      });
+      value = set(() => `Hello ${this.asyncValue}`);
     }
 
     const test = Test.new();
-    const effect = jest.fn((state: Test) => {
-      didEvaluate.resolve(state.value);
-    });
-
-    test.get(effect);
-
-    expect(effect).toBeCalledTimes(1);
-    expect(effect).not.toHaveReturned();
+    
+    expect(test.value).toBeUndefined();
 
     promise.resolve("World");
-
-    await didEvaluate;
+    await expect(test).toUpdate();
 
     expect(test.value).toBe("Hello World")
   })
@@ -494,7 +486,7 @@ describe("factory", () => {
     });
 
     class Test extends Model {
-      message = set(compute);
+      message = set(compute, true);
     }
 
     const test = Test.new();
@@ -534,8 +526,8 @@ describe("factory", () => {
     const promise2 = mockPromise<number>();
 
     class Test extends Model {
-      a = set(promise);
-      b = set(promise2);
+      a = set(promise, true);
+      b = set(promise2, true);
 
       sum = set(this.getSum);
 
@@ -547,30 +539,30 @@ describe("factory", () => {
     }
 
     const test = Test.new();
-    const didEvaluate = mockPromise<string>();
 
-    const effect = jest.fn((state: Test) => {
-      didEvaluate.resolve(state.sum);
-    });
+    const effect = jest.fn((state: Test) => void state.sum);
 
     test.get(effect);
 
     expect(effect).toBeCalled();
-    expect(effect).not.toHaveReturned();
 
     promise.resolve(10);
-    promise2.resolve(20);
+    await expect(test).toUpdate();
 
-    await didEvaluate;
+    expect(effect).toBeCalledTimes(1);
+
+    promise2.resolve(20);
+    await expect(test).toUpdate();
 
     expect(test.sum).toBe("Answer is 30.")
+    expect(effect).toBeCalledTimes(2);
   })
 
   it('will refresh and throw if async rejects', async () => {
     const promise = mockPromise();
 
     class Test extends Model {
-      value = set(() => promise);
+      value = set(promise, true);
     }
 
     const instance = Test.new();

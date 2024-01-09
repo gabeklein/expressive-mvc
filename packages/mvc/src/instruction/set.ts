@@ -61,7 +61,7 @@ function set <T> (
             throw err;
           }
 
-        output.get = typeof argument == "boolean" ? argument : undefined;
+        output.get = argument === true;
 
         if(value instanceof Promise){
           value
