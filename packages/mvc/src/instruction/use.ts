@@ -68,6 +68,13 @@ Model.on((_, subject) => {
 
     Object.defineProperty(subject, key, {
       enumerable,
+      get(this: Model){
+        return watch(this, key, 
+          typeof desc.get == "function"
+            ? desc.get(this)
+            : fetch(subject, key, desc.get)
+        );
+      },
       set(next){
         let { set } = desc;
 
@@ -87,13 +94,6 @@ Model.on((_, subject) => {
         }
 
         update(subject, key, next, !!set);
-      },
-      get(this: Model){
-        return watch(this, key, 
-          typeof desc.get == "function"
-            ? desc.get(this)
-            : fetch(subject, key, desc.get)
-        );
       }
     })
   }
