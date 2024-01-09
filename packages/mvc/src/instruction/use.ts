@@ -18,6 +18,7 @@ function use(
   if(Model.is(model)){
     const type = model;
     const value = new model();
+
     model = (key, subject) => {
       function set(next: Model | undefined){
         if(next ? !(next instanceof type) : argument !== false)
