@@ -17,7 +17,7 @@ function use(
 
   if(Model.is(model)){
     const type = model;
-    const value = new model();
+    const value = new type();
 
     model = (key, subject) => {
       function set(next: Model | undefined){
@@ -50,25 +50,28 @@ Model.on((_, subject) => {
     const { value } = props[key];
     const instruction = INSTRUCT.get(value);
 
-    if(!instruction)
+    if(!instruction){
+      if(value instanceof Model && key !== "is")
+        update(subject, key, value);
+
       continue;
+    }
 
     INSTRUCT.delete(value);
     delete (subject as any)[key];
 
     const output = instruction.call(subject, key, subject, state);
-  
+
     if(!output)
       continue;
 
     const desc = typeof output == "object" ? output : { get: output };
-    const { enumerable = true } = desc;
 
     if("value" in desc)
       state[key] = desc.value;
 
     Object.defineProperty(subject, key, {
-      enumerable,
+      enumerable: desc.enumerable !== false,
       get(this: Model){
         return watch(this, key, 
           typeof desc.get == "function"
@@ -86,6 +89,6 @@ Model.on((_, subject) => {
   }
 
   return null;
-})
+});
 
 export { use }
