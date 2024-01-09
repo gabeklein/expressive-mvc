@@ -77,24 +77,10 @@ Model.on((_, subject) => {
         );
       },
       set(next){
-        let { set } = desc;
-
-        if(set === false)
+        if(desc.set === false)
           throw new Error(`${subject}.${key} is read-only.`);
 
-        if(typeof set == "function"){
-          const result = set.call(subject, next, state[key]);
-
-          if(result === false)
-            return;
-
-          if(typeof result == "function")
-            next = result();
-
-          set = false;
-        }
-
-        update(subject, key, next, !!set);
+        update(subject, key, next, desc.set);
       }
     })
   }

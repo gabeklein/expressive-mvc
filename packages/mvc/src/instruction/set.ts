@@ -48,7 +48,7 @@ function set <T> (
   argument?: set.Callback<any> | boolean){
 
   return use<T>((key, subject) => {
-    const output: Model.Instruction.Descriptor = {};
+    const output: Model.Descriptor = {};
 
     if(typeof value == "function" || value instanceof Promise){
       function init(){

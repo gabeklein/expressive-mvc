@@ -104,18 +104,6 @@ declare namespace Model {
    */
   type EffectCallback = ((update: boolean | null) => void);
 
-  namespace Instruction {
-    type Getter<T> = (source: Model) => T;
-    type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
-
-    type Descriptor<T = any> = {
-      get?: Getter<T> | boolean;
-      set?: Setter<T> | false;
-      enumerable?: boolean;
-      value?: T;
-    }
-  }
-
   /**
    * Property initializer, will run upon instance creation.
    * Optional returned callback will run when once upon first access.
@@ -123,7 +111,17 @@ declare namespace Model {
   type Instruction<T = any, M extends Model = any> =
     // TODO: Should this allow for numbers/symbol properties?
     (this: M, key: Field<M> & string, thisArg: M, state: State<M>) =>
-      Instruction.Descriptor<T> | Instruction.Getter<T> | void;
+      Descriptor<T> | Getter<T> | void;
+
+  type Getter<T> = (source: Model) => T;
+  type Setter<T> = (value: T, previous: T) => boolean | void | (() => T);
+
+  type Descriptor<T = any> = {
+    get?: Getter<T> | boolean;
+    set?: Setter<T> | false;
+    enumerable?: boolean;
+    value?: T;
+  }
 }
 
 interface Model {
@@ -498,18 +496,28 @@ function fetch(subject: Model, property: string, required?: boolean){
   });
 }
 
-function update(
+function update<T>(
   subject: Model,
   key: string | number | symbol,
-  value: unknown,
-  silent?: boolean){
+  value: T,
+  arg?: boolean | Model.Setter<T>){
 
   const state = STATE.get(subject)!;
 
   if(Object.isFrozen(state))
     throw new Error(`Tried to update ${String(key)} but ${subject} is destroyed.`);
 
-  const previous = state[key];
+  const previous = state[key] as T;
+
+  if(typeof arg == "function"){
+    const out = arg.call(subject, value, previous);
+
+    if(out === false)
+      return false;
+
+    if(typeof out == "function")
+      value = out();
+  }
 
   if(value === previous)
     return true;
@@ -521,7 +529,7 @@ function update(
 
   state[key] = value;
 
-  if(silent !== true)
+  if(arg !== true)
     push(subject, key);
 }
 
