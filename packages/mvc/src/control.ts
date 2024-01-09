@@ -14,9 +14,8 @@ type OnUpdate<T = any> =
 type Event = number | string | null | boolean | symbol;
 
 const DISPATCH = new Set<() => void>();
-const OBSERVER = new WeakMap<{}, OnUpdate>();
-const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<unknown> | false>>();
-const REQUIRED = new WeakSet();
+const OBSERVER = new WeakMap<{}, <T extends {}>(from: any, key: string | number, value: T) => T>();
+const LISTENER = new WeakMap<{}, Map<OnUpdate, Set<Event> | false>>();
 
 /** Placeholder event determines if initialized or not. */
 const onReady = () => null;
@@ -31,7 +30,7 @@ function addListener(
   if(!subs)
     LISTENER.set(subject, subs = new Map([[onReady, false]]));
 
-  const filter = 2 in arguments && new Set([select]);
+  const filter = select !== undefined && new Set([select]);
 
   if(!filter && !subs.has(onReady))
     callback(true, subject);
@@ -41,31 +40,12 @@ function addListener(
   return () => subs.delete(callback);
 }
 
-function watch(from: any, key?: unknown, value?: any){
-  const observer = OBSERVER.get(from);
-
-  if(observer){
-    const listeners = LISTENER.get(from)!;
-
-    listeners.set(observer, 
-      (listeners.get(observer) || new Set).add(key)  
-    );
-
-    const nested = LISTENER.get(value);
-
-    if(nested){
-      LISTENER.set(value = Object.create(value), nested);
-      OBSERVER.set(value, observer);
-    }
-
-    if(value === undefined && REQUIRED.has(from))
-      throw new Error(`${from}.${key} is required in this context.`);
-  }
-
-  return value;
+function watch(from: any, key: string | number, value?: any){
+  const access = OBSERVER.get(from);
+  return access ? access(from, key, value) : value;
 }
 
-const PENDING = new WeakMap<{}, Set<unknown>>();
+const PENDING = new WeakMap<{}, Set<Event>>();
 
 function emit(source: {}, key: Event){
   const subs = LISTENER.get(source)!;
@@ -143,23 +123,44 @@ function effect<T extends {}>(target: T, callback: Effect<T>, requireValues?: bo
 
     const subscriber = Object.create(target);
 
-    LISTENER.set(subscriber, listeners);
-    OBSERVER.set(subscriber, () => {
-      if(stale)
+    function onUpdate() {
+      if (stale)
         return null;
 
       stale = true;
 
-      if(reset && unset){
+      if (reset && unset) {
         unset(true);
         unset = undefined;
       }
 
       return reset;
-    });
+    }
 
-    if(requireValues)
-      REQUIRED.add(subscriber);
+    function access(from: any, key: string | number, value: any) {
+      if(value === undefined && requireValues)
+        throw new Error(`${from}.${key} is required in this context.`);
+
+      const listeners = LISTENER.get(from)!;
+      let listener = listeners.get(onUpdate);
+
+      if(!listener)
+        listeners.set(onUpdate, listener = new Set);
+
+      listener.add(key);
+
+      const nested = LISTENER.get(value);
+
+      if(nested){
+        LISTENER.set(value = Object.create(value), nested);
+        OBSERVER.set(value, access);
+      }
+
+      return value;
+    }
+
+    LISTENER.set(subscriber, listeners);
+    OBSERVER.set(subscriber, access);
 
     try {
       const out = callback.call(subscriber, subscriber);
