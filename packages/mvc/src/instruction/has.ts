@@ -2,7 +2,7 @@ import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
-const APPLY = new WeakMap<Model, ((model: Model) => (() => void) | void)[]>();
+const APPLY = new WeakMap<Model, (model: Model) => (() => void) | void>();
 
 declare namespace has {
   type Callback<T = any> = (model: T, recipient: Model) => void | boolean | (() => void);
@@ -21,8 +21,11 @@ function has <T extends Model> (
       subject.set(key, Object.freeze(Array.from(register)));
     }
 
-    if(!Model.is(arg1))
-      APPLY.set(subject, (APPLY.get(subject) || []).concat(recipient => {
+    if(!Model.is(arg1)){
+      if(APPLY.has(subject))
+        throw new Error(`'has' callback can only be used once per model.`);
+
+      APPLY.set(subject, recipient => {
         if(register.has(recipient))
           return;
 
@@ -45,7 +48,8 @@ function has <T extends Model> (
           if(typeof remove == "function")
             remove();
         }
-      }));
+      });
+    }
     else
       Context.get(subject, ctx => ctx.put(arg1, got => {
         let remove: (() => void) | void | undefined;

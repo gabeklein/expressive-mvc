@@ -240,6 +240,17 @@ describe("target", () => {
 
     expect(gotParent).toHaveBeenCalledWith(parent, child);
   })
+
+  it("will complain if used more than once", () => {
+    class Child extends Model {
+      parents = has();
+      parents2 = has();
+    }
+
+    expect(() => Child.new()).toThrowError(
+      `'has' callback can only be used once per model.`
+    );
+  })
 })
 
 it.todo("will require values as props if has-instruction");
