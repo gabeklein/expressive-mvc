@@ -8,15 +8,12 @@ declare namespace has {
   type Callback<T = any> = (model: T, recipient: Model) => void | boolean | (() => void);
 }
 
-// function has <T extends Model> (type: Model.Type<T>, one: true): T;
-function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
 function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): readonly T[];
-
 function has (callback?: has.Callback): Model | undefined;
   
 function has <T extends Model> (
   arg1?: Model.Type<T> | has.Callback<Model>,
-  arg2?: boolean | has.Callback<T>){
+  arg2?: has.Callback<T>){
 
   return use<T>((key, subject) => {
     const register = new Set<Model>();

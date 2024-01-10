@@ -196,7 +196,7 @@ describe("target", () => {
       parents = has();
     }
     class Parent extends Model {
-      child = has(Child, true);
+      child = has(Child);
     }
   
     const parent = Parent.new();
@@ -213,7 +213,7 @@ describe("target", () => {
       parents = has();
     }
     class Parent extends Model {
-      child = has(Child, true);
+      child = has(Child);
     }
   
     const child = Child.new();
