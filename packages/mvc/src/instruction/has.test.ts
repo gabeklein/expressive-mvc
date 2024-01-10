@@ -228,6 +228,23 @@ describe("target", () => {
     context.pop();
     context2.pop();
   })
+
+  it("will callback on register", () => {
+    class Child extends Model {
+      parents = has(gotParent);
+    }
+    class Parent extends Model {
+      child = has(Child);
+    }
+  
+    const gotParent = jest.fn();
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    new Context({ parent }).push({ child });
+
+    expect(gotParent).toHaveBeenCalledWith(parent, child);
+  })
 })
 
 it.todo("will require values as props if has-instruction");
