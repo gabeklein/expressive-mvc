@@ -1,6 +1,8 @@
 import { Model, PARENT, uid } from './model';
 
 const Register = new WeakMap<Model, Context | ((got: Context) => void)[]>();
+const Upstream = new WeakMap<Model | Model.Type, symbol>();
+const Downstream = new WeakMap<Model | Model.Type, symbol>();
 
 declare namespace Context {
   type Input = Record<string | number, Model | Model.Type<Model>>
@@ -25,9 +27,6 @@ class Context {
 
   public id!: string;
 
-  protected downstream = new WeakMap<Model.Type, symbol>();
-  protected upstream = new WeakMap<Model.Type, symbol>();
-
   protected layer = new Map<string | number, Model | Model.Type>();
 
   constructor(inputs?: Context.Input){
@@ -36,7 +35,7 @@ class Context {
   }
 
   public key(T: Model.Type, upstream?: boolean){
-    const table = upstream ? this.upstream : this.downstream;
+    const table = upstream ? Upstream : Downstream;
     let key = table.get(T);
 
     if(!key){
