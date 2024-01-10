@@ -2,137 +2,6 @@ import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
 
-describe("single", () => {
-  it("will register child", async () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      child = has(Child, true);
-    }
-  
-    const parent = Parent.new();
-    const context = new Context({ parent }).push({ Child });
-
-    expect(parent.child).toBeInstanceOf(Child);
-
-    context.pop();
-  })
-
-  it("will suspend if not registered", async () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      child = has(Child, true);
-    }
-  
-    const parent = Parent.new();
-    const childEffect = jest.fn((current: Parent) => {
-      expect<Child>(current.child).toBeInstanceOf(Child);
-    });
-
-    parent.get(childEffect);
-
-    expect(childEffect).toHaveBeenCalled();
-    expect(childEffect).not.toHaveReturned();
-
-    new Context({ parent }).push({ Child });
-
-    await expect(parent).toHaveUpdated();
-
-    expect(childEffect).toBeCalledTimes(2);
-    expect(childEffect).toHaveReturned();
-  });
-
-  it("will not suspend if optional", async () => {
-    class Child extends Model {}
-    class Parent extends Model {
-      child = has(Child, false);
-    }
-  
-    const parent = Parent.new();
-    const childEffect = jest.fn<void, [Child | undefined]>();
-
-    parent.get(({ child }) => childEffect(child));
-
-    expect(childEffect).toBeCalledTimes(1);
-    expect(childEffect).toHaveBeenCalledWith(undefined);
-
-    new Context({ parent }).push({ Child });
-
-    await expect(parent).toHaveUpdated();
-
-    expect(childEffect).toBeCalledTimes(2);
-    expect(childEffect).toHaveBeenCalledWith(expect.any(Child));
-  });
-
-  it("will replace child value", async () => {
-    class Child extends Model {
-      value = 0;
-    }
-    class Parent extends Model {
-      child = has(Child, true);
-    }
-
-    const parent = Parent.new();
-    const context = new Context({ parent }).push({
-      child: Child.new({ value: 1 })
-    });
-
-    expect(parent.child.value).toBe(1);
-
-    context.include({
-      child: Child.new({ value: 2 })
-    });
-
-    expect(parent.child.value).toBe(2);
-  })
-
-  it("will register own type", async () => {
-    class Test extends Model {
-      child = has(Test, false);
-    }
-
-    const test = Test.new();
-    const test2 = Test.new();
-    const test3 = Test.new();
-
-    new Context({ test }).push({ test2 }).push({ test3 });
-
-    expect(test.child).toBe(test2);
-    expect(test2.child).toBe(test3);
-  })
-
-  it("will register implicit", () => {
-    class Baz extends Model {}
-    class Foo extends Model {
-      bar = new Bar();
-    }
-    class Bar extends Model {
-      baz = has(Baz, true);
-    }
-  
-    const foo = Foo.new();
-  
-    new Context({ foo }).push({ Baz });
-
-    expect(foo.bar.baz).toBeInstanceOf(Baz);
-  });
-
-  it("will register for implicit", () => {
-    class Baz extends Model {}
-    class Foo extends Model {
-      baz = has(Baz, false);
-    }
-    class Bar extends Model {
-      baz = new Baz();
-    }
-  
-    const foo = Foo.new();
-  
-    new Context({ foo }).push({ Bar });
-
-    expect(foo.baz).toBeInstanceOf(Baz);
-  });
-})
-
 describe("collection", () => {
   it("will register child", () => {
     class Child extends Model {}
@@ -161,7 +30,8 @@ describe("collection", () => {
     const child = Child.new();
   
     new Context({ parent }).push({ child });
-    expect(gotChild).toHaveBeenCalledWith(child);
+
+    expect(gotChild).toHaveBeenCalledWith(child, parent);
   })
   
   it("will register multiple children", () => {
@@ -272,6 +142,58 @@ describe("collection", () => {
 
     expect(gotChild).toHaveBeenCalledTimes(1);
   })
+
+  it("will register own type", async () => {
+    class Test extends Model {
+      tests = has(Test, gotTest);
+    }
+
+    const gotTest = jest.fn();
+    const test = Test.new();
+    const test2 = Test.new();
+    const test3 = Test.new();
+
+    new Context({ test }).push({ test2 }).push({ test3 });
+
+    expect(gotTest).toBeCalledTimes(2);
+    expect(gotTest).toBeCalledWith(test2, test);
+    expect(gotTest).toBeCalledWith(test3, test2);
+  })
+
+  it("will register implicit", () => {
+    class Baz extends Model {}
+    class Foo extends Model {
+      bar = new Bar();
+    }
+    class Bar extends Model {
+      baz = has(Baz, gotBaz);
+    }
+  
+    const gotBaz = jest.fn();
+    const foo = Foo.new();
+    const baz = Baz.new();
+  
+    new Context({ foo }).push({ baz });
+
+    expect(gotBaz).toBeCalledWith(baz, foo.bar);
+  });
+
+  it("will register for implicit", () => {
+    class Baz extends Model {}
+    class Foo extends Model {
+      baz = has(Baz);
+    }
+    class Bar extends Model {
+      baz = new Baz();
+    }
+  
+    const foo = Foo.new();
+    const bar = Bar.new();
+  
+    new Context({ foo }).push({ bar });
+
+    expect(Array.from(foo.baz)).toEqual([ bar.baz ]);
+  });
 
   it.todo("will unwrap children on export")
 })

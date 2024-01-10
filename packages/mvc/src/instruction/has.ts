@@ -5,10 +5,10 @@ import { use } from './use';
 const APPLY = new WeakMap<Model, ((model: Model) => (() => void) | void)[]>();
 
 declare namespace has {
-  type Callback<T = any> = (model: T) => void | boolean | (() => void);
+  type Callback<T = any> = (model: T, recipient: Model) => void | boolean | (() => void);
 }
 
-function has <T extends Model> (type: Model.Type<T>, one: true): T;
+// function has <T extends Model> (type: Model.Type<T>, one: true): T;
 function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
 function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): Set<T>;
 
@@ -19,10 +19,7 @@ function has <T extends Model> (
   arg2?: boolean | has.Callback<T>){
 
   return use<T>((key, subject, state) => {
-    const value = new Set<Model>();
-
-    let output: Model.Descriptor = { value };
-    let callback: (model: T) => void | (() => void);
+    const register = new Set<Model>();
 
     if(!Model.is(arg1)){
       APPLY.set(subject, (APPLY.get(subject) || []).concat(recipient => {
@@ -32,7 +29,7 @@ function has <T extends Model> (
         let remove: (() => void) | boolean | void;
 
         if(arg1){
-          remove = arg1(recipient);
+          remove = arg1(recipient, subject);
   
           if(remove === false)
             return;
@@ -51,46 +48,25 @@ function has <T extends Model> (
       return { get: false };
     }
 
-    if(typeof arg2 == "boolean"){
-      output = { get: arg2 };
-      callback = (model) => {
-        subject.set(key, model);
-
-        return () => {
-          if(state[key] === model)
-            delete state[key];
-        }
-      }
-    }
-    else {
-      callback = (model) => {
-        if(value.has(model))
-          return;
-
-        const remove = arg2 && arg2(model);
-
-        if(remove === false)
-          return;
-
-        value.add(model);
-        subject.set(key);
-        
-        return () => {
-          if(typeof remove == "function")
-            remove();
-
-          value.delete(model);
-          subject.set(key);
-        }
-      }
-    }
-
     Context.get(subject, ctx => ctx.put(arg1, got => {
-      const remove = callback(got);
-      let disconnect: (() => void) | undefined;
+      let remove: (() => void) | void | undefined;
 
-      if(!remove)
+      if(register.has(got))
         return;
+
+      if(typeof arg2 == "function"){
+        const done = arg2(got, subject);
+
+        if(done === false)
+          return;
+        
+        remove = () => {
+          if(typeof done == "function")
+            done();
+        }
+      }
+      
+      let disconnect: (() => void) | undefined;
       
       const callbacks = APPLY.get(got);
 
@@ -99,8 +75,14 @@ function has <T extends Model> (
         disconnect = () => after.forEach(cb => cb && cb());
       }
 
+      register.add(got);
+      subject.set(key);
+
       const done = () => {
         reset();
+
+        register.delete(got);
+        subject.set(key);
 
         if(disconnect)
           disconnect();
@@ -114,7 +96,7 @@ function has <T extends Model> (
       return done;
     }));
 
-    return output;
+    return { value: register };
   })
 }
 
