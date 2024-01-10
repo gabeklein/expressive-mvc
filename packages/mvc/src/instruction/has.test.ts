@@ -268,4 +268,23 @@ describe("collection", () => {
   it.todo("will unwrap children on export")
 })
 
+describe("listener", () => {
+  it("will accumulate recipient models", () => {
+    class Child extends Model {
+      parents = has();
+    }
+    class Parent extends Model {
+      child = has(Child, true);
+    }
+  
+    const parent = Parent.new();
+    const child = Child.new();
+    const context = new Context({ parent }).push({ child });
+
+    expect(child.parents).toEqual(parent);
+
+    context.pop();
+  })
+})
+
 it.todo("will require values as props if has-instruction");
