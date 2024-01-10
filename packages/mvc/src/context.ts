@@ -113,28 +113,6 @@ class Context {
     }
   }
 
-  public put<T extends Model>(
-    T: Model.Type<T>,
-    I: T | ((model: T) => void),
-    implicit?: boolean,
-    writable?: boolean){
-
-    do {
-      const key = this.key(T, typeof I == "function");
-      const value = this.hasOwnProperty(key) ? null : I;
-
-      if(value || this[key] !== I && !implicit)
-        Object.defineProperty(this, key, {
-          configurable: true,
-          writable,
-          value
-        });
-
-      T = Object.getPrototypeOf(T);
-    }
-    while(T !== Model);
-  }
-
   public add<T extends Model>(
     input: T | Model.Type<T>,
     implicit?: boolean){
@@ -157,6 +135,28 @@ class Context {
     this.put(T, I, implicit, writable);
 
     return I;
+  }
+
+  public put<T extends Model>(
+    T: Model.Type<T>,
+    I: T | ((model: T) => void),
+    implicit?: boolean,
+    writable?: boolean){
+
+    do {
+      const key = this.key(T, typeof I == "function");
+      const value = this.hasOwnProperty(key) ? null : I;
+
+      if(value || this[key] !== I && !implicit)
+        Object.defineProperty(this, key, {
+          configurable: true,
+          writable,
+          value
+        });
+
+      T = Object.getPrototypeOf(T);
+    }
+    while(T !== Model);
   }
 
   public push(inputs?: Context.Input){
