@@ -51,45 +51,39 @@ describe("recipient", () => {
   
   it("will remove children which unmount", async () => {
     const didRemove = jest.fn();
-    const didAddChild = jest.fn(() => didRemove);
+    const didAdd = jest.fn(() => didRemove);
   
     class Child extends Model {
       value = 0;
     }
     class Parent extends Model {
-      children = has(Child, didAddChild);
+      children = has(Child, didAdd);
     }
   
     const parent = Parent.new();
-    const context = new Context({ parent }).push();
 
     const child1 = Child.new();
     const child2 = Child.new();
 
-    const remove1 = context.has(child1)!;
-    const remove2 = context.has(child2)!;
+    const context = new Context({ parent });
+    const context2 = context.push({ child1, child2 });
   
-    expect(didAddChild).toHaveBeenCalledTimes(2);
+    expect(didAdd).toHaveBeenCalledTimes(2);
     expect(parent.children).toEqual([child1, child2]);
 
-    remove1();
+    context2.pop();
   
     await expect(parent).toHaveUpdated();
+    expect(didRemove).toHaveBeenCalledTimes(2);
   
     const child3 = Child.new();
-    const remove3 = context.has(child3)!;
+    const context2b = context.push({ child3 });
   
-    expect(didRemove).toHaveBeenCalledTimes(1);
-    expect(parent.children).toEqual([
-      child2,
-      child3
-    ]);
+    expect(parent.children).toEqual([child3]);
 
-    remove2();
-    remove3();
+    context2b.pop();
   
     await expect(parent).toHaveUpdated();
-
     expect(didRemove).toHaveBeenCalledTimes(3);
     expect(parent.children.length).toBe(0);
   })
@@ -104,13 +98,15 @@ describe("recipient", () => {
     const parent = Parent.new();
     const context = new Context({ parent });
 
-    context.has(new Child());
-    context.has(new Child());
+    context.push({
+      child: Child.new(),
+      child2: Child.new()
+    });
     
     expect(hasChild).toHaveBeenCalledTimes(2);
     expect(parent.children.length).toBe(0);
 
-    context.has(new Child());
+    context.push({ child: Child.new() });
   
     await expect(parent).not.toUpdate();
     expect(hasChild).toHaveBeenCalledTimes(3);
@@ -127,10 +123,9 @@ describe("recipient", () => {
     const parent = Parent.new();
     const child = Child.new();
 
-    const context = new Context({ parent });
-
-    context.has(child);
-    context.has(child);
+    new Context({ parent })
+      .push({ child })
+      .push({ child});
 
     expect(gotChild).toHaveBeenCalledTimes(1);
   })

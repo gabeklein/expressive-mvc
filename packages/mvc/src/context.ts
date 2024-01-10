@@ -34,21 +34,21 @@ class Context {
       this.include(inputs);
   }
 
-  public key(T: Model.Type, upstream?: boolean){
+  protected key(T: Model.Type | Model, upstream?: boolean){
     const table = upstream ? Upstream : Downstream;
     let key = table.get(T);
 
     if(!key){
-      key = Symbol(T.name + (upstream ? " request" : ""));
+      key = Symbol(String(T) + (upstream ? " request" : ""));
       table.set(T, key);
     }
 
     return key as keyof this;
   }
 
-  public has(model: Model){
+  protected has(model: Model){
     const key = this.key(model.constructor as Model.Type, true);
-    const result = this[key] as ((model: Model) => () => void) | undefined;
+    const result = this[key] as ((model: Model) => (() => void) | void) | undefined;
     const waiting = Register.get(model);
   
     if(waiting instanceof Array)
@@ -56,8 +56,17 @@ class Context {
 
     Register.set(model, this);
 
-    if(typeof result == "function")
-      return result(model);
+    if(typeof result != "function")
+      return;
+
+    const callback = result(model);
+      
+    if(callback)
+      Object.defineProperty(this, this.key(model), {
+        configurable: true,
+        writable: true,
+        value: callback
+      });
   }
 
   public get<T extends Model>(Type: Model.Type<T>){
@@ -169,7 +178,7 @@ class Context {
   }
 
   public pop(){
-    const items = new Set<Model>();
+    const items = new Set<Model | (() => void)>();
 
     for(const key of Object.getOwnPropertySymbols(this)){
       const entry = Object.getOwnPropertyDescriptor(this, key)!;
@@ -180,10 +189,13 @@ class Context {
       delete (this as any)[key];
     }
 
-    for(const model of items)
-      model.set(null);
+    items.forEach(item => (
+      typeof item == "function" ? item() : item.set(null)
+    ))
 
     this.layer.clear();
+
+    return Object.getPrototypeOf(this) as this;
   }
 }
 
