@@ -2,7 +2,7 @@ import { Context } from '../context';
 import { Model } from '../model';
 import { has } from './has';
 
-describe("collection", () => {
+describe("recipient", () => {
   it("will register child", () => {
     class Child extends Model {}
     class Parent extends Model {
@@ -190,8 +190,8 @@ describe("collection", () => {
   it.todo("will unwrap children on export")
 })
 
-describe("listener", () => {
-  it("will accumulate recipient models", () => {
+describe("target", () => {
+  it("will register recipients", () => {
     class Child extends Model {
       parents = has();
     }
@@ -203,9 +203,30 @@ describe("listener", () => {
     const child = Child.new();
     const context = new Context({ parent }).push({ child });
 
-    expect(child.parents).toEqual(parent);
+    expect(child.parents).toEqual([parent]);
 
     context.pop();
+  })
+
+  it("will register multiple", () => {
+    class Child extends Model {
+      parents = has();
+    }
+    class Parent extends Model {
+      child = has(Child, true);
+    }
+  
+    const child = Child.new();
+    const parent = Parent.new();
+    const parent2 = Parent.new();
+
+    const context = new Context({ parent }).push({ child });
+    const context2 = new Context({ parent2 }).push({ child });
+
+    expect(child.parents).toEqual([parent, parent2]);
+
+    context.pop();
+    context2.pop();
   })
 })
 
