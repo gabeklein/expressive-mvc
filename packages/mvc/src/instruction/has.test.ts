@@ -141,11 +141,12 @@ describe("collection", () => {
     }
   
     const parent = Parent.new();
+    const child = Child.new();
   
-    new Context({ parent }).push({ Child });
+    new Context({ parent }).push({ child });
 
     expect(Array.from(parent.children)).toEqual([
-      expect.any(Child)
+      child
     ]);
   })
   
@@ -157,9 +158,10 @@ describe("collection", () => {
   
     const gotChild = jest.fn();
     const parent = Parent.new();
+    const child = Child.new();
   
-    new Context({ parent }).push({ Child });
-    expect(gotChild).toHaveBeenCalledWith(expect.any(Child));
+    new Context({ parent }).push({ child });
+    expect(gotChild).toHaveBeenCalledWith(child);
   })
   
   it("will register multiple children", () => {
@@ -170,16 +172,15 @@ describe("collection", () => {
   
     const hasChild = jest.fn();
     const parent = Parent.new();
+    const child1 = Child.new();
+    const child2 = Child.new();
 
-    new Context({ parent }).push({
-      child1: new Child(),
-      child2: new Child()
-    });
+    new Context({ parent }).push({ child1, child2 });
 
     expect(hasChild).toHaveBeenCalledTimes(2);
     expect(Array.from(parent.children)).toEqual([
-      expect.any(Child),
-      expect.any(Child)
+      child1,
+      child2
     ]);
   })
   
@@ -197,31 +198,38 @@ describe("collection", () => {
     const parent = Parent.new();
     const context = new Context({ parent }).push();
 
-    const remove1 = context.has(new Child())!;
-    const remove2 = context.has(new Child())!;
+    const child1 = Child.new();
+    const child2 = Child.new();
+
+    const remove1 = context.has(child1)!;
+    const remove2 = context.has(child2)!;
   
     expect(didAddChild).toHaveBeenCalledTimes(2);
     expect(Array.from(parent.children)).toEqual([
-      expect.any(Child),
-      expect.any(Child)
+      child1,
+      child2
     ]);
 
     remove1();
-    remove2();
   
     await expect(parent).toHaveUpdated();
   
-    const remove3 = context.has(new Child())!;
+    const child3 = Child.new();
+    const remove3 = context.has(child3)!;
   
-    expect(didRemove).toHaveBeenCalledTimes(2);
+    expect(didRemove).toHaveBeenCalledTimes(1);
     expect(Array.from(parent.children)).toEqual([
-      expect.any(Child)
+      child2,
+      child3
     ]);
+
+    remove2();
+    remove3();
   
     await expect(parent).toHaveUpdated();
-    expect(didRemove).toHaveBeenCalledTimes(2);
 
-    remove3();
+    expect(didRemove).toHaveBeenCalledTimes(3);
+    expect(parent.children.size).toBe(0);
   })
   
   it("will not register if returns false", async () => {
