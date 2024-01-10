@@ -14,9 +14,7 @@ describe("collection", () => {
   
     new Context({ parent }).push({ child });
 
-    expect(Array.from(parent.children)).toEqual([
-      child
-    ]);
+    expect(parent.children).toEqual([child]);
   })
   
   it("will run callback on register", () => {
@@ -48,10 +46,7 @@ describe("collection", () => {
     new Context({ parent }).push({ child1, child2 });
 
     expect(hasChild).toHaveBeenCalledTimes(2);
-    expect(Array.from(parent.children)).toEqual([
-      child1,
-      child2
-    ]);
+    expect(parent.children).toEqual([child1, child2]);
   })
   
   it("will remove children which unmount", async () => {
@@ -75,10 +70,7 @@ describe("collection", () => {
     const remove2 = context.has(child2)!;
   
     expect(didAddChild).toHaveBeenCalledTimes(2);
-    expect(Array.from(parent.children)).toEqual([
-      child1,
-      child2
-    ]);
+    expect(parent.children).toEqual([child1, child2]);
 
     remove1();
   
@@ -88,7 +80,7 @@ describe("collection", () => {
     const remove3 = context.has(child3)!;
   
     expect(didRemove).toHaveBeenCalledTimes(1);
-    expect(Array.from(parent.children)).toEqual([
+    expect(parent.children).toEqual([
       child2,
       child3
     ]);
@@ -99,7 +91,7 @@ describe("collection", () => {
     await expect(parent).toHaveUpdated();
 
     expect(didRemove).toHaveBeenCalledTimes(3);
-    expect(parent.children.size).toBe(0);
+    expect(parent.children.length).toBe(0);
   })
   
   it("will not register if returns false", async () => {
@@ -116,13 +108,13 @@ describe("collection", () => {
     context.has(new Child());
     
     expect(hasChild).toHaveBeenCalledTimes(2);
-    expect(parent.children.size).toBe(0);
+    expect(parent.children.length).toBe(0);
 
     context.has(new Child());
   
     await expect(parent).not.toUpdate();
     expect(hasChild).toHaveBeenCalledTimes(3);
-    expect(parent.children.size).toBe(0);
+    expect(parent.children.length).toBe(0);
   });
 
   it("will ignore redundant child", async () => {
@@ -192,7 +184,7 @@ describe("collection", () => {
   
     new Context({ foo }).push({ bar });
 
-    expect(Array.from(foo.baz)).toEqual([ bar.baz ]);
+    expect(foo.baz).toEqual([ bar.baz ]);
   });
 
   it.todo("will unwrap children on export")

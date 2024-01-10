@@ -10,7 +10,7 @@ declare namespace has {
 
 // function has <T extends Model> (type: Model.Type<T>, one: true): T;
 function has <T extends Model> (type: Model.Type<T>, required: boolean): T | undefined;
-function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): Set<T>;
+function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): readonly T[];
 
 function has (callback?: has.Callback): Model | undefined;
   
@@ -69,6 +69,9 @@ function has <T extends Model> (
       let disconnect: (() => void) | undefined;
       
       const callbacks = APPLY.get(got);
+      const update = () => {
+        subject.set(key, Object.freeze(Array.from(register)));
+      }
 
       if(callbacks){
         const after = callbacks.map(callback => callback(subject));
@@ -76,13 +79,13 @@ function has <T extends Model> (
       }
 
       register.add(got);
-      subject.set(key);
+      update();
 
       const done = () => {
         reset();
 
         register.delete(got);
-        subject.set(key);
+        update();
 
         if(disconnect)
           disconnect();
@@ -96,7 +99,7 @@ function has <T extends Model> (
       return done;
     }));
 
-    return { value: register };
+    return { value: [] };
   })
 }
 
