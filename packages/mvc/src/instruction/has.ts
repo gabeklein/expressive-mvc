@@ -53,9 +53,17 @@ function has <T extends Model> (
     else
       Context.get(subject, ctx => ctx.put(arg1, got => {
         let remove: (() => void) | void | undefined;
+        let disconnect: (() => void) | undefined;
 
         if(register.has(got))
           return;
+        
+        const callback = APPLY.get(got);
+
+        if(callback){
+          const after = callback(subject)
+          disconnect = () => after && after()
+        }
 
         if(typeof arg2 == "function"){
           const done = arg2(got, subject);
@@ -67,15 +75,6 @@ function has <T extends Model> (
             if(typeof done == "function")
               done();
           }
-        }
-        
-        let disconnect: (() => void) | undefined;
-        
-        const callbacks = APPLY.get(got);
-
-        if(callbacks){
-          const after = callbacks.map(callback => callback(subject));
-          disconnect = () => after.forEach(cb => cb && cb());
         }
 
         register.add(got);

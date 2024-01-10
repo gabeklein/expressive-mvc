@@ -241,6 +241,28 @@ describe("target", () => {
     expect(gotParent).toHaveBeenCalledWith(parent, child);
   })
 
+  it("will callback before recipient does", () => {
+    class Child extends Model {
+      parents = has(gotParent);
+    }
+    class Parent extends Model {
+      children = has(Child, gotChild);
+    }
+  
+    const gotChild = jest.fn();
+    const gotParent = jest.fn(() => {
+      expect(gotChild).not.toHaveBeenCalled();
+    });
+
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    new Context({ parent }).push({ child });
+
+    expect(gotChild).toHaveBeenCalled();
+    expect(gotParent).toHaveBeenCalled();
+  })
+
   it("will complain if used more than once", () => {
     class Child extends Model {
       parents = has();
