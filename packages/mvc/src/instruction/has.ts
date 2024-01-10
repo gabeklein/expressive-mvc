@@ -9,7 +9,7 @@ declare namespace has {
 }
 
 function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): readonly T[];
-function has (callback?: has.Callback): Model | undefined;
+function has (callback?: has.Callback): readonly Model[];
   
 function has <T extends Model> (
   arg1?: Model.Type<T> | has.Callback<Model>,
