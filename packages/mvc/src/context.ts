@@ -48,24 +48,28 @@ class Context {
 
   protected has(model: Model){
     const key = this.key(model.constructor as Model.Type, true);
-    const result = this[key] as ((model: Model) => (() => void) | void) | undefined;
+    const result = this[key] as Set<(model: Model) => (() => void) | void> | undefined;
     const waiting = Register.get(model);
+    const done = new Set<(model: Model) => void>();
   
     if(waiting instanceof Array)
       waiting.forEach(cb => cb(this));
 
     Register.set(model, this);
 
-    if(typeof result != "function")
-      return;
-
-    const callback = result(model);
+    if(result)
+      for(const request of result){
+        const callback = request(model);
       
-    if(callback)
+        if(callback)
+          done.add(request);
+      }
+
+    if(done.size)
       Object.defineProperty(this, this.key(model), {
         configurable: true,
         writable: true,
-        value: callback
+        value: () => done.forEach(x => x(model))
       });
   }
 
@@ -143,6 +147,24 @@ class Context {
     this.put(T, I, implicit, writable);
 
     return I;
+  }
+
+  public request<T extends Model>(
+    T: Model.Type<T>,
+    I: ((model: T) => void)){
+
+    const key = this.key(T, true);
+    const value = this[key] as Set<(model: T) => void> | undefined;
+
+    if(value)
+      value.add(I);
+
+    else
+      Object.defineProperty(this, key, {
+        configurable: true,
+        writable: true,
+        value: new Set([I])
+      });
   }
 
   public put<T extends Model>(
