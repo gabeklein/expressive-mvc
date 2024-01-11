@@ -2,18 +2,19 @@ import { Context } from '../context';
 import { Model } from '../model';
 import { use } from './use';
 
-const APPLY = new WeakMap<Model, (model: Model) => (() => void) | void>();
+const APPLY = new WeakMap<Model, has.WillApply>();
 
 declare namespace has {
-  type Callback<T = any> = (model: T, recipient: Model) => void | boolean | (() => void);
+  type WillApply<T = any> = (model: T, recipient: Model) => void | null | boolean | (() => void);
+  type WillBeApplied<T = any> = (recipient: Model, model: T) => void | null | boolean | (() => void);
 }
 
-function has <T extends Model> (type: Model.Type<T>, callback?: has.Callback<T>): readonly T[];
-function has (callback?: has.Callback): readonly Model[];
+function has <T extends Model> (type: Model.Type<T>, callback?: has.WillApply<T>): readonly T[];
+function has (callback?: has.WillBeApplied): readonly Model[];
   
 function has <T extends Model> (
-  arg1?: Model.Type<T> | has.Callback<Model>,
-  arg2?: has.Callback<T>){
+  arg1?: Model.Type<T> | has.WillBeApplied<T>,
+  arg2?: has.WillApply<T>){
 
   return use<T>((key, subject) => {
     const register = new Set<Model>();
@@ -29,13 +30,16 @@ function has <T extends Model> (
         if(register.has(recipient))
           return;
 
-        let remove: (() => void) | boolean | void;
+        let remove: (() => void) | undefined;
 
         if(arg1){
-          remove = arg1(recipient, subject);
+          const output = arg1(recipient, subject);
   
-          if(remove === false)
-            return;
+          if(output === false)
+            return false;
+
+          if(typeof output == "function")
+            remove = output;
         }
 
         register.add(recipient);
@@ -45,58 +49,66 @@ function has <T extends Model> (
           register.delete(recipient);
           update();
 
-          if(typeof remove == "function")
+          if(remove)
             remove();
         }
       });
     }
     else
-      Context.get(subject, ctx => ctx.put(arg1, got => {
-        let remove: (() => void) | void | undefined;
-        let disconnect: (() => void) | undefined;
-
-        if(register.has(got))
-          return;
-        
-        const callback = APPLY.get(got);
-
-        if(callback){
-          const after = callback(subject)
-          disconnect = () => after && after()
-        }
-
-        if(typeof arg2 == "function"){
-          const done = arg2(got, subject);
-
-          if(done === false)
+      Context.get(subject, ctx => {
+        ctx.request(arg1, got => {
+          let remove: (() => void) | void | undefined;
+          let disconnect: (() => void) | undefined;
+  
+          if(register.has(got))
             return;
           
-          remove = () => {
-            if(typeof done == "function")
-              done();
+          const callback = APPLY.get(got);
+  
+          if(callback){
+            const after = callback(subject, got);
+  
+            if(after === false)
+              return;
+            else if(typeof after == "function")
+              disconnect = after;
           }
-        }
-
-        register.add(got);
-        update();
-
-        const done = () => {
-          reset();
-
-          register.delete(got);
+  
+          if(typeof arg2 == "function"){
+            const done = arg2(got, subject);
+  
+            if(done === false)
+              return;
+            
+            remove = () => {
+              if(typeof done == "function")
+                done();
+            }
+          }
+  
+          register.add(got);
           update();
+  
+          const done = () => {
+            reset();
+  
+            register.delete(got);
+            update();
+  
+            if(disconnect)
+              disconnect();
+  
+            if(typeof remove == "function")
+              remove();
+          }
+  
+          const reset = got.get(null, done);
+          
+          return done;
+        })
+      });
 
-          if(disconnect)
-            disconnect();
-
-          if(typeof remove == "function")
-            remove();
-        }
-
-        const reset = got.get(null, done);
-        
-        return done;
-      }));
+    // subject.get(null, () => register.clear());
 
     return { value: [] };
   })

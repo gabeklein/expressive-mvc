@@ -203,7 +203,27 @@ describe("target", () => {
     context.pop();
   })
 
-  it("will register multiple", () => {
+  it("will register multiple from one context", () => {
+    class Child extends Model {
+      parents = has(got => got instanceof Parent1);
+    }
+    class Parent1 extends Model {
+      child = has(Child);
+    }
+    class Parent2 extends Model {
+      child = has(Child);
+    }
+
+    const child = Child.new();
+    const parent1 = Parent1.new();
+    const parent2 = Parent2.new();
+
+    new Context({ parent1, parent2 }).push({ child });
+
+    expect(child.parents).toEqual([parent1]);
+  })
+
+  it("will register from multiple contexts", () => {
     class Child extends Model {
       parents = has();
     }
@@ -263,6 +283,26 @@ describe("target", () => {
     expect(gotParent).toHaveBeenCalled();
   })
 
+  it("will veto recipient", () => {
+    class Child extends Model {
+      parents = has(gotParent);
+    }
+    class Parent extends Model {
+      children = has(Child, gotChild);
+    }
+  
+    const gotChild = jest.fn();
+    const gotParent = jest.fn(() => false);
+
+    const parent = Parent.new();
+    const child = Child.new();
+  
+    new Context({ parent }).push({ child });
+
+    expect(gotChild).not.toHaveBeenCalled();
+    expect(gotParent).toHaveBeenCalled();
+  })
+
   it("will complain if used more than once", () => {
     class Child extends Model {
       parents = has();
@@ -273,6 +313,8 @@ describe("target", () => {
       `'has' callback can only be used once per model.`
     );
   })
+
+  it.todo("will callback if dropped from context");
 })
 
 it.todo("will require values as props if has-instruction");
