@@ -55,6 +55,14 @@ declare namespace Model {
         : T[K];
   } & Record<string, unknown>;
 
+  type Key<T extends Model> = symbol & { for(): Model.Type<T> };
+
+  type Infer<T> =
+    T extends Model.Type<infer U> ? U :
+    T extends { Model: Model.Type<infer U> } ? U :
+    T extends { Model: Promise<Model.Type<infer U>> } ? U :
+    never;
+
   /** Export/Import compatible value for a given property in a Model. */
   type Export<R> = R extends { get(): infer T } ? T : R;
 
@@ -426,14 +434,21 @@ class Model {
     return instance;
   }
 
+  static is<T extends Model> (this: Model.Type<T>): Model.Key<T>;
+
   /**
    * Static equivalent of `x instanceof this`.
    * Determines if provided class is a subtype of this one.
    * If so, language server will make available all static
    * methods and properties of this class.
    */
-  static is<T extends Model.Type> (this: T, maybe: any): maybe is T {
-    return typeof maybe == "function" && maybe.prototype instanceof this;
+  static is<T extends Model.Type> (this: T, maybe: any): maybe is T;
+  
+  static is(maybe?: any){
+    if(0 in arguments)
+      return typeof maybe == "function" && maybe.prototype instanceof this;
+
+    return Symbol()
   }
 
   /**
