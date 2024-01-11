@@ -70,6 +70,18 @@ declare module '@expressive/mvc' {
 
     function use <T extends Model> (this: Model.Type<T>, callback?: Model.Callback<T>, repeat?: boolean): T;
   }
+
+  interface Lazy<T extends Model> {
+    get(): T;
+    
+    get(expect: false): T | undefined;
+  
+    get(expectValues: true): Required<T>
+  
+    get<R>(factory: Model.get.Factory<T, Promise<R> | R>): NoVoid<R>;
+
+    get<R>(factory: Model.get.Factory<T, null>): NoVoid<R> | null;
+  }
 }
 
 Model.as = createComponent;
@@ -77,6 +89,6 @@ Model.get = useRemote;
 Model.use = useLocal;
 
 export { Model, Model as default };
-export { get, use, ref, set, has } from '@expressive/mvc';
+export { get, use, ref, set, has, Lazy, lazy } from '@expressive/mvc';
 export { Consumer } from "./consumer";
 export { Provider } from "./provider";
