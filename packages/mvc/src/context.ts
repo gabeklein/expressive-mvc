@@ -67,13 +67,18 @@ class Context {
       this.cleanup.add(callback);
   }
 
-  public get<T extends Model>(Type: Model.Type<T>){
-    const result = this[key(Type) as keyof this] as T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>): T | undefined;
+  public get<T extends Model>(Type: Model.Type<T>, callback: (model: T) => void): void;
+  public get<T extends Model>(Type: Model.Type<T>, callback?: ((model: T) => void)){
+    if(callback)
+      return this.put(Type, callback);
+
+    const result = this[key(Type) as keyof this];
 
     if(result === null)
       throw new Error(`Did find ${Type} in context, but multiple were defined.`);
 
-    return result;
+    return result as T | undefined;
   }
 
   public include(
@@ -119,7 +124,7 @@ class Context {
     }
   }
 
-  public add<T extends Model>(
+  protected add<T extends Model>(
     input: T | Model.Type<T>,
     implicit?: boolean){
 
@@ -142,7 +147,7 @@ class Context {
     return I;
   }
 
-  public put<T extends Model>(
+  protected put<T extends Model>(
     T: Model.Type<T>,
     I: T | ((model: T) => void),
     implicit?: boolean){
@@ -164,6 +169,7 @@ class Context {
 
   public push(inputs?: Context.Input){
     const next = Object.create(this) as this;
+
     next.layer = new Map();
     next.cleanup = new Set();
 

@@ -51,7 +51,7 @@ function has <T extends Model> (
       });
     }
     else
-      Context.get(subject, ctx => ctx.put(arg1, got => {
+      Context.get(subject, ctx => ctx.get(arg1, got => {
         let remove: (() => void) | void | undefined;
         let disconnect: (() => void) | undefined;
 
