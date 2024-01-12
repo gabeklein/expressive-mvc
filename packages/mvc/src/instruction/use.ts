@@ -10,24 +10,24 @@ function use <T extends Model> (Type: Model.Type<T>, required: false): T | undef
 function use <T extends Model> (Type: Model.Type<T>, ready?: (i: T) => void): T;
 
 function use(
-  model: Model.Type | Model.Instruction,
-  argument?: ((i: Model) => void) | boolean){
+  arg1: Model.Type | Model.Instruction,
+  arg2?: ((i: Model) => void) | boolean){
 
   const token = Symbol("instruction");
 
-  if(Model.is(model)){
-    const type = model;
+  if(Model.is(arg1)){
+    const type = arg1;
     const value = new type();
 
-    model = (key, subject) => {
+    arg1 = (key, subject) => {
       function set(next: Model | undefined){
-        if(next ? !(next instanceof type) : argument !== false)
+        if(next ? !(next instanceof type) : arg2 !== false)
           throw new Error(`${subject}.${key} expected Model of type ${type} but got ${next && next.constructor}.`)
   
         update(subject, key, next);
   
-        if(next && typeof argument == "function")
-          argument(next);
+        if(next && typeof arg2 == "function")
+          arg2(next);
   
         return false;
       }
@@ -38,7 +38,7 @@ function use(
     }
   }
 
-  INSTRUCT.set(token, model);
+  INSTRUCT.set(token, arg1);
   return token;
 }
 
