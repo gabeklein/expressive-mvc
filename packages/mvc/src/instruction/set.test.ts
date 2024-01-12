@@ -370,8 +370,8 @@ describe("suspense", () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn((_key: string, $: Test) => {
-      return $.greet + " " + $.name;
+    const didEvaluate = jest.fn(function(this: Test){
+      return this.greet + " " + this.name;
     });
 
     class Test extends Model {
@@ -399,8 +399,8 @@ describe("suspense", () => {
     const greet = mockPromise<string>();
     const name = mockPromise<string>();
 
-    const didEvaluate = jest.fn(async (_key: string, $: Test) => {
-      return $.greet + " " + $.name;
+    const didEvaluate = jest.fn(async function(this: Test){
+      return this.greet + " " + this.name;
     });
 
     class Test extends Model {

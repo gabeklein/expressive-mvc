@@ -5,7 +5,7 @@ declare namespace set {
   type Callback<T, S = any> = (this: S, next: T, previous: T) =>
     ((next: T) => void) | Promise<any> | void | boolean;
 
-  type Factory<T, S = any> = (this: S, key: string, thisArg: S) => Promise<T> | T;
+  type Factory<T, S = any> = (this: S, key: string) => Promise<T> | T;
 }
 
 /**
@@ -54,7 +54,7 @@ function set <T> (
       function init(){
         if(typeof value == "function")
           try {
-            value = attempt(value.bind(subject, key, subject));
+            value = attempt(value.bind(subject, key));
           }
           catch(err){
             console.warn(`Generating initial value for ${subject}.${key} failed.`);
